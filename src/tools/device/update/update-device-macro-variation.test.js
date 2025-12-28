@@ -46,10 +46,12 @@ describe("updateDevice - macroVariation", () => {
         if (prop === "variation_count") return [3];
         if (prop === "selected_variation_index") return [1];
       }
+
       // Non-rack device (id 456)
       if (this._path === "id 456") {
         if (prop === "can_have_chains") return [0];
       }
+
       return [0];
     });
   });

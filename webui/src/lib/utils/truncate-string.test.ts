@@ -44,6 +44,7 @@ describe("truncateString", () => {
   it("handles very long strings", () => {
     const longString = "a".repeat(10000);
     const result = truncateString(longString, 100);
+
     expect(result).toBeDefined();
     expect(result!.length).toBe(100);
     expect(result!.endsWith("…")).toBe(true);

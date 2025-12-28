@@ -154,6 +154,7 @@ describe("readLiveSet - clips", () => {
     expect(result.tracks).toHaveLength(1);
 
     const track = result.tracks[0];
+
     // Minimal track info: id, type, trackIndex
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");
@@ -193,6 +194,7 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
+
       return undefined;
     });
 
@@ -224,6 +226,7 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
     const track = result.tracks[0];
+
     expect(track.id).toBe("track1");
     expect(track.type).toBe("audio");
     expect(track.trackIndex).toBe(0);
@@ -265,6 +268,7 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
+
       return undefined;
     });
 
@@ -304,6 +308,7 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["all-clips"] });
 
     const track = result.tracks[0];
+
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");
     expect(track.trackIndex).toBe(0);
@@ -361,6 +366,7 @@ describe("readLiveSet - clips", () => {
     });
 
     const track = result.tracks[0];
+
     // Should include full track properties
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");

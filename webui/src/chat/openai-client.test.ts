@@ -15,6 +15,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("");
   });
 
@@ -23,6 +24,7 @@ describe("extractReasoningFromDelta", () => {
       {} as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("");
   });
 
@@ -32,6 +34,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Thinking about the problem...");
   });
 
@@ -47,6 +50,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Let me analyze this step by step.");
   });
 
@@ -67,6 +71,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("First, I need to understand the requirements.");
   });
 
@@ -87,6 +92,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("This should be included");
   });
 
@@ -103,6 +109,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("From reasoning_content");
   });
 
@@ -113,6 +120,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("After careful thought, ");
   });
 
@@ -129,6 +137,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Based on my analysis, ");
   });
 
@@ -148,6 +157,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe(
       'The user has just greeted me with "hi". They haven\'t asked me to connect to Ableton Live yet, so I should respond as Producer Pal and ask if they want to connect.',
     );
@@ -166,6 +176,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Reasoning text when content is empty");
   });
 });
@@ -175,6 +186,7 @@ describe("OpenAIClient constructor", () => {
     const client = new OpenAIClient("test-key", {
       model: "gpt-4",
     });
+
     expect(client.chatHistory).toEqual([]);
   });
 
@@ -184,6 +196,7 @@ describe("OpenAIClient constructor", () => {
       model: "gpt-4",
       chatHistory: history,
     });
+
     expect(client.chatHistory).toEqual(history);
   });
 
@@ -192,6 +205,7 @@ describe("OpenAIClient constructor", () => {
       model: "gpt-4",
       systemInstruction: "You are a helpful assistant.",
     });
+
     expect(client.chatHistory).toHaveLength(1);
     expect(client.chatHistory[0]).toEqual({
       role: "system",
@@ -205,6 +219,7 @@ describe("OpenAIClient constructor", () => {
       systemInstruction: "You are a helpful assistant.",
       chatHistory: [{ role: "user", content: "Hello" }],
     });
+
     // Should not add system message since history is not empty
     expect(client.chatHistory).toHaveLength(1);
     expect(client.chatHistory[0]?.role).toBe("user");
@@ -217,6 +232,7 @@ describe("OpenAIClient constructor", () => {
       reasoningEffort: "high" as const,
     };
     const client = new OpenAIClient("test-key", config);
+
     expect(client.config.model).toBe("gpt-4");
     expect(client.config.temperature).toBe(0.7);
     expect(client.config.reasoningEffort).toBe("high");
@@ -224,6 +240,7 @@ describe("OpenAIClient constructor", () => {
 
   it("initializes mcpClient as null", () => {
     const client = new OpenAIClient("test-key", { model: "gpt-4" });
+
     expect(client.mcpClient).toBeNull();
   });
 
@@ -232,6 +249,7 @@ describe("OpenAIClient constructor", () => {
       model: "gpt-4",
       baseUrl: "https://api.mistral.ai/v1",
     });
+
     // The client should be created (we can't easily inspect internal state,
     // but we can verify it doesn't throw)
     expect(client.ai).toBeDefined();
@@ -241,6 +259,7 @@ describe("OpenAIClient constructor", () => {
     const client = new OpenAIClient("test-key", {
       model: "gpt-4",
     });
+
     expect(client.ai).toBeDefined();
   });
 });
@@ -354,7 +373,9 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(result.tool_calls).toBeDefined();
     expect(result.tool_calls).toHaveLength(1);
     const toolCall = result.tool_calls?.[0];
+
     expect(toolCall?.id).toBe("call_123");
+
     if (toolCall?.type === "function") {
       expect(toolCall.function.name).toBe("search");
       expect(toolCall.function.arguments).toBe('{"query": "test"}');
@@ -455,6 +476,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(result.reasoning_details).toBeDefined();
     expect(result.reasoning_details).toHaveLength(1);
     const reasoning = result.reasoning_details?.[0];
+
     expect(reasoning?.type).toBe("reasoning.text");
     expect(reasoning?.text).toBe("Thinking about this carefully...");
     expect(reasoning?.index).toBe(0);
@@ -524,6 +546,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(result.tool_calls).toHaveLength(1);
     expect(result.reasoning_details).toBeDefined();
     const reasoning = result.reasoning_details?.[0];
+
     expect(reasoning?.text).toBe("I need to analyze this data...");
   });
 
@@ -570,6 +593,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
       emptyReasoningMap,
       null, // Still streaming
     );
+
     expect(streamingResult.tool_calls).toBeUndefined();
 
     // Chunk 3: finish_reason: "tool_calls" - tool_calls should be included
@@ -579,6 +603,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
       emptyReasoningMap,
       "tool_calls", // Finalized
     );
+
     expect(finalizedResult.tool_calls).toBeDefined();
     expect(finalizedResult.tool_calls).toHaveLength(1);
 
@@ -591,6 +616,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
       emptyReasoningMap,
       "tool_calls", // Streaming loop passes "tool_calls" (not null) after finalization
     );
+
     expect(preservedResult.tool_calls).toBeDefined();
     expect(preservedResult.tool_calls).toHaveLength(1);
   });
@@ -626,6 +652,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
 
     expect(result.reasoning_details).toBeDefined();
     const reasoning = result.reasoning_details?.[0];
+
     expect(reasoning?.id).toBe("block_123");
     expect(reasoning?.format).toBe("json");
   });

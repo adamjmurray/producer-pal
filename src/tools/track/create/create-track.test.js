@@ -33,12 +33,15 @@ describe("createTrack", () => {
       if (method === "create_midi_track") {
         return ["id", `midi_track_${index}`];
       }
+
       if (method === "create_audio_track") {
         return ["id", `audio_track_${index}`];
       }
+
       if (method === "create_return_track") {
         return ["id", `return_track_${returnTrackCounter++}`];
       }
+
       return null;
     });
   });

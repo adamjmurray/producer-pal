@@ -9,6 +9,7 @@ describe("validateIdType", () => {
 
   it("should return LiveAPI instance for valid ID with matching type", () => {
     const id = "track_1";
+
     liveApiId.mockReturnValue(id);
     liveApiType.mockReturnValue("Track");
 
@@ -21,6 +22,7 @@ describe("validateIdType", () => {
 
   it("should be case-insensitive for type matching", () => {
     const id = "track_1";
+
     liveApiId.mockReturnValue(id);
     liveApiType.mockReturnValue("Track");
 
@@ -32,6 +34,7 @@ describe("validateIdType", () => {
 
   it("should throw error when ID does not exist", () => {
     const id = "nonexistent_id";
+
     liveApiId.mockReturnValue("id 0"); // Mock non-existent
 
     expect(() => validateIdType(id, "track", "testTool")).toThrow(
@@ -41,6 +44,7 @@ describe("validateIdType", () => {
 
   it("should throw error when type does not match", () => {
     const id = "scene_1";
+
     liveApiId.mockReturnValue(id);
     liveApiType.mockReturnValue("Scene");
 
@@ -51,6 +55,7 @@ describe("validateIdType", () => {
 
   it("should include tool name in error messages", () => {
     const id = "scene_1";
+
     liveApiId.mockReturnValue("id 0"); // Mock non-existent
 
     expect(() => validateIdType(id, "track", "updateTrack")).toThrow(
@@ -60,6 +65,7 @@ describe("validateIdType", () => {
 
   it("should match device subclasses to device type", () => {
     const id = "device_1";
+
     liveApiId.mockReturnValue(id);
 
     // Test various device subclasses from the Live Object Model
@@ -82,6 +88,7 @@ describe("validateIdType", () => {
 
   it("should match DrumPad to drum-pad type", () => {
     const id = "pad_1";
+
     liveApiId.mockReturnValue(id);
     liveApiType.mockReturnValue("DrumPad");
 
@@ -97,6 +104,7 @@ describe("validateIdTypes", () => {
   describe("with skipInvalid=false (default)", () => {
     it("should return array of LiveAPI instances for all valid IDs", () => {
       const ids = ["track_1", "track_2", "track_3"];
+
       liveApiId.mockImplementation(function () {
         return this._id;
       });
@@ -112,6 +120,7 @@ describe("validateIdTypes", () => {
 
     it("should throw on first invalid ID (non-existent)", () => {
       const ids = ["track_1", "nonexistent", "track_3"];
+
       liveApiId.mockImplementation(function () {
         // Return "id 0" for non-existent IDs
         return this._id === "nonexistent" ? "id 0" : this._id;
@@ -125,6 +134,7 @@ describe("validateIdTypes", () => {
 
     it("should throw on first invalid ID (wrong type)", () => {
       const ids = ["track_1", "scene_1", "track_3"];
+
       liveApiId.mockImplementation(function () {
         return this._id;
       });
@@ -141,6 +151,7 @@ describe("validateIdTypes", () => {
   describe("with skipInvalid=true", () => {
     it("should return only valid IDs and log warnings for invalid", () => {
       const ids = ["track_1", "scene_1", "track_3"];
+
       liveApiId.mockImplementation(function () {
         return this._id;
       });
@@ -164,6 +175,7 @@ describe("validateIdTypes", () => {
 
     it("should return empty array when all IDs are invalid (non-existent)", () => {
       const ids = ["nonexistent_1", "nonexistent_2"];
+
       liveApiId.mockReturnValue("id 0"); // All non-existent
 
       const consoleErrorSpy = vi.spyOn(console, "error");
@@ -184,6 +196,7 @@ describe("validateIdTypes", () => {
 
     it("should return empty array when all IDs are wrong type", () => {
       const ids = ["scene_1", "scene_2"];
+
       liveApiId.mockImplementation(function () {
         return this._id;
       });
@@ -201,6 +214,7 @@ describe("validateIdTypes", () => {
 
     it("should handle mix of non-existent and wrong type IDs", () => {
       const ids = ["nonexistent", "scene_1", "track_1"];
+
       liveApiId.mockImplementation(function () {
         // Return "id 0" for non-existent, actual id for others
         return this._id === "nonexistent" ? "id 0" : this._id;
@@ -227,6 +241,7 @@ describe("validateIdTypes", () => {
 
     it("should accept device subclasses when validating device type", () => {
       const ids = ["device_1", "device_2", "device_3"];
+
       liveApiId.mockImplementation(function () {
         return this._id;
       });
@@ -237,6 +252,7 @@ describe("validateIdTypes", () => {
           device_2: "HybridReverbDevice",
           device_3: "SimplerDevice",
         };
+
         return subclassMap[this._id] || "Device";
       });
 

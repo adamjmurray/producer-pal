@@ -23,6 +23,7 @@ describe("readTrack", () => {
         }),
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -37,6 +38,7 @@ describe("readTrack", () => {
         effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -52,6 +54,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -60,9 +63,11 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         if (this._path === "live_set tracks 0 devices 0") {
           return "drumrack";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -83,6 +88,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toEqual({});
     });
 
@@ -178,6 +184,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toEqual({
         C3: "Kick",
         E3: "Hi-hat",
@@ -293,6 +300,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toEqual({
         C3: "First Drum Rack Kick",
       });
@@ -403,6 +411,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toEqual({
         C1: "Kick Dub",
         Db1: "Snare Dub",
@@ -423,6 +432,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
   });

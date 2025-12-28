@@ -16,16 +16,20 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should shorten arrangement clip to 50% of original length", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -46,12 +50,15 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -75,16 +82,20 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should shorten arrangement clip to single beat", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -171,13 +182,16 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should handle same length as no-op", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       return this._path;
     });
 
@@ -220,15 +234,19 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._id === movedClipId) {
         return "live_set tracks 0 arrangement_clips 1";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -236,9 +254,11 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (this._path === "id 789") {
         return "789";
       }
+
       if (this._path === "id 999") {
         return movedClipId;
       }
+
       return this._id;
     });
 
@@ -268,6 +288,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${movedClipId}`;
       }
+
       return undefined;
     });
 
@@ -308,18 +329,23 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._id === tempClipId) {
         return `live_set tracks ${trackIndex} clip_slots 0 clip`;
       }
+
       if (this._id === tempArrangementClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 1`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -350,6 +376,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tempArrangementClipId}`;
       }
+
       return undefined;
     });
 

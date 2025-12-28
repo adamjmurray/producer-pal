@@ -77,6 +77,7 @@ describe("updateClip - Advanced note operations", () => {
           ],
         });
       }
+
       return {};
     });
 
@@ -110,6 +111,7 @@ describe("updateClip - Advanced note operations", () => {
     const addNewNotesCall = liveApiCall.mock.calls.find(
       (call) => call[0] === "add_new_notes",
     );
+
     expect(addNewNotesCall).toBeDefined();
     expect(addNewNotesCall[1].notes).toHaveLength(3);
     expect(addNewNotesCall[1].notes).toContainEqual({
@@ -166,6 +168,7 @@ describe("updateClip - Advanced note operations", () => {
           ],
         });
       }
+
       return {};
     });
 
@@ -227,6 +230,7 @@ describe("updateClip - Advanced note operations", () => {
           notes: [],
         });
       }
+
       return {};
     });
 
@@ -301,6 +305,7 @@ describe("updateClip - Advanced note operations", () => {
       }, // E3 at 1|2
     ];
     let addedNotes = existingNotes;
+
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
         addedNotes = args[0]?.notes || [];
@@ -309,6 +314,7 @@ describe("updateClip - Advanced note operations", () => {
           notes: addedNotes,
         });
       }
+
       return {};
     });
 
@@ -378,6 +384,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock to track added notes and return subset based on length parameter
     let allAddedNotes = [];
+
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
         allAddedNotes = args[0]?.notes || [];
@@ -388,8 +395,10 @@ describe("updateClip - Advanced note operations", () => {
         const notesInRange = allAddedNotes.filter(
           (note) => note.start_time >= startBeat && note.start_time < endBeat,
         );
+
         return JSON.stringify({ notes: notesInRange });
       }
+
       return {};
     });
 
@@ -452,6 +461,7 @@ describe("updateClip - Advanced note operations", () => {
           ],
         });
       }
+
       return {};
     });
 

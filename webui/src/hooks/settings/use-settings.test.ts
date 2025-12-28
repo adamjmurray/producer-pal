@@ -155,6 +155,7 @@ describe("useSettings", () => {
     const savedGeminiSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
     );
+
     expect(savedGeminiSettings.apiKey).toBe("new-key");
     expect(savedGeminiSettings.model).toBe("gemini-2.5-flash-lite");
     expect(savedGeminiSettings.thinking).toBe("Medium");
@@ -186,12 +187,14 @@ describe("useSettings", () => {
 
   it("hasApiKey returns false when no key in localStorage", () => {
     const { result } = renderHook(() => useSettings());
+
     expect(result.current.hasApiKey).toBe(false);
   });
 
   it("hasApiKey returns true when key exists in old format", () => {
     localStorage.setItem("gemini_api_key", "test-key");
     const { result } = renderHook(() => useSettings());
+
     expect(result.current.hasApiKey).toBe(true);
   });
 
@@ -201,6 +204,7 @@ describe("useSettings", () => {
       JSON.stringify({ apiKey: "test-key" }),
     );
     const { result } = renderHook(() => useSettings());
+
     expect(result.current.hasApiKey).toBe(true);
   });
 
@@ -315,6 +319,7 @@ describe("useSettings", () => {
     const geminiSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
     );
+
     expect(geminiSettings.apiKey).toBe("gemini-key");
     expect(geminiSettings.model).toBe("gemini-2.5-pro");
     expect(geminiSettings.thinking).toBe("High");
@@ -323,6 +328,7 @@ describe("useSettings", () => {
     const openaiSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_openai") ?? "{}",
     );
+
     expect(openaiSettings.apiKey).toBe("openai-key");
     expect(openaiSettings.model).toBe("gpt-5-mini-2025-08-07");
     expect(openaiSettings.thinking).toBe("Low");
@@ -331,6 +337,7 @@ describe("useSettings", () => {
     const openrouterSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
     );
+
     expect(openrouterSettings.apiKey).toBe("openrouter-key");
     expect(openrouterSettings.model).toBe("minimax/minimax-m2:free");
     expect(openrouterSettings.temperature).toBe(0.8);
@@ -338,6 +345,7 @@ describe("useSettings", () => {
     const mistralSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_mistral") ?? "{}",
     );
+
     expect(mistralSettings.apiKey).toBe("mistral-key");
     expect(mistralSettings.model).toBe("mistral-small-latest");
     expect(mistralSettings.temperature).toBe(1.2);
@@ -378,12 +386,14 @@ describe("useSettings", () => {
 
   it("settingsConfigured is false by default", () => {
     const { result } = renderHook(() => useSettings());
+
     expect(result.current.settingsConfigured).toBe(false);
   });
 
   it("loads settingsConfigured from localStorage", () => {
     localStorage.setItem("producer_pal_settings_configured", "true");
     const { result } = renderHook(() => useSettings());
+
     expect(result.current.settingsConfigured).toBe(true);
   });
 
@@ -496,6 +506,7 @@ describe("useSettings", () => {
 
   it("setShowThoughts works for mistral provider", async () => {
     const { result } = renderHook(() => useSettings());
+
     await act(() => {
       result.current.setProvider("mistral");
     });
@@ -507,6 +518,7 @@ describe("useSettings", () => {
 
   it("setShowThoughts works for openrouter provider", async () => {
     const { result } = renderHook(() => useSettings());
+
     await act(() => {
       result.current.setProvider("openrouter");
     });
@@ -518,6 +530,7 @@ describe("useSettings", () => {
 
   it("setShowThoughts works for lmstudio provider", async () => {
     const { result } = renderHook(() => useSettings());
+
     await act(() => {
       result.current.setProvider("lmstudio");
     });
@@ -529,6 +542,7 @@ describe("useSettings", () => {
 
   it("setShowThoughts works for ollama provider", async () => {
     const { result } = renderHook(() => useSettings());
+
     await act(() => {
       result.current.setProvider("ollama");
     });
@@ -540,6 +554,7 @@ describe("useSettings", () => {
 
   it("setShowThoughts works for custom provider", async () => {
     const { result } = renderHook(() => useSettings());
+
     await act(() => {
       result.current.setProvider("custom");
     });
@@ -551,6 +566,7 @@ describe("useSettings", () => {
 
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
+
     // Set thinking to "High" for gemini
     await act(() => {
       result.current.setProvider("gemini");
@@ -568,6 +584,7 @@ describe("useSettings", () => {
     // Set invalid JSON for a provider
     localStorage.setItem("producer_pal_provider_gemini", "invalid json{");
     const { result } = renderHook(() => useSettings());
+
     // Switch to gemini to trigger hasApiKey computation
     await act(() => {
       result.current.setProvider("gemini");

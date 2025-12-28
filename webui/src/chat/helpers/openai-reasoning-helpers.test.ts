@@ -9,6 +9,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("");
   });
 
@@ -17,6 +18,7 @@ describe("extractReasoningFromDelta", () => {
       {} as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("");
   });
 
@@ -26,6 +28,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Thinking about the problem...");
   });
 
@@ -41,6 +44,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Let me analyze this step by step.");
   });
 
@@ -61,6 +65,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("First, I need to understand the requirements.");
   });
 
@@ -81,6 +86,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("This should be included");
   });
 
@@ -97,6 +103,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("From reasoning_content");
   });
 
@@ -117,6 +124,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("Has text");
   });
 
@@ -132,6 +140,7 @@ describe("extractReasoningFromDelta", () => {
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
     const result = extractReasoningFromDelta(delta);
+
     expect(result).toBe("");
   });
 });

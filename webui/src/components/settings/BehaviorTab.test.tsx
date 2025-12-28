@@ -28,6 +28,7 @@ describe("BehaviorTab", () => {
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Reset to defaults"),
     );
+
     expect(resetButton).toBeDefined();
   });
 
@@ -36,6 +37,7 @@ describe("BehaviorTab", () => {
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Reset to defaults"),
     );
+
     fireEvent.click(resetButton!);
     expect(mockResetBehaviorToDefaults).toHaveBeenCalled();
   });
@@ -44,6 +46,7 @@ describe("BehaviorTab", () => {
     const { container } = render(<BehaviorTab {...defaultProps} />);
     // ThinkingSettings renders a select element
     const select = container.querySelector("select");
+
     expect(select).toBeDefined();
   });
 
@@ -51,11 +54,13 @@ describe("BehaviorTab", () => {
     const { container } = render(<BehaviorTab {...defaultProps} />);
     // RandomnessSlider renders a range input
     const slider = container.querySelector('input[type="range"]');
+
     expect(slider).toBeDefined();
   });
 
   it("renders helper text about per-message customization", () => {
     const { container } = render(<BehaviorTab {...defaultProps} />);
+
     expect(container.textContent).toContain(
       "These are default values for new conversations",
     );

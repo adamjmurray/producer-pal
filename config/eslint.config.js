@@ -553,8 +553,6 @@ export default [
       "sonarjs/no-duplicate-string": "off",
       "import/first": "off", // Test files need imports after vi.mock() calls
       "import/order": "off",
-      // TODO: Enable padding for tests after increasing max-lines or splitting large test files
-      "@stylistic/padding-line-between-statements": "off",
       // Enforce vi.mock(import('...')) syntax for proper module mocking
       "vitest/prefer-import-in-mock": "error",
       // TODO: Enable after refactoring test infrastructure (42 violations in src/test/*.test.js)
@@ -608,7 +606,9 @@ export default [
       "max-lines": [
         "error",
         {
-          max: 750,
+          max: 675,
+          skipBlankLines: true,
+          skipComments: true,
         },
       ],
     },

@@ -18,6 +18,7 @@ vi.mock(import("./assistant/AssistantMessage"), () => ({
     <div data-testid="assistant-message">
       {parts.map((p, i: number) => {
         const part = p as { content?: string };
+
         return <span key={i}>{part.content ?? ""}</span>;
       })}
     </div>
@@ -36,6 +37,7 @@ describe("MessageList", () => {
           handleRetry={handleRetry}
         />,
       );
+
       expect(container.querySelector(".space-y-4")).toBeDefined();
     });
 
@@ -58,6 +60,7 @@ describe("MessageList", () => {
 
       expect(screen.getByText("Hello there")).toBeDefined();
       const messageDiv = container.querySelector(".bg-blue-100");
+
       expect(messageDiv).toBeDefined();
     });
 
@@ -76,6 +79,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -96,6 +100,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -128,6 +133,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -164,6 +170,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -181,6 +188,7 @@ describe("MessageList", () => {
           handleRetry={handleRetry}
         />,
       );
+
       expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
     });
 
@@ -250,6 +258,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -273,6 +282,7 @@ describe("MessageList", () => {
           rawHistoryIndex: 0,
         } as unknown,
       ] as UIMessage[];
+
       render(
         <MessageList
           messages={messages}
@@ -304,6 +314,7 @@ describe("MessageList", () => {
       );
 
       const messageDiv = container.querySelector(".bg-blue-100");
+
       expect(messageDiv).toBeDefined();
       expect(messageDiv?.className).toContain("ml-auto");
     });
@@ -333,6 +344,7 @@ describe("MessageList", () => {
 
       // Check that error is rendered within a model message container
       const messageDiv = container.querySelector(".bg-gray-100");
+
       expect(messageDiv).toBeDefined();
       expect(screen.getByText("Error message")).toBeDefined();
     });
@@ -355,6 +367,7 @@ describe("MessageList", () => {
       );
 
       const messageDiv = container.querySelector(".bg-gray-100");
+
       expect(messageDiv).toBeDefined();
     });
   });
@@ -371,6 +384,7 @@ describe("MessageList", () => {
 
       // The messagesEndRef div should exist
       const divs = container.querySelectorAll("div");
+
       expect(divs.length).toBeGreaterThan(0);
     });
   });
@@ -391,6 +405,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -400,6 +415,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       expect(retryButton).toBeDefined();
     });
 
@@ -418,6 +434,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -427,6 +444,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.queryByTitle("Retry from your last message");
+
       expect(retryButton).toBeNull();
     });
 
@@ -446,6 +464,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -455,6 +474,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       fireEvent.click(retryButton);
 
       expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(0);
@@ -469,6 +489,7 @@ describe("MessageList", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -478,6 +499,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.queryByTitle("Retry from your last message");
+
       expect(retryButton).toBeNull();
     });
 
@@ -513,6 +535,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       fireEvent.click(retryButton);
 
       // Should use originalIdx=1 (the non-empty user message), not filtered idx=0

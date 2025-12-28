@@ -10,6 +10,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("parses simple notes with defaults", () => {
     const result = interpretNotation("C3 D3 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -40,6 +41,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles time state changes", () => {
     const result = interpretNotation("C3 1|1 D3 1|2 E3 2|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -70,6 +72,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles velocity state changes", () => {
     const result = interpretNotation("v80 C3 v120 D3 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -100,6 +103,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles velocity range state changes", () => {
     const result = interpretNotation("v80-120 C3 v60-100 D3 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -130,6 +134,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles mixed velocity and velocity range", () => {
     const result = interpretNotation("v100 C3 v80-120 D3 v90 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -160,6 +165,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles probability state changes", () => {
     const result = interpretNotation("p0.8 C3 p0.5 D3 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -190,6 +196,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles duration state changes", () => {
     const result = interpretNotation("t0.5 C3 t2.0 D3 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -223,6 +230,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -240,6 +248,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -257,6 +266,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -274,6 +284,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -291,6 +302,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -308,6 +320,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result.length).toBe(1);
     expect(result[0].pitch).toBe(60);
     expect(result[0].start_time).toBe(0);
@@ -322,6 +335,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -339,6 +353,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result.length).toBe(2);
 
     // First note at 1|2+1/3
@@ -363,6 +378,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
+
     expect(result[0].duration).toBe(8); // 2 bars = 8 beats
     expect(result[1].duration).toBe(1.5); // 1.5 beats
     expect(result[2].duration).toBe(0.75); // 3/4 beats
@@ -370,6 +386,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles sub-beat timing", () => {
     const result = interpretNotation("C3 1|1.5 D3 |2.25");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -394,6 +411,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation(
       "v100 t0.25 p0.9 C3 D3 1|1 v80-120 t1.0 p0.7 E3 F3 |2",
     );
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -436,6 +454,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       p0.6 Gb1 |1.5
       v90 p1.0 D1 v100 p0.9 Gb1 |2
     `);
+
     expect(result).toEqual([
       {
         pitch: 36,
@@ -481,6 +500,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
   it("maintains state across multiple bar boundaries", () => {
     const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 D3 3|2 E3 5|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -537,6 +557,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation(
       "t0.5 v80 p0.7 C3 1|1 v100 t1.0 p1.0 D3 2|1",
     );
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -559,6 +580,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles enharmonic equivalents", () => {
     const result = interpretNotation("C#3 Db3 F#3 Gb3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 61,
@@ -597,6 +619,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("preserves notes with velocity 0 for deletion logic", () => {
     const result = interpretNotation("v100 C3 v0 D3 v80 E3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -620,6 +643,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   it("treats velocity range starting at 0 as v0 deletion", () => {
     // Live API rejects velocity 0 even with deviation, so v0-50 becomes a deletion marker
     const result = interpretNotation("v0-50 C3 v50-100 D3 1|1");
+
     expect(result).toEqual([
       {
         pitch: 62,
@@ -634,6 +658,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("preserves all v0 notes for deletion logic", () => {
     const result = interpretNotation("v0 C3 D3 E3 1|1");
+
     expect(result).toEqual([]);
   });
 

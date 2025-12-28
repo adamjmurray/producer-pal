@@ -40,6 +40,7 @@ describe("updateDevice with path parameter", () => {
           return "master-device-789";
         if (this._path === "live_set master_track devices 0 view")
           return "view-master-789";
+
         return "0";
       });
     });
@@ -104,6 +105,7 @@ describe("updateDevice with path parameter", () => {
           return "chain-123";
         if (this._path === "live_set tracks 1 devices 0 return_chains 0")
           return "return-chain-456";
+
         return "0";
       });
       liveApiType.mockImplementation(function () {
@@ -111,6 +113,7 @@ describe("updateDevice with path parameter", () => {
           return "Chain";
         if (this._path === "live_set tracks 1 devices 0 return_chains 0")
           return "Chain";
+
         return "Device";
       });
     });
@@ -191,6 +194,7 @@ describe("updateDevice with path parameter", () => {
         solo: [padProps.solo ?? 0],
         chains: (padProps.chainIds ?? []).flatMap((c) => ["id", c]),
       };
+
       return propMap[prop] ?? [];
     };
 
@@ -202,12 +206,15 @@ describe("updateDevice with path parameter", () => {
         solo: [chainProps.solo ?? 0],
         devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
       };
+
       return propMap[prop] ?? [];
     };
 
     const getDeviceProperty = (id, prop, deviceProperties) => {
       const devProps = deviceProperties[id] ?? {};
+
       if (prop === "name") return [devProps.name ?? "Device"];
+
       return [];
     };
 
@@ -222,15 +229,18 @@ describe("updateDevice with path parameter", () => {
 
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 1 devices 0") return deviceId;
+
         return this._id ?? "0";
       });
 
       liveApiType.mockImplementation(function () {
         const id = this._id ?? this.id;
+
         if (id?.startsWith("pad-")) return "DrumPad";
         if (id?.startsWith("chain-"))
           return chainProperties[id]?.type ?? "DrumChain";
         if (id?.startsWith("device-")) return "Device";
+
         return "RackDevice";
       });
 
@@ -406,6 +416,7 @@ describe("updateDevice with path parameter", () => {
         if (this._path === "live_set tracks 0 devices 1") return "device-101";
         if (this._path === "live_set tracks 1 devices 0") return "device-200";
         if (this._path === "live_set tracks 1 devices 1") return "0"; // non-existent
+
         return "0";
       });
     });
@@ -462,6 +473,7 @@ describe("updateDevice with path parameter", () => {
     it("should return single object when only one path valid out of many", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
+
         return "0";
       });
 
@@ -496,11 +508,13 @@ describe("updateDevice with path parameter", () => {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "chain-200";
+
         return "0";
       });
       liveApiType.mockImplementation(function () {
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "Chain";
+
         return "Device";
       });
 

@@ -44,6 +44,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
     mockLiveApiGet({
@@ -121,6 +122,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
     mockLiveApiGet({
@@ -204,6 +206,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -270,6 +273,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -293,6 +297,7 @@ describe("readClip", () => {
   it("returns null values when no clip exists", () => {
     liveApiId.mockReturnValue("id 0");
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
+
     expect(result).toEqual({
       id: null,
       type: null,
@@ -319,6 +324,7 @@ describe("readClip", () => {
       },
     });
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
     expect(result).toEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
@@ -409,6 +415,7 @@ describe("readClip", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMode).toBe("complex");
     expect(result.warping).toBe(true);
   });
@@ -431,10 +438,12 @@ describe("readClip", () => {
       if (this._id === "session_clip_id") {
         return "live_set tracks 2 clip_slots 4 clip";
       }
+
       return this._path;
     });
 
     const result = readClip({ clipId: "id session_clip_id" });
+
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
     expect(result.sceneIndex).toBe(4);
@@ -467,6 +476,7 @@ describe("readClip", () => {
       if (this._id === "arrangement_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
+
       return this._path;
     });
 
@@ -474,10 +484,12 @@ describe("readClip", () => {
       if (this._id === "arrangement_clip_id") {
         return "Clip";
       }
+
       return this._type;
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });
+
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);

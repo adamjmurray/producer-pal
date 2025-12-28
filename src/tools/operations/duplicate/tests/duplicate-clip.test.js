@@ -23,6 +23,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -31,14 +32,17 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -51,6 +55,7 @@ describe("duplicate - clip duplication", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
     expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
@@ -63,6 +68,7 @@ describe("duplicate - clip duplication", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
     expect(() =>
@@ -78,6 +84,7 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
 
@@ -109,6 +116,7 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
 
@@ -171,6 +179,7 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "arrangementClip1") {
           return "live_set tracks 0 arrangement_clips 0";
         }
+
         return this._path;
       });
 
@@ -198,6 +207,7 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
       mockLiveApiGet({ clip1: { exists: () => true } });
@@ -214,21 +224,25 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
       liveApiCall.mockImplementation(function (method) {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+
         return null;
       });
 
       // Mock for getMinimalClipInfo on the new arrangement clip
       const originalPath = liveApiPath.getMockImplementation();
+
       liveApiPath.mockImplementation(function () {
         if (this._path === "id live_set tracks 0 arrangement_clips 0") {
           return "live_set tracks 0 arrangement_clips 0";
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -266,20 +280,26 @@ describe("duplicate - clip duplication", () => {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
       let clipCounter = 0;
+
       liveApiCall.mockImplementation(function (method) {
         if (method === "duplicate_clip_to_arrangement") {
           const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+
           clipCounter++;
+
           return ["id", clipId];
         }
+
         return null;
       });
 
       // Mock for getMinimalClipInfo on the new arrangement clips
       const originalPath = liveApiPath.getMockImplementation();
+
       liveApiPath.mockImplementation(function () {
         if (
           this._path.startsWith("id live_set tracks") &&
@@ -287,6 +307,7 @@ describe("duplicate - clip duplication", () => {
         ) {
           return this._path.slice(3); // Remove "id " prefix
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 

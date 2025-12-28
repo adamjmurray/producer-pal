@@ -33,6 +33,7 @@ describe("gain-utils", () => {
       // Even at very low levels, lookup table should be accurate
       const result1 = liveGainToDb(0.1);
       const result2 = liveGainToDb(0.05);
+
       // Just verify they're in a reasonable range
       expect(result1).toBeGreaterThan(-35);
       expect(result1).toBeLessThan(-25);
@@ -103,6 +104,7 @@ describe("gain-utils", () => {
       for (const gain of testGains) {
         const dB = liveGainToDb(gain);
         const gainBack = dbToLiveGain(dB);
+
         // With lookup table, expect very good round-trip accuracy
         expect(gainBack).toBeCloseTo(gain, 2);
       }
@@ -114,6 +116,7 @@ describe("gain-utils", () => {
       for (const dB of testDbValues) {
         const gain = dbToLiveGain(dB);
         const dbBack = liveGainToDb(gain);
+
         // Expect < 0.5 dB round-trip error
         expect(dbBack).toBeCloseTo(dB, 0);
       }

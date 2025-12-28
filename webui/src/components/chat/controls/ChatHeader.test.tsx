@@ -28,6 +28,7 @@ describe("ChatHeader", () => {
     it("renders logo image", () => {
       render(<ChatHeader {...defaultProps} />);
       const logo = screen.getByAltText("Producer Pal");
+
       expect(logo).toBeDefined();
     });
 
@@ -168,9 +169,11 @@ describe("ChatHeader", () => {
   describe("Settings button", () => {
     it("calls onOpenSettings when clicked", () => {
       const onOpenSettings = vi.fn();
+
       render(<ChatHeader {...defaultProps} onOpenSettings={onOpenSettings} />);
 
       const button = screen.getByRole("button", { name: "Settings" });
+
       fireEvent.click(button);
 
       expect(onOpenSettings).toHaveBeenCalledOnce();
@@ -288,11 +291,13 @@ describe("ChatHeader", () => {
 
     it("calls window.confirm when Restart clicked", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(false);
 
       render(<ChatHeader {...defaultProps} hasMessages={true} />);
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(window.confirm).toHaveBeenCalledWith(
@@ -303,9 +308,11 @@ describe("ChatHeader", () => {
 
     it("does not call onClearConversation when user cancels confirmation", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(false);
 
       const onClearConversation = vi.fn();
+
       render(
         <ChatHeader
           {...defaultProps}
@@ -315,6 +322,7 @@ describe("ChatHeader", () => {
       );
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(onClearConversation).not.toHaveBeenCalled();
@@ -323,9 +331,11 @@ describe("ChatHeader", () => {
 
     it("calls onClearConversation when user confirms", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(true);
 
       const onClearConversation = vi.fn();
+
       render(
         <ChatHeader
           {...defaultProps}
@@ -335,6 +345,7 @@ describe("ChatHeader", () => {
       );
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(onClearConversation).toHaveBeenCalledOnce();

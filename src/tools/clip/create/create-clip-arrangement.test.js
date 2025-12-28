@@ -19,6 +19,7 @@ describe("createClip - arrangement view", () => {
       if (method === "create_midi_clip") {
         return ["id", "arrangement_clip"];
       }
+
       return null;
     });
 
@@ -26,6 +27,7 @@ describe("createClip - arrangement view", () => {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
+
       return this._id;
     });
 
@@ -69,6 +71,7 @@ describe("createClip - arrangement view", () => {
       if (method === "create_midi_clip") {
         return ["id", "arrangement_clip"];
       }
+
       return null;
     });
 
@@ -76,6 +79,7 @@ describe("createClip - arrangement view", () => {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
+
       return this._id;
     });
 
@@ -150,11 +154,13 @@ describe("createClip - arrangement view", () => {
 
     // Mock the clip to not exist after creation
     const originalExists = global.LiveAPI.prototype.exists;
+
     global.LiveAPI.prototype.exists = vi.fn(function () {
       // Track exists, but clip doesn't
       if (this._path === "live_set tracks 0") {
         return true;
       }
+
       return false;
     });
 

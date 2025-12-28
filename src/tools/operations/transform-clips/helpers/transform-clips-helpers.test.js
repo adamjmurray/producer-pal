@@ -28,6 +28,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = rng();
+
         expect(value).toBeGreaterThanOrEqual(0);
         expect(value).toBeLessThan(1);
       }
@@ -52,6 +53,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(10, 20, rng);
+
         expect(value).toBeGreaterThanOrEqual(10);
         expect(value).toBeLessThanOrEqual(20);
       }
@@ -69,6 +71,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(-10, -5, rng);
+
         expect(value).toBeGreaterThanOrEqual(-10);
         expect(value).toBeLessThanOrEqual(-5);
       }
@@ -79,6 +82,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(-5, 5, rng);
+
         expect(value).toBeGreaterThanOrEqual(-5);
         expect(value).toBeLessThanOrEqual(5);
       }
@@ -87,6 +91,7 @@ describe("transform-clips helpers", () => {
     it("returns min when min equals max", () => {
       const rng = createSeededRNG(12345);
       const value = randomInRange(42, 42, rng);
+
       expect(value).toBe(42);
     });
   });
@@ -176,6 +181,7 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // All same length, so positions stay [0, 1, 2]
       expect(positions).toEqual([0, 1, 2]);
     });
@@ -189,6 +195,7 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // C(2)@0, A(1)@2, B(1)@3
       expect(positions).toEqual([0, 2, 3]);
     });
@@ -202,6 +209,7 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // C(2)@0 ends@2, +gap3 → A(1)@5 ends@6, +gap3 → B(1)@9
       expect(positions).toEqual([0, 5, 9]);
     });
@@ -215,6 +223,7 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: B, C, A (indices 1, 2, 0)
       const positions = calculateShufflePositions(clips, [1, 2, 0]);
+
       // B(2)@0 ends@2, +gap2 → C(1)@4 ends@5, +gap0 → A(1)@5
       expect(positions).toEqual([0, 4, 5]);
     });
@@ -227,6 +236,7 @@ describe("transform-clips helpers", () => {
       ];
       // Same order: indices 0, 1, 2
       const positions = calculateShufflePositions(clips, [0, 1, 2]);
+
       // Should return original positions
       expect(positions).toEqual([0, 4, 8]);
     });
@@ -238,6 +248,7 @@ describe("transform-clips helpers", () => {
       ];
       // Swap: indices 1, 0
       const positions = calculateShufflePositions(clips, [1, 0]);
+
       // B(1)@0 ends@1, +gap2 → A(2)@3
       expect(positions).toEqual([0, 3]);
     });

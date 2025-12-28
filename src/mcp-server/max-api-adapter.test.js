@@ -15,6 +15,7 @@ let timeoutMsHandler;
 const timeoutMsCall = Max.addHandler.mock.calls.find(
   (call) => call[0] === "timeoutMs",
 );
+
 if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1];
 }
@@ -43,6 +44,7 @@ describe("Max API Adapter", () => {
       // Get the requestId from the outlet call
       const callArgs = Max.outlet.mock.calls[0];
       const requestId = callArgs[1];
+
       expect(typeof requestId).toBe("string");
       expect(callArgs[2]).toBe("test-tool");
       expect(callArgs[3]).toBe('{"arg1":"value1"}');
@@ -55,6 +57,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result.content[0].text).toBe("test response");
     });
 
@@ -90,6 +93,7 @@ describe("Max API Adapter", () => {
       // Manually trigger response
       const callArgs = Max.outlet.mock.calls[0];
       const requestId = callArgs[1];
+
       handleLiveApiResult(
         requestId,
         JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
@@ -101,6 +105,7 @@ describe("Max API Adapter", () => {
 
     it("should handle Max.outlet throwing an error", async () => {
       const errorMessage = "Simulated Max error";
+
       Max.outlet = vi.fn(() => {
         throw new Error(errorMessage);
       });
@@ -202,6 +207,7 @@ describe("Max API Adapter", () => {
 
       // Simulate the response
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -209,6 +215,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result).toEqual(mockResult);
     });
 
@@ -225,6 +232,7 @@ describe("Max API Adapter", () => {
 
       // Simulate response with errors
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -234,6 +242,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result.content).toHaveLength(3);
       expect(result.content[0]).toEqual({ type: "text", text: "success" });
       expect(result.content[1]).toEqual({
@@ -252,6 +261,7 @@ describe("Max API Adapter", () => {
       const requestId = Max.outlet.mock.calls[0][1];
 
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -260,6 +270,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result.content).toHaveLength(2);
       expect(result.content[1]).toEqual({
         type: "text",
@@ -273,6 +284,7 @@ describe("Max API Adapter", () => {
       const requestId = Max.outlet.mock.calls[0][1];
 
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -284,6 +296,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       // Should only have original content + 1 real error (not 4 errors)
       expect(result.content).toHaveLength(2);
       expect(result.content[1]).toEqual({
@@ -298,6 +311,7 @@ describe("Max API Adapter", () => {
       const requestId = Max.outlet.mock.calls[0][1];
 
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -306,6 +320,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result.content).toHaveLength(2);
       expect(result.content[1]).toEqual({
         type: "text",
@@ -365,6 +380,7 @@ describe("Max API Adapter", () => {
 
       // Simulate response
       const mockResult = { content: [{ type: "text", text: "success" }] };
+
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
@@ -405,6 +421,7 @@ describe("Max API Adapter", () => {
       );
 
       const result = await promise;
+
       expect(result.content).toHaveLength(2);
       expect(result.content[0]).toEqual({ type: "text", text: "success" });
       expect(result.content[1]).toEqual({
@@ -428,6 +445,7 @@ describe("Max API Adapter", () => {
       handleLiveApiResult(requestId, "chunk1", "chunk2");
 
       const result = await promise;
+
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Missing MAX_ERROR_DELIMITER");
     });

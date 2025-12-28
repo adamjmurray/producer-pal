@@ -25,6 +25,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -33,14 +34,17 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -53,6 +57,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -76,6 +81,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -142,6 +148,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -210,6 +217,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -261,6 +269,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -300,6 +309,7 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -340,9 +350,11 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       if (this._id === "this_device") {
         return "live_set tracks 0 devices 1";
       }
+
       return this._path;
     });
 
@@ -350,6 +362,7 @@ describe("duplicate - track duplication", () => {
       if (this._path === "this_device") {
         return "id device1";
       }
+
       return this._id;
     });
 
@@ -390,9 +403,11 @@ describe("duplicate - track duplication", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       if (this._id === "this_device") {
         return "live_set tracks 0 devices 1";
       }
+
       return this._path;
     });
 
@@ -420,6 +435,7 @@ describe("duplicate - track duplication", () => {
     const deleteDeviceCalls = liveApiCall.mock.calls.filter(
       (call) => call[0] === "delete_device",
     );
+
     expect(deleteDeviceCalls).toHaveLength(3);
   });
 
@@ -437,6 +453,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -480,6 +497,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -515,6 +533,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -551,6 +570,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -573,6 +593,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -595,6 +616,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 
@@ -635,6 +657,7 @@ describe("duplicate - track duplication", () => {
         if (this._id === "track1") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 

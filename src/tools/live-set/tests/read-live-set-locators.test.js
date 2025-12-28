@@ -10,6 +10,7 @@ describe("readLiveSet - locators", () => {
   it("should not include locators by default", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
+
       return this._id;
     });
 
@@ -36,6 +37,7 @@ describe("readLiveSet - locators", () => {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
       if (this._path === "id cue2") return "cue2";
+
       return this._id;
     });
 
@@ -71,6 +73,7 @@ describe("readLiveSet - locators", () => {
   it("should handle empty locators array", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
+
       return this._id;
     });
 
@@ -96,6 +99,7 @@ describe("readLiveSet - locators", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
+
       return this._id;
     });
 
@@ -127,6 +131,7 @@ describe("readLiveSet - locators", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
+
       return this._id;
     });
 

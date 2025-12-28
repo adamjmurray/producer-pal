@@ -15,6 +15,7 @@ describe("playback - locator support", () => {
       if (this._path === "id cue1") return "cue1";
       if (this._path === "id cue2") return "cue2";
       if (this._path === "id cue3") return "cue3";
+
       return this._id;
     });
   });
@@ -31,14 +32,17 @@ describe("playback - locator support", () => {
           if (prop === "cue_points") return children("cue1", "cue2");
           if (prop === "tracks") return [];
         }
+
         if (this._path === "id cue1") {
           if (prop === "time") return [16]; // Beat 16 = 5|1 in 4/4
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [32]; // Beat 32 = 9|1 in 4/4
           if (prop === "name") return ["Chorus"];
         }
+
         return [0];
       });
     });
@@ -96,14 +100,17 @@ describe("playback - locator support", () => {
           if (prop === "cue_points") return children("cue1", "cue2");
           if (prop === "tracks") return [];
         }
+
         if (this._path === "id cue1") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [32];
           if (prop === "name") return ["Chorus"];
         }
+
         return [0];
       });
     });
@@ -159,14 +166,17 @@ describe("playback - locator support", () => {
           if (prop === "cue_points") return children("cue1", "cue2");
           if (prop === "tracks") return [];
         }
+
         if (this._path === "id cue1") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [32];
           if (prop === "name") return ["Chorus"];
         }
+
         return [0];
       });
     });
@@ -230,14 +240,17 @@ describe("playback - locator support", () => {
           if (prop === "cue_points") return children("cue1", "cue2");
           if (prop === "tracks") return [];
         }
+
         if (this._path === "id cue1") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [32];
           if (prop === "name") return ["Chorus"];
         }
+
         return [0];
       });
     });
@@ -315,18 +328,22 @@ describe("playback - locator support", () => {
           if (prop === "cue_points") return children("cue1", "cue2", "cue3");
           if (prop === "tracks") return [];
         }
+
         if (this._path === "id cue1") {
           if (prop === "time") return [0];
           if (prop === "name") return ["Intro"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue3") {
           if (prop === "time") return [32];
           if (prop === "name") return ["Chorus"];
         }
+
         return [0];
       });
     });

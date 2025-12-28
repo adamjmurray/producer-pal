@@ -17,12 +17,14 @@ describe("transformClips - slicing", () => {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       // All duplicated clips should also have a valid track path
       if (
         this._id?.startsWith("holding_") ||
@@ -31,6 +33,7 @@ describe("transformClips - slicing", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 1";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -43,64 +46,81 @@ describe("transformClips - slicing", () => {
         if (prop === "signature_numerator") {
           return [4];
         }
+
         if (prop === "signature_denominator") {
           return [4];
         }
       }
+
       if (this._id === clipId) {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [1];
         }
+
         if (prop === "looping") {
           return [1]; // Looped clip
         }
+
         if (prop === "start_time") {
           return [0.0];
         }
+
         if (prop === "end_time") {
           return [16.0]; // 4 bars long
         }
+
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "loop_end") {
           return [4.0];
         }
+
         if (prop === "end_marker") {
           return [4.0];
         }
       }
+
       // Mocks for holding/moved clips
       if (this._id?.startsWith("holding_")) {
         if (prop === "end_time") {
           return [40000 + 16]; // Holding area position + original clip length (needs temp clip to shorten)
         }
+
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "start_marker") {
           return [0.0];
         }
       }
+
       if (this._id?.startsWith("moved_") || this._id?.startsWith("tile_")) {
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "start_marker") {
           return [0.0];
         }
       }
+
       if (this._path === "live_set tracks 0") {
         if (prop === "track_index") {
           return [0];
         }
       }
+
       return [0];
     });
 
@@ -108,6 +128,7 @@ describe("transformClips - slicing", () => {
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
+
         if (callCount === 1) {
           // First call: duplicate to holding
           return ["id", "holding_1"];
@@ -115,12 +136,15 @@ describe("transformClips - slicing", () => {
           // Second call: move from holding to original position
           return ["id", "moved_1"];
         }
+
         // Subsequent calls: tiling
         return ["id", `tile_${callCount}`];
       }
+
       if (method === "create_midi_clip") {
         return ["id", "temp_1"];
       }
+
       return undefined;
     });
 
@@ -150,16 +174,19 @@ describe("transformClips - slicing", () => {
 
   it("should skip clips smaller than slice size", () => {
     const clipId = "clip_1";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -172,30 +199,38 @@ describe("transformClips - slicing", () => {
         if (prop === "signature_numerator") {
           return [4];
         }
+
         if (prop === "signature_denominator") {
           return [4];
         }
       }
+
       if (this._id === clipId) {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [1];
         }
+
         if (prop === "looping") {
           return [1];
         }
+
         if (prop === "start_time") {
           return [0.0];
         }
+
         if (prop === "end_time") {
           return [2.0]; // 2 beats long
         }
       }
+
       return [0];
     });
 
@@ -218,16 +253,19 @@ describe("transformClips - slicing", () => {
 
   it("should warn when slice is used with non-arrangement clips", () => {
     const clipId = "clip_1";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -240,21 +278,26 @@ describe("transformClips - slicing", () => {
         if (prop === "signature_numerator") {
           return [4];
         }
+
         if (prop === "signature_denominator") {
           return [4];
         }
       }
+
       if (this._id === clipId) {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [0]; // Session clip
         }
       }
+
       return [0];
     });
 
@@ -273,16 +316,19 @@ describe("transformClips - slicing", () => {
 
   it("should throw error when slice is <= 0", () => {
     const clipId = "clip_1";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -295,24 +341,30 @@ describe("transformClips - slicing", () => {
         if (prop === "signature_numerator") {
           return [4];
         }
+
         if (prop === "signature_denominator") {
           return [4];
         }
       }
+
       if (this._id === clipId) {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [1];
         }
+
         if (prop === "looping") {
           return [1];
         }
       }
+
       return [0];
     });
 
@@ -334,18 +386,22 @@ describe("transformClips - slicing", () => {
       if (this._path === "id clip_1") {
         return clip1Id;
       }
+
       if (this._path === "id clip_2") {
         return clip2Id;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clip1Id) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._id === clip2Id) {
         return "live_set tracks 0 arrangement_clips 1";
       }
+
       if (
         this._id?.startsWith("holding_") ||
         this._id?.startsWith("moved_") ||
@@ -353,6 +409,7 @@ describe("transformClips - slicing", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 2";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -365,75 +422,95 @@ describe("transformClips - slicing", () => {
         if (prop === "signature_numerator") {
           return [4];
         }
+
         if (prop === "signature_denominator") {
           return [4];
         }
       }
+
       if (this._id === clip1Id || this._id === clip2Id) {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [1];
         }
+
         if (prop === "looping") {
           return [1];
         }
+
         if (prop === "start_time") {
           return [0];
         }
+
         if (prop === "end_time") {
           // 8 beats = 2 bars, which creates 64 slices at 0.125 beats (32nd notes)
           return [8];
         }
+
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "loop_end") {
           return [1.0];
         }
+
         if (prop === "end_marker") {
           return [1.0];
         }
       }
+
       if (this._id?.startsWith("holding_")) {
         if (prop === "end_time") {
           return [40000 + 0.125];
         }
+
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "start_marker") {
           return [0.0];
         }
       }
+
       if (this._id?.startsWith("moved_") || this._id?.startsWith("tile_")) {
         if (prop === "loop_start") {
           return [0.0];
         }
+
         if (prop === "start_marker") {
           return [0.0];
         }
       }
+
       if (this._path === "live_set tracks 0") {
         if (prop === "track_index") {
           return [0];
         }
       }
+
       return [0];
     });
     liveApiCall.mockImplementation(function (method) {
       // Track when we duplicate/move clips (which happens during slicing)
       if (method === "duplicate_clip_to_arrangement") {
         sliceOperationCount++;
+
         return ["id", `dup_${sliceOperationCount}`];
       }
+
       if (method === "create_midi_clip") {
         return ["id", "temp_1"];
       }
+
       return undefined;
     });
 
@@ -461,18 +538,22 @@ describe("transformClips - slicing", () => {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       if (this._path === "id clip_following") {
         return followingClipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._id === followingClipId) {
         return "live_set tracks 0 arrangement_clips 1";
       }
+
       if (
         this._id?.startsWith("holding_") ||
         this._id?.startsWith("moved_") ||
@@ -480,6 +561,7 @@ describe("transformClips - slicing", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 2";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -487,6 +569,7 @@ describe("transformClips - slicing", () => {
         return "Clip";
       }
     });
+
     /**
      * Mock properties for primary clip objects
      * @param {string} prop - Property name to retrieve
@@ -505,6 +588,7 @@ describe("transformClips - slicing", () => {
         if (prop === "loop_end") return [8.0];
         if (prop === "end_marker") return [8.0];
       }
+
       return null;
     }
 
@@ -522,6 +606,7 @@ describe("transformClips - slicing", () => {
         if (prop === "start_time") return [3.0];
         if (prop === "end_time") return [7.0];
       }
+
       return null;
     }
 
@@ -537,6 +622,7 @@ describe("transformClips - slicing", () => {
         if (prop === "loop_start") return [0.0];
         if (prop === "start_marker") return [0.0];
       }
+
       return null;
     }
 
@@ -550,12 +636,14 @@ describe("transformClips - slicing", () => {
       if (id?.startsWith("moved_") || id?.startsWith("tile_")) {
         if (prop === "loop_start") return [0.0];
         if (prop === "start_marker") return [0.0];
+
         if (prop === "start_time") {
           if (id === "moved_1") return [0.0];
           if (id === "tile_2") return [1.0];
           if (id === "tile_3") return [2.0];
         }
       }
+
       return null;
     }
 
@@ -575,6 +663,7 @@ describe("transformClips - slicing", () => {
 
       if (this._path === "live_set tracks 0") {
         if (prop === "track_index") return [0];
+
         if (prop === "arrangement_clips") {
           return [
             "id",
@@ -596,6 +685,7 @@ describe("transformClips - slicing", () => {
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
+
         if (callCount === 1) {
           return ["id", "holding_1"];
         } else if (callCount === 2) {
@@ -606,9 +696,11 @@ describe("transformClips - slicing", () => {
           return ["id", "tile_3"];
         }
       }
+
       if (method === "create_audio_clip") {
         return ["id", "temp_1"];
       }
+
       return undefined;
     });
 

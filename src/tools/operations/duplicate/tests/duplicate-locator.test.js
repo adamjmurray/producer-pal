@@ -22,6 +22,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   })),
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -29,10 +30,12 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
       getProperty: vi.fn((prop) => {
         if (prop === "is_arrangement_clip") return 1;
         if (prop === "start_time") return _startBeats;
+
         return null;
       }),
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -44,6 +47,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -61,6 +65,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -80,6 +85,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -99,6 +105,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -120,6 +127,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -150,9 +158,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+
         if (method === "get_notes_extended") {
           return JSON.stringify({ notes: [] });
         }
+
         return null;
       });
 
@@ -167,6 +177,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return this._path.slice(3);
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -177,9 +188,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return [1];
         }
+
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [16];
         }
+
         return originalGet ? originalGet.call(this, prop) : [];
       });
 
@@ -205,6 +218,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should duplicate a scene to arrangement at locator name position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -234,9 +248,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+
         if (method === "get_notes_extended") {
           return JSON.stringify({ notes: [] });
         }
+
         return null;
       });
 
@@ -250,6 +266,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return this._path.slice(3);
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -260,9 +277,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return [1];
         }
+
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [32];
         }
+
         return originalGet ? originalGet.call(this, prop) : [];
       });
 
@@ -289,6 +308,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should duplicate a clip to arrangement at locator ID position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
         return this._path;
       });
 
@@ -316,9 +336,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+
         if (method === "get_notes_extended") {
           return JSON.stringify({ notes: [] });
         }
+
         return null;
       });
 
@@ -332,6 +354,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return this._path.slice(3);
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -342,9 +365,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return [1];
         }
+
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [8];
         }
+
         return originalGet ? originalGet.call(this, prop) : [];
       });
 
@@ -369,6 +394,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should duplicate a clip to arrangement at locator name position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
         return this._path;
       });
 
@@ -396,9 +422,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+
         if (method === "get_notes_extended") {
           return JSON.stringify({ notes: [] });
         }
+
         return null;
       });
 
@@ -412,6 +440,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return this._path.slice(3);
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -422,9 +451,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
         ) {
           return [1];
         }
+
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [8];
         }
+
         return originalGet ? originalGet.call(this, prop) : [];
       });
 
@@ -451,6 +482,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error for non-existent locator ID", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 
@@ -481,6 +513,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     it("should throw error for non-existent locator name", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
+
         return this._path;
       });
 

@@ -9,6 +9,7 @@ describe("duplicate-track-scene-helpers", () => {
       if (this.path === "live_set") {
         return "id 1";
       }
+
       return `id ${Math.random()}`;
     });
 
@@ -16,6 +17,7 @@ describe("duplicate-track-scene-helpers", () => {
       if (this.path === "live_set" && property === "tracks") {
         return ["id", "10", "id", "11", "id", "12"];
       }
+
       return [];
     });
   });
@@ -27,9 +29,11 @@ describe("duplicate-track-scene-helpers", () => {
         if (property === "tracks") {
           return ["id", "10"];
         }
+
         if (property === "has_clip") {
           return [0];
         }
+
         return [];
       });
 
@@ -44,18 +48,22 @@ describe("duplicate-track-scene-helpers", () => {
         if (this.path === "live_set" && property === "tracks") {
           return ["id", "10", "id", "11"];
         }
+
         if (property === "has_clip") {
           return [1];
         }
+
         if (property === "length") {
           // Different lengths for different tracks
           if (this.path.includes("tracks 0")) {
             return [8];
           }
+
           if (this.path.includes("tracks 1")) {
             return [12];
           }
         }
+
         return [];
       });
 

@@ -16,6 +16,7 @@ describe("createDevice", () => {
       if (method === "insert_device") {
         return ["id", "device123"];
       }
+
       return null;
     });
   });

@@ -281,6 +281,7 @@ describe("readTrack", () => {
           "drum-pads",
         ],
       });
+
       expect(result.instrument).toEqual({
         id: "drum_rack",
         type: "drum-rack",
@@ -336,6 +337,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -373,6 +375,7 @@ describe("readTrack", () => {
           "audio-effects",
         ],
       });
+
       expect(result.audioEffects).toEqual([
         {
           id: "device1",

@@ -8,6 +8,7 @@ function setupDeviceMocks() {
     if (this._path === "id device-123") return "device-123";
     if (this._path === "id param-1") return "param-1";
     if (this._path === "id param-2") return "param-2";
+
     return "0";
   });
 }
@@ -40,16 +41,19 @@ function getBasicParamProps(path, prop) {
     if (prop === "name") return ["Volume"];
     if (prop === "original_name") return ["Volume"];
   }
+
   if (path === "id param-2") {
     if (prop === "name") return ["Filter Cutoff"];
     if (prop === "original_name") return ["Filter Cutoff"];
   }
+
   return [];
 }
 
 // Get full param props (for param-values)
 function getFullParamProps(path, prop) {
   const basic = getBasicParamProps(path, prop);
+
   if (basic.length > 0) return basic;
 
   if (path === "id param-1") {
@@ -72,6 +76,7 @@ function getFullParamProps(path, prop) {
         return [0.7];
     }
   }
+
   if (path === "id param-2") {
     switch (prop) {
       case "value":
@@ -92,6 +97,7 @@ function getFullParamProps(path, prop) {
         return [10000];
     }
   }
+
   return [];
 }
 
@@ -106,6 +112,7 @@ describe("readDevice paramSearch filtering", () => {
       if (this._path === "id device-123") {
         return getDeviceProps(prop);
       }
+
       return getBasicParamProps(this._path, prop);
     });
   }
@@ -155,12 +162,16 @@ describe("readDevice paramSearch filtering", () => {
       if (this._path === "id device-123") {
         return getDeviceProps(prop);
       }
+
       const fullProps = getFullParamProps(this._path, prop);
+
       if (fullProps.length > 0) return fullProps;
+
       if (prop === "display_value") {
         if (this._path === "id param-1") return [-6];
         if (this._path === "id param-2") return [1000];
       }
+
       return [];
     });
 
@@ -169,14 +180,18 @@ describe("readDevice paramSearch filtering", () => {
         if (this._path === "id param-1") {
           if (value === 0) return "-inf dB";
           if (value === 1) return "0 dB";
+
           return "-6 dB";
         }
+
         if (this._path === "id param-2") {
           if (value === 20) return "20 Hz";
           if (value === 20000) return "20.0 kHz";
+
           return "1.00 kHz";
         }
       }
+
       return [];
     });
 

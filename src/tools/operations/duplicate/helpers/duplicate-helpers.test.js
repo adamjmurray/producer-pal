@@ -14,6 +14,7 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
   return class {
     constructor(path) {
       this.path = path;
+
       if (path === "live_set") {
         this._isLiveSet = true;
       }
@@ -23,6 +24,7 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
       if (this._isLiveSet && property === "tracks") {
         return trackIds;
       }
+
       return [];
     }
 
@@ -30,6 +32,7 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
       if (prop === "name" && trackNameMapping[this.path]) {
         return trackNameMapping[this.path];
       }
+
       return null;
     }
 
@@ -43,11 +46,13 @@ describe("duplicate-helpers", () => {
   describe("parseArrangementLength", () => {
     it("parses valid bar:beat duration to beats", () => {
       const result = parseArrangementLength("4:0", 4, 4);
+
       expect(result).toBe(16); // 4 bars in 4/4 = 16 beats
     });
 
     it("parses fractional beats correctly", () => {
       const result = parseArrangementLength("2:2.5", 4, 4);
+
       expect(result).toBe(10.5); // 2 bars (8 beats) + 2.5 beats
     });
 
@@ -77,6 +82,7 @@ describe("duplicate-helpers", () => {
 
     it("handles different time signatures", () => {
       const result = parseArrangementLength("2:0", 3, 4);
+
       expect(result).toBe(6); // 2 bars in 3/4 = 6 beats
     });
   });

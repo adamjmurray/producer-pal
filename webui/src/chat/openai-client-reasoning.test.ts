@@ -50,6 +50,7 @@ describe("processReasoningDelta", () => {
     // Verify the merged result
     expect(reasoningDetailsMap.size).toBe(1);
     const block = reasoningDetailsMap.get("reasoning.text-0");
+
     expect(block?.text).toBe("First part... second part... done.");
     expect(block?.format).toBe("google-gemini-v1");
     expect(block?.thought_signature).toBe("sig_abc123");
@@ -87,6 +88,7 @@ describe("processReasoningDelta", () => {
     processReasoningDelta(delta2, reasoningDetailsMap);
 
     const block = reasoningDetailsMap.get("reasoning.text-0");
+
     expect(block?.id).toBe("original_id");
     expect(block?.text).toBe("Start... end.");
   });
@@ -136,6 +138,7 @@ describe("processReasoningDelta", () => {
     processReasoningDelta(delta3, reasoningDetailsMap);
 
     const block = reasoningDetailsMap.get("reasoning.text-0");
+
     expect(block?.text).toBe("Thinking... more thinking.");
     expect(block?.format).toBe("anthropic-claude-v1");
     // Critical: signature must be the real value, not empty string

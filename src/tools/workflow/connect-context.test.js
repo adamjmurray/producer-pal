@@ -7,6 +7,7 @@ import {
 } from "#src/test/mock-live-api.js";
 import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
+
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
   getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
@@ -26,6 +27,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -77,6 +79,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -132,6 +135,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -177,6 +181,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -215,6 +220,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -257,6 +263,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -302,6 +309,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -355,6 +363,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 

@@ -148,6 +148,7 @@ describe("toCompactJSLiteral - Complex structures", () => {
         ],
       },
     };
+
     expect(toCompactJSLiteral(input)).toBe(
       '{track:{id:"track_1",name:"Drums",clips:[{id:"clip_1",length:4},{id:"clip_2",length:8}]}}',
     );
@@ -166,6 +167,7 @@ describe("toCompactJSLiteral - Complex structures", () => {
         ],
       },
     };
+
     expect(toCompactJSLiteral(input)).toBe(
       '{track:{id:"t1",mute:false,volume:0,clips:[{id:"c1",mute:false},{id:"c2",mute:true}]}}',
     );
@@ -182,6 +184,7 @@ describe("toCompactJSLiteral - Complex structures", () => {
         items: ["Track A", "Track B"],
       },
     };
+
     expect(toCompactJSLiteral(input)).toBe(
       '{scenes:[{name:"Scene 1",tempo:120},{name:"Scene 2",tempo:140}],tracks:{count:3,items:["Track A","Track B"]}}',
     );
@@ -235,11 +238,13 @@ describe("toCompactJSLiteral - Edge cases", () => {
 
   it("handles very deeply nested structures", () => {
     const deep = { a: { b: { c: { d: { e: { f: 42 } } } } } };
+
     expect(toCompactJSLiteral(deep)).toBe("{a:{b:{c:{d:{e:{f:42}}}}}}");
   });
 
   it("handles arrays of arrays of arrays", () => {
     const nested = [[[1, 2]], [[3, 4]]];
+
     expect(toCompactJSLiteral(nested)).toBe("[[[1,2]],[[3,4]]]");
   });
 

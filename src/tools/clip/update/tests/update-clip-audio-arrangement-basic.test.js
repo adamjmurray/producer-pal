@@ -22,12 +22,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -69,6 +72,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -137,12 +141,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -185,6 +192,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -253,12 +261,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -300,6 +311,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -367,12 +379,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -415,6 +430,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 

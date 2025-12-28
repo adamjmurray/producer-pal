@@ -168,6 +168,7 @@ describe("readSamples", () => {
 
       // Create 1005 files (more than the 1000 limit)
       const entries = [];
+
       for (let i = 0; i < 1005; i++) {
         entries.push({
           name: `sample${i}.wav`,
@@ -175,6 +176,7 @@ describe("readSamples", () => {
           extension: ".wav",
         });
       }
+
       mockFolderStructure({
         "/samples/": entries,
       });
@@ -188,6 +190,7 @@ describe("readSamples", () => {
       context.sampleFolder = "/samples/";
 
       const entries = [];
+
       for (let i = 0; i < 1005; i++) {
         entries.push({
           name: `sample${i}.wav`,
@@ -195,6 +198,7 @@ describe("readSamples", () => {
           extension: ".wav",
         });
       }
+
       mockFolderStructure({
         "/samples/": entries,
       });
@@ -218,6 +222,7 @@ describe("readSamples", () => {
 
       // Create 1000 files in root, plus a folder with more
       const rootEntries = [];
+
       for (let i = 0; i < 999; i++) {
         rootEntries.push({
           name: `sample${i}.wav`,
@@ -225,6 +230,7 @@ describe("readSamples", () => {
           extension: ".wav",
         });
       }
+
       rootEntries.push({ name: "more", type: "fold" });
 
       mockFolderStructure({
@@ -330,6 +336,7 @@ describe("readSamples", () => {
 
       // Create 1005 non-matching files and 5 matching files
       const entries = [];
+
       for (let i = 0; i < 1005; i++) {
         entries.push({
           name: `sample${i}.wav`,
@@ -337,6 +344,7 @@ describe("readSamples", () => {
           extension: ".wav",
         });
       }
+
       // Add 5 files that match "kick"
       for (let i = 0; i < 5; i++) {
         entries.push({

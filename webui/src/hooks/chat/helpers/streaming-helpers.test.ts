@@ -45,6 +45,7 @@ describe("streaming-helpers", () => {
         yield []; // Required by ESLint even though we throw immediately
         throw new DOMException("Aborted", "AbortError");
       }
+
       const formatter = vi.fn(() => [
         {
           role: "user" as const,
@@ -76,6 +77,7 @@ describe("streaming-helpers", () => {
         yield [];
         throw new Error("Network failure");
       }
+
       const formatter = vi.fn(() => [
         {
           role: "user" as const,
@@ -100,6 +102,7 @@ describe("streaming-helpers", () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
       const firstPart = result[0]?.parts[0];
+
       expect(firstPart?.type).toBe("error");
       expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Test error",
@@ -111,6 +114,7 @@ describe("streaming-helpers", () => {
       const result = createGeminiErrorMessage("Error: Test", chatHistory);
 
       const firstPart = result[0]?.parts[0];
+
       expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Test",
       );
@@ -136,6 +140,7 @@ describe("streaming-helpers", () => {
 
     it("should throw for error status", async () => {
       const checkMcp = vi.fn().mockResolvedValue(undefined);
+
       await expect(
         validateMcpConnection("error", "Test error", checkMcp),
       ).rejects.toThrow("MCP connection failed");

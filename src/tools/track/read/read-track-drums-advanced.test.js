@@ -27,6 +27,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -51,6 +52,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -91,6 +93,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toEqual({ C3: "Direct Kick" });
     });
 

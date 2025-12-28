@@ -42,15 +42,19 @@ describe("readTrack", () => {
         if (this._path === "id arr_clip1") {
           return "Clip";
         }
+
         if (this._path === "id clip1") {
           return "Clip";
         }
+
         if (this._path === "id synth1") {
           return "Device";
         }
+
         if (this._path === "id effect1") {
           return "Device";
         }
+
         return this._type; // Fall back to default MockLiveAPI logic
       });
 
@@ -177,6 +181,7 @@ describe("readTrack", () => {
           if (this.path === "live_set return_tracks 1") {
             return "return_track_1";
           }
+
           return "id 0";
         });
 
@@ -234,6 +239,7 @@ describe("readTrack", () => {
           if (this.path === "live_set return_tracks 0") {
             return "return_track_1";
           }
+
           return "id 0";
         });
         liveApiPath.mockImplementation(function () {
@@ -308,6 +314,7 @@ describe("readTrack", () => {
           if (this.path === "live_set master_track") {
             return "master_track";
           }
+
           return "id 0";
         });
 

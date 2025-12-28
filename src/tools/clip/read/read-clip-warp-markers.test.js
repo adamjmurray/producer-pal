@@ -25,6 +25,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
@@ -55,6 +56,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
@@ -79,6 +81,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -100,6 +103,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -117,6 +121,7 @@ describe("readClip - warp markers", () => {
       },
     });
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -135,6 +140,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 });

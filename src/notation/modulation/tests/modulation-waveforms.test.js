@@ -31,6 +31,7 @@ describe("Modulation Waveforms", () => {
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.1) {
         const value = cos(phase);
+
         expect(value).toBeGreaterThanOrEqual(-1.0);
         expect(value).toBeLessThanOrEqual(1.0);
       }
@@ -86,6 +87,7 @@ describe("Modulation Waveforms", () => {
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
         const value = tri(phase);
+
         expect(value).toBeGreaterThanOrEqual(-1.0);
         expect(value).toBeLessThanOrEqual(1.0);
       }
@@ -124,6 +126,7 @@ describe("Modulation Waveforms", () => {
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
         const value = saw(phase);
+
         expect(value).toBeGreaterThanOrEqual(-1.0);
         expect(value).toBeLessThanOrEqual(1.0);
       }
@@ -176,6 +179,7 @@ describe("Modulation Waveforms", () => {
     it("returns only 1.0 or -1.0", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
         const value = square(phase);
+
         expect([1.0, -1.0]).toContain(value);
       }
     });
@@ -185,6 +189,7 @@ describe("Modulation Waveforms", () => {
     it("returns a value in range [-1.0, 1.0]", () => {
       for (let i = 0; i < 100; i++) {
         const value = noise();
+
         expect(value).toBeGreaterThanOrEqual(-1.0);
         expect(value).toBeLessThanOrEqual(1.0);
       }
@@ -192,9 +197,11 @@ describe("Modulation Waveforms", () => {
 
     it("returns different values on each call (non-deterministic)", () => {
       const values = new Set();
+
       for (let i = 0; i < 100; i++) {
         values.add(noise());
       }
+
       // Should have many unique values (high probability)
       expect(values.size).toBeGreaterThan(90);
     });
@@ -205,9 +212,11 @@ describe("Modulation Waveforms", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = noise();
+
         if (value > 0) {
           hasPositive = true;
         }
+
         if (value < 0) {
           hasNegative = true;
         }

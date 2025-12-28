@@ -9,6 +9,7 @@ describe("Modulation Evaluator", () => {
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -18,6 +19,7 @@ describe("Modulation Evaluator", () => {
         pitch: 61,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -27,6 +29,7 @@ describe("Modulation Evaluator", () => {
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -36,6 +39,7 @@ describe("Modulation Evaluator", () => {
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
       expect(result.timing.value).toBe(0.05);
     });
@@ -48,6 +52,7 @@ C#3 velocity += 20`;
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result1.velocity.value).toBe(10);
 
       const result2 = evaluateModulation(modString, {
@@ -55,6 +60,7 @@ C#3 velocity += 20`;
         pitch: 61,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result2.velocity.value).toBe(20);
     });
 
@@ -64,6 +70,7 @@ C#3 velocity += 20`;
         pitch: 72, // C4 is within C3-C5
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -73,6 +80,7 @@ C#3 velocity += 20`;
         pitch: 60, // C3 is at start
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -82,6 +90,7 @@ C#3 velocity += 20`;
         pitch: 84, // C5 is at end
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -91,6 +100,7 @@ C#3 velocity += 20`;
         pitch: 59, // B2 is below C3
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -100,6 +110,7 @@ C#3 velocity += 20`;
         pitch: 85, // C#5 is above C5
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -112,6 +123,7 @@ C#3 velocity += 20`;
           timeSig: { numerator: 4, denominator: 4 },
         },
       );
+
       expect(result.velocity.value).toBe(10);
       expect(result.timing.value).toBe(0.05);
     });
@@ -125,6 +137,7 @@ G4-G5 velocity += 20`;
         pitch: 72, // C4 in first range
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result1.velocity.value).toBe(10);
 
       const result2 = evaluateModulation(modString, {
@@ -132,6 +145,7 @@ G4-G5 velocity += 20`;
         pitch: 91, // G5 in second range
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result2.velocity.value).toBe(20);
 
       const result3 = evaluateModulation(modString, {
@@ -139,6 +153,7 @@ G4-G5 velocity += 20`;
         pitch: 76, // E4 in first range but not second
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result3.velocity.value).toBe(10);
     });
   });
@@ -151,6 +166,7 @@ G4-G5 velocity += 20`;
         beat: 2,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -161,6 +177,7 @@ G4-G5 velocity += 20`;
         beat: 4,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -171,6 +188,7 @@ G4-G5 velocity += 20`;
         beat: 1,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -183,6 +201,7 @@ G4-G5 velocity += 20`;
         beat: 1,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(atStart.velocity.value).toBe(10);
 
       const atEnd = evaluateModulation(modString, {
@@ -191,6 +210,7 @@ G4-G5 velocity += 20`;
         beat: 4,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(atEnd.velocity.value).toBe(10);
     });
   });
@@ -204,6 +224,7 @@ G4-G5 velocity += 20`;
         beat: 2,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -215,6 +236,7 @@ G4-G5 velocity += 20`;
         beat: 1,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -226,6 +248,7 @@ G4-G5 velocity += 20`;
         beat: 2,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
   });
@@ -236,6 +259,7 @@ G4-G5 velocity += 20`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.operator).toBe("add");
     });
 
@@ -244,6 +268,7 @@ G4-G5 velocity += 20`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.operator).toBe("set");
     });
   });
@@ -267,6 +292,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(60);
     });
 
@@ -279,6 +305,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(25);
     });
 
@@ -291,6 +318,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.duration.value).toBe(1);
     });
 
@@ -303,6 +331,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(10);
     });
 
@@ -315,6 +344,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.probability.value).toBe(0.5);
     });
 
@@ -327,6 +357,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(16);
     });
 
@@ -339,6 +370,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(50);
     });
 
@@ -351,6 +383,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(70);
     });
 
@@ -363,6 +396,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBeCloseTo(100, 5);
     });
 
@@ -375,6 +409,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBeCloseTo(47.24, 2);
     });
 
@@ -387,6 +422,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.duration.value).toBe(0.4);
     });
 
@@ -399,6 +435,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(140);
     });
 
@@ -412,6 +449,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(50);
     });
 
@@ -426,6 +464,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(60);
     });
 
@@ -438,6 +477,7 @@ G4-G5 velocity += 20`;
         },
         {},
       );
+
       // Should skip the parameter due to error
       expect(result).toStrictEqual({});
     });
@@ -452,6 +492,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       expect(result.velocity.value).toBe(50); // ramp at 0.5 phase
     });
 
@@ -464,6 +505,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       // cos(phase 0 + offset 0.8)
       expect(result.velocity.value).toBeCloseTo(Math.cos(2 * Math.PI * 0.8), 5);
     });
@@ -477,6 +519,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       // noteProps.duration = 0.5, so position 0.25 / period 0.5 = phase 0.5
       // cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 5);
@@ -491,6 +534,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       // noteProps.duration * 2 = 0.5 * 2 = 1.0
       // position 0.5 / period 1.0 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 5);
@@ -505,6 +549,7 @@ G4-G5 velocity += 20`;
         },
         noteProps,
       );
+
       // noteProps.duration - 0.5 = 0.5 - 0.5 = 0, should error
       expect(result).toStrictEqual({});
     });

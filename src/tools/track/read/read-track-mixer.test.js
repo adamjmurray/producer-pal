@@ -438,6 +438,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -496,6 +497,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -545,6 +547,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -614,6 +617,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";

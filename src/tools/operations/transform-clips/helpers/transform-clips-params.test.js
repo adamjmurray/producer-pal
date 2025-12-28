@@ -4,9 +4,12 @@ import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
 // Simple seeded RNG for deterministic tests
 function createTestRng(sequence = [0.5]) {
   let index = 0;
+
   return () => {
     const value = sequence[index % sequence.length];
+
     index++;
+
     return value;
   };
 }
@@ -82,6 +85,7 @@ describe("transform-clips-params", () => {
         getProperty: vi.fn((prop) => {
           if (prop === "pitch_coarse") return 3;
           if (prop === "pitch_fine") return 50; // 0.5 semitones
+
           return 0;
         }),
         set: vi.fn(),

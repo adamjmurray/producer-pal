@@ -21,10 +21,12 @@ global.LiveAPI = vi.fn(function () {
 vi.mock(import("#src/tools/shared/utils.js"), () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
+
     return viewMap[view] || 1;
   }),
   fromLiveApiView: vi.fn((view) => {
     const viewMap = { 1: "session", 2: "arrangement" };
+
     return viewMap[view] || "session";
   }),
 }));
@@ -269,6 +271,7 @@ describe("view", () => {
             return liveApiId.apply(this);
           },
         });
+
         return this;
       });
 
@@ -323,6 +326,7 @@ describe("view", () => {
             return liveApiId.apply(this);
           },
         });
+
         return this;
       });
 
@@ -363,6 +367,7 @@ describe("view", () => {
         _id: "id device_123",
         _path: "live_set tracks 0 devices 0",
       };
+
       Object.defineProperty(mockDeviceWithPath, "path", {
         get: function () {
           return this._path;
@@ -385,30 +390,39 @@ describe("view", () => {
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
         }
+
         if (path === "live_set view") {
           return mockSongView;
         }
+
         if (path === "live_set view selected_track") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "id device_123") {
           return mockDeviceWithPath;
         }
+
         if (path === "live_set tracks 0") {
           return mockTrackAPI;
         }
+
         if (path === "live_set tracks 0 view") {
           return mockTrackView;
         }
+
         return {};
       });
 
@@ -446,9 +460,11 @@ describe("view", () => {
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
         }
+
         if (path === "live_set view") {
           return mockSongView;
         }
+
         if (path === "live_set view selected_track") {
           return {
             exists: vi.fn().mockReturnValue(true),
@@ -458,15 +474,19 @@ describe("view", () => {
             path: "live_set tracks 1",
           };
         }
+
         if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set tracks 1 view") {
           return {
             exists: vi.fn().mockReturnValue(true),
@@ -474,6 +494,7 @@ describe("view", () => {
             get: vi.fn().mockReturnValue(null), // No selected device
           };
         }
+
         // Default fallback for any other LiveAPI object
         return {
           exists: vi.fn().mockReturnValue(true),

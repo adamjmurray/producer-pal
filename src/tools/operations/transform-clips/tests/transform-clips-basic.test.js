@@ -19,16 +19,19 @@ describe("transformClips - basic", () => {
 
   it("should return clipIds and seed when provided valid clips", () => {
     const clipId = "clip_1";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -41,16 +44,20 @@ describe("transformClips - basic", () => {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [0];
         }
+
         if (prop === "length") {
           return [4.0];
         }
       }
+
       return [0];
     });
 
@@ -61,16 +68,19 @@ describe("transformClips - basic", () => {
 
   it("should generate seed from Date.now() when not provided", () => {
     const clipId = "clip_1";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return clipId;
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId) {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -83,16 +93,20 @@ describe("transformClips - basic", () => {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [0];
         }
+
         if (prop === "length") {
           return [4.0];
         }
       }
+
       return [0];
     });
 
@@ -106,28 +120,35 @@ describe("transformClips - basic", () => {
 
   it("should handle comma-separated clip IDs", () => {
     const clipIds = "clip_1,clip_2,clip_3";
+
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
         return "clip_1";
       }
+
       if (this._path === "id clip_2") {
         return "clip_2";
       }
+
       if (this._path === "id clip_3") {
         return "clip_3";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "clip_1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       if (this._id === "clip_2") {
         return "live_set tracks 0 clip_slots 1 clip";
       }
+
       if (this._id === "clip_3") {
         return "live_set tracks 0 clip_slots 2 clip";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -140,16 +161,20 @@ describe("transformClips - basic", () => {
         if (prop === "is_midi_clip") {
           return [1];
         }
+
         if (prop === "is_audio_clip") {
           return [0];
         }
+
         if (prop === "is_arrangement_clip") {
           return [0];
         }
+
         if (prop === "length") {
           return [4.0];
         }
       }
+
       return [0];
     });
 

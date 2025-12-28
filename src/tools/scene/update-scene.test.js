@@ -283,6 +283,7 @@ describe("updateScene", () => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
+
         return null;
       });
 
@@ -307,6 +308,7 @@ describe("updateScene", () => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
+
         return null;
       });
 

@@ -56,6 +56,7 @@ describe("MCP Express App", () => {
       });
 
       const transport = new StreamableHTTPClientTransport(new URL(serverUrl));
+
       await client.connect(transport);
 
       // Should not throw
@@ -87,8 +88,10 @@ describe("MCP Express App", () => {
 
     it("should list all available tools", async () => {
       const result = await client.listTools();
+
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
+
       expect(toolNames).toEqual([
         "ppal-connect",
         "ppal-read-live-set",
@@ -122,6 +125,7 @@ describe("MCP Express App", () => {
       const readLiveSetTool = result.tools.find(
         (tool) => tool.name === "ppal-read-live-set",
       );
+
       expect(readLiveSetTool).toBeDefined();
       expect(readLiveSetTool.description).toContain("Read Live Set");
       expect(readLiveSetTool.description).toContain("global settings");
@@ -130,6 +134,7 @@ describe("MCP Express App", () => {
       const updateClipTool = result.tools.find(
         (tool) => tool.name === "ppal-update-clip",
       );
+
       expect(updateClipTool).toBeDefined();
       expect(updateClipTool.inputSchema).toBeDefined();
       expect(updateClipTool.inputSchema.properties).toBeDefined();
@@ -138,6 +143,7 @@ describe("MCP Express App", () => {
       const createTrackTool = result.tools.find(
         (tool) => tool.name === "ppal-create-track",
       );
+
       expect(createTrackTool).toBeDefined();
       expect(createTrackTool.description).toContain("Create track(s)");
       expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
@@ -146,6 +152,7 @@ describe("MCP Express App", () => {
       const updateTrackTool = result.tools.find(
         (tool) => tool.name === "ppal-update-track",
       );
+
       expect(updateTrackTool).toBeDefined();
       expect(updateTrackTool.description).toContain("Update track(s)");
       expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
@@ -181,6 +188,7 @@ describe("MCP Express App", () => {
       const createClipTool = result.tools.find(
         (tool) => tool.name === "ppal-create-clip",
       );
+
       expect(createClipTool).toBeDefined();
       expect(createClipTool.description).toContain("Create MIDI or audio");
       expect(createClipTool.inputSchema.properties.view).toBeDefined();
@@ -241,6 +249,7 @@ describe("MCP Express App", () => {
 
       // Parse the JSON response
       const mockReturnValue = JSON.parse(result.content[0].text);
+
       // this is hard-coded in our mock response above:
       expect(mockReturnValue).toEqual({});
 
@@ -285,6 +294,7 @@ describe("MCP Express App", () => {
         name: "delete-scene",
         arguments: {}, // Missing sceneIndex
       });
+
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("MCP error -32602");
     });
@@ -294,6 +304,7 @@ describe("MCP Express App", () => {
         name: "nonexistent-tool",
         arguments: {},
       });
+
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("MCP error -32602");
     });
@@ -347,6 +358,7 @@ describe("MCP Express App", () => {
           const transport = new StreamableHTTPClientTransport(
             new URL(serverUrl),
           );
+
           await client.connect(transport);
 
           clients.push(client);
@@ -377,6 +389,7 @@ describe("MCP Express App", () => {
 
       expect(response.status).toBe(405);
       const errorResponse = await response.json();
+
       expect(errorResponse.jsonrpc).toBe("2.0");
       expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
       expect(errorResponse.error.message).toBe("Method not allowed.");
@@ -390,6 +403,7 @@ describe("MCP Express App", () => {
 
       expect(response.status).toBe(405);
       const errorResponse = await response.json();
+
       expect(errorResponse.jsonrpc).toBe("2.0");
       expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
       expect(errorResponse.error.message).toBe("Method not allowed.");
@@ -440,6 +454,7 @@ describe("MCP Express App", () => {
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("html");
       const html = await response.text();
+
       expect(html).toBeDefined();
       expect(html.length).toBeGreaterThan(0);
     });

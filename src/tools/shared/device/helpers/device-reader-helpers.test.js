@@ -23,6 +23,7 @@ describe("device-reader-helpers", () => {
         if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
         if (prop === "choke_group") return overrides.choke_group ?? 0;
         if (prop === "out_note") return overrides.out_note ?? 60;
+
         return 0;
       },
       getColor: () => overrides.color ?? null,
@@ -31,6 +32,7 @@ describe("device-reader-helpers", () => {
     it("builds chain info with id, type and name", () => {
       const chain = createMockChain({ name: "My Chain" });
       const result = buildChainInfo(chain);
+
       expect(result).toEqual({
         id: "chain-123",
         type: "Chain",
@@ -41,72 +43,84 @@ describe("device-reader-helpers", () => {
     it("includes type from chain.type property", () => {
       const chain = createMockChain({ type: "DrumChain" });
       const result = buildChainInfo(chain);
+
       expect(result.type).toBe("DrumChain");
     });
 
     it("includes path when provided", () => {
       const chain = createMockChain();
       const result = buildChainInfo(chain, { path: "1/0/0" });
+
       expect(result.path).toBe("1/0/0");
     });
 
     it("omits path when not provided", () => {
       const chain = createMockChain();
       const result = buildChainInfo(chain);
+
       expect(result.path).toBeUndefined();
     });
 
     it("includes color when chain has color", () => {
       const chain = createMockChain({ color: "#FF5500" });
       const result = buildChainInfo(chain);
+
       expect(result.color).toBe("#FF5500");
     });
 
     it("omits color when chain has no color", () => {
       const chain = createMockChain({ color: null });
       const result = buildChainInfo(chain);
+
       expect(result.color).toBeUndefined();
     });
 
     it("includes chokeGroup for DrumChain when greater than 0", () => {
       const chain = createMockChain({ type: "DrumChain", choke_group: 5 });
       const result = buildChainInfo(chain);
+
       expect(result.chokeGroup).toBe(5);
     });
 
     it("omits chokeGroup for DrumChain when 0", () => {
       const chain = createMockChain({ type: "DrumChain", choke_group: 0 });
       const result = buildChainInfo(chain);
+
       expect(result.chokeGroup).toBeUndefined();
     });
 
     it("includes mappedPitch for DrumChain", () => {
       const chain = createMockChain({ type: "DrumChain", out_note: 36 });
       const result = buildChainInfo(chain);
+
       expect(result.mappedPitch).toBe("C1");
     });
 
     it("omits mappedPitch for regular Chain", () => {
       const chain = createMockChain({ type: "Chain", out_note: 36 });
       const result = buildChainInfo(chain);
+
       expect(result.mappedPitch).toBeUndefined();
     });
 
     it("includes state when muted", () => {
       const chain = createMockChain({ mute: 1 });
       const result = buildChainInfo(chain);
+
       expect(result.state).toBe(STATE.MUTED);
     });
 
     it("includes state when soloed", () => {
       const chain = createMockChain({ solo: 1 });
       const result = buildChainInfo(chain);
+
       expect(result.state).toBe(STATE.SOLOED);
     });
 
     it("omits state when active", () => {
       const chain = createMockChain();
       const result = buildChainInfo(chain);
+
       expect(result.state).toBeUndefined();
     });
 
@@ -114,12 +128,14 @@ describe("device-reader-helpers", () => {
       const chain = createMockChain();
       const devices = [{ id: "dev-1" }, { id: "dev-2" }];
       const result = buildChainInfo(chain, { devices });
+
       expect(result.devices).toEqual(devices);
     });
 
     it("omits devices when not provided", () => {
       const chain = createMockChain();
       const result = buildChainInfo(chain);
+
       expect(result.devices).toBeUndefined();
     });
 
@@ -137,6 +153,7 @@ describe("device-reader-helpers", () => {
         path: "1/0/0",
         devices,
       });
+
       expect(result).toEqual({
         id: "chain-123",
         path: "1/0/0",
@@ -153,6 +170,7 @@ describe("device-reader-helpers", () => {
     it("omits chokeGroup for regular Chain even if choke_group property exists", () => {
       const chain = createMockChain({ type: "Chain", choke_group: 5 });
       const result = buildChainInfo(chain);
+
       expect(result.chokeGroup).toBeUndefined();
     });
   });
@@ -228,6 +246,7 @@ describe("device-reader-helpers", () => {
   describe("computeState", () => {
     it("returns ACTIVE for master category", () => {
       const liveObject = { getProperty: () => 0 };
+
       expect(computeState(liveObject, "master")).toBe(STATE.ACTIVE);
     });
 
@@ -236,9 +255,11 @@ describe("device-reader-helpers", () => {
         getProperty: (prop) => {
           if (prop === "mute") return 1;
           if (prop === "solo") return 1;
+
           return 0;
         },
       };
+
       expect(computeState(liveObject)).toBe(STATE.MUTED_AND_SOLOED);
     });
 
@@ -246,9 +267,11 @@ describe("device-reader-helpers", () => {
       const liveObject = {
         getProperty: (prop) => {
           if (prop === "solo") return 1;
+
           return 0;
         },
       };
+
       expect(computeState(liveObject)).toBe(STATE.SOLOED);
     });
 
@@ -257,9 +280,11 @@ describe("device-reader-helpers", () => {
         getProperty: (prop) => {
           if (prop === "mute") return 1;
           if (prop === "muted_via_solo") return 1;
+
           return 0;
         },
       };
+
       expect(computeState(liveObject)).toBe(STATE.MUTED_ALSO_VIA_SOLO);
     });
 
@@ -267,9 +292,11 @@ describe("device-reader-helpers", () => {
       const liveObject = {
         getProperty: (prop) => {
           if (prop === "muted_via_solo") return 1;
+
           return 0;
         },
       };
+
       expect(computeState(liveObject)).toBe(STATE.MUTED_VIA_SOLO);
     });
 
@@ -277,14 +304,17 @@ describe("device-reader-helpers", () => {
       const liveObject = {
         getProperty: (prop) => {
           if (prop === "mute") return 1;
+
           return 0;
         },
       };
+
       expect(computeState(liveObject)).toBe(STATE.MUTED);
     });
 
     it("returns ACTIVE when not muted or soloed", () => {
       const liveObject = { getProperty: () => 0 };
+
       expect(computeState(liveObject)).toBe(STATE.ACTIVE);
     });
   });
@@ -328,6 +358,7 @@ describe("device-reader-helpers", () => {
         { type: DEVICE_TYPE.AUDIO_EFFECT },
         { type: DEVICE_TYPE.INSTRUMENT },
       ];
+
       expect(hasInstrumentInDevices(devices)).toBe(true);
     });
 
@@ -336,6 +367,7 @@ describe("device-reader-helpers", () => {
         { type: DEVICE_TYPE.AUDIO_EFFECT },
         { type: DEVICE_TYPE.MIDI_EFFECT },
       ];
+
       expect(hasInstrumentInDevices(devices)).toBe(false);
     });
 
@@ -350,6 +382,7 @@ describe("device-reader-helpers", () => {
           ],
         },
       ];
+
       expect(hasInstrumentInDevices(devices)).toBe(true);
     });
 
@@ -364,6 +397,7 @@ describe("device-reader-helpers", () => {
           ],
         },
       ];
+
       expect(hasInstrumentInDevices(devices)).toBe(false);
     });
 
@@ -374,6 +408,7 @@ describe("device-reader-helpers", () => {
           chains: [{ name: "Empty Chain" }],
         },
       ];
+
       expect(hasInstrumentInDevices(devices)).toBe(false);
     });
   });
@@ -384,6 +419,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick" },
         { pitch: "D3", name: "Snare" },
       ];
+
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBeUndefined();
       expect(chains[1].state).toBeUndefined();
@@ -394,6 +430,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare" },
       ];
+
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
     });
@@ -403,6 +440,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare", state: STATE.MUTED },
       ];
+
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
@@ -413,6 +451,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare" },
       ];
+
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
@@ -424,6 +463,7 @@ describe("device-reader-helpers", () => {
       const device = {
         getProperty: () => 0, // can_have_chains = 0
       };
+
       expect(readMacroVariations(device)).toEqual({});
     });
 
@@ -431,6 +471,7 @@ describe("device-reader-helpers", () => {
       const device = {
         getProperty: (prop) => (prop === "can_have_chains" ? 1 : 0),
       };
+
       expect(readMacroVariations(device)).toEqual({});
     });
 
@@ -449,6 +490,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readMacroVariations(device)).toEqual({
         variations: {
           count: 5,
@@ -472,6 +514,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readMacroVariations(device)).toEqual({
         macros: { count: 8, hasMappings: true },
       });
@@ -488,6 +531,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readMacroVariations(device)).toEqual({});
     });
 
@@ -510,6 +554,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readMacroVariations(device)).toEqual({
         variations: { count: 3, selected: 1 },
         macros: { count: 4, hasMappings: false },
@@ -522,6 +567,7 @@ describe("device-reader-helpers", () => {
       const device = {
         getProperty: () => 0, // can_compare_ab = 0
       };
+
       expect(readABCompare(device)).toEqual({});
     });
 
@@ -538,6 +584,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readABCompare(device)).toEqual({ abCompare: "a" });
     });
 
@@ -554,6 +601,7 @@ describe("device-reader-helpers", () => {
           }
         },
       };
+
       expect(readABCompare(device)).toEqual({ abCompare: "b" });
     });
   });

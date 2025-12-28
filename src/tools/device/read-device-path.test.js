@@ -91,6 +91,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -130,6 +131,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -168,6 +170,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -206,6 +209,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -251,6 +255,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -291,6 +296,7 @@ describe("readDevice with path parameter", () => {
       if (method === "getChildren" && args[0] === "devices") {
         return [];
       }
+
       return [];
     });
 
@@ -403,6 +409,7 @@ describe("readDevice with path parameter", () => {
         solo: [padProps.solo ?? 0],
         chains: (padProps.chainIds ?? []).flatMap((c) => ["id", c]),
       };
+
       return propMap[prop];
     };
 
@@ -418,6 +425,7 @@ describe("readDevice with path parameter", () => {
         color: chainProps.color ? [chainProps.color] : [],
         devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
       };
+
       return propMap[prop];
     };
 
@@ -432,6 +440,7 @@ describe("readDevice with path parameter", () => {
         is_active: [1],
         devices: [],
       };
+
       return propMap[prop];
     };
 
@@ -447,15 +456,18 @@ describe("readDevice with path parameter", () => {
 
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 1 devices 0") return deviceId;
+
         return this._id ?? "0";
       });
 
       // Mock chain type - chains in drum pads are DrumChain type
       liveApiType.mockImplementation(function () {
         const id = this._id ?? this.id;
+
         if (id?.startsWith("chain-")) {
           return chainProperties[id]?.type ?? "DrumChain";
         }
+
         return undefined; // Let default mock handle other types
       });
 

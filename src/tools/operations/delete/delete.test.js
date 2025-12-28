@@ -12,6 +12,7 @@ describe("deleteObject", () => {
     const id = "track_2";
     const trackIndex = 1;
     const path = `live_set tracks ${trackIndex}`;
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case path:
@@ -46,6 +47,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple tracks in descending index order", () => {
     const ids = "track_0,track_1,track_2";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0":
@@ -109,6 +111,7 @@ describe("deleteObject", () => {
     const id = "scene_2";
     const sceneIndex = 1;
     const path = `live_set scenes ${sceneIndex}`;
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case path:
@@ -143,6 +146,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple scenes in descending index order", () => {
     const ids = "scene_0, scene_2";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set scenes 0":
@@ -193,6 +197,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple clips (order doesn't matter for clips)", () => {
     const ids = "clip_0_0,clip_1_1";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 0 clip":
@@ -240,17 +245,20 @@ describe("deleteObject", () => {
 
   it("should throw an error when neither ids nor path is provided", () => {
     const expectedError = "delete failed: ids or path is required";
+
     expect(() => deleteObject({ type: "clip" })).toThrow(expectedError);
   });
 
   it("should throw an error when type arg is missing", () => {
     const expectedError = "delete failed: type is required";
+
     expect(() => deleteObject({ ids: "clip_1" })).toThrow(expectedError);
   });
 
   it("should throw an error when type arg is invalid", () => {
     const expectedError =
       'delete failed: type must be one of "track", "scene", "clip", "device", or "drum-pad"';
+
     expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(
       expectedError,
     );
@@ -298,6 +306,7 @@ describe("deleteObject", () => {
       if (this._id === "track_1") {
         return "Track";
       }
+
       if (this._id === "scene_1") {
         return "Scene";
       }
@@ -399,9 +408,11 @@ describe("deleteObject", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       if (this._id === "track_1") {
         return "live_set tracks 1";
       }
+
       return this._path;
     });
     expect(() => deleteObject({ ids: "track_1", type: "track" })).toThrow(
@@ -411,6 +422,7 @@ describe("deleteObject", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const ids = " track_0 , track_1 ";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0":
@@ -492,12 +504,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set tracks 0") {
         return "track_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "track_0") {
         return "invalid_path_without_track_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -516,12 +530,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set scenes 0") {
         return "scene_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "scene_0") {
         return "invalid_path_without_scene_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -540,12 +556,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set tracks 0 clip_slots 0 clip") {
         return "clip_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "clip_0") {
         return "invalid_path_without_track_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {

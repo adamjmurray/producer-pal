@@ -34,6 +34,7 @@ vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
 describe("GeminiClient", () => {
   it("constructs with default config", () => {
     const client = new GeminiClient("test-api-key");
+
     expect(client).toBeDefined();
     expect(client.mcpUrl).toBe("http://localhost:3350/mcp");
     expect(client.chatHistory).toEqual([]);
@@ -47,14 +48,17 @@ describe("GeminiClient", () => {
       chatHistory: [{ role: "user" as const, parts: [{ text: "hello" }] }],
     };
     const client = new GeminiClient("test-api-key", config);
+
     expect(client.mcpUrl).toBe("http://custom:8080/mcp");
     expect(client.chatHistory).toEqual(config.chatHistory);
   });
 
   it("throws error when sending message before initialization", async () => {
     const client = new GeminiClient("test-api-key");
+
     await expect(async () => {
       const stream = client.sendMessage("test");
+
       await stream.next();
     }).rejects.toThrow("Chat not initialized. Call initialize() first.");
   });
@@ -83,6 +87,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First call: model responds with functionCall
             yield {
@@ -132,6 +137,7 @@ describe("GeminiClient", () => {
 
       // Send message and collect history updates
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -146,6 +152,7 @@ describe("GeminiClient", () => {
 
       // Verify final history structure
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(4);
       expect(finalHistory![0]!.role).toBe("user"); // Initial message
@@ -185,6 +192,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First: model calls tool1
             yield {
@@ -239,6 +247,7 @@ describe("GeminiClient", () => {
 
       // Send message
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -249,6 +258,7 @@ describe("GeminiClient", () => {
 
       // Verify final history
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(6);
       expect(finalHistory![0]!.role).toBe("user"); // Initial
@@ -292,6 +302,7 @@ describe("GeminiClient", () => {
 
       // Send message
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -302,6 +313,7 @@ describe("GeminiClient", () => {
 
       // Verify final history
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(2);
       expect(finalHistory![0]!.role).toBe("user");
@@ -341,6 +353,7 @@ describe("GeminiClient", () => {
         chats: {
           create: vi.fn((config) => {
             createCalls.push(config);
+
             return mockChat;
           }),
         },
@@ -355,6 +368,7 @@ describe("GeminiClient", () => {
 
       // Send message with showThoughts override
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test", undefined, {
         showThoughts: false,
       })) {
@@ -366,6 +380,7 @@ describe("GeminiClient", () => {
       const lastCreateCall = createCalls[createCalls.length - 1] as {
         config: { thinkingConfig: { includeThoughts: boolean } };
       };
+
       expect(lastCreateCall.config.thinkingConfig.includeThoughts).toBe(false);
     });
 
@@ -389,6 +404,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First call: return functionCall
             yield {
@@ -414,6 +430,7 @@ describe("GeminiClient", () => {
 
       // Send message with abort signal
       const historyUpdates = [];
+
       for await (const history of client.sendMessage(
         "test",
         abortController.signal,
@@ -427,6 +444,7 @@ describe("GeminiClient", () => {
 
       // Verify history stops after tool response
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(3);
       expect(finalHistory![0]!.role).toBe("user");

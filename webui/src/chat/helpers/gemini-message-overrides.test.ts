@@ -5,6 +5,7 @@ describe("applyGeminiOverrides", () => {
   describe("temperature overrides", () => {
     it("returns config temperature when no override", () => {
       const result = applyGeminiOverrides({}, { temperature: 0.5 });
+
       expect(result.temperature).toBe(0.5);
     });
 
@@ -13,6 +14,7 @@ describe("applyGeminiOverrides", () => {
         { temperature: 0.8 },
         { temperature: 0.5 },
       );
+
       expect(result.temperature).toBe(0.8);
     });
   });
@@ -23,6 +25,7 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
       };
       const result = applyGeminiOverrides({}, config);
+
       expect(result.thinkingConfig).toEqual({
         thinkingBudget: 4096,
         includeThoughts: true,
@@ -34,6 +37,7 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
       };
       const result = applyGeminiOverrides({ thinking: "Off" }, config);
+
       expect(result.thinkingConfig).toBeUndefined();
     });
 
@@ -42,6 +46,7 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
       };
       const result = applyGeminiOverrides({ thinking: "Minimal" }, config);
+
       expect(result.thinkingConfig).toBeUndefined();
     });
 
@@ -50,6 +55,7 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 1000, includeThoughts: true },
       };
       const result = applyGeminiOverrides({ thinking: "High" }, config);
+
       expect(result.thinkingConfig?.thinkingBudget).toBe(8192);
       expect(result.thinkingConfig?.includeThoughts).toBe(true);
     });
@@ -59,11 +65,13 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 1000, includeThoughts: false },
       };
       const result = applyGeminiOverrides({ thinking: "Medium" }, config);
+
       expect(result.thinkingConfig?.includeThoughts).toBe(false);
     });
 
     it("defaults includeThoughts to true when no original config", () => {
       const result = applyGeminiOverrides({ thinking: "Low" }, {});
+
       expect(result.thinkingConfig?.includeThoughts).toBe(true);
     });
   });
@@ -74,6 +82,7 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
       };
       const result = applyGeminiOverrides({ showThoughts: false }, config);
+
       expect(result.thinkingConfig?.includeThoughts).toBe(false);
     });
 
@@ -82,11 +91,13 @@ describe("applyGeminiOverrides", () => {
         thinkingConfig: { thinkingBudget: 4096, includeThoughts: false },
       };
       const result = applyGeminiOverrides({ showThoughts: true }, config);
+
       expect(result.thinkingConfig?.includeThoughts).toBe(true);
     });
 
     it("does not override when thinkingConfig is undefined", () => {
       const result = applyGeminiOverrides({ showThoughts: false }, {});
+
       expect(result.thinkingConfig).toBeUndefined();
     });
 
@@ -98,6 +109,7 @@ describe("applyGeminiOverrides", () => {
         { thinking: "High", showThoughts: false },
         config,
       );
+
       expect(result.thinkingConfig?.thinkingBudget).toBe(8192);
       expect(result.thinkingConfig?.includeThoughts).toBe(false);
     });

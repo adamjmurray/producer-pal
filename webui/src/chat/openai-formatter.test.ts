@@ -16,12 +16,14 @@ import {
 describe("formatOpenAIMessages", () => {
   it("handles the initial 'Connect to Ableton' flow", () => {
     const result = formatOpenAIMessages(history);
+
     expect(stripTimestamps(result)).toStrictEqual(expected);
     expectValidTimestamps(result);
   });
 
   it("handles tool calls with empty arguments", () => {
     const result = formatOpenAIMessages(historyWithEmptyToolCallArgs);
+
     expect(stripTimestamps(result)).toStrictEqual(
       expectedWithEmptyToolCallArgs,
     );
@@ -79,6 +81,7 @@ describe("formatOpenAIMessages", () => {
 
     expect(result).toHaveLength(1);
     const lastPart = result[0]!.parts.at(-1);
+
     expect(lastPart).toEqual({
       type: "thought",
       content: "Current thinking...",

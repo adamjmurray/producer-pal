@@ -30,6 +30,7 @@ describe("memory", () => {
     it("should return only enabled: false when project context is disabled", () => {
       context.projectNotes.enabled = false;
       const result = memory({ action: "read" }, context);
+
       expect(result).toEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
@@ -40,6 +41,7 @@ describe("memory", () => {
       context.projectNotes.content = "test content";
 
       const result = memory({ action: "read" }, context);
+
       expect(result).toEqual({
         enabled: true,
         writable: true,
@@ -54,6 +56,7 @@ describe("memory", () => {
       context.projectNotes.content = "test content";
 
       const result = memory({ action: "read" }, context);
+
       expect(result).toEqual({
         enabled: true,
         writable: false,

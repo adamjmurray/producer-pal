@@ -10,6 +10,7 @@ import { updateClip } from "../update-clip.js";
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (
         this._id === "789" ||
@@ -19,12 +20,15 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -58,18 +62,22 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
 
     // Mock duplicate_clip_to_arrangement calls for tiling
     let callCount = 0;
+
     liveApiCall.mockImplementation(function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
+
         if (callCount === 1) {
           return `id 1000`; // Holding clip for partial
         } else if (callCount === 2) {
           return `id 2000`; // Final partial tile
         }
       }
+
       if (method === "create_midi_clip") {
         return `id 1500`; // Temp clip for shortening in holding area
       }
+
       return undefined;
     });
 

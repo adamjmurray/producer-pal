@@ -13,6 +13,7 @@ vi.mock(import("./helpers/streaming-helpers"), () => ({
     for await (const chatHistory of stream) {
       onUpdate(formatter(chatHistory));
     }
+
     return true;
   }),
   validateMcpConnection: vi.fn(),
@@ -96,6 +97,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
   createErrorMessage: vi.fn(
     (error: unknown, chatHistory: TestMessage[]): UIMessage[] => {
       const formatted = mockAdapter.formatMessages(chatHistory);
+
       return [
         ...formatted,
         {
@@ -232,9 +234,12 @@ describe("useChat", () => {
 
       const lastMessage =
         result.current.messages[result.current.messages.length - 1];
+
       expect(lastMessage?.role).toBe("model");
       const lastPart = lastMessage?.parts[0];
+
       expect(lastPart?.type).toBe("error");
+
       if (lastPart && "content" in lastPart) {
         expect(lastPart.content).toContain("No API key configured");
       }
@@ -311,9 +316,11 @@ describe("useChat", () => {
         ...mockAdapter,
         createClient: vi.fn(() => {
           const client = new MockChatClient();
+
           client.initialize = vi.fn(async () => {
             throw new Error("Initialization failed");
           });
+
           return client;
         }),
       };
@@ -330,6 +337,7 @@ describe("useChat", () => {
       const lastMessage =
         result.current.messages[result.current.messages.length - 1];
       const lastPart = lastMessage?.parts[0];
+
       expect(lastPart?.type).toBe("error");
     });
 
@@ -345,6 +353,7 @@ describe("useChat", () => {
         (m) => m.role === "user",
       );
       const firstPart = userMessage?.parts[0];
+
       if (firstPart && "content" in firstPart) {
         expect(firstPart.content).toBe("Hello");
       }
@@ -464,12 +473,14 @@ describe("useChat", () => {
         createClient: vi.fn(() => {
           callCount++;
           const client = new MockChatClient();
+
           if (callCount > 1) {
             // Second call (during retry) should fail
             client.initialize = vi.fn(async () => {
               throw new Error("Retry initialization failed");
             });
           }
+
           return client;
         }),
       };

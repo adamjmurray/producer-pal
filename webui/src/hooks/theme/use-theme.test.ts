@@ -32,12 +32,14 @@ describe("useTheme", () => {
 
   it("defaults to system theme", () => {
     const { result } = renderHook(() => useTheme());
+
     expect(result.current.theme).toBe("system");
   });
 
   it("loads theme from localStorage", () => {
     localStorage.setItem("theme", "dark");
     const { result } = renderHook(() => useTheme());
+
     expect(result.current.theme).toBe("dark");
   });
 
@@ -146,6 +148,7 @@ describe("useTheme", () => {
 
   it("adds event listener for system theme changes", () => {
     const mockAddEventListener = vi.fn();
+
     matchMediaMock.mockReturnValue({
       matches: false,
       media: "(prefers-color-scheme: dark)",
@@ -167,6 +170,7 @@ describe("useTheme", () => {
 
   it("removes event listener on cleanup when using system theme", () => {
     const mockRemoveEventListener = vi.fn();
+
     matchMediaMock.mockReturnValue({
       matches: false,
       media: "(prefers-color-scheme: dark)",
@@ -179,6 +183,7 @@ describe("useTheme", () => {
     } as MediaQueryList);
 
     const { unmount } = renderHook(() => useTheme());
+
     unmount();
 
     expect(mockRemoveEventListener).toHaveBeenCalledWith(

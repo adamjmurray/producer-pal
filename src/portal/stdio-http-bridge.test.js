@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 // Mock MCP SDK components
 const mockClient = {
   connect: vi.fn(),
@@ -123,16 +124,19 @@ describe("StdioHttpBridge", () => {
 
     it("creates bridge with no options", () => {
       const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
+
       expect(quietBridge.options).toEqual({});
     });
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
       const tools = bridge.fallbackTools.tools;
+
       expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
       expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);
+
       expect(toolNames).toContain("ppal-read-live-set");
       expect(toolNames).toContain("ppal-create-clip");
 
@@ -182,6 +186,7 @@ describe("StdioHttpBridge", () => {
 
     it("handles connection failure and throws appropriate error", async () => {
       const connectionError = new Error("ECONNREFUSED");
+
       mockClient.connect.mockRejectedValue(connectionError);
 
       await expect(bridge._ensureHttpConnection()).rejects.toThrow(
@@ -239,6 +244,7 @@ describe("StdioHttpBridge", () => {
       bridge.isConnected = false;
 
       const closeError = new Error("Close failed");
+
       mockClient.close.mockRejectedValue(closeError);
       mockClient.connect.mockResolvedValue();
 
@@ -281,6 +287,7 @@ describe("StdioHttpBridge", () => {
       const listToolsHandler = listToolsCall[1];
 
       const httpTools = { tools: [{ name: "test-tool" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.listTools.mockResolvedValue(httpTools);
 
@@ -324,6 +331,7 @@ describe("StdioHttpBridge", () => {
       const callToolHandler = callToolCall[1];
 
       const toolResult = { content: [{ type: "text", text: "Success" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.callTool.mockResolvedValue(toolResult);
 
@@ -385,6 +393,7 @@ describe("StdioHttpBridge", () => {
       const callToolHandler = callToolCall[1];
 
       const toolResult = { content: [{ type: "text", text: "Success" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.callTool.mockResolvedValue(toolResult);
 
@@ -449,6 +458,7 @@ describe("StdioHttpBridge", () => {
 
     it("handles errors when closing clients", async () => {
       const error = new Error("Close failed");
+
       mockClient.close.mockImplementation(() => {
         throw error;
       });

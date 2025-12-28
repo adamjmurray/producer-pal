@@ -22,10 +22,12 @@ global.LiveAPI = vi.fn(function () {
 vi.mock(import("#src/tools/shared/utils.js"), () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
+
     return viewMap[view] || 1;
   }),
   fromLiveApiView: vi.fn((view) => {
     const viewMap = { 1: "session", 2: "arrangement" };
+
     return viewMap[view] || "session";
   }),
 }));
@@ -387,18 +389,23 @@ describe("view", () => {
           if (path === "live_app view") {
             return readAppView;
           }
+
           if (path === "live_set view selected_track") {
             return readSelectedTrack;
           }
+
           if (path === "live_set view selected_scene") {
             return readSelectedScene;
           }
+
           if (path === "live_set view detail_clip") {
             return readDetailClip;
           }
+
           if (path === "live_set view highlighted_clip_slot") {
             return readHighlightedSlot;
           }
+
           // Handle dynamic track view paths
           if (path.match(/^live_set tracks \d+ view$/)) {
             return {
@@ -406,20 +413,24 @@ describe("view", () => {
               get: vi.fn().mockReturnValue(["id", 456]),
             };
           }
+
           if (path.match(/^live_set return_tracks \d+ view$/)) {
             return {
               exists: vi.fn().mockReturnValue(true),
               get: vi.fn().mockReturnValue(["id", 456]),
             };
           }
+
           if (path === "live_set master_track view") {
             return {
               exists: vi.fn().mockReturnValue(false),
               get: vi.fn().mockReturnValue(null),
             };
           }
+
           return {};
         })();
+
         return instance;
       });
     });
@@ -469,6 +480,7 @@ describe("view", () => {
         ) {
           return 1;
         }
+
         return 0;
       });
       readSelectedTrack.exists.mockReturnValue(false);

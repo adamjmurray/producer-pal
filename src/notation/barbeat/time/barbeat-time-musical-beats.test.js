@@ -154,6 +154,7 @@ describe("duration function round-trip consistency", () => {
             timeSig[0],
             timeSig[1],
           );
+
           expect(converted).toBeCloseTo(beats, 10); // High precision due to floating point
         });
       });

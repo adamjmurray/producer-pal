@@ -157,6 +157,7 @@ describe("createShortenedClipInHolding", () => {
 
     // Verify session clip was set up with warping and looping
     const sessionClip = new LiveAPI("id 400");
+
     expect(sessionClip.set).toHaveBeenCalledWith("warping", 1);
     expect(sessionClip.set).toHaveBeenCalledWith("looping", 1);
     expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 8);

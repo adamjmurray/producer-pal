@@ -35,6 +35,7 @@ function findOversizedFolders(dirPath, excludeDirs = []) {
     if (excludeDirs.includes(item)) continue;
 
     const fullPath = path.join(dirPath, item);
+
     if (fs.statSync(fullPath).isDirectory()) {
       results.push(...findOversizedFolders(fullPath, excludeDirs));
     }
@@ -52,6 +53,7 @@ describe("Folder size limits", () => {
       const details = oversized
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
+
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,
@@ -61,6 +63,7 @@ describe("Folder size limits", () => {
 
   it("should enforce max 12 items per folder in webui/src/", () => {
     const webuiSrcPath = path.join(projectRoot, "webui", "src");
+
     if (!fs.existsSync(webuiSrcPath)) return;
 
     const oversized = findOversizedFolders(webuiSrcPath, ["node_modules"]);
@@ -69,6 +72,7 @@ describe("Folder size limits", () => {
       const details = oversized
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
+
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,
@@ -78,6 +82,7 @@ describe("Folder size limits", () => {
 
   it("should enforce max 12 items per folder in scripts/", () => {
     const scriptsPath = path.join(projectRoot, "scripts");
+
     if (!fs.existsSync(scriptsPath)) return;
 
     const oversized = findOversizedFolders(scriptsPath, ["node_modules"]);
@@ -86,6 +91,7 @@ describe("Folder size limits", () => {
       const details = oversized
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
+
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,

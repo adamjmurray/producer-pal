@@ -94,9 +94,11 @@ describe("LiveAPI extensions - color methods", () => {
 
     it("forms a bidirectional conversion with getColor", () => {
       const originalColor = 16711680; // Red
+
       api.getProperty = vi.fn().mockReturnValue(originalColor);
 
       const cssColor = api.getColor();
+
       expect(cssColor).toBe("#FF0000");
 
       api.setColor(cssColor);

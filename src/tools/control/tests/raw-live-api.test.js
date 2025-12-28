@@ -25,6 +25,7 @@ describe("rawLiveApi", () => {
     // Mock LiveAPI extensions that get added to instances
     global.LiveAPI.prototype.getProperty = vi.fn(function (property) {
       const result = this.get(property);
+
       return Array.isArray(result) ? result[0] : result;
     });
 
@@ -32,6 +33,7 @@ describe("rawLiveApi", () => {
       if (!childType) {
         throw new Error("Missing child type");
       }
+
       return [`id_${childType}_1`, `id_${childType}_2`];
     });
 
@@ -44,6 +46,7 @@ describe("rawLiveApi", () => {
     global.LiveAPI.prototype.goto = vi.fn(function (path) {
       this._path = path;
       this._id = path.replace(/\s+/g, "/");
+
       return 1;
     });
   });
@@ -57,6 +60,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error if operations array exceeds 50 operations", () => {
       const operations = Array(51).fill({ type: "info" });
+
       expect(() => rawLiveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
       );
@@ -225,6 +229,7 @@ describe("rawLiveApi", () => {
 
     it("should handle info operation", () => {
       const mockInfo = "Mock LiveAPI info";
+
       Object.defineProperty(global.LiveAPI.prototype, "info", {
         get: () => mockInfo,
         configurable: true,

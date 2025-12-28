@@ -20,12 +20,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -69,6 +72,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 
@@ -130,12 +134,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -179,6 +186,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 
@@ -227,12 +235,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -276,6 +287,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 

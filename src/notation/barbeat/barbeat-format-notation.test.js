@@ -36,6 +36,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 D3 E3 1|1");
   });
 
@@ -67,6 +68,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 1|1 D3 1|2 E3 2|1");
   });
 
@@ -98,6 +100,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("p0.8 C3 p0.5 D3 E3 1|1");
   });
 
@@ -129,6 +132,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("v80 C3 v120 D3 E3 1|1");
   });
 
@@ -160,6 +164,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("v80-120 C3 v60-100 D3 E3 1|1");
   });
 
@@ -191,6 +196,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 v80-120 D3 v90 E3 1|1");
   });
 
@@ -222,6 +228,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("t0.5 C3 t2 D3 E3 1|1");
   });
 
@@ -245,6 +252,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 1|1.5 D3 1|2.25");
   });
 
@@ -268,6 +276,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes, { beatsPerBar: 3 });
+
     expect(result).toBe("C3 1|1 D3 2|1");
   });
 
@@ -294,6 +303,7 @@ describe("bar|beat formatNotation()", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
+
     expect(result).toBe("C3 1|1 D3 2|1");
   });
 
@@ -321,6 +331,7 @@ describe("bar|beat formatNotation()", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
+
     expect(result).toBe("C3 1|1 D3 2|1"); // Uses 3 beats per bar, not 4
   });
 
@@ -335,6 +346,7 @@ describe("bar|beat formatNotation()", () => {
         velocity_deviation: 0,
       },
     ];
+
     expect(() => formatNotation(notes, { timeSigNumerator: 4 })).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
@@ -351,6 +363,7 @@ describe("bar|beat formatNotation()", () => {
         velocity_deviation: 0,
       },
     ];
+
     expect(() => formatNotation(notes, { timeSigDenominator: 4 })).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
@@ -384,6 +397,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 1|1 D3 1|2 E3 1|3");
   });
 
@@ -415,6 +429,7 @@ describe("bar|beat formatNotation()", () => {
       },
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("C3 D3 E3 1|1");
   });
 
@@ -489,6 +504,7 @@ describe("bar|beat formatNotation()", () => {
       }, // Gb1 (hihat)
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe(
       "t0.25 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
     );
@@ -513,6 +529,7 @@ describe("bar|beat formatNotation()", () => {
       }, // Missing probability
     ];
     const result = formatNotation(notes);
+
     expect(result).toBe("v80 C3 v100 p0.7 D3 v100-120 p1 E3 1|1");
   });
 });

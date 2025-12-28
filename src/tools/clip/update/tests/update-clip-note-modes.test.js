@@ -138,6 +138,7 @@ describe("updateClip - Note update modes", () => {
 
     // Mock empty existing notes, then return added notes on subsequent calls
     let addedNotes = [];
+
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
         addedNotes = args[0]?.notes || [];
@@ -146,6 +147,7 @@ describe("updateClip - Note update modes", () => {
           notes: addedNotes,
         });
       }
+
       return {};
     });
 
@@ -200,6 +202,7 @@ describe("updateClip - Note update modes", () => {
           notes: [],
         });
       }
+
       return {};
     });
 

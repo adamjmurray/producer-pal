@@ -293,6 +293,7 @@ describe("createScene", () => {
         if (this._path === "live_set view selected_scene") {
           return "live_set scenes 1";
         }
+
         return this._path;
       });
       mockLiveApiGet({
@@ -405,6 +406,7 @@ describe("createScene", () => {
         if (this._path === "live_set tracks 1 clip_slots 2 clip") {
           return "0";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -450,6 +452,7 @@ describe("createScene", () => {
         if (this._path === "live_set view selected_scene") {
           return "live_set scenes 1";
         }
+
         return this._path;
       });
       mockLiveApiGet({

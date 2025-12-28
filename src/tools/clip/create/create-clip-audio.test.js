@@ -41,6 +41,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -79,6 +80,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -133,13 +135,16 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         if (this._path === "live_set tracks 0 clip_slots 1 clip") {
           return "audio_clip_0_1";
         }
+
         // When querying length, use the same ID
         if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
           return this._id;
         }
+
         return this._id;
       });
 
@@ -187,10 +192,12 @@ describe("createClip - audio clips", () => {
       });
 
       let clipIndex = 0;
+
       liveApiId.mockImplementation(function () {
         if (this._path.includes("clip_slots")) {
           return `audio_clip_0_${clipIndex++}`;
         }
+
         return this._id;
       });
 
@@ -259,6 +266,7 @@ describe("createClip - audio clips", () => {
         if (method === "create_audio_clip") {
           return ["id", "arrangement_audio_clip"];
         }
+
         return null;
       });
 
@@ -266,6 +274,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
+
         return this._id;
       });
 
@@ -303,6 +312,7 @@ describe("createClip - audio clips", () => {
         if (method === "create_audio_clip") {
           return ["id", "arrangement_audio_clip"];
         }
+
         return null;
       });
 
@@ -310,6 +320,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
+
         return this._id;
       });
 
@@ -349,10 +360,12 @@ describe("createClip - audio clips", () => {
 
     it("should create multiple audio clips at specified positions in arrangement", () => {
       let clipCounter = 0;
+
       liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_audio_clip") {
           return ["id", `arrangement_audio_clip_${clipCounter++}`];
         }
+
         return null;
       });
 
@@ -361,6 +374,7 @@ describe("createClip - audio clips", () => {
         if (this._path?.startsWith("id arrangement_audio_clip_")) {
           return this._path.replace("id ", "");
         }
+
         // Handle direct construction with clip ID (for querying length)
         if (
           this._path === "arrangement_audio_clip_0" ||
@@ -369,6 +383,7 @@ describe("createClip - audio clips", () => {
         ) {
           return this._path;
         }
+
         return this._id;
       });
 
@@ -480,6 +495,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -504,13 +520,16 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         if (this._path === "live_set tracks 0 clip_slots 1 clip") {
           return "audio_clip_0_1";
         }
+
         // When querying length with clip ID, return the same ID
         if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
           return this._id;
         }
+
         return this._id;
       });
 
@@ -557,6 +576,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -590,6 +610,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 

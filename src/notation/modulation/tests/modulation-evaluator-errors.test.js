@@ -193,6 +193,7 @@ describe("Modulation Evaluator Error Handling", () => {
         { start: 0, end: 4 },
         { pitch: 60 },
       );
+
       expect(result).toBe(60);
     });
   });
@@ -253,6 +254,7 @@ describe("Modulation Evaluator Error Handling", () => {
         {},
         evaluateExpression,
       );
+
       expect(typeof result).toBe("number");
     });
   });

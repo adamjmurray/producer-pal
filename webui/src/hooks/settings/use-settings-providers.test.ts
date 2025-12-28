@@ -13,6 +13,7 @@ describe("useSettings - provider-specific settings", () => {
   describe("setThinking for all providers", () => {
     it("sets thinking for mistral provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("mistral");
       });
@@ -23,6 +24,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets thinking for openrouter provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("openrouter");
       });
@@ -33,6 +35,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets thinking for lmstudio provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("lmstudio");
       });
@@ -43,6 +46,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets thinking for ollama provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("ollama");
       });
@@ -53,6 +57,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets thinking for custom provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("custom");
       });
@@ -65,6 +70,7 @@ describe("useSettings - provider-specific settings", () => {
   describe("setTemperature for all providers", () => {
     it("sets temperature for mistral provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("mistral");
       });
@@ -75,6 +81,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets temperature for openrouter provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("openrouter");
       });
@@ -85,6 +92,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets temperature for lmstudio provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("lmstudio");
       });
@@ -95,6 +103,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets temperature for ollama provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("ollama");
       });
@@ -105,6 +114,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets temperature for custom provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("custom");
       });
@@ -117,6 +127,7 @@ describe("useSettings - provider-specific settings", () => {
   describe("setBaseUrl", () => {
     it("sets baseUrl for custom provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("custom");
       });
@@ -127,6 +138,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("setBaseUrl is undefined for non-custom providers", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("openai");
       });
@@ -136,6 +148,7 @@ describe("useSettings - provider-specific settings", () => {
   describe("setPort", () => {
     it("sets port for lmstudio provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("lmstudio");
       });
@@ -146,6 +159,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("sets port for ollama provider", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("ollama");
       });
@@ -156,6 +170,7 @@ describe("useSettings - provider-specific settings", () => {
     });
     it("setPort is undefined for non-port-based providers", async () => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => {
         result.current.setProvider("openai");
       });
@@ -173,6 +188,7 @@ describe("useSettings - provider-specific settings", () => {
       "sets apiKey and model for %s",
       async (provider, apiKey, model) => {
         const { result } = renderHook(() => useSettings());
+
         await act(() => {
           result.current.setProvider(provider);
         });

@@ -34,12 +34,14 @@ import {
 describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls", () => {
     const result = formatGeminiMessages(history);
+
     expect(stripTimestamps(result)).toStrictEqual(expected);
     expectValidTimestamps(result);
   });
 
   it("merges non-thought text with thoughtSignatures", () => {
     const result = formatGeminiMessages(historyNonThoughtTextWithSignature);
+
     expect(stripTimestamps(result)).toStrictEqual(
       expectedNonThoughtTextWithSignature,
     );
@@ -48,30 +50,35 @@ describe("formatGeminiMessages", () => {
 
   it("handles history ending with a thought", () => {
     const result = formatGeminiMessages(historyEndingInThought);
+
     expect(stripTimestamps(result)).toStrictEqual(expectedEndingInThought);
     expectValidTimestamps(result);
   });
 
   it("handles tool call errors", () => {
     const result = formatGeminiMessages(historyWithToolError);
+
     expect(stripTimestamps(result)).toStrictEqual(expectedWithToolError);
     expectValidTimestamps(result);
   });
 
   it("merges error into existing model message", () => {
     const result = formatGeminiMessages(historyWithError);
+
     expect(stripTimestamps(result)).toStrictEqual(expectedWithError);
     expectValidTimestamps(result);
   });
 
   it("creates new model message for error when no preceding model exists", () => {
     const result = formatGeminiMessages(historyWithErrorNoModel);
+
     expect(stripTimestamps(result)).toStrictEqual(expectedWithErrorNoModel);
     expectValidTimestamps(result);
   });
 
   it("handles parallel tool calls", () => {
     const result = formatGeminiMessages(parallelToolCallHistory);
+
     expect(stripTimestamps(result)).toStrictEqual(expectedParallelToolCalls);
     expectValidTimestamps(result);
   });

@@ -25,6 +25,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -33,14 +34,17 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -53,6 +57,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -60,17 +65,21 @@ describe("duplicate - arrangementLength functionality", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] }); // Empty notes for testing
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -116,6 +125,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -123,13 +133,16 @@ describe("duplicate - arrangementLength functionality", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] }); // Empty notes for testing
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (
         this._path.startsWith("id live_set tracks") &&
@@ -137,6 +150,7 @@ describe("duplicate - arrangementLength functionality", () => {
       ) {
         return this._path.slice(3);
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -144,6 +158,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set/tracks/0/clip_slots/0/clip";
       }
+
       return this._id;
     });
 
@@ -201,6 +216,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -208,10 +224,12 @@ describe("duplicate - arrangementLength functionality", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (
         this._path.startsWith("id live_set tracks") &&
@@ -219,6 +237,7 @@ describe("duplicate - arrangementLength functionality", () => {
       ) {
         return this._path.slice(3);
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -226,6 +245,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set/tracks/0/clip_slots/0/clip";
       }
+
       return this._id;
     });
 
@@ -278,6 +298,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -285,28 +306,36 @@ describe("duplicate - arrangementLength functionality", () => {
       if (method === "create_midi_clip") {
         // Track which track this is called on
         let trackIndex = "0";
+
         if (this.path) {
           const trackMatch = this.path.match(/live_set tracks (\d+)/);
+
           if (trackMatch) {
             trackIndex = trackMatch[1];
           }
         }
+
         return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
       }
+
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] });
       }
+
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -356,31 +385,39 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
     liveApiCall.mockImplementation(function (method) {
       if (method === "create_midi_clip") {
         let trackIndex = "0";
+
         if (this.path) {
           const trackMatch = this.path.match(/live_set tracks (\d+)/);
+
           if (trackMatch) {
             trackIndex = trackMatch[1];
           }
         }
+
         return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
       }
+
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] });
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -429,6 +466,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -458,6 +496,7 @@ describe("duplicate - arrangementLength functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -465,14 +504,17 @@ describe("duplicate - arrangementLength functionality", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 

@@ -58,6 +58,7 @@ describe("v8-max-console", () => {
 
     it("logs Maps", () => {
       const map = new Map();
+
       map.set("key1", "value1");
       map.set("key2", "value2");
       log(map);
@@ -78,6 +79,7 @@ describe("v8-max-console", () => {
         }
       }
       const instance = new CustomClass();
+
       log(instance);
       expect(consoleLogSpy).toHaveBeenCalledWith('CustomClass{"prop":"value"}');
     });

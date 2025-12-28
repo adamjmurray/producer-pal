@@ -21,6 +21,7 @@ describe("defineTool", () => {
 
     // Create and register the tool
     const toolRegistrar = defineTool(toolName, toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi);
 
     // Verify tool was registered
@@ -73,6 +74,7 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi);
 
     const toolHandler = mockServer.registerTool.mock.calls[0][2];
@@ -104,10 +106,12 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     // Verify tool was registered with filtered schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
     expect(Object.keys(registeredConfig.inputSchema)).toEqual([
       "keepParam",
       "alsoKeep",
@@ -139,10 +143,12 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
 
     // Verify tool was registered with full schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
     expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
   });
 
@@ -164,6 +170,7 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     const toolHandler = mockServer.registerTool.mock.calls[0][2];
@@ -173,6 +180,7 @@ describe("defineTool", () => {
       allowedParam: "valid",
       filteredParam: 123, // This should be stripped by Zod
     };
+
     await toolHandler(args);
 
     // Verify callLiveApi was called WITHOUT the filtered parameter
@@ -201,10 +209,12 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     // Should use original schema even in small model mode
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
     expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
   });
 });

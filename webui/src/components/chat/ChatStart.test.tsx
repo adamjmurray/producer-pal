@@ -17,6 +17,7 @@ describe("ChatStart", () => {
       const mcpError = "";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="connected"
@@ -36,6 +37,7 @@ describe("ChatStart", () => {
       const mcpError = "";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="connected"
@@ -60,6 +62,7 @@ describe("ChatStart", () => {
         temperature: 0.5,
         showThoughts: false,
       };
+
       render(
         <ChatStart
           mcpStatus="connected"
@@ -71,6 +74,7 @@ describe("ChatStart", () => {
       );
 
       const button = screen.getByRole("button", { name: "Quick Connect" });
+
       fireEvent.click(button);
 
       expect(handleSend).toHaveBeenCalledExactlyOnceWith(
@@ -83,6 +87,7 @@ describe("ChatStart", () => {
       const mcpError = "Some error";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="connected"
@@ -103,6 +108,7 @@ describe("ChatStart", () => {
       const mcpError = "Connection failed";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="error"
@@ -120,6 +126,7 @@ describe("ChatStart", () => {
       const mcpError = "Connection failed due to network issue";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="error"
@@ -137,6 +144,7 @@ describe("ChatStart", () => {
       const mcpError = "Connection failed";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="error"
@@ -154,6 +162,7 @@ describe("ChatStart", () => {
       const mcpError = "Connection failed";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="error"
@@ -165,6 +174,7 @@ describe("ChatStart", () => {
       );
 
       const button = screen.getByRole("button", { name: "Retry" });
+
       fireEvent.click(button);
 
       expect(checkMcpConnection).toHaveBeenCalledOnce();
@@ -174,6 +184,7 @@ describe("ChatStart", () => {
       const mcpError = "Connection failed";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="error"
@@ -195,6 +206,7 @@ describe("ChatStart", () => {
       const mcpError = "";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+
       render(
         <ChatStart
           mcpStatus="connecting"

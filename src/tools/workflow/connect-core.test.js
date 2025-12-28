@@ -41,6 +41,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.3";
       }
+
       return null;
     });
 
@@ -118,6 +119,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -178,6 +180,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -239,6 +242,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -294,6 +298,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -350,6 +355,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -397,6 +403,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -438,6 +445,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -479,6 +487,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 

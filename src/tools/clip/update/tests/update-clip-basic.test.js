@@ -52,8 +52,10 @@ describe("updateClip - Basic operations", () => {
         if (addedNotes.length === 0) {
           return JSON.stringify({ notes: existingNotes });
         }
+
         return JSON.stringify({ notes: addedNotes });
       }
+
       return {};
     });
 

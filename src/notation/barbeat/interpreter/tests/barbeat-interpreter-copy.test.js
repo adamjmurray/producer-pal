@@ -5,6 +5,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
   describe("bar copy", () => {
     it("copies a single bar to a different position", () => {
       const result = interpretNotation("C3 D3 E3 1|1 @2=1");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -60,6 +61,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("copies previous bar with @N= syntax", () => {
       const result = interpretNotation("C3 1|1 @2=");
+
       expect(result).toEqual([
         {
           pitch: 60,
@@ -81,6 +83,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("copies a range of bars", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 @5=1-2");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -122,6 +125,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("supports chained copies", () => {
       const result = interpretNotation("C3 1|1 @2= @3= @4=");
+
       expect(result).toEqual([
         {
           pitch: 60,
@@ -159,6 +163,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("overlays notes after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 |2");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -193,6 +198,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       // Without auto-clear: bar 2 gets C3 from bar 1, then D3 is added
       // bar 3 gets both C3 and D3 from bar 2
       const result = interpretNotation("C3 1|1 @2= D3 |2 @3=");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -242,6 +248,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("preserves note properties (velocity, duration, probability)", () => {
       const result = interpretNotation("v80 t0.5 p0.7 C3 1|1 @2=1");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -268,6 +275,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         timeSigNumerator: 3,
         timeSigDenominator: 4,
       });
+
       expect(result).toEqual([
         // Bar 1 (3/4 time)
         {
@@ -294,6 +302,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         timeSigNumerator: 6,
         timeSigDenominator: 8,
       });
+
       expect(result).toEqual([
         // Bar 1 (6/8 time = 3 quarter notes per bar)
         {
@@ -317,6 +326,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("handles multiple notes at different beats", () => {
       const result = interpretNotation("C3 1|1 D3 1|2 E3 1|3 @2=1");
+
       expect(result).toEqual([
         // Bar 1
         {
@@ -372,6 +382,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     });
     it("updates current time position after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 |2");
+
       // After @2=1, current time should be 2|1
       // So |2 should mean 2|2
       expect(result).toEqual([
@@ -452,6 +463,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       const bar17Notes = result.filter(
         (n) => n.start_time >= 64.0 && n.start_time < 68.0,
       );
+
       expect(bar17Notes).toHaveLength(0);
     });
 
@@ -525,6 +537,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       const bar4Notes = result.filter(
         (n) => n.start_time >= 9.0 && n.start_time < 12.0,
       );
+
       expect(bar4Notes).toHaveLength(0);
     });
   });

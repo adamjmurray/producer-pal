@@ -5,6 +5,7 @@ describe("buildInstructions", () => {
   it("includes basic instructions without project notes", () => {
     const context = {};
     const result = buildInstructions(context);
+
     expect(result).toContain("Summarize the Live Set");
     expect(result).toContain("Say the messagesForUser");
     expect(result).toContain("Ask what they'd like to create");
@@ -19,6 +20,7 @@ describe("buildInstructions", () => {
       },
     };
     const result = buildInstructions(context);
+
     expect(result).toContain("Summarize the Live Set");
     expect(result).toContain("Summarize the project notes");
     expect(result).not.toContain("update the project notes");
@@ -32,6 +34,7 @@ describe("buildInstructions", () => {
       },
     };
     const result = buildInstructions(context);
+
     expect(result).toContain("Summarize the project notes");
     expect(result).toContain("update the project notes");
   });
@@ -44,6 +47,7 @@ describe("buildInstructions", () => {
       },
     };
     const result = buildInstructions(context);
+
     expect(result).not.toContain("project notes");
   });
 
@@ -55,12 +59,14 @@ describe("buildInstructions", () => {
       },
     };
     const result = buildInstructions(context);
+
     expect(result).not.toContain("project notes");
   });
 
   it("formats output with bullet points", () => {
     const context = {};
     const result = buildInstructions(context);
+
     expect(result).toMatch(/\*/);
     expect(result.split("\n").length).toBeGreaterThan(1);
   });

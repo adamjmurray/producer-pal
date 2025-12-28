@@ -25,6 +25,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -33,14 +34,17 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -53,6 +57,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       if (this._id === "track2") {
         return "live_set tracks 1"; // Second "Synth" track (sourceTrackIndex)
       }
+
       return this._path;
     });
 
@@ -103,12 +108,15 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       if (this._path === "live_set tracks 0" || this._id === "id track0") {
         return "100";
       }
+
       if (this._path === "live_set tracks 1" || this._id === "id track2") {
         return "200";
       } // Our source track
+
       if (this._path === "live_set tracks 2" || this._id === "id track3") {
         return "300";
       }
+
       return this._id;
     });
 
@@ -132,6 +140,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -186,6 +195,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -247,6 +257,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -254,14 +265,17 @@ describe("duplicate - switchView functionality", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
+
       return null;
     });
 
     const originalPath = liveApiPath.getMockImplementation();
+
     liveApiPath.mockImplementation(function () {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return originalPath ? originalPath.call(this) : this._path;
     });
 
@@ -289,6 +303,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -320,6 +335,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -337,6 +353,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "scene1") {
         return "live_set scenes 0";
       }
+
       return this._path;
     });
 
@@ -354,6 +371,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -374,6 +392,7 @@ describe("duplicate - switchView functionality", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 

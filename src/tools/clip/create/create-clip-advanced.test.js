@@ -229,6 +229,7 @@ describe("createClip - advanced features", () => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }
+
         return null;
       });
 
@@ -236,6 +237,7 @@ describe("createClip - advanced features", () => {
         if (this._path === "id arrangement_clip") {
           return "arrangement_clip";
         }
+
         return this._id;
       });
 

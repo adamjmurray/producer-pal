@@ -12,6 +12,7 @@ import {
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       value: 42,
@@ -33,6 +34,7 @@ describe("setAllNonNull", () => {
 
   it("skips null values", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       nullValue: null,
@@ -48,6 +50,7 @@ describe("setAllNonNull", () => {
 
   it("skips undefined values", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       undefinedValue: undefined,
@@ -63,6 +66,7 @@ describe("setAllNonNull", () => {
 
   it("allows zero as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       zero: 0,
       negativeZero: -0,
@@ -76,6 +80,7 @@ describe("setAllNonNull", () => {
 
   it("allows false as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       flag: false,
     });
@@ -87,6 +92,7 @@ describe("setAllNonNull", () => {
 
   it("allows empty string as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "",
     });
@@ -116,6 +122,7 @@ describe("setAllNonNull", () => {
 
   it("handles empty properties object", () => {
     const target = { existing: "value" };
+
     setAllNonNull(target, {});
 
     expect(target).toEqual({
@@ -144,6 +151,7 @@ describe("setAllNonNull", () => {
 
   it("handles mixed null and non-null values", () => {
     const target = {};
+
     setAllNonNull(target, {
       a: "value",
       b: null,
@@ -296,6 +304,7 @@ describe("withoutNulls", () => {
 
   it("returns empty object for empty input", () => {
     const result = withoutNulls({});
+
     expect(result).toEqual({});
   });
 
@@ -363,56 +372,67 @@ describe("withoutNulls", () => {
 describe("parseCommaSeparatedIds", () => {
   it("parses simple comma-separated IDs", () => {
     const result = parseCommaSeparatedIds("1,2,3");
+
     expect(result).toEqual(["1", "2", "3"]);
   });
 
   it("trims whitespace around IDs", () => {
     const result = parseCommaSeparatedIds("1, 2 , 3");
+
     expect(result).toEqual(["1", "2", "3"]);
   });
 
   it("handles extra spaces and mixed formats", () => {
     const result = parseCommaSeparatedIds("  id1  ,  id2,id3  , id4  ");
+
     expect(result).toEqual(["id1", "id2", "id3", "id4"]);
   });
 
   it("filters out empty strings", () => {
     const result = parseCommaSeparatedIds("1,,2,,,3");
+
     expect(result).toEqual(["1", "2", "3"]);
   });
 
   it("filters out empty strings with spaces", () => {
     const result = parseCommaSeparatedIds("1, , 2,  , 3");
+
     expect(result).toEqual(["1", "2", "3"]);
   });
 
   it("handles single ID without commas", () => {
     const result = parseCommaSeparatedIds("single-id");
+
     expect(result).toEqual(["single-id"]);
   });
 
   it("handles single ID with trailing comma", () => {
     const result = parseCommaSeparatedIds("single-id,");
+
     expect(result).toEqual(["single-id"]);
   });
 
   it("handles complex ID formats", () => {
     const result = parseCommaSeparatedIds("track_1, scene-2, clip:3");
+
     expect(result).toEqual(["track_1", "scene-2", "clip:3"]);
   });
 
   it("handles numeric and string IDs mixed", () => {
     const result = parseCommaSeparatedIds("123, id_456, 789");
+
     expect(result).toEqual(["123", "id_456", "789"]);
   });
 
   it("returns empty array for empty input after filtering", () => {
     const result = parseCommaSeparatedIds(",,, , ,");
+
     expect(result).toEqual([]);
   });
 
   it("handles leading and trailing commas", () => {
     const result = parseCommaSeparatedIds(",1,2,3,");
+
     expect(result).toEqual(["1", "2", "3"]);
   });
 });
@@ -420,36 +440,43 @@ describe("parseCommaSeparatedIds", () => {
 describe("parseCommaSeparatedIndices", () => {
   it("parses simple comma-separated indices", () => {
     const result = parseCommaSeparatedIndices("0,1,2");
+
     expect(result).toEqual([0, 1, 2]);
   });
 
   it("trims whitespace around indices", () => {
     const result = parseCommaSeparatedIndices("0, 1 , 2");
+
     expect(result).toEqual([0, 1, 2]);
   });
 
   it("handles extra spaces", () => {
     const result = parseCommaSeparatedIndices("  0  ,  1,2  , 3  ");
+
     expect(result).toEqual([0, 1, 2, 3]);
   });
 
   it("filters out empty strings", () => {
     const result = parseCommaSeparatedIndices("0,,1,,,2");
+
     expect(result).toEqual([0, 1, 2]);
   });
 
   it("handles single index without commas", () => {
     const result = parseCommaSeparatedIndices("5");
+
     expect(result).toEqual([5]);
   });
 
   it("handles negative indices", () => {
     const result = parseCommaSeparatedIndices("-1, 0, 1");
+
     expect(result).toEqual([-1, 0, 1]);
   });
 
   it("handles large indices", () => {
     const result = parseCommaSeparatedIndices("100, 999, 1000");
+
     expect(result).toEqual([100, 999, 1000]);
   });
 
@@ -462,6 +489,7 @@ describe("parseCommaSeparatedIndices", () => {
   it("handles decimal numbers by truncating to integers", () => {
     // parseInt("1.5", 10) returns 1, so this is expected behavior
     const result = parseCommaSeparatedIndices("0, 1.5, 2");
+
     expect(result).toEqual([0, 1, 2]);
   });
 
@@ -473,11 +501,13 @@ describe("parseCommaSeparatedIndices", () => {
 
   it("returns empty array for empty input after filtering", () => {
     const result = parseCommaSeparatedIndices(",,, , ,");
+
     expect(result).toEqual([]);
   });
 
   it("handles leading and trailing commas", () => {
     const result = parseCommaSeparatedIndices(",0,1,2,");
+
     expect(result).toEqual([0, 1, 2]);
   });
 });

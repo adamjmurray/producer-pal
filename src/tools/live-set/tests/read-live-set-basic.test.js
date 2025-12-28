@@ -197,6 +197,7 @@ describe("readLiveSet - basic reading", () => {
             id: "track3",
             trackIndex: 2,
           });
+
           return track;
         })(),
       ],
@@ -234,6 +235,7 @@ describe("readLiveSet - basic reading", () => {
       if (this.path === "live_set") {
         return "live_set";
       }
+
       return "id 0"; // All selection objects return non-existent IDs
     });
 
@@ -287,12 +289,15 @@ describe("readLiveSet - basic reading", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 1") {
         return "track2";
       }
+
       return this._id;
     });
 
@@ -381,21 +386,27 @@ describe("readLiveSet - basic reading", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 0 devices 0") {
         return "drum_rack1";
       }
+
       if (this._path === "live_set tracks 0 devices 1") {
         return "reverb1";
       }
+
       if (this._path === "live_set tracks 0 devices 0 drum_pads 36") {
         return "kick_pad";
       }
+
       if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0") {
         return "kick_chain";
       }
+
       return this._id;
     });
 
@@ -482,6 +493,7 @@ describe("readLiveSet - basic reading", () => {
     ]);
     // Drum rack device should be present (drumPads hidden)
     const drumRack = result.tracks[0].instrument;
+
     expect(drumRack).toBeDefined();
     // drumPads hidden - drumMap provides the critical pitch-name mapping
     // expect(drumRack.drumPads).toBeDefined();

@@ -227,6 +227,7 @@ describe("openai-adapter", () => {
       const result = openaiAdapter.createErrorMessage(error, chatHistory);
 
       const lastPart = result[result.length - 1]?.parts[0];
+
       if (lastPart && "content" in lastPart) {
         expect(lastPart.content).toContain("String error");
       }

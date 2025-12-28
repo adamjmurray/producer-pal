@@ -10,6 +10,7 @@ describe("ThinkingSettings", () => {
     it("renders with correct selected thinking value", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -22,12 +23,14 @@ describe("ThinkingSettings", () => {
       );
 
       const select = screen.getByRole("combobox") as HTMLSelectElement;
+
       expect(select.value).toBe("Default");
     });
 
     it("displays all thinking options", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -51,6 +54,7 @@ describe("ThinkingSettings", () => {
     it("shows checkbox when thinking is not Off", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -63,6 +67,7 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox");
+
       expect(checkbox).toBeDefined();
       expect(screen.getByText("Show thinking process")).toBeDefined();
     });
@@ -70,6 +75,7 @@ describe("ThinkingSettings", () => {
     it("hides checkbox when thinking is Off", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -90,6 +96,7 @@ describe("ThinkingSettings", () => {
     it("renders all thinking options (unified with other providers)", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="openai"
@@ -114,6 +121,7 @@ describe("ThinkingSettings", () => {
     it("does not show checkbox for OpenAI provider", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="openai"
@@ -154,6 +162,7 @@ describe("ThinkingSettings", () => {
     it("renders all unified thinking options", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="openrouter"
@@ -178,6 +187,7 @@ describe("ThinkingSettings", () => {
     it("shows checkbox when thinking is not Off", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="openrouter"
@@ -190,6 +200,7 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox");
+
       expect(checkbox).toBeDefined();
       expect(screen.getByText("Show thinking process")).toBeDefined();
     });
@@ -197,6 +208,7 @@ describe("ThinkingSettings", () => {
     it("hides checkbox when thinking is Off", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="openrouter"
@@ -217,6 +229,7 @@ describe("ThinkingSettings", () => {
     it("triggers setThinking callback on select change", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -229,6 +242,7 @@ describe("ThinkingSettings", () => {
       );
 
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "High" } });
 
       expect(setThinking).toHaveBeenCalledExactlyOnceWith("High");
@@ -237,6 +251,7 @@ describe("ThinkingSettings", () => {
     it("checkbox reflects showThoughts prop", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -249,12 +264,14 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+
       expect(checkbox.checked).toBe(false);
     });
 
     it("checkbox is checked when showThoughts is true", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -267,12 +284,14 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+
       expect(checkbox.checked).toBe(true);
     });
 
     it("triggers setShowThoughts callback on checkbox change", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -285,6 +304,7 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox");
+
       fireEvent.click(checkbox);
 
       expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(true);
@@ -293,6 +313,7 @@ describe("ThinkingSettings", () => {
     it("calls setShowThoughts with false when unchecking", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
+
       render(
         <ThinkingSettings
           provider="gemini"
@@ -305,6 +326,7 @@ describe("ThinkingSettings", () => {
       );
 
       const checkbox = screen.getByRole("checkbox");
+
       fireEvent.click(checkbox);
 
       expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(false);

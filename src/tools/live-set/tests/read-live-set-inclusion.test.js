@@ -78,6 +78,7 @@ describe("readLiveSet - inclusion", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -230,6 +231,7 @@ describe("readLiveSet - inclusion", () => {
       if (this._path === "live_set") {
         return "live_set";
       }
+
       return "id 0";
     });
 

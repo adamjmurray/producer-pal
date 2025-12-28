@@ -21,6 +21,7 @@ describe("calculateEffectiveSettings", () => {
   describe("no overrides", () => {
     it("returns config values when overrides is undefined", () => {
       const result = calculateEffectiveSettings(undefined, gpt5Config);
+
       expect(result.temperature).toBe(0.7);
       expect(result.reasoningEffort).toBe("medium");
       expect(result.excludeReasoning).toBe(false);
@@ -33,11 +34,13 @@ describe("calculateEffectiveSettings", () => {
         { temperature: 1.2 },
         gpt5Config,
       );
+
       expect(result.temperature).toBe(1.2);
     });
 
     it("uses config temperature when override is undefined", () => {
       const result = calculateEffectiveSettings({}, gpt5Config);
+
       expect(result.temperature).toBe(0.7);
     });
   });
@@ -48,6 +51,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Off" },
         gpt5Config,
       );
+
       expect(result.reasoningEffort).toBe("none");
     });
 
@@ -56,6 +60,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Low" },
         gpt5Config,
       );
+
       expect(result.reasoningEffort).toBe("low");
     });
 
@@ -64,6 +69,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Ultra" },
         gpt5Config,
       );
+
       expect(result.reasoningEffort).toBe("xhigh");
     });
   });
@@ -71,6 +77,7 @@ describe("calculateEffectiveSettings", () => {
   describe("thinking overrides for o1/o3 models", () => {
     it("maps Off to low for o1 (minimum supported)", () => {
       const result = calculateEffectiveSettings({ thinking: "Off" }, o1Config);
+
       expect(result.reasoningEffort).toBe("low");
     });
 
@@ -79,6 +86,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Ultra" },
         o1Config,
       );
+
       expect(result.reasoningEffort).toBe("high");
     });
   });
@@ -94,6 +102,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Off" },
         openRouterConfig,
       );
+
       expect(result.reasoningEffort).toBe("none");
       expect(result.excludeReasoning).toBe(true);
     });
@@ -103,6 +112,7 @@ describe("calculateEffectiveSettings", () => {
         { thinking: "Low" },
         openRouterConfig,
       );
+
       expect(result.reasoningEffort).toBe("low");
       expect(result.excludeReasoning).toBe(false);
     });

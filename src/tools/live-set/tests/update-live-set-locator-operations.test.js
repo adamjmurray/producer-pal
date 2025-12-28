@@ -24,11 +24,14 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "song_length") return [1000]; // Large value so no extension needed
+
         // Return empty before creation, return locator after
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }
+
         if (prop === "time") return [0]; // 1|1 = 0 beats
+
         return [0];
       });
 
@@ -65,10 +68,13 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "song_length") return [1000]; // Large value so no extension needed
+
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }
+
         if (prop === "time") return [16]; // 5|1 = 16 beats
+
         return [0];
       });
 
@@ -113,10 +119,13 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [1];
         if (prop === "song_length") return [1000]; // Large value so no extension needed
+
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }
+
         if (prop === "time") return [0];
+
         return [0];
       });
 
@@ -142,6 +151,7 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "cue_points") return children("existing_cue");
         if (prop === "time") return [16]; // 5|1 = 16 beats
         if (prop === "name") return ["Existing"];
+
         return [0];
       });
 
@@ -177,14 +187,17 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("cue1", "cue2");
+
         if (this._path === "id cue1") {
           if (prop === "time") return [0];
           if (prop === "name") return ["Intro"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Verse"];
         }
+
         return [0];
       });
     });
@@ -231,18 +244,22 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("cue1", "cue2", "cue3");
+
         if (this._path === "id cue1") {
           if (prop === "time") return [0];
           if (prop === "name") return ["Verse"];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [16];
           if (prop === "name") return ["Chorus"];
         }
+
         if (this._path === "id cue3") {
           if (prop === "time") return [32];
           if (prop === "name") return ["Verse"];
         }
+
         return [0];
       });
 
@@ -319,12 +336,15 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("cue1", "cue2");
+
         if (this._path === "id cue1") {
           if (prop === "time") return [0];
         }
+
         if (this._path === "id cue2") {
           if (prop === "time") return [16];
         }
+
         return [0];
       });
     });
@@ -396,10 +416,13 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
+
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }
+
         if (prop === "time") return [0];
+
         return [0];
       });
 

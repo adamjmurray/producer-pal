@@ -6,6 +6,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     describe("multi-bar source range tiling", () => {
       it("tiles 2-bar pattern evenly across 8 bars (@3-10=1-2)", () => {
         const result = interpretNotation("C3 1|1 D3 2|1 @3-10=1-2");
+
         // Should have: bar 1 (C3), bar 2 (D3), bars 3-10 (4 complete tiles of C3+D3)
         expect(result).toHaveLength(10); // 1 + 1 + 8 = 10 notes
 
@@ -58,6 +59,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("tiles 2-bar pattern unevenly across 7 bars (@3-9=1-2)", () => {
         const result = interpretNotation("C3 1|1 D3 2|1 @3-9=1-2");
+
         // Should have: bar 1 (C3), bar 2 (D3), bars 3-9 (3 complete tiles + 1 partial = 7 notes)
         expect(result).toHaveLength(9); // 1 + 1 + 7 = 9 notes
 
@@ -76,6 +78,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const result = interpretNotation(
           "C3 1|1 D3 2|1 E3 3|1 F3 4|1 G3 5|1 @6-7=1-5",
         );
+
         // Should have: bars 1-5 (original), bars 6-7 (only C3 and D3 from the 5-bar source)
         expect(result).toHaveLength(7); // 5 + 2 = 7 notes
 
@@ -101,6 +104,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("skips overlapping source bars in destination (@3-10=5-6)", () => {
         const result = interpretNotation("C3 5|1 D3 6|1 @3-10=5-6");
+
         // Should have: bar 5 (C3), bar 6 (D3), bars 3,4,7,8,9,10 (tiles, skipping 5,6)
         expect(result).toHaveLength(8); // 2 original + 6 copied
 
@@ -108,6 +112,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const startTimes = result
           .map((note) => note.start_time)
           .sort((a, b) => a - b);
+
         expect(startTimes).toEqual([
           8, // bar 3
           12, // bar 4
@@ -151,6 +156,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("skips overlapping source bars at beginning of destination (@1-10=3-4)", () => {
         const result = interpretNotation("C3 3|1 D3 4|1 @1-10=3-4");
+
         // Should have: bar 3 (C3), bar 4 (D3), bars 1,2,5,6,7,8,9,10 (tiles, skipping 3,4)
         expect(result).toHaveLength(10); // 2 original + 8 copied
 
@@ -158,6 +164,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const startTimes = result
           .map((note) => note.start_time)
           .sort((a, b) => a - b);
+
         expect(startTimes).toEqual([
           0, // bar 1
           4, // bar 2
@@ -196,6 +203,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const result = interpretNotation(
           "v80 t0.5 p0.8 C3 1|1 v90 t0.25 p0.9 D3 2|1 @3-6=1-2",
         );
+
         // Bar 3 should have C3 with original properties
         expect(result[2]).toEqual({
           pitch: 60,
@@ -221,6 +229,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           timeSigNumerator: 6,
           timeSigDenominator: 8,
         });
+
         // 6/8 bar = 3.0 Ableton beats
         expect(result).toHaveLength(4);
         // Bar 3: C3 at 6.0 beats
@@ -378,6 +387,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           .spyOn(console, "error")
           .mockImplementation(() => {});
         const result = interpretNotation("C3 1|1 @1=1");
+
         expect(consoleErrorSpy).toHaveBeenCalledWith(
           expect.stringContaining("Cannot copy bar 1 to itself"),
         );
@@ -399,6 +409,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const consoleErrorSpy = vi
           .spyOn(console, "error")
           .mockImplementation(() => {});
+
         interpretNotation("C3 1|1 @5=1-3");
         expect(consoleErrorSpy).toHaveBeenCalledWith(
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
@@ -414,6 +425,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           .spyOn(console, "error")
           .mockImplementation(() => {});
         const result = interpretNotation("C3 1|1 D3 2|1 @1-5=2");
+
         expect(consoleErrorSpy).toHaveBeenCalledWith(
           expect.stringContaining("Skipping copy of bar 2 to itself"),
         );
@@ -481,6 +493,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("buffer persists across non-copy operations", () => {
         // Without auto-clear, bar 1 persists after E3 is added
         const result = interpretNotation("C3 1|1 @2= E3 4|1 @5=1");
+
         expect(result).toEqual([
           // Bar 1
           {
@@ -528,6 +541,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const consoleErrorSpy = vi
           .spyOn(console, "error")
           .mockImplementation(() => {});
+
         interpretNotation("C3 1|1 @clear E3 2|1 @3=1");
         // Should warn that bar 1 is empty (cleared by @clear)
         expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -559,6 +573,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("@clear allows copying later bars", () => {
         const result = interpretNotation("C3 1|1 @2= @clear E3 4|1 @5=4");
+
         expect(result).toEqual([
           // Bar 1
           {

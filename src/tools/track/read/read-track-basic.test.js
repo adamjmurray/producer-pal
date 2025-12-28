@@ -154,6 +154,7 @@ describe("readTrack", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       return this._path;
     });
 
@@ -163,10 +164,12 @@ describe("readTrack", () => {
     });
 
     const result = readTrack({ trackIndex: 1 });
+
     expect(result.hasProducerPalDevice).toBe(true);
     expect(result.producerPalVersion).toBe(VERSION);
 
     const result2 = readTrack({ trackIndex: 0 });
+
     expect(result2.hasProducerPalDevice).toBeUndefined();
     expect(result2.producerPalVersion).toBeUndefined();
   });
@@ -176,6 +179,7 @@ describe("readTrack", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       return this._path;
     });
 
@@ -188,11 +192,13 @@ describe("readTrack", () => {
 
     // Producer Pal host track with null instrument - should omit the property
     const hostResult = readTrack({ trackIndex: 1 });
+
     expect(hostResult.hasProducerPalDevice).toBe(true);
     expect(hostResult).not.toHaveProperty("instrument");
 
     // Regular track with null instrument - should include the property
     const regularResult = readTrack({ trackIndex: 0 });
+
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
     expect(regularResult).toHaveProperty("instrument");
     expect(regularResult.instrument).toBe(null);

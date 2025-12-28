@@ -16,6 +16,7 @@ describe("updateTrack - send properties", () => {
       if (this._path?.startsWith("id ")) {
         return this._path.slice(3);
       }
+
       switch (this._path) {
         case "id 123":
           return "123";

@@ -50,6 +50,7 @@ describe("update-live-set-helpers", () => {
         from: vi.fn().mockImplementation((id) => {
           if (id === "track-1") return mockMidiTrack;
           if (id === "id 999") return mockTempClip;
+
           return null;
         }),
       };
@@ -91,6 +92,7 @@ describe("update-live-set-helpers", () => {
         from: vi.fn().mockImplementation((id) => {
           if (id === "track-1") return mockAudioTrack;
           if (id === "id 888") return mockArrangementClip;
+
           return null;
         }),
       };
@@ -156,6 +158,7 @@ describe("update-live-set-helpers", () => {
           if (id === "audio-track") return mockAudioTrack;
           if (id === "midi-track") return mockMidiTrack;
           if (id === "id 999") return mockTempClip;
+
           return null;
         }),
       };
@@ -232,21 +235,25 @@ describe("update-live-set-helpers", () => {
   describe("parseScale", () => {
     it("should parse valid scale string", () => {
       const result = parseScale("C Major");
+
       expect(result).toEqual({ scaleRoot: "C", scaleName: "Major" });
     });
 
     it("should handle case-insensitive root notes", () => {
       const result = parseScale("f# minor");
+
       expect(result).toEqual({ scaleRoot: "F#", scaleName: "Minor" });
     });
 
     it("should handle Bb (flat notation)", () => {
       const result = parseScale("Bb Dorian");
+
       expect(result).toEqual({ scaleRoot: "Bb", scaleName: "Dorian" });
     });
 
     it("should handle extra whitespace", () => {
       const result = parseScale("  D   Mixolydian  ");
+
       expect(result).toEqual({ scaleRoot: "D", scaleName: "Mixolydian" });
     });
 

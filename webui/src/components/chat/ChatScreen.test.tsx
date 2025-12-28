@@ -41,6 +41,7 @@ describe("ChatScreen", () => {
     it("renders container with correct classes", () => {
       render(<ChatScreen {...defaultProps} />);
       const container = document.querySelector(".flex.flex-col.h-screen");
+
       expect(container).toBeDefined();
     });
 
@@ -48,6 +49,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} />);
       // ChatHeader renders a header element
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
     });
 
@@ -55,6 +57,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} />);
       // ChatInput renders a textarea
       const textarea = document.querySelector("textarea");
+
       expect(textarea).toBeDefined();
     });
   });
@@ -64,6 +67,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} messages={[]} />);
       // ChatStart renders its welcome content
       const chatStart = document.querySelector(".flex.flex-col.items-center");
+
       expect(chatStart).toBeDefined();
     });
 
@@ -76,9 +80,11 @@ describe("ChatScreen", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(<ChatScreen {...defaultProps} messages={messages} />);
       // MessageList renders messages with specific structure
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
     });
 
@@ -96,6 +102,7 @@ describe("ChatScreen", () => {
       );
       // Verify we have a message container but no welcome screen
       const messageContainer = container.querySelector(".space-y-4");
+
       expect(messageContainer).toBeDefined();
     });
   });
@@ -119,6 +126,7 @@ describe("ChatScreen", () => {
       );
       // ChatHeader displays model info when present
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
       // Model name should be in the header
       expect(header!.textContent).toContain("test-model");
@@ -133,6 +141,7 @@ describe("ChatScreen", () => {
         />,
       );
       const chatStart = document.querySelector(".flex.flex-col.items-center");
+
       expect(chatStart).toBeDefined();
     });
 
@@ -151,8 +160,10 @@ describe("ChatScreen", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(<ChatScreen {...defaultProps} messages={messages} />);
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
       // Messages are rendered (plus scroll anchor div at the end)
       expect(messageList!.children.length).toBeGreaterThanOrEqual(2);
@@ -167,6 +178,7 @@ describe("ChatScreen", () => {
           timestamp: Date.now(),
         },
       ];
+
       render(
         <ChatScreen
           {...defaultProps}
@@ -175,6 +187,7 @@ describe("ChatScreen", () => {
         />,
       );
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
     });
 
@@ -184,6 +197,7 @@ describe("ChatScreen", () => {
       const sendButton = Array.from(document.querySelectorAll("button")).find(
         (btn) => btn.textContent === "...",
       );
+
       expect(sendButton).toBeDefined();
       expect(sendButton!.disabled).toBe(true);
     });

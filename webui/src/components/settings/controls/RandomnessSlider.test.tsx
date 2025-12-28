@@ -8,16 +8,19 @@ import { RandomnessSlider } from "./RandomnessSlider";
 describe("RandomnessSlider", () => {
   it("renders with correct temperature value", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={1.0} setTemperature={setTemperature} />,
     );
 
     const slider = screen.getByRole("slider") as HTMLInputElement;
+
     expect(slider.value).toBe("1");
   });
 
   it("displays correct percentage calculation", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={1.0} setTemperature={setTemperature} />,
     );
@@ -28,6 +31,7 @@ describe("RandomnessSlider", () => {
 
   it("displays 0% for temperature 0", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={0} setTemperature={setTemperature} />,
     );
@@ -37,6 +41,7 @@ describe("RandomnessSlider", () => {
 
   it("displays 100% for temperature 2", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={2.0} setTemperature={setTemperature} />,
     );
@@ -46,11 +51,13 @@ describe("RandomnessSlider", () => {
 
   it("triggers setTemperature callback on slider input", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={1.0} setTemperature={setTemperature} />,
     );
 
     const slider = screen.getByRole("slider");
+
     fireEvent.input(slider, { target: { value: "1.5" } });
 
     expect(setTemperature).toHaveBeenCalledExactlyOnceWith(1.5);
@@ -58,11 +65,13 @@ describe("RandomnessSlider", () => {
 
   it("parses float values from slider input", () => {
     const setTemperature = vi.fn();
+
     render(
       <RandomnessSlider temperature={0.5} setTemperature={setTemperature} />,
     );
 
     const slider = screen.getByRole("slider");
+
     fireEvent.input(slider, { target: { value: "0.7" } });
 
     expect(setTemperature).toHaveBeenCalledWith(0.7);

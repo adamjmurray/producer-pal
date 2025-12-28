@@ -4,6 +4,7 @@ import { interpretNotation } from "../barbeat-interpreter.js";
 describe("bar|beat interpretNotation() - time signatures", () => {
   it("supports different time signatures via the beatsPerBar option (legacy)", () => {
     const result = interpretNotation("C3 1|1 D3 2|1", { beatsPerBar: 3 });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -28,6 +29,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -52,6 +54,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigNumerator: 2,
       timeSigDenominator: 2,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -77,6 +80,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,
@@ -101,6 +105,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
+
     expect(result).toEqual([
       {
         pitch: 60,

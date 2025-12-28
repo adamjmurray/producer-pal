@@ -40,6 +40,7 @@ describe("gemini-client-helpers", () => {
       const result = buildErrorResponse(error, "testTool") as {
         functionResponse: { response: { error: string } };
       };
+
       expect(result.functionResponse.response.error).toBe("test error");
     });
 
@@ -47,6 +48,7 @@ describe("gemini-client-helpers", () => {
       const result = buildErrorResponse("string error", "testTool") as {
         functionResponse: { response: { error: string } };
       };
+
       expect(result.functionResponse.response.error).toBe("string error");
     });
   });
@@ -57,6 +59,7 @@ describe("gemini-client-helpers", () => {
         { functionCall: { name: "test" } },
         null,
       )) as { functionResponse: { response: { error: string } } };
+
       expect(result.functionResponse.response.error).toBe(
         "MCP client not initialized",
       );
@@ -73,6 +76,7 @@ describe("gemini-client-helpers", () => {
       )) as {
         functionResponse: { response: { content: string } };
       };
+
       expect(result.functionResponse.response.content).toBe("success");
     });
 
@@ -85,6 +89,7 @@ describe("gemini-client-helpers", () => {
         { functionCall: { name: "test" } },
         mockClient,
       )) as { functionResponse: { response: { error: unknown } } };
+
       expect(result.functionResponse.response.error).toEqual({
         isError: true,
         message: "fail",
@@ -100,6 +105,7 @@ describe("gemini-client-helpers", () => {
         { functionCall: { name: "test" } },
         mockClient,
       )) as { functionResponse: { response: { error: string } } };
+
       expect(result.functionResponse.response.error).toBe("call failed");
     });
   });
@@ -107,6 +113,7 @@ describe("gemini-client-helpers", () => {
   describe("executeToolCalls", () => {
     it("returns empty array when lastMessage is undefined", async () => {
       const result = await executeToolCalls(undefined, null);
+
       expect(result).toEqual([]);
     });
 
@@ -116,6 +123,7 @@ describe("gemini-client-helpers", () => {
         parts: [{ text: "hello" }],
       };
       const result = await executeToolCalls(message, null);
+
       expect(result).toEqual([]);
     });
   });
@@ -184,6 +192,7 @@ describe("gemini-client-helpers", () => {
   describe("addOrMergePartToTurn", () => {
     it("pushes part when cannot merge", () => {
       const turn = { role: "model" as const, parts: [] as Part[] };
+
       addOrMergePartToTurn(turn, { text: "hello" } as Part);
       expect(turn.parts).toHaveLength(1);
     });
@@ -193,6 +202,7 @@ describe("gemini-client-helpers", () => {
         role: "model" as const,
         parts: [{ text: "hello" }] as Part[],
       };
+
       addOrMergePartToTurn(turn, { text: " world" } as Part);
       expect(turn.parts).toHaveLength(1);
       expect((turn.parts[0] as { text: string }).text).toBe("hello world");

@@ -12,9 +12,11 @@ describe("readLiveSet - routing", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       return this._id;
     });
 
@@ -86,9 +88,11 @@ describe("readLiveSet - routing", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       return this._id;
     });
 

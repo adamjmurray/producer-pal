@@ -11,6 +11,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -35,6 +36,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -63,6 +65,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -71,8 +74,10 @@ describe("readDevice param-values include option", () => {
         // min=0, max=1 return same label format
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
+
         return "-6 dB";
       }
+
       return [];
     });
 
@@ -101,6 +106,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -125,6 +131,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -151,6 +158,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -172,6 +180,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -196,6 +205,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -224,11 +234,13 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
     liveApiCall.mockImplementation(function (method) {
       if (method === "str_for_value") return "50";
+
       return [];
     });
 
@@ -244,6 +256,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -268,6 +281,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -296,6 +310,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -304,6 +319,7 @@ describe("readDevice param-values include option", () => {
         // Unitless numeric labels
         return String(value);
       }
+
       return [];
     });
 
@@ -322,6 +338,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -346,6 +363,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -372,6 +390,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -391,6 +410,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -415,6 +435,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -443,6 +464,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -450,8 +472,10 @@ describe("readDevice param-values include option", () => {
       if (method === "str_for_value") {
         if (value === 0) return "20 Hz";
         if (value === 1) return "20.0 kHz";
+
         return "1.00 kHz";
       }
+
       return [];
     });
 
@@ -474,6 +498,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -498,6 +523,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -526,6 +552,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -533,8 +560,10 @@ describe("readDevice param-values include option", () => {
       if (this._path === "id param-1" && method === "str_for_value") {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
+
         return "-6 dB";
       }
+
       return [];
     });
 
@@ -550,6 +579,7 @@ describe("readDevice param-values include option", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -574,6 +604,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -602,6 +633,7 @@ describe("readDevice param-values include option", () => {
             return [];
         }
       }
+
       return [];
     });
 
@@ -609,8 +641,10 @@ describe("readDevice param-values include option", () => {
       if (this._path === "id param-1" && method === "str_for_value") {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
+
         return "-6 dB";
       }
+
       return [];
     });
 
@@ -632,6 +666,7 @@ describe("readDevice params include option (lightweight)", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -656,6 +691,7 @@ describe("readDevice params include option (lightweight)", () => {
             return [];
         }
       }
+
       if (this._path === "id param-1") {
         switch (prop) {
           case "name":
@@ -666,6 +702,7 @@ describe("readDevice params include option (lightweight)", () => {
             return [];
         }
       }
+
       return [];
     });
 

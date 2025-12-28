@@ -29,6 +29,7 @@ describe("MessageSettingsToolbar", () => {
   it("renders collapsed by default", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const toolbar = container.querySelector(".w-full.px-4.py-2");
+
     expect(toolbar).toBeDefined();
     expect(toolbar?.textContent).toContain("▶");
   });
@@ -36,6 +37,7 @@ describe("MessageSettingsToolbar", () => {
   it("expands when clicked", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
     expect(container.textContent).toContain("▼");
   });
@@ -44,6 +46,7 @@ describe("MessageSettingsToolbar", () => {
     const { container } = render(
       <MessageSettingsToolbar {...defaultProps} thinking="High" />,
     );
+
     expect(container.textContent).toContain("(customized)");
   });
 
@@ -52,9 +55,11 @@ describe("MessageSettingsToolbar", () => {
       <MessageSettingsToolbar {...defaultProps} provider="openai" model="o1" />,
     );
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const select = container.querySelector("select");
+
     expect(select?.innerHTML).not.toContain("Off");
     expect(select?.innerHTML).not.toContain("Ultra");
     expect(select?.innerHTML).not.toContain("Default");
@@ -63,9 +68,11 @@ describe("MessageSettingsToolbar", () => {
   it("shows all thinking options for Gemini", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const select = container.querySelector("select");
+
     expect(select?.innerHTML).toContain("Default");
     expect(select?.innerHTML).toContain("Off");
     expect(select?.innerHTML).toContain("Ultra");
@@ -74,9 +81,11 @@ describe("MessageSettingsToolbar", () => {
   it("calls onThinkingChange when thinking changes", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const select = container.querySelector("select");
+
     fireEvent.change(select!, { target: { value: "High" } });
     expect(mockOnThinkingChange).toHaveBeenCalledWith("High");
   });
@@ -84,9 +93,11 @@ describe("MessageSettingsToolbar", () => {
   it("calls onTemperatureChange when slider changes", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const slider = container.querySelector('input[type="range"]');
+
     fireEvent.input(slider!, { target: { value: "1.5" } });
     expect(mockOnTemperatureChange).toHaveBeenCalledWith(1.5);
   });
@@ -96,11 +107,13 @@ describe("MessageSettingsToolbar", () => {
       <MessageSettingsToolbar {...defaultProps} thinking="High" />,
     );
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Use defaults"),
     );
+
     fireEvent.click(resetButton!);
     expect(mockOnResetToDefaults).toHaveBeenCalled();
   });
@@ -108,11 +121,13 @@ describe("MessageSettingsToolbar", () => {
   it("disables reset button when using defaults", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Use defaults"),
     );
+
     expect(resetButton?.disabled).toBe(true);
   });
 
@@ -120,12 +135,14 @@ describe("MessageSettingsToolbar", () => {
     const { container } = render(
       <MessageSettingsToolbar {...defaultProps} temperature={1.5} />,
     );
+
     expect(container.textContent).toContain("(customized)");
   });
 
   it("collapses when clicked again", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
     expect(container.textContent).toContain("▼");
     fireEvent.click(button!);
@@ -141,9 +158,11 @@ describe("MessageSettingsToolbar", () => {
       />,
     );
     const button = container.querySelector("button");
+
     fireEvent.click(button!);
 
     const select = container.querySelector("select");
+
     expect(select?.innerHTML).not.toContain("Off");
     expect(select?.innerHTML).not.toContain("Ultra");
   });

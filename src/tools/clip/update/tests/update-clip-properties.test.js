@@ -218,9 +218,11 @@ describe("updateClip - Properties and ID handling", () => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
+
         if (prop === "is_arrangement_clip") return [0];
         if (prop === "is_midi_clip") return [1];
         if (prop === "is_audio_clip") return [0];
+
         return null;
       });
 
@@ -252,9 +254,11 @@ describe("updateClip - Properties and ID handling", () => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
+
         if (prop === "is_arrangement_clip") return [0];
         if (prop === "is_midi_clip") return [1];
         if (prop === "is_audio_clip") return [0];
+
         return null;
       });
 

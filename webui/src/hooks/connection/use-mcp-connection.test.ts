@@ -44,6 +44,7 @@ describe("useMcpConnection", () => {
 
   it("sets status to error on connection failure", async () => {
     const errorMessage = "Connection failed";
+
     mockTestConnection.mockRejectedValue(new Error(errorMessage));
     const { result } = renderHook(() => useMcpConnection());
 

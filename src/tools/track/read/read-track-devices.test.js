@@ -23,6 +23,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.instrument).toBeNull();
       expect(result.midiEffects).toBeUndefined();
       expect(result.audioEffects).toBeUndefined();
@@ -33,6 +34,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -110,6 +112,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -130,6 +133,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.instrument).toEqual({
         id: "device1",
         name: "My Drums",
@@ -143,6 +147,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({

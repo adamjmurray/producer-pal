@@ -76,6 +76,7 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       return [];
     });
 
@@ -119,9 +120,11 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "drum_pads") {
         return [];
       }
+
       if (method === "getChildren" && args[0] === "return_chains") {
         return [];
       }
+
       return [];
     });
 
@@ -167,9 +170,11 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       if (method === "getChildren" && args[0] === "return_chains") {
         return [];
       }
+
       return [];
     });
 
@@ -278,6 +283,7 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       return [];
     });
 
@@ -326,6 +332,7 @@ describe("readDevice", () => {
       // Return valid IDs for both device and view
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id device-123 view") return "view-123";
+
       return "0";
     });
     liveApiGet.mockImplementation(function (prop) {
@@ -333,6 +340,7 @@ describe("readDevice", () => {
       if (this._path === "id device-123 view" && prop === "is_collapsed") {
         return [1]; // collapsed
       }
+
       // Handle device properties
       switch (prop) {
         case "name":
@@ -365,12 +373,14 @@ describe("readDevice", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id device-123 view") return "view-123";
+
       return "0";
     });
     liveApiGet.mockImplementation(function (prop) {
       if (this._path === "id device-123 view" && prop === "is_collapsed") {
         return [0]; // not collapsed
       }
+
       switch (prop) {
         case "name":
           return ["Operator"];
@@ -410,14 +420,17 @@ describe("readDevice", () => {
       liveApiId.mockImplementation(function () {
         // Return different IDs based on path
         if (this._path === "id sample-obj") return "sample-obj";
+
         return "device-123";
       });
       liveApiGet.mockImplementation(function (prop) {
         // Sample object returns file_path
         if (this._path === "id sample-obj") {
           if (prop === "file_path") return ["/path/to/sample.wav"];
+
           return [];
         }
+
         // Device properties
         switch (prop) {
           case "name":

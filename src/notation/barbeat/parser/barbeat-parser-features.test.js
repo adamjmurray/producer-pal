@@ -11,6 +11,7 @@ describe("BarBeatScript Parser - parser features", () => {
 
     it("returns library object when peg$library option is true", () => {
       const result = parser.parse("C3", { peg$library: true });
+
       expect(result).toHaveProperty("peg$result");
       expect(result).toHaveProperty("peg$success", true);
       expect(result).toHaveProperty("peg$currPos");
@@ -21,6 +22,7 @@ describe("BarBeatScript Parser - parser features", () => {
 
     it("returns library object with throw function on parse failure", () => {
       const result = parser.parse("X3", { peg$library: true });
+
       expect(result).toHaveProperty("peg$success", false);
       expect(result).toHaveProperty("peg$throw");
       expect(typeof result.peg$throw).toBe("function");
@@ -46,6 +48,7 @@ describe("BarBeatScript Parser - parser features", () => {
         expect.fail("Should have thrown an error");
       } catch (error) {
         const formatted = error.format([{ source: undefined, text: "1|1 X3" }]);
+
         expect(formatted).toContain("Error:");
         expect(formatted).toContain("1|1 X3");
         expect(formatted).toContain("^");
@@ -58,6 +61,7 @@ describe("BarBeatScript Parser - parser features", () => {
         expect.fail("Should have thrown an error");
       } catch (error) {
         const formatted = error.format([]);
+
         expect(formatted).toContain("at test.txt:1:5");
       }
     });
@@ -87,6 +91,7 @@ describe("BarBeatScript Parser - parser features", () => {
         1|2\t\tD3
 
         2|1 v80 E3`;
+
       expect(parser.parse(input)).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
@@ -135,6 +140,7 @@ describe("BarBeatScript Parser - parser features", () => {
         2|2 v90 p1.0 D1
         v100 p0.9 Gb1
       `;
+
       expect(parser.parse(input)).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },

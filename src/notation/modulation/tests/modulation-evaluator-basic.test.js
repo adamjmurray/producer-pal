@@ -8,6 +8,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -16,6 +17,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -24,6 +26,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({
         velocity: { operator: "add", value: 10 },
       });
@@ -34,6 +37,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({
         velocity: { operator: "add", value: 10 },
         timing: { operator: "add", value: 0.05 },
@@ -47,6 +51,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(15);
     });
 
@@ -55,6 +60,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(5);
     });
 
@@ -63,6 +69,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(20);
     });
 
@@ -71,6 +78,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(5);
     });
 
@@ -79,6 +87,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(0);
     });
 
@@ -87,6 +96,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(20); // 10 + (5 * 2)
     });
 
@@ -95,6 +105,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(30);
     });
   });
@@ -105,6 +116,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(1.0, 10);
     });
 
@@ -113,6 +125,7 @@ describe("Modulation Evaluator", () => {
         position: 0.25,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(0.0, 10);
     });
 
@@ -121,6 +134,7 @@ describe("Modulation Evaluator", () => {
         position: 0.5,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(-1.0, 10);
     });
 
@@ -129,6 +143,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       // Phase 0 + offset 0.5 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 10);
     });
@@ -138,6 +153,7 @@ describe("Modulation Evaluator", () => {
         position: 2, // halfway through 4-beat period
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       // position 2 / period 4 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 10);
     });
@@ -147,6 +163,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(20.0, 10);
     });
   });
@@ -157,6 +174,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(1.0);
     });
 
@@ -165,6 +183,7 @@ describe("Modulation Evaluator", () => {
         position: 0.25,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(0.0, 10);
     });
 
@@ -173,6 +192,7 @@ describe("Modulation Evaluator", () => {
         position: 0.5,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(-1.0);
     });
 
@@ -181,6 +201,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(-1.0);
     });
   });
@@ -191,6 +212,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(1.0);
     });
 
@@ -199,6 +221,7 @@ describe("Modulation Evaluator", () => {
         position: 0.5,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(0.0, 10);
     });
 
@@ -207,6 +230,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(0.0, 10);
     });
   });
@@ -217,6 +241,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(1.0);
     });
 
@@ -225,6 +250,7 @@ describe("Modulation Evaluator", () => {
         position: 0.5,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(-1.0);
     });
 
@@ -233,6 +259,7 @@ describe("Modulation Evaluator", () => {
         position: 0.3, // past 25% duty cycle
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBe(-1.0);
     });
 
@@ -241,6 +268,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       // Phase 0 + offset 0.5 = phase 0.5 → square switches at 0.5
       expect(result.velocity.value).toBe(-1.0);
     });
@@ -253,6 +281,7 @@ describe("Modulation Evaluator", () => {
           position: i,
           timeSig: { numerator: 4, denominator: 4 },
         });
+
         expect(result.velocity.value).toBeGreaterThanOrEqual(-1.0);
         expect(result.velocity.value).toBeLessThanOrEqual(1.0);
       }
@@ -263,6 +292,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeGreaterThanOrEqual(-10.0);
       expect(result.velocity.value).toBeLessThanOrEqual(10.0);
     });
@@ -275,6 +305,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result.velocity.value).toBe(0);
     });
 
@@ -284,6 +315,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result.velocity.value).toBe(0.5);
     });
 
@@ -293,6 +325,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       // Phase 1.0 wraps to 0.0 due to modulo in waveform
       expect(result.velocity.value).toBe(0);
     });
@@ -303,6 +336,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result.velocity.value).toBe(0.5);
     });
 
@@ -312,6 +346,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       // position 1 out of 4 beats = phase 0.25 * speed 2 = phase 0.5
       expect(result.velocity.value).toBe(0.5);
     });
@@ -322,6 +357,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result.velocity.value).toBe(10); // 20 * 0.5
     });
 
@@ -331,6 +367,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result.velocity.value).toBe(0); // -1 + 2 * 0.5
     });
 
@@ -340,6 +377,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -349,6 +387,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -358,6 +397,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
 
@@ -367,6 +407,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
+
       expect(result).toStrictEqual({});
     });
   });
@@ -377,6 +418,7 @@ describe("Modulation Evaluator", () => {
         position: 0, // cos at position 0 = 1.0
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(40.0, 10); // 20 + 20 * 1.0
     });
 
@@ -385,6 +427,7 @@ describe("Modulation Evaluator", () => {
         position: 0, // cos at position 0 = 1.0
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.timing.value).toBeCloseTo(0.0, 10); // 0.05 * (1.0 - 1) = 0
     });
 
@@ -393,6 +436,7 @@ describe("Modulation Evaluator", () => {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(30.0, 10); // 20 * 1.0 + 10
     });
 
@@ -404,6 +448,7 @@ describe("Modulation Evaluator", () => {
           timeSig: { numerator: 4, denominator: 4 },
         },
       );
+
       expect(result.velocity.value).toBeCloseTo(30.0, 10); // 30 * 1.0 * 1.0
     });
   });
@@ -414,6 +459,7 @@ describe("Modulation Evaluator", () => {
         position: 1.5, // halfway through 3-beat bar
         timeSig: { numerator: 3, denominator: 4 },
       });
+
       // position 1.5 / period 3 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 10);
     });
@@ -423,6 +469,7 @@ describe("Modulation Evaluator", () => {
         position: 3, // halfway through 6-beat bar
         timeSig: { numerator: 6, denominator: 8 },
       });
+
       // position 3 / period 6 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity.value).toBeCloseTo(-1.0, 10);
     });
@@ -465,6 +512,7 @@ probability += 0.2 * cos(0:2t)`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("Warning: Failed to parse"),
@@ -494,6 +542,7 @@ timing += 0.05`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result).toStrictEqual({});
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
@@ -505,6 +554,7 @@ timing += 0.05`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(20.0, 10);
     });
 
@@ -513,6 +563,7 @@ timing += 0.05`;
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
+
       expect(result.velocity.value).toBeCloseTo(-20.0, 10);
     });
 
@@ -524,6 +575,7 @@ timing += 0.05`;
           timeSig: { numerator: 4, denominator: 4 },
         },
       );
+
       expect(result.velocity.value).toBe(20.0);
     });
 
@@ -535,6 +587,7 @@ timing += 0.05`;
           timeSig: { numerator: 4, denominator: 4 },
         },
       );
+
       // cos(0) = 1, so 20 * 1 + 10 * noise() should be between 10 and 30
       expect(result.velocity.value).toBeGreaterThanOrEqual(10.0);
       expect(result.velocity.value).toBeLessThanOrEqual(30.0);

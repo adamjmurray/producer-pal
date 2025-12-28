@@ -295,6 +295,7 @@ describe("readScene", () => {
         if (this._path === "id 123") {
           return "live_set scenes 5";
         }
+
         return this._path;
       });
 
@@ -347,6 +348,7 @@ describe("readScene", () => {
         if (this._path === "id 456") {
           return "live_set scenes 2";
         }
+
         return this._path;
       });
 
@@ -420,6 +422,7 @@ describe("readScene", () => {
         if (this._path === "id 789") {
           return "live_set scenes 7";
         }
+
         return this._path;
       });
 

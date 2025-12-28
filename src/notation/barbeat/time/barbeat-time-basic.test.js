@@ -353,6 +353,7 @@ describe("barbeat-time utilities", () => {
       testCases.forEach(({ beats, beatsPerBar }) => {
         const barBeat = beatsToBarBeat(beats, beatsPerBar);
         const backToBeats = barBeatToBeats(barBeat, beatsPerBar);
+
         expect(backToBeats).toBeCloseTo(beats, 10);
       });
     });
@@ -369,6 +370,7 @@ describe("barbeat-time utilities", () => {
 
       testCases.forEach(({ barBeat, beatsPerBar, expectedBeats }) => {
         const beats = barBeatToBeats(barBeat, beatsPerBar);
+
         expect(beats).toBeCloseTo(expectedBeats, 10);
       });
     });
@@ -390,6 +392,7 @@ describe("barbeat-time utilities", () => {
       testCases.forEach(({ abletonBeats, num, den }) => {
         const barBeat = abletonBeatsToBarBeat(abletonBeats, num, den);
         const backToAbletonBeats = barBeatToAbletonBeats(barBeat, num, den);
+
         expect(backToAbletonBeats).toBeCloseTo(abletonBeats, 10);
       });
     });

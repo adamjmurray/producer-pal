@@ -68,6 +68,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -260,6 +261,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -312,6 +314,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
     mockLiveApiGet({

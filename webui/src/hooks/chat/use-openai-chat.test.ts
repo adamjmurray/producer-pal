@@ -56,6 +56,7 @@ describe("useOpenAIChat", () => {
 
   it("initializes with empty messages", () => {
     const { result } = renderHook(() => useOpenAIChat(defaultProps));
+
     expect(result.current.messages).toEqual([]);
     expect(result.current.isAssistantResponding).toBe(false);
     expect(result.current.activeModel).toBeNull();

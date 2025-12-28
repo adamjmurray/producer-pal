@@ -22,12 +22,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -69,6 +72,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -138,12 +142,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -186,6 +193,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -250,20 +258,25 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._id === tempSessionClipId) {
         return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       if (
         this._path === `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`
       ) {
         return `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`;
       }
+
       return this._path;
     });
 
@@ -330,14 +343,17 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         // Session clip creation
         return ["id", tempSessionClipId];
       }
+
       if (method === "duplicate_clip_to_arrangement") {
         // Duplicating temp clip to arrangement
         return ["id", revealedClipId];
       }
+
       if (method === "delete_clip") {
         // Deleting temp session clip
         return 1;
       }
+
       return 1;
     });
 
@@ -361,6 +377,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     // visibleContentEnd = 0 + 6 = 6, targetEndMarker = 0 + 14 = 14
     // newStartMarker = 6, newEndMarker = 14
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
+
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_end",
@@ -434,12 +451,15 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       ) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -497,19 +517,24 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     });
 
     let duplicateCallCount = 0;
+
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
+
         if (duplicateCallCount === 1) {
           // First duplicate is the move operation
           return ["id", movedClipId];
         }
+
         // Second duplicate is the lengthen operation (revealing hidden content)
         return ["id", revealedClipId];
       }
+
       if (method === "delete_clip") {
         return 1;
       }
+
       return 1;
     });
 

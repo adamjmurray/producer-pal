@@ -19,16 +19,20 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should tile clip with exact multiples (no remainder) - extends existing", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789" || this._id === 1000) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -66,6 +70,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id 1000`;
       }
+
       return undefined;
     });
 
@@ -93,16 +98,20 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should handle insufficient content by tiling what exists", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789" || this._id === 1000) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -131,16 +140,20 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     // Mock duplicate_clip_to_arrangement
     let nextId = 1000;
+
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
+
         mockLiveApiGet({
           [id]: {
             end_time: (args[1] || 0) + 4.0,
           },
         });
+
         return `id ${id}`;
       }
+
       return undefined;
     });
 
@@ -161,16 +174,20 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should work with no remainder (single tile)", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -212,6 +229,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", () => {
     const trackIndex = 0;
+
     liveApiPath.mockImplementation(function () {
       if (
         this._id === "789" ||
@@ -221,12 +239,15 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -261,19 +282,25 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     liveApiCall.mockImplementation(function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
+
         return `id ${id}`;
       }
+
       return undefined;
     });
 
     // Track set() calls on created clips
     const setCallsByClip = {};
+
     liveApiSet.mockImplementation(function (prop, value) {
       const clipId = this._id;
+
       if (!setCallsByClip[clipId]) {
         setCallsByClip[clipId] = {};
       }
+
       setCallsByClip[clipId][prop] = value;
+
       return undefined;
     });
 
@@ -327,9 +354,11 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       if (this._path === "id 1000" || this._id === "1000") {
         return "1000";
       }
+
       if (this._path === "id 1001" || this._id === "1001") {
         return "1001";
       }
+
       return this._id;
     });
 
@@ -343,12 +372,15 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === "live_set tracks 0") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -381,15 +413,18 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     // Mock duplicate_clip_to_arrangement calls for tiling
     let callCount = 0;
+
     liveApiCall.mockImplementation(function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
+
         if (callCount === 1) {
           return `id 1000`; // First full tile (4 beats)
         } else if (callCount === 2) {
           return `id 1001`; // Second full tile (4 beats)
         }
       }
+
       return undefined;
     });
 

@@ -46,6 +46,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
     it("returns the full array for scale_intervals", () => {
       const intervals = [0, 2, 4, 5, 7, 9, 11];
+
       api.get = vi.fn().mockReturnValue(intervals);
       expect(api.getProperty("scale_intervals")).toEqual(intervals);
       expect(api.get).toHaveBeenCalledWith("scale_intervals");
@@ -53,6 +54,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
     it("returns the full array for available_warp_modes", () => {
       const modes = [0, 1, 2, 3, 4];
+
       api.get = vi.fn().mockReturnValue(modes);
       expect(api.getProperty("available_warp_modes")).toEqual(modes);
       expect(api.get).toHaveBeenCalledWith("available_warp_modes");
@@ -62,6 +64,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for available_input_routing_channels", () => {
         const jsonString =
           '{"available_input_routing_channels": [{"display_name": "All Channels", "identifier": 0}, {"display_name": "Ch. 1", "identifier": 1}]}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("available_input_routing_channels");
@@ -78,6 +81,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for available_input_routing_types", () => {
         const jsonString =
           '{"available_input_routing_types": [{"display_name": "All Ins", "identifier": 17}, {"display_name": "Computer Keyboard", "identifier": 18}]}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("available_input_routing_types");
@@ -91,6 +95,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for available_output_routing_channels", () => {
         const jsonString =
           '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("available_output_routing_channels");
@@ -101,6 +106,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for available_output_routing_types", () => {
         const jsonString =
           '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 27}]}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("available_output_routing_types");
@@ -114,6 +120,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for input_routing_channel", () => {
         const jsonString =
           '{"input_routing_channel": {"display_name": "All Channels", "identifier": 0}}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("input_routing_channel");
@@ -124,6 +131,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for input_routing_type", () => {
         const jsonString =
           '{"input_routing_type": {"display_name": "All Ins", "identifier": 17}}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("input_routing_type");
@@ -134,6 +142,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for output_routing_channel", () => {
         const jsonString =
           '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("output_routing_channel");
@@ -144,6 +153,7 @@ describe("LiveAPI extensions - basic methods", () => {
       it("parses JSON for output_routing_type", () => {
         const jsonString =
           '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}';
+
         api.get = vi.fn().mockReturnValue([jsonString]);
 
         const result = api.getProperty("output_routing_type");
@@ -226,46 +236,55 @@ describe("LiveAPI extensions - basic methods", () => {
   describe("from", () => {
     it("creates LiveAPI with 'id ' prefix for numeric ID", () => {
       const result = LiveAPI.from("123");
+
       expect(result.path).toBe("id 123");
     });
 
     it("creates LiveAPI with 'id ' prefix for number type", () => {
       const result = LiveAPI.from(456);
+
       expect(result.path).toBe("id 456");
     });
 
     it("creates LiveAPI with 'id ' prefix for string digits only", () => {
       const result = LiveAPI.from("789");
+
       expect(result.path).toBe("id 789");
     });
 
     it("uses path as-is for already prefixed ID", () => {
       const result = LiveAPI.from("id 123");
+
       expect(result.path).toBe("id 123");
     });
 
     it("uses path as-is for normal Live API paths", () => {
       const result = LiveAPI.from("live_set tracks 0");
+
       expect(result.path).toBe("live_set tracks 0");
     });
 
     it("uses path as-is for strings with non-digit characters", () => {
       const result = LiveAPI.from("123abc");
+
       expect(result.path).toBe("123abc");
     });
 
     it("uses path as-is for strings with leading zero followed by non-digits", () => {
       const result = LiveAPI.from("0x123");
+
       expect(result.path).toBe("0x123");
     });
 
     it("handles ['id', '123'] array format from Live API calls", () => {
       const result = LiveAPI.from(["id", "123"]);
+
       expect(result.path).toBe("id 123");
     });
 
     it("handles ['id', 456] array format with numeric ID", () => {
       const result = LiveAPI.from(["id", 456]);
+
       expect(result.path).toBe("id 456");
     });
 

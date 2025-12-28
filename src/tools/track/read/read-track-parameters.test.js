@@ -21,12 +21,14 @@ describe("readTrack", () => {
         if (this._path === "id 123") {
           return "123";
         }
+
         return this._id;
       });
       liveApiPath.mockImplementation(function () {
         if (this._path === "id 123") {
           return "live_set tracks 2";
         }
+
         return this._path;
       });
 
@@ -72,12 +74,14 @@ describe("readTrack", () => {
         if (this._path === "id 456") {
           return "456";
         }
+
         return this._id;
       });
       liveApiPath.mockImplementation(function () {
         if (this._path === "id 456") {
           return "live_set return_tracks 1";
         }
+
         return this._path;
       });
       liveApiType.mockReturnValue("Track");
@@ -123,12 +127,14 @@ describe("readTrack", () => {
         if (this._path === "id 789") {
           return "789";
         }
+
         return this._id;
       });
       liveApiPath.mockImplementation(function () {
         if (this._path === "id 789") {
           return "live_set master_track";
         }
+
         return this._path;
       });
       liveApiType.mockReturnValue("Track");
@@ -187,12 +193,14 @@ describe("readTrack", () => {
         if (this._path === "id 999") {
           return "999";
         }
+
         return this._id;
       });
       liveApiPath.mockImplementation(function () {
         if (this._path === "id 999") {
           return "live_set tracks 0";
         }
+
         return this._path;
       });
 

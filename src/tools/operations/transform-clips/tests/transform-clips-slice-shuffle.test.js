@@ -17,9 +17,11 @@ describe("transformClips - slice + shuffle combination", () => {
       if (this._path === "id clip_1") {
         return clip1Id;
       }
+
       if (this._path === "id clip_2") {
         return clip2Id;
       }
+
       return this._id;
     });
 
@@ -28,9 +30,11 @@ describe("transformClips - slice + shuffle combination", () => {
       if (this._id === clip1Id) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       if (this._id === clip2Id) {
         return "live_set tracks 0 arrangement_clips 1";
       }
+
       // All generated clips (sliced and shuffled) need valid paths
       if (
         this._id?.startsWith("holding_") ||
@@ -40,6 +44,7 @@ describe("transformClips - slice + shuffle combination", () => {
       ) {
         return "live_set tracks 0 arrangement_clips 0";
       }
+
       return this._path;
     });
 
@@ -73,6 +78,7 @@ describe("transformClips - slice + shuffle combination", () => {
         if (prop === "start_time") return clipId === clip1Id ? [0.0] : [2.0];
         if (prop === "end_time") return clipId === clip1Id ? [2.0] : [4.0];
       }
+
       return null;
     }
 
@@ -95,9 +101,11 @@ describe("transformClips - slice + shuffle combination", () => {
         if (prop === "gain") return [1.0];
 
         const clipNum = parseInt(clipId.split("_")[1]);
+
         if (prop === "start_time") return [clipNum - 1];
         if (prop === "end_time") return [clipNum];
       }
+
       return null;
     }
 
@@ -117,6 +125,7 @@ describe("transformClips - slice + shuffle combination", () => {
         if (prop === "start_time") return [Math.random() * 4];
         if (prop === "end_time") return [Math.random() * 4 + 1];
       }
+
       return null;
     }
 
@@ -142,11 +151,13 @@ describe("transformClips - slice + shuffle combination", () => {
               -1,
             );
           }
+
           return ["id", ...slicedClips.flatMap((id) => [id, "id"])].slice(
             0,
             -1,
           );
         }
+
         return ["id", clip1Id, "id", clip2Id];
       }
 
@@ -164,13 +175,16 @@ describe("transformClips - slice + shuffle combination", () => {
           if (position > 40000) {
             isShufflePhase = true;
           }
+
           return ["id", `holding_${idCounter}`];
         }
 
         if (isShufflePhase) {
           // Shuffle operation - moving clips from holding to final positions
           const shuffleId = `shuffled_${idCounter}`;
+
           shuffledClips.push(shuffleId);
+
           return ["id", shuffleId];
         }
 
@@ -179,13 +193,17 @@ describe("transformClips - slice + shuffle combination", () => {
           slicedClips.length === 0
             ? `moved_${slicedClips.length + 1}`
             : `tile_${slicedClips.length + 1}`;
+
         slicedClips.push(sliceId);
+
         return ["id", sliceId];
       }
+
       if (method === "delete_clip") {
         // Track deletions but don't need to do anything
         return [];
       }
+
       return [null];
     });
 

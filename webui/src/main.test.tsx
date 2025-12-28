@@ -25,6 +25,7 @@ describe("main", () => {
     mockRender.mockClear();
     // Clear any existing #app element
     const existingApp = document.getElementById("app");
+
     if (existingApp) {
       existingApp.remove();
     }
@@ -33,6 +34,7 @@ describe("main", () => {
   it("calls render with App component when #app element exists", async () => {
     // Create #app element before importing main
     const appElement = document.createElement("div");
+
     appElement.id = "app";
     document.body.appendChild(appElement);
 
