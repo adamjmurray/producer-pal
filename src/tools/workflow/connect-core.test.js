@@ -217,67 +217,6 @@ describe("connect", () => {
     expect(result.messagesForUser).not.toContain("No instruments found.");
   });
 
-  // it("warns when instrument is on host track", () => {
-  //   liveApiId.mockImplementation(function () {
-  //     switch (this._path) {
-  //       case "live_set":
-  //         return "live_set_id";
-  //       case "live_set tracks 0":
-  //         return "track0";
-  //       case "live_set tracks 0 devices 0":
-  //         return "host_instrument";
-  //       default:
-  //         return this._id;
-  //     }
-  //   });
-
-  //   liveApiPath.mockImplementation(function () {
-  //     return this._path;
-  //   });
-
-  //   liveApiCall.mockImplementation(function (method) {
-  //     if (method === "get_version_string") {
-  //       return "12.2";
-  //     }
-  //     return null;
-  //   });
-
-  //   mockLiveApiGet({
-  //     LiveSet: {
-  //       name: "Host Track Project",
-  //       tempo: 120,
-  //       signature_numerator: 4,
-  //       signature_denominator: 4,
-  //       is_playing: 0,
-  //       tracks: children("track0"),
-  //       scenes: children("scene0"),
-  //     },
-  //     AppView: {
-  //       focused_document_view: "Session",
-  //     },
-  //     "live_set tracks 0": {
-  //       has_midi_input: 1,
-  //       devices: children("host_instrument"),
-  //     },
-  //     host_instrument: {
-  //       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-  //     },
-  //   });
-
-  //   getHostTrackIndex.mockReturnValue(0); // Host track is track 0 with instrument
-
-  //   const result = connect();
-
-  //   expect(result.messagesForUser).toEqual(
-  //     expect.arrayContaining([
-  //       expect.stringContaining(
-  //         "There's an instrument on the Producer Pal track.",
-  //       ),
-  //       expect.stringContaining("Ready to create"),
-  //     ]),
-  //   );
-  // });
-
   it("provides no-instruments suggestion when no instruments are found", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {

@@ -72,8 +72,7 @@ describe("ModelSelector", () => {
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "gemini-2.5-pro" } });
 
-    expect(setModel).toHaveBeenCalledOnce();
-    expect(setModel).toHaveBeenCalledWith("gemini-2.5-pro");
+    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
   });
 
   it("can select gemini-2.5-flash-lite", () => {

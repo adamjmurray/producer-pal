@@ -73,8 +73,10 @@ describe("ChatStart", () => {
       const button = screen.getByRole("button", { name: "Quick Connect" });
       fireEvent.click(button);
 
-      expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Connect to Ableton.", overrides);
+      expect(handleSend).toHaveBeenCalledExactlyOnceWith(
+        "Connect to Ableton.",
+        overrides,
+      );
     });
 
     it("does not show error message", () => {

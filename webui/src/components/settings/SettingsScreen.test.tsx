@@ -249,8 +249,7 @@ describe("SettingsScreen", () => {
       const select = screen.getByLabelText("Theme");
       fireEvent.change(select, { target: { value: "light" } });
 
-      expect(setTheme).toHaveBeenCalledOnce();
-      expect(setTheme).toHaveBeenCalledWith("light");
+      expect(setTheme).toHaveBeenCalledExactlyOnceWith("light");
     });
   });
 

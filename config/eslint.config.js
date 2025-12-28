@@ -546,6 +546,7 @@ export default [
       vitest: vitestPlugin,
     },
     rules: {
+      ...vitestPlugin.configs.recommended.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
       complexity: ["error", 30],
@@ -556,6 +557,8 @@ export default [
       "@stylistic/padding-line-between-statements": "off",
       // Enforce vi.mock(import('...')) syntax for proper module mocking
       "vitest/prefer-import-in-mock": "error",
+      // TODO: Enable after refactoring test infrastructure (42 violations in src/test/*.test.js)
+      "vitest/no-conditional-expect": "off",
     },
   },
   {

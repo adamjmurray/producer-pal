@@ -99,13 +99,11 @@ describe("expectValidTimestamps", () => {
       },
     ];
 
-    // Should not throw
-    expectValidTimestamps(messages);
+    expect(() => expectValidTimestamps(messages)).not.toThrow();
   });
 
   it("passes for empty array", () => {
-    // Should not throw
-    expectValidTimestamps([]);
+    expect(() => expectValidTimestamps([])).not.toThrow();
   });
 
   it("fails when timestamp is not a number", () => {

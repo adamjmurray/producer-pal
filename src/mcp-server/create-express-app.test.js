@@ -24,18 +24,28 @@ describe("MCP Express App", () => {
     });
 
     serverUrl = `http://localhost:${port}/mcp`;
-
-    // Verify that the handler was setup by createExpressApp
-    expect(Max.addHandler).toHaveBeenCalledWith(
-      "mcp_response",
-      expect.any(Function),
-    );
   });
 
   afterAll(async () => {
     if (server) {
       await new Promise((resolve) => server.close(resolve));
     }
+  });
+
+  describe("Server Setup", () => {
+    it("should register mcp_response handler when module loads", async () => {
+      // Clear the mock and module cache to test fresh registration
+      Max.addHandler.mockClear();
+      vi.resetModules();
+
+      // Re-import the module to trigger handler registration
+      await import("./create-express-app.js");
+
+      expect(Max.addHandler).toHaveBeenCalledWith(
+        "mcp_response",
+        expect.any(Function),
+      );
+    });
   });
 
   describe("Client Connection", () => {

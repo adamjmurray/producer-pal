@@ -14,13 +14,13 @@ import {
 } from "./test-cases/openai-formatter/empty-tool-call-args";
 
 describe("formatOpenAIMessages", () => {
-  it("handles the initial 'Connect to Ableton' flow  ", () => {
+  it("handles the initial 'Connect to Ableton' flow", () => {
     const result = formatOpenAIMessages(history);
     expect(stripTimestamps(result)).toStrictEqual(expected);
     expectValidTimestamps(result);
   });
 
-  it("handles tool calls with empty arguments ", () => {
+  it("handles tool calls with empty arguments", () => {
     const result = formatOpenAIMessages(historyWithEmptyToolCallArgs);
     expect(stripTimestamps(result)).toStrictEqual(
       expectedWithEmptyToolCallArgs,

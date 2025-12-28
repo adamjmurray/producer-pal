@@ -457,8 +457,7 @@ describe("MessageList", () => {
       const retryButton = screen.getByTitle("Retry from your last message");
       fireEvent.click(retryButton);
 
-      expect(handleRetryMock).toHaveBeenCalledOnce();
-      expect(handleRetryMock).toHaveBeenCalledWith(0);
+      expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(0);
     });
 
     it("does not show retry button when there is no previous user message", () => {
@@ -517,8 +516,7 @@ describe("MessageList", () => {
       fireEvent.click(retryButton);
 
       // Should use originalIdx=1 (the non-empty user message), not filtered idx=0
-      expect(handleRetryMock).toHaveBeenCalledOnce();
-      expect(handleRetryMock).toHaveBeenCalledWith(1);
+      expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(1);
     });
   });
 });

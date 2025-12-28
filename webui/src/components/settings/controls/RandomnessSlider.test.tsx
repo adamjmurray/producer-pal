@@ -53,8 +53,7 @@ describe("RandomnessSlider", () => {
     const slider = screen.getByRole("slider");
     fireEvent.input(slider, { target: { value: "1.5" } });
 
-    expect(setTemperature).toHaveBeenCalledOnce();
-    expect(setTemperature).toHaveBeenCalledWith(1.5);
+    expect(setTemperature).toHaveBeenCalledExactlyOnceWith(1.5);
   });
 
   it("parses float values from slider input", () => {

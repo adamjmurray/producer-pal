@@ -117,8 +117,7 @@ describe("ChatInput", () => {
       const button = screen.getByRole("button", { name: "Send" });
       fireEvent.click(button);
 
-      expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello", {
+      expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
         showThoughts: true,
@@ -147,8 +146,7 @@ describe("ChatInput", () => {
       fireEvent.input(textarea, { target: { value: "Hello" } });
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
-      expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello", {
+      expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
         showThoughts: true,

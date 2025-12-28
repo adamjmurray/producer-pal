@@ -32,13 +32,13 @@ import {
 } from "./test-cases/gemini-formatter/tool-call-error-test-case";
 
 describe("formatGeminiMessages", () => {
-  it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {
+  it("merges consecutive model messages and adds functionResponses to functionCalls", () => {
     const result = formatGeminiMessages(history);
     expect(stripTimestamps(result)).toStrictEqual(expected);
     expectValidTimestamps(result);
   });
 
-  it("merges non-thought text with thoughtSignatures ", () => {
+  it("merges non-thought text with thoughtSignatures", () => {
     const result = formatGeminiMessages(historyNonThoughtTextWithSignature);
     expect(stripTimestamps(result)).toStrictEqual(
       expectedNonThoughtTextWithSignature,
@@ -46,7 +46,7 @@ describe("formatGeminiMessages", () => {
     expectValidTimestamps(result);
   });
 
-  it("handles history ending with a thought ", () => {
+  it("handles history ending with a thought", () => {
     const result = formatGeminiMessages(historyEndingInThought);
     expect(stripTimestamps(result)).toStrictEqual(expectedEndingInThought);
     expectValidTimestamps(result);

@@ -231,8 +231,7 @@ describe("ThinkingSettings", () => {
       const select = screen.getByRole("combobox");
       fireEvent.change(select, { target: { value: "High" } });
 
-      expect(setThinking).toHaveBeenCalledOnce();
-      expect(setThinking).toHaveBeenCalledWith("High");
+      expect(setThinking).toHaveBeenCalledExactlyOnceWith("High");
     });
 
     it("checkbox reflects showThoughts prop", () => {
@@ -288,8 +287,7 @@ describe("ThinkingSettings", () => {
       const checkbox = screen.getByRole("checkbox");
       fireEvent.click(checkbox);
 
-      expect(setShowThoughts).toHaveBeenCalledOnce();
-      expect(setShowThoughts).toHaveBeenCalledWith(true);
+      expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(true);
     });
 
     it("calls setShowThoughts with false when unchecking", () => {
@@ -309,8 +307,7 @@ describe("ThinkingSettings", () => {
       const checkbox = screen.getByRole("checkbox");
       fireEvent.click(checkbox);
 
-      expect(setShowThoughts).toHaveBeenCalledOnce();
-      expect(setShowThoughts).toHaveBeenCalledWith(false);
+      expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(false);
     });
   });
 });
