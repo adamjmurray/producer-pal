@@ -1,4 +1,4 @@
-import { nameToMidiPitch } from "#src/notation/midi-pitch-to-name.js";
+import { pitchNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { noteNameToMidi } from "#src/tools/shared/device/helpers/device-display-helpers.js";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
@@ -255,7 +255,7 @@ function resolveDrumPadTarget(liveApiPath, drumPadNote, remainingSegments) {
 
   // Get drum pads and find the one matching the note
   const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = nameToMidiPitch(drumPadNote);
+  const targetMidiNote = pitchNameToMidi(drumPadNote);
   const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
 
   if (!pad) {
