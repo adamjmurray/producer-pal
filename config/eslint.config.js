@@ -607,13 +607,13 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures
+      "**/*-test-case.ts", // Test data fixtures (these could be given a separate longer max file length, if needed, or ignore on a per-file basis)
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 675,
+          max: 650,
           skipBlankLines: true,
           skipComments: true,
         },
