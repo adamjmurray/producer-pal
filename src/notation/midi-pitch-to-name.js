@@ -1,3 +1,5 @@
+import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
+
 /**
  * Re-exports pitch conversion utilities from canonical source.
  * @see src/shared/pitch.js for the canonical implementation.
@@ -13,8 +15,6 @@ export {
 // Alias for backwards compatibility
 export { midiToPitchName as midiPitchToName } from "#src/shared/pitch.js";
 export { pitchNameToMidi as nameToMidiPitch } from "#src/shared/pitch.js";
-
-import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 
 /**
  * Convert scale intervals to pitch class names using the given root note.
