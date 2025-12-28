@@ -26,7 +26,7 @@ describe("applyGeminiOverrides", () => {
       };
       const result = applyGeminiOverrides({}, config);
 
-      expect(result.thinkingConfig).toEqual({
+      expect(result.thinkingConfig).toStrictEqual({
         thinkingBudget: 4096,
         includeThoughts: true,
       });

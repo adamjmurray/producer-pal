@@ -61,7 +61,7 @@ describe("readLiveSet - routing", () => {
       include: ["regular-tracks", "instruments", "chains", "routings"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         inputRoutingChannel: { name: "In 1", inputId: "1" },
@@ -112,7 +112,7 @@ describe("readLiveSet - routing", () => {
       include: ["regular-tracks", "instruments", "chains"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
       }),

@@ -439,7 +439,7 @@ describe("bar|beat formatNotation()", () => {
     const formatted = formatNotation(parsed);
     const reparsed = interpretNotation(formatted);
 
-    expect(parsed).toEqual(reparsed);
+    expect(parsed).toStrictEqual(reparsed);
   });
 
   it("creates roundtrip compatibility with interpretNotation using time signatures", () => {
@@ -457,7 +457,7 @@ describe("bar|beat formatNotation()", () => {
       timeSigDenominator: 4,
     });
 
-    expect(parsed).toEqual(reparsed);
+    expect(parsed).toStrictEqual(reparsed);
   });
 
   it("handles complex drum pattern with probability and velocity range", () => {

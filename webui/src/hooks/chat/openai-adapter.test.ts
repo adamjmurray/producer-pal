@@ -338,7 +338,7 @@ describe("openai-adapter", () => {
 
       const result = openaiAdapter.createUserMessage(text);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         role: "user",
         content: "Hello world",
       });

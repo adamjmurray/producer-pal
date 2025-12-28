@@ -11,7 +11,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toHaveLength(10); // 1 + 1 + 8 = 10 notes
 
         // Bar 1: C3
-        expect(result[0]).toEqual({
+        expect(result[0]).toStrictEqual({
           pitch: 60,
           start_time: 0,
           duration: 1,
@@ -20,7 +20,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 2: D3
-        expect(result[1]).toEqual({
+        expect(result[1]).toStrictEqual({
           pitch: 62,
           start_time: 4,
           duration: 1,
@@ -29,7 +29,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 3: C3 (tile starts)
-        expect(result[2]).toEqual({
+        expect(result[2]).toStrictEqual({
           pitch: 60,
           start_time: 8,
           duration: 1,
@@ -38,7 +38,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 4: D3
-        expect(result[3]).toEqual({
+        expect(result[3]).toStrictEqual({
           pitch: 62,
           start_time: 12,
           duration: 1,
@@ -47,7 +47,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 10: D3 (last bar of 4th tile)
-        expect(result[9]).toEqual({
+        expect(result[9]).toStrictEqual({
           pitch: 62,
           start_time: 36,
           duration: 1,
@@ -64,7 +64,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toHaveLength(9); // 1 + 1 + 7 = 9 notes
 
         // Bar 9 should be C3 (partial tile, only bar 1 of the pattern)
-        expect(result[8]).toEqual({
+        expect(result[8]).toStrictEqual({
           pitch: 60,
           start_time: 32,
           duration: 1,
@@ -83,7 +83,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toHaveLength(7); // 5 + 2 = 7 notes
 
         // Bar 6: C3
-        expect(result[5]).toEqual({
+        expect(result[5]).toStrictEqual({
           pitch: 60,
           start_time: 20,
           duration: 1,
@@ -92,7 +92,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 7: D3
-        expect(result[6]).toEqual({
+        expect(result[6]).toStrictEqual({
           pitch: 62,
           start_time: 24,
           duration: 1,
@@ -113,7 +113,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           .map((note) => note.start_time)
           .sort((a, b) => a - b);
 
-        expect(startTimes).toEqual([
+        expect(startTimes).toStrictEqual([
           8, // bar 3
           12, // bar 4
           16, // bar 5 (original, not duplicated)
@@ -126,7 +126,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
         // Verify specific bars for correctness
         // Bar 3: C3
-        expect(result[2]).toEqual({
+        expect(result[2]).toStrictEqual({
           pitch: 60,
           start_time: 8,
           duration: 1,
@@ -135,7 +135,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 4: D3
-        expect(result[3]).toEqual({
+        expect(result[3]).toStrictEqual({
           pitch: 62,
           start_time: 12,
           duration: 1,
@@ -144,7 +144,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 7: C3 (after skipping bars 5 and 6)
-        expect(result[4]).toEqual({
+        expect(result[4]).toStrictEqual({
           pitch: 60,
           start_time: 24,
           duration: 1,
@@ -165,7 +165,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           .map((note) => note.start_time)
           .sort((a, b) => a - b);
 
-        expect(startTimes).toEqual([
+        expect(startTimes).toStrictEqual([
           0, // bar 1
           4, // bar 2
           8, // bar 3 (original)
@@ -180,7 +180,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
         // Verify specific bars for correctness
         // Bar 1: C3
-        expect(result[2]).toEqual({
+        expect(result[2]).toStrictEqual({
           pitch: 60,
           start_time: 0,
           duration: 1,
@@ -189,7 +189,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 2: D3
-        expect(result[3]).toEqual({
+        expect(result[3]).toStrictEqual({
           pitch: 62,
           start_time: 4,
           duration: 1,
@@ -205,7 +205,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         );
 
         // Bar 3 should have C3 with original properties
-        expect(result[2]).toEqual({
+        expect(result[2]).toStrictEqual({
           pitch: 60,
           start_time: 8,
           duration: 0.5,
@@ -214,7 +214,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 4 should have D3 with original properties
-        expect(result[3]).toEqual({
+        expect(result[3]).toStrictEqual({
           pitch: 62,
           start_time: 12,
           duration: 0.25,
@@ -233,7 +233,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // 6/8 bar = 3.0 Ableton beats
         expect(result).toHaveLength(4);
         // Bar 3: C3 at 6.0 beats
-        expect(result[2]).toEqual({
+        expect(result[2]).toStrictEqual({
           pitch: 60,
           start_time: 6.0,
           duration: 0.5,
@@ -242,7 +242,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           velocity_deviation: 0,
         });
         // Bar 4: D3 at 9.0 beats
-        expect(result[3]).toEqual({
+        expect(result[3]).toStrictEqual({
           pitch: 62,
           start_time: 9.0,
           duration: 0.5,
@@ -392,7 +392,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           expect.stringContaining("Cannot copy bar 1 to itself"),
         );
         // Should only have the original note, not a copy
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           {
             pitch: 60,
             start_time: 0,
@@ -494,7 +494,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Without auto-clear, bar 1 persists after E3 is added
         const result = interpretNotation("C3 1|1 @2= E3 4|1 @5=1");
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           // Bar 1
           {
             pitch: 60,
@@ -549,7 +549,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         );
         consoleErrorSpy.mockRestore();
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           // Bar 1
           {
             pitch: 60,
@@ -574,7 +574,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("@clear allows copying later bars", () => {
         const result = interpretNotation("C3 1|1 @2= @clear E3 4|1 @5=4");
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           // Bar 1
           {
             pitch: 60,

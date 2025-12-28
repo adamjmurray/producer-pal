@@ -182,7 +182,7 @@ describe("device-reader", () => {
       };
       const result = cleanupInternalDrumPads(obj);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         type: "drum-rack",
         name: "Test",
       });
@@ -196,7 +196,7 @@ describe("device-reader", () => {
       ];
       const result = cleanupInternalDrumPads(arr);
 
-      expect(result).toEqual([{ type: "device1" }, { type: "device2" }]);
+      expect(result).toStrictEqual([{ type: "device1" }, { type: "device2" }]);
     });
 
     it("recursively cleans chains in device objects", () => {
@@ -215,7 +215,7 @@ describe("device-reader", () => {
       };
       const result = cleanupInternalDrumPads(obj);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         type: "drum-rack",
         chains: [
           {
@@ -248,7 +248,7 @@ describe("device-reader", () => {
         },
       ];
 
-      expect(getDrumMap(devices)).toEqual({});
+      expect(getDrumMap(devices)).toStrictEqual({});
     });
 
     it("extracts drum map from drum rack", () => {
@@ -263,7 +263,7 @@ describe("device-reader", () => {
         },
       ];
 
-      expect(getDrumMap(devices)).toEqual({
+      expect(getDrumMap(devices)).toStrictEqual({
         C3: "Kick",
         D3: "Snare",
         "F#3": "Hi-Hat",
@@ -282,7 +282,7 @@ describe("device-reader", () => {
         },
       ];
 
-      expect(getDrumMap(devices)).toEqual({
+      expect(getDrumMap(devices)).toStrictEqual({
         C3: "Kick",
         E3: "Snare",
       });
@@ -309,7 +309,7 @@ describe("device-reader", () => {
         },
       ];
 
-      expect(getDrumMap(devices)).toEqual({
+      expect(getDrumMap(devices)).toStrictEqual({
         C3: "Kick",
         D3: "Snare",
       });
@@ -327,7 +327,7 @@ describe("device-reader", () => {
         },
       ];
 
-      expect(getDrumMap(devices)).toEqual({
+      expect(getDrumMap(devices)).toStrictEqual({
         C3: "First Kick",
       });
     });

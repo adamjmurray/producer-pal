@@ -90,7 +90,7 @@ describe("gemini-client-helpers", () => {
         mockClient,
       )) as { functionResponse: { response: { error: unknown } } };
 
-      expect(result.functionResponse.response.error).toEqual({
+      expect(result.functionResponse.response.error).toStrictEqual({
         isError: true,
         message: "fail",
       });
@@ -114,7 +114,7 @@ describe("gemini-client-helpers", () => {
     it("returns empty array when lastMessage is undefined", async () => {
       const result = await executeToolCalls(undefined, null);
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("skips non-tool-call parts", async () => {
@@ -124,7 +124,7 @@ describe("gemini-client-helpers", () => {
       };
       const result = await executeToolCalls(message, null);
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 

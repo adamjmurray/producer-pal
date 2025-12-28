@@ -61,7 +61,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: -6,
@@ -160,7 +160,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["return-tracks", "mixer"],
     });
 
-    expect(result.returnTracks[0]).toEqual(
+    expect(result.returnTracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Return Track",
         gainDb: -3,
@@ -222,7 +222,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["master-track", "mixer"],
     });
 
-    expect(result.masterTrack).toEqual(
+    expect(result.masterTrack).toStrictEqual(
       expect.objectContaining({
         name: "Master",
         gainDb: 0,
@@ -285,7 +285,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["*"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: 2,
@@ -373,14 +373,14 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Track 1",
         gainDb: -6,
         pan: 0.5,
       }),
     );
-    expect(result.tracks[1]).toEqual(
+    expect(result.tracks[1]).toStrictEqual(
       expect.objectContaining({
         name: "Track 2",
         gainDb: -12,

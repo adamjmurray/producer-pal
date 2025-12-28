@@ -63,7 +63,7 @@ describe("transformClips - basic", () => {
 
     const result = transformClips({ clipIds: clipId, seed: 12345 });
 
-    expect(result).toEqual({ clipIds: [clipId], seed: 12345 });
+    expect(result).toStrictEqual({ clipIds: [clipId], seed: 12345 });
   });
 
   it("should generate seed from Date.now() when not provided", () => {
@@ -180,6 +180,6 @@ describe("transformClips - basic", () => {
 
     const result = transformClips({ clipIds, seed: 12345 });
 
-    expect(result.clipIds).toEqual(["clip_1", "clip_2", "clip_3"]);
+    expect(result.clipIds).toStrictEqual(["clip_1", "clip_2", "clip_3"]);
   });
 });

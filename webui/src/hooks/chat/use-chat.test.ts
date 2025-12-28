@@ -150,7 +150,7 @@ describe("useChat", () => {
     it("initializes with empty messages and null state", () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
@@ -175,7 +175,7 @@ describe("useChat", () => {
         result.current.clearConversation();
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
       expect(result.current.activeTemperature).toBeNull();
@@ -208,7 +208,7 @@ describe("useChat", () => {
         await result.current.handleSend("");
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
@@ -219,7 +219,7 @@ describe("useChat", () => {
         await result.current.handleSend("   \n\t  ");
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
@@ -638,7 +638,7 @@ describe("useChat", () => {
       });
 
       // Both calls should have received the original message
-      expect(receivedMessages).toEqual(["Hello", "Hello"]);
+      expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
 
     it("sends 'continue' on retry when content was already received", async () => {
@@ -692,7 +692,7 @@ describe("useChat", () => {
       });
 
       // First call should have original message, retry should have "continue"
-      expect(receivedMessages).toEqual(["Hello", "continue"]);
+      expect(receivedMessages).toStrictEqual(["Hello", "continue"]);
     });
   });
 });

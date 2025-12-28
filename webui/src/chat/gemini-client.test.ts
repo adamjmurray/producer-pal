@@ -37,7 +37,7 @@ describe("GeminiClient", () => {
 
     expect(client).toBeDefined();
     expect(client.mcpUrl).toBe("http://localhost:3350/mcp");
-    expect(client.chatHistory).toEqual([]);
+    expect(client.chatHistory).toStrictEqual([]);
   });
 
   it("constructs with custom config", () => {
@@ -50,7 +50,7 @@ describe("GeminiClient", () => {
     const client = new GeminiClient("test-api-key", config);
 
     expect(client.mcpUrl).toBe("http://custom:8080/mcp");
-    expect(client.chatHistory).toEqual(config.chatHistory);
+    expect(client.chatHistory).toStrictEqual(config.chatHistory);
   });
 
   it("throws error when sending message before initialization", async () => {

@@ -68,7 +68,7 @@ describe("createTrack", () => {
       "color",
       16711680,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_1",
       trackIndex: 1,
     });
@@ -91,7 +91,7 @@ describe("createTrack", () => {
       "name",
       "New Audio Track",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "audio_track_0",
       trackIndex: 0,
     });
@@ -140,7 +140,7 @@ describe("createTrack", () => {
       "Drum 3",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         id: "midi_track_2",
         trackIndex: 2,
@@ -165,7 +165,7 @@ describe("createTrack", () => {
       0,
     );
     expect(liveApiSet).not.toHaveBeenCalled();
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_0",
       trackIndex: 0,
     });
@@ -200,7 +200,7 @@ describe("createTrack", () => {
       "arm",
       true,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_0",
       trackIndex: 0,
     });
@@ -229,7 +229,7 @@ describe("createTrack", () => {
       "arm",
       false,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_0",
       trackIndex: 0,
     });
@@ -249,7 +249,7 @@ describe("createTrack", () => {
       "Appended Track",
     );
     // Result trackIndex should reflect actual position (count of existing tracks)
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_-1",
       trackIndex: 2, // existing tracks count
     });
@@ -298,7 +298,7 @@ describe("createTrack", () => {
       "name",
       "Solo Track",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "midi_track_0",
       trackIndex: 0,
     });
@@ -332,18 +332,18 @@ describe("createTrack", () => {
       name: "Multiple",
     });
 
-    expect(singleResult).toEqual({
+    expect(singleResult).toStrictEqual({
       id: "midi_track_0",
       trackIndex: 0,
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0]).toEqual({
+    expect(arrayResult[0]).toStrictEqual({
       id: "midi_track_1",
       trackIndex: 1,
     });
-    expect(arrayResult[1]).toEqual({
+    expect(arrayResult[1]).toStrictEqual({
       id: "midi_track_2",
       trackIndex: 2,
     });
@@ -363,7 +363,7 @@ describe("createTrack", () => {
         "New Return",
       );
       // Result returnTrackIndex should reflect position (2 existing return tracks)
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "return_track_0",
         returnTrackIndex: 2,
       });
@@ -384,7 +384,7 @@ describe("createTrack", () => {
         "create_return_track",
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "return_track_0", returnTrackIndex: 2 },
         { id: "return_track_1", returnTrackIndex: 3 },
       ]);
@@ -502,7 +502,7 @@ describe("createTrack", () => {
         "name",
         "kick,snare",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "midi_track_0",
         trackIndex: 0,
       });

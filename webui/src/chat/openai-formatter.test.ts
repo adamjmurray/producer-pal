@@ -46,7 +46,7 @@ describe("formatOpenAIMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("model");
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "thought", content: "Thinking step 1 and step 2" },
       { type: "text", content: "Hello" },
     ]);
@@ -61,7 +61,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "text", content: "Hello world" },
     ]);
   });
@@ -82,7 +82,7 @@ describe("formatOpenAIMessages", () => {
     expect(result).toHaveLength(1);
     const lastPart = result[0]!.parts.at(-1);
 
-    expect(lastPart).toEqual({
+    expect(lastPart).toStrictEqual({
       type: "thought",
       content: "Current thinking...",
       isOpen: true,
@@ -104,7 +104,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "thought", content: "Actual thought" },
       { type: "text", content: "Response" },
     ]);
@@ -131,7 +131,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       {
         type: "thought",
         content: "First thought Second thought",

@@ -241,7 +241,7 @@ describe("transformClips - slicing", () => {
     });
 
     // Clip should not be modified
-    expect(result.clipIds).toEqual([clipId]);
+    expect(result.clipIds).toStrictEqual([clipId]);
 
     // Should not create temp clips or tiles
     expect(liveApiCall).not.toHaveBeenCalledWith(
@@ -716,7 +716,7 @@ describe("transformClips - slicing", () => {
     // Should return exactly 3 clips (the new sliced clips)
     // Should NOT include the following clip
     expect(result.clipIds).toHaveLength(3);
-    expect(result.clipIds).toEqual(["moved_1", "tile_2", "tile_3"]);
+    expect(result.clipIds).toStrictEqual(["moved_1", "tile_2", "tile_3"]);
     expect(result.clipIds).not.toContain(followingClipId);
   });
 });

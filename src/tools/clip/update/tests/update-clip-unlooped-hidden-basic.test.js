@@ -115,7 +115,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     // Note: 804 is consumed by holding area, 805 is the final partial tile
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: clipId },
       { id: "801" },
       { id: "802" },
@@ -221,7 +221,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     expect(result).toHaveLength(7);
-    expect(result[0]).toEqual({ id: clipId });
+    expect(result[0]).toStrictEqual({ id: clipId });
   });
 
   it("should handle start_marker offset correctly when tiling", () => {
@@ -331,7 +331,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     // Should return original + all tiles
     // Note: 824 is consumed by holding area, 825 is the final partial tile
     expect(result).toHaveLength(5);
-    expect(result[0]).toEqual({ id: clipId });
-    expect(result[4]).toEqual({ id: "825" });
+    expect(result[0]).toStrictEqual({ id: clipId });
+    expect(result[4]).toStrictEqual({ id: "825" });
   });
 });

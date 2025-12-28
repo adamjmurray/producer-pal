@@ -83,13 +83,13 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         type: "instrument: Analog",
         name: "Custom Analog",
       });
 
-      expect(result.audioEffects).toEqual([
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device2",
           type: "audio-effect: Reverb",
@@ -97,7 +97,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      expect(result.midiEffects).toEqual([
+      expect(result.midiEffects).toStrictEqual([
         {
           id: "device3",
           type: "midi-effect: Note Length",
@@ -134,7 +134,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         name: "My Drums",
         type: "drum-rack",
@@ -188,7 +188,7 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         type: "drum-rack",
         name: "My Drums",
@@ -196,7 +196,7 @@ describe("readTrack", () => {
       });
 
       expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toEqual({
+      expect(result.audioEffects[0]).toStrictEqual({
         id: "device2",
         type: "audio-effect: Reverb",
       });
@@ -257,7 +257,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
@@ -342,7 +342,7 @@ describe("readTrack", () => {
       });
 
       expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toEqual({
+      expect(result.audioEffects[0]).toStrictEqual({
         id: "fx_rack1",
         type: "audio-effect-rack",
         name: "Master FX",
@@ -442,7 +442,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "outer_rack",
         type: "instrument-rack",
         name: "Master FX",

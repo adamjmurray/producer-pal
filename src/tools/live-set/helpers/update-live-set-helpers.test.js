@@ -62,7 +62,7 @@ describe("update-live-set-helpers", () => {
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {});
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         track: mockMidiTrack,
         clipId: "999",
         isMidiTrack: true,
@@ -106,7 +106,7 @@ describe("update-live-set-helpers", () => {
         silenceWavPath: "/path/to/silence.wav",
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         track: mockAudioTrack,
         clipId: "888",
         isMidiTrack: false,
@@ -236,25 +236,25 @@ describe("update-live-set-helpers", () => {
     it("should parse valid scale string", () => {
       const result = parseScale("C Major");
 
-      expect(result).toEqual({ scaleRoot: "C", scaleName: "Major" });
+      expect(result).toStrictEqual({ scaleRoot: "C", scaleName: "Major" });
     });
 
     it("should handle case-insensitive root notes", () => {
       const result = parseScale("f# minor");
 
-      expect(result).toEqual({ scaleRoot: "F#", scaleName: "Minor" });
+      expect(result).toStrictEqual({ scaleRoot: "F#", scaleName: "Minor" });
     });
 
     it("should handle Bb (flat notation)", () => {
       const result = parseScale("Bb Dorian");
 
-      expect(result).toEqual({ scaleRoot: "Bb", scaleName: "Dorian" });
+      expect(result).toStrictEqual({ scaleRoot: "Bb", scaleName: "Dorian" });
     });
 
     it("should handle extra whitespace", () => {
       const result = parseScale("  D   Mixolydian  ");
 
-      expect(result).toEqual({ scaleRoot: "D", scaleName: "Mixolydian" });
+      expect(result).toStrictEqual({ scaleRoot: "D", scaleName: "Mixolydian" });
     });
 
     it("should throw for invalid format - single word", () => {

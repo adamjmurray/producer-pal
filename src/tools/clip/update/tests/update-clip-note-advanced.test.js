@@ -139,7 +139,7 @@ describe("updateClip - Advanced note operations", () => {
       velocity_deviation: 0,
     }); // New F3 note
 
-    expect(result).toEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
+    expect(result).toStrictEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
   it("should handle v0 notes when no existing notes match", () => {
@@ -368,7 +368,7 @@ describe("updateClip - Advanced note operations", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
+    expect(result).toStrictEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
   });
 
   it("should report noteCount only for notes within clip playback region when length is set", () => {
@@ -415,7 +415,7 @@ describe("updateClip - Advanced note operations", () => {
     // But noteCount should only include notes within the 2-bar playback region
     // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats
     // E3 at bar 3 (beat 8) is outside the playback region
-    expect(result).toEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
 
     // Verify get_notes_extended was called with the clip's length (8 beats)
     expect(liveApiCall).toHaveBeenCalledWith(
@@ -499,7 +499,7 @@ describe("updateClip - Advanced note operations", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 
   it("should update warp mode for audio clips", () => {
@@ -524,7 +524,7 @@ describe("updateClip - Advanced note operations", () => {
       4, // Complex mode = 4
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update warping on/off for audio clips", () => {
@@ -549,7 +549,7 @@ describe("updateClip - Advanced note operations", () => {
       1, // true = 1
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update both warp mode and warping together", () => {
@@ -580,6 +580,6 @@ describe("updateClip - Advanced note operations", () => {
       0, // false = 0
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 });

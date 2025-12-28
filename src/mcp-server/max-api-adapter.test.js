@@ -71,7 +71,7 @@ describe("Max API Adapter", () => {
       const result = await callLiveApi("test-tool", {});
 
       // Should resolve with isError: true instead of rejecting
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -112,7 +112,7 @@ describe("Max API Adapter", () => {
 
       const result = await callLiveApi("test-tool", {});
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -130,7 +130,7 @@ describe("Max API Adapter", () => {
 
       const result = await callLiveApi("test-tool", {});
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -216,7 +216,7 @@ describe("Max API Adapter", () => {
 
       const result = await promise;
 
-      expect(result).toEqual(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
 
     it("should add maxErrors to result content", async () => {
@@ -244,12 +244,15 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.content).toHaveLength(3);
-      expect(result.content[0]).toEqual({ type: "text", text: "success" });
-      expect(result.content[1]).toEqual({
+      expect(result.content[0]).toStrictEqual({
+        type: "text",
+        text: "success",
+      });
+      expect(result.content[1]).toStrictEqual({
         type: "text",
         text: "WARNING: Error 1",
       });
-      expect(result.content[2]).toEqual({
+      expect(result.content[2]).toStrictEqual({
         type: "text",
         text: "WARNING: Error 2",
       });
@@ -272,7 +275,7 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toEqual({
+      expect(result.content[1]).toStrictEqual({
         type: "text",
         text: "WARNING: Error message", // v8: prefix removed
       });
@@ -299,7 +302,7 @@ describe("Max API Adapter", () => {
 
       // Should only have original content + 1 real error (not 4 errors)
       expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toEqual({
+      expect(result.content[1]).toStrictEqual({
         type: "text",
         text: "WARNING: Real error",
       });
@@ -322,7 +325,7 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toEqual({
+      expect(result.content[1]).toStrictEqual({
         type: "text",
         text: "WARNING: Regular error without prefix",
       });
@@ -423,8 +426,11 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.content).toHaveLength(2);
-      expect(result.content[0]).toEqual({ type: "text", text: "success" });
-      expect(result.content[1]).toEqual({
+      expect(result.content[0]).toStrictEqual({
+        type: "text",
+        text: "success",
+      });
+      expect(result.content[1]).toStrictEqual({
         type: "text",
         text: "WARNING: Error 1",
       });

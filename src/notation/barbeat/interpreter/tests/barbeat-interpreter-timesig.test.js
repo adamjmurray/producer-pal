@@ -5,7 +5,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
   it("supports different time signatures via the beatsPerBar option (legacy)", () => {
     const result = interpretNotation("C3 1|1 D3 2|1", { beatsPerBar: 3 });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -30,7 +30,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -55,7 +55,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigDenominator: 2,
     });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -81,7 +81,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -106,7 +106,7 @@ describe("bar|beat interpretNotation() - time signatures", () => {
       timeSigDenominator: 8,
     });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,

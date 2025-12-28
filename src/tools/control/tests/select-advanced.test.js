@@ -177,7 +177,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
       // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("shows device detail view", () => {
@@ -188,7 +188,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
       );
       // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("hides detail view using hide_view API", () => {
@@ -199,7 +199,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.DETAIL,
       );
       // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("shows loop view by focusing on clip detail", () => {
@@ -216,7 +216,7 @@ describe("view", () => {
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_123");
       // showLoop is not returned - only the action (focus_view) happens
       // Result reflects actual readViewState()
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -229,7 +229,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.BROWSER,
       );
       // Result reflects actual readViewState(), which returns default (browser not shown)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("hides browser using hide_view API", () => {
@@ -240,7 +240,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.BROWSER,
       );
       // Result reflects actual readViewState(), which returns default (browser not shown)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -311,7 +311,7 @@ describe("view", () => {
       );
 
       // Result reflects actual readViewState(), which returns default
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("handles return track with device selection", () => {
@@ -327,7 +327,7 @@ describe("view", () => {
       );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("validates matching track ID and index are accepted", () => {
@@ -340,7 +340,7 @@ describe("view", () => {
       });
 
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -448,7 +448,7 @@ describe("view", () => {
       const result = select();
 
       // Verify
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         view: "session",
         detailView: null,
         showBrowser: false,
@@ -492,7 +492,7 @@ describe("view", () => {
       const result = select({});
 
       // Verify
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         view: "arrangement",
         detailView: "clip",
         showBrowser: false,
@@ -523,7 +523,7 @@ describe("view", () => {
       const result = select();
 
       // Verify
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         view: "arrangement",
         detailView: null,
         showBrowser: false,

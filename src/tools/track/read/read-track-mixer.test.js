@@ -488,8 +488,8 @@ describe("readTrack - mixer properties", () => {
 
     expect(result).toHaveProperty("sends");
     expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toEqual({ gainDb: -6.0, return: "Delay" });
+    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Delay" });
   });
 
   it("does not include sends property when track has no sends", () => {
@@ -604,7 +604,7 @@ describe("readTrack - mixer properties", () => {
 
     expect(result).toHaveProperty("sends");
     expect(result.sends).toHaveLength(1);
-    expect(result.sends[0]).toEqual({
+    expect(result.sends[0]).toStrictEqual({
       gainDb: -10.0,
       return: "FetchedReverb",
     });
@@ -670,8 +670,8 @@ describe("readTrack - mixer properties", () => {
     );
     // Still returns sends with fallback for missing name
     expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toEqual({ gainDb: -6.0, return: "Return 2" });
+    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Return 2" });
 
     consoleSpy.mockRestore();
   });

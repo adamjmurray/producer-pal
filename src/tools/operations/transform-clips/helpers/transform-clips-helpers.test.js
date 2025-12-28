@@ -110,7 +110,7 @@ describe("transform-clips helpers", () => {
       const input = [1, 2, 3, 4, 5];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled.sort()).toEqual(input.sort());
+      expect(shuffled.sort()).toStrictEqual(input.sort());
     });
 
     it("generates consistent shuffle with same seed", () => {
@@ -121,7 +121,7 @@ describe("transform-clips helpers", () => {
       const shuffled1 = shuffleArray(input, rng1);
       const shuffled2 = shuffleArray(input, rng2);
 
-      expect(shuffled1).toEqual(shuffled2);
+      expect(shuffled1).toStrictEqual(shuffled2);
     });
 
     it("generates different shuffle with different seed", () => {
@@ -132,7 +132,7 @@ describe("transform-clips helpers", () => {
       const shuffled1 = shuffleArray(input, rng1);
       const shuffled2 = shuffleArray(input, rng2);
 
-      expect(shuffled1).not.toEqual(shuffled2);
+      expect(shuffled1).not.toStrictEqual(shuffled2);
     });
 
     it("does not modify original array", () => {
@@ -142,7 +142,7 @@ describe("transform-clips helpers", () => {
 
       shuffleArray(input, rng);
 
-      expect(input).toEqual(inputCopy);
+      expect(input).toStrictEqual(inputCopy);
     });
 
     it("handles single element array", () => {
@@ -150,7 +150,7 @@ describe("transform-clips helpers", () => {
       const input = [42];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled).toEqual([42]);
+      expect(shuffled).toStrictEqual([42]);
     });
 
     it("handles empty array", () => {
@@ -158,7 +158,7 @@ describe("transform-clips helpers", () => {
       const input = [];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled).toEqual([]);
+      expect(shuffled).toStrictEqual([]);
     });
 
     it("handles array with duplicate values", () => {
@@ -167,7 +167,7 @@ describe("transform-clips helpers", () => {
       const shuffled = shuffleArray(input, rng);
 
       expect(shuffled).toHaveLength(6);
-      expect(shuffled.sort()).toEqual([1, 1, 2, 2, 3, 3]);
+      expect(shuffled.sort()).toStrictEqual([1, 1, 2, 2, 3, 3]);
     });
   });
 
@@ -183,7 +183,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
 
       // All same length, so positions stay [0, 1, 2]
-      expect(positions).toEqual([0, 1, 2]);
+      expect(positions).toStrictEqual([0, 1, 2]);
     });
 
     it("handles back-to-back clips with different lengths", () => {
@@ -197,7 +197,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
 
       // C(2)@0, A(1)@2, B(1)@3
-      expect(positions).toEqual([0, 2, 3]);
+      expect(positions).toStrictEqual([0, 2, 3]);
     });
 
     it("preserves gaps between clips", () => {
@@ -211,7 +211,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
 
       // C(2)@0 ends@2, +gap3 → A(1)@5 ends@6, +gap3 → B(1)@9
-      expect(positions).toEqual([0, 5, 9]);
+      expect(positions).toStrictEqual([0, 5, 9]);
     });
 
     it("preserves mixed gap pattern", () => {
@@ -225,7 +225,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [1, 2, 0]);
 
       // B(2)@0 ends@2, +gap2 → C(1)@4 ends@5, +gap0 → A(1)@5
-      expect(positions).toEqual([0, 4, 5]);
+      expect(positions).toStrictEqual([0, 4, 5]);
     });
 
     it("handles no shuffle (same order)", () => {
@@ -238,7 +238,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [0, 1, 2]);
 
       // Should return original positions
-      expect(positions).toEqual([0, 4, 8]);
+      expect(positions).toStrictEqual([0, 4, 8]);
     });
 
     it("handles two clips", () => {
@@ -250,7 +250,7 @@ describe("transform-clips helpers", () => {
       const positions = calculateShufflePositions(clips, [1, 0]);
 
       // B(1)@0 ends@1, +gap2 → A(2)@3
-      expect(positions).toEqual([0, 3]);
+      expect(positions).toStrictEqual([0, 3]);
     });
   });
 });

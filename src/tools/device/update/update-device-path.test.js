@@ -53,7 +53,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "My Device",
       );
-      expect(result).toEqual({ id: "device-456" });
+      expect(result).toStrictEqual({ id: "device-456" });
     });
 
     it("should update device collapsed state by path", () => {
@@ -64,7 +64,7 @@ describe("updateDevice with path parameter", () => {
         "is_collapsed",
         1,
       );
-      expect(result).toEqual({ id: "device-456" });
+      expect(result).toStrictEqual({ id: "device-456" });
     });
 
     it("should return empty array for non-existent device by path", () => {
@@ -72,7 +72,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "1/0", name: "Test" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should update device by path on return track", () => {
@@ -83,7 +83,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "Return Device",
       );
-      expect(result).toEqual({ id: "return-device-123" });
+      expect(result).toStrictEqual({ id: "return-device-123" });
     });
 
     it("should update device by path on master track", () => {
@@ -94,7 +94,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "Master Device",
       );
-      expect(result).toEqual({ id: "master-device-789" });
+      expect(result).toStrictEqual({ id: "master-device-789" });
     });
   });
 
@@ -126,7 +126,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "My Chain",
       );
-      expect(result).toEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain mute state by path", () => {
@@ -137,7 +137,7 @@ describe("updateDevice with path parameter", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain solo state by path", () => {
@@ -148,7 +148,7 @@ describe("updateDevice with path parameter", () => {
         "solo",
         1,
       );
-      expect(result).toEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain color by path", () => {
@@ -160,7 +160,7 @@ describe("updateDevice with path parameter", () => {
         "color",
         16711680,
       );
-      expect(result).toEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should return empty array for non-existent chain by path", () => {
@@ -168,7 +168,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "1/0/0", name: "Test" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should update return chain by path", () => {
@@ -179,7 +179,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "Return Chain",
       );
-      expect(result).toEqual({ id: "return-chain-456" });
+      expect(result).toStrictEqual({ id: "return-chain-456" });
     });
   });
 
@@ -276,7 +276,7 @@ describe("updateDevice with path parameter", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "pad-36" });
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should update drum pad solo state by path", () => {
@@ -292,7 +292,7 @@ describe("updateDevice with path parameter", () => {
         "solo",
         1,
       );
-      expect(result).toEqual({ id: "pad-36" });
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should return empty array for non-existent drum pad by path", () => {
@@ -303,7 +303,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "1/0/pC3", mute: true });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should update drum chain by path", () => {
@@ -322,7 +322,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "New Layer",
       );
-      expect(result).toEqual({ id: "chain-1" });
+      expect(result).toStrictEqual({ id: "chain-1" });
     });
 
     it("should update drum chain mute state by path", () => {
@@ -341,7 +341,7 @@ describe("updateDevice with path parameter", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "chain-1" });
+      expect(result).toStrictEqual({ id: "chain-1" });
     });
 
     it("should return empty array for invalid chain index in drum pad", () => {
@@ -354,7 +354,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "1/0/pC1/5", name: "Test" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should update device inside drum pad chain by path", () => {
@@ -376,7 +376,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "New Simpler",
       );
-      expect(result).toEqual({ id: "device-1" });
+      expect(result).toStrictEqual({ id: "device-1" });
     });
 
     it("should return empty array for invalid device index in drum pad chain", () => {
@@ -390,7 +390,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "1/0/pC1/0/5", name: "Test" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -404,7 +404,7 @@ describe("updateDevice with path parameter", () => {
     it("should return empty array for track-only path (invalid)", () => {
       const result = updateDevice({ path: "1", name: "Test" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -440,7 +440,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "Updated",
       );
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-101" },
         { id: "device-200" },
@@ -452,7 +452,10 @@ describe("updateDevice with path parameter", () => {
 
       // 1/1 doesn't exist, but 0/0 and 1/0 should be updated
       expect(liveApiSet).toHaveBeenCalledTimes(2);
-      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+      expect(result).toStrictEqual([
+        { id: "device-100" },
+        { id: "device-200" },
+      ]);
     });
 
     it("should return empty array when all paths are invalid", () => {
@@ -461,13 +464,13 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "0/0, 1/0", name: "Updated" });
 
       expect(liveApiSet).not.toHaveBeenCalled();
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should return single object when only one path provided", () => {
       const result = updateDevice({ path: "0/0", name: "Single" });
 
-      expect(result).toEqual({ id: "device-100" });
+      expect(result).toStrictEqual({ id: "device-100" });
     });
 
     it("should return single object when only one path valid out of many", () => {
@@ -479,7 +482,7 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "0/0, 1/0, 2/0", name: "Updated" });
 
-      expect(result).toEqual({ id: "device-100" });
+      expect(result).toStrictEqual({ id: "device-100" });
     });
 
     it("should handle whitespace in comma-separated paths", () => {
@@ -489,7 +492,10 @@ describe("updateDevice with path parameter", () => {
       });
 
       expect(liveApiSet).toHaveBeenCalledTimes(2);
-      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+      expect(result).toStrictEqual([
+        { id: "device-100" },
+        { id: "device-200" },
+      ]);
     });
 
     it("should skip invalid path formats gracefully", () => {
@@ -498,7 +504,10 @@ describe("updateDevice with path parameter", () => {
 
       // "0" is invalid (no device index), but "0/0" and "1/0" should work
       expect(liveApiSet).toHaveBeenCalledTimes(2);
-      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+      expect(result).toStrictEqual([
+        { id: "device-100" },
+        { id: "device-200" },
+      ]);
     });
   });
 
@@ -531,7 +540,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "Mixed",
       );
-      expect(result).toEqual([{ id: "device-100" }, { id: "chain-200" }]);
+      expect(result).toStrictEqual([{ id: "device-100" }, { id: "chain-200" }]);
     });
   });
 });

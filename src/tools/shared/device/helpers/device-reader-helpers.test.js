@@ -33,7 +33,7 @@ describe("device-reader-helpers", () => {
       const chain = createMockChain({ name: "My Chain" });
       const result = buildChainInfo(chain);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "chain-123",
         type: "Chain",
         name: "My Chain",
@@ -129,7 +129,7 @@ describe("device-reader-helpers", () => {
       const devices = [{ id: "dev-1" }, { id: "dev-2" }];
       const result = buildChainInfo(chain, { devices });
 
-      expect(result.devices).toEqual(devices);
+      expect(result.devices).toStrictEqual(devices);
     });
 
     it("omits devices when not provided", () => {
@@ -154,7 +154,7 @@ describe("device-reader-helpers", () => {
         devices,
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "chain-123",
         path: "1/0/0",
         type: "DrumChain",
@@ -464,7 +464,7 @@ describe("device-reader-helpers", () => {
         getProperty: () => 0, // can_have_chains = 0
       };
 
-      expect(readMacroVariations(device)).toEqual({});
+      expect(readMacroVariations(device)).toStrictEqual({});
     });
 
     it("returns empty object for rack with no variations", () => {
@@ -472,7 +472,7 @@ describe("device-reader-helpers", () => {
         getProperty: (prop) => (prop === "can_have_chains" ? 1 : 0),
       };
 
-      expect(readMacroVariations(device)).toEqual({});
+      expect(readMacroVariations(device)).toStrictEqual({});
     });
 
     it("returns variations object with count and selected", () => {
@@ -491,7 +491,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toEqual({
+      expect(readMacroVariations(device)).toStrictEqual({
         variations: {
           count: 5,
           selected: 2,
@@ -515,7 +515,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toEqual({
+      expect(readMacroVariations(device)).toStrictEqual({
         macros: { count: 8, hasMappings: true },
       });
     });
@@ -532,7 +532,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toEqual({});
+      expect(readMacroVariations(device)).toStrictEqual({});
     });
 
     it("returns both variations and macros when both exist", () => {
@@ -555,7 +555,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toEqual({
+      expect(readMacroVariations(device)).toStrictEqual({
         variations: { count: 3, selected: 1 },
         macros: { count: 4, hasMappings: false },
       });
@@ -568,7 +568,7 @@ describe("device-reader-helpers", () => {
         getProperty: () => 0, // can_compare_ab = 0
       };
 
-      expect(readABCompare(device)).toEqual({});
+      expect(readABCompare(device)).toStrictEqual({});
     });
 
     it("returns { abCompare: 'a' } when on preset A", () => {
@@ -585,7 +585,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readABCompare(device)).toEqual({ abCompare: "a" });
+      expect(readABCompare(device)).toStrictEqual({ abCompare: "a" });
     });
 
     it("returns { abCompare: 'b' } when on preset B", () => {
@@ -602,7 +602,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readABCompare(device)).toEqual({ abCompare: "b" });
+      expect(readABCompare(device)).toStrictEqual({ abCompare: "b" });
     });
   });
 });

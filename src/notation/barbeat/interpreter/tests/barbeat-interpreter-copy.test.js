@@ -6,7 +6,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("copies a single bar to a different position", () => {
       const result = interpretNotation("C3 D3 E3 1|1 @2=1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -62,7 +62,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("copies previous bar with @N= syntax", () => {
       const result = interpretNotation("C3 1|1 @2=");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -84,7 +84,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("copies a range of bars", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 @5=1-2");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -126,7 +126,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("supports chained copies", () => {
       const result = interpretNotation("C3 1|1 @2= @3= @4=");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -164,7 +164,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("overlays notes after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 |2");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -199,7 +199,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       // bar 3 gets both C3 and D3 from bar 2
       const result = interpretNotation("C3 1|1 @2= D3 |2 @3=");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -249,7 +249,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("preserves note properties (velocity, duration, probability)", () => {
       const result = interpretNotation("v80 t0.5 p0.7 C3 1|1 @2=1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -276,7 +276,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         timeSigDenominator: 4,
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1 (3/4 time)
         {
           pitch: 60,
@@ -303,7 +303,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         timeSigDenominator: 8,
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1 (6/8 time = 3 quarter notes per bar)
         {
           pitch: 60,
@@ -327,7 +327,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("handles multiple notes at different beats", () => {
       const result = interpretNotation("C3 1|1 D3 1|2 E3 1|3 @2=1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1
         {
           pitch: 60,
@@ -385,7 +385,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
 
       // After @2=1, current time should be 2|1
       // So |2 should mean 2|2
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,

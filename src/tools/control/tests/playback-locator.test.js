@@ -199,7 +199,7 @@ describe("playback - locator support", () => {
         "loop_length",
         16, // 32 - 16 = 16 beats
       );
-      expect(result.arrangementLoop).toEqual({
+      expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
       });
@@ -273,7 +273,7 @@ describe("playback - locator support", () => {
         "loop_length",
         16,
       );
-      expect(result.arrangementLoop).toEqual({
+      expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
       });

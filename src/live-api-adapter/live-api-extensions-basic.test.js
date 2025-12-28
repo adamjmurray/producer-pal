@@ -48,7 +48,7 @@ describe("LiveAPI extensions - basic methods", () => {
       const intervals = [0, 2, 4, 5, 7, 9, 11];
 
       api.get = vi.fn().mockReturnValue(intervals);
-      expect(api.getProperty("scale_intervals")).toEqual(intervals);
+      expect(api.getProperty("scale_intervals")).toStrictEqual(intervals);
       expect(api.get).toHaveBeenCalledWith("scale_intervals");
     });
 
@@ -56,7 +56,7 @@ describe("LiveAPI extensions - basic methods", () => {
       const modes = [0, 1, 2, 3, 4];
 
       api.get = vi.fn().mockReturnValue(modes);
-      expect(api.getProperty("available_warp_modes")).toEqual(modes);
+      expect(api.getProperty("available_warp_modes")).toStrictEqual(modes);
       expect(api.get).toHaveBeenCalledWith("available_warp_modes");
     });
 
@@ -69,7 +69,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("available_input_routing_channels");
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           { display_name: "All Channels", identifier: 0 },
           { display_name: "Ch. 1", identifier: 1 },
         ]);
@@ -86,7 +86,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("available_input_routing_types");
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           { display_name: "All Ins", identifier: 17 },
           { display_name: "Computer Keyboard", identifier: 18 },
         ]);
@@ -100,7 +100,9 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("available_output_routing_channels");
 
-        expect(result).toEqual([{ display_name: "Master", identifier: 26 }]);
+        expect(result).toStrictEqual([
+          { display_name: "Master", identifier: 26 },
+        ]);
       });
 
       it("parses JSON for available_output_routing_types", () => {
@@ -111,7 +113,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("available_output_routing_types");
 
-        expect(result).toEqual([
+        expect(result).toStrictEqual([
           { display_name: "Track Out", identifier: 25 },
           { display_name: "Send Only", identifier: 27 },
         ]);
@@ -125,7 +127,10 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("input_routing_channel");
 
-        expect(result).toEqual({ display_name: "All Channels", identifier: 0 });
+        expect(result).toStrictEqual({
+          display_name: "All Channels",
+          identifier: 0,
+        });
       });
 
       it("parses JSON for input_routing_type", () => {
@@ -136,7 +141,10 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("input_routing_type");
 
-        expect(result).toEqual({ display_name: "All Ins", identifier: 17 });
+        expect(result).toStrictEqual({
+          display_name: "All Ins",
+          identifier: 17,
+        });
       });
 
       it("parses JSON for output_routing_channel", () => {
@@ -147,7 +155,10 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("output_routing_channel");
 
-        expect(result).toEqual({ display_name: "Master", identifier: 26 });
+        expect(result).toStrictEqual({
+          display_name: "Master",
+          identifier: 26,
+        });
       });
 
       it("parses JSON for output_routing_type", () => {
@@ -158,7 +169,10 @@ describe("LiveAPI extensions - basic methods", () => {
 
         const result = api.getProperty("output_routing_type");
 
-        expect(result).toEqual({ display_name: "Track Out", identifier: 25 });
+        expect(result).toStrictEqual({
+          display_name: "Track Out",
+          identifier: 25,
+        });
       });
 
       it("returns null when routing property has no data", () => {
@@ -196,22 +210,22 @@ describe("LiveAPI extensions - basic methods", () => {
   describe("getChildIds", () => {
     it("parses id pairs from LiveAPI response", () => {
       api.get = vi.fn().mockReturnValue(["id", "1", "id", "2", "id", "3"]);
-      expect(api.getChildIds("tracks")).toEqual(["id 1", "id 2", "id 3"]);
+      expect(api.getChildIds("tracks")).toStrictEqual(["id 1", "id 2", "id 3"]);
     });
 
     it("returns empty array when get() returns non-array", () => {
       api.get = vi.fn().mockReturnValue(undefined);
-      expect(api.getChildIds("tracks")).toEqual([]);
+      expect(api.getChildIds("tracks")).toStrictEqual([]);
     });
 
     it("returns empty array when no id pairs found", () => {
       api.get = vi.fn().mockReturnValue(["something", "else"]);
-      expect(api.getChildIds("tracks")).toEqual([]);
+      expect(api.getChildIds("tracks")).toStrictEqual([]);
     });
 
     it("handles partial id pairs", () => {
       api.get = vi.fn().mockReturnValue(["id", "1", "something"]);
-      expect(api.getChildIds("tracks")).toEqual(["id 1"]);
+      expect(api.getChildIds("tracks")).toStrictEqual(["id 1"]);
     });
   });
 
@@ -229,7 +243,7 @@ describe("LiveAPI extensions - basic methods", () => {
 
     it("returns empty array when no children", () => {
       api.get = vi.fn().mockReturnValue([]);
-      expect(api.getChildren("tracks")).toEqual([]);
+      expect(api.getChildren("tracks")).toStrictEqual([]);
     });
   });
 

@@ -94,7 +94,7 @@ describe("readTrack", () => {
       });
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.drumMap).toEqual({ C3: "Direct Kick" });
+      expect(result.drumMap).toStrictEqual({ C3: "Direct Kick" });
     });
 
     it("adds hasInstrument:false property only to drum chains without instruments", () => {
@@ -190,7 +190,7 @@ describe("readTrack", () => {
       expect(result.instrument).toBeDefined();
 
       // drumPads only included when drum-pads is requested
-      // expect(result.instrument.drumPads).toEqual([
+      // expect(result.instrument.drumPads).toStrictEqual([
       //   expect.objectContaining({
       //     name: "Kick",
       //     note: 36,
@@ -319,7 +319,7 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0 });
 
       // drumMap should only include pads with instruments (kick and snare), not empty pad
-      expect(result.drumMap).toEqual({
+      expect(result.drumMap).toStrictEqual({
         C1: "Kick", // Has instrument, included
         D1: "Snare", // Has instrument, included
         // Db1 "Empty" should be excluded because it has no instruments
@@ -426,7 +426,7 @@ describe("readTrack", () => {
       // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
 
       // drumMap should include the drum chain since it has a nested instrument
-      expect(result.drumMap).toEqual({
+      expect(result.drumMap).toStrictEqual({
         C1: "Kick",
       });
     });

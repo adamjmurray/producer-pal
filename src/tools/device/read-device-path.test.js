@@ -49,7 +49,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-456",
       path: "1/0",
       type: "instrument: Operator",
@@ -97,7 +97,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "chain-789",
       path: "1/0/0",
       type: "Chain",
@@ -137,7 +137,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "chain-with-color",
       path: "1/0/0",
       type: "Chain",
@@ -176,7 +176,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "chain-123",
       path: "1/0/0",
       type: "Chain",
@@ -261,7 +261,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/r0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "return-chain-101",
       path: "1/0/r0",
       type: "Chain",
@@ -302,7 +302,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "chain-muted",
       path: "1/0/0",
       type: "Chain",
@@ -349,7 +349,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "r0/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "return-device-123",
       path: "r0/0",
       type: "audio-effect: Reverb",
@@ -381,7 +381,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "m/0" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "master-device-123",
       path: "m/0",
       type: "audio-effect: Limiter",
@@ -498,7 +498,7 @@ describe("readDevice with path parameter", () => {
 
       const result = readDevice({ path: "1/0/pC1", include: [] });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "pad-36",
         path: "1/0/pC1",
         name: "Kick",
@@ -548,7 +548,7 @@ describe("readDevice with path parameter", () => {
       const result = readDevice({ path: "1/0/pC1", include: ["chains"] });
 
       expect(result.chains).toHaveLength(1);
-      expect(result.chains[0]).toEqual({
+      expect(result.chains[0]).toStrictEqual({
         id: "chain-1",
         path: "1/0/pC1/0",
         type: "DrumChain",
@@ -573,7 +573,7 @@ describe("readDevice with path parameter", () => {
 
       const result = readDevice({ path: "1/0/pC1/0" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "chain-1",
         path: "1/0/pC1/0",
         type: "DrumChain",

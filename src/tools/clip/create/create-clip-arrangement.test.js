@@ -51,7 +51,7 @@ describe("createClip - arrangement view", () => {
       "Arrangement Clip",
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "arrangement_clip",
       trackIndex: 0,
       arrangementStart: "3|1",
@@ -111,7 +111,7 @@ describe("createClip - arrangement view", () => {
       4,
     ); // 5|1 = 16 beats
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         id: "arrangement_clip",
         trackIndex: 0,
@@ -173,7 +173,7 @@ describe("createClip - arrangement view", () => {
     });
 
     // Should return empty array (no clips created)
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
 
     global.LiveAPI.prototype.exists = originalExists;
   });

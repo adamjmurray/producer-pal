@@ -61,7 +61,7 @@ describe("createShortenedClipInHolding", () => {
     expect(liveApiCall).toHaveBeenNthCalledWith(3, "delete_clip", "id 300");
 
     // Verify return value
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       holdingClipId: "200",
       holdingClip: expect.any(LiveAPI),
     });
@@ -173,7 +173,7 @@ describe("createShortenedClipInHolding", () => {
     expect(liveApiCall).toHaveBeenNthCalledWith(5, "delete_clip", "id 500"); // Temp clip
 
     // Verify return value
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       holdingClipId: "200",
       holdingClip: expect.any(LiveAPI),
     });

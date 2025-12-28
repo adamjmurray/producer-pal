@@ -37,7 +37,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: id, type: "track" });
 
-    expect(result).toEqual({ id, type: "track", deleted: true });
+    expect(result).toStrictEqual({ id, type: "track", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
@@ -100,7 +100,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_2", type: "track", deleted: true },
       { id: "track_1", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
@@ -136,7 +136,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: id, type: "scene" });
 
-    expect(result).toEqual({ id, type: "scene", deleted: true });
+    expect(result).toStrictEqual({ id, type: "scene", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
@@ -189,7 +189,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "scene_2", type: "scene", deleted: true },
       { id: "scene_0", type: "scene", deleted: true },
     ]);
@@ -237,7 +237,7 @@ describe("deleteObject", () => {
       "id clip_1_1",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "clip_0_0", type: "clip", deleted: true },
       { id: "clip_1_1", type: "clip", deleted: true },
     ]);
@@ -285,7 +285,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: "999", type: "track" });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "999" does not exist',
     );
@@ -316,7 +316,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: "scene_1", type: "track" });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "scene_1" is not a track (found Scene)',
     );
@@ -374,7 +374,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_2", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
     ]);
@@ -393,7 +393,7 @@ describe("deleteObject", () => {
       type: "track",
     });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent1" does not exist',
@@ -451,7 +451,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids, type: "track" });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_1", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
     ]);
@@ -490,7 +490,7 @@ describe("deleteObject", () => {
       type: "track",
     });
 
-    expect(singleResult).toEqual({
+    expect(singleResult).toStrictEqual({
       id: "track_0",
       type: "track",
       deleted: true,

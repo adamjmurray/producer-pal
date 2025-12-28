@@ -111,7 +111,7 @@ describe("transformClips - arrangement", () => {
 
     // 4 bars = 16 beats, so range is [0, 16)
     // clip_1 at 0.0 and clip_2 at 8.0 are both in range
-    expect(result.clipIds).toEqual(["clip_1", "clip_2"]);
+    expect(result.clipIds).toStrictEqual(["clip_1", "clip_2"]);
   });
 
   it("should prioritize clipIds over arrangementTrackIndex when both provided", () => {
@@ -166,7 +166,7 @@ describe("transformClips - arrangement", () => {
       seed: 12345,
     });
 
-    expect(result.clipIds).toEqual([clipId]);
+    expect(result.clipIds).toStrictEqual([clipId]);
   });
 
   it("should filter clips by start_time in arrangement range", () => {
@@ -301,7 +301,7 @@ describe("transformClips - arrangement", () => {
     });
 
     // Should include clips starting at 0.0 and 4.0, but not 16.0
-    expect(result.clipIds).toEqual(["clip_1", "clip_2"]);
+    expect(result.clipIds).toStrictEqual(["clip_1", "clip_2"]);
   });
 
   it("should warn when no clips found in arrangement range", () => {
@@ -337,7 +337,7 @@ describe("transformClips - arrangement", () => {
       seed: 12345,
     });
 
-    expect(result).toEqual({ clipIds: [], seed: 12345 });
+    expect(result).toStrictEqual({ clipIds: [], seed: 12345 });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("no clips found in arrangement range"),
     );

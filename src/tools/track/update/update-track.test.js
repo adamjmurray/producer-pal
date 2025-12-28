@@ -74,7 +74,7 @@ describe("updateTrack", () => {
       "arm",
       true,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update multiple tracks by comma-separated IDs", () => {
@@ -96,7 +96,7 @@ describe("updateTrack", () => {
     );
     expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per track
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle 'id ' prefixed track IDs", () => {
@@ -110,7 +110,7 @@ describe("updateTrack", () => {
       "name",
       "Prefixed ID Track",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -125,7 +125,7 @@ describe("updateTrack", () => {
       "Only Name Update",
     );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -151,7 +151,7 @@ describe("updateTrack", () => {
       "arm",
       false,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should throw error when ids is missing", () => {
@@ -169,7 +169,7 @@ describe("updateTrack", () => {
 
     const result = updateTrack({ ids: "nonexistent" });
 
-    expect(result).toEqual([]); // Empty array, no valid tracks
+    expect(result).toStrictEqual([]); // Empty array, no valid tracks
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateTrack: id "nonexistent" does not exist',
     );
@@ -192,7 +192,7 @@ describe("updateTrack", () => {
 
     const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
 
-    expect(result).toEqual({ id: "123" }); // Only valid track updated
+    expect(result).toStrictEqual({ id: "123" }); // Only valid track updated
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateTrack: id "nonexistent" does not exist',
     );
@@ -203,8 +203,8 @@ describe("updateTrack", () => {
     const singleResult = updateTrack({ ids: "123", name: "Single" });
     const arrayResult = updateTrack({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({ id: "123" });
-    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123" });
+    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -213,7 +213,7 @@ describe("updateTrack", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -223,7 +223,7 @@ describe("updateTrack", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   describe("routing properties", () => {
@@ -258,7 +258,7 @@ describe("updateTrack", () => {
         '{"output_routing_channel":{"identifier":26}}',
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should update monitoring state when provided", () => {
@@ -273,7 +273,7 @@ describe("updateTrack", () => {
         1, // LIVE_API_MONITORING_STATE_AUTO
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should update monitoring state for all valid values", () => {
@@ -350,7 +350,7 @@ describe("updateTrack", () => {
         0,
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle routing properties in bulk operations", () => {
@@ -382,7 +382,7 @@ describe("updateTrack", () => {
         1,
       );
 
-      expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+      expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
     });
 
     it("should not update routing properties when not provided", () => {
@@ -399,7 +399,7 @@ describe("updateTrack", () => {
         "Only Name Update",
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
   });
 
@@ -416,7 +416,7 @@ describe("updateTrack", () => {
         0, // 0 = following arrangement
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set arrangementFollower to false (track doesn't follow arrangement)", () => {
@@ -431,7 +431,7 @@ describe("updateTrack", () => {
         1, // 1 = not following arrangement
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set arrangementFollower for multiple tracks", () => {
@@ -451,7 +451,7 @@ describe("updateTrack", () => {
         0,
       );
 
-      expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+      expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
     });
 
     it("should combine arrangementFollower with other parameters", () => {
@@ -478,7 +478,7 @@ describe("updateTrack", () => {
         1,
       );
 
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
   });
 

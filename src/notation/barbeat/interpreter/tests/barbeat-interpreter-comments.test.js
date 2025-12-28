@@ -5,7 +5,7 @@ describe("bar|beat interpretNotation() - comment support", () => {
   it("handles line comments with //", () => {
     const result = interpretNotation("C3 1|1 // this is a C major");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -20,7 +20,7 @@ describe("bar|beat interpretNotation() - comment support", () => {
   it("handles hash comments with #", () => {
     const result = interpretNotation("C1 1|1 # kick drum");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 36,
         start_time: 0,
@@ -35,7 +35,7 @@ describe("bar|beat interpretNotation() - comment support", () => {
   it("handles block comments", () => {
     const result = interpretNotation("/* velocity */ v100 C3 1|1");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -51,7 +51,7 @@ describe("bar|beat interpretNotation() - comment support", () => {
     const result = interpretNotation(`C3 /* this is a
 multi-line comment */ D3 1|1`);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -74,7 +74,7 @@ multi-line comment */ D3 1|1`);
   it("handles comments at the start of input", () => {
     const result = interpretNotation("// start comment\nC3 1|1");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -89,7 +89,7 @@ multi-line comment */ D3 1|1`);
   it("handles comments at the end of input", () => {
     const result = interpretNotation("C3 D3 1|1 // end comment");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -112,7 +112,7 @@ multi-line comment */ D3 1|1`);
   it("handles comments in the middle of tokens", () => {
     const result = interpretNotation("/* middle */ C3 1|1");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -129,7 +129,7 @@ multi-line comment */ D3 1|1`);
       "C3 1|1 // major third /* mixed */ # styles",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -144,7 +144,7 @@ multi-line comment */ D3 1|1`);
   it("handles empty comments", () => {
     const result = interpretNotation("C3 1|1 // \nD3 1|2 # \n/**/ E3 1|3");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -177,7 +177,7 @@ multi-line comment */ D3 1|1`);
       "v100 // set velocity\nt0.5 // set duration\nC3 1|1 // play note",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -192,7 +192,7 @@ multi-line comment */ D3 1|1`);
   it("handles comments with special characters", () => {
     const result = interpretNotation("C3 1|1 // C major chord!@#$%^&*()");
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 60,
         start_time: 0,
@@ -213,7 +213,7 @@ multi-line comment */ D3 1|1`);
         v100 p0.9 Gb1 |2 // another hi-hat
       `);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         pitch: 36,
         start_time: 0,

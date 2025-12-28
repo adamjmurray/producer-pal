@@ -3,7 +3,7 @@ import { applyV0Deletions } from "./barbeat-apply-v0-deletions.js";
 
 describe("applyV0Deletions()", () => {
   it("returns empty array for empty input", () => {
-    expect(applyV0Deletions([])).toEqual([]);
+    expect(applyV0Deletions([])).toStrictEqual([]);
   });
 
   it("returns notes unchanged when there are no v0 notes", () => {
@@ -13,7 +13,7 @@ describe("applyV0Deletions()", () => {
       { pitch: 64, start_time: 1, duration: 1, velocity: 100 },
     ];
 
-    expect(applyV0Deletions(notes)).toEqual(notes);
+    expect(applyV0Deletions(notes)).toStrictEqual(notes);
   });
 
   it("deletes earlier note with same pitch and time when v0 note is encountered", () => {
@@ -24,7 +24,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
       // v0 note filtered out
     ]);
@@ -38,7 +38,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
       // v0 note filtered out
@@ -53,7 +53,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 60, start_time: 0.001, duration: 1, velocity: 100 }, // survives
       // v0 note filtered out
     ]);
@@ -67,7 +67,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       // v0 note filtered out, all notes deleted
     ]);
   });
@@ -82,7 +82,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 64, start_time: 1, duration: 1, velocity: 100 }, // survives
       // v0 notes filtered out
     ]);
@@ -96,7 +96,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 }, // new note
       // v0 note filtered out
     ]);
@@ -124,7 +124,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 }, // note remains
       // v0 note filtered out
     ]);
@@ -143,7 +143,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 }, // survives
       { pitch: 60, start_time: 2, duration: 1, velocity: 100 }, // survives (different time)
       { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // survives

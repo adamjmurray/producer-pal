@@ -57,7 +57,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toEqual(
+    expect(result.projectNotes).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
@@ -110,7 +110,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toEqual(
+    expect(result.projectNotes).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");

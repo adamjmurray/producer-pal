@@ -203,7 +203,7 @@ describe("readDevice paramSearch filtering", () => {
 
     expect(result.parameters).toHaveLength(1);
     // New format: parsed value with unit, min/max from label parsing
-    expect(result.parameters[0]).toEqual({
+    expect(result.parameters[0]).toStrictEqual({
       id: "param-1",
       name: "Volume",
       value: -6,

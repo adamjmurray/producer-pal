@@ -77,7 +77,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     // Should delete the temp clip
     expect(liveApiCall).toHaveBeenCalledWith("delete_clip", expect.any(String));
 
-    expect(result).toEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789" });
   });
 
   it("should shorten arrangement clip to single beat", () => {
@@ -123,7 +123,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       15.0, // tempClipLength
     );
 
-    expect(result).toEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789" });
   });
 
   it("should emit warning and ignore for session clips", () => {
@@ -157,7 +157,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     );
 
     consoleErrorSpy.mockRestore();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should handle zero length with clear error", () => {
@@ -221,7 +221,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       expect.anything(),
     );
 
-    expect(result).toEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789" });
   });
 
   it("should allow both arrangementLength and arrangementStart (move then resize)", () => {
@@ -316,7 +316,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       8.0, // tempClipLength = 48 - 40 = 8
     );
 
-    expect(result).toEqual({ id: movedClipId });
+    expect(result).toStrictEqual({ id: movedClipId });
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", () => {

@@ -38,7 +38,7 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids: id, type: "device" });
 
-    expect(result).toEqual({ id, type: "device", deleted: true });
+    expect(result).toStrictEqual({ id, type: "device", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "delete_device",
@@ -68,7 +68,7 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids: id, type: "device" });
 
-    expect(result).toEqual({ id, type: "device", deleted: true });
+    expect(result).toStrictEqual({ id, type: "device", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set return_tracks 0" }),
       "delete_device",
@@ -98,7 +98,7 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids: id, type: "device" });
 
-    expect(result).toEqual({ id, type: "device", deleted: true });
+    expect(result).toStrictEqual({ id, type: "device", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set master_track" }),
       "delete_device",
@@ -130,7 +130,7 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids, type: "device" });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "device_1", type: "device", deleted: true },
       { id: "device_2", type: "device", deleted: true },
     ]);
@@ -193,7 +193,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ ids: id, type: "device" });
 
-      expect(result).toEqual({ id, type: "device", deleted: true });
+      expect(result).toStrictEqual({ id, type: "device", deleted: true });
       // Should call delete_device on the chain, not the track
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({
@@ -226,7 +226,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ ids: id, type: "device" });
 
-      expect(result).toEqual({ id, type: "device", deleted: true });
+      expect(result).toStrictEqual({ id, type: "device", deleted: true });
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({
           path: "live_set tracks 0 devices 0 return_chains 1",
@@ -260,7 +260,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ ids: id, type: "device" });
 
-      expect(result).toEqual({ id, type: "device", deleted: true });
+      expect(result).toStrictEqual({ id, type: "device", deleted: true });
       // Should call delete_device on the innermost chain
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({
@@ -300,7 +300,11 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "0/1", type: "device" });
 
-      expect(result).toEqual({ id: deviceId, type: "device", deleted: true });
+      expect(result).toStrictEqual({
+        id: deviceId,
+        type: "device",
+        deleted: true,
+      });
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "delete_device",
@@ -328,7 +332,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "0/0, 1/1", type: "device" });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "dev_0_0", type: "device", deleted: true },
         { id: "dev_1_1", type: "device", deleted: true },
       ]);
@@ -357,7 +361,7 @@ describe("deleteObject device deletion", () => {
         type: "device",
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "dev_by_id", type: "device", deleted: true },
         { id: "dev_by_path", type: "device", deleted: true },
       ]);
@@ -386,7 +390,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "1/0/2/1", type: "device" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "nested_dev",
         type: "device",
         deleted: true,
@@ -418,7 +422,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "0/0, 99/99", type: "device" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "valid_dev",
         type: "device",
         deleted: true,
@@ -430,7 +434,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "99/99", type: "device" });
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should warn when path is used with non-device/drum-pad type", () => {
@@ -504,7 +508,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "1/0/pC1/0/0", type: "device" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: deviceId,
         type: "device",
         deleted: true,
@@ -542,7 +546,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ ids: id, type: "drum-pad" });
 
-      expect(result).toEqual({ id, type: "drum-pad", deleted: true });
+      expect(result).toStrictEqual({ id, type: "drum-pad", deleted: true });
       expect(liveApiCall).toHaveBeenCalledWith("delete_all_chains");
     });
 
@@ -569,7 +573,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ ids: "pad_1, pad_2", type: "drum-pad" });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "pad_1", type: "drum-pad", deleted: true },
         { id: "pad_2", type: "drum-pad", deleted: true },
       ]);
@@ -607,7 +611,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "0/0/pC1", type: "drum-pad" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "pad_by_path",
         type: "drum-pad",
         deleted: true,
@@ -662,7 +666,7 @@ describe("deleteObject device deletion", () => {
         type: "drum-pad",
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         { id: "pad_by_id", type: "drum-pad", deleted: true },
         { id: "pad_by_path", type: "drum-pad", deleted: true },
       ]);
@@ -703,7 +707,7 @@ describe("deleteObject device deletion", () => {
         type: "drum-pad",
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "valid_pad",
         type: "drum-pad",
         deleted: true,

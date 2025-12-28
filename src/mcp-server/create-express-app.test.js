@@ -92,7 +92,7 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
 
-      expect(toolNames).toEqual([
+      expect(toolNames).toStrictEqual([
         "ppal-connect",
         "ppal-read-live-set",
         "ppal-update-live-set",
@@ -251,7 +251,7 @@ describe("MCP Express App", () => {
       const mockReturnValue = JSON.parse(result.content[0].text);
 
       // this is hard-coded in our mock response above:
-      expect(mockReturnValue).toEqual({});
+      expect(mockReturnValue).toStrictEqual({});
 
       expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",

@@ -140,7 +140,7 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       name: "Test Live Set",
       isPlaying: true,
@@ -274,7 +274,7 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set",
       name: "Empty Live Set",
       tempo: 100,
@@ -357,7 +357,7 @@ describe("readLiveSet - basic reading", () => {
     });
 
     // Check that tracks have the expected device configurations
-    expect(result.tracks).toEqual([
+    expect(result.tracks).toStrictEqual([
       expect.objectContaining({
         name: "Synth Track",
         instrument: expect.objectContaining({
@@ -479,14 +479,14 @@ describe("readLiveSet - basic reading", () => {
     });
 
     // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
-    expect(result.tracks[0].instrument).toEqual(
+    expect(result.tracks[0].instrument).toStrictEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
         // drumPads: expect.any(Array), // Only included when drum-pads is requested
       }),
     );
-    expect(result.tracks[0].audioEffects).toEqual([
+    expect(result.tracks[0].audioEffects).toStrictEqual([
       expect.objectContaining({
         type: "audio-effect: Reverb",
       }),

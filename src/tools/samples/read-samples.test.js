@@ -35,7 +35,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         sampleFolder: "/samples/",
         samples: [],
       });
@@ -53,7 +53,7 @@ describe("readSamples", () => {
       const result = readSamples({}, context);
 
       expect(result.sampleFolder).toBe("/samples/");
-      expect(result.samples).toEqual(["kick.wav", "snare.mp3"]);
+      expect(result.samples).toStrictEqual(["kick.wav", "snare.mp3"]);
     });
 
     it("should normalize sampleFolder to end with /", () => {
@@ -82,7 +82,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result.samples).toEqual(["kick.wav", "snare.aiff"]);
+      expect(result.samples).toStrictEqual(["kick.wav", "snare.aiff"]);
     });
 
     it("should support all audio extensions case-insensitively", () => {
@@ -119,7 +119,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result.samples).toEqual(["kick.wav", "snare.mp3"]);
+      expect(result.samples).toStrictEqual(["kick.wav", "snare.mp3"]);
     });
   });
 
@@ -139,7 +139,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result.samples).toEqual([
+      expect(result.samples).toStrictEqual([
         "kick.wav",
         "drums/snare.wav",
         "drums/hihat.wav",
@@ -158,7 +158,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result.samples).toEqual(["drums/acoustic/kick.wav"]);
+      expect(result.samples).toStrictEqual(["drums/acoustic/kick.wav"]);
     });
   });
 
@@ -261,7 +261,7 @@ describe("readSamples", () => {
 
       const result = readSamples({}, context);
 
-      expect(result.samples).toEqual(["kick.wav", "snare.wav"]);
+      expect(result.samples).toStrictEqual(["kick.wav", "snare.wav"]);
     });
 
     it("should filter samples by case-insensitive substring match on filename", () => {
@@ -277,7 +277,7 @@ describe("readSamples", () => {
 
       const result = readSamples({ search: "kick" }, context);
 
-      expect(result.samples).toEqual(["kick.wav", "Kick_808.wav"]);
+      expect(result.samples).toStrictEqual(["kick.wav", "Kick_808.wav"]);
     });
 
     it("should filter samples by case-insensitive substring match on folder path", () => {
@@ -299,7 +299,10 @@ describe("readSamples", () => {
 
       const result = readSamples({ search: "drums" }, context);
 
-      expect(result.samples).toEqual(["drums/snare.wav", "drums/hihat.wav"]);
+      expect(result.samples).toStrictEqual([
+        "drums/snare.wav",
+        "drums/hihat.wav",
+      ]);
     });
 
     it("should return empty array when no matches found", () => {
@@ -313,7 +316,7 @@ describe("readSamples", () => {
 
       const result = readSamples({ search: "cymbal" }, context);
 
-      expect(result.samples).toEqual([]);
+      expect(result.samples).toStrictEqual([]);
     });
 
     it("should handle search with mixed case", () => {
@@ -328,7 +331,7 @@ describe("readSamples", () => {
 
       const result = readSamples({ search: "KiCk" }, context);
 
-      expect(result.samples).toEqual(["KICK.wav", "kick_808.WAV"]);
+      expect(result.samples).toStrictEqual(["KICK.wav", "kick_808.WAV"]);
     });
 
     it("should only count matching files toward MAX_SAMPLE_FILES limit", () => {
@@ -362,7 +365,7 @@ describe("readSamples", () => {
 
       // Should return all 5 matching files, not limited by MAX_SAMPLE_FILES
       expect(result.samples).toHaveLength(5);
-      expect(result.samples).toEqual([
+      expect(result.samples).toStrictEqual([
         "kick0.wav",
         "kick1.wav",
         "kick2.wav",

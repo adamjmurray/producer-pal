@@ -83,7 +83,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
       view: "session",
@@ -119,7 +119,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
       // name omitted when empty
@@ -280,10 +280,10 @@ describe("readClip", () => {
     });
 
     // Results should be identical
-    expect(resultWildcard).toEqual(resultExplicit);
+    expect(resultWildcard).toStrictEqual(resultExplicit);
 
     // Verify key properties are included
-    expect(resultWildcard).toEqual(
+    expect(resultWildcard).toStrictEqual(
       expect.objectContaining({
         id: "live_set/tracks/0/clip_slots/0/clip",
         type: "midi",
@@ -341,7 +341,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Test Clip",
       type: "midi",

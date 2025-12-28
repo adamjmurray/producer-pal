@@ -45,7 +45,7 @@ describe("config-builders", () => {
         history,
       );
 
-      expect(config.chatHistory).toEqual(history);
+      expect(config.chatHistory).toStrictEqual(history);
     });
   });
 
@@ -546,7 +546,7 @@ describe("config-builders", () => {
         history,
       );
 
-      expect(config.chatHistory).toEqual(history);
+      expect(config.chatHistory).toStrictEqual(history);
     });
   });
 });

@@ -42,7 +42,7 @@ describe("defineTool", () => {
     const invalidArgs = { optionalParam: "not a number" };
     const result = await toolHandler(invalidArgs);
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       content: [
         {
           type: "text",
@@ -84,7 +84,7 @@ describe("defineTool", () => {
     const result = await toolHandler(validArgs);
 
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", validArgs);
-    expect(result).toEqual({ success: true });
+    expect(result).toStrictEqual({ success: true });
   });
 
   it("should filter schema parameters when smallModelMode is enabled", () => {
@@ -112,7 +112,7 @@ describe("defineTool", () => {
     // Verify tool was registered with filtered schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
 
-    expect(Object.keys(registeredConfig.inputSchema)).toEqual([
+    expect(Object.keys(registeredConfig.inputSchema)).toStrictEqual([
       "keepParam",
       "alsoKeep",
     ]);
@@ -149,7 +149,7 @@ describe("defineTool", () => {
     // Verify tool was registered with full schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
 
-    expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
+    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
   });
 
   it("should strip filtered parameters in smallModelMode", async () => {
@@ -215,6 +215,6 @@ describe("defineTool", () => {
     // Should use original schema even in small model mode
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
 
-    expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
+    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
   });
 });

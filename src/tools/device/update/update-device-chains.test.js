@@ -37,7 +37,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should set solo on a Chain", () => {
@@ -51,7 +51,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "solo",
         1,
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should set mute on a DrumChain", () => {
@@ -65,7 +65,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
     });
 
     it("should set mute on a DrumPad", () => {
@@ -79,7 +79,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "mute",
         1,
       );
-      expect(result).toEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "790" });
     });
 
     it("should set mute to false (unmute)", () => {
@@ -93,7 +93,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "mute",
         0,
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should warn when mute is used on a Device", () => {
@@ -109,7 +109,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'mute' not applicable to RackDevice",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -128,7 +128,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "color",
         3900150,
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should set color on a DrumChain", () => {
@@ -143,7 +143,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "color",
         16711680,
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
     });
 
     it("should warn when color is used on a DrumPad", () => {
@@ -159,7 +159,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'color' not applicable to DrumPad",
       );
-      expect(result).toEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "790" });
 
       consoleSpy.mockRestore();
     });
@@ -177,7 +177,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'color' not applicable to RackDevice",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -195,7 +195,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "choke_group",
         1,
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
     });
 
     it("should warn when chokeGroup is used on a Chain", () => {
@@ -211,7 +211,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'chokeGroup' not applicable to Chain",
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -229,7 +229,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'chokeGroup' not applicable to RackDevice",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -247,7 +247,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "out_note",
         60, // C3 = MIDI 60
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
     });
 
     it("should handle sharp notes for mappedPitch", () => {
@@ -281,7 +281,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "out_note",
         expect.anything(),
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
 
       consoleSpy.mockRestore();
     });
@@ -299,7 +299,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'mappedPitch' not applicable to Chain",
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -319,7 +319,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'collapsed' not applicable to Chain",
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -337,7 +337,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         "updateDevice: 'params' not applicable to DrumPad",
       );
-      expect(result).toEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "790" });
 
       consoleSpy.mockRestore();
     });
@@ -366,7 +366,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "name",
         "My Chain",
       );
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should set name on a DrumChain", () => {
@@ -380,7 +380,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "name",
         "Kick",
       );
-      expect(result).toEqual({ id: "789" });
+      expect(result).toStrictEqual({ id: "789" });
     });
 
     it("should warn when name is used on a DrumPad (read-only)", () => {
@@ -401,7 +401,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "name",
         expect.anything(),
       );
-      expect(result).toEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "790" });
 
       consoleSpy.mockRestore();
     });

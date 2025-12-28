@@ -32,7 +32,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
     });
@@ -85,7 +85,7 @@ describe("readDevice", () => {
       include: ["chains"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "rack-device-123",
       type: "instrument-rack",
       chains: [],
@@ -133,7 +133,7 @@ describe("readDevice", () => {
       include: ["drum-pads"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "drum-rack-123",
       type: "drum-rack",
       drumPads: [], // Included because drum-pads was requested
@@ -183,7 +183,7 @@ describe("readDevice", () => {
       include: ["*"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "audio-effect-rack",
       chains: [],
@@ -216,7 +216,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "audio-effect: EQ Eight",
       deactivated: true,
@@ -248,7 +248,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
       name: "My Custom Operator",
@@ -289,7 +289,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "midi-effect-rack",
       chains: [],
@@ -321,7 +321,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "midi-effect: Arpeggiator",
     });
@@ -362,7 +362,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
       collapsed: true,
@@ -401,7 +401,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
     });
@@ -454,7 +454,7 @@ describe("readDevice", () => {
 
       const result = readDevice({ deviceId: "device-123" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
         sample: "/path/to/sample.wav",
@@ -488,7 +488,7 @@ describe("readDevice", () => {
 
       const result = readDevice({ deviceId: "device-123" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
       });
@@ -519,7 +519,7 @@ describe("readDevice", () => {
 
       const result = readDevice({ deviceId: "device-123" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Operator",
       });

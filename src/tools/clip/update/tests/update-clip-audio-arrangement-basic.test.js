@@ -129,7 +129,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should extend to target length (clip 672 scenario: start_marker=0, extending beyond visible)", () => {
@@ -249,7 +249,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip (NO empty clip for audio)
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should extend even when audio appears fully visible (clip 683 scenario: start_marker=0)", () => {
@@ -367,7 +367,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should extend to target length (clip 694 scenario: start_marker=0, extending beyond visible)", () => {
@@ -486,6 +486,6 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });

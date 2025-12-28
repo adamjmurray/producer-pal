@@ -89,7 +89,7 @@ describe("readTrack", () => {
       });
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.drumMap).toEqual({});
+      expect(result.drumMap).toStrictEqual({});
     });
 
     it("only includes drum chains that have chains to play a sound", () => {
@@ -185,7 +185,7 @@ describe("readTrack", () => {
       });
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.drumMap).toEqual({
+      expect(result.drumMap).toStrictEqual({
         C3: "Kick",
         E3: "Hi-hat",
       });
@@ -301,7 +301,7 @@ describe("readTrack", () => {
       });
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.drumMap).toEqual({
+      expect(result.drumMap).toStrictEqual({
         C3: "First Drum Rack Kick",
       });
     });
@@ -412,7 +412,7 @@ describe("readTrack", () => {
       });
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.drumMap).toEqual({
+      expect(result.drumMap).toStrictEqual({
         C1: "Kick Dub",
         Db1: "Snare Dub",
       });

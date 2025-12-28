@@ -6,7 +6,7 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
     it("copies bar to range with @N-M= syntax (default source)", () => {
       const result = interpretNotation("C3 D3 1|1 @2-4=");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -76,7 +76,7 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
     it("copies bar to range with @N-M=P syntax (explicit source)", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 @4-6=1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -122,7 +122,7 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
     it("preserves note properties in range copy", () => {
       const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 @2-3=");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -155,7 +155,7 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
         timeSigDenominator: 8,
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,

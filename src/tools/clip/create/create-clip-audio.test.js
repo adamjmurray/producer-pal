@@ -62,7 +62,7 @@ describe("createClip - audio clips", () => {
       // Verify no add_new_notes call for audio clips
       expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes");
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -114,7 +114,7 @@ describe("createClip - audio clips", () => {
       expect(liveApiSet).not.toHaveBeenCalledWith("loop_end");
       expect(liveApiSet).not.toHaveBeenCalledWith("start_marker");
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -168,7 +168,7 @@ describe("createClip - audio clips", () => {
         "/path/to/loop.wav",
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
           trackIndex: 0,
@@ -238,7 +238,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should emit warning and return empty array when clip already exists", () => {
@@ -256,7 +256,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -299,7 +299,7 @@ describe("createClip - audio clips", () => {
         0, // Position in beats (1|1 = 0 beats)
       );
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "1|1",
@@ -350,7 +350,7 @@ describe("createClip - audio clips", () => {
         65280, // #00FF00 converted to integer
       );
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "5|1",
@@ -424,7 +424,7 @@ describe("createClip - audio clips", () => {
         8, // Third clip at position 8 (3|1)
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "arrangement_audio_clip_0",
           trackIndex: 0,
@@ -462,7 +462,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should throw error when track does not exist", () => {
@@ -507,7 +507,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Length should come from Live API, not calculated
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -548,7 +548,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Both clips should have same length
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
           trackIndex: 0,

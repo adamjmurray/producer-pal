@@ -6,7 +6,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("expands basic repeat pattern with whole step", () => {
       const result = interpretNotation("C1 1|1x4@1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 36,
           start_time: 0,
@@ -245,7 +245,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("deletes note with same pitch and time when v0 is encountered", () => {
       const result = interpretNotation("C3 D3 1|1 v0 C3 1|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 62,
           start_time: 0,
@@ -260,7 +260,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 note does not affect notes with different pitch", () => {
       const result = interpretNotation("C3 D3 E3 1|1 v0 F3 1|2");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -291,7 +291,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 note does not affect notes with different time", () => {
       const result = interpretNotation("C3 1|1 C3 1|2 v0 C3 1|3");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -314,7 +314,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("handles multiple v0 notes", () => {
       const result = interpretNotation("C3 D3 E3 1|1 v0 C3 D3 1|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 64,
           start_time: 0,
@@ -329,7 +329,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 note followed by same note at same time works correctly", () => {
       const result = interpretNotation("C3 1|1 v0 C3 1|1 v100 C3 1|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -344,7 +344,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 deletions work after bar copy", () => {
       const result = interpretNotation("C3 D3 E3 1|1 @2=1 v0 D3 2|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1: original notes
         {
           pitch: 60,
@@ -393,7 +393,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 deletions work after range copy", () => {
       const result = interpretNotation("C3 D3 1|1 @2-3= v0 D3 2|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1: original
         {
           pitch: 60,
@@ -443,7 +443,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 deletions work after multi-bar source range tiling", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 @3-6=1-2 v0 C3 5|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1: original C3
         {
           pitch: 60,
@@ -500,7 +500,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       });
 
       // In 6/8 time, each beat is an 8th note, so beats are 0.5 apart in Ableton beats
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 62,
           start_time: 0,
@@ -517,7 +517,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
         "C3 D3 E3 1|1 @2=1 v0 D3 1|1 v0 E3 2|1 v100 F3 2|2",
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         // Bar 1: original notes, D3 deleted
         {
           pitch: 60,
@@ -575,7 +575,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 only deletes notes that appear before it in serial order", () => {
       const result = interpretNotation("v0 C3 1|1 v100 C3 1|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -590,7 +590,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 preserves note properties like duration, probability", () => {
       const result = interpretNotation("t2 p0.8 C3 1|1 t0.5 p1.0 v0 C3 1|1");
 
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 });

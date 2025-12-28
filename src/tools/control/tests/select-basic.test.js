@@ -172,7 +172,7 @@ describe("view", () => {
       const result = select({ view: "session" });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", 1);
-      expect(result).toEqual(expectViewState({ view: "session" }));
+      expect(result).toStrictEqual(expectViewState({ view: "session" }));
     });
 
     it("updates view to arrangement", () => {
@@ -180,13 +180,13 @@ describe("view", () => {
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", 2);
       // Result reflects actual readViewState(), which returns default (session)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("returns full view state when no parameters provided", () => {
       const result = select();
 
-      expect(result).toEqual(getDefaultViewState());
+      expect(result).toStrictEqual(getDefaultViewState());
       // Read API calls are expected for reading current view state
       expect(liveApiSet).not.toHaveBeenCalled();
     });
@@ -199,7 +199,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_track", "id track_123");
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects regular track by index", () => {
@@ -214,7 +214,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects return track by index", () => {
@@ -229,7 +229,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects master track", () => {
@@ -241,7 +241,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("defaults to regular track type when only index provided", () => {
@@ -249,7 +249,7 @@ describe("view", () => {
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 2");
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("skips track selection when track does not exist", () => {
@@ -281,7 +281,7 @@ describe("view", () => {
         "selected_track",
         expect.anything(),
       );
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -292,7 +292,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_scene", "id scene_123");
       // Result reflects actual readViewState(), which returns default (no scene selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects scene by index", () => {
@@ -304,7 +304,7 @@ describe("view", () => {
         "id scene_id_456",
       );
       // Result reflects actual readViewState(), which returns default (no scene selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("skips scene selection when scene does not exist", () => {
@@ -336,7 +336,7 @@ describe("view", () => {
         "selected_scene",
         expect.anything(),
       );
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -347,7 +347,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_123");
       // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("deselects all clips when clipId is null", () => {
@@ -355,7 +355,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 0");
       // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -435,7 +435,7 @@ describe("view", () => {
         "id device_123",
       );
       // Result reflects actual readViewState(), which returns default (no device selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects instrument on specified track", () => {
@@ -448,7 +448,7 @@ describe("view", () => {
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 0 view");
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       // Result reflects actual readViewState(), not optimistic updates
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects instrument on currently selected track", () => {
@@ -509,7 +509,7 @@ describe("view", () => {
       // The function should eventually call select_instrument
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       // Result reflects actual readViewState() with the mocked selected track
-      expect(result).toEqual(
+      expect(result).toStrictEqual(
         expectViewState({
           selectedTrack: {
             trackId: "id track_123",
@@ -535,7 +535,7 @@ describe("view", () => {
         "id clipslot_id_789",
       );
       // Result reflects actual readViewState(), which returns default (no clip slot highlighted)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 });

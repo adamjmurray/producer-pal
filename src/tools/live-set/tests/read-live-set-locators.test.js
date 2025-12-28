@@ -64,7 +64,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Intro", time: "1|1" },
       { id: "locator-1", name: "Verse", time: "5|1" },
     ]);
@@ -92,7 +92,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([]);
+    expect(result.locators).toStrictEqual([]);
   });
 
   it("should format locator times correctly in different time signatures", () => {
@@ -122,7 +122,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Chorus", time: "3|1" },
     ]);
   });
@@ -154,7 +154,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["*"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Bridge", time: "9|1" },
     ]);
   });

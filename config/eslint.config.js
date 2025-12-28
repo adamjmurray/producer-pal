@@ -563,6 +563,7 @@ export default [
       "vitest/prefer-to-contain": "error",
       "vitest/prefer-to-have-length": "error",
       "vitest/prefer-comparison-matcher": "error",
+      "vitest/prefer-strict-equal": "error",
       // "vitest/prefer-spy-on": "error", // TODO
     },
   },

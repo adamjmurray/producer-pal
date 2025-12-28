@@ -15,7 +15,7 @@ describe("LiveAPI extensions", () => {
 
       const warpModes = clip.getProperty("available_warp_modes");
 
-      expect(warpModes).toEqual(["Classic", "Beats", "Complex"]);
+      expect(warpModes).toStrictEqual(["Classic", "Beats", "Complex"]);
     });
 
     it("should handle scale_intervals property", () => {
@@ -25,7 +25,7 @@ describe("LiveAPI extensions", () => {
 
       const intervals = clip.getProperty("scale_intervals");
 
-      expect(intervals).toEqual([0, 2, 4, 5, 7, 9, 11]);
+      expect(intervals).toStrictEqual([0, 2, 4, 5, 7, 9, 11]);
     });
   });
 

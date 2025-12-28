@@ -68,7 +68,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macro variations only available on rack devices",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456" });
 
     consoleSpy.mockRestore();
   });
@@ -90,7 +90,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -105,7 +105,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "store_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call recall_selected_variation for 'load'", () => {
@@ -119,7 +119,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_selected_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call recall_last_used_variation for 'revert'", () => {
@@ -132,7 +132,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_last_used_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call delete_selected_variation for 'delete'", () => {
@@ -146,7 +146,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "delete_selected_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call randomize_macros for 'randomize'", () => {
@@ -159,7 +159,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "randomize_macros",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set index before executing action for 'load'", () => {
@@ -179,7 +179,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "load",
     });
 
-    expect(callOrder).toEqual([
+    expect(callOrder).toStrictEqual([
       { method: "set", path: "id 123", prop: "selected_variation_index" },
       { method: "call", path: "id 123", fn: "recall_selected_variation" },
     ]);
@@ -201,7 +201,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -218,7 +218,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -235,7 +235,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -256,7 +256,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "store_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -277,7 +277,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_last_used_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -298,7 +298,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "randomize_macros",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });

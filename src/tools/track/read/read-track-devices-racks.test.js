@@ -57,7 +57,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         name: "My Empty Rack",
         type: "instrument-rack",
@@ -148,7 +148,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
@@ -282,7 +282,7 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "drum_rack",
         type: "drum-rack",
         name: "My Drums",
@@ -376,7 +376,7 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.audioEffects).toEqual([
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device1",
           type: "audio-effect: Reverb",

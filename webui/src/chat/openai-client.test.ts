@@ -187,7 +187,7 @@ describe("OpenAIClient constructor", () => {
       model: "gpt-4",
     });
 
-    expect(client.chatHistory).toEqual([]);
+    expect(client.chatHistory).toStrictEqual([]);
   });
 
   it("uses provided chat history", () => {
@@ -197,7 +197,7 @@ describe("OpenAIClient constructor", () => {
       chatHistory: history,
     });
 
-    expect(client.chatHistory).toEqual(history);
+    expect(client.chatHistory).toStrictEqual(history);
   });
 
   it("adds system message when provided and history is empty", () => {
@@ -207,7 +207,7 @@ describe("OpenAIClient constructor", () => {
     });
 
     expect(client.chatHistory).toHaveLength(1);
-    expect(client.chatHistory[0]).toEqual({
+    expect(client.chatHistory[0]).toStrictEqual({
       role: "system",
       content: "You are a helpful assistant.",
     });

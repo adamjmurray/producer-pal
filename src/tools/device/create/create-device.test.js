@@ -33,7 +33,7 @@ describe("createDevice", () => {
         "insert_device",
         "Wavetable",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 2,
       });
@@ -50,7 +50,7 @@ describe("createDevice", () => {
         "insert_device",
         "Arpeggiator",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 2,
       });
@@ -67,7 +67,7 @@ describe("createDevice", () => {
         "insert_device",
         "Compressor",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 2,
       });
@@ -88,7 +88,7 @@ describe("createDevice", () => {
         "EQ Eight",
         1,
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 1,
       });
@@ -109,7 +109,7 @@ describe("createDevice", () => {
         "Utility",
         0,
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 0,
       });
@@ -370,7 +370,7 @@ describe("createDevice", () => {
         "insert_device",
         "Compressor",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 2,
       });
@@ -392,7 +392,7 @@ describe("createDevice", () => {
         "Reverb",
         0,
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 0,
       });
@@ -413,7 +413,7 @@ describe("createDevice", () => {
         "insert_device",
         "Limiter",
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 2,
       });
@@ -434,7 +434,7 @@ describe("createDevice", () => {
         "EQ Eight",
         0,
       );
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         deviceId: "device123",
         deviceIndex: 0,
       });

@@ -6,7 +6,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("emits pitch at single time position", () => {
       const result = interpretNotation("C1 1|1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 36,
           start_time: 0,
@@ -124,7 +124,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
       expect(result).toHaveLength(4);
       expect(result.every((n) => n.pitch === 36)).toBe(true);
-      expect(result.map((n) => n.start_time)).toEqual([0, 1, 2, 3]);
+      expect(result.map((n) => n.start_time)).toStrictEqual([0, 1, 2, 3]);
     });
 
     it("supports layered drum patterns", () => {
@@ -214,7 +214,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("uses |beat shortcut within same bar", () => {
       const result = interpretNotation("C3 1|1 |2 |3");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -245,7 +245,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("uses |beat shortcut after bar change", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 E3 |2 F3 |3");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -286,7 +286,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
         "C3 1|1 D3 |2 E3 3|1 F3 |4 G3 2|3 A3 |4",
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -341,7 +341,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("handles |beat with sub-beat timing", () => {
       const result = interpretNotation("C3 1|1.5 D3 |2.25 E3 |3.75");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0.5,
@@ -372,7 +372,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("preserves state across |beat shortcuts", () => {
       const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 D3 |2 v100 E3 |3");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -406,7 +406,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
         timeSigDenominator: 4,
       });
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -437,7 +437,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("assumes bar 1 when |beat is used at start without initial bar", () => {
       const result = interpretNotation("C3 |2");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 1,
@@ -452,7 +452,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("assumes bar 1 when |beat is used without any prior bar number", () => {
       const result = interpretNotation("v100 t0.5 C3 |2");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 1,
@@ -467,7 +467,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("assumes bar 1 when |beat is used after state changes but before any bar number", () => {
       const result = interpretNotation("v100 C3 |1");
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,

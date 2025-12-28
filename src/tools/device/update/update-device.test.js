@@ -82,7 +82,7 @@ describe("updateDevice", () => {
       "name",
       "My Device",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update collapsed state to true", () => {
@@ -96,7 +96,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       1,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update collapsed state to false", () => {
@@ -110,7 +110,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       0,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update both name and collapsed", () => {
@@ -130,7 +130,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       1,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update multiple devices", () => {
@@ -149,7 +149,7 @@ describe("updateDevice", () => {
       "name",
       "Same Name",
     );
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should skip non-existent devices with warning", () => {
@@ -163,7 +163,7 @@ describe("updateDevice", () => {
     expect(consoleSpy).toHaveBeenCalledWith(
       'updateDevice: target not found at id "999"',
     );
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
 
     consoleSpy.mockRestore();
   });
@@ -176,7 +176,7 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
 
     consoleSpy.mockRestore();
   });
@@ -192,7 +192,7 @@ describe("updateDevice", () => {
       "name",
       "Prefixed ID",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not call set when no properties provided", () => {
@@ -201,7 +201,7 @@ describe("updateDevice", () => {
     });
 
     expect(liveApiSet).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   describe("params - numeric values", () => {
@@ -216,7 +216,7 @@ describe("updateDevice", () => {
         "display_value",
         1000,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set multiple param values", () => {
@@ -235,7 +235,7 @@ describe("updateDevice", () => {
         "display_value",
         1000,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should log error for invalid param ID but continue", () => {
@@ -251,7 +251,7 @@ describe("updateDevice", () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         'updateDevice: param id "999" does not exist',
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -291,7 +291,7 @@ describe("updateDevice", () => {
         "value",
         1,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should log error for invalid enum value", () => {
@@ -312,7 +312,7 @@ describe("updateDevice", () => {
         "value",
         expect.anything(),
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -330,7 +330,7 @@ describe("updateDevice", () => {
         "value",
         60,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle sharps and flats", () => {
@@ -383,7 +383,7 @@ describe("updateDevice", () => {
         "value",
         0.25,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle full left pan", () => {
@@ -453,7 +453,7 @@ describe("updateDevice", () => {
         "updateDevice: 'macroCount' not applicable to Device",
       );
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -469,7 +469,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "add_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
@@ -483,7 +483,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "remove_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should do nothing when count matches", () => {
@@ -493,7 +493,7 @@ describe("updateDevice", () => {
       });
 
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should round odd counts up to next even and warn", () => {
@@ -514,7 +514,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "add_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -552,7 +552,7 @@ describe("updateDevice", () => {
       );
       expect(liveApiSet).not.toHaveBeenCalled();
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -568,7 +568,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         0,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set is_using_compare_preset_b to 1 for 'b'", () => {
@@ -582,7 +582,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         1,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should call save_preset_to_compare_ab_slot for 'save'", () => {
@@ -595,7 +595,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "save_preset_to_compare_ab_slot",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
   });
 });

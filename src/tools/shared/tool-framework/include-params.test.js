@@ -12,7 +12,7 @@ describe("parseIncludeArray", () => {
   it("returns all defaults when include is undefined", () => {
     const result = parseIncludeArray(undefined, READ_SONG_DEFAULTS);
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       includeDrumPads: false,
       includeDrumMaps: true,
       includeClipNotes: false,
@@ -40,7 +40,7 @@ describe("parseIncludeArray", () => {
   it("returns all false when include is an empty array", () => {
     const result = parseIncludeArray([], READ_SONG_DEFAULTS);
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       includeDrumPads: false,
       includeDrumMaps: false,
       includeClipNotes: false,
@@ -115,7 +115,7 @@ describe("parseIncludeArray", () => {
   it("handles track defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_TRACK_DEFAULTS);
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         includeClipNotes: true,
         includeDrumMaps: true,
@@ -130,7 +130,7 @@ describe("parseIncludeArray", () => {
   it("handles scene defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_SCENE_DEFAULTS);
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         includeClips: false,
         includeClipNotes: false,
@@ -141,7 +141,7 @@ describe("parseIncludeArray", () => {
   it("handles clip defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_CLIP_DEFAULTS);
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         includeClipNotes: true,
       }),
@@ -183,7 +183,7 @@ describe("includeArrayFromFlags", () => {
 
     const result = includeArrayFromFlags(flags);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       "clip-notes",
       "chains",
       "scenes",
@@ -213,7 +213,7 @@ describe("includeArrayFromFlags", () => {
 
     const result = includeArrayFromFlags(flags);
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("includes available-routings when flag is true", () => {

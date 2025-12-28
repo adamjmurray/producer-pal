@@ -57,7 +57,7 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar from song
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
       sceneIndex: 0,

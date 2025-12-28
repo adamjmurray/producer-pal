@@ -73,7 +73,7 @@ describe("readLiveSet - track types", () => {
       ],
     });
 
-    expect(resultAll).toEqual(
+    expect(resultAll).toStrictEqual(
       expect.objectContaining({
         tracks: [
           expect.objectContaining({
@@ -251,10 +251,10 @@ describe("readLiveSet - track types", () => {
     });
 
     // Results should be identical
-    expect(resultWildcard).toEqual(resultExplicit);
+    expect(resultWildcard).toStrictEqual(resultExplicit);
 
     // Verify key properties are included
-    expect(resultWildcard).toEqual(
+    expect(resultWildcard).toStrictEqual(
       expect.objectContaining({
         tracks: expect.any(Array),
         returnTracks: expect.any(Array),
@@ -264,7 +264,7 @@ describe("readLiveSet - track types", () => {
     );
 
     // Verify track has all expected properties
-    expect(resultWildcard.tracks[0]).toEqual(
+    expect(resultWildcard.tracks[0]).toStrictEqual(
       expect.objectContaining({
         instrument: expect.any(Object),
         inputRoutingChannel: expect.any(Object),

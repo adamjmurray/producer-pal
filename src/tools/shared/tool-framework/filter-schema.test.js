@@ -16,7 +16,7 @@ describe("filterSchemaForSmallModel", () => {
       "alsoRemove",
     ]);
 
-    expect(Object.keys(filtered)).toEqual(["keepMe", "alsoKeep"]);
+    expect(Object.keys(filtered)).toStrictEqual(["keepMe", "alsoKeep"]);
     expect(filtered.keepMe).toBe(schema.keepMe);
     expect(filtered.alsoKeep).toBe(schema.alsoKeep);
     expect(filtered.removeMe).toBeUndefined();
@@ -31,7 +31,7 @@ describe("filterSchemaForSmallModel", () => {
 
     const filtered = filterSchemaForSmallModel(schema, []);
 
-    expect(filtered).toEqual(schema);
+    expect(filtered).toStrictEqual(schema);
   });
 
   it("should return original schema when excludeParams is null", () => {
@@ -42,7 +42,7 @@ describe("filterSchemaForSmallModel", () => {
 
     const filtered = filterSchemaForSmallModel(schema, null);
 
-    expect(filtered).toEqual(schema);
+    expect(filtered).toStrictEqual(schema);
   });
 
   it("should return original schema when excludeParams is undefined", () => {
@@ -53,7 +53,7 @@ describe("filterSchemaForSmallModel", () => {
 
     const filtered = filterSchemaForSmallModel(schema, undefined);
 
-    expect(filtered).toEqual(schema);
+    expect(filtered).toStrictEqual(schema);
   });
 
   it("should handle excluding non-existent parameters gracefully", () => {
@@ -67,7 +67,7 @@ describe("filterSchemaForSmallModel", () => {
       "param1",
     ]);
 
-    expect(Object.keys(filtered)).toEqual(["param2"]);
+    expect(Object.keys(filtered)).toStrictEqual(["param2"]);
     expect(filtered.param2).toBe(schema.param2);
     expect(filtered.param1).toBeUndefined();
   });
@@ -77,7 +77,7 @@ describe("filterSchemaForSmallModel", () => {
 
     const filtered = filterSchemaForSmallModel(schema, ["anything"]);
 
-    expect(filtered).toEqual({});
+    expect(filtered).toStrictEqual({});
   });
 
   it("should preserve complex Zod schema types", () => {

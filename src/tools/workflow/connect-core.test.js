@@ -74,7 +74,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       connected: true,
       producerPalVersion: VERSION,
       abletonLiveVersion: "12.3",
@@ -146,7 +146,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         liveSet: expect.objectContaining({
           tempo: 140,
@@ -214,7 +214,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.messagesForUser).toEqual(
+    expect(result.messagesForUser).toStrictEqual(
       expect.stringContaining("* Save often!"),
     );
     expect(result.messagesForUser).not.toContain("No instruments found.");
@@ -273,7 +273,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.messagesForUser).toEqual(
+    expect(result.messagesForUser).toStrictEqual(
       expect.stringContaining("* No instruments found."),
     );
   });
@@ -326,7 +326,7 @@ describe("connect", () => {
     const result = connect();
 
     // Should still work - just won't find instruments on host track
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
         liveSet: expect.objectContaining({
@@ -378,7 +378,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
         liveSet: expect.objectContaining({

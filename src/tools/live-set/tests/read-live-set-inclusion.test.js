@@ -85,7 +85,7 @@ describe("readLiveSet - inclusion", () => {
     const result = readLiveSet({ include: [] });
 
     // Should have basic song properties
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         id: "live_set",
         name: "Test Set",
@@ -205,12 +205,12 @@ describe("readLiveSet - inclusion", () => {
     const result = readLiveSet();
 
     // Should have drumMap on the track
-    expect(result.tracks[0].drumMap).toEqual({
+    expect(result.tracks[0].drumMap).toStrictEqual({
       C3: "Test Kick",
     });
 
     // Should have instrument but NO chains (proving drum-maps is default, not chains)
-    expect(result.tracks[0].instrument).toEqual({
+    expect(result.tracks[0].instrument).toStrictEqual({
       id: "drumrack1",
       name: "Test Drum Rack",
       type: "drum-rack",

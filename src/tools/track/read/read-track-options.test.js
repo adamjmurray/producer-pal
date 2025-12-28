@@ -156,10 +156,10 @@ describe("readTrack", () => {
       });
 
       // Results should be identical
-      expect(resultWildcard).toEqual(resultExplicit);
+      expect(resultWildcard).toStrictEqual(resultExplicit);
 
       // Verify key properties are included
-      expect(resultWildcard).toEqual(
+      expect(resultWildcard).toStrictEqual(
         expect.objectContaining({
           instrument: expect.any(Object),
           audioEffects: expect.any(Array),
@@ -209,7 +209,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 1, category: "return" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "return_track_1",
           type: "audio",
           name: "Return B",
@@ -226,7 +226,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 99, category: "return" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: null,
           type: null,
           name: null,
@@ -293,15 +293,15 @@ describe("readTrack", () => {
         // Return tracks should have null input routing (they don't accept input)
         expect(result.inputRoutingType).toBeNull();
         expect(result.inputRoutingChannel).toBeNull();
-        expect(result.availableInputRoutingTypes).toEqual([]);
-        expect(result.availableInputRoutingChannels).toEqual([]);
+        expect(result.availableInputRoutingTypes).toStrictEqual([]);
+        expect(result.availableInputRoutingChannels).toStrictEqual([]);
 
         // But should have output routing
-        expect(result.outputRoutingType).toEqual({
+        expect(result.outputRoutingType).toStrictEqual({
           name: "Track Out",
           outputId: "25",
         });
-        expect(result.outputRoutingChannel).toEqual({
+        expect(result.outputRoutingChannel).toStrictEqual({
           name: "Master",
           outputId: "26",
         });
@@ -351,7 +351,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 999, category: "master" }); // trackIndex should be ignored
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "master_track",
           type: "audio",
           name: "Master",
@@ -371,7 +371,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 0, category: "master" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: null,
           type: null,
           name: null,
@@ -439,7 +439,7 @@ describe("readTrack", () => {
           include: ["audio-effects"],
         });
 
-        expect(result.audioEffects).toEqual([
+        expect(result.audioEffects).toStrictEqual([
           {
             id: "compressor1",
             type: "audio-effect: Compressor",
@@ -486,10 +486,10 @@ describe("readTrack", () => {
         expect(result.inputRoutingChannel).toBeNull();
         expect(result.outputRoutingType).toBeNull();
         expect(result.outputRoutingChannel).toBeNull();
-        expect(result.availableInputRoutingTypes).toEqual([]);
-        expect(result.availableInputRoutingChannels).toEqual([]);
-        expect(result.availableOutputRoutingTypes).toEqual([]);
-        expect(result.availableOutputRoutingChannels).toEqual([]);
+        expect(result.availableInputRoutingTypes).toStrictEqual([]);
+        expect(result.availableInputRoutingChannels).toStrictEqual([]);
+        expect(result.availableOutputRoutingTypes).toStrictEqual([]);
+        expect(result.availableOutputRoutingChannels).toStrictEqual([]);
       });
 
       it("reads master track without requiring trackIndex", () => {
@@ -518,7 +518,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ category: "master" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "master_track",
           type: "audio",
           name: "Master",

@@ -29,7 +29,7 @@ describe("captureScene", () => {
       "capture_and_insert_scene",
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/scenes/2",
       sceneIndex: 2,
       clips: [],
@@ -51,7 +51,7 @@ describe("captureScene", () => {
 
     const result = captureScene({ sceneIndex: 2 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/scenes/3",
       sceneIndex: 3,
       clips: [],
@@ -94,7 +94,7 @@ describe("captureScene", () => {
       "Captured Custom Name",
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/scenes/2",
       sceneIndex: 2,
       clips: [],
@@ -133,7 +133,7 @@ describe("captureScene", () => {
 
     const result = captureScene();
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       sceneIndex: 1,
       clips: [

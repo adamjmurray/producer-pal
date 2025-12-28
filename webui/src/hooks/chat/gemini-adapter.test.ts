@@ -332,7 +332,7 @@ describe("gemini-adapter", () => {
 
       const result = geminiAdapter.createUserMessage(text);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         role: "user",
         parts: [{ text: "Hello world" }],
       });

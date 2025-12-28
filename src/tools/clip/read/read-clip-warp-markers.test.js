@@ -26,7 +26,7 @@ describe("readClip - warp markers", () => {
       include: ["warp-markers"],
     });
 
-    expect(result.warpMarkers).toEqual([
+    expect(result.warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
       { sampleTime: 88200, beatTime: 2.0 },
@@ -57,7 +57,7 @@ describe("readClip - warp markers", () => {
       include: ["warp-markers"],
     });
 
-    expect(result.warpMarkers).toEqual([
+    expect(result.warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
     ]);

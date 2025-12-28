@@ -155,7 +155,7 @@ describe("transformClips - modifications", () => {
 
     const result = transformClips({ clipIds: "nonexistent", seed: 12345 });
 
-    expect(result).toEqual({ clipIds: [], seed: 12345 });
+    expect(result).toStrictEqual({ clipIds: [], seed: 12345 });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("no valid clips found"),
     );
@@ -405,7 +405,7 @@ describe("transformClips - modifications", () => {
     });
 
     // Should produce identical results
-    expect(capturedNotes1).toEqual(capturedNotes2);
+    expect(capturedNotes1).toStrictEqual(capturedNotes2);
   });
 
   it("should apply transposeValues to MIDI clip notes", () => {

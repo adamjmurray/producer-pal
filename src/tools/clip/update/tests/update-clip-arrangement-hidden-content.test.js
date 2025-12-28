@@ -119,6 +119,6 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
     consoleErrorSpy.mockRestore();
 
     // Should return original + partial tile
-    expect(result).toEqual([{ id: "789" }, { id: "2000" }]);
+    expect(result).toStrictEqual([{ id: "789" }, { id: "2000" }]);
   });
 });

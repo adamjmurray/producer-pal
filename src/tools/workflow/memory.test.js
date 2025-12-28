@@ -31,7 +31,7 @@ describe("memory", () => {
       context.projectNotes.enabled = false;
       const result = memory({ action: "read" }, context);
 
-      expect(result).toEqual({ enabled: false });
+      expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
@@ -42,7 +42,7 @@ describe("memory", () => {
 
       const result = memory({ action: "read" }, context);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         enabled: true,
         writable: true,
         content: "test content",
@@ -57,7 +57,7 @@ describe("memory", () => {
 
       const result = memory({ action: "read" }, context);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         enabled: true,
         writable: false,
         content: "test content",
@@ -114,7 +114,7 @@ describe("memory", () => {
       );
 
       expect(context.projectNotes.content).toBe("new content");
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         enabled: true,
         writable: true,
         content: "new content",
@@ -133,7 +133,7 @@ describe("memory", () => {
       );
 
       expect(context.projectNotes.content).toBe("new content");
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         enabled: true,
         writable: true,
         content: "new content",

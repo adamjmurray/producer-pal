@@ -15,7 +15,7 @@ describe("stripTimestamps", () => {
 
     const result = stripTimestamps(messages);
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         role: "user",
         parts: [{ type: "text", content: "Hello" }],
@@ -51,7 +51,7 @@ describe("stripTimestamps", () => {
   it("returns empty array for empty input", () => {
     const result = stripTimestamps([]);
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("preserves all other message properties", () => {
@@ -70,7 +70,7 @@ describe("stripTimestamps", () => {
 
     const result = stripTimestamps(messages);
 
-    expect(result[0]).toEqual({
+    expect(result[0]).toStrictEqual({
       role: "model",
       parts: [
         { type: "thought", content: "Thinking..." },

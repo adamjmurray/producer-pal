@@ -70,7 +70,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
@@ -148,7 +148,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
@@ -298,7 +298,7 @@ describe("readClip", () => {
     liveApiId.mockReturnValue("id 0");
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: null,
       type: null,
       name: null,
@@ -325,7 +325,7 @@ describe("readClip", () => {
     });
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",

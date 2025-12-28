@@ -104,7 +104,7 @@ describe("StdioHttpBridge", () => {
   describe("constructor", () => {
     it("initializes with correct default values", () => {
       expect(bridge.httpUrl).toBe("http://localhost:3350/mcp");
-      expect(bridge.options).toEqual({});
+      expect(bridge.options).toStrictEqual({});
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.httpClient).toBeNull();
       expect(bridge.isConnected).toBe(false);
@@ -119,13 +119,13 @@ describe("StdioHttpBridge", () => {
       );
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
-      expect(customBridge.options).toEqual(options);
+      expect(customBridge.options).toStrictEqual(options);
     });
 
     it("creates bridge with no options", () => {
       const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
 
-      expect(quietBridge.options).toEqual({});
+      expect(quietBridge.options).toStrictEqual({});
     });
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
@@ -141,7 +141,7 @@ describe("StdioHttpBridge", () => {
       expect(toolNames).toContain("ppal-create-clip");
 
       // Verify tool structure
-      expect(tools[0]).toEqual({
+      expect(tools[0]).toStrictEqual({
         name: "ppal-read-live-set",
         title: "Read Live Set",
         description: "Read comprehensive information about the Live Set",
@@ -154,7 +154,7 @@ describe("StdioHttpBridge", () => {
     it("returns setup error response with correct structure", () => {
       const response = bridge._createSetupErrorResponse();
 
-      expect(response).toEqual({
+      expect(response).toStrictEqual({
         content: [
           {
             type: "text",
@@ -293,7 +293,7 @@ describe("StdioHttpBridge", () => {
 
       const result = await listToolsHandler();
 
-      expect(result).toEqual(httpTools);
+      expect(result).toStrictEqual(httpTools);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] tools/list successful via HTTP",
       );
@@ -313,7 +313,7 @@ describe("StdioHttpBridge", () => {
 
       const result = await listToolsHandler();
 
-      expect(result).toEqual(bridge.fallbackTools);
+      expect(result).toStrictEqual(bridge.fallbackTools);
       // Verify that fallback behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Returning fallback tools list",
@@ -348,7 +348,7 @@ describe("StdioHttpBridge", () => {
         name: "test-tool",
         arguments: { arg1: "value1" },
       });
-      expect(result).toEqual(toolResult);
+      expect(result).toStrictEqual(toolResult);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Tool call successful for test-tool",
       );
@@ -375,7 +375,7 @@ describe("StdioHttpBridge", () => {
 
       const result = await callToolHandler(request);
 
-      expect(result).toEqual(bridge._createSetupErrorResponse());
+      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
       // Verify that error response behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Connectivity problem detected. Returning setup error response",
@@ -410,7 +410,7 @@ describe("StdioHttpBridge", () => {
         name: "test-tool",
         arguments: {},
       });
-      expect(result).toEqual(toolResult);
+      expect(result).toStrictEqual(toolResult);
     });
 
     it("logs tool call details", async () => {

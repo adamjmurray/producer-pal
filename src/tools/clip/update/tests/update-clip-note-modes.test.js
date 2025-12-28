@@ -49,7 +49,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
@@ -123,7 +123,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
@@ -182,7 +182,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {

@@ -16,7 +16,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 99 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: null,
       type: null,
       name: null,
@@ -52,7 +52,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track1",
       type: "midi",
       name: "Track 1",
@@ -87,7 +87,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track2",
       type: "audio",
       name: "Audio Track",
@@ -131,7 +131,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track1",
       type: "midi",
       name: "Track 1",
@@ -237,7 +237,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track3",
       type: "midi",
       name: "Track with Clips",

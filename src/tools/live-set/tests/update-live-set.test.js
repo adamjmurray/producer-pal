@@ -49,7 +49,7 @@ describe("updateLiveSet", () => {
       "tempo",
       140,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 140,
     });
@@ -77,7 +77,7 @@ describe("updateLiveSet", () => {
       "signature_denominator",
       4,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       timeSignature: "3/4",
     });
@@ -113,7 +113,7 @@ describe("updateLiveSet", () => {
       "signature_denominator",
       8,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 125,
       timeSignature: "6/8",
@@ -133,7 +133,7 @@ describe("updateLiveSet", () => {
       "scale_name",
       "Major",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Major",
       scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
@@ -169,7 +169,7 @@ describe("updateLiveSet", () => {
       "scale_name",
       "Dorian",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "C Dorian",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
@@ -286,7 +286,7 @@ describe("updateLiveSet", () => {
       "scale_mode",
       0,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
       $meta: [scaleChangeNote],
@@ -306,7 +306,7 @@ describe("updateLiveSet", () => {
       "scale_name",
       "Dorian",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Dorian",
       scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
@@ -351,7 +351,7 @@ describe("updateLiveSet", () => {
       "scale_mode",
       1,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 125,
       timeSignature: "6/8",
@@ -366,7 +366,7 @@ describe("updateLiveSet", () => {
 
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
     });
   });
@@ -388,7 +388,7 @@ describe("updateLiveSet", () => {
       expect.objectContaining({ path: "live_set" }),
       "scale_intervals",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "C Major",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
@@ -408,7 +408,7 @@ describe("updateLiveSet", () => {
       expect.objectContaining({ path: "live_set" }),
       "scale_intervals",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Major",
       scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
@@ -433,7 +433,7 @@ describe("updateLiveSet", () => {
       expect.objectContaining({ path: "live_set" }),
       "scale_intervals",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "A Minor",
       scalePitches: ["A", "B", "Db", "D", "E", "Gb", "Ab"],
@@ -445,7 +445,7 @@ describe("updateLiveSet", () => {
     const result = await updateLiveSet({ tempo: 140 });
 
     expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 140,
     });
@@ -455,7 +455,7 @@ describe("updateLiveSet", () => {
     const result = await updateLiveSet({ scale: "" });
 
     expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
       $meta: [scaleChangeNote],
@@ -470,7 +470,7 @@ describe("updateLiveSet", () => {
       "back_to_arranger",
       0, // 0 = following arrangement
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       arrangementFollower: true,
     });
@@ -484,7 +484,7 @@ describe("updateLiveSet", () => {
       "back_to_arranger",
       1, // 1 = not following arrangement
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       arrangementFollower: false,
     });
@@ -517,7 +517,7 @@ describe("updateLiveSet", () => {
       "signature_denominator",
       4,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 130,
       arrangementFollower: true,

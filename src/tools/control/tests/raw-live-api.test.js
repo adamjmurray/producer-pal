@@ -129,7 +129,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0].operation.type).toBe("call_method");
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -151,7 +151,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -271,7 +271,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toEqual([
+      expect(result.results[0].result).toStrictEqual([
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
@@ -379,11 +379,11 @@ describe("rawLiveApi", () => {
         operations: [{ type: "get", property: "tempo" }],
       });
 
-      expect(result.results[0].operation).toEqual({
+      expect(result.results[0].operation).toStrictEqual({
         type: "get",
         property: "tempo",
       });
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
     });
   });
 
@@ -401,7 +401,7 @@ describe("rawLiveApi", () => {
         operations: [{ type: "info" }],
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         path: "live_set",
         id: "1",
         results: [

@@ -33,7 +33,7 @@ describe("updateClip - Properties and ID handling", () => {
       "name",
       "Prefixed ID Clip",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -65,7 +65,7 @@ describe("updateClip - Properties and ID handling", () => {
       expect.anything(),
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -86,7 +86,7 @@ describe("updateClip - Properties and ID handling", () => {
       "looping",
       false,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
@@ -117,7 +117,7 @@ describe("updateClip - Properties and ID handling", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateClip: id "nonexistent" does not exist',
     );
@@ -139,8 +139,8 @@ describe("updateClip - Properties and ID handling", () => {
     const singleResult = updateClip({ ids: "123", name: "Single" });
     const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({ id: "123" });
-    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123" });
+    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -165,7 +165,7 @@ describe("updateClip - Properties and ID handling", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -198,7 +198,7 @@ describe("updateClip - Properties and ID handling", () => {
       "Filtered",
     );
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   describe("color quantization verification", () => {

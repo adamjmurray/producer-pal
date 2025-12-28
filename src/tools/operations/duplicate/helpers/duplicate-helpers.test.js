@@ -104,7 +104,10 @@ describe("duplicate-helpers", () => {
         availableTypes,
       );
 
-      expect(result).toEqual({ display_name: "Track 1", value: "track1" });
+      expect(result).toStrictEqual({
+        display_name: "Track 1",
+        value: "track1",
+      });
     });
 
     it("returns undefined when no matches found", () => {
@@ -149,7 +152,7 @@ describe("duplicate-helpers", () => {
       );
 
       // Should return the first "Drums" option since sourceTrack is id1 (first Drums track)
-      expect(result).toEqual({ display_name: "Drums", value: "drums1" });
+      expect(result).toStrictEqual({ display_name: "Drums", value: "drums1" });
     });
 
     it("finds correct option for second track with duplicate name", () => {
@@ -176,7 +179,7 @@ describe("duplicate-helpers", () => {
       );
 
       // Should return the second "Drums" option since sourceTrack is id2 (second Drums track)
-      expect(result).toEqual({ display_name: "Drums", value: "drums2" });
+      expect(result).toStrictEqual({ display_name: "Drums", value: "drums2" });
     });
 
     it("returns undefined when source track not found in duplicate list", () => {

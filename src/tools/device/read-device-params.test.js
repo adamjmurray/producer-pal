@@ -86,7 +86,7 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
       parameters: [
@@ -168,7 +168,7 @@ describe("readDevice param-values include option", () => {
     });
 
     // Quantized params now have value as string and options array
-    expect(result.parameters[0]).toEqual({
+    expect(result.parameters[0]).toStrictEqual({
       id: "param-1",
       name: "Device On",
       value: "On",
@@ -484,7 +484,7 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result.parameters[0]).toEqual({
+    expect(result.parameters[0]).toStrictEqual({
       id: "param-1",
       name: "Frequency",
       value: 1000,
@@ -711,7 +711,7 @@ describe("readDevice params include option (lightweight)", () => {
       include: ["params"],
     });
 
-    expect(result.parameters).toEqual([
+    expect(result.parameters).toStrictEqual([
       {
         id: "param-1",
         name: "Volume",

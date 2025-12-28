@@ -52,7 +52,7 @@ describe("updateLiveSet - locator operations", () => {
         0,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "created",
         time: "1|1",
         id: "locator-0",
@@ -103,7 +103,7 @@ describe("updateLiveSet - locator operations", () => {
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
       expect(locatorNameSet).toBe("Verse");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "created",
         time: "5|1",
         name: "Verse",
@@ -163,7 +163,7 @@ describe("updateLiveSet - locator operations", () => {
 
       // Should NOT call set_or_delete_cue (would delete existing locator)
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_exists",
         time: "5|1",
@@ -214,7 +214,7 @@ describe("updateLiveSet - locator operations", () => {
         0,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "deleted",
         id: "locator-0",
       });
@@ -232,7 +232,7 @@ describe("updateLiveSet - locator operations", () => {
         16,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "deleted",
         time: "5|1",
       });
@@ -269,7 +269,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "deleted",
         count: 2,
         name: "Verse",
@@ -293,7 +293,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_not_found",
         id: "locator-99",
@@ -307,7 +307,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_not_found",
         time: "100|1",
@@ -321,7 +321,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "no_locators_found",
         name: "NonExistent",
@@ -357,7 +357,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "New Intro");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "renamed",
         id: "locator-0",
         name: "New Intro",
@@ -372,7 +372,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "New Verse");
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "renamed",
         id: "locator-1",
         name: "New Verse",
@@ -439,7 +439,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(result.tempo).toBe(140);
-      expect(result.locator).toEqual({
+      expect(result.locator).toStrictEqual({
         operation: "created",
         time: "1|1",
         id: "locator-0",

@@ -130,7 +130,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should calculate correct markers with start_marker offset)", () => {
@@ -244,7 +244,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip (NO empty clip for audio)
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should extend unwarped audio clip to target length using session holding area", () => {
@@ -429,7 +429,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });
 
@@ -567,6 +567,6 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     );
 
     // Should return moved clip + revealed clip
-    expect(result).toEqual([{ id: movedClipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: movedClipId }, { id: revealedClipId }]);
   });
 });
