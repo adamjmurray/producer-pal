@@ -45,6 +45,7 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello there" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -72,6 +73,7 @@ describe("MessageList", () => {
             },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -91,6 +93,7 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "I can help you" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -110,16 +113,19 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "How are you?" }],
           rawHistoryIndex: 2,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -139,13 +145,24 @@ describe("MessageList", () => {
   describe("message filtering", () => {
     it("filters out messages without content", () => {
       const messages = [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Valid message" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
-        { role: "model" as const, parts: [], rawHistoryIndex: 2 },
+        {
+          role: "model" as const,
+          parts: [],
+          rawHistoryIndex: 2,
+          timestamp: Date.now(),
+        },
       ];
       render(
         <MessageList
@@ -169,11 +186,17 @@ describe("MessageList", () => {
 
     it("filters message with no parts and no content", () => {
       const messages: UIMessage[] = [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
         {
           role: "model" as const,
           rawHistoryIndex: 1,
           parts: [],
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -224,6 +247,7 @@ describe("MessageList", () => {
             { type: "text" as const, content: "Part 2" },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -268,6 +292,7 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "User message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -295,6 +320,7 @@ describe("MessageList", () => {
             },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -317,6 +343,7 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Model message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -355,11 +382,13 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi there" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -380,11 +409,13 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi there" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -406,11 +437,13 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "First question" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "First answer" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -434,6 +467,7 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(
@@ -455,16 +489,19 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [], // Empty message - should be filtered out
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Response" }],
           rawHistoryIndex: 2,
+          timestamp: Date.now(),
         },
       ];
 

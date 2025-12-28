@@ -260,6 +260,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
         role: msg.role === "assistant" ? "model" : "user",
         parts: [],
         rawHistoryIndex: rawIndex,
+        timestamp: Date.now(),
       };
       messages.push(currentMessage);
     }

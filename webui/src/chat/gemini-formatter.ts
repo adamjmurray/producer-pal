@@ -130,6 +130,7 @@ function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
     role: "model",
     parts: [],
     rawHistoryIndex: rawIndex,
+    timestamp: Date.now(),
   };
 
   acc.push(message);
@@ -166,6 +167,7 @@ function getOrCreateMessage(
     role: typedRole,
     parts: [],
     rawHistoryIndex: rawIndex,
+    timestamp: Date.now(),
   };
 
   acc.push(message);
