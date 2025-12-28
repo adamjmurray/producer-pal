@@ -6,9 +6,9 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateDevice", () => {
   beforeEach(() => {

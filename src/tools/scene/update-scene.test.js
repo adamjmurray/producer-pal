@@ -5,9 +5,9 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateScene } from "./update-scene.js";
-import "../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateScene", () => {
   beforeEach(() => {

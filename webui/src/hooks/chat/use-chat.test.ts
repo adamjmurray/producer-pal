@@ -4,7 +4,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat, type ChatClient, type ChatAdapter } from "./use-chat";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "#webui/types/messages";
 
 // Mock streaming helpers
 vi.mock(import("./helpers/streaming-helpers"), () => ({

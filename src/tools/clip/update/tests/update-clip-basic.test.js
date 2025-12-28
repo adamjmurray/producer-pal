@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { setupMocks } from "../helpers/update-clip-test-helpers.js";
 import { updateClip } from "../update-clip.js";
 

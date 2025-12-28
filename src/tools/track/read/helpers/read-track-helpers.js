@@ -6,7 +6,7 @@ import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.
 import {
   processAvailableRouting,
   processCurrentRouting,
-} from "../../helpers/track-routing-helpers.js";
+} from "#src/tools/track/helpers/track-routing-helpers.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.

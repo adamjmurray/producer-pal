@@ -1,5 +1,5 @@
 import * as console from "#src/shared/v8-max-console.js";
-import { ALL_VALID_DEVICES, VALID_DEVICES } from "../../constants.js";
+import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.js";
 
 /**
  * Validate device name and throw error with valid options if invalid

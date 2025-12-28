@@ -1,8 +1,8 @@
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "../../../shared/arrangement/arrangement-tiling.js";
-import { revealAudioContentAtPosition } from "../../update/helpers/update-clip-audio-helpers.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 const EPSILON = 0.001;
 

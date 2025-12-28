@@ -3,7 +3,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "#webui/types/messages";
 import { MessageList } from "./MessageList";
 
 // Mock child components

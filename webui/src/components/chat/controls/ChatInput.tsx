@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
-import type { Provider } from "../../../types/settings";
+import type { Provider } from "#webui/types/settings";
 import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
 
 interface ChatInputProps {

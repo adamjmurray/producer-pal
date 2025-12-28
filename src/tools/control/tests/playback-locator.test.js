@@ -5,7 +5,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { playback } from "../playback.js";
 
 describe("playback - locator support", () => {

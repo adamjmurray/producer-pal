@@ -4,7 +4,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateClip } from "../update-clip.js";
 
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties

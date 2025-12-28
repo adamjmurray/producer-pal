@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { VERSION } from "../../shared/version.js";
+import { VERSION } from "#src/shared/version.js";
 import {
   children,
   liveApiCall,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";

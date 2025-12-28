@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-} from "../../test/mock-live-api.js";
+import { liveApiCall, liveApiGet, liveApiId } from "#src/test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
 describe("readDevice", () => {

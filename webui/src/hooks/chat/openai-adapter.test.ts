@@ -3,10 +3,10 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { openaiAdapter } from "./openai-adapter";
-import { OpenAIClient } from "../../chat/openai-client";
-import type { OpenAIMessage } from "../../types/messages";
+import { OpenAIClient } from "#webui/chat/openai-client";
+import type { OpenAIMessage } from "#webui/types/messages";
 import { buildOpenAIConfig } from "../settings/config-builders";
-import { formatOpenAIMessages } from "../../chat/openai-formatter";
+import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient

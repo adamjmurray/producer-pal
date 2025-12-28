@@ -1,6 +1,6 @@
 import { VALID_PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
-import { VALID_SCALE_NAMES } from "../../constants.js";
-import { createAudioClipInSession } from "../../shared/arrangement/arrangement-tiling.js";
+import { VALID_SCALE_NAMES } from "#src/tools/constants.js";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>

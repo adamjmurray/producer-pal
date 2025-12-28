@@ -1,10 +1,10 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   intervalsToPitchClasses,
   pitchClassToNumber,
 } from "#src/shared/pitch.js";
-import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../shared/v8-max-console.js";
-import { waitUntil } from "../../shared/v8-sleep.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { waitUntil } from "#src/shared/v8-sleep.js";
 import {
   findLocator,
   findLocatorsByName,

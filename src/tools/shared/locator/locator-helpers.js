@@ -1,4 +1,4 @@
-import { abletonBeatsToBarBeat } from "../../../notation/barbeat/time/barbeat-time.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Generate a stable locator ID from a locator's index

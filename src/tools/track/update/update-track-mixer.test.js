@@ -4,9 +4,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateTrack } from "./update-track.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 import * as console from "#src/shared/v8-max-console.js";
 
 describe("updateTrack - mixer properties", () => {
