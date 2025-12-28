@@ -1,0 +1,523 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  liveApiGet,
+  liveApiId,
+  liveApiSet,
+  liveApiType,
+} from "../../../test/mock-live-api.js";
+import "../../../live-api-adapter/live-api-extensions.js";
+import { updateDevice } from "./update-device.js";
+
+describe("updateDevice with path parameter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should throw error when neither ids nor path is provided", () => {
+    expect(() => updateDevice({})).toThrow(
+      "Either ids or path must be provided",
+    );
+  });
+
+  it("should throw error when both ids and path are provided", () => {
+    expect(() => updateDevice({ ids: "123", path: "1/0" })).toThrow(
+      "Provide either ids or path, not both",
+    );
+  });
+
+  describe("device paths", () => {
+    beforeEach(() => {
+      liveApiType.mockReturnValue("Device");
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0") return "device-456";
+        if (this._path === "live_set tracks 1 devices 0 view")
+          return "view-456";
+        if (this._path === "live_set return_tracks 0 devices 0")
+          return "return-device-123";
+        if (this._path === "live_set return_tracks 0 devices 0 view")
+          return "view-return-123";
+        if (this._path === "live_set master_track devices 0")
+          return "master-device-789";
+        if (this._path === "live_set master_track devices 0 view")
+          return "view-master-789";
+        return "0";
+      });
+    });
+
+    it("should update device by path on regular track", () => {
+      const result = updateDevice({ path: "1/0", name: "My Device" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-456" }),
+        "name",
+        "My Device",
+      );
+      expect(result).toEqual({ id: "device-456" });
+    });
+
+    it("should update device collapsed state by path", () => {
+      const result = updateDevice({ path: "1/0", collapsed: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "view-456" }),
+        "is_collapsed",
+        1,
+      );
+      expect(result).toEqual({ id: "device-456" });
+    });
+
+    it("should return empty array for non-existent device by path", () => {
+      liveApiId.mockReturnValue("0");
+
+      const result = updateDevice({ path: "1/0", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should update device by path on return track", () => {
+      const result = updateDevice({ path: "r0/0", name: "Return Device" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "return-device-123" }),
+        "name",
+        "Return Device",
+      );
+      expect(result).toEqual({ id: "return-device-123" });
+    });
+
+    it("should update device by path on master track", () => {
+      const result = updateDevice({ path: "m/0", name: "Master Device" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "master-device-789" }),
+        "name",
+        "Master Device",
+      );
+      expect(result).toEqual({ id: "master-device-789" });
+    });
+  });
+
+  describe("chain paths", () => {
+    beforeEach(() => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "chain-123";
+        if (this._path === "live_set tracks 1 devices 0 return_chains 0")
+          return "return-chain-456";
+        return "0";
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "Chain";
+        if (this._path === "live_set tracks 1 devices 0 return_chains 0")
+          return "Chain";
+        return "Device";
+      });
+    });
+
+    it("should update chain by path", () => {
+      const result = updateDevice({ path: "1/0/0", name: "My Chain" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-123" }),
+        "name",
+        "My Chain",
+      );
+      expect(result).toEqual({ id: "chain-123" });
+    });
+
+    it("should update chain mute state by path", () => {
+      const result = updateDevice({ path: "1/0/0", mute: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-123" }),
+        "mute",
+        1,
+      );
+      expect(result).toEqual({ id: "chain-123" });
+    });
+
+    it("should update chain solo state by path", () => {
+      const result = updateDevice({ path: "1/0/0", solo: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-123" }),
+        "solo",
+        1,
+      );
+      expect(result).toEqual({ id: "chain-123" });
+    });
+
+    it("should update chain color by path", () => {
+      const result = updateDevice({ path: "1/0/0", color: "#FF0000" });
+
+      // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-123" }),
+        "color",
+        16711680,
+      );
+      expect(result).toEqual({ id: "chain-123" });
+    });
+
+    it("should return empty array for non-existent chain by path", () => {
+      liveApiId.mockReturnValue("0");
+
+      const result = updateDevice({ path: "1/0/0", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should update return chain by path", () => {
+      const result = updateDevice({ path: "1/0/r0", name: "Return Chain" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "return-chain-456" }),
+        "name",
+        "Return Chain",
+      );
+      expect(result).toEqual({ id: "return-chain-456" });
+    });
+  });
+
+  describe("drum pad paths", () => {
+    // Helper functions for drum pad mock property lookups
+    const getPadProperty = (id, prop, padProperties) => {
+      const padProps = padProperties[id] ?? {};
+      const propMap = {
+        note: [padProps.note ?? 36],
+        name: [padProps.name ?? "Kick"],
+        mute: [padProps.mute ?? 0],
+        solo: [padProps.solo ?? 0],
+        chains: (padProps.chainIds ?? []).flatMap((c) => ["id", c]),
+      };
+      return propMap[prop] ?? [];
+    };
+
+    const getChainProperty = (id, prop, chainProperties) => {
+      const chainProps = chainProperties[id] ?? {};
+      const propMap = {
+        name: [chainProps.name ?? "Chain"],
+        mute: [chainProps.mute ?? 0],
+        solo: [chainProps.solo ?? 0],
+        devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
+      };
+      return propMap[prop] ?? [];
+    };
+
+    const getDeviceProperty = (id, prop, deviceProperties) => {
+      const devProps = deviceProperties[id] ?? {};
+      if (prop === "name") return [devProps.name ?? "Device"];
+      return [];
+    };
+
+    const setupDrumPadMocks = (config) => {
+      const {
+        deviceId = "drum-rack-1",
+        padIds = ["pad-36"],
+        padProperties = {},
+        chainProperties = {},
+        deviceProperties = {},
+      } = config;
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0") return deviceId;
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+        if (id?.startsWith("pad-")) return "DrumPad";
+        if (id?.startsWith("chain-"))
+          return chainProperties[id]?.type ?? "DrumChain";
+        if (id?.startsWith("device-")) return "Device";
+        return "RackDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (id === deviceId || this._path?.includes("devices 0")) {
+          if (prop === "can_have_drum_pads") return [1];
+          if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
+        }
+
+        if (id?.startsWith("pad-"))
+          return getPadProperty(id, prop, padProperties);
+        if (id?.startsWith("chain-"))
+          return getChainProperty(id, prop, chainProperties);
+        if (id?.startsWith("device-"))
+          return getDeviceProperty(id, prop, deviceProperties);
+
+        return [];
+      });
+    };
+
+    it("should update drum pad mute state by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, name: "Kick" } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1", mute: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "pad-36" }),
+        "mute",
+        1,
+      );
+      expect(result).toEqual({ id: "pad-36" });
+    });
+
+    it("should update drum pad solo state by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, name: "Kick" } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1", solo: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "pad-36" }),
+        "solo",
+        1,
+      );
+      expect(result).toEqual({ id: "pad-36" });
+    });
+
+    it("should return empty array for non-existent drum pad by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
+      });
+
+      const result = updateDevice({ path: "1/0/pC3", mute: true });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should update drum chain by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: {
+          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
+        },
+        chainProperties: { "chain-1": { name: "Layer 1" } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1/0", name: "New Layer" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-1" }),
+        "name",
+        "New Layer",
+      );
+      expect(result).toEqual({ id: "chain-1" });
+    });
+
+    it("should update drum chain mute state by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: {
+          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
+        },
+        chainProperties: { "chain-1": { name: "Layer 1" } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1/0", mute: true });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-1" }),
+        "mute",
+        1,
+      );
+      expect(result).toEqual({ id: "chain-1" });
+    });
+
+    it("should return empty array for invalid chain index in drum pad", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: {
+          "pad-36": { note: 36, name: "Kick", chainIds: [] },
+        },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1/5", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should update device inside drum pad chain by path", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: {
+          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
+        },
+        chainProperties: {
+          "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+        },
+        deviceProperties: { "device-1": { name: "Simpler" } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1/0/0", name: "New Simpler" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-1" }),
+        "name",
+        "New Simpler",
+      );
+      expect(result).toEqual({ id: "device-1" });
+    });
+
+    it("should return empty array for invalid device index in drum pad chain", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: {
+          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
+        },
+        chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
+      });
+
+      const result = updateDevice({ path: "1/0/pC1/0/5", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("path validation", () => {
+    it("should throw error for empty path (treated as no path)", () => {
+      expect(() => updateDevice({ path: "", name: "Test" })).toThrow(
+        "Either ids or path must be provided",
+      );
+    });
+
+    it("should return empty array for track-only path (invalid)", () => {
+      const result = updateDevice({ path: "1", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("multiple comma-separated paths", () => {
+    beforeEach(() => {
+      liveApiType.mockReturnValue("Device");
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        if (this._path === "live_set tracks 0 devices 1") return "device-101";
+        if (this._path === "live_set tracks 1 devices 0") return "device-200";
+        if (this._path === "live_set tracks 1 devices 1") return "0"; // non-existent
+        return "0";
+      });
+    });
+
+    it("should update multiple devices by comma-separated paths", () => {
+      const result = updateDevice({ path: "0/0, 0/1, 1/0", name: "Updated" });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(3);
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-100" }),
+        "name",
+        "Updated",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-101" }),
+        "name",
+        "Updated",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-200" }),
+        "name",
+        "Updated",
+      );
+      expect(result).toEqual([
+        { id: "device-100" },
+        { id: "device-101" },
+        { id: "device-200" },
+      ]);
+    });
+
+    it("should skip non-existent paths and continue with valid ones", () => {
+      const result = updateDevice({ path: "0/0, 1/1, 1/0", name: "Updated" });
+
+      // 1/1 doesn't exist, but 0/0 and 1/0 should be updated
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+
+    it("should return empty array when all paths are invalid", () => {
+      liveApiId.mockReturnValue("0"); // All paths non-existent
+
+      const result = updateDevice({ path: "0/0, 1/0", name: "Updated" });
+
+      expect(liveApiSet).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    it("should return single object when only one path provided", () => {
+      const result = updateDevice({ path: "0/0", name: "Single" });
+
+      expect(result).toEqual({ id: "device-100" });
+    });
+
+    it("should return single object when only one path valid out of many", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        return "0";
+      });
+
+      const result = updateDevice({ path: "0/0, 1/0, 2/0", name: "Updated" });
+
+      expect(result).toEqual({ id: "device-100" });
+    });
+
+    it("should handle whitespace in comma-separated paths", () => {
+      const result = updateDevice({
+        path: "  0/0  ,  1/0  ",
+        name: "Trimmed",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+
+    it("should skip invalid path formats gracefully", () => {
+      // Track-only path is invalid, but device paths should work
+      const result = updateDevice({ path: "0, 0/0, 1/0", name: "Updated" });
+
+      // "0" is invalid (no device index), but "0/0" and "1/0" should work
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+  });
+
+  describe("multiple paths with mixed types", () => {
+    it("should update mixed device and chain types", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "chain-200";
+        return "0";
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "Chain";
+        return "Device";
+      });
+
+      const result = updateDevice({ path: "0/0, 1/0/0", name: "Mixed" });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-100" }),
+        "name",
+        "Mixed",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-200" }),
+        "name",
+        "Mixed",
+      );
+      expect(result).toEqual([{ id: "device-100" }, { id: "chain-200" }]);
+    });
+  });
+});

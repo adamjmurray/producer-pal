@@ -1,32 +1,55 @@
-import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
-import { parseCommaSeparatedIds } from "../../shared/utils.js";
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import {
+  resolveDrumPadFromPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+
+const PATH_SUPPORTED_TYPES = ["device", "drum-pad"];
 
 /**
- * Deletes objects by ids
+ * Deletes objects by ids and/or paths
  * @param {object} args - The parameters
- * @param {string} args.ids - ID or comma-separated list of IDs to delete
- * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", or "device")
+ * @param {string} [args.ids] - ID or comma-separated list of IDs to delete
+ * @param {string} [args.path] - Path or comma-separated paths to delete (for device or drum-pad types)
+ * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", "device", or "drum-pad")
  * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Result object(s) with success information
  */
-export function deleteObject({ ids, type } = {}, _context = {}) {
-  if (!ids) {
-    throw new Error("delete failed: ids is required");
-  }
-
+export function deleteObject({ ids, path, type } = {}, _context = {}) {
   if (!type) {
     throw new Error("delete failed: type is required");
   }
 
-  if (!["track", "scene", "clip", "device"].includes(type)) {
+  if (!["track", "scene", "clip", "device", "drum-pad"].includes(type)) {
     throw new Error(
-      `delete failed: type must be one of "track", "scene", "clip", or "device"`,
+      `delete failed: type must be one of "track", "scene", "clip", "device", or "drum-pad"`,
     );
   }
 
-  // Parse comma-separated string into array
-  const objectIds = parseCommaSeparatedIds(ids);
+  // Handle path parameter - only valid for devices and drum-pads
+  if (path && !PATH_SUPPORTED_TYPES.includes(type)) {
+    console.error(
+      `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
+    );
+  }
+
+  // Collect IDs from both sources
+  const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
+
+  // Resolve paths to IDs for device or drum-pad types
+  if (path && PATH_SUPPORTED_TYPES.includes(type)) {
+    const paths = parseCommaSeparatedIds(path);
+    const pathIds = resolvePathsToIds(paths, type);
+
+    objectIds.push(...pathIds);
+  }
+
+  if (objectIds.length === 0) {
+    throw new Error("delete failed: ids or path is required");
+  }
 
   const deletedObjects = [];
 
@@ -127,28 +150,52 @@ function deleteClipObject(id, object) {
 }
 
 /**
- * Deletes a device by its ID via the parent track
+ * Deletes a device by its ID via the parent (track or chain)
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
  */
 function deleteDeviceObject(id, object) {
-  // Extract track path from device path (handles regular, return, and master tracks)
-  const trackPath = object.path.replace(/ devices \d+.*$/, "");
+  // Find the LAST "devices X" in the path to handle nested devices
+  // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
+  const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
 
-  if (trackPath === object.path) {
+  if (deviceMatches.length === 0) {
     throw new Error(
-      `delete failed: could not extract track path from device "${id}" (path="${object.path}")`,
+      `delete failed: could not find device index in path "${object.path}"`,
     );
   }
 
-  const track = new LiveAPI(trackPath);
+  const lastMatch = deviceMatches[deviceMatches.length - 1];
+  const deviceIndex = Number(lastMatch[1]);
 
-  track.call("delete_device", object.deviceIndex);
+  // Parent path is everything before the last "devices X"
+  const parentPath = object.path.substring(0, lastMatch.index).trim();
+
+  if (!parentPath) {
+    throw new Error(
+      `delete failed: could not extract parent path from device "${id}" (path="${object.path}")`,
+    );
+  }
+
+  const parent = new LiveAPI(parentPath);
+
+  parent.call("delete_device", deviceIndex);
+}
+
+/**
+ * Deletes (clears) a drum pad by removing all its chains
+ * @param {string} id - The object ID
+ * @param {object} object - The object to delete
+ */
+function deleteDrumPadObject(id, object) {
+  const drumPad = new LiveAPI(`id ${object.id}`);
+
+  drumPad.call("delete_all_chains");
 }
 
 /**
  * Deletes an object based on its type
- * @param {string} type - The type of object ("track", "scene", "clip", or "device")
+ * @param {string} type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
  */
@@ -161,5 +208,111 @@ function deleteObjectByType(type, id, object) {
     deleteClipObject(id, object);
   } else if (type === "device") {
     deleteDeviceObject(id, object);
+  } else if (type === "drum-pad") {
+    deleteDrumPadObject(id, object);
   }
+}
+
+/**
+ * Resolves paths to their IDs for device or drum-pad types
+ * @param {string[]} paths - Array of paths to resolve
+ * @param {string} type - The target type ("device" or "drum-pad")
+ * @returns {string[]} Array of resolved IDs
+ */
+function resolvePathsToIds(paths, type) {
+  const ids = [];
+
+  for (const targetPath of paths) {
+    try {
+      const resolved = resolvePathToLiveApi(targetPath);
+      const resolvedId = resolvePathToId(resolved, targetPath, type);
+
+      if (resolvedId) {
+        ids.push(resolvedId);
+      }
+    } catch (e) {
+      console.error(`delete: ${e.message}`);
+    }
+  }
+
+  return ids;
+}
+
+/**
+ * Resolves a single path resolution result to an ID
+ * @param {object} resolved - Result from resolvePathToLiveApi
+ * @param {string} targetPath - Original path for error messages
+ * @param {string} type - The target type ("device" or "drum-pad")
+ * @returns {string|null} The resolved ID or null
+ */
+function resolvePathToId(resolved, targetPath, type) {
+  // For drum-pad type, only accept drum-pad paths (no nested navigation)
+  if (type === "drum-pad") {
+    if (resolved.targetType !== "drum-pad") {
+      console.error(
+        `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+      );
+
+      return null;
+    }
+
+    // Use shared helper to get just the drum pad (no remaining segments)
+    const result = resolveDrumPadFromPath(
+      resolved.liveApiPath,
+      resolved.drumPadNote,
+      [], // Ignore remaining segments for drum-pad deletion
+    );
+
+    if (!result.target) {
+      console.error(`delete: drum-pad at path "${targetPath}" does not exist`);
+
+      return null;
+    }
+
+    return result.target.id;
+  }
+
+  // For device type, handle both direct device paths and nested device paths in drum pads
+  if (type === "device") {
+    // Direct device path (not through drum pad)
+    if (resolved.targetType === "device") {
+      const target = new LiveAPI(resolved.liveApiPath);
+
+      if (!target.exists()) {
+        console.error(`delete: device at path "${targetPath}" does not exist`);
+
+        return null;
+      }
+
+      return target.id;
+    }
+
+    // Device nested inside a drum pad (path like 1/0/pC1/0/0)
+    if (
+      resolved.targetType === "drum-pad" &&
+      resolved.remainingSegments?.length >= 2
+    ) {
+      const result = resolveDrumPadFromPath(
+        resolved.liveApiPath,
+        resolved.drumPadNote,
+        resolved.remainingSegments,
+      );
+
+      if (!result.target || result.targetType !== "device") {
+        console.error(`delete: device at path "${targetPath}" does not exist`);
+
+        return null;
+      }
+
+      return result.target.id;
+    }
+
+    console.error(
+      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+    );
+
+    return null;
+  }
+
+  return null;
 }
