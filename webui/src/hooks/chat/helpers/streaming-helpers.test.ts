@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { GeminiMessage, OpenAIMessage } from "../../../types/messages";
+import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
 import {
   handleMessageStream,
   createGeminiErrorMessage,

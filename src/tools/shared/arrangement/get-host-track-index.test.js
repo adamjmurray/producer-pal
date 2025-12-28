@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiPath } from "../../../test/mock-live-api.js";
+import { liveApiPath } from "#src/test/mock-live-api.js";
 import { getHostTrackIndex } from "./get-host-track-index.js";
 
 describe("getHostTrackIndex", () => {

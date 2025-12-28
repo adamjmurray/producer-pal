@@ -508,6 +508,32 @@ export default [
           message:
             "Do not use file extensions in relative imports (bundlers handle resolution)",
         },
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#webui/*) instead of ../../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#webui/*) instead of ../../ imports",
+        },
+      ],
+    },
+  },
+
+  // Enforce path aliases for deep imports in src files
+  {
+    files: ["src/**/*.js"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../../ imports",
+        },
       ],
     },
   },

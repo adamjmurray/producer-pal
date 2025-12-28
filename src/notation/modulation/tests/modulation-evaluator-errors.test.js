@@ -8,7 +8,7 @@ import {
   evaluateModulationAST,
 } from "../modulation-evaluator-helpers.js";
 import { evaluateFunction } from "../modulation-functions.js";
-import * as console from "../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 
 describe("Modulation Evaluator Error Handling", () => {
   beforeEach(() => {

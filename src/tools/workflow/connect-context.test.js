@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
 // Mock the getHostTrackIndex function

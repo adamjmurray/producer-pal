@@ -3,7 +3,7 @@ import {
   liveApiCall,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - basic validation and time signatures", () => {

@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import type { Provider } from "../../../types/settings";
+import type { Provider } from "#webui/types/settings";
 
 interface MessageSettingsToolbarProps {
   provider: Provider;

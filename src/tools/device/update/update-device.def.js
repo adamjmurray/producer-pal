@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "../../shared/tool-framework/define-tool.js";
+import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",

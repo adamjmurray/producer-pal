@@ -1,4 +1,4 @@
-import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   findLocator,
   findLocatorsByName,

@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { MAX_AUTO_CREATED_SCENES } from "../../constants.js";
+} from "#src/test/mock-live-api.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - audio clips", () => {

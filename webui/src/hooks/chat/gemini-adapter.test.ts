@@ -3,10 +3,10 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
-import { GeminiClient } from "../../chat/gemini-client";
-import type { GeminiMessage } from "../../types/messages";
+import { GeminiClient } from "#webui/chat/gemini-client";
+import type { GeminiMessage } from "#webui/types/messages";
 import { buildGeminiConfig } from "../settings/config-builders";
-import { formatGeminiMessages } from "../../chat/gemini-formatter";
+import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient

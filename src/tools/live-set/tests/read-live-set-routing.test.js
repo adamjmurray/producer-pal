@@ -3,7 +3,7 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readLiveSet } from "../read-live-set.js";
 
 describe("readLiveSet - routing", () => {
