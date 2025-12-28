@@ -21,6 +21,7 @@ const baseRules = {
   "prefer-const": "error", // Use const when variable isn't reassigned
 
   // Import Quality
+  "import/first": "error", // All imports must come before other statements
   "import/no-cycle": "error", // Prevent circular dependencies
   "import/no-self-import": "error", // File can't import itself
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
@@ -519,7 +520,8 @@ export default [
       "max-lines-per-function": "off",
       complexity: ["error", 30],
       "sonarjs/no-duplicate-string": "off",
-      "import/order": "off", // Test files need imports after vi.mock() calls
+      "import/first": "off", // Test files need imports after vi.mock() calls
+      "import/order": "off",
       // TODO: Enable padding for tests after increasing max-lines or splitting large test files
       "@stylistic/padding-line-between-statements": "off",
     },

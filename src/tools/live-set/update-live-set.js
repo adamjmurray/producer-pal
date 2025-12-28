@@ -1,6 +1,8 @@
+import {
+  intervalsToPitchClasses,
+  pitchClassToNumber,
+} from "#src/shared/pitch.js";
 import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
-import { intervalsToPitchClasses } from "../../notation/midi-pitch-to-name.js";
-import { pitchClassNameToNumber } from "../../notation/pitch-class-name-to-number.js";
 import * as console from "../../shared/v8-max-console.js";
 import { waitUntil } from "../../shared/v8-sleep.js";
 import {
@@ -78,7 +80,7 @@ export async function updateLiveSet(
     } else {
       // Non-empty string sets the scale and enables it
       const { scaleRoot, scaleName } = parseScale(scale);
-      const scaleRootNumber = pitchClassNameToNumber(scaleRoot);
+      const scaleRootNumber = pitchClassToNumber(scaleRoot);
 
       liveSet.set("root_note", scaleRootNumber);
       liveSet.set("scale_name", scaleName);
