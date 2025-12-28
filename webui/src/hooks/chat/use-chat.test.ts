@@ -7,7 +7,7 @@ import { useChat, type ChatClient, type ChatAdapter } from "./use-chat";
 import type { UIMessage } from "../../types/messages";
 
 // Mock streaming helpers
-vi.mock("./helpers/streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
     // Simulate processing the stream
     for await (const chatHistory of stream) {

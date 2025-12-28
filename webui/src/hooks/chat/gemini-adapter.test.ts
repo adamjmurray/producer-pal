@@ -10,12 +10,13 @@ import { formatGeminiMessages } from "../../chat/gemini-formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
-vi.mock("../../chat/gemini-client", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("../../chat/gemini-client"), () => ({
   GeminiClient: vi.fn(),
 }));
 
 // Mock config builder
-vi.mock("../settings/config-builders", () => ({
+vi.mock(import("../settings/config-builders"), () => ({
   buildGeminiConfig: vi.fn(
     (model, temp, thinking, showThoughts, tools, history) => ({
       model,
@@ -29,7 +30,7 @@ vi.mock("../settings/config-builders", () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock("../../chat/gemini-formatter", () => ({
+vi.mock(import("../../chat/gemini-formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) =>
     messages.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -42,7 +43,7 @@ vi.mock("../../chat/gemini-formatter", () => ({
   ),
 }));
 
-vi.mock("./helpers/streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
     ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",

@@ -6,17 +6,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockRender = vi.fn();
 
 // Mock preact render
-vi.mock("preact", () => ({
+vi.mock(import("preact"), () => ({
   render: mockRender,
 }));
 
 // Mock App component
-vi.mock("./components/App.jsx", () => ({
+vi.mock(import("./components/App"), () => ({
   App: () => <div>App</div>,
 }));
 
 // Mock CSS import
-vi.mock("./main.css", () => ({}));
+vi.mock(import("./main.css"), () => ({}));
 
 describe("main", () => {
   beforeEach(() => {

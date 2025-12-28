@@ -10,12 +10,13 @@ import { formatOpenAIMessages } from "../../chat/openai-formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
-vi.mock("../../chat/openai-client", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("../../chat/openai-client"), () => ({
   OpenAIClient: vi.fn(),
 }));
 
 // Mock config builder
-vi.mock("../settings/config-builders", () => ({
+vi.mock(import("../settings/config-builders"), () => ({
   buildOpenAIConfig: vi.fn(
     (model, temp, thinking, baseUrl, showThoughts, tools, history) => ({
       model,
@@ -30,7 +31,7 @@ vi.mock("../settings/config-builders", () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock("../../chat/openai-formatter", () => ({
+vi.mock(import("../../chat/openai-formatter"), () => ({
   formatOpenAIMessages: vi.fn((messages) =>
     messages.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -48,7 +49,7 @@ vi.mock("../../chat/openai-formatter", () => ({
   ),
 }));
 
-vi.mock("./helpers/streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   createOpenAIErrorMessage: vi.fn((chatHistory, error) => [
     ...chatHistory.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",

@@ -7,13 +7,13 @@ import type { UIMessage } from "../../types/messages";
 import { MessageList } from "./MessageList";
 
 // Mock child components
-vi.mock("./controls/ActivityIndicator.jsx", () => ({
+vi.mock(import("./controls/ActivityIndicator"), () => ({
   ActivityIndicator: () => (
     <div data-testid="activity-indicator">Loading...</div>
   ),
 }));
 
-vi.mock("./assistant/AssistantMessage.jsx", () => ({
+vi.mock(import("./assistant/AssistantMessage"), () => ({
   AssistantMessage: ({ parts }: { parts: unknown[] }) => (
     <div data-testid="assistant-message">
       {parts.map((p, i: number) => {

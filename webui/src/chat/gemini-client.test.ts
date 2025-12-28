@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { GeminiClient } from "./gemini-client";
 
 // Mock the Google GenAI SDK
-vi.mock("@google/genai/web", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@google/genai/web"), () => ({
   GoogleGenAI: class MockGoogleGenAI {
     chats = {
       create: vi.fn(),
@@ -16,7 +17,8 @@ vi.mock("@google/genai/web", () => ({
 }));
 
 // Mock MCP SDK
-vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: class MockClient {
     connect = vi.fn();
     close = vi.fn();
@@ -25,7 +27,7 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
   },
 }));
 
-vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 

@@ -7,7 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import { useOpenAIChat } from "./use-openai-chat";
 
 // Mock OpenAI
-vi.mock("openai", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("openai"), () => ({
   default: class MockOpenAI {
     chat = {
       completions: {
@@ -18,12 +19,14 @@ vi.mock("openai", () => ({
 }));
 
 // Mock config
-vi.mock("../config.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("../../lib/config"), () => ({
   SYSTEM_INSTRUCTION: "Test instruction",
 }));
 
 // Mock MCP SDK
-vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: class MockClient {
     connect = vi.fn();
     close = vi.fn();
@@ -32,7 +35,7 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
   },
 }));
 
-vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 

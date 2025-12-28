@@ -5,7 +5,7 @@ import {
   parseScale,
 } from "./update-live-set-helpers.js";
 
-vi.mock("../../shared/arrangement/arrangement-tiling.js", () => ({
+vi.mock(import("../../shared/arrangement/arrangement-tiling.js"), () => ({
   createAudioClipInSession: vi.fn(),
 }));
 
