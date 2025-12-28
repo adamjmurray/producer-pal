@@ -174,7 +174,8 @@ describe("device-display-helpers", () => {
       expect(midiToNoteName(69)).toBe("A3");
       expect(midiToNoteName(0)).toBe("C-2");
       expect(midiToNoteName(127)).toBe("G8");
-      expect(midiToNoteName(61)).toBe("C#3");
+      // Uses flats for accidentals (canonical behavior from src/shared/pitch.js)
+      expect(midiToNoteName(61)).toBe("Db3");
     });
   });
 

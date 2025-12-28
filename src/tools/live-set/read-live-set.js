@@ -1,7 +1,7 @@
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
-} from "../../notation/midi-pitch-to-name.js";
+} from "#src/shared/pitch.js";
 import { readScene } from "../scene/read-scene.js";
 import { readLocators } from "../shared/locator/locator-helpers.js";
 import {

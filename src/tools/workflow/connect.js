@@ -1,4 +1,4 @@
-import { PITCH_CLASS_NAMES } from "../../notation/midi-pitch-to-name.js";
+import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 import { VERSION } from "../../shared/version.js";
 import {
   skills as basicSkills,

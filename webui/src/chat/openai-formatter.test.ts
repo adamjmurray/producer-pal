@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  expectValidTimestamps,
+  stripTimestamps,
+} from "#webui/test-utils/message-test-utils";
 import { formatOpenAIMessages } from "./openai-formatter";
 import {
   expected,
@@ -11,13 +15,17 @@ import {
 
 describe("formatOpenAIMessages", () => {
   it("handles the initial 'Connect to Ableton' flow  ", () => {
-    expect(formatOpenAIMessages(history)).toStrictEqual(expected);
+    const result = formatOpenAIMessages(history);
+    expect(stripTimestamps(result)).toStrictEqual(expected);
+    expectValidTimestamps(result);
   });
 
   it("handles tool calls with empty arguments ", () => {
-    expect(formatOpenAIMessages(historyWithEmptyToolCallArgs)).toStrictEqual(
+    const result = formatOpenAIMessages(historyWithEmptyToolCallArgs);
+    expect(stripTimestamps(result)).toStrictEqual(
       expectedWithEmptyToolCallArgs,
     );
+    expectValidTimestamps(result);
   });
 
   it("handles reasoning_details in assistant message", () => {

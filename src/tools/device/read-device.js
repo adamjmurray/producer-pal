@@ -1,7 +1,4 @@
-import {
-  midiPitchToName,
-  nameToMidiPitch,
-} from "#src/notation/midi-pitch-to-name.js";
+import { midiToPitchName, pitchNameToMidi } from "#src/shared/pitch.js";
 import { STATE } from "#src/tools/constants.js";
 import {
   cleanupInternalDrumPads,
@@ -172,7 +169,7 @@ function readDrumPadByPath(
 
   // Get drum pads and find the one matching the note
   const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = nameToMidiPitch(drumPadNote);
+  const targetMidiNote = pitchNameToMidi(drumPadNote);
 
   const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
 
@@ -259,7 +256,7 @@ function readDrumPadChain(chain, path, options) {
  */
 function buildDrumPadInfo(pad, path, options) {
   const midiNote = pad.getProperty("note");
-  const noteName = midiPitchToName(midiNote);
+  const noteName = midiToPitchName(midiNote);
   const isMuted = pad.getProperty("mute") > 0;
   const isSoloed = pad.getProperty("solo") > 0;
 

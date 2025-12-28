@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { formatTimestamp } from "#webui/lib/utils/format-timestamp";
 import type { UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
@@ -66,6 +67,7 @@ export function MessageList({
                   ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
                   : "bg-gray-100 dark:bg-gray-800"
               } ${message.role === "model" ? "flex-1" : ""} rounded-lg py-0.5 px-3 max-w-[90%]`}
+              title={formatTimestamp(message.timestamp)}
               data-testid={
                 message.role === "model"
                   ? "assistant-message-bubble"

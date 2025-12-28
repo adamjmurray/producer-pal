@@ -89,6 +89,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
       role: msg.role === "user" ? ("user" as const) : ("model" as const),
       parts: [{ type: "text" as const, content: msg.content }],
       rawHistoryIndex: idx,
+      timestamp: Date.now(),
     }));
   }),
 
@@ -107,6 +108,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
             },
           ],
           rawHistoryIndex: chatHistory.length,
+          timestamp: Date.now(),
         },
       ];
     },

@@ -1,3 +1,9 @@
+import {
+  midiToPitchName,
+  pitchNameToMidi,
+  isValidPitchName,
+} from "#src/shared/pitch.js";
+
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP = {
   0: "active",
@@ -11,21 +17,6 @@ export const AUTOMATION_STATE_MAP = {
   1: "active",
   2: "overridden",
 };
-
-const NOTE_NAMES = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
-];
 
 /**
  * Label parsing patterns for extracting values and units from display labels.
@@ -145,17 +136,9 @@ export function extractMaxPanValue(label) {
   return match ? parseInt(match[1]) : 50;
 }
 
-/**
- * Convert MIDI note number to note name.
- * @param {number} midi - MIDI note number (0-127)
- * @returns {string} Note name (e.g., "C4", "F#-1")
- */
-export function midiToNoteName(midi) {
-  const octave = Math.floor(midi / 12) - 2;
-  const note = NOTE_NAMES[midi % 12];
-
-  return `${note}${octave}`;
-}
+// Re-export pitch utilities for backwards compatibility
+// Note: Output now uses flats (Db) instead of sharps (C#)
+export { midiToPitchName as midiToNoteName, isValidPitchName as isNoteName };
 
 /**
  * Convert note name to MIDI note number.
@@ -163,24 +146,11 @@ export function midiToNoteName(midi) {
  * @returns {number|null} MIDI note number or null if invalid
  */
 export function noteNameToMidi(name) {
-  const match = name.match(/^([A-G])([#b]?)(-?\d+)$/);
-
-  if (!match) return null;
-
-  const [, letter, accidental, octave] = match;
-  const semitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter];
-  const modifier = accidental === "#" ? 1 : accidental === "b" ? -1 : 0;
-
-  return semitones + modifier + (parseInt(octave) + 2) * 12;
-}
-
-/**
- * Check if a string is a valid note name.
- * @param {string} value - Value to check
- * @returns {boolean} True if valid note name
- */
-export function isNoteName(value) {
-  return typeof value === "string" && /^[A-G][#b]?-?\d+$/.test(value);
+  try {
+    return pitchNameToMidi(name);
+  } catch {
+    return null;
+  }
 }
 
 function addStateFlags(result, paramApi, state, automationState) {

@@ -26,7 +26,7 @@ with more flexible modulation features:
 
 - Apply ramps and curves to MIDI velocity, audio gain and other properties
 - Randomize velocity and timing
-- Shuffle and groove support
+- Shuffle and custom (not built-in) groove support
 
 This is destructive modulation applied by modifying clip properties and the
 notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
@@ -59,12 +59,14 @@ however, that could possibly be supported too via device control features.
 
 ### 1.x - Misc
 
+- Clip quantization
 - Take lane support
+- Groove support
 - Speak to Producer Pal instead of typing with:
   - Google Gemini
   - OpenAI ChatGPT
   - Others? Wisprflow? AssemblyAI?
-- Bidirection / TTS: Gemini Live API, OpenAI Live API
+  - Bidirection / TTS: Gemini Live API, OpenAI Live API
 
 ## Changelog
 
