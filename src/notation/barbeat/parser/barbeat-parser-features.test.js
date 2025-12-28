@@ -31,57 +31,58 @@ describe("BarBeatScript Parser - parser features", () => {
 
   describe("syntax error formatting", () => {
     it("formats syntax errors with source context", () => {
-      try {
-        parser.parse("1|1 X3", { grammarSource: "test.txt" });
-        expect.fail("Should have thrown an error");
-      } catch (error) {
-        expect(error.name).toBe("SyntaxError");
-        expect(error.location).toBeDefined();
-        expect(error.location.start.line).toBe(1);
-        expect(error.location.start.column).toBe(5);
-      }
+      expect(() =>
+        parser.parse("1|1 X3", { grammarSource: "test.txt" }),
+      ).toThrowError(
+        expect.objectContaining({
+          name: "SyntaxError",
+          location: expect.objectContaining({
+            start: expect.objectContaining({ line: 1, column: 5 }),
+          }),
+        }),
+      );
     });
 
     it("formats errors with custom source", () => {
+      let caughtError;
+
       try {
         parser.parse("1|1 X3");
-        expect.fail("Should have thrown an error");
       } catch (error) {
-        const formatted = error.format([{ source: undefined, text: "1|1 X3" }]);
-
-        expect(formatted).toContain("Error:");
-        expect(formatted).toContain("1|1 X3");
-        expect(formatted).toContain("^");
+        caughtError = error;
       }
+
+      expect(caughtError).toBeDefined();
+      const formatted = caughtError.format([
+        { source: undefined, text: "1|1 X3" },
+      ]);
+
+      expect(formatted).toContain("Error:");
+      expect(formatted).toContain("1|1 X3");
+      expect(formatted).toContain("^");
     });
 
     it("handles formatting without source text", () => {
+      let caughtError;
+
       try {
         parser.parse("1|1 X3", { grammarSource: "test.txt" });
-        expect.fail("Should have thrown an error");
       } catch (error) {
-        const formatted = error.format([]);
-
-        expect(formatted).toContain("at test.txt:1:5");
+        caughtError = error;
       }
+
+      expect(caughtError).toBeDefined();
+      const formatted = caughtError.format([]);
+
+      expect(formatted).toContain("at test.txt:1:5");
     });
 
     it("handles multiple expectation error messages", () => {
-      try {
-        parser.parse("1:");
-        expect.fail("Should have thrown an error");
-      } catch (error) {
-        expect(error.message).toMatch(/Expected .* but .* found/);
-      }
+      expect(() => parser.parse("1:")).toThrow(/Expected .* but .* found/);
     });
 
     it("handles end of input errors", () => {
-      try {
-        parser.parse("C");
-        expect.fail("Should have thrown an error");
-      } catch (error) {
-        expect(error.message).toContain("end of input");
-      }
+      expect(() => parser.parse("C")).toThrow("end of input");
     });
   });
 

@@ -54,6 +54,7 @@ describe("Folder size limits", () => {
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,
@@ -73,6 +74,7 @@ describe("Folder size limits", () => {
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,
@@ -92,6 +94,7 @@ describe("Folder size limits", () => {
         .map((f) => `  - ${f.path}: ${f.count} items`)
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${oversized.length} folder(s) exceeding ${MAX_ITEMS_PER_FOLDER} items:\n${details}\n\n` +
           `Consider splitting these folders into subdirectories.`,

@@ -239,10 +239,10 @@ describe("useChat", () => {
       const lastPart = lastMessage?.parts[0];
 
       expect(lastPart?.type).toBe("error");
-
-      if (lastPart && "content" in lastPart) {
-        expect(lastPart.content).toContain("No API key configured");
-      }
+      expect(lastPart).toHaveProperty("content");
+      expect((lastPart as { content: string }).content).toContain(
+        "No API key configured",
+      );
     });
 
     it("initializes client on first message", async () => {
@@ -354,9 +354,8 @@ describe("useChat", () => {
       );
       const firstPart = userMessage?.parts[0];
 
-      if (firstPart && "content" in firstPart) {
-        expect(firstPart.content).toBe("Hello");
-      }
+      expect(firstPart).toHaveProperty("content");
+      expect((firstPart as { content: string }).content).toBe("Hello");
     });
   });
 

@@ -228,9 +228,11 @@ describe("openai-adapter", () => {
 
       const lastPart = result[result.length - 1]?.parts[0];
 
-      if (lastPart && "content" in lastPart) {
-        expect(lastPart.content).toContain("String error");
-      }
+      expect(lastPart).toBeDefined();
+      expect(lastPart).toHaveProperty("content");
+      expect((lastPart as { content: string }).content).toContain(
+        "String error",
+      );
     });
   });
 

@@ -555,8 +555,6 @@ export default [
       "import/order": "off",
       // Enforce vi.mock(import('...')) syntax for proper module mocking
       "vitest/prefer-import-in-mock": "error",
-      // TODO: Enable after refactoring test infrastructure (42 violations in src/test/*.test.js)
-      "vitest/no-conditional-expect": "off",
     },
   },
   {

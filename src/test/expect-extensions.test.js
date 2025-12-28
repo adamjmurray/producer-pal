@@ -135,6 +135,8 @@ describe("toHaveBeenCalledWithThis", () => {
     mock.fn("first", 1);
     mock.fn("second", 2);
 
+    let caughtError;
+
     try {
       expect(mock.fn).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "wrong-id" }),
@@ -142,17 +144,20 @@ describe("toHaveBeenCalledWithThis", () => {
         1,
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called with:",
-      );
-      expect(error.message).toContain("Context:");
-      expect(error.message).toContain("Args:");
-      expect(error.message).toContain("But it was called with:");
-      expect(error.message).toContain("Call 1:");
-      expect(error.message).toContain("Call 2:");
-      expect(error.message).toContain('"first"');
-      expect(error.message).toContain('"second"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called with:",
+    );
+    expect(caughtError.message).toContain("Context:");
+    expect(caughtError.message).toContain("Args:");
+    expect(caughtError.message).toContain("But it was called with:");
+    expect(caughtError.message).toContain("Call 1:");
+    expect(caughtError.message).toContain("Call 2:");
+    expect(caughtError.message).toContain('"first"');
+    expect(caughtError.message).toContain('"second"');
   });
 
   it("works with complex nested objects", () => {
@@ -331,6 +336,8 @@ describe("toHaveBeenNthCalledWithThis", () => {
     mock.fn("first", 1);
     mock.fn("second", 2);
 
+    let caughtError;
+
     try {
       expect(mock.fn).toHaveBeenNthCalledWithThis(
         2,
@@ -339,13 +346,16 @@ describe("toHaveBeenNthCalledWithThis", () => {
         "args",
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called the 2th time with:",
-      );
-      expect(error.message).toContain("But the 2th call was:");
-      expect(error.message).toContain('"second"');
-      expect(error.message).toContain("2");
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called the 2th time with:",
+    );
+    expect(caughtError.message).toContain("But the 2th call was:");
+    expect(caughtError.message).toContain('"second"');
+    expect(caughtError.message).toContain("2");
   });
 });
 
@@ -463,6 +473,8 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
     mock.fn("second", 2);
     mock.fn("third", 3);
 
+    let caughtError;
+
     try {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
         expect.objectContaining({ id: "test-id" }),
@@ -470,16 +482,19 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
         1,
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called exactly once, but it was called 3 times:",
-      );
-      expect(error.message).toContain("Call 1:");
-      expect(error.message).toContain("Call 2:");
-      expect(error.message).toContain("Call 3:");
-      expect(error.message).toContain('"first"');
-      expect(error.message).toContain('"second"');
-      expect(error.message).toContain('"third"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called exactly once, but it was called 3 times:",
+    );
+    expect(caughtError.message).toContain("Call 1:");
+    expect(caughtError.message).toContain("Call 2:");
+    expect(caughtError.message).toContain("Call 3:");
+    expect(caughtError.message).toContain('"first"');
+    expect(caughtError.message).toContain('"second"');
+    expect(caughtError.message).toContain('"third"');
   });
 
   it("provides detailed error message for mismatched single call", () => {
@@ -490,6 +505,8 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
 
     mock.fn("actual", "call");
 
+    let caughtError;
+
     try {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
         expect.objectContaining({ id: "wrong-id" }),
@@ -497,12 +514,15 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
         "call",
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called exactly once with:",
-      );
-      expect(error.message).toContain("But it was called once with:");
-      expect(error.message).toContain('"actual"');
-      expect(error.message).toContain('"expected"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called exactly once with:",
+    );
+    expect(caughtError.message).toContain("But it was called once with:");
+    expect(caughtError.message).toContain('"actual"');
+    expect(caughtError.message).toContain('"expected"');
   });
 });

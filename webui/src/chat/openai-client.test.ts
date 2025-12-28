@@ -375,11 +375,14 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const toolCall = result.tool_calls?.[0];
 
     expect(toolCall?.id).toBe("call_123");
+    expect(toolCall?.type).toBe("function");
 
-    if (toolCall?.type === "function") {
-      expect(toolCall.function.name).toBe("search");
-      expect(toolCall.function.arguments).toBe('{"query": "test"}');
-    }
+    const functionToolCall = toolCall as {
+      function: { name: string; arguments: string };
+    };
+
+    expect(functionToolCall.function.name).toBe("search");
+    expect(functionToolCall.function.arguments).toBe('{"query": "test"}');
   });
 
   it("should include multiple tool_calls when finish_reason is 'tool_calls'", () => {
