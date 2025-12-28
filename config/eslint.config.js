@@ -1,3 +1,4 @@
+import vitestPlugin from "@vitest/eslint-plugin";
 import js from "@eslint/js";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
@@ -541,6 +542,9 @@ export default [
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],
+    plugins: {
+      vitest: vitestPlugin,
+    },
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
@@ -550,6 +554,8 @@ export default [
       "import/order": "off",
       // TODO: Enable padding for tests after increasing max-lines or splitting large test files
       "@stylistic/padding-line-between-statements": "off",
+      // Enforce vi.mock(import('...')) syntax for proper module mocking
+      "vitest/prefer-import-in-mock": "error",
     },
   },
   {

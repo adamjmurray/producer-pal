@@ -4,23 +4,23 @@
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 // Mock all the custom hooks
-vi.mock("../hooks/settings/use-settings.js", () => ({
+vi.mock(import("../hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 
-vi.mock("../hooks/theme/use-theme.js", () => ({
+vi.mock(import("../hooks/theme/use-theme"), () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock("../hooks/connection/use-mcp-connection.js", () => ({
+vi.mock(import("../hooks/connection/use-mcp-connection"), () => ({
   useMcpConnection: vi.fn(),
 }));
 
-vi.mock("../hooks/chat/use-gemini-chat.js", () => ({
+vi.mock(import("../hooks/chat/use-gemini-chat"), () => ({
   useGeminiChat: vi.fn(),
 }));
 
-vi.mock("../hooks/chat/use-openai-chat.js", () => ({
+vi.mock(import("../hooks/chat/use-openai-chat"), () => ({
   useOpenAIChat: vi.fn(),
 }));
 
