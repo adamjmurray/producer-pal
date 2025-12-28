@@ -6,7 +6,7 @@ import type {
   UIToolPart,
   UITextPart,
   UIThoughtPart,
-} from "../types/messages";
+} from "#webui/types/messages";
 
 /**
  * Formats Gemini's raw chat history into a UI-friendly structure.

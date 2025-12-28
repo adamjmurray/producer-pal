@@ -65,7 +65,7 @@ const mockMcpServer = {
   },
 };
 
-vi.mock(import("../mcp-server/create-mcp-server.js"), () => ({
+vi.mock(import("#src/mcp-server/create-mcp-server.js"), () => ({
   createMcpServer: vi.fn(() => mockMcpServer),
 }));
 

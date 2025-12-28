@@ -1,6 +1,6 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
-import { parseCommaSeparatedIds } from "../shared/utils.js";
-import { validateIdTypes } from "../shared/validation/id-validation.js";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
   getArrangementFollowerTrackIds,
   resolveLoopEnd,

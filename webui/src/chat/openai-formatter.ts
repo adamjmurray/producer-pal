@@ -1,11 +1,11 @@
+import type { ReasoningDetail } from "#webui/chat/openai-client";
 import type {
   OpenAIMessage,
   OpenAIToolCall,
   UIMessage,
   UIPart,
   UIThoughtPart,
-} from "../types/messages";
-import type { ReasoningDetail } from "./openai-client";
+} from "#webui/types/messages";
 
 /**
  * Add reasoning details to parts array

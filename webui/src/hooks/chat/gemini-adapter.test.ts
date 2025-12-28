@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
 import { GeminiClient } from "#webui/chat/gemini-client";
 import type { GeminiMessage } from "#webui/types/messages";
-import { buildGeminiConfig } from "../settings/config-builders";
+import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
 import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
@@ -16,7 +16,7 @@ vi.mock(import("#webui/chat/gemini-client"), () => ({
 }));
 
 // Mock config builder
-vi.mock(import("../settings/config-builders"), () => ({
+vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   buildGeminiConfig: vi.fn(
     (model, temp, thinking, showThoughts, tools, history) => ({
       model,

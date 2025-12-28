@@ -8,7 +8,7 @@ import {
   liveApiType,
 } from "#src/test/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
-import { select } from "../select.js";
+import { select } from "#src/tools/control/select.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);

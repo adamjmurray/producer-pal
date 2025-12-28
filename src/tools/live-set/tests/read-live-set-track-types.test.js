@@ -5,7 +5,7 @@ import {
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
-import { readLiveSet } from "../read-live-set.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {

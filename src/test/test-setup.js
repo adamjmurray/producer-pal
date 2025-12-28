@@ -13,7 +13,7 @@ import { Task } from "./mock-task.js";
 
 globalThis.LiveAPI = LiveAPI;
 globalThis.Folder = Folder;
-await import("../live-api-adapter/live-api-extensions.js");
+await import("#src/live-api-adapter/live-api-extensions.js");
 
 globalThis.Task = Task;
 globalThis.outlet = vi.fn();

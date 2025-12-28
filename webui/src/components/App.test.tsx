@@ -5,32 +5,32 @@ import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock all the custom hooks
-vi.mock(import("../hooks/settings/use-settings"), () => ({
+vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 
-vi.mock(import("../hooks/theme/use-theme"), () => ({
+vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock(import("../hooks/connection/use-mcp-connection"), () => ({
+vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
   useMcpConnection: vi.fn(),
 }));
 
-vi.mock(import("../hooks/chat/use-gemini-chat"), () => ({
+vi.mock(import("#webui/hooks/chat/use-gemini-chat"), () => ({
   useGeminiChat: vi.fn(),
 }));
 
-vi.mock(import("../hooks/chat/use-openai-chat"), () => ({
+vi.mock(import("#webui/hooks/chat/use-openai-chat"), () => ({
   useOpenAIChat: vi.fn(),
 }));
 
 // Import mocked modules to access them in tests
-import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
-import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
-import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
-import { useSettings } from "../hooks/settings/use-settings";
-import { useTheme } from "../hooks/theme/use-theme";
+import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
+import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
+import { useSettings } from "#webui/hooks/settings/use-settings";
+import { useTheme } from "#webui/hooks/theme/use-theme";
 import { App } from "./App";
 
 describe("App", () => {

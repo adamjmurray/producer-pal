@@ -1,6 +1,9 @@
-import { verifyColorQuantization } from "../shared/color-verification-helpers.js";
-import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
-import { validateIdTypes } from "../shared/validation/id-validation.js";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+import {
+  parseCommaSeparatedIds,
+  parseTimeSignature,
+} from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 /**
  * Updates properties of existing scenes

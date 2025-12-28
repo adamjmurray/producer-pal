@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiGet } from "../test/mock-live-api.js";
+import { liveApiGet } from "#src/test/mock-live-api.js";
 import "./live-api-extensions.js";
 
 describe("LiveAPI extensions", () => {

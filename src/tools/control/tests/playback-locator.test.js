@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiSet,
 } from "#src/test/mock-live-api.js";
-import { playback } from "../playback.js";
+import { playback } from "#src/tools/control/playback.js";
 
 describe("playback - locator support", () => {
   beforeEach(() => {

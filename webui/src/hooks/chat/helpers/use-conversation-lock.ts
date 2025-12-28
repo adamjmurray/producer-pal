@@ -1,6 +1,6 @@
 import { useState, useCallback } from "preact/hooks";
+import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
 import type { Provider } from "#webui/types/settings";
-import type { MessageOverrides } from "../use-chat";
 
 interface ChatHookResult {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;

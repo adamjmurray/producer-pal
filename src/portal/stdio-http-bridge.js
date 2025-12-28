@@ -7,8 +7,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { createMcpServer } from "../mcp-server/create-mcp-server.js";
-import { formatErrorResponse } from "../shared/mcp-response-utils.js";
+import { createMcpServer } from "#src/mcp-server/create-mcp-server.js";
+import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
 import { logger } from "./file-logger.js";
 
 const SETUP_URL = "https://producer-pal.org";

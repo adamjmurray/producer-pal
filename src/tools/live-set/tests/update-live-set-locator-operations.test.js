@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiSet,
 } from "#src/test/mock-live-api.js";
-import { updateLiveSet } from "../update-live-set.js";
+import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
 
 describe("updateLiveSet - locator operations", () => {
   beforeEach(() => {

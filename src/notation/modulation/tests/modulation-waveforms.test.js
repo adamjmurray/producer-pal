@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cos, tri, saw, square, noise, ramp } from "../modulation-waveforms.js";
+import {
+  cos,
+  tri,
+  saw,
+  square,
+  noise,
+  ramp,
+} from "#src/notation/modulation/modulation-waveforms.js";
 
 describe("Modulation Waveforms", () => {
   describe("cos()", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretNotation } from "../barbeat-interpreter.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - bar copy operations", () => {
   describe("bar copy", () => {

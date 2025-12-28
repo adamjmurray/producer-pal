@@ -5,7 +5,7 @@ import {
   buildInstructions as buildBasicInstruction,
 } from "#src/skills/basic.js";
 import { buildInstructions, skills } from "#src/skills/standard.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety

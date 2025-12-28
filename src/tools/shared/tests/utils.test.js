@@ -7,7 +7,7 @@ import {
   setAllNonNull,
   toLiveApiView,
   withoutNulls,
-} from "../utils.js";
+} from "#src/tools/shared/utils.js";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {

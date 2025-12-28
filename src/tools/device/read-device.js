@@ -3,9 +3,9 @@ import { STATE } from "#src/tools/constants.js";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
-} from "../shared/device/device-reader.js";
-import { resolvePathToLiveApi } from "../shared/device/helpers/device-path-helpers.js";
-import { buildChainInfo } from "../shared/device/helpers/device-reader-helpers.js";
+} from "#src/tools/shared/device/device-reader.js";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)

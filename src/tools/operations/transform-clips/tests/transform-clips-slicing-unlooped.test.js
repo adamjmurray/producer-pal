@@ -8,7 +8,7 @@ import {
   liveApiType,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { transformClips } from "../transform-clips.js";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
 describe("transformClips - slicing unlooped clips", () => {
   it("should slice unlooped MIDI clips via duplication", () => {

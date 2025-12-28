@@ -7,14 +7,17 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function
-vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
-  getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  () => ({
+    getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
+  }),
+);
 
 describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {

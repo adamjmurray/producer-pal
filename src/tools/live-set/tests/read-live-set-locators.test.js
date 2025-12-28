@@ -4,7 +4,7 @@ import {
   liveApiId,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { readLiveSet } from "../read-live-set.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - locators", () => {
   it("should not include locators by default", () => {

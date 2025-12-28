@@ -6,7 +6,7 @@ import {
   liveApiPath,
   liveApiType,
 } from "#src/test/mock-live-api.js";
-import { transformClips } from "../transform-clips.js";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
 describe("transformClips - slicing", () => {
   it("should slice looped clips and tile to original length", () => {

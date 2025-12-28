@@ -1,6 +1,6 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "../shared/mcp-response-utils.js";
+import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
 import {
   callLiveApi,
   handleLiveApiResult,

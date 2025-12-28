@@ -5,7 +5,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { updateClip } from "../update-clip.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties
 // are unreliable for detecting hidden audio content, we changed the behavior to

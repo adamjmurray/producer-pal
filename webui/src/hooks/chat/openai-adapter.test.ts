@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { openaiAdapter } from "./openai-adapter";
 import { OpenAIClient } from "#webui/chat/openai-client";
 import type { OpenAIMessage } from "#webui/types/messages";
-import { buildOpenAIConfig } from "../settings/config-builders";
+import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
 import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
@@ -16,7 +16,7 @@ vi.mock(import("#webui/chat/openai-client"), () => ({
 }));
 
 // Mock config builder
-vi.mock(import("../settings/config-builders"), () => ({
+vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   buildOpenAIConfig: vi.fn(
     (model, temp, thinking, baseUrl, showThoughts, tools, history) => ({
       model,

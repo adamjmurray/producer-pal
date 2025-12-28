@@ -1,5 +1,5 @@
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { abletonBeatsToBarBeat } from "../barbeat/time/barbeat-time.js";
 import { evaluateModulationAST } from "./modulation-evaluator-helpers.js";
 import * as parser from "./parser/modulation-parser.js";
 

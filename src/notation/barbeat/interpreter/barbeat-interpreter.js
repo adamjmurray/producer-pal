@@ -1,5 +1,4 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { applyV0Deletions } from "../barbeat-apply-v0-deletions.js";
+import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.js";
 import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,
@@ -7,9 +6,10 @@ import {
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-} from "../barbeat-config.js";
-import * as parser from "../parser/barbeat-parser.js";
-import { barBeatDurationToMusicalBeats } from "../time/barbeat-time.js";
+} from "#src/notation/barbeat/barbeat-config.js";
+import * as parser from "#src/notation/barbeat/parser/barbeat-parser.js";
+import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   validateBufferedState,
   handleBarCopyRangeDestination,

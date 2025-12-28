@@ -7,7 +7,7 @@ import {
   liveApiSet,
   liveApiType,
 } from "#src/test/mock-live-api.js";
-import { select } from "../select.js";
+import { select } from "#src/tools/control/select.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);

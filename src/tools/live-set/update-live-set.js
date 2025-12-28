@@ -9,8 +9,8 @@ import {
   findLocator,
   findLocatorsByName,
   getLocatorId,
-} from "../shared/locator/locator-helpers.js";
-import { parseTimeSignature } from "../shared/utils.js";
+} from "#src/tools/shared/locator/locator-helpers.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
   cleanupTempClip,
   extendSongIfNeeded,

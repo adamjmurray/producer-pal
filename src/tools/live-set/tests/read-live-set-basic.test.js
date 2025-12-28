@@ -12,7 +12,7 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.js";
-import { readLiveSet } from "../read-live-set.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - basic reading", () => {
   it("returns live set information including tracks and scenes", () => {

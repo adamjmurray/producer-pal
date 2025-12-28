@@ -9,8 +9,8 @@ import {
 import {
   mockContext,
   setupMocks,
-} from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateModulation } from "../modulation-evaluator.js";
-import { evaluateModulationAST } from "../modulation-evaluator-helpers.js";
+import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
+import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.js";
 import * as console from "#src/shared/v8-max-console.js";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.js";
 

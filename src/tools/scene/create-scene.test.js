@@ -7,7 +7,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createScene } from "./create-scene.js";
 
 describe("createScene", () => {

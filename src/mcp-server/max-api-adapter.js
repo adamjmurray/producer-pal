@@ -5,8 +5,8 @@ import Max from "max-api";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
-} from "../shared/mcp-response-utils.js";
-import { ensureSilenceWav } from "../shared/silent-wav-generator.js";
+} from "#src/shared/mcp-response-utils.js";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.js";
 import * as console from "./node-for-max-logger.js";
 
 // Generate silent WAV on module load
