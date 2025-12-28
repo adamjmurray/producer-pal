@@ -206,3 +206,8 @@ export const ALL_VALID_DEVICES = [
   ...VALID_DEVICES.midiEffects,
   ...VALID_DEVICES.audioEffects,
 ];
+
+// Device class names for special handling
+export const DEVICE_CLASS = {
+  SIMPLER: "Simpler",
+};

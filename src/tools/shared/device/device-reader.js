@@ -1,5 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import {
+  DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -127,9 +128,9 @@ export function getDrumMap(devices) {
 
   drumRacks[0]._processedDrumPads.forEach((drumPad) => {
     if (drumPad.hasInstrument !== false) {
-      const pitchName = drumPad.pitch;
+      const noteName = drumPad.pitch;
 
-      drumMap[pitchName] = drumPad.name;
+      drumMap[noteName] = drumPad.name;
     }
   });
 
@@ -232,7 +233,7 @@ export function readDevice(device, options = {}) {
  * @returns {object} Object with sample property, or empty object
  */
 function readSimplerSample(device, className) {
-  if (className !== "Simpler") {
+  if (className !== DEVICE_CLASS.SIMPLER) {
     return {};
   }
 

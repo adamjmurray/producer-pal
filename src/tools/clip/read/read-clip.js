@@ -263,21 +263,16 @@ function processMidiClip(
   }
 }
 
-/**
- * Get warp mode mapping for audio clips
- * @returns {object} - Mapping of Live API warp modes to friendly names
- */
-function getWarpModeMapping() {
-  return {
-    [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
-    [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
-    [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
-    [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
-    [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
-    [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
-    [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
-  };
-}
+/** Mapping of Live API warp modes to friendly names */
+const WARP_MODE_MAPPING = {
+  [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
+  [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
+  [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
+  [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
+  [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
+  [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
+  [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
+};
 
 /**
  * Process audio clip specific properties
@@ -307,9 +302,8 @@ function processAudioClip(result, clip, includeWarpMarkers) {
   // Warping state
   result.warping = clip.getProperty("warping") > 0;
   const warpModeValue = clip.getProperty("warp_mode");
-  const warpModeMapping = getWarpModeMapping();
 
-  result.warpMode = warpModeMapping[warpModeValue] ?? "unknown";
+  result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
   // Add warp markers array when requested
   if (includeWarpMarkers) {
