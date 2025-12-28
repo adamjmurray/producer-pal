@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { UIMessage } from "../types/messages";
+import {
+  expectValidTimestamps,
+  stripTimestamps,
+} from "#webui/test-utils/message-test-utils";
 import { formatOpenAIMessages } from "./openai-formatter";
 import {
   expected,
@@ -10,22 +13,11 @@ import {
   historyWithEmptyToolCallArgs,
 } from "./test-cases/openai-formatter/empty-tool-call-args";
 
-/**
- * Strip timestamps from UIMessages for comparison (timestamps are dynamic)
- * @param {UIMessage[]} messages - Messages with timestamps
- * @returns {Omit<UIMessage, "timestamp">[]} Messages without timestamps
- */
-function stripTimestamps(
-  messages: UIMessage[],
-): Omit<UIMessage, "timestamp">[] {
-  return messages.map(({ timestamp: _, ...rest }) => rest);
-}
-
 describe("formatOpenAIMessages", () => {
   it("handles the initial 'Connect to Ableton' flow  ", () => {
     const result = formatOpenAIMessages(history);
     expect(stripTimestamps(result)).toStrictEqual(expected);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("handles tool calls with empty arguments ", () => {
@@ -33,7 +25,7 @@ describe("formatOpenAIMessages", () => {
     expect(stripTimestamps(result)).toStrictEqual(
       expectedWithEmptyToolCallArgs,
     );
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("handles reasoning_details in assistant message", () => {

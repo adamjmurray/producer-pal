@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { UIMessage } from "../types/messages";
+import {
+  expectValidTimestamps,
+  stripTimestamps,
+} from "#webui/test-utils/message-test-utils";
 import { formatGeminiMessages } from "./gemini-formatter";
 import {
   expected,
@@ -28,22 +31,11 @@ import {
   historyWithToolError,
 } from "./test-cases/gemini-formatter/tool-call-error-test-case";
 
-/**
- * Strip timestamps from UIMessages for comparison (timestamps are dynamic)
- * @param {UIMessage[]} messages - Messages with timestamps
- * @returns {Omit<UIMessage, "timestamp">[]} Messages without timestamps
- */
-function stripTimestamps(
-  messages: UIMessage[],
-): Omit<UIMessage, "timestamp">[] {
-  return messages.map(({ timestamp: _, ...rest }) => rest);
-}
-
 describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {
     const result = formatGeminiMessages(history);
     expect(stripTimestamps(result)).toStrictEqual(expected);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("merges non-thought text with thoughtSignatures ", () => {
@@ -51,36 +43,36 @@ describe("formatGeminiMessages", () => {
     expect(stripTimestamps(result)).toStrictEqual(
       expectedNonThoughtTextWithSignature,
     );
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("handles history ending with a thought ", () => {
     const result = formatGeminiMessages(historyEndingInThought);
     expect(stripTimestamps(result)).toStrictEqual(expectedEndingInThought);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("handles tool call errors", () => {
     const result = formatGeminiMessages(historyWithToolError);
     expect(stripTimestamps(result)).toStrictEqual(expectedWithToolError);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("merges error into existing model message", () => {
     const result = formatGeminiMessages(historyWithError);
     expect(stripTimestamps(result)).toStrictEqual(expectedWithError);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("creates new model message for error when no preceding model exists", () => {
     const result = formatGeminiMessages(historyWithErrorNoModel);
     expect(stripTimestamps(result)).toStrictEqual(expectedWithErrorNoModel);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 
   it("handles parallel tool calls", () => {
     const result = formatGeminiMessages(parallelToolCallHistory);
     expect(stripTimestamps(result)).toStrictEqual(expectedParallelToolCalls);
-    expect(result.every((m) => typeof m.timestamp === "number")).toBe(true);
+    expectValidTimestamps(result);
   });
 });
