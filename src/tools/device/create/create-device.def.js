@@ -18,7 +18,13 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .int()
       .min(0)
       .optional()
-      .describe("0-based track index (required for regular/return tracks)"),
+      .describe("0-based track index (required for regular/return tracks when parentId is not provided)"),
+    parentId: z
+      .string()
+      .optional()
+      .describe(
+        "Existing container LiveAPI id to insert into (e.g., chain, rack chain, drum pad chain)",
+      ),
     deviceName: z
       .string()
       .optional()
