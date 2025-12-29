@@ -52,6 +52,7 @@ export function connect(_params = {}, context = {}) {
     `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
     "Tell me if you rearrange things so I stay in sync.",
     "Save often! I make mistakes.",
+    "Use ppal-create-drum-pad-rack to build nested drum pad racks (trackIndex, drumRackDeviceIndex, padNote, layers with sublayers/effects/masterEffects, macroCount) for multilayered drums.",
     // additional tips set based on the state of the Live Set
   ];
 

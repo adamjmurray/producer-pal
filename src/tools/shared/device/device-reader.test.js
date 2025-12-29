@@ -207,7 +207,7 @@ describe("device-reader", () => {
       expect(getDrumMap(devices)).toBe(null);
     });
 
-    it("returns empty object when drum rack has no playable chains", () => {
+    it("maps pads even when chains lack instruments", () => {
       const devices = [
         {
           type: "drum-rack",
@@ -217,7 +217,10 @@ describe("device-reader", () => {
           ],
         },
       ];
-      expect(getDrumMap(devices)).toEqual({});
+      expect(getDrumMap(devices)).toEqual({
+        C3: "Kick",
+        D3: "Snare",
+      });
     });
 
     it("extracts drum map from drum rack", () => {
@@ -238,7 +241,7 @@ describe("device-reader", () => {
       });
     });
 
-    it("excludes chains without instruments", () => {
+    it("includes chain names even without instruments", () => {
       const devices = [
         {
           type: "drum-rack",
@@ -251,6 +254,7 @@ describe("device-reader", () => {
       ];
       expect(getDrumMap(devices)).toEqual({
         C3: "Kick",
+        D3: "Empty",
         E3: "Snare",
       });
     });

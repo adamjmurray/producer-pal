@@ -94,6 +94,8 @@ describe("MCP Express App", () => {
         "ppal-update-clip",
         "ppal-transform-clips",
         "ppal-create-device",
+        "ppal-create-instrument-rack",
+        "ppal-create-drum-pad-rack",
         "ppal-read-device",
         "ppal-update-device",
         "ppal-playback",

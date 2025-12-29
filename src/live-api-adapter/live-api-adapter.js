@@ -18,6 +18,8 @@ import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
 import { createDevice } from "../tools/device/create/create-device.js";
+import { createInstrumentRack } from "../tools/device/create/create-instrument-rack.js";
+import { createDrumPadInstrumentRack } from "../tools/device/create/create-drum-pad-rack.js";
 import { readDevice } from "../tools/device/read-device.js";
 import { updateDevice } from "../tools/device/update/update-device.js";
 import { readLiveSet } from "../tools/live-set/read-live-set.js";
@@ -85,6 +87,8 @@ const tools = {
     return transformClips(args, context);
   },
   "ppal-create-device": (args) => createDevice(args, context),
+  "ppal-create-instrument-rack": (args) => createInstrumentRack(args, context),
+  "ppal-create-drum-pad-rack": (args) => createDrumPadInstrumentRack(args, context),
   "ppal-read-device": (args) => readDevice(args, context),
   "ppal-update-device": (args) => updateDevice(args, context),
   "ppal-playback": (args) => playback(args, context),

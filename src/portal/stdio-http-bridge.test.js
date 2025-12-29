@@ -46,14 +46,124 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
 
 const mockMcpServer = {
   _registeredTools: {
+    "ppal-connect": {
+      title: "Connect",
+      description: "Connect to Ableton Live",
+      inputSchema: { type: "object", properties: {} },
+    },
     "ppal-read-live-set": {
       title: "Read Live Set",
       description: "Read comprehensive information about the Live Set",
       inputSchema: { type: "object", properties: {} },
     },
+    "ppal-update-live-set": {
+      title: "Update Live Set",
+      description: "Update Live Set settings",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-create-track": {
+      title: "Create Track",
+      description: "Create tracks",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-read-track": {
+      title: "Read Track",
+      description: "Read track info",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-update-track": {
+      title: "Update Track",
+      description: "Update track",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-create-scene": {
+      title: "Create Scene",
+      description: "Create scenes",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-read-scene": {
+      title: "Read Scene",
+      description: "Read scenes",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-update-scene": {
+      title: "Update Scene",
+      description: "Update scenes",
+      inputSchema: { type: "object", properties: {} },
+    },
     "ppal-create-clip": {
       title: "Create Clip",
       description: "Creates MIDI clips in Session or Arrangement",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-read-clip": {
+      title: "Read Clip",
+      description: "Read clips",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-update-clip": {
+      title: "Update Clip",
+      description: "Update clips",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-transform-clips": {
+      title: "Transform Clips",
+      description: "Transform clips",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-create-device": {
+      title: "Create Device",
+      description: "Create devices",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-create-instrument-rack": {
+      title: "Create Instrument Rack",
+      description: "Create instrument racks",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-create-drum-pad-rack": {
+      title: "Create Drum Pad Rack",
+      description: "Create an Instrument Rack inside a Drum Rack pad with multiple chains and effects",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-read-device": {
+      title: "Read Device",
+      description: "Read devices",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-update-device": {
+      title: "Update Device",
+      description: "Update devices",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-playback": {
+      title: "Playback",
+      description: "Control playback",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-select": {
+      title: "Select",
+      description: "Select objects",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-delete": {
+      title: "Delete",
+      description: "Delete objects",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-duplicate": {
+      title: "Duplicate",
+      description: "Duplicate objects",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-memory": {
+      title: "Memory",
+      description: "Project notes",
+      inputSchema: { type: "object", properties: {} },
+    },
+    "ppal-read-samples": {
+      title: "Read Samples",
+      description: "Read samples",
       inputSchema: { type: "object", properties: {} },
     },
     "ppal-raw-live-api": {
@@ -128,19 +238,23 @@ describe("StdioHttpBridge", () => {
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
       const tools = bridge.fallbackTools.tools;
-      expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
-      expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
+      expect(tools.length).toBe(24); // All tools except ppal-raw-live-api
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("ppal-create-instrument-rack");
       expect(toolNames).toContain("ppal-read-live-set");
       expect(toolNames).toContain("ppal-create-clip");
+      expect(toolNames).toContain("ppal-create-drum-pad-rack");
+      expect(toolNames).toContain("ppal-transform-clips");
+      expect(toolNames).toContain("ppal-read-samples");
+      expect(toolNames).not.toContain("ppal-raw-live-api");
 
       // Verify tool structure
       expect(tools[0]).toEqual({
-        name: "ppal-read-live-set",
-        title: "Read Live Set",
-        description: "Read comprehensive information about the Live Set",
+        name: "ppal-connect",
+        title: "Connect",
+        description: "Connect to Ableton Live",
         inputSchema: { type: "object", properties: {} },
       });
     });

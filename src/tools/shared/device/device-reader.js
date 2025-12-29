@@ -127,9 +127,9 @@ export function getDrumMap(devices) {
   const drumMap = {};
 
   drumRacks[0]._processedDrumChains.forEach((drumChain) => {
-    if (drumChain.hasInstrument !== false) {
-      const pitchName = drumChain.pitch;
+    const pitchName = drumChain.pitch;
 
+    if (pitchName && drumChain.name) {
       drumMap[pitchName] = drumChain.name;
     }
   });

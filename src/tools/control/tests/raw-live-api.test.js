@@ -382,6 +382,43 @@ describe("rawLiveApi", () => {
     });
   });
 
+  describe("retries and stopOnError", () => {
+    it("retries execution failures up to retries then succeeds", () => {
+      liveApiCall
+        .mockImplementationOnce(() => {
+          throw new Error("first failure");
+        })
+        .mockImplementationOnce(() => "recovered");
+
+      const result = rawLiveApi({
+        operations: [{ type: "call", method: "flaky", retries: 1 }],
+      });
+
+      expect(result.results[0].result).toBe("recovered");
+      expect(liveApiCall).toHaveBeenCalledTimes(2);
+    });
+
+    it("collects errors when stopOnError is false and continues", () => {
+      liveApiCall
+        .mockImplementationOnce(() => {
+          throw new Error("boom");
+        })
+        .mockImplementationOnce(() => "ok");
+
+      const result = rawLiveApi({
+        stopOnError: false,
+        operations: [
+          { type: "call", method: "flaky", retries: 0 },
+          { type: "call", method: "safe" },
+        ],
+      });
+
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0].error).toContain("boom");
+      expect(result.results[1].result).toBe("ok");
+    });
+  });
+
   describe("return format", () => {
     it("should return path, id, and results", () => {
       liveApiPath.mockReturnValue("live_set");

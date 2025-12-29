@@ -147,7 +147,7 @@ function executeOperation(api, operation) {
  * @param {object} _context - Internal context object (unused)
  * @returns {object} Result object with path, id, and operation results
  */
-export function rawLiveApi({ path, operations } = {}, _context = {}) {
+export function rawLiveApi({ path, operations, stopOnError = true } = {}, _context = {}) {
   if (!Array.isArray(operations)) {
     throw new Error("operations must be an array");
   }
@@ -162,19 +162,45 @@ export function rawLiveApi({ path, operations } = {}, _context = {}) {
   const results = [];
 
   for (const operation of operations) {
+    validateOperationParameters(operation);
+
+    const retries =
+      Number.isInteger(operation.retries) && operation.retries > 0
+        ? operation.retries
+        : 0;
+    const maxAttempts = retries + 1;
+    let attemptError;
     let result;
 
-    try {
-      validateOperationParameters(operation);
-      result = executeOperation(api, operation);
-    } catch (error) {
-      throw new Error(`Operation failed: ${error.message}`);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        result = executeOperation(api, operation);
+        attemptError = null;
+        break;
+      } catch (error) {
+        attemptError = error;
+
+        if (attempt === maxAttempts) {
+          const message = `Operation failed after ${attempt} attempt(s): ${error.message}`;
+
+          if (stopOnError) {
+            throw new Error(message);
+          }
+
+          results.push({
+            operation,
+            error: message,
+          });
+        }
+      }
     }
 
-    results.push({
-      operation,
-      result,
-    });
+    if (!attemptError) {
+      results.push({
+        operation,
+        result,
+      });
+    }
   }
 
   return {

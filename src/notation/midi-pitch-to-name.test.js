@@ -1,5 +1,6 @@
 import {
   midiPitchToName,
+  midiNameToPitch,
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "./midi-pitch-to-name.js";
@@ -39,6 +40,27 @@ describe("midiPitchToName", () => {
     expect(midiPitchToName(96)).toBe("C6");
     expect(midiPitchToName(108)).toBe("C7");
     expect(midiPitchToName(120)).toBe("C8");
+  });
+});
+
+describe("midiNameToPitch", () => {
+  it("converts note names with sharps and flats", () => {
+    expect(midiNameToPitch("C1")).toBe(36);
+    expect(midiNameToPitch("Db3")).toBe(61);
+    expect(midiNameToPitch("F#4")).toBe(78);
+    expect(midiNameToPitch("Bb2")).toBe(58);
+  });
+
+  it("rejects out of range values", () => {
+    expect(midiNameToPitch("C-3")).toBeNull();
+    expect(midiNameToPitch("G9")).toBeNull();
+  });
+
+  it("returns null for malformed input", () => {
+    expect(midiNameToPitch("H2")).toBeNull();
+    expect(midiNameToPitch("C")).toBeNull();
+    expect(midiNameToPitch("C##3")).toBeNull();
+    expect(midiNameToPitch(36)).toBeNull();
   });
 });
 

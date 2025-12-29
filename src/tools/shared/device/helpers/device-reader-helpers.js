@@ -116,8 +116,6 @@ export function hasInstrumentInDevices(devices) {
  */
 export function processDrumPad(
   pad,
-  chain,
-  chainDevices,
   includeDrumChains,
   includeChains,
   depth,
@@ -131,7 +129,6 @@ export function processDrumPad(
     note: midiNote,
     pitch: midiPitchToName(midiNote),
     _originalPad: pad,
-    _originalChain: chain,
   };
   const isMuted = pad.getProperty("mute") > 0;
   const isSoloed = pad.getProperty("solo") > 0;
@@ -142,8 +139,21 @@ export function processDrumPad(
     drumChainInfo.state = STATE.MUTED;
   }
 
-  if (includeDrumChains) {
-    const processedChainDevices = chainDevices.map((chainDevice) =>
+  const padChains = pad.getChildren("chains", { allowLooseIds: true, depth: 2 });
+
+  if (padChains.length === 0) {
+    drumChainInfo.hasInstrument = false;
+
+    if (includeDrumChains) {
+      drumChainInfo.layers = [];
+    }
+
+    return drumChainInfo;
+  }
+
+  const processedLayers = padChains.map((chain) => {
+    const chainDevices = chain.getChildren("devices", { allowLooseIds: true, depth: 2 });
+    const processedDevices = chainDevices.map((chainDevice) =>
       readDevice(chainDevice, {
         includeChains,
         includeDrumChains,
@@ -151,37 +161,39 @@ export function processDrumPad(
         maxDepth,
       }),
     );
-
-    drumChainInfo.chain = {
+    const layerInfo = {
       name: chain.getProperty("name"),
-      devices: processedChainDevices,
+      devices: processedDevices,
+      _originalChain: chain,
     };
     const chainState = computeState(chain);
 
     if (chainState !== STATE.ACTIVE) {
-      drumChainInfo.chain.state = chainState;
+      layerInfo.state = chainState;
     }
 
-    const hasInstrument = hasInstrumentInDevices(processedChainDevices);
+    return layerInfo;
+  });
 
-    if (!hasInstrument) {
-      drumChainInfo.hasInstrument = false;
-    }
-  } else {
-    const processedChainDevices = chainDevices.map((chainDevice) =>
-      readDevice(chainDevice, {
-        includeChains: false,
-        includeDrumChains: false,
-        depth: depth + 1,
-        maxDepth,
-      }),
+  const hasInstrument = processedLayers.some((layer) =>
+    hasInstrumentInDevices(layer.devices),
+  );
+
+  if (!hasInstrument) {
+    drumChainInfo.hasInstrument = false;
+  }
+
+  if (includeDrumChains) {
+    drumChainInfo.layers = processedLayers.map(({ _originalChain, ...layer }) =>
+      layer.devices ? layer : { ...layer, devices: [] },
     );
-    const hasInstrument = hasInstrumentInDevices(processedChainDevices);
 
-    if (!hasInstrument) {
-      drumChainInfo.hasInstrument = false;
+    if (drumChainInfo.layers.length === 1) {
+      drumChainInfo.chain = drumChainInfo.layers[0];
     }
   }
+
+  drumChainInfo._processedChains = processedLayers;
 
   return drumChainInfo;
 }
@@ -229,31 +241,24 @@ export function processDrumChains(
   maxDepth,
   readDeviceFn,
 ) {
-  const drumPads = device.getChildren("drum_pads");
-  const processedDrumChains = drumPads
-    .filter((pad) => pad.getChildIds("chains").length > 0)
-    .map((pad) => {
-      const chains = pad.getChildren("chains");
-      const chain = chains[0];
-      const chainDevices = chain.getChildren("devices");
-
-      return processDrumPad(
-        pad,
-        chain,
-        chainDevices,
-        includeDrumChains,
-        includeChains,
-        depth,
-        maxDepth,
-        readDeviceFn,
-      );
-    });
+  const drumPads = device.getChildren("drum_pads", { allowLooseIds: true, depth: 2 });
+  const processedDrumChains = drumPads.map((pad) =>
+    processDrumPad(pad, includeDrumChains, includeChains, depth, maxDepth, readDeviceFn),
+  );
 
   updateDrumChainSoloStates(processedDrumChains);
 
   if (includeDrumChains) {
     deviceInfo.drumChains = processedDrumChains.map(
-      ({ _originalPad, _originalChain, ...drumChainInfo }) => drumChainInfo,
+      ({ _originalPad, _processedChains, ...drumChainInfo }) => {
+        if (drumChainInfo.layers) {
+          drumChainInfo.layers = drumChainInfo.layers.map(
+            ({ _originalChain, ...layer }) => layer,
+          );
+        }
+
+        return drumChainInfo;
+      },
     );
   }
 
