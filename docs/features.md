@@ -114,6 +114,18 @@ create.
 - Position devices at a specific index in the device chain
 - List the native Live devices
 
+### Create Instrument Rack (`ppal-create-instrument-rack`)
+
+- Build Instrument Racks on any track with layered chains and sublayers
+- Set macro counts on racks and nested racks, and add per-layer effects
+- Insert master effects immediately after the created rack
+
+### Create Drum Pad Rack (`ppal-create-drum-pad-rack`)
+
+- Build Instrument Rack chains directly on a Drum Rack pad
+- Auto-create the pad chain, optionally clear existing pad devices, and set pad macro counts
+- Add layered/sublayered instruments and effects, plus pad-level master effects
+
 ### Read Device (`ppal-read-device`)
 
 - Get detailed information about a device by ID

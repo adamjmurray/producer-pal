@@ -86,7 +86,7 @@ describe("readTrack", () => {
       expect(result.drumMap).toEqual({});
     });
 
-    it("only includes drum chains that have chains to play a sound", () => {
+    it("includes drum pads even when chains cannot be read", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
           case "live_set tracks 0":
@@ -135,7 +135,7 @@ describe("readTrack", () => {
           name: "Snare",
           mute: 0,
           solo: 0,
-          chains: [], // No chains, should be excluded
+          chains: [], // No chains, still include
         },
         pad3: {
           note: 64, // E3
@@ -180,6 +180,7 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0 });
       expect(result.drumMap).toEqual({
         C3: "Kick",
+        D3: "Snare",
         E3: "Hi-hat",
       });
     });

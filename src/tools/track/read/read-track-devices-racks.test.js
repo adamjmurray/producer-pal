@@ -275,12 +275,12 @@ describe("readTrack", () => {
         type: "drum-rack",
         name: "My Drums",
         drumChains: [
-          {
+          expect.objectContaining({
             name: "Kick",
             note: 36,
             pitch: "C1",
             state: "muted-via-solo",
-            chain: {
+            chain: expect.objectContaining({
               name: "Kick",
               state: "muted-via-solo",
               devices: [
@@ -288,14 +288,25 @@ describe("readTrack", () => {
                   type: "instrument: Simpler",
                 }),
               ],
-            },
-          },
-          {
+            }),
+            layers: [
+              expect.objectContaining({
+                name: "Kick",
+                state: "muted-via-solo",
+                devices: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ]),
+              }),
+            ],
+          }),
+          expect.objectContaining({
             name: "Snare",
             note: 38,
             pitch: "D1",
             state: "soloed",
-            chain: {
+            chain: expect.objectContaining({
               name: "Snare",
               state: "soloed",
               devices: [
@@ -303,8 +314,19 @@ describe("readTrack", () => {
                   type: "instrument: Simpler",
                 }),
               ],
-            },
-          },
+            }),
+            layers: [
+              expect.objectContaining({
+                name: "Snare",
+                state: "soloed",
+                devices: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ]),
+              }),
+            ],
+          }),
         ],
       });
     });

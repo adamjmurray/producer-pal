@@ -1,197 +1,131 @@
 ## Project Overview
 
-Producer Pal is an AI music composition tool that integrates with Ableton Live
-through a Max for Live device using the Model Context Protocol (MCP).
+Producer Pal is an AI music composition tool that integrates with Ableton Live through a Max for Live device using MCP. It bundles a Node MCP server, Max V8 adapter, a portal bridge, and a Preact/Vite Chat UI delivered as a single HTML file.
+
+## Repo Layout & Entry Points
+
+- MCP server: `src/mcp-server/mcp-server.js`
+- Max V8 adapter: `src/live-api-adapter/live-api-adapter.js`
+- Portal bridge: `src/portal/producer-pal-portal.js`
+- Tools: `src/tools/**/*.js` (tool defs in `.def.js`)
+- Skills: `src/skills/*.js` (exposed via workflow/connect)
+- Shared utilities: `src/shared/`
+- Bar/beat + modulation parsers: `src/notation/**/parser`
+- Web UI (Preact/TypeScript): `webui/src/`, entry `webui/src/main.tsx`
+- Tests: `src/test/`, `tests/webui/`, docs tests in `tests/docs/`
+- Docs site (VitePress): `docs/`
+- Claude Desktop extension: `claude-desktop-extension/`
+- Max for Live assets: `max-for-live-device/Producer_Pal.amxd`, `max-for-live-device/chat-ui.html`
+- Scripts: `scripts/` (CLI, builds, releases)
+
+## Toolchain & Environment
+
+- Node 24.x required (`type: module`). Path aliases: `#src/*`, `#webui/*`.
+- Import extensions: `.js` required for `src/` and `scripts/`; omit extensions in `webui/` imports.
+- Language scope: core in JavaScript; TypeScript only inside `webui/`.
+- React components use PascalCase; everything else uses kebab-case with hyphens. Avoid dots in base filenames; use hyphen + suffixes (`.test`, `.def`, `.d.ts`).
+- Main exported function goes first in each module; helpers follow. Null checks use `value == null`. Minimize comments; prefer self-documenting code.
+- Zod schemas: primitives/enums only; lists as comma-separated strings.
+- File size rules (ESLint): source ≤600 lines, tests ≤800; split helpers/tests using `{feature}-helpers.js` and `{feature}-{area}.test.js` patterns.
+- Live API access should go through `src/live-api-adapter/live-api-extensions.js` helpers.
+- Web UI build outputs single `max-for-live-device/chat-ui.html` via Vite single-file plugin.
+
+## Development Workflows
+
+- Full-stack watch: Terminal 1 `npm run dev` (watches MCP server/V8/portal); Terminal 2 `npm run ui:dev` (hot reload at http://localhost:5173). Production UI served from http://localhost:3350/chat after build.
+- MCP/tools only: build UI once (`npm run build` or `npm run ui:build`), then `npm run dev` and open http://localhost:3350/chat.
+- Web UI only: build MCP once (`npm run build`), then `npm run ui:dev`.
+- Production build: `npm run build` (excludes raw Live API). Include raw Live API/debug tools with `npm run build:all` or `npm run dev`.
 
 ## Essential Commands
 
 ```bash
-# Build with all tools (use this for development/testing!)
-npm run build:all
+# Development builds
+npm run build:all        # Full build with raw Live API debugging
+npm run build            # Production bundles (rollup + ui + parsers + desktop extension)
+npm run build:watch      # Build once then watch with rollup
+npm run dev              # Rollup watch with raw Live API enabled
 
-# Code quality checks
-npm run fix   # Auto-fix formatting and linting issues
-npm run check # Run all checks: lint + typecheck + format check + tests
-npm run lint
-npm run typecheck
+# Quality
+npm run fix              # prettier write + eslint --fix
+npm run check            # lint + typecheck + format check + coverage tests
+npm run lint             # eslint --config config/eslint.config.js
+npm run lint:fix
 npm run format
-npm test
+npm run format:check
+npm run typecheck        # alias: npm run ui:typecheck
+npm run tc               # alias: npm run typecheck
 
-# Parser rebuild (when modifying bar|beat grammar)
+# Parsing (required before tests when grammar changes)
 npm run parser:build
+npm run parser:watch
 
-# Chat UI development
-npm run ui:build # Production build
+# Testing (Vitest)
+npm test                 # runs parser:build via test:setup then vitest (dot reporter, silent)
+npm run test:watch
+npm run test:coverage    # alias: npm run coverage
 
-# Documentation site (VitePress at https://producer-pal.org)
-npm run docs:dev     # Development server with hot reload
-npm run docs:build   # Build static site
-npm run docs:preview # Preview production build
-# When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
-# Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
+# Web UI
+npm run ui:build         # Vite build -> max-for-live-device/chat-ui.html
+npm run ui:dev           # Vite dev server (raw Live API enabled)
+npm run ui:typecheck     # validates webui/test TS + extension validations
+npm run ui:test          # Playwright UI (needs .env)
+npm run ui:test:headed
+npm run ui:test:dev
+npm run validate:webui-extensions
+
+# Docs (VitePress + Playwright)
+npm run docs:dev
+npm run docs:build
+npm run docs:preview
+npm run docs:test
+npm run docs:test:headed
+npm run docs:test:dev
+
+# Desktop extension
+npm run dxt:clean
+npm run dxt:build        # uses scripts/build-claude-desktop-extension.mjs
+
+# Knowledge base
+npm run knowledge-base   # builds coverage then generates KB
+npm run kb               # alias
+npm run kb:chatgpt       # concatenated output
+npm run kb:small         # excludes heavy groups
+
+# Release/version helpers
+npm run version:bump[(:major|:minor)]
+npm run release          # prepare release
 ```
 
-## Architecture
+## Testing Approach
 
-Portal script → Max for Live Device (MCP Server) → Live API
+- `npm test` triggers `test:setup` (rebuilds parsers) before running Vitest. Use `npm run parser:build` when editing `.peggy` grammars.
+- Web UI tests use Vitest + @testing-library/preact; tests colocated with components (e.g., `ChatHeader.test.tsx`).
+- Playwright suites exist for UI (`config/playwright.ui.config.mjs`) and docs (`config/playwright.docs.config.mjs`); docs tests build the site first. `.env` required for UI Playwright.
+- CLI/e2e validation: `node scripts/cli.mjs tools/list` and `node scripts/cli.mjs tools/call tool-name '{"arg":"value"}'`.
+- Debug logging for CLI tools: import `import * as console from "../../shared/v8-max-console.js"`; only `console.error` surfaces in CLI output (`console.log` is ignored).
+- Testing conventions: mock `_id`/`_path` with `function()` (not arrows), prefer `expect.objectContaining`.
 
-Key entry points:
+## MCP Connections & Debugging
 
-- MCP Server: `src/mcp-server/mcp-server.js`
-- Max V8 code: `src/live-api-adapter/live-api-adapter.js`
-- Portal: `src/portal/producer-pal-portal.js`
-- Chat UI: `webui/src/main.tsx`
-- Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
-- Tools: `src/tools/**/*.js`
+- Preferred dev connection: `claude mcp add --transport http producer-pal http://localhost:3350/mcp` (Max for Live device running + `npm run dev`).
+- Fallback CLI: `node scripts/cli.mjs`, `node scripts/cli.mjs tools/list`, `node scripts/cli.mjs tools/call ppal-read-live-set '{}'`, or specify server URL `node scripts/cli.mjs http://localhost:6274/mcp tools/list`.
+- Raw Live API tool (`ppal-raw-live-api`) available only with `npm run dev` or `npm run build:all`.
+- After changing tool descriptions (`src/tools/**/*.def.js`), toggle the Producer Pal Claude Desktop extension off/on to refresh cached tool definitions; rebuild alone is insufficient.
 
-See `dev-docs/Architecture.md` for detailed system design and
-`dev-docs/Chat-UI.md` for web UI architecture.
+## Development Conventions & Gotchas
 
-## Critical Coding Rules
+- Keep path alias usage consistent; avoid deep relatives when aliases exist. Always include `.js` in core imports.
+- Follow naming rules (PascalCase components, kebab-case everywhere else; hyphenated suffixes). Split large files per size limits into helpers/tests under `helpers/` subfolders.
+- Parser changes require rebuilding before tests. Live API access should prefer helpers in `live-api-extensions.js`.
+- Docs use clean URLs (e.g., `/chat-ui`, not `/chat-ui.html`); filenames mirror folders except `docs/index.md`.
+- Recommended completion flow: `npm run fix` → `npm run check` → `npm run build`.
 
-- **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
-  other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.js`)
+## References
 
-- **Function organization**: In files that export functions, the first exported
-  function should be the main function named after the file (e.g.,
-  `updateClip()` in `update-clip.js`, `readTrack()` in `read-track.js`). All
-  helper functions (both internal and exported) must be placed below the main
-  exported function(s). This improves code readability and makes it immediately
-  clear what the primary purpose of each file is.
-
-- **Import extensions**: Code in `src/` and `scripts/` directories runs
-  unbundled in Node.js and must ALWAYS include `.js` file extensions in relative
-  imports (e.g., `import foo from './bar.js'`), as required by the Node.js ESM
-  loader. Code in `webui/` is bundled and must NEVER use file extensions in
-  relative imports (e.g., `import foo from './bar'`).
-
-- **Path aliases**: Use `#src/` for src imports (e.g.,
-  `import foo from '#src/shared/utils.js'`) and `#webui/` for webui imports
-  (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
-  package subpath imports configured in package.json `"imports"` field. The `#`
-  prefix is required by Node.js for unbundled execution (build scripts, CLI
-  tools). Never use relative paths like `../../` when a path alias is available.
-
-- **Testing builds**: Always use `npm run build:all` for development (includes
-  debugging tools like `ppal-raw-live-api`)
-
-- **Zod limitations**: Use only primitive types and enums in tool input schemas.
-  For list-like inputs, use comma-separated strings
-
-- **Live API**: Use `src/live-api-adapter/live-api-extensions.js` interface
-  instead of raw `.get("property")?.[0]` calls
-
-- **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
-
-- **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
-  in `src/tools/workflow/connect.js`. It needs to be adjusted after changes to
-  bar|beat notation and when changing behavior that invalidates any of its
-  instructions.
-
-- **Context window usage optimization**: The Producer Pal Skills, tool and
-  parameter descriptions in `.def.js` files, and tool results need to be very
-  short, clear, and focused on the most useful and relevant info.
-
-- **Chat UI builds**: The webui is built with Vite (config in
-  `config/vite.config.mjs`) and outputs a single self-contained
-  `max-for-live-device/chat-ui.html` file. Use `npm run ui:build` to check the
-  UI build succeeds.
-
-- **UI testing**: Webui tests use vitest + @testing-library/preact. Tests are
-  colocated with source files (e.g., `ChatHeader.tsx` has `ChatHeader.test.tsx`
-  in the same directory).
-
-- **File organization and size limits**:
-  - Max 600 lines per file for source files (enforced by ESLint)
-  - Max 800 lines per file for test files (enforced by ESLint)
-  - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
-    in the same directory (e.g., `update-clip-helpers.js`)
-  - Helper files group related utility functions by feature/domain (e.g., audio
-    operations, content analysis, clip duplication)
-  - If a helper file exceeds 600 lines, split by feature group:
-    `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
-    `update-clip-midi-helpers.js`)
-  - When a directory accumulates multiple helper files (2+), move them to a
-    `helpers/` subdirectory while keeping the main source file in the parent
-    directory
-  - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
-    `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
-  - Test helpers use `{feature}-test-helpers.js` for shared test utilities
-
-## TypeScript (WebUI Only)
-
-**Scope:** TypeScript is ONLY used in `webui/` directory.
-
-**Requirements:**
-
-- All webui code must pass: `npm run typecheck`
-- All webui code must pass: `npm run lint`
-- Prefer explicit return types on exported functions
-
-**Before committing:** `npm run check` must pass with zero errors
-
-## Testing After Changes
-
-- After ALL code changes: Run `npm run check` (runs lint, typecheck, format
-  check, and tests)
-- End-to-end validation and investigation (upon request):
-  ```
-  node scripts/cli.mjs tools/list
-  node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
-  ```
-- **Debug logging for CLI testing**:
-  - `console` must be imported:
-    `import * as console from "../../shared/v8-max-console.js"`
-  - Use `console.error()` to see output in CLI tool results (appears as WARNING)
-  - `console.log()` does NOT appear in CLI output
-- Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
-  and linting issues), then `npm run check` (validates all checks pass), then
-  `npm run build` (verifies all production artifacts compile successfully). This
-  saves time and tokens by pre-emptively fixing likely errors before validation.
-
-## Project Constraints
-
-- JavaScript for core project, TypeScript (.ts/.tsx) for webui source files
-- Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
-  stdio-to-http "portal"
-- Dependencies bundled for distribution
-
-## Refactoring & Code Quality
-
-See `.claude/skills/refactoring/SKILL.md` for comprehensive refactoring
-guidelines.
-
-Key ESLint limits to respect:
-
-- `max-lines-per-function`: 120 (ignoring blank/comment lines)
-  - allowed exceptions: the main useHook() function in webui hooks can be
-    excluded from this rule via
-    `eslint-disable-next-line max-lines-per-function` comments (do not disable
-    for the whole file)
-- `max-lines` per file:
-  - 325 for non-test files (ignoring blank/comment lines)
-  - 750 for test files (total lines including blank/comment)
-- `max-depth`: 4
-- `complexity`: 20
-
-When ESLint reports violations, consult the refactoring skill for strategies.
-
-### DRY (Don't Repeat Yourself)
-
-Rules:
-
-- No duplicate function bodies (caught by ESLint)
-- Extract repeated logic with too many identical lines
-- Shared constants in one place
-- Similar patterns suggest missing abstraction
-
-## Documentation
-
-- `dev-docs/Architecture.md` - System design and components
-- `dev-docs/Chat-UI.md` - Web UI architecture and development
-- `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
-- `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
-  inspector
-- `dev-docs/Documentation-Site.md` - VitePress documentation site setup and
-  deployment
-- `DEVELOPERS.md` - Development setup and testing
+- `dev-docs/Architecture.md` – system design and component interactions
+- `dev-docs/Chat-UI.md` – web UI architecture and build details
+- `dev-docs/Coding-Standards.md` – naming, sizing, and style rules
+- `dev-docs/Development-Tools.md` – CLI testing, raw API debugging
+- `dev-docs/Documentation-Site.md` – docs workflow and deployment
+- `DEVELOPERS.md` – setup and testing overview

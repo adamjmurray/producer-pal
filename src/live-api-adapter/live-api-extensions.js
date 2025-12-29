@@ -86,24 +86,150 @@ if (typeof LiveAPI !== "undefined") {
     }
   };
 
-  LiveAPI.prototype.getChildIds = function (name) {
-    const idArray = this.get(name);
+  function normalizeChildOptions(options) {
+    if (typeof options === "number") {
+      return { depth: options, allowLooseIds: false };
+    }
+
+    return {
+      depth: options?.depth ?? 2,
+      allowLooseIds: options?.allowLooseIds === true,
+    };
+  }
+
+  LiveAPI.prototype.getChildIds = function (name, options) {
+    const { depth, allowLooseIds } = normalizeChildOptions(options);
+
+    let idArray;
+    try {
+      idArray = this.get(name);
+    } catch (_error) {
+      return [];
+    }
+
+    if (!Array.isArray(idArray)) {
+      return [];
+    }
+
+    const ids = [];
+
+    const pushId = (value, allowString) => {
+      if (value == null) {
+        return;
+      }
+
+      if (typeof value === "string" && value.startsWith("id ")) {
+        ids.push(value);
+        return;
+      }
+
+      if (allowString && typeof value === "string") {
+        ids.push(`id ${value}`);
+        return;
+      }
+
+      if (typeof value === "number" || (typeof value === "string" && /^\d+$/.test(value))) {
+        ids.push(`id ${value}`);
+      }
+    };
+
+    const walk = (arr, remainingDepth) => {
+      for (let i = 0; i < arr.length; i += 1) {
+        const entry = arr[i];
+
+        if (entry === "id") {
+          pushId(arr[i + 1], true);
+          i += 1;
+          continue;
+        }
+
+        if (Array.isArray(entry) && remainingDepth > 0) {
+          walk(entry, remainingDepth - 1);
+          continue;
+        }
+
+        if (allowLooseIds) {
+          pushId(entry, false);
+        }
+      }
+    };
+
+    walk(idArray, depth);
+
+    return ids;
+  };
+
+  LiveAPI.prototype.getChildren = function (name, options) {
+    const normalizedOptions = normalizeChildOptions(options);
+    return this.getChildIds(name, normalizedOptions).map((id) => new LiveAPI(id));
+  };
+
+  LiveAPI.prototype.getNamedChildren = function (name, options) {
+    const { depth } = normalizeChildOptions(options);
+
+    let idArray;
+    try {
+      idArray = this.get(name);
+    } catch (_error) {
+      return [];
+    }
 
     if (!Array.isArray(idArray)) {
       return [];
     }
 
     const children = [];
-    for (let i = 0; i < idArray.length; i += 2) {
-      if (idArray[i] === "id") {
-        children.push(`id ${idArray[i + 1]}`);
-      }
-    }
-    return children;
-  };
 
-  LiveAPI.prototype.getChildren = function (name) {
-    return this.getChildIds(name).map((id) => new LiveAPI(id));
+    const pushPair = (childName, rawId) => {
+      if (typeof childName !== "string") {
+        return;
+      }
+
+      const normalizedId =
+        typeof rawId === "string" && rawId.startsWith("id ")
+          ? rawId
+          : rawId != null
+            ? `id ${rawId}`
+            : null;
+
+      if (normalizedId) {
+        children.push({ name: childName, id: normalizedId });
+      }
+    };
+
+    const walk = (arr, remainingDepth) => {
+      for (let i = 0; i < arr.length; i += 1) {
+        const entry = arr[i];
+
+        if (Array.isArray(entry) && remainingDepth > 0) {
+          walk(entry, remainingDepth - 1);
+          continue;
+        }
+
+        const next = arr[i + 1];
+        const nextNext = arr[i + 2];
+
+        if (typeof entry === "string" && entry !== "id") {
+          if (next === "id") {
+            pushPair(entry, nextNext);
+            i += 2;
+            continue;
+          }
+
+          pushPair(entry, next);
+          i += 1;
+          continue;
+        }
+
+        if (entry === "id") {
+          i += 1;
+        }
+      }
+    };
+
+    walk(idArray, depth);
+
+    return children;
   };
 
   LiveAPI.prototype.getColor = function () {

@@ -25,9 +25,11 @@ export const TOOLS: Tool[] = [
   { id: "ppal-update-clip", name: "Update Clip" },
   // Row 6
   { id: "ppal-create-device", name: "Create Device" },
+  { id: "ppal-create-instrument-rack", name: "Create Instrument Rack" },
   { id: "ppal-read-device", name: "Read Device" },
   { id: "ppal-update-device", name: "Update Device" },
   // Row 7
+  { id: "ppal-create-drum-pad-rack", name: "Create Drum Pad Rack" },
   { id: "ppal-playback", name: "Control Playback" },
   { id: "ppal-select", name: "Select/View Control" },
   // Row 8

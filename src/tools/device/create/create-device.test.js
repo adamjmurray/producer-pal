@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
 import {
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "../../constants.js";
+import {
   liveApiCall,
+  liveApiGet,
   liveApiId,
   liveApiPath,
 } from "../../../test/mock-live-api.js";
@@ -9,6 +14,7 @@ import { createDevice } from "./create-device.js";
 
 describe("createDevice", () => {
   beforeEach(() => {
+    vi.resetAllMocks();
     liveApiId.mockReturnValue("device123");
     liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
 
@@ -106,6 +112,46 @@ describe("createDevice", () => {
         expect.objectContaining({ _path: "live_set tracks 0" }),
         "insert_device",
         "Utility",
+        0,
+      );
+      expect(result).toEqual({
+        deviceId: "device123",
+        deviceIndex: 0,
+      });
+    });
+
+    it("replaces an existing instrument before inserting a new one", () => {
+      liveApiPath.mockReturnValue("live_set tracks 0 devices 0");
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === "live_set tracks 0" && prop === "devices") {
+          return ["id", "existingInstrument", "id", "audioEffect"];
+        }
+
+        if (this._path === "id existingInstrument" && prop === "type") {
+          return [LIVE_API_DEVICE_TYPE_INSTRUMENT];
+        }
+
+        if (this._path === "id audioEffect" && prop === "type") {
+          return [LIVE_API_DEVICE_TYPE_AUDIO_EFFECT];
+        }
+
+        return [];
+      });
+
+      const result = createDevice({
+        trackIndex: 0,
+        deviceName: "Drum Rack",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set tracks 0" }),
+        "delete_device",
+        0,
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set tracks 0" }),
+        "insert_device",
+        "Drum Rack",
         0,
       );
       expect(result).toEqual({

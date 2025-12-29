@@ -20,6 +20,10 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
       .string()
       .optional()
       .describe("Optional LiveAPI path (e.g., 'live_set tracks 0')"),
+    stopOnError: z
+      .boolean()
+      .optional()
+      .describe("When false, collect errors per operation and continue"),
     operations: z
       .array(
         z.object({
@@ -62,6 +66,13 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
             .describe(
               "Value for set_property/set operations, path for goto operations, or color for setColor operations (color is array of numbers)",
             ),
+          retries: z
+            .number()
+            .int()
+            .min(0)
+            .max(10)
+            .optional()
+            .describe("Retry count when an operation fails"),
         }),
       )
       .min(1)
