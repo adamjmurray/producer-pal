@@ -1,11 +1,109 @@
-import { describe, expect, it } from "vitest";
-import { createSeededRNG, randomInRange } from "./transform-clips-helpers.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createSeededRNG,
+  parseTransposeValues,
+  randomInRange,
+} from "./transform-clips-helpers.js";
 import {
   calculateShufflePositions,
   shuffleArray,
 } from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips helpers", () => {
+  describe("parseTransposeValues", () => {
+    it("returns null when transposeValues is null", () => {
+      expect(parseTransposeValues(null, undefined, undefined)).toBeNull();
+    });
+
+    it("returns null when transposeValues is undefined", () => {
+      expect(parseTransposeValues(undefined, undefined, undefined)).toBeNull();
+    });
+
+    it("parses comma-separated transpose values", () => {
+      expect(parseTransposeValues("1,2,3", undefined, undefined)).toStrictEqual(
+        [1, 2, 3],
+      );
+    });
+
+    it("parses negative transpose values", () => {
+      expect(
+        parseTransposeValues("-5, -3, -1", undefined, undefined),
+      ).toStrictEqual([-5, -3, -1]);
+    });
+
+    it("parses mixed positive and negative values", () => {
+      expect(
+        parseTransposeValues("-12, 0, 7", undefined, undefined),
+      ).toStrictEqual([-12, 0, 7]);
+    });
+
+    it("filters out invalid numbers", () => {
+      expect(
+        parseTransposeValues("1, abc, 3", undefined, undefined),
+      ).toStrictEqual([1, 3]);
+    });
+
+    it("handles whitespace around values", () => {
+      expect(
+        parseTransposeValues("  1 ,  2  ,  3  ", undefined, undefined),
+      ).toStrictEqual([1, 2, 3]);
+    });
+
+    it("throws when all values are invalid (empty result)", () => {
+      expect(() =>
+        parseTransposeValues("abc, def, ghi", undefined, undefined),
+      ).toThrow("transposeValues must contain at least one valid number");
+    });
+
+    it("throws when string is just commas (empty result)", () => {
+      expect(() => parseTransposeValues(",,,", undefined, undefined)).toThrow(
+        "transposeValues must contain at least one valid number",
+      );
+    });
+
+    it("logs warning when transposeMin is provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", 0, undefined);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("logs warning when transposeMax is provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", undefined, 12);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("logs warning when both transposeMin and transposeMax are provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", -5, 5);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("parses decimal transpose values", () => {
+      expect(
+        parseTransposeValues("0.5, 1.25, -0.75", undefined, undefined),
+      ).toStrictEqual([0.5, 1.25, -0.75]);
+    });
+
+    it("handles single value", () => {
+      expect(parseTransposeValues("7", undefined, undefined)).toStrictEqual([
+        7,
+      ]);
+    });
+  });
+
   describe("createSeededRNG", () => {
     it("generates consistent random numbers with same seed", () => {
       const rng1 = createSeededRNG(12345);
