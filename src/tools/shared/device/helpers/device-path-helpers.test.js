@@ -414,7 +414,10 @@ describe("device-path-helpers", () => {
         return [];
       });
       expect(resolveInsertionPath("0/0/pC1").position).toBeNull();
-      expect(resolveInsertionPath("0/0/pC1/2").position).toBe(2);
+      // "0/0/pC1/2" means chain index 2 within C1 (no position)
+      expect(resolveInsertionPath("0/0/pC1/2").position).toBeNull();
+      // "0/0/pC1/0/3" means chain index 0, position 3
+      expect(resolveInsertionPath("0/0/pC1/0/3").position).toBe(3);
     });
 
     it("throws on invalid paths", () => {

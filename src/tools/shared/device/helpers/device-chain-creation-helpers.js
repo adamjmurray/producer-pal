@@ -135,3 +135,38 @@ function autoCreateChains(device, targetIndex, fullPath) {
     device.call("insert_chain");
   }
 }
+
+/**
+ * Auto-create drum pad chains up to the requested index within a note group.
+ * Creates chains with the specified in_note value (MIDI note number).
+ * @param {object} device - Drum rack device LiveAPI object
+ * @param {number} targetInNote - MIDI note for the chain's in_note property
+ * @param {number} targetIndex - Target chain index within the note group
+ * @param {number} existingCount - Current count of chains with this in_note
+ */
+export function autoCreateDrumPadChains(
+  device,
+  targetInNote,
+  targetIndex,
+  existingCount,
+) {
+  const chainsToCreate = targetIndex + 1 - existingCount;
+
+  if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {
+    throw new Error(
+      `Cannot auto-create ${chainsToCreate} drum pad chains (max: ${MAX_AUTO_CREATE_CHAINS})`,
+    );
+  }
+
+  for (let i = 0; i < chainsToCreate; i++) {
+    // Create chain (appends to end with in_note = -1 "All Notes")
+    device.call("insert_chain");
+
+    // Get the new chain (it's at the end)
+    const chains = device.getChildren("chains");
+    const newChain = chains[chains.length - 1];
+
+    // Set in_note to assign it to the correct pad
+    newChain.set("in_note", targetInNote);
+  }
+}

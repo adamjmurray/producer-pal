@@ -1,5 +1,8 @@
 import { noteNameToMidi } from "#src/shared/pitch.js";
-import { resolveContainerWithAutoCreate } from "./device-chain-creation-helpers.js";
+import {
+  autoCreateDrumPadChains,
+  resolveContainerWithAutoCreate,
+} from "./device-chain-creation-helpers.js";
 
 /**
  * Extract simplified path from Live API canonical path
@@ -450,24 +453,82 @@ function resolveContainer(path) {
 }
 
 /**
- * Resolve a drum pad container path (no auto-creation)
+ * Resolve a drum pad container path with auto-creation of missing chains
  * @param {string} path - Path containing drum pad notation
  * @returns {object} LiveAPI object (Chain)
  */
 function resolveDrumPadContainer(path) {
   const resolved = resolvePathToLiveApi(path);
 
-  if (resolved.targetType === "drum-pad") {
-    const result = resolveDrumPadFromPath(
-      resolved.liveApiPath,
-      resolved.drumPadNote,
-      [],
-    );
+  if (resolved.targetType !== "drum-pad") {
+    return new LiveAPI(resolved.liveApiPath);
+  }
 
+  // Try to resolve the drum pad chain
+  const result = resolveDrumPadFromPath(
+    resolved.liveApiPath,
+    resolved.drumPadNote,
+    resolved.remainingSegments,
+  );
+
+  // If found, return it
+  if (result.target) {
     return result.target;
   }
 
-  return new LiveAPI(resolved.liveApiPath);
+  // If not found and we're looking for a chain, try auto-creation
+  if (result.targetType === "chain") {
+    const device = new LiveAPI(resolved.liveApiPath);
+
+    if (!device.exists()) {
+      return null;
+    }
+
+    // Parse the note to MIDI
+    const targetInNote =
+      resolved.drumPadNote === "*" ? -1 : noteNameToMidi(resolved.drumPadNote);
+
+    if (targetInNote == null) {
+      return null;
+    }
+
+    // Get chain index from remaining segments (defaults to 0)
+    const chainIndex =
+      resolved.remainingSegments?.length > 0
+        ? parseInt(resolved.remainingSegments[0], 10)
+        : 0;
+
+    if (isNaN(chainIndex) || chainIndex < 0) {
+      return null;
+    }
+
+    // Find existing chains with this in_note
+    const allChains = device.getChildren("chains");
+    const matchingChains = allChains.filter(
+      (chain) => chain.getProperty("in_note") === targetInNote,
+    );
+
+    // Auto-create chains if needed
+    if (chainIndex >= matchingChains.length) {
+      autoCreateDrumPadChains(
+        device,
+        targetInNote,
+        chainIndex,
+        matchingChains.length,
+      );
+    }
+
+    // Re-resolve after creation
+    const resultAfter = resolveDrumPadFromPath(
+      resolved.liveApiPath,
+      resolved.drumPadNote,
+      resolved.remainingSegments,
+    );
+
+    return resultAfter.target;
+  }
+
+  return null;
 }
 
 /**
@@ -476,13 +537,17 @@ function resolveDrumPadContainer(path) {
  * - Odd segment count (1, 3, 5...): ends with container, append to it
  * - Even segment count (2, 4, 6...): ends with position, insert at that index
  *
+ * Drum pad paths have special semantics - the segment after pNOTE is an
+ * optional chain index, not a device position:
+ * - "0/0/pC1" → drum pad C1, chain 0 (implicit), append
+ * - "0/0/pC1/2" → drum pad C1, chain 2, append
+ * - "0/0/pC1/2/0" → drum pad C1, chain 2, position 0
+ *
  * Examples:
  * - "0" → track 0, append
  * - "0/3" → track 0, position 3
  * - "0/0/0" → chain 0 of device 0 on track 0, append
  * - "0/0/0/1" → chain 0 of device 0 on track 0, position 1
- * - "0/0/pC1" → drum pad C1 (first chain), append
- * - "0/0/pC1/0" → drum pad C1 (first chain), position 0
  *
  * @param {string} path - Device insertion path
  * @returns {InsertionPathResolution} Container and optional position
@@ -498,8 +563,24 @@ export function resolveInsertionPath(path) {
     throw new Error(`Invalid path: ${path}`);
   }
 
-  // Odd segments = append to container, even = position specified
-  const hasPosition = segments.length % 2 === 0;
+  // Check for drum pad segment - different path semantics apply
+  const drumPadIndex = segments.findIndex((s) => s.startsWith("p"));
+  let hasPosition;
+
+  if (drumPadIndex !== -1) {
+    // Drum pad paths: after pNOTE, first segment is optional chain index
+    // 0 segments after pad: append to chain 0
+    // 1 segment after pad: that's chain index, append
+    // 2+ segments: subtract 1 for chain index, then apply odd/even rule
+    const segmentsAfterPad = segments.slice(drumPadIndex + 1);
+    const effectiveCount =
+      segmentsAfterPad.length <= 1 ? 0 : segmentsAfterPad.length - 1;
+
+    hasPosition = effectiveCount % 2 === 1;
+  } else {
+    // Regular paths: odd segments = append, even = position
+    hasPosition = segments.length % 2 === 0;
+  }
 
   if (hasPosition) {
     const position = parseInt(segments[segments.length - 1], 10);

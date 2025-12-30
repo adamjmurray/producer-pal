@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiPath,
+  liveApiSet,
   liveApiType,
 } from "#src/test/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
-import { resolveDrumPadFromPath } from "./device-path-helpers.js";
+import {
+  resolveDrumPadFromPath,
+  resolveInsertionPath,
+} from "./device-path-helpers.js";
 
 describe("device-path-helpers", () => {
   describe("resolveDrumPadFromPath", () => {
@@ -149,7 +154,7 @@ describe("device-path-helpers", () => {
       expect(result.targetType).toBe("chain");
     });
 
-    it("returns null for invalid chain index", () => {
+    it("returns null for negative chain index", () => {
       setupChainMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36 } },
@@ -158,7 +163,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["1"], // Chain index 1 doesn't exist (only 0)
+        ["-1"], // Negative index
       );
 
       expect(result.target).toBeNull();
@@ -366,6 +371,274 @@ describe("device-path-helpers", () => {
 
         expect(r4.target).toBeNull();
       });
+    });
+
+    it("returns null for non-existent chain index (no auto-creation in read path)", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["1"], // Chain index 1 doesn't exist (only 0)
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+  });
+
+  describe("resolveInsertionPath drum pad auto-creation", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("auto-creates first chain when no chain exists for note", () => {
+      const deviceId = "drum-rack-1";
+      const chainIds = [];
+      const chainProperties = {};
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id?.startsWith("chain-")) return "DrumChain";
+
+        return "DrumGroupDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (id === deviceId || this._path?.includes("devices 0")) {
+          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
+        }
+
+        if (id?.startsWith("chain-")) {
+          const chainProps = chainProperties[id] ?? {};
+
+          if (prop === "in_note") return [chainProps.inNote ?? 36];
+        }
+
+        return [];
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "insert_chain") {
+          const newId = `chain-new-${chainIds.length}`;
+
+          chainIds.push(newId);
+          chainProperties[newId] = { inNote: -1 }; // Default to All Notes
+        }
+      });
+
+      liveApiSet.mockImplementation(function (prop, value) {
+        const id = this._id ?? this.id;
+
+        if (prop === "in_note" && id?.startsWith("chain-")) {
+          chainProperties[id] = { inNote: value };
+        }
+      });
+
+      const result = resolveInsertionPath("0/0/pC1"); // MIDI 36
+
+      expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+      expect(liveApiSet).toHaveBeenCalledWith("in_note", 36);
+      expect(result.container).not.toBeNull();
+      expect(result.position).toBeNull();
+    });
+
+    it("auto-creates multiple chains for layering", () => {
+      const deviceId = "drum-rack-1";
+      const chainIds = ["chain-existing"];
+      const chainProperties = { "chain-existing": { inNote: 36 } };
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id?.startsWith("chain-")) return "DrumChain";
+
+        return "DrumGroupDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (id === deviceId || this._path?.includes("devices 0")) {
+          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
+        }
+
+        if (id?.startsWith("chain-")) {
+          const chainProps = chainProperties[id] ?? {};
+
+          if (prop === "in_note") return [chainProps.inNote ?? 36];
+        }
+
+        return [];
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "insert_chain") {
+          const newId = `chain-new-${chainIds.length}`;
+
+          chainIds.push(newId);
+          chainProperties[newId] = { inNote: -1 };
+        }
+      });
+
+      liveApiSet.mockImplementation(function (prop, value) {
+        const id = this._id ?? this.id;
+
+        if (prop === "in_note" && id?.startsWith("chain-")) {
+          chainProperties[id] = { inNote: value };
+        }
+      });
+
+      // Request chain index 2 when only one chain exists (index 0)
+      // Path "0/0/pC1/2" - 4 segments is even, so last is device position
+      // We need "0/0/pC1/2" to mean chain index 2 (odd segments = append)
+      // Wait - let me check the path semantics again
+      // For drum pads: pC1/2 means chain index 2, not device position
+      // So "0/0/pC1/2" should resolve to chain index 2 with no device position
+      const result = resolveInsertionPath("0/0/pC1/2");
+
+      expect(liveApiCall).toHaveBeenCalledTimes(2); // Create 2 chains
+      expect(result.container).not.toBeNull();
+    });
+
+    it("throws when too many chains would be auto-created", () => {
+      const deviceId = "drum-rack-1";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockReturnValue("DrumGroupDevice");
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return []; // No chains exist
+
+        return [];
+      });
+
+      // Request chain index 20 would require creating 21 chains
+      expect(() => resolveInsertionPath("0/0/pC1/20")).toThrow(
+        "Cannot auto-create 21 drum pad chains (max: 16)",
+      );
+    });
+
+    it("does not auto-create when chain already exists", () => {
+      const deviceId = "drum-rack-1";
+      const chainIds = ["chain-36"];
+      const chainProperties = { "chain-36": { inNote: 36 } };
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id?.startsWith("chain-")) return "DrumChain";
+
+        return "DrumGroupDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (id === deviceId || this._path?.includes("devices 0")) {
+          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
+        }
+
+        if (id?.startsWith("chain-")) {
+          const chainProps = chainProperties[id] ?? {};
+
+          if (prop === "in_note") return [chainProps.inNote ?? 36];
+        }
+
+        return [];
+      });
+
+      const result = resolveInsertionPath("0/0/pC1");
+
+      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(result.container).not.toBeNull();
+      expect(result.container.id).toBe("chain-36");
+    });
+
+    it("returns null for invalid note name during auto-creation", () => {
+      const deviceId = "drum-rack-1";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockReturnValue("DrumGroupDevice");
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return []; // No chains
+
+        return [];
+      });
+
+      // Invalid note name (not a valid MIDI note)
+      const result = resolveInsertionPath("0/0/pInvalidNote");
+
+      expect(result.container).toBeNull();
+      expect(liveApiCall).not.toHaveBeenCalled();
+    });
+
+    it("returns null for negative chain index during auto-creation", () => {
+      const deviceId = "drum-rack-1";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 0 devices 0") return deviceId;
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockReturnValue("DrumGroupDevice");
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return [];
+
+        return [];
+      });
+
+      // Negative chain index is invalid
+      const result = resolveInsertionPath("0/0/pC1/-1");
+
+      expect(result.container).toBeNull();
+      expect(liveApiCall).not.toHaveBeenCalled();
     });
   });
 });
