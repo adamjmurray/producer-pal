@@ -82,6 +82,14 @@ export class LiveAPI {
     return ids;
   }
 
+  getChildren(name) {
+    return this.getChildIds(name).map((id) => new LiveAPI(id));
+  }
+
+  getProperty(property) {
+    return this.get(property)?.[0];
+  }
+
   get sceneIndex() {
     // Try scene path first
     let match = this.path.match(/live_set scenes (\d+)/);

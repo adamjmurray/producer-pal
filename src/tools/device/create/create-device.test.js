@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
 import {
   liveApiCall,
+  liveApiGet,
   liveApiId,
   liveApiPath,
 } from "#src/test/mock-live-api.js";
@@ -11,6 +12,14 @@ describe("createDevice", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("device123");
     liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
+
+    // Default: chains exist so auto-creation isn't triggered
+    liveApiGet.mockImplementation(function (prop) {
+      if (prop === "chains") return ["id", "chain-0"];
+      if (prop === "can_have_drum_pads") return [0];
+
+      return [];
+    });
 
     liveApiCall.mockImplementation((method, _deviceName, _deviceIndex) => {
       if (method === "insert_device") {
@@ -635,7 +644,7 @@ describe("createDevice", () => {
             path: "99/0/0",
             deviceName: "Compressor",
           }),
-        ).toThrow('container at path "99/0/0" does not exist');
+        ).toThrow('Track in path "99/0/0" does not exist');
       });
 
       it("should throw error when insert_device fails", () => {

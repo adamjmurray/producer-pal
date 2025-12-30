@@ -1,4 +1,5 @@
 import { noteNameToMidi } from "#src/shared/pitch.js";
+import { resolveContainerWithAutoCreate } from "./device-chain-creation-helpers.js";
 
 /**
  * Extract simplified path from Live API canonical path
@@ -426,7 +427,8 @@ function resolveTrack(segment) {
 }
 
 /**
- * Resolve a container path (track or chain) to a LiveAPI object
+ * Resolve a container path (track or chain) to a LiveAPI object.
+ * Auto-creates missing chains for regular racks. Throws for Drum Racks.
  * @param {string} path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
  * @returns {object} LiveAPI object (Track or Chain)
  */
@@ -438,21 +440,33 @@ function resolveContainer(path) {
     return resolveTrack(segments[0]);
   }
 
-  // Chain path - use existing resolution
+  // Check if path contains drum pad notation - use existing logic (no auto-creation)
+  if (segments.some((s) => s.startsWith("p"))) {
+    return resolveDrumPadContainer(path);
+  }
+
+  // Regular chain path - build incrementally with auto-creation
+  return resolveContainerWithAutoCreate(segments, path);
+}
+
+/**
+ * Resolve a drum pad container path (no auto-creation)
+ * @param {string} path - Path containing drum pad notation
+ * @returns {object} LiveAPI object (Chain)
+ */
+function resolveDrumPadContainer(path) {
   const resolved = resolvePathToLiveApi(path);
 
   if (resolved.targetType === "drum-pad") {
-    // Resolve drum pad to first chain for that note
     const result = resolveDrumPadFromPath(
       resolved.liveApiPath,
       resolved.drumPadNote,
-      [], // No remaining segments = first chain
+      [],
     );
 
     return result.target;
   }
 
-  // For chain/return-chain, create LiveAPI from resolved path
   return new LiveAPI(resolved.liveApiPath);
 }
 

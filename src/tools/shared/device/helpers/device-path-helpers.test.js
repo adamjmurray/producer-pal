@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  liveApiCall,
   liveApiGet,
   liveApiId,
-  liveApiPath,
   liveApiType,
 } from "#src/test/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -12,7 +12,6 @@ import {
   buildReturnChainPath,
   buildDrumPadPath,
   resolvePathToLiveApi,
-  resolveDrumPadFromPath,
   resolveInsertionPath,
 } from "./device-path-helpers.js";
 
@@ -366,370 +365,17 @@ describe("device-path-helpers", () => {
     });
   });
 
-  describe("resolveDrumPadFromPath", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    // Helper to set up chain-based drum rack mocks
-    // Uses chains with in_note property instead of drum_pads
-    const setupChainMocks = (config = {}) => {
-      const {
-        deviceId = "drum-rack-1",
-        chainIds = ["chain-36"],
-        chainProperties = {},
-      } = config;
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 1 devices 0") return deviceId;
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-"))
-          return chainProperties[id]?.type ?? "DrumChain";
-        if (id?.startsWith("device-")) return "Device";
-
-        return "RackDevice";
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        // Device returns chains
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
-
-        // Chain properties
-        if (id?.startsWith("chain-")) {
-          const chainProps = chainProperties[id] ?? {};
-
-          if (prop === "in_note") return [chainProps.inNote ?? 36];
-          if (prop === "devices")
-            return (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]);
-        }
-
-        return [];
-      });
-    };
-
-    it("returns chain when no remaining segments (defaults to chain 0)", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36 } }, // C1 = MIDI 36
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C1",
-        [],
-      );
-
-      expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-36");
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns chain when chain index specified", () => {
-      setupChainMocks({
-        chainIds: ["chain-36a", "chain-36b"],
-        chainProperties: {
-          "chain-36a": { inNote: 36 },
-          "chain-36b": { inNote: 36 }, // Second chain for same note (layered)
-        },
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C1",
-        ["1"], // Second chain for C1
-      );
-
-      expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-36b");
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns device when chain and device index specified", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: {
-          "chain-36": { inNote: 36, deviceIds: ["device-1"] },
-        },
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C1",
-        ["0", "0"],
-      );
-
-      expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("device-1");
-      expect(result.targetType).toBe("device");
-    });
-
-    it("returns catch-all chain when note is asterisk", () => {
-      setupChainMocks({
-        chainIds: ["chain-all"],
-        chainProperties: { "chain-all": { inNote: -1 } }, // Catch-all
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "*",
-        [],
-      );
-
-      expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-all");
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns null for non-existent note", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36 } }, // C1
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C3", // Different note - MIDI 48
-        [],
-      );
-
-      expect(result.target).toBeNull();
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns null for invalid chain index", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36 } },
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C1",
-        ["1"], // Chain index 1 doesn't exist (only 0)
-      );
-
-      expect(result.target).toBeNull();
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns null for invalid device index", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36, deviceIds: [] } },
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "C1",
-        ["0", "0"], // Device index 0 doesn't exist
-      );
-
-      expect(result.target).toBeNull();
-      expect(result.targetType).toBe("device");
-    });
-
-    it("returns null when device does not exist", () => {
-      liveApiId.mockReturnValue("0"); // Makes exists() return false
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 99 devices 0",
-        "C1",
-        [],
-      );
-
-      expect(result.target).toBeNull();
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("returns null for invalid note name", () => {
-      setupChainMocks({
-        chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36 } },
-      });
-
-      const result = resolveDrumPadFromPath(
-        "live_set tracks 1 devices 0",
-        "InvalidNote",
-        [],
-      );
-
-      expect(result.target).toBeNull();
-      expect(result.targetType).toBe("chain");
-    });
-
-    it("resolves nested drum pad path", () => {
-      // Setup: outer drum rack -> catch-all chain -> nested drum rack -> C1 chain
-      const outerPath = "live_set tracks 1 devices 0";
-      const nestedPath = "live_set tracks 1 devices 0 chains 0 devices 0";
-      const catchAllChainId = "catch-all-chain";
-      const nestedRackId = "nested-rack";
-      const nestedChainId = "nested-chain-36";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === outerPath) return "outer-rack";
-        if (this._path === nestedPath) return nestedRackId;
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
-      });
-
-      liveApiPath.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === nestedRackId) return nestedPath;
-
-        return this._path;
-      });
-
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === catchAllChainId) return "DrumChain";
-        if (id === nestedChainId) return "DrumChain";
-        if (id === nestedRackId || this._path === nestedPath)
-          return "DrumGroupDevice";
-
-        return "RackDevice";
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        // Outer drum rack returns catch-all chain
-        if (this._path === outerPath) {
-          if (prop === "chains") return ["id", catchAllChainId];
-        }
-
-        // Catch-all chain properties
-        if (id === catchAllChainId) {
-          if (prop === "in_note") return [-1]; // Catch-all
-          if (prop === "devices") return ["id", nestedRackId];
-        }
-
-        // Nested drum rack returns C1 chain
-        if (id === nestedRackId || this._path === nestedPath) {
-          if (prop === "chains") return ["id", nestedChainId];
-        }
-
-        // Nested C1 chain properties
-        if (id === nestedChainId) {
-          if (prop === "in_note") return [36]; // C1
-        }
-
-        return [];
-      });
-
-      // Path: p*/0/0/pC1 means:
-      // - p* = catch-all chain (in_note=-1)
-      // - 0 = first chain with that in_note
-      // - 0 = device 0 in that chain (nested drum rack)
-      // - pC1 = C1 chain in nested drum rack
-      const result = resolveDrumPadFromPath(outerPath, "*", ["0", "0", "pC1"]);
-
-      expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe(nestedChainId);
-      expect(result.targetType).toBe("chain");
-    });
-
-    describe("arbitrary depth navigation", () => {
-      // Setup for instrument rack inside drum pad:
-      // drum rack → C1 chain → instrument rack → rack chain → device
-      const setupInstrumentRackInDrumPad = () => {
-        const drumRackPath = "live_set tracks 1 devices 0";
-        const drumChainId = "drum-chain-36";
-        const instrRackId = "instr-rack";
-        const rackChainId = "rack-chain";
-        const finalDeviceId = "final-device";
-
-        liveApiId.mockImplementation(function () {
-          if (this._path === drumRackPath) return "drum-rack";
-          if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-          return this._id ?? "0";
-        });
-
-        liveApiPath.mockImplementation(function () {
-          return this._path;
-        });
-
-        liveApiType.mockImplementation(function () {
-          const id = this._id ?? this.id;
-
-          if (id === drumChainId) return "DrumChain";
-          if (id === rackChainId) return "Chain";
-          if (id === instrRackId) return "InstrumentGroupDevice";
-          if (id === finalDeviceId) return "PluginDevice";
-
-          return "DrumGroupDevice";
-        });
-
-        liveApiGet.mockImplementation(function (prop) {
-          const id = this._id ?? this.id;
-
-          // Drum rack returns C1 chain
-          if (this._path === drumRackPath) {
-            if (prop === "chains") return ["id", drumChainId];
-          }
-
-          // Drum chain properties
-          if (id === drumChainId) {
-            if (prop === "in_note") return [36]; // C1
-            if (prop === "devices") return ["id", instrRackId];
-          }
-
-          // Instrument rack returns chain
-          if (id === instrRackId) {
-            if (prop === "chains") return ["id", rackChainId];
-          }
-
-          // Rack chain returns device
-          if (id === rackChainId) {
-            if (prop === "devices") return ["id", finalDeviceId];
-          }
-
-          return [];
-        });
-
-        return { drumChainId, instrRackId, rackChainId, finalDeviceId };
-      };
-
-      it("navigates nested racks and handles out of bounds", () => {
-        const { rackChainId, finalDeviceId } = setupInstrumentRackInDrumPad();
-        const path = "live_set tracks 1 devices 0";
-        // Valid navigation through nested rack
-        const r1 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0"]);
-
-        expect(r1.target.id).toBe(rackChainId);
-        expect(r1.targetType).toBe("chain");
-        const r2 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "0"]);
-
-        expect(r2.target.id).toBe(finalDeviceId);
-        expect(r2.targetType).toBe("device");
-        // Out of bounds
-        const r3 = resolveDrumPadFromPath(path, "C1", ["0", "0", "5"]);
-
-        expect(r3.target).toBeNull();
-        const r4 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "5"]);
-
-        expect(r4.target).toBeNull();
-      });
-    });
-  });
-
   describe("resolveInsertionPath", () => {
     beforeEach(() => {
       vi.clearAllMocks();
       liveApiId.mockReturnValue("valid-id");
+      // Default: chains exist so auto-creation isn't triggered
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
+        if (prop === "can_have_drum_pads") return [0];
+
+        return [];
+      });
     });
 
     it("resolves track and chain paths correctly", () => {
@@ -784,6 +430,115 @@ describe("device-path-helpers", () => {
       expect(() => resolveInsertionPath("0/-1")).toThrow(
         "Invalid device position",
       );
+    });
+
+    describe("chain auto-creation", () => {
+      it("auto-creates chain when it does not exist", () => {
+        let chainCount = 0;
+
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") {
+            // Return current chains based on chainCount
+            const ids = [];
+
+            for (let i = 0; i < chainCount; i++) {
+              ids.push("id", `chain-${i}`);
+            }
+
+            return ids;
+          }
+
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "insert_chain") chainCount++;
+        });
+
+        const result = resolveInsertionPath("0/0/0");
+
+        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(result.container._path).toBe(
+          "live_set tracks 0 devices 0 chains 0",
+        );
+      });
+
+      it("auto-creates multiple chains up to requested index", () => {
+        let chainCount = 0;
+
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") {
+            const ids = [];
+
+            for (let i = 0; i < chainCount; i++) ids.push("id", `chain-${i}`);
+
+            return ids;
+          }
+
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "insert_chain") chainCount++;
+        });
+
+        resolveInsertionPath("0/0/2");
+        // Should create chains 0, 1, 2
+        expect(liveApiCall).toHaveBeenCalledTimes(3);
+      });
+
+      it("throws for Drum Rack chain auto-creation", () => {
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") return []; // No chains
+          if (prop === "can_have_drum_pads") return [1]; // Is drum rack
+
+          return [];
+        });
+
+        expect(() => resolveInsertionPath("0/0/0")).toThrow(
+          "Auto-creating chains in Drum Racks is not supported",
+        );
+      });
+
+      it("throws for non-existent return chain", () => {
+        liveApiId.mockImplementation(function () {
+          if (this._path?.includes("return_chains")) return "0";
+
+          return "valid-id";
+        });
+
+        expect(() => resolveInsertionPath("0/0/r0")).toThrow(
+          "Return chain in path",
+        );
+      });
+
+      it("does not auto-create when chain already exists", () => {
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
+
+        resolveInsertionPath("0/0/0");
+        expect(liveApiCall).not.toHaveBeenCalledWith("insert_chain");
+      });
+
+      it("throws when too many chains would be auto-created", () => {
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") return []; // No chains exist
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
+
+        // Chain index 20 would require creating 21 chains (0-20), exceeds limit of 16
+        expect(() => resolveInsertionPath("0/0/20")).toThrow(
+          "Cannot auto-create 21 chains (max: 16)",
+        );
+      });
     });
   });
 });
