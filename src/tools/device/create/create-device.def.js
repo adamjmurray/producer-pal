@@ -3,7 +3,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
-  description: `Create a native Live device (instrument, MIDI effect, or audio effect) on a track`,
+  description: `Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain`,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -29,5 +29,11 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .min(0)
       .optional()
       .describe("position in device chain, omit to append"),
+    path: z
+      .string()
+      .optional()
+      .describe(
+        "device path (e.g., '0/0/0' to append to first rack chain, '0/0/0/1' for device index 1)",
+      ),
   },
 });

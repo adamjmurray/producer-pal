@@ -13,6 +13,7 @@ import {
   buildDrumPadPath,
   resolvePathToLiveApi,
   resolveDrumPadFromPath,
+  resolveInsertionPath,
 } from "./device-path-helpers.js";
 
 describe("device-path-helpers", () => {
@@ -702,70 +703,87 @@ describe("device-path-helpers", () => {
         return { drumChainId, instrRackId, rackChainId, finalDeviceId };
       };
 
-      it("navigates through instrument rack inside drum pad to reach chain", () => {
-        const { rackChainId } = setupInstrumentRackInDrumPad();
+      it("navigates nested racks and handles out of bounds", () => {
+        const { rackChainId, finalDeviceId } = setupInstrumentRackInDrumPad();
+        const path = "live_set tracks 1 devices 0";
+        // Valid navigation through nested rack
+        const r1 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0"]);
 
-        // Path: pC1/0/0/0 means:
-        // - pC1 = C1 drum chain
-        // - 0 = first chain for C1
-        // - 0 = device 0 (instrument rack)
-        // - 0 = chain 0 in instrument rack
-        const result = resolveDrumPadFromPath(
-          "live_set tracks 1 devices 0",
-          "C1",
-          ["0", "0", "0"],
-        );
+        expect(r1.target.id).toBe(rackChainId);
+        expect(r1.targetType).toBe("chain");
+        const r2 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "0"]);
 
-        expect(result.target).not.toBeNull();
-        expect(result.target.id).toBe(rackChainId);
-        expect(result.targetType).toBe("chain");
+        expect(r2.target.id).toBe(finalDeviceId);
+        expect(r2.targetType).toBe("device");
+        // Out of bounds
+        const r3 = resolveDrumPadFromPath(path, "C1", ["0", "0", "5"]);
+
+        expect(r3.target).toBeNull();
+        const r4 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "5"]);
+
+        expect(r4.target).toBeNull();
       });
+    });
+  });
 
-      it("navigates through instrument rack inside drum pad to reach device", () => {
-        const { finalDeviceId } = setupInstrumentRackInDrumPad();
+  describe("resolveInsertionPath", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      liveApiId.mockReturnValue("valid-id");
+    });
 
-        // Path: pC1/0/0/0/0 means:
-        // - pC1 = C1 drum chain
-        // - 0 = first chain for C1
-        // - 0 = device 0 (instrument rack)
-        // - 0 = chain 0 in instrument rack
-        // - 0 = device 0 in that chain
-        const result = resolveDrumPadFromPath(
-          "live_set tracks 1 devices 0",
-          "C1",
-          ["0", "0", "0", "0"],
-        );
+    it("resolves track and chain paths correctly", () => {
+      const cases = [
+        ["0", "live_set tracks 0", null],
+        ["0/3", "live_set tracks 0", 3],
+        ["0/0/0", "live_set tracks 0 devices 0 chains 0", null],
+        ["0/0/0/1", "live_set tracks 0 devices 0 chains 0", 1],
+      ];
 
-        expect(result.target).not.toBeNull();
-        expect(result.target.id).toBe(finalDeviceId);
-        expect(result.targetType).toBe("device");
+      for (const [path, expectedPath, expectedPos] of cases) {
+        const result = resolveInsertionPath(path);
+
+        expect(result.container._path).toBe(expectedPath);
+        expect(result.position).toBe(expectedPos);
+      }
+    });
+
+    it("resolves drum pad paths (append and with position)", () => {
+      const drumChainId = "drum-chain-36";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "drum-rack";
+
+        return this._path?.startsWith("id ")
+          ? this._path.slice(3)
+          : (this._id ?? "valid-id");
       });
+      liveApiType.mockReturnValue("DrumGroupDevice");
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === "live_set tracks 0 devices 0" && prop === "chains")
+          return ["id", drumChainId];
+        if ((this._id ?? this.id) === drumChainId && prop === "in_note")
+          return [36];
 
-      it("returns null for out of bounds chain index in nested rack", () => {
-        setupInstrumentRackInDrumPad();
-
-        const result = resolveDrumPadFromPath(
-          "live_set tracks 1 devices 0",
-          "C1",
-          ["0", "0", "5"], // Chain 5 doesn't exist
-        );
-
-        expect(result.target).toBeNull();
-        expect(result.targetType).toBe("chain");
+        return [];
       });
+      expect(resolveInsertionPath("0/0/pC1").position).toBeNull();
+      expect(resolveInsertionPath("0/0/pC1/2").position).toBe(2);
+    });
 
-      it("returns null for out of bounds device index in nested rack", () => {
-        setupInstrumentRackInDrumPad();
-
-        const result = resolveDrumPadFromPath(
-          "live_set tracks 1 devices 0",
-          "C1",
-          ["0", "0", "0", "5"], // Device 5 doesn't exist in chain
-        );
-
-        expect(result.target).toBeNull();
-        expect(result.targetType).toBe("device");
-      });
+    it("throws on invalid paths", () => {
+      expect(() => resolveInsertionPath("")).toThrow(
+        "Path must be a non-empty string",
+      );
+      expect(() => resolveInsertionPath(null)).toThrow(
+        "Path must be a non-empty string",
+      );
+      expect(() => resolveInsertionPath("0/abc")).toThrow(
+        "Invalid device position",
+      );
+      expect(() => resolveInsertionPath("0/-1")).toThrow(
+        "Invalid device position",
+      );
     });
   });
 });

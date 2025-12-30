@@ -397,3 +397,110 @@ function navigateRemainingSegments(startDevice, segments) {
   // If isChainNext is true, we last navigated to a device; if false, to a chain
   return { target: current, targetType: isChainNext ? "device" : "chain" };
 }
+
+/**
+ * @typedef {object} InsertionPathResolution
+ * @property {object} container - LiveAPI object (Track or Chain) to insert into
+ * @property {number|null} position - Device index to insert at, or null to append
+ */
+
+/**
+ * Resolve a track segment to a LiveAPI track object
+ * @param {string} segment - Track segment (e.g., "0", "r0", "m")
+ * @returns {object} LiveAPI track object
+ */
+function resolveTrack(segment) {
+  if (segment === "m") {
+    return new LiveAPI("live_set master_track");
+  }
+
+  if (segment.startsWith("r")) {
+    const returnIndex = parseInt(segment.slice(1), 10);
+
+    return new LiveAPI(`live_set return_tracks ${returnIndex}`);
+  }
+
+  const trackIndex = parseInt(segment, 10);
+
+  return new LiveAPI(`live_set tracks ${trackIndex}`);
+}
+
+/**
+ * Resolve a container path (track or chain) to a LiveAPI object
+ * @param {string} path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
+ * @returns {object} LiveAPI object (Track or Chain)
+ */
+function resolveContainer(path) {
+  const segments = path.split("/");
+
+  // Track-only path
+  if (segments.length === 1) {
+    return resolveTrack(segments[0]);
+  }
+
+  // Chain path - use existing resolution
+  const resolved = resolvePathToLiveApi(path);
+
+  if (resolved.targetType === "drum-pad") {
+    // Resolve drum pad to first chain for that note
+    const result = resolveDrumPadFromPath(
+      resolved.liveApiPath,
+      resolved.drumPadNote,
+      [], // No remaining segments = first chain
+    );
+
+    return result.target;
+  }
+
+  // For chain/return-chain, create LiveAPI from resolved path
+  return new LiveAPI(resolved.liveApiPath);
+}
+
+/**
+ * Resolve a path to a container (track or chain) for device insertion.
+ * Path semantics:
+ * - Odd segment count (1, 3, 5...): ends with container, append to it
+ * - Even segment count (2, 4, 6...): ends with position, insert at that index
+ *
+ * Examples:
+ * - "0" → track 0, append
+ * - "0/3" → track 0, position 3
+ * - "0/0/0" → chain 0 of device 0 on track 0, append
+ * - "0/0/0/1" → chain 0 of device 0 on track 0, position 1
+ * - "0/0/pC1" → drum pad C1 (first chain), append
+ * - "0/0/pC1/0" → drum pad C1 (first chain), position 0
+ *
+ * @param {string} path - Device insertion path
+ * @returns {InsertionPathResolution} Container and optional position
+ */
+export function resolveInsertionPath(path) {
+  if (!path || typeof path !== "string") {
+    throw new Error("Path must be a non-empty string");
+  }
+
+  const segments = path.split("/");
+
+  if (segments.length === 0 || segments[0] === "") {
+    throw new Error(`Invalid path: ${path}`);
+  }
+
+  // Odd segments = append to container, even = position specified
+  const hasPosition = segments.length % 2 === 0;
+
+  if (hasPosition) {
+    const position = parseInt(segments[segments.length - 1], 10);
+
+    if (isNaN(position) || position < 0) {
+      throw new Error(`Invalid device position in path: ${path}`);
+    }
+
+    const containerPath = segments.slice(0, -1).join("/");
+    const container = resolveContainer(containerPath);
+
+    return { container, position };
+  }
+
+  const container = resolveContainer(path);
+
+  return { container, position: null };
+}

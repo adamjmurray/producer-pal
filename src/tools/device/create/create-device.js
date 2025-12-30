@@ -1,5 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 
 /**
  * Validate device name and throw error with valid options if invalid
@@ -21,17 +22,18 @@ function validateDeviceName(deviceName) {
 }
 
 /**
- * Creates a native Live device on a track, or lists available devices
+ * Creates a native Live device on a track or chain, or lists available devices
  * @param {object} args - The device parameters
  * @param {string} [args.trackCategory="regular"] - Track category: "regular", "return", or "master"
  * @param {number} [args.trackIndex] - 0-based track index (required for regular/return)
  * @param {string} [args.deviceName] - Device name, omit to list available devices
  * @param {number} [args.deviceIndex] - Position in device chain (omit to append)
+ * @param {string} [args.path] - Device path (e.g., "0/0/0" to append, "0/0/0/1" for position)
  * @param {object} _context - Internal context object (unused)
  * @returns {object} Device list, or object with deviceId and deviceIndex
  */
 export function createDevice(
-  { trackCategory = "regular", trackIndex, deviceName, deviceIndex } = {},
+  { trackCategory = "regular", trackIndex, deviceName, deviceIndex, path } = {},
   _context = {},
 ) {
   // List mode: return valid devices when deviceName is omitted
@@ -39,7 +41,79 @@ export function createDevice(
     return VALID_DEVICES;
   }
 
-  // Create mode: validate trackIndex based on category
+  validateDeviceName(deviceName);
+
+  // Path-based insertion
+  if (path != null) {
+    return createDeviceAtPath(deviceName, path, deviceIndex);
+  }
+
+  // Track-based insertion (original behavior)
+  return createDeviceOnTrack(
+    deviceName,
+    trackCategory,
+    trackIndex,
+    deviceIndex,
+  );
+}
+
+/**
+ * Create device at a path (track or chain)
+ * @param {string} deviceName - Device name
+ * @param {string} path - Device path
+ * @param {number} [deviceIndex] - Ignored if provided (position is in path)
+ * @returns {object} Object with deviceId and deviceIndex
+ */
+function createDeviceAtPath(deviceName, path, deviceIndex) {
+  if (deviceIndex != null) {
+    console.error("createDevice: deviceIndex is ignored when path is provided");
+  }
+
+  const { container, position } = resolveInsertionPath(path);
+
+  if (!container || !container.exists()) {
+    throw new Error(
+      `createDevice failed: container at path "${path}" does not exist`,
+    );
+  }
+
+  const result =
+    position != null
+      ? container.call("insert_device", deviceName, position)
+      : container.call("insert_device", deviceName);
+
+  const deviceId = result[1];
+  const device = deviceId ? new LiveAPI(`id ${deviceId}`) : null;
+
+  if (!device || !device.exists()) {
+    const positionDesc = position != null ? `position ${position}` : "end";
+
+    throw new Error(
+      `createDevice failed: could not insert "${deviceName}" at ${positionDesc} in path "${path}"`,
+    );
+  }
+
+  return {
+    deviceId,
+    deviceIndex: device.deviceIndex,
+  };
+}
+
+/**
+ * Create device on a track (original behavior)
+ * @param {string} deviceName - Device name
+ * @param {string} trackCategory - Track category
+ * @param {number} trackIndex - Track index
+ * @param {number} [deviceIndex] - Position in device chain
+ * @returns {object} Object with deviceId and deviceIndex
+ */
+function createDeviceOnTrack(
+  deviceName,
+  trackCategory,
+  trackIndex,
+  deviceIndex,
+) {
+  // Validate trackIndex based on category
   if (trackCategory === "master") {
     if (trackIndex != null) {
       console.error("createDevice: trackIndex is ignored for master track");
@@ -49,8 +123,6 @@ export function createDevice(
       `createDevice failed: trackIndex is required for ${trackCategory} tracks`,
     );
   }
-
-  validateDeviceName(deviceName);
 
   // Build track path based on trackCategory
   let trackPath;

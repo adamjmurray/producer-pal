@@ -458,4 +458,199 @@ describe("createDevice", () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe("path-based device creation", () => {
+    describe("track paths", () => {
+      it("should create device on track via path (append)", () => {
+        liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
+
+        const result = createDevice({
+          path: "0",
+          deviceName: "Compressor",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ _path: "live_set tracks 0" }),
+          "insert_device",
+          "Compressor",
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 2,
+        });
+      });
+
+      it("should create device on track via path with position", () => {
+        liveApiPath.mockReturnValue("live_set tracks 0 devices 1");
+
+        const result = createDevice({
+          path: "0/1",
+          deviceName: "EQ Eight",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ _path: "live_set tracks 0" }),
+          "insert_device",
+          "EQ Eight",
+          1,
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 1,
+        });
+      });
+
+      it("should create device on return track via path", () => {
+        liveApiPath.mockReturnValue("live_set return_tracks 0 devices 0");
+
+        const result = createDevice({
+          path: "r0/0",
+          deviceName: "Reverb",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ _path: "live_set return_tracks 0" }),
+          "insert_device",
+          "Reverb",
+          0,
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 0,
+        });
+      });
+
+      it("should create device on master track via path", () => {
+        liveApiPath.mockReturnValue("live_set master_track devices 0");
+
+        const result = createDevice({
+          path: "m",
+          deviceName: "Limiter",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ _path: "live_set master_track" }),
+          "insert_device",
+          "Limiter",
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 0,
+        });
+      });
+    });
+
+    describe("chain paths", () => {
+      it("should create device in chain via path (append)", () => {
+        const result = createDevice({
+          path: "0/0/0",
+          deviceName: "Compressor",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({
+            _path: "live_set tracks 0 devices 0 chains 0",
+          }),
+          "insert_device",
+          "Compressor",
+        );
+        expect(result.deviceId).toBe("device123");
+      });
+
+      it("should create device in chain via path with position", () => {
+        liveApiPath.mockReturnValue(
+          "live_set tracks 0 devices 0 chains 0 devices 0",
+        );
+
+        const result = createDevice({
+          path: "0/0/0/0",
+          deviceName: "EQ Eight",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({
+            _path: "live_set tracks 0 devices 0 chains 0",
+          }),
+          "insert_device",
+          "EQ Eight",
+          0,
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 0,
+        });
+      });
+
+      it("should create device in return chain via path", () => {
+        liveApiPath.mockReturnValue(
+          "live_set tracks 0 devices 0 return_chains 0 devices 0",
+        );
+
+        const result = createDevice({
+          path: "0/0/r0/0",
+          deviceName: "Delay",
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({
+            _path: "live_set tracks 0 devices 0 return_chains 0",
+          }),
+          "insert_device",
+          "Delay",
+          0,
+        );
+        expect(result).toStrictEqual({
+          deviceId: "device123",
+          deviceIndex: 0,
+        });
+      });
+    });
+
+    describe("deviceIndex warning", () => {
+      it("should warn when deviceIndex provided with path", () => {
+        liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
+        const consoleSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+
+        createDevice({
+          path: "0",
+          deviceName: "Compressor",
+          deviceIndex: 5,
+        });
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "createDevice: deviceIndex is ignored when path is provided",
+        );
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe("error handling", () => {
+      it("should throw error for non-existent container", () => {
+        liveApiId.mockReturnValue("0");
+
+        expect(() =>
+          createDevice({
+            path: "99/0/0",
+            deviceName: "Compressor",
+          }),
+        ).toThrow('container at path "99/0/0" does not exist');
+      });
+
+      it("should throw error when insert_device fails", () => {
+        liveApiCall.mockReturnValue(["id", "0"]);
+        liveApiId.mockImplementation(function () {
+          return this._path.includes("id 0") ? "0" : "device123";
+        });
+
+        expect(() =>
+          createDevice({
+            path: "0/0/0",
+            deviceName: "Compressor",
+          }),
+        ).toThrow('could not insert "Compressor" at end in path "0/0/0"');
+      });
+    });
+  });
 });
