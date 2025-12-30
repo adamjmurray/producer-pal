@@ -598,4 +598,137 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123" });
     });
   });
+
+  describe("toPath - device moving", () => {
+    beforeEach(() => {
+      // Mock to make containers exist
+      liveApiId.mockImplementation(function () {
+        // Source device
+        if (this._path === "id 123") return "123";
+        // Target containers - return valid IDs
+        if (this._path === "live_set tracks 1") return "track1";
+        if (this._path === "live_set tracks 0") return "track0";
+        if (this._path === "live_set tracks 0 devices 0") return "device0";
+        if (this._path === "live_set tracks 0 devices 0 chains 1")
+          return "chain1";
+        // Non-existent target
+        if (this._path === "live_set tracks 99") return "0";
+
+        return "valid-id";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
+        if (prop === "can_have_drum_pads") return [0];
+
+        return [0];
+      });
+    });
+
+    it("should move device to a different track", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+      });
+
+      // move_device takes "id X" format for live object parameters
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        0,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should move device to a specific position", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1/d2",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        2,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should move device into a rack chain", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t0/d0/c1",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id chain1",
+        0,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should throw error when trying to move a Chain", () => {
+      liveApiType.mockReturnValue("Chain");
+
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t1",
+        }),
+      ).toThrow("cannot move Chain - only Device types can be moved");
+    });
+
+    it("should throw error when trying to move a DrumPad", () => {
+      liveApiType.mockReturnValue("DrumPad");
+
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t1",
+        }),
+      ).toThrow("cannot move DrumPad - only Device types can be moved");
+    });
+
+    it("should throw error when target path does not exist", () => {
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t99",
+        }),
+      ).toThrow('move target at path "t99" does not exist');
+    });
+
+    it("should allow combining move with other updates", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+        name: "Moved Device",
+      });
+
+      // Should call move_device with "id X" format
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        0,
+      );
+
+      // Should also set name
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "name",
+        "Moved Device",
+      );
+
+      expect(result).toStrictEqual({ id: "123" });
+    });
+  });
 });

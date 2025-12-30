@@ -2,6 +2,7 @@ import { noteNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
   resolveDrumPadFromPath,
+  resolveInsertionPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
@@ -50,6 +51,7 @@ function warnIfSet(paramName, value, type) {
  * @param {object} args - The parameters
  * @param {string} [args.ids] - Comma-separated ID(s)
  * @param {string} [args.path] - Device/chain/drum-pad path
+ * @param {string} [args.toPath] - Move device to this path (devices only)
  * @param {string} [args.name] - Display name (not drum pads)
  * @param {boolean} [args.collapsed] - Collapse/expand device view (devices only)
  * @param {string} [args.params] - JSON: {"paramId": value} (devices only)
@@ -67,6 +69,7 @@ function warnIfSet(paramName, value, type) {
 export function updateDevice({
   ids,
   path,
+  toPath,
   name,
   collapsed,
   params,
@@ -90,6 +93,7 @@ export function updateDevice({
   }
 
   const updateOptions = {
+    toPath,
     name,
     collapsed,
     params,
@@ -247,12 +251,48 @@ function resolveChainTarget(liveApiPath) {
 // Target update logic
 // ============================================================================
 
+/**
+ * Move a device to a new location
+ * @param {object} device - LiveAPI device object
+ * @param {string} toPath - Target path
+ */
+function moveDeviceToPath(device, toPath) {
+  const { container, position } = resolveInsertionPath(toPath);
+
+  if (!container || !container.exists()) {
+    throw new Error(
+      `updateDevice: move target at path "${toPath}" does not exist`,
+    );
+  }
+
+  const liveSet = new LiveAPI("live_set");
+
+  // Format ids as "id X" for live object parameters
+  const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
+  const containerId = container.id.startsWith("id ")
+    ? container.id
+    : `id ${container.id}`;
+
+  liveSet.call("move_device", deviceId, containerId, position ?? 0);
+}
+
 function updateTarget(target, options) {
   const type = target.type;
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
     throw new Error(`updateDevice: cannot update ${type} objects`);
+  }
+
+  // Handle move operation first (before other updates)
+  if (options.toPath != null) {
+    if (!isDeviceType(type)) {
+      throw new Error(
+        `updateDevice: cannot move ${type} - only Device types can be moved`,
+      );
+    }
+
+    moveDeviceToPath(target, options.toPath);
   }
 
   // Name works on devices and chains, but DrumPad names are read-only
