@@ -682,7 +682,7 @@ describe("updateDevice", () => {
           ids: "123",
           toPath: "t1",
         }),
-      ).toThrow("cannot move Chain - only Device types can be moved");
+      ).toThrow("cannot move Chain");
     });
 
     it("should throw error when trying to move a DrumPad", () => {
@@ -693,7 +693,7 @@ describe("updateDevice", () => {
           ids: "123",
           toPath: "t1",
         }),
-      ).toThrow("cannot move DrumPad - only Device types can be moved");
+      ).toThrow("cannot move DrumPad");
     });
 
     it("should throw error when target path does not exist", () => {
@@ -731,4 +731,6 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123" });
     });
   });
+
+  // Drum chain move tests are in update-device-drum-chain-move.test.js
 });

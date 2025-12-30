@@ -133,7 +133,7 @@ export function updateDevice({
 /**
  * Update multiple targets with common logic for path/ID resolution
  * @param {string[]} items - Array of paths or IDs
- * @param {Function} resolveItem - Function to resolve item to LiveAPI target
+ * @param {Function} resolveItem - Function to resolve item to ResolvedTarget
  * @param {string} itemType - "path" or "id" for error messages
  * @param {object} updateOptions - Options to pass to updateTarget
  * @returns {object|Array} Single result or array of results
@@ -142,14 +142,20 @@ function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
   const results = [];
 
   for (const item of items) {
-    const target = resolveItem(item);
+    const resolved = resolveItem(item);
 
-    if (!target) {
+    if (!resolved) {
       console.error(`updateDevice: target not found at ${itemType} "${item}"`);
       continue;
     }
 
-    const result = updateTarget(target, updateOptions);
+    // Merge resolution metadata (like isDrumPadPath) into options
+    const optionsWithMetadata = {
+      ...updateOptions,
+      isDrumPadPath: resolved.isDrumPadPath,
+    };
+
+    const result = updateTarget(resolved.target, optionsWithMetadata);
 
     if (result) {
       results.push(result);
@@ -166,12 +172,12 @@ function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
 /**
  * Resolve an ID to a LiveAPI target
  * @param {string} id - Object ID
- * @returns {object|null} LiveAPI object or null if not found
+ * @returns {ResolvedTarget|null} Resolved target or null if not found
  */
 function resolveIdToTarget(id) {
   const target = LiveAPI.from(id);
 
-  return target.exists() ? target : null;
+  return target.exists() ? { target } : null;
 }
 
 // ============================================================================
@@ -179,9 +185,15 @@ function resolveIdToTarget(id) {
 // ============================================================================
 
 /**
+ * @typedef {object} ResolvedTarget
+ * @property {object} target - LiveAPI object
+ * @property {boolean} [isDrumPadPath] - True if path targets a drum pad (not specific chain)
+ */
+
+/**
  * Safely resolve a path to a Live API target, catching errors
  * @param {string} path - Device/chain/drum-pad path
- * @returns {object|null} LiveAPI object or null if not found or invalid
+ * @returns {ResolvedTarget|null} Resolved target or null if not found or invalid
  */
 function resolvePathToTargetSafe(path) {
   try {
@@ -196,20 +208,24 @@ function resolvePathToTargetSafe(path) {
 /**
  * Resolve a path to a Live API target (device, chain, or drum pad)
  * @param {string} path - Device/chain/drum-pad path
- * @returns {object|null} LiveAPI object or null if not found
+ * @returns {ResolvedTarget|null} Resolved target or null if not found
  */
 function resolvePathToTarget(path) {
   const resolved = resolvePathToLiveApi(path);
 
   if (resolved.targetType === "device") {
-    return resolveDeviceTarget(resolved.liveApiPath);
+    const target = resolveDeviceTarget(resolved.liveApiPath);
+
+    return target ? { target } : null;
   }
 
   if (
     resolved.targetType === "chain" ||
     resolved.targetType === "return-chain"
   ) {
-    return resolveChainTarget(resolved.liveApiPath);
+    const target = resolveChainTarget(resolved.liveApiPath);
+
+    return target ? { target } : null;
   }
 
   if (resolved.targetType === "drum-pad") {
@@ -219,7 +235,20 @@ function resolvePathToTarget(path) {
       resolved.remainingSegments,
     );
 
-    return drumPadResult.target;
+    if (!drumPadResult.target) {
+      return null;
+    }
+
+    // Detect if this is a drum pad path (no explicit chain index) vs chain path
+    // pC1 = pad path, pC1/c0 = chain path
+    const hasExplicitChainIndex =
+      resolved.remainingSegments?.length > 0 &&
+      resolved.remainingSegments[0].startsWith("c");
+
+    return {
+      target: drumPadResult.target,
+      isDrumPadPath: !hasExplicitChainIndex,
+    };
   }
 
   return null;
@@ -252,6 +281,18 @@ function resolveChainTarget(liveApiPath) {
 // ============================================================================
 
 /**
+ * Parse drum pad note from a path
+ * @param {string} path - Path that may contain a drum pad segment
+ * @returns {string|null} Note name (e.g., "C1", "F#2") or null if not a drum pad path
+ */
+function parseDrumPadNoteFromPath(path) {
+  // Match the last pXX segment in the path (note name or *)
+  const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
+
+  return match ? match[1] : null;
+}
+
+/**
  * Move a device to a new location
  * @param {object} device - LiveAPI device object
  * @param {string} toPath - Target path
@@ -276,6 +317,42 @@ function moveDeviceToPath(device, toPath) {
   liveSet.call("move_device", deviceId, containerId, position ?? 0);
 }
 
+/**
+ * Move a drum chain to a different pad by updating in_note
+ * @param {object} chain - LiveAPI drum chain object
+ * @param {string} toPath - Target drum pad path
+ * @param {boolean} moveEntirePad - If true, move all chains with same in_note
+ */
+function moveDrumChainToPath(chain, toPath, moveEntirePad) {
+  const targetNote = parseDrumPadNoteFromPath(toPath);
+
+  if (targetNote == null) {
+    throw new Error(`updateDevice: toPath "${toPath}" is not a drum pad path`);
+  }
+
+  const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
+
+  if (targetInNote == null) {
+    throw new Error(`updateDevice: invalid note "${targetNote}" in toPath`);
+  }
+
+  if (moveEntirePad) {
+    // Move all chains with same in_note as source chain
+    const sourceInNote = chain.getProperty("in_note");
+    const drumRackPath = chain.path.replace(/ chains \d+$/, "");
+    const drumRack = new LiveAPI(drumRackPath);
+    const allChains = drumRack.getChildren("chains");
+
+    for (const c of allChains) {
+      if (c.getProperty("in_note") === sourceInNote) {
+        c.set("in_note", targetInNote);
+      }
+    }
+  } else {
+    chain.set("in_note", targetInNote);
+  }
+}
+
 function updateTarget(target, options) {
   const type = target.type;
 
@@ -286,13 +363,13 @@ function updateTarget(target, options) {
 
   // Handle move operation first (before other updates)
   if (options.toPath != null) {
-    if (!isDeviceType(type)) {
-      throw new Error(
-        `updateDevice: cannot move ${type} - only Device types can be moved`,
-      );
+    if (isDeviceType(type)) {
+      moveDeviceToPath(target, options.toPath);
+    } else if (type === "DrumChain") {
+      moveDrumChainToPath(target, options.toPath, options.isDrumPadPath);
+    } else {
+      throw new Error(`updateDevice: cannot move ${type}`);
     }
-
-    moveDeviceToPath(target, options.toPath);
   }
 
   // Name works on devices and chains, but DrumPad names are read-only
