@@ -342,24 +342,58 @@ export function resolveDrumPadFromPath(
     return { target: targetDevice, targetType: "device" };
   }
 
-  // Check if next segment is a nested drum pad (starts with 'p')
-  const nextSegment = afterDeviceSegments[0];
+  // Navigate through remaining segments (chains/devices in nested racks)
+  return navigateRemainingSegments(targetDevice, afterDeviceSegments);
+}
 
-  if (nextSegment.startsWith("p")) {
-    // Recurse into nested drum rack
-    const nestedNote = nextSegment.slice(1);
+/**
+ * Navigate through remaining path segments after reaching a device.
+ * Handles alternating chain/device indices and nested drum racks.
+ * @param {object} startDevice - Starting device
+ * @param {string[]} segments - Remaining path segments
+ * @returns {DrumPadResolution} The resolved target and its type
+ */
+function navigateRemainingSegments(startDevice, segments) {
+  let current = startDevice;
+  let isChainNext = true;
 
-    if (!nestedNote) {
-      return { target: null, targetType: "chain" };
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+
+    // Check for nested drum pad notation
+    if (segment.startsWith("p")) {
+      const nestedNote = segment.slice(1);
+
+      if (!nestedNote) {
+        return { target: null, targetType: "chain" };
+      }
+
+      return resolveDrumPadFromPath(
+        current.path,
+        nestedNote,
+        segments.slice(i + 1),
+      );
     }
 
-    return resolveDrumPadFromPath(
-      targetDevice.path,
-      nestedNote,
-      afterDeviceSegments.slice(1),
-    );
+    // Parse numeric index
+    const index = parseInt(segment, 10);
+
+    if (isNaN(index)) {
+      return { target: null, targetType: isChainNext ? "chain" : "device" };
+    }
+
+    // Get children (chains or devices)
+    const children = current.getChildren(isChainNext ? "chains" : "devices");
+
+    if (index < 0 || index >= children.length) {
+      return { target: null, targetType: isChainNext ? "chain" : "device" };
+    }
+
+    current = children[index];
+    isChainNext = !isChainNext;
   }
 
-  // Not a drum pad segment - this shouldn't happen with valid paths
-  return { target: null, targetType: "device" };
+  // Return final target - type depends on what we last navigated to
+  // If isChainNext is true, we last navigated to a device; if false, to a chain
+  return { target: current, targetType: isChainNext ? "device" : "chain" };
 }

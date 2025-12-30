@@ -639,5 +639,133 @@ describe("device-path-helpers", () => {
       expect(result.target.id).toBe(nestedChainId);
       expect(result.targetType).toBe("chain");
     });
+
+    describe("arbitrary depth navigation", () => {
+      // Setup for instrument rack inside drum pad:
+      // drum rack → C1 chain → instrument rack → rack chain → device
+      const setupInstrumentRackInDrumPad = () => {
+        const drumRackPath = "live_set tracks 1 devices 0";
+        const drumChainId = "drum-chain-36";
+        const instrRackId = "instr-rack";
+        const rackChainId = "rack-chain";
+        const finalDeviceId = "final-device";
+
+        liveApiId.mockImplementation(function () {
+          if (this._path === drumRackPath) return "drum-rack";
+          if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+          return this._id ?? "0";
+        });
+
+        liveApiPath.mockImplementation(function () {
+          return this._path;
+        });
+
+        liveApiType.mockImplementation(function () {
+          const id = this._id ?? this.id;
+
+          if (id === drumChainId) return "DrumChain";
+          if (id === rackChainId) return "Chain";
+          if (id === instrRackId) return "InstrumentGroupDevice";
+          if (id === finalDeviceId) return "PluginDevice";
+
+          return "DrumGroupDevice";
+        });
+
+        liveApiGet.mockImplementation(function (prop) {
+          const id = this._id ?? this.id;
+
+          // Drum rack returns C1 chain
+          if (this._path === drumRackPath) {
+            if (prop === "chains") return ["id", drumChainId];
+          }
+
+          // Drum chain properties
+          if (id === drumChainId) {
+            if (prop === "in_note") return [36]; // C1
+            if (prop === "devices") return ["id", instrRackId];
+          }
+
+          // Instrument rack returns chain
+          if (id === instrRackId) {
+            if (prop === "chains") return ["id", rackChainId];
+          }
+
+          // Rack chain returns device
+          if (id === rackChainId) {
+            if (prop === "devices") return ["id", finalDeviceId];
+          }
+
+          return [];
+        });
+
+        return { drumChainId, instrRackId, rackChainId, finalDeviceId };
+      };
+
+      it("navigates through instrument rack inside drum pad to reach chain", () => {
+        const { rackChainId } = setupInstrumentRackInDrumPad();
+
+        // Path: pC1/0/0/0 means:
+        // - pC1 = C1 drum chain
+        // - 0 = first chain for C1
+        // - 0 = device 0 (instrument rack)
+        // - 0 = chain 0 in instrument rack
+        const result = resolveDrumPadFromPath(
+          "live_set tracks 1 devices 0",
+          "C1",
+          ["0", "0", "0"],
+        );
+
+        expect(result.target).not.toBeNull();
+        expect(result.target.id).toBe(rackChainId);
+        expect(result.targetType).toBe("chain");
+      });
+
+      it("navigates through instrument rack inside drum pad to reach device", () => {
+        const { finalDeviceId } = setupInstrumentRackInDrumPad();
+
+        // Path: pC1/0/0/0/0 means:
+        // - pC1 = C1 drum chain
+        // - 0 = first chain for C1
+        // - 0 = device 0 (instrument rack)
+        // - 0 = chain 0 in instrument rack
+        // - 0 = device 0 in that chain
+        const result = resolveDrumPadFromPath(
+          "live_set tracks 1 devices 0",
+          "C1",
+          ["0", "0", "0", "0"],
+        );
+
+        expect(result.target).not.toBeNull();
+        expect(result.target.id).toBe(finalDeviceId);
+        expect(result.targetType).toBe("device");
+      });
+
+      it("returns null for out of bounds chain index in nested rack", () => {
+        setupInstrumentRackInDrumPad();
+
+        const result = resolveDrumPadFromPath(
+          "live_set tracks 1 devices 0",
+          "C1",
+          ["0", "0", "5"], // Chain 5 doesn't exist
+        );
+
+        expect(result.target).toBeNull();
+        expect(result.targetType).toBe("chain");
+      });
+
+      it("returns null for out of bounds device index in nested rack", () => {
+        setupInstrumentRackInDrumPad();
+
+        const result = resolveDrumPadFromPath(
+          "live_set tracks 1 devices 0",
+          "C1",
+          ["0", "0", "0", "5"], // Device 5 doesn't exist in chain
+        );
+
+        expect(result.target).toBeNull();
+        expect(result.targetType).toBe("device");
+      });
+    });
   });
 });
