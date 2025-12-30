@@ -20,7 +20,7 @@ describe("updateDevice with path parameter", () => {
   });
 
   it("should throw error when both ids and path are provided", () => {
-    expect(() => updateDevice({ ids: "123", path: "1/0" })).toThrow(
+    expect(() => updateDevice({ ids: "123", path: "t1/d0" })).toThrow(
       "Provide either ids or path, not both",
     );
   });
@@ -46,7 +46,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device by path on regular track", () => {
-      const result = updateDevice({ path: "1/0", name: "My Device" });
+      const result = updateDevice({ path: "t1/d0", name: "My Device" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "device-456" }),
@@ -57,7 +57,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device collapsed state by path", () => {
-      const result = updateDevice({ path: "1/0", collapsed: true });
+      const result = updateDevice({ path: "t1/d0", collapsed: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "view-456" }),
@@ -70,13 +70,13 @@ describe("updateDevice with path parameter", () => {
     it("should return empty array for non-existent device by path", () => {
       liveApiId.mockReturnValue("0");
 
-      const result = updateDevice({ path: "1/0", name: "Test" });
+      const result = updateDevice({ path: "t1/d0", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
 
     it("should update device by path on return track", () => {
-      const result = updateDevice({ path: "r0/0", name: "Return Device" });
+      const result = updateDevice({ path: "r0/d0", name: "Return Device" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "return-device-123" }),
@@ -87,7 +87,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device by path on master track", () => {
-      const result = updateDevice({ path: "m/0", name: "Master Device" });
+      const result = updateDevice({ path: "m/d0", name: "Master Device" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "master-device-789" }),
@@ -119,7 +119,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain by path", () => {
-      const result = updateDevice({ path: "1/0/0", name: "My Chain" });
+      const result = updateDevice({ path: "t1/d0/c0", name: "My Chain" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-123" }),
@@ -130,7 +130,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain mute state by path", () => {
-      const result = updateDevice({ path: "1/0/0", mute: true });
+      const result = updateDevice({ path: "t1/d0/c0", mute: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-123" }),
@@ -141,7 +141,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain solo state by path", () => {
-      const result = updateDevice({ path: "1/0/0", solo: true });
+      const result = updateDevice({ path: "t1/d0/c0", solo: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-123" }),
@@ -152,7 +152,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain color by path", () => {
-      const result = updateDevice({ path: "1/0/0", color: "#FF0000" });
+      const result = updateDevice({ path: "t1/d0/c0", color: "#FF0000" });
 
       // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -166,13 +166,13 @@ describe("updateDevice with path parameter", () => {
     it("should return empty array for non-existent chain by path", () => {
       liveApiId.mockReturnValue("0");
 
-      const result = updateDevice({ path: "1/0/0", name: "Test" });
+      const result = updateDevice({ path: "t1/d0/c0", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
 
     it("should update return chain by path", () => {
-      const result = updateDevice({ path: "1/0/r0", name: "Return Chain" });
+      const result = updateDevice({ path: "t1/d0/e0", name: "Return Chain" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "return-chain-456" }),
@@ -253,7 +253,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1", mute: true });
+      const result = updateDevice({ path: "t1/d0/pC1", mute: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-36" }),
@@ -269,7 +269,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1", solo: true });
+      const result = updateDevice({ path: "t1/d0/pC1", solo: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-36" }),
@@ -285,7 +285,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } }, // C1, not C3
       });
 
-      const result = updateDevice({ path: "1/0/pC3", mute: true });
+      const result = updateDevice({ path: "t1/d0/pC3", mute: true });
 
       expect(result).toStrictEqual([]);
     });
@@ -296,7 +296,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1/0", name: "New Layer" });
+      const result = updateDevice({ path: "t1/d0/pC1/c0", name: "New Layer" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-36" }),
@@ -312,7 +312,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1/0", mute: true });
+      const result = updateDevice({ path: "t1/d0/pC1/c0", mute: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "chain-36" }),
@@ -328,7 +328,7 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1/5", name: "Test" });
+      const result = updateDevice({ path: "t1/d0/pC1/c5", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
@@ -342,7 +342,10 @@ describe("updateDevice with path parameter", () => {
         deviceProperties: { "device-1": { name: "Simpler" } },
       });
 
-      const result = updateDevice({ path: "1/0/pC1/0/0", name: "New Simpler" });
+      const result = updateDevice({
+        path: "t1/d0/pC1/c0/d0",
+        name: "New Simpler",
+      });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "device-1" }),
@@ -360,7 +363,7 @@ describe("updateDevice with path parameter", () => {
         },
       });
 
-      const result = updateDevice({ path: "1/0/pC1/0/5", name: "Test" });
+      const result = updateDevice({ path: "t1/d0/pC1/c0/d5", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
@@ -374,7 +377,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should return empty array for track-only path (invalid)", () => {
-      const result = updateDevice({ path: "1", name: "Test" });
+      const result = updateDevice({ path: "t1", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
@@ -394,7 +397,10 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update multiple devices by comma-separated paths", () => {
-      const result = updateDevice({ path: "0/0, 0/1, 1/0", name: "Updated" });
+      const result = updateDevice({
+        path: "t0/d0, t0/d1, t1/d0",
+        name: "Updated",
+      });
 
       expect(liveApiSet).toHaveBeenCalledTimes(3);
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -420,9 +426,12 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should skip non-existent paths and continue with valid ones", () => {
-      const result = updateDevice({ path: "0/0, 1/1, 1/0", name: "Updated" });
+      const result = updateDevice({
+        path: "t0/d0, t1/d1, t1/d0",
+        name: "Updated",
+      });
 
-      // 1/1 doesn't exist, but 0/0 and 1/0 should be updated
+      // t1/d1 doesn't exist, but t0/d0 and t1/d0 should be updated
       expect(liveApiSet).toHaveBeenCalledTimes(2);
       expect(result).toStrictEqual([
         { id: "device-100" },
@@ -433,14 +442,14 @@ describe("updateDevice with path parameter", () => {
     it("should return empty array when all paths are invalid", () => {
       liveApiId.mockReturnValue("0"); // All paths non-existent
 
-      const result = updateDevice({ path: "0/0, 1/0", name: "Updated" });
+      const result = updateDevice({ path: "t0/d0, t1/d0", name: "Updated" });
 
       expect(liveApiSet).not.toHaveBeenCalled();
       expect(result).toStrictEqual([]);
     });
 
     it("should return single object when only one path provided", () => {
-      const result = updateDevice({ path: "0/0", name: "Single" });
+      const result = updateDevice({ path: "t0/d0", name: "Single" });
 
       expect(result).toStrictEqual({ id: "device-100" });
     });
@@ -452,14 +461,17 @@ describe("updateDevice with path parameter", () => {
         return "0";
       });
 
-      const result = updateDevice({ path: "0/0, 1/0, 2/0", name: "Updated" });
+      const result = updateDevice({
+        path: "t0/d0, t1/d0, t2/d0",
+        name: "Updated",
+      });
 
       expect(result).toStrictEqual({ id: "device-100" });
     });
 
     it("should handle whitespace in comma-separated paths", () => {
       const result = updateDevice({
-        path: "  0/0  ,  1/0  ",
+        path: "  t0/d0  ,  t1/d0  ",
         name: "Trimmed",
       });
 
@@ -472,9 +484,12 @@ describe("updateDevice with path parameter", () => {
 
     it("should skip invalid path formats gracefully", () => {
       // Track-only path is invalid, but device paths should work
-      const result = updateDevice({ path: "0, 0/0, 1/0", name: "Updated" });
+      const result = updateDevice({
+        path: "t0, t0/d0, t1/d0",
+        name: "Updated",
+      });
 
-      // "0" is invalid (no device index), but "0/0" and "1/0" should work
+      // "t0" is invalid (no device index), but "t0/d0" and "t1/d0" should work
       expect(liveApiSet).toHaveBeenCalledTimes(2);
       expect(result).toStrictEqual([
         { id: "device-100" },
@@ -499,7 +514,7 @@ describe("updateDevice with path parameter", () => {
         return "Device";
       });
 
-      const result = updateDevice({ path: "0/0, 1/0/0", name: "Mixed" });
+      const result = updateDevice({ path: "t0/d0, t1/d0/c0", name: "Mixed" });
 
       expect(liveApiSet).toHaveBeenCalledTimes(2);
       expect(liveApiSet).toHaveBeenCalledWithThis(

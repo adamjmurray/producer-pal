@@ -7,7 +7,7 @@ import {
 /**
  * Extract simplified path from Live API canonical path
  * @param {string} liveApiPath - e.g., "live_set tracks 1 devices 0 chains 2"
- * @returns {string|null} Simplified path e.g., "1/0/2", "r0/0", "m/0", or null if invalid
+ * @returns {string|null} Simplified path e.g., "t1/d0/c2", "r0/d0", "m/d0", or null if invalid
  */
 export function extractDevicePath(liveApiPath) {
   let prefix;
@@ -17,7 +17,7 @@ export function extractDevicePath(liveApiPath) {
   const masterMatch = liveApiPath.match(/^live_set master_track/);
 
   if (regularMatch) {
-    prefix = regularMatch[1];
+    prefix = `t${regularMatch[1]}`;
   } else if (returnMatch) {
     prefix = `r${returnMatch[1]}`;
   } else if (masterMatch) {
@@ -28,26 +28,23 @@ export function extractDevicePath(liveApiPath) {
 
   const parts = [prefix];
 
-  // Extract alternating devices/chains indices
-  // Handles both "chains" and "return_chains"
-  const pattern = /(?:devices|(?:return_)?chains) (\d+)/g;
+  // Extract devices/chains with explicit prefixes
+  // Pattern matches: "devices N", "chains N", "return_chains N"
+  const pattern = /(devices|(?:return_)?chains) (\d+)/g;
   let match;
-  let lastIndex = 0;
 
   while ((match = pattern.exec(liveApiPath)) !== null) {
-    // Check if this was a return_chains match
-    const segment = liveApiPath.substring(
-      lastIndex,
-      match.index + match[0].length,
-    );
+    const type = match[1];
+    const index = match[2];
 
-    if (segment.includes("return_chains")) {
-      parts.push(`r${match[1]}`);
+    if (type === "devices") {
+      parts.push(`d${index}`);
+    } else if (type === "return_chains") {
+      parts.push(`e${index}`);
     } else {
-      parts.push(match[1]);
+      // Regular chains
+      parts.push(`c${index}`);
     }
-
-    lastIndex = pattern.lastIndex;
   }
 
   return parts.join("/");
@@ -55,38 +52,35 @@ export function extractDevicePath(liveApiPath) {
 
 /**
  * Build chain path from parent device path + chain index
- * @param {string} devicePath - Parent device path e.g., "1/0"
+ * @param {string} devicePath - Parent device path e.g., "t1/d0"
  * @param {number} chainIndex - Chain index
- * @returns {string} Chain path e.g., "1/0/2"
+ * @returns {string} Chain path e.g., "t1/d0/c2"
  */
 export function buildChainPath(devicePath, chainIndex) {
-  return `${devicePath}/${chainIndex}`;
+  return `${devicePath}/c${chainIndex}`;
 }
 
 /**
  * Build return chain path from parent device path + return chain index
- * @param {string} devicePath - Parent device path e.g., "1/0"
+ * @param {string} devicePath - Parent device path e.g., "t1/d0"
  * @param {number} returnChainIndex - Return chain index
- * @returns {string} Return chain path e.g., "1/0/r0"
+ * @returns {string} Return chain path e.g., "t1/d0/e0"
  */
 export function buildReturnChainPath(devicePath, returnChainIndex) {
-  return `${devicePath}/r${returnChainIndex}`;
+  return `${devicePath}/e${returnChainIndex}`;
 }
 
 /**
  * Build drum pad path from parent device path + note name
- * @param {string} devicePath - Parent device path e.g., "1/0"
+ * @param {string} devicePath - Parent device path e.g., "t1/d0"
  * @param {string} noteName - Note name e.g., "C1", "F#2", or asterisk for catch-all
  * @param {number} [chainIndex=0] - Index within chains having the same note
- * @returns {string} Drum pad path e.g., "1/0/pC1" or "1/0/pC1/1" for layered chains
+ * @returns {string} Drum pad path e.g., "t1/d0/pC1" or "t1/d0/pC1/c1" for layered chains
  */
 export function buildDrumPadPath(devicePath, noteName, chainIndex = 0) {
-  // Only include chain index when > 0 (layered chains) for cleaner paths
-  if (chainIndex > 0) {
-    return `${devicePath}/p${noteName}/${chainIndex}`;
-  }
-
-  return `${devicePath}/p${noteName}`;
+  return chainIndex > 0
+    ? `${devicePath}/p${noteName}/c${chainIndex}`
+    : `${devicePath}/p${noteName}`;
 }
 
 /**
@@ -99,37 +93,34 @@ export function buildDrumPadPath(devicePath, noteName, chainIndex = 0) {
 
 /**
  * Parse the track segment and return the Live API path prefix
- * @param {string} trackSegment - Track segment (e.g., "1", "r0", "m")
+ * @param {string} trackSegment - Track segment (e.g., "t1", "r0", "m")
  * @param {string} path - Full path for error messages
  * @returns {string} Live API path prefix
  */
 function parseTrackSegment(trackSegment, path) {
-  if (trackSegment === "m") {
-    return "live_set master_track";
-  }
+  if (trackSegment === "m") return "live_set master_track";
+  const prefix = trackSegment[0];
+  const index = parseInt(trackSegment.slice(1), 10);
 
-  if (trackSegment.startsWith("r")) {
-    const returnIndex = parseInt(trackSegment.slice(1), 10);
-
-    if (isNaN(returnIndex)) {
+  if (prefix === "r") {
+    if (isNaN(index))
       throw new Error(`Invalid return track index in path: ${path}`);
-    }
 
-    return `live_set return_tracks ${returnIndex}`;
+    return `live_set return_tracks ${index}`;
   }
 
-  const trackIndex = parseInt(trackSegment, 10);
+  if (prefix === "t") {
+    if (isNaN(index)) throw new Error(`Invalid track index in path: ${path}`);
 
-  if (isNaN(trackIndex)) {
-    throw new Error(`Invalid track index in path: ${path}`);
+    return `live_set tracks ${index}`;
   }
 
-  return `live_set tracks ${trackIndex}`;
+  throw new Error(`Invalid track segment in path: ${path}`);
 }
 
 /**
- * Parse a chain segment (numeric, drum pad, or return chain)
- * @param {string} segment - Chain segment to parse
+ * Parse a chain segment (c-prefixed chain, e-prefixed return chain, or p-prefixed drum pad)
+ * @param {string} segment - Chain segment to parse (e.g., "c0", "e0", "pC1")
  * @param {string} path - Full path for error messages
  * @param {string} liveApiPath - Current Live API path
  * @param {string[]} segments - All path segments
@@ -155,8 +146,8 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
     };
   }
 
-  // Return chain
-  if (segment.startsWith("r")) {
+  // Return chain (e prefix)
+  if (segment.startsWith("e")) {
     const returnChainIndex = parseInt(segment.slice(1), 10);
 
     if (isNaN(returnChainIndex)) {
@@ -169,22 +160,26 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
     };
   }
 
-  // Regular chain
-  const chainIndex = parseInt(segment, 10);
+  // Regular chain (c prefix)
+  if (segment.startsWith("c")) {
+    const chainIndex = parseInt(segment.slice(1), 10);
 
-  if (isNaN(chainIndex)) {
-    throw new Error(`Invalid chain index in path: ${path}`);
+    if (isNaN(chainIndex)) {
+      throw new Error(`Invalid chain index in path: ${path}`);
+    }
+
+    return {
+      liveApiPath: `${liveApiPath} chains ${chainIndex}`,
+      targetType: "chain",
+    };
   }
 
-  return {
-    liveApiPath: `${liveApiPath} chains ${chainIndex}`,
-    targetType: "chain",
-  };
+  throw new Error(`Invalid chain segment in path: ${path}`);
 }
 
 /**
  * Resolve a simplified path to a Live API path
- * @param {string} path - e.g., "1/0", "1/0/0", "r0/0", "m/0", "1/0/pC1", "1/0/r0"
+ * @param {string} path - e.g., "t1/d0", "t1/d0/c0", "r0/d0", "m/d0", "t1/d0/pC1", "t1/d0/e0"
  * @returns {ResolvedPath} Resolved path info
  * @throws {Error} If path format is invalid
  */
@@ -206,25 +201,24 @@ export function resolvePathToLiveApi(path) {
     throw new Error(`Path must include at least a device index: ${path}`);
   }
 
-  // Parse remaining segments (alternating device/chain)
+  // Parse remaining segments using explicit prefixes
   let targetType = "device";
-  let isDevice = true;
 
   for (let i = 1; i < segments.length; i++) {
     const segment = segments[i];
 
-    if (isDevice) {
-      const deviceIndex = parseInt(segment, 10);
+    if (segment.startsWith("d")) {
+      // Device segment
+      const deviceIndex = parseInt(segment.slice(1), 10);
 
       if (isNaN(deviceIndex)) {
-        throw new Error(
-          `Expected device index at position ${i} in path: ${path}`,
-        );
+        throw new Error(`Invalid device index in path: ${path}`);
       }
 
       liveApiPath += ` devices ${deviceIndex}`;
       targetType = "device";
     } else {
+      // Chain segment (c, e, or p prefix)
       const result = parseChainSegment(segment, path, liveApiPath, segments, i);
 
       if (result.earlyReturn) {
@@ -234,8 +228,6 @@ export function resolvePathToLiveApi(path) {
       liveApiPath = result.liveApiPath;
       targetType = result.targetType;
     }
-
-    isDevice = !isDevice;
   }
 
   return { liveApiPath, targetType };
@@ -248,30 +240,10 @@ export function resolvePathToLiveApi(path) {
  */
 
 /**
- * Find chains with a specific in_note value
- * @param {Array} chains - All chains from the drum rack
- * @param {number} targetInNote - Target in_note value (-1 for catch-all)
- * @returns {Array} Chains matching the in_note
- */
-function findChainsByInNote(chains, targetInNote) {
-  return chains.filter(
-    (chain) => chain.getProperty("in_note") === targetInNote,
-  );
-}
-
-/**
- * Resolve a drum pad path to its target LiveAPI object.
- * Uses chains with in_note property instead of drum_pads collection.
- * Supports nested drum racks by recursing when encountering another pNOTE segment.
- *
- * Path formats:
- * - Note-specific: pNOTE/chainIndex (e.g., pC1/0) - chainIndex is position within note group
- * - Catch-all: p{asterisk}/chainIndex - for chains with in_note=-1
- * - Nested: pNOTE/chainIndex/deviceIndex/pNOTE2/... - recurses into nested drum racks
- *
+ * Resolve a drum pad path to its target LiveAPI object. Supports nested drum racks.
  * @param {string} liveApiPath - Live API path to the drum rack device
- * @param {string} drumPadNote - Note name (e.g., "C1", "F#2") or asterisk for catch-all
- * @param {string[]} remainingSegments - Path segments after the drum pad (chain index, device indices)
+ * @param {string} drumPadNote - Note name (e.g., "C1", "F#2") or "*" for catch-all
+ * @param {string[]} remainingSegments - Path segments after drum pad (c/d prefixed)
  * @returns {DrumPadResolution} The resolved target and its type
  */
 export function resolveDrumPadFromPath(
@@ -294,22 +266,29 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "chain" };
   }
 
-  // Chain index is first remaining segment (defaults to 0)
+  // Chain index from first remaining segment if it's a 'c' prefix (defaults to 0)
   let chainIndexWithinNote = 0;
   let nextSegmentStart = 0;
 
   if (remainingSegments && remainingSegments.length > 0) {
-    chainIndexWithinNote = parseInt(remainingSegments[0], 10);
+    const firstSegment = remainingSegments[0];
 
-    if (isNaN(chainIndexWithinNote)) {
-      return { target: null, targetType: "chain" };
+    // Only consume segment if it's a chain index (c prefix)
+    if (firstSegment.startsWith("c")) {
+      chainIndexWithinNote = parseInt(firstSegment.slice(1), 10);
+
+      if (isNaN(chainIndexWithinNote)) {
+        return { target: null, targetType: "chain" };
+      }
+
+      nextSegmentStart = 1;
     }
-
-    nextSegmentStart = 1;
   }
 
   // Find chains with matching in_note
-  const matchingChains = findChainsByInNote(allChains, targetInNote);
+  const matchingChains = allChains.filter(
+    (c) => c.getProperty("in_note") === targetInNote,
+  );
 
   if (
     chainIndexWithinNote < 0 ||
@@ -329,8 +308,14 @@ export function resolveDrumPadFromPath(
     return { target: chain, targetType: "chain" };
   }
 
-  // Navigate to device within chain
-  const deviceIndex = parseInt(nextSegments[0], 10);
+  // Navigate to device within chain (d prefix)
+  const deviceSegment = nextSegments[0];
+
+  if (!deviceSegment.startsWith("d")) {
+    return { target: null, targetType: "device" };
+  }
+
+  const deviceIndex = parseInt(deviceSegment.slice(1), 10);
   const devices = chain.getChildren("devices");
 
   if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
@@ -351,55 +336,60 @@ export function resolveDrumPadFromPath(
 }
 
 /**
+ * @param {object} parent - Parent LiveAPI object
+ * @param {string} childType - Type of children ("devices", "chains", etc.)
+ * @param {number} index - Child index
+ * @returns {object|null} Child object or null if invalid
+ */
+function getChildAtIndex(parent, childType, index) {
+  if (isNaN(index)) return null;
+  const c = parent.getChildren(childType);
+
+  return index >= 0 && index < c.length ? c[index] : null;
+}
+
+/**
  * Navigate through remaining path segments after reaching a device.
- * Handles alternating chain/device indices and nested drum racks.
  * @param {object} startDevice - Starting device
- * @param {string[]} segments - Remaining path segments
+ * @param {string[]} segments - Remaining path segments with prefixes (c, d, e, p)
  * @returns {DrumPadResolution} The resolved target and its type
  */
 function navigateRemainingSegments(startDevice, segments) {
   let current = startDevice;
-  let isChainNext = true;
+  let currentType = "device";
 
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
+    const prefix = segment[0];
+    const index = parseInt(segment.slice(1), 10);
 
-    // Check for nested drum pad notation
-    if (segment.startsWith("p")) {
-      const nestedNote = segment.slice(1);
+    if (prefix === "p") {
+      const note = segment.slice(1);
 
-      if (!nestedNote) {
-        return { target: null, targetType: "chain" };
-      }
-
-      return resolveDrumPadFromPath(
-        current.path,
-        nestedNote,
-        segments.slice(i + 1),
-      );
+      return note
+        ? resolveDrumPadFromPath(current.path, note, segments.slice(i + 1))
+        : { target: null, targetType: "chain" };
     }
 
-    // Parse numeric index
-    const index = parseInt(segment, 10);
+    if (prefix === "c" || prefix === "e") {
+      const childType = prefix === "e" ? "return_chains" : "chains";
+      const child = getChildAtIndex(current, childType, index);
 
-    if (isNaN(index)) {
-      return { target: null, targetType: isChainNext ? "chain" : "device" };
+      if (!child) return { target: null, targetType: "chain" };
+      current = child;
+      currentType = "chain";
+    } else if (prefix === "d") {
+      const child = getChildAtIndex(current, "devices", index);
+
+      if (!child) return { target: null, targetType: "device" };
+      current = child;
+      currentType = "device";
+    } else {
+      return { target: null, targetType: currentType };
     }
-
-    // Get children (chains or devices)
-    const children = current.getChildren(isChainNext ? "chains" : "devices");
-
-    if (index < 0 || index >= children.length) {
-      return { target: null, targetType: isChainNext ? "chain" : "device" };
-    }
-
-    current = children[index];
-    isChainNext = !isChainNext;
   }
 
-  // Return final target - type depends on what we last navigated to
-  // If isChainNext is true, we last navigated to a device; if false, to a chain
-  return { target: current, targetType: isChainNext ? "device" : "chain" };
+  return { target: current, targetType: currentType };
 }
 
 /**
@@ -410,7 +400,7 @@ function navigateRemainingSegments(startDevice, segments) {
 
 /**
  * Resolve a track segment to a LiveAPI track object
- * @param {string} segment - Track segment (e.g., "0", "r0", "m")
+ * @param {string} segment - Track segment (e.g., "t0", "r0", "m")
  * @returns {object} LiveAPI track object
  */
 function resolveTrack(segment) {
@@ -424,9 +414,13 @@ function resolveTrack(segment) {
     return new LiveAPI(`live_set return_tracks ${returnIndex}`);
   }
 
-  const trackIndex = parseInt(segment, 10);
+  if (segment.startsWith("t")) {
+    const trackIndex = parseInt(segment.slice(1), 10);
 
-  return new LiveAPI(`live_set tracks ${trackIndex}`);
+    return new LiveAPI(`live_set tracks ${trackIndex}`);
+  }
+
+  throw new Error(`Invalid track segment: ${segment}`);
 }
 
 /**
@@ -438,17 +432,10 @@ function resolveTrack(segment) {
 function resolveContainer(path) {
   const segments = path.split("/");
 
-  // Track-only path
-  if (segments.length === 1) {
-    return resolveTrack(segments[0]);
-  }
-
-  // Check if path contains drum pad notation - use existing logic (no auto-creation)
-  if (segments.some((s) => s.startsWith("p"))) {
+  if (segments.length === 1) return resolveTrack(segments[0]);
+  if (segments.some((s) => s.startsWith("p")))
     return resolveDrumPadContainer(path);
-  }
 
-  // Regular chain path - build incrementally with auto-creation
   return resolveContainerWithAutoCreate(segments, path);
 }
 
@@ -493,10 +480,18 @@ function resolveDrumPadContainer(path) {
     }
 
     // Get chain index from remaining segments (defaults to 0)
-    const chainIndex =
-      resolved.remainingSegments?.length > 0
-        ? parseInt(resolved.remainingSegments[0], 10)
-        : 0;
+    // Chain index segment uses 'c' prefix: pC1/c2 means chain 2 of drum pad C1
+    let chainIndex = 0;
+
+    if (resolved.remainingSegments?.length > 0) {
+      const chainSegment = resolved.remainingSegments[0];
+
+      if (chainSegment.startsWith("c")) {
+        chainIndex = parseInt(chainSegment.slice(1), 10);
+      } else {
+        chainIndex = parseInt(chainSegment, 10);
+      }
+    }
 
     if (isNaN(chainIndex) || chainIndex < 0) {
       return null;
@@ -533,21 +528,18 @@ function resolveDrumPadContainer(path) {
 
 /**
  * Resolve a path to a container (track or chain) for device insertion.
- * Path semantics:
- * - Odd segment count (1, 3, 5...): ends with container, append to it
- * - Even segment count (2, 4, 6...): ends with position, insert at that index
- *
- * Drum pad paths have special semantics - the segment after pNOTE is an
- * optional chain index, not a device position:
- * - "0/0/pC1" → drum pad C1, chain 0 (implicit), append
- * - "0/0/pC1/2" → drum pad C1, chain 2, append
- * - "0/0/pC1/2/0" → drum pad C1, chain 2, position 0
+ * With explicit prefixes, insertion semantics are simple:
+ * - Path ending with 'd' prefix → insert at that position
+ * - Path ending with container (t, r, m, c, e, p) → append
  *
  * Examples:
- * - "0" → track 0, append
- * - "0/3" → track 0, position 3
- * - "0/0/0" → chain 0 of device 0 on track 0, append
- * - "0/0/0/1" → chain 0 of device 0 on track 0, position 1
+ * - "t0" → track 0, append
+ * - "t0/d3" → track 0, position 3
+ * - "t0/d0/c0" → chain 0 of device 0 on track 0, append
+ * - "t0/d0/c0/d1" → chain 0 of device 0 on track 0, position 1
+ * - "t0/d0/pC1" → drum pad C1 chain 0, append
+ * - "t0/d0/pC1/c2" → drum pad C1 chain 2, append
+ * - "t0/d0/pC1/c2/d0" → drum pad C1 chain 2, position 0
  *
  * @param {string} path - Device insertion path
  * @returns {InsertionPathResolution} Container and optional position
@@ -563,27 +555,12 @@ export function resolveInsertionPath(path) {
     throw new Error(`Invalid path: ${path}`);
   }
 
-  // Check for drum pad segment - different path semantics apply
-  const drumPadIndex = segments.findIndex((s) => s.startsWith("p"));
-  let hasPosition;
-
-  if (drumPadIndex !== -1) {
-    // Drum pad paths: after pNOTE, first segment is optional chain index
-    // 0 segments after pad: append to chain 0
-    // 1 segment after pad: that's chain index, append
-    // 2+ segments: subtract 1 for chain index, then apply odd/even rule
-    const segmentsAfterPad = segments.slice(drumPadIndex + 1);
-    const effectiveCount =
-      segmentsAfterPad.length <= 1 ? 0 : segmentsAfterPad.length - 1;
-
-    hasPosition = effectiveCount % 2 === 1;
-  } else {
-    // Regular paths: odd segments = append, even = position
-    hasPosition = segments.length % 2 === 0;
-  }
+  // Simple prefix-based logic: path ending with 'd' = position, otherwise = append
+  const lastSegment = segments[segments.length - 1];
+  const hasPosition = lastSegment.startsWith("d");
 
   if (hasPosition) {
-    const position = parseInt(segments[segments.length - 1], 10);
+    const position = parseInt(lastSegment.slice(1), 10);
 
     if (isNaN(position) || position < 0) {
       throw new Error(`Invalid device position in path: ${path}`);

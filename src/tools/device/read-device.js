@@ -200,7 +200,9 @@ function readDrumPadByPath(
  */
 function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
-  const chainIndex = parseInt(remainingSegments[0], 10);
+  // Parse chain index from prefixed segment (e.g., "c0" -> 0)
+  const chainSegment = remainingSegments[0];
+  const chainIndex = parseInt(chainSegment.slice(1), 10);
 
   if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
     throw new Error(`Invalid chain index in path: ${fullPath}`);
@@ -214,7 +216,9 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   }
 
   // Navigate to device within chain
-  const deviceIndex = parseInt(remainingSegments[1], 10);
+  // Parse device index from prefixed segment (e.g., "d0" -> 0)
+  const deviceSegment = remainingSegments[1];
+  const deviceIndex = parseInt(deviceSegment.slice(1), 10);
   const devices = chain.getChildren("devices");
 
   if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
@@ -239,7 +243,7 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
  */
 function readDrumPadChain(chain, path, options) {
   const devices = chain.getChildren("devices").map((device, index) => {
-    const devicePath = `${path}/${index}`;
+    const devicePath = `${path}/d${index}`;
     const deviceInfo = readDeviceShared(device, {
       ...options,
       parentPath: devicePath,
@@ -288,11 +292,11 @@ function buildDrumPadInfo(pad, path, options) {
     const chains = pad.getChildren("chains");
 
     drumPadInfo.chains = chains.map((chain, chainIndex) => {
-      const chainPath = `${path}/${chainIndex}`;
+      const chainPath = `${path}/c${chainIndex}`;
       const devices = chain
         .getChildren("devices")
         .map((device, deviceIndex) => {
-          const devicePath = `${chainPath}/${deviceIndex}`;
+          const devicePath = `${chainPath}/d${deviceIndex}`;
           const deviceInfo = readDeviceShared(device, {
             ...options,
             parentPath: devicePath,

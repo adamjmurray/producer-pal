@@ -19,7 +19,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error when both deviceId and path are provided", () => {
-    expect(() => readDevice({ deviceId: "device-123", path: "1/0" })).toThrow(
+    expect(() => readDevice({ deviceId: "device-123", path: "t1/d0" })).toThrow(
       "Provide either deviceId or path, not both",
     );
   });
@@ -47,11 +47,11 @@ describe("readDevice with path parameter", () => {
       }
     });
 
-    const result = readDevice({ path: "1/0" });
+    const result = readDevice({ path: "t1/d0" });
 
     expect(result).toStrictEqual({
       id: "device-456",
-      path: "1/0",
+      path: "t1/d0",
       type: "instrument: Operator",
     });
   });
@@ -61,7 +61,7 @@ describe("readDevice with path parameter", () => {
       return "0";
     });
 
-    expect(() => readDevice({ path: "1/0" })).toThrow(
+    expect(() => readDevice({ path: "t1/d0" })).toThrow(
       "Device not found at path: live_set tracks 1 devices 0",
     );
   });
@@ -95,11 +95,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/0" });
+    const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-789",
-      path: "1/0/0",
+      path: "t1/d0/c0",
       type: "Chain",
       name: "Chain 1",
       devices: [],
@@ -135,11 +135,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/0" });
+    const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-with-color",
-      path: "1/0/0",
+      path: "t1/d0/c0",
       type: "Chain",
       name: "Colored Chain",
       color: "#FF5500",
@@ -174,11 +174,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/0" });
+    const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-123",
-      path: "1/0/0",
+      path: "t1/d0/c0",
       type: "Chain",
       name: "Test Chain",
       color: "#00FF00",
@@ -213,7 +213,7 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/0" });
+    const result = readDevice({ path: "t1/d0/c0" });
 
     // Regular chains (type: "Chain") don't have chokeGroup - only DrumChain type does
     expect(result.type).toBe("Chain");
@@ -225,8 +225,8 @@ describe("readDevice with path parameter", () => {
       return "0";
     });
 
-    expect(() => readDevice({ path: "1/0/0" })).toThrow(
-      "Chain not found at path: 1/0/0",
+    expect(() => readDevice({ path: "t1/d0/c0" })).toThrow(
+      "Chain not found at path: t1/d0/c0",
     );
   });
 
@@ -259,11 +259,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/r0" });
+    const result = readDevice({ path: "t1/d0/e0" });
 
     expect(result).toStrictEqual({
       id: "return-chain-101",
-      path: "1/0/r0",
+      path: "t1/d0/e0",
       type: "Chain",
       name: "Return A",
       color: "#0088FF",
@@ -300,11 +300,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "1/0/0" });
+    const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-muted",
-      path: "1/0/0",
+      path: "t1/d0/c0",
       type: "Chain",
       name: "Muted Chain",
       state: "muted",
@@ -319,7 +319,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error for track-only path", () => {
-    expect(() => readDevice({ path: "1" })).toThrow(
+    expect(() => readDevice({ path: "t1" })).toThrow(
       "Path must include at least a device index",
     );
   });
@@ -347,11 +347,11 @@ describe("readDevice with path parameter", () => {
       }
     });
 
-    const result = readDevice({ path: "r0/0" });
+    const result = readDevice({ path: "r0/d0" });
 
     expect(result).toStrictEqual({
       id: "return-device-123",
-      path: "r0/0",
+      path: "r0/d0",
       type: "audio-effect: Reverb",
     });
   });
@@ -379,11 +379,11 @@ describe("readDevice with path parameter", () => {
       }
     });
 
-    const result = readDevice({ path: "m/0" });
+    const result = readDevice({ path: "m/d0" });
 
     expect(result).toStrictEqual({
       id: "master-device-123",
-      path: "m/0",
+      path: "m/d0",
       type: "audio-effect: Limiter",
     });
   });
@@ -393,7 +393,7 @@ describe("readDevice with path parameter", () => {
       return "0"; // non-existent
     });
 
-    expect(() => readDevice({ path: "1/0/pC3" })).toThrow(
+    expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
       "Device not found at path: live_set tracks 1 devices 0",
     );
   });
@@ -496,11 +496,11 @@ describe("readDevice with path parameter", () => {
         padProperties: { "pad-36": { note: 36, name: "Kick" } },
       });
 
-      const result = readDevice({ path: "1/0/pC1", include: [] });
+      const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
       expect(result).toStrictEqual({
         id: "pad-36",
-        path: "1/0/pC1",
+        path: "t1/d0/pC1",
         name: "Kick",
         note: 36,
         pitch: "C1",
@@ -513,7 +513,7 @@ describe("readDevice with path parameter", () => {
         padProperties: { "pad-36": { note: 36, name: "Kick", mute: 1 } },
       });
 
-      const result = readDevice({ path: "1/0/pC1", include: [] });
+      const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
       expect(result.state).toBe("muted");
     });
@@ -524,7 +524,7 @@ describe("readDevice with path parameter", () => {
         padProperties: { "pad-36": { note: 36, name: "Kick", solo: 1 } },
       });
 
-      const result = readDevice({ path: "1/0/pC1", include: [] });
+      const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
       expect(result.state).toBe("soloed");
     });
@@ -545,12 +545,12 @@ describe("readDevice with path parameter", () => {
         },
       });
 
-      const result = readDevice({ path: "1/0/pC1", include: ["chains"] });
+      const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
 
       expect(result.chains).toHaveLength(1);
       expect(result.chains[0]).toStrictEqual({
         id: "chain-1",
-        path: "1/0/pC1/0",
+        path: "t1/d0/pC1/c0",
         type: "DrumChain",
         name: "Layer 1",
         color: "#FF0000",
@@ -571,11 +571,11 @@ describe("readDevice with path parameter", () => {
         },
       });
 
-      const result = readDevice({ path: "1/0/pC1/0" });
+      const result = readDevice({ path: "t1/d0/pC1/c0" });
 
       expect(result).toStrictEqual({
         id: "chain-1",
-        path: "1/0/pC1/0",
+        path: "t1/d0/pC1/c0",
         type: "DrumChain",
         name: "Layer 1",
         color: "#00FF00",
@@ -590,7 +590,7 @@ describe("readDevice with path parameter", () => {
         padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
       });
 
-      expect(() => readDevice({ path: "1/0/pC3" })).toThrow(
+      expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
         "Drum pad C3 not found",
       );
     });
@@ -601,8 +601,8 @@ describe("readDevice with path parameter", () => {
         padProperties: { "pad-36": { note: 36, name: "Kick", chainIds: [] } },
       });
 
-      expect(() => readDevice({ path: "1/0/pC1/5" })).toThrow(
-        "Invalid chain index in path: 1/0/pC1/5",
+      expect(() => readDevice({ path: "t1/d0/pC1/c5" })).toThrow(
+        "Invalid chain index in path: t1/d0/pC1/c5",
       );
     });
 
@@ -624,7 +624,7 @@ describe("readDevice with path parameter", () => {
         },
       });
 
-      const result = readDevice({ path: "1/0/pC1/0/0" });
+      const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
 
       expect(result.id).toBe("device-1");
       expect(result.type).toBe("instrument: Simpler");
@@ -639,8 +639,8 @@ describe("readDevice with path parameter", () => {
         chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
       });
 
-      expect(() => readDevice({ path: "1/0/pC1/0/5" })).toThrow(
-        "Invalid device index in path: 1/0/pC1/0/5",
+      expect(() => readDevice({ path: "t1/d0/pC1/c0/d5" })).toThrow(
+        "Invalid device index in path: t1/d0/pC1/c0/d5",
       );
     });
   });

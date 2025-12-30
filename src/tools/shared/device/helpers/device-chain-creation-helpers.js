@@ -7,7 +7,7 @@ const MAX_AUTO_CREATE_CHAINS = 16;
 
 /**
  * Resolve container with auto-creation of missing chains
- * @param {string[]} segments - Path segments
+ * @param {string[]} segments - Path segments with explicit prefixes (t, r, m, d, c, e)
  * @param {string} path - Original path for error messages
  * @returns {object} LiveAPI object (Track or Chain)
  */
@@ -20,15 +20,18 @@ export function resolveContainerWithAutoCreate(segments, path) {
     throw new Error(`Track in path "${path}" does not exist`);
   }
 
-  // Process remaining segments (alternating device/chain)
+  // Process remaining segments using explicit prefixes
   for (let i = 1; i < segments.length; i++) {
     const segment = segments[i];
-    const isDeviceSegment = i % 2 === 1;
 
-    if (isDeviceSegment) {
-      current = navigateToDevice(currentPath, segment, path);
-      currentPath += ` devices ${segment}`;
-    } else {
+    if (segment.startsWith("d")) {
+      // Device segment
+      const deviceIndex = segment.slice(1);
+
+      current = navigateToDevice(currentPath, deviceIndex, path);
+      currentPath += ` devices ${deviceIndex}`;
+    } else if (segment.startsWith("c") || segment.startsWith("e")) {
+      // Chain segment (c for regular, e for return chain)
       current = navigateToChain(current, currentPath, segment, path);
       currentPath = current.path;
     }
@@ -39,7 +42,7 @@ export function resolveContainerWithAutoCreate(segments, path) {
 
 /**
  * Get Live API path for track segment
- * @param {string} segment - Track segment ("0", "r0", "m")
+ * @param {string} segment - Track segment ("t0", "r0", "m")
  * @returns {string} Live API path
  */
 function resolveTrackPath(segment) {
@@ -51,7 +54,11 @@ function resolveTrackPath(segment) {
     return `live_set return_tracks ${segment.slice(1)}`;
   }
 
-  return `live_set tracks ${segment}`;
+  if (segment.startsWith("t")) {
+    return `live_set tracks ${segment.slice(1)}`;
+  }
+
+  throw new Error(`Invalid track segment: ${segment}`);
 }
 
 /**
@@ -76,13 +83,13 @@ function navigateToDevice(currentPath, segment, fullPath) {
  * Navigate to a chain, auto-creating if necessary
  * @param {object} parentDevice - Parent device LiveAPI object
  * @param {string} currentPath - Current Live API path
- * @param {string} segment - Chain segment (numeric or "rN" for return chain)
+ * @param {string} segment - Chain segment ("cN" for chain, "eN" for return chain)
  * @param {string} fullPath - Full path for error messages
  * @returns {object} LiveAPI chain object
  */
 function navigateToChain(parentDevice, currentPath, segment, fullPath) {
-  // Return chain - no auto-creation
-  if (segment.startsWith("r")) {
+  // Return chain (e prefix) - no auto-creation
+  if (segment.startsWith("e")) {
     const returnIndex = parseInt(segment.slice(1), 10);
     const chainPath = `${currentPath} return_chains ${returnIndex}`;
     const chain = new LiveAPI(chainPath);
@@ -94,8 +101,8 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
     return chain;
   }
 
-  // Regular chain - may need auto-creation
-  const chainIndex = parseInt(segment, 10);
+  // Regular chain (c prefix) - may need auto-creation
+  const chainIndex = parseInt(segment.slice(1), 10);
   const chains = parentDevice.getChildren("chains");
 
   if (chainIndex >= chains.length) {

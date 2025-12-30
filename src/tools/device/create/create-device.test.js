@@ -474,7 +474,7 @@ describe("createDevice", () => {
         liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
 
         const result = createDevice({
-          path: "0",
+          path: "t0",
           deviceName: "Compressor",
         });
 
@@ -493,7 +493,7 @@ describe("createDevice", () => {
         liveApiPath.mockReturnValue("live_set tracks 0 devices 1");
 
         const result = createDevice({
-          path: "0/1",
+          path: "t0/d1",
           deviceName: "EQ Eight",
         });
 
@@ -513,7 +513,7 @@ describe("createDevice", () => {
         liveApiPath.mockReturnValue("live_set return_tracks 0 devices 0");
 
         const result = createDevice({
-          path: "r0/0",
+          path: "r0/d0",
           deviceName: "Reverb",
         });
 
@@ -552,7 +552,7 @@ describe("createDevice", () => {
     describe("chain paths", () => {
       it("should create device in chain via path (append)", () => {
         const result = createDevice({
-          path: "0/0/0",
+          path: "t0/d0/c0",
           deviceName: "Compressor",
         });
 
@@ -572,7 +572,7 @@ describe("createDevice", () => {
         );
 
         const result = createDevice({
-          path: "0/0/0/0",
+          path: "t0/d0/c0/d0",
           deviceName: "EQ Eight",
         });
 
@@ -596,7 +596,7 @@ describe("createDevice", () => {
         );
 
         const result = createDevice({
-          path: "0/0/r0/0",
+          path: "t0/d0/e0/d0",
           deviceName: "Delay",
         });
 
@@ -623,7 +623,7 @@ describe("createDevice", () => {
           .mockImplementation(() => {});
 
         createDevice({
-          path: "0",
+          path: "t0",
           deviceName: "Compressor",
           deviceIndex: 5,
         });
@@ -641,10 +641,10 @@ describe("createDevice", () => {
 
         expect(() =>
           createDevice({
-            path: "99/0/0",
+            path: "t99/d0/c0",
             deviceName: "Compressor",
           }),
-        ).toThrow('Track in path "99/0/0" does not exist');
+        ).toThrow('Track in path "t99/d0/c0" does not exist');
       });
 
       it("should throw error when insert_device fails", () => {
@@ -655,10 +655,10 @@ describe("createDevice", () => {
 
         expect(() =>
           createDevice({
-            path: "0/0/0",
+            path: "t0/d0/c0",
             deviceName: "Compressor",
           }),
-        ).toThrow('could not insert "Compressor" at end in path "0/0/0"');
+        ).toThrow('could not insert "Compressor" at end in path "t0/d0/c0"');
       });
     });
   });

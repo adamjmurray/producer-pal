@@ -94,7 +94,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["1"], // Second chain for C1
+        ["c1"], // Second chain for C1
       );
 
       expect(result.target).not.toBeNull();
@@ -113,7 +113,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["0", "0"],
+        ["c0", "d0"],
       );
 
       expect(result.target).not.toBeNull();
@@ -163,7 +163,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["-1"], // Negative index
+        ["c-1"], // Negative index
       );
 
       expect(result.target).toBeNull();
@@ -179,7 +179,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["0", "0"], // Device index 0 doesn't exist
+        ["c0", "d0"], // Device index 0 doesn't exist
       );
 
       expect(result.target).toBeNull();
@@ -277,12 +277,16 @@ describe("device-path-helpers", () => {
         return [];
       });
 
-      // Path: p*/0/0/pC1 means:
+      // Path: p*/c0/d0/pC1 means:
       // - p* = catch-all chain (in_note=-1)
-      // - 0 = first chain with that in_note
-      // - 0 = device 0 in that chain (nested drum rack)
+      // - c0 = first chain with that in_note
+      // - d0 = device 0 in that chain (nested drum rack)
       // - pC1 = C1 chain in nested drum rack
-      const result = resolveDrumPadFromPath(outerPath, "*", ["0", "0", "pC1"]);
+      const result = resolveDrumPadFromPath(outerPath, "*", [
+        "c0",
+        "d0",
+        "pC1",
+      ]);
 
       expect(result.target).not.toBeNull();
       expect(result.target.id).toBe(nestedChainId);
@@ -355,19 +359,19 @@ describe("device-path-helpers", () => {
         const { rackChainId, finalDeviceId } = setupInstrumentRackInDrumPad();
         const path = "live_set tracks 1 devices 0";
         // Valid navigation through nested rack
-        const r1 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0"]);
+        const r1 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c0"]);
 
         expect(r1.target.id).toBe(rackChainId);
         expect(r1.targetType).toBe("chain");
-        const r2 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "0"]);
+        const r2 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c0", "d0"]);
 
         expect(r2.target.id).toBe(finalDeviceId);
         expect(r2.targetType).toBe("device");
         // Out of bounds
-        const r3 = resolveDrumPadFromPath(path, "C1", ["0", "0", "5"]);
+        const r3 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c5"]);
 
         expect(r3.target).toBeNull();
-        const r4 = resolveDrumPadFromPath(path, "C1", ["0", "0", "0", "5"]);
+        const r4 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c0", "d5"]);
 
         expect(r4.target).toBeNull();
       });
@@ -382,7 +386,7 @@ describe("device-path-helpers", () => {
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["1"], // Chain index 1 doesn't exist (only 0)
+        ["c1"], // Chain index 1 doesn't exist (only 0)
       );
 
       expect(result.target).toBeNull();
@@ -449,7 +453,7 @@ describe("device-path-helpers", () => {
         }
       });
 
-      const result = resolveInsertionPath("0/0/pC1"); // MIDI 36
+      const result = resolveInsertionPath("t0/d0/pC1"); // MIDI 36
 
       expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
       expect(liveApiSet).toHaveBeenCalledWith("in_note", 36);
@@ -512,12 +516,8 @@ describe("device-path-helpers", () => {
       });
 
       // Request chain index 2 when only one chain exists (index 0)
-      // Path "0/0/pC1/2" - 4 segments is even, so last is device position
-      // We need "0/0/pC1/2" to mean chain index 2 (odd segments = append)
-      // Wait - let me check the path semantics again
-      // For drum pads: pC1/2 means chain index 2, not device position
-      // So "0/0/pC1/2" should resolve to chain index 2 with no device position
-      const result = resolveInsertionPath("0/0/pC1/2");
+      // Path "t0/d0/pC1/c2" means chain index 2 with no device position
+      const result = resolveInsertionPath("t0/d0/pC1/c2");
 
       expect(liveApiCall).toHaveBeenCalledTimes(2); // Create 2 chains
       expect(result.container).not.toBeNull();
@@ -542,7 +542,7 @@ describe("device-path-helpers", () => {
       });
 
       // Request chain index 20 would require creating 21 chains
-      expect(() => resolveInsertionPath("0/0/pC1/20")).toThrow(
+      expect(() => resolveInsertionPath("t0/d0/pC1/c20")).toThrow(
         "Cannot auto-create 21 drum pad chains (max: 16)",
       );
     });
@@ -584,7 +584,7 @@ describe("device-path-helpers", () => {
         return [];
       });
 
-      const result = resolveInsertionPath("0/0/pC1");
+      const result = resolveInsertionPath("t0/d0/pC1");
 
       expect(liveApiCall).not.toHaveBeenCalled();
       expect(result.container).not.toBeNull();
@@ -610,7 +610,7 @@ describe("device-path-helpers", () => {
       });
 
       // Invalid note name (not a valid MIDI note)
-      const result = resolveInsertionPath("0/0/pInvalidNote");
+      const result = resolveInsertionPath("t0/d0/pInvalidNote");
 
       expect(result.container).toBeNull();
       expect(liveApiCall).not.toHaveBeenCalled();
@@ -635,7 +635,7 @@ describe("device-path-helpers", () => {
       });
 
       // Negative chain index is invalid
-      const result = resolveInsertionPath("0/0/pC1/-1");
+      const result = resolveInsertionPath("t0/d0/pC1/c-1");
 
       expect(result.container).toBeNull();
       expect(liveApiCall).not.toHaveBeenCalled();

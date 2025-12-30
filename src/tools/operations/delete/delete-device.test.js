@@ -298,7 +298,7 @@ describe("deleteObject device deletion", () => {
         }
       });
 
-      const result = deleteObject({ path: "0/1", type: "device" });
+      const result = deleteObject({ path: "t0/d1", type: "device" });
 
       expect(result).toStrictEqual({
         id: deviceId,
@@ -330,7 +330,7 @@ describe("deleteObject device deletion", () => {
         if (this._path?.includes("devices")) return "Device";
       });
 
-      const result = deleteObject({ path: "0/0, 1/1", type: "device" });
+      const result = deleteObject({ path: "t0/d0, t1/d1", type: "device" });
 
       expect(result).toStrictEqual([
         { id: "dev_0_0", type: "device", deleted: true },
@@ -357,7 +357,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({
         ids: "dev_by_id",
-        path: "0/0",
+        path: "t0/d0",
         type: "device",
       });
 
@@ -388,7 +388,7 @@ describe("deleteObject device deletion", () => {
         }
       });
 
-      const result = deleteObject({ path: "1/0/2/1", type: "device" });
+      const result = deleteObject({ path: "t1/d0/c2/d1", type: "device" });
 
       expect(result).toStrictEqual({
         id: "nested_dev",
@@ -420,7 +420,7 @@ describe("deleteObject device deletion", () => {
         if (this._path === "live_set tracks 0 devices 0") return "Device";
       });
 
-      const result = deleteObject({ path: "0/0, 99/99", type: "device" });
+      const result = deleteObject({ path: "t0/d0, t99/d99", type: "device" });
 
       expect(result).toStrictEqual({
         id: "valid_dev",
@@ -432,7 +432,7 @@ describe("deleteObject device deletion", () => {
     it("should return empty array when all paths are invalid", () => {
       liveApiType.mockReturnValue(undefined);
 
-      const result = deleteObject({ path: "99/99", type: "device" });
+      const result = deleteObject({ path: "t99/d99", type: "device" });
 
       expect(result).toStrictEqual([]);
     });
@@ -503,7 +503,7 @@ describe("deleteObject device deletion", () => {
         return [];
       });
 
-      const result = deleteObject({ path: "1/0/pC1/0/0", type: "device" });
+      const result = deleteObject({ path: "t1/d0/pC1/c0/d0", type: "device" });
 
       expect(result).toStrictEqual({
         id: deviceId,
@@ -626,7 +626,7 @@ describe("deleteObject device deletion", () => {
         return [0];
       });
 
-      const result = deleteObject({ path: "0/0/pC1", type: "drum-pad" });
+      const result = deleteObject({ path: "t0/d0/pC1", type: "drum-pad" });
 
       expect(result).toStrictEqual({
         id: chainId,
@@ -695,7 +695,7 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({
         ids: "pad_by_id",
-        path: "0/0/pC1",
+        path: "t0/d0/pC1",
         type: "drum-pad",
       });
 
@@ -756,7 +756,7 @@ describe("deleteObject device deletion", () => {
       });
 
       const result = deleteObject({
-        path: "0/0/pC1, 99/99/pC1",
+        path: "t0/d0/pC1, t99/d99/pC1",
         type: "drum-pad",
       });
 
@@ -771,12 +771,12 @@ describe("deleteObject device deletion", () => {
       const consoleSpy = vi.spyOn(console, "error");
 
       // Path 0/0 resolves to device, not drum-pad - this results in no valid IDs
-      expect(() => deleteObject({ path: "0/0", type: "drum-pad" })).toThrow(
+      expect(() => deleteObject({ path: "t0/d0", type: "drum-pad" })).toThrow(
         "delete failed: ids or path is required",
       );
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'delete: path "0/0" resolves to device, not drum-pad',
+        'delete: path "t0/d0" resolves to device, not drum-pad',
       );
     });
   });
