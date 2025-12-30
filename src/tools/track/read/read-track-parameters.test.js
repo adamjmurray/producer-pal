@@ -243,14 +243,10 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drumrack1";
-          case "live_set tracks 0 devices 0 drum_pads 60":
-            return "pad1";
-          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
-            return "kick_device";
           case "live_set tracks 0 devices 0 chains 0":
-            return "main_chain";
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "kick_device";
           default:
             return this._id;
         }
@@ -268,27 +264,12 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1"),
-          chains: children("main_chain"),
+          chains: children("chain1"), // Chains directly on drum rack with in_note
           return_chains: [],
         },
-        main_chain: {
-          name: "Main Chain",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
-        pad1: {
-          note: 60, // C3
-          name: "Test Kick",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          chains: children("chain1"),
-        },
         chain1: {
-          name: "Kick Chain",
+          in_note: 60, // C3 - chains use in_note
+          name: "Test Kick",
           mute: 0,
           muted_via_solo: 0,
           solo: 0,
@@ -335,14 +316,10 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drumrack1";
-          case "live_set tracks 0 devices 0 drum_pads 60":
-            return "pad1";
-          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
-            return "kick_device2";
           case "live_set tracks 0 devices 0 chains 0":
-            return "main_chain";
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "kick_device2";
           default:
             return this._id;
         }
@@ -360,27 +337,12 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1"),
-          chains: children("main_chain"),
+          chains: children("chain1"), // Chains directly on drum rack with in_note
           return_chains: [],
         },
-        main_chain: {
-          name: "Main Chain",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
-        pad1: {
-          note: 60, // C3
-          name: "Test Kick",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          chains: children("chain1"),
-        },
         chain1: {
-          name: "Kick Chain",
+          in_note: 60, // C3 - chains use in_note
+          name: "Test Kick",
           mute: 0,
           muted_via_solo: 0,
           solo: 0,

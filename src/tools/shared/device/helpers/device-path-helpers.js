@@ -72,10 +72,16 @@ export function buildReturnChainPath(devicePath, returnChainIndex) {
 /**
  * Build drum pad path from parent device path + note name
  * @param {string} devicePath - Parent device path e.g., "1/0"
- * @param {string} noteName - Note name e.g., "C1", "F#2"
- * @returns {string} Drum pad path e.g., "1/0/pC1"
+ * @param {string} noteName - Note name e.g., "C1", "F#2", or asterisk for catch-all
+ * @param {number} [chainIndex=0] - Index within chains having the same note
+ * @returns {string} Drum pad path e.g., "1/0/pC1" or "1/0/pC1/1" for layered chains
  */
-export function buildDrumPadPath(devicePath, noteName) {
+export function buildDrumPadPath(devicePath, noteName, chainIndex = 0) {
+  // Only include chain index when > 0 (layered chains) for cleaner paths
+  if (chainIndex > 0) {
+    return `${devicePath}/p${noteName}/${chainIndex}`;
+  }
+
   return `${devicePath}/p${noteName}`;
 }
 
@@ -233,17 +239,35 @@ export function resolvePathToLiveApi(path) {
 
 /**
  * @typedef {object} DrumPadResolution
- * @property {object|null} target - The resolved LiveAPI object (DrumPad, Chain, or Device)
- * @property {'drum-pad'|'chain'|'device'} targetType - Type of the resolved target
+ * @property {object|null} target - The resolved LiveAPI object (Chain or Device)
+ * @property {'chain'|'device'} targetType - Type of the resolved target
  */
 
 /**
+ * Find chains with a specific in_note value
+ * @param {Array} chains - All chains from the drum rack
+ * @param {number} targetInNote - Target in_note value (-1 for catch-all)
+ * @returns {Array} Chains matching the in_note
+ */
+function findChainsByInNote(chains, targetInNote) {
+  return chains.filter(
+    (chain) => chain.getProperty("in_note") === targetInNote,
+  );
+}
+
+/**
  * Resolve a drum pad path to its target LiveAPI object.
- * Handles navigation into chains and devices within the drum pad.
+ * Uses chains with in_note property instead of drum_pads collection.
+ * Supports nested drum racks by recursing when encountering another pNOTE segment.
+ *
+ * Path formats:
+ * - Note-specific: pNOTE/chainIndex (e.g., pC1/0) - chainIndex is position within note group
+ * - Catch-all: p{asterisk}/chainIndex - for chains with in_note=-1
+ * - Nested: pNOTE/chainIndex/deviceIndex/pNOTE2/... - recurses into nested drum racks
  *
  * @param {string} liveApiPath - Live API path to the drum rack device
- * @param {string} drumPadNote - Note name (e.g., "C1", "F#2")
- * @param {string[]} remainingSegments - Path segments after the drum pad (chain/device indices)
+ * @param {string} drumPadNote - Note name (e.g., "C1", "F#2") or asterisk for catch-all
+ * @param {string[]} remainingSegments - Path segments after the drum pad (chain index, device indices)
  * @returns {DrumPadResolution} The resolved target and its type
  */
 export function resolveDrumPadFromPath(
@@ -254,50 +278,88 @@ export function resolveDrumPadFromPath(
   const device = new LiveAPI(liveApiPath);
 
   if (!device.exists()) {
-    return { target: null, targetType: "drum-pad" };
-  }
-
-  // Find the drum pad matching the note
-  const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = noteNameToMidi(drumPadNote);
-
-  if (targetMidiNote == null) {
-    return { target: null, targetType: "drum-pad" };
-  }
-
-  const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
-
-  if (!pad) {
-    return { target: null, targetType: "drum-pad" };
-  }
-
-  // No remaining segments - return the drum pad itself
-  if (!remainingSegments || remainingSegments.length === 0) {
-    return { target: pad, targetType: "drum-pad" };
-  }
-
-  // Navigate into chains
-  const chains = pad.getChildren("chains");
-  const chainIndex = parseInt(remainingSegments[0], 10);
-
-  if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
     return { target: null, targetType: "chain" };
   }
 
-  const chain = chains[chainIndex];
+  const allChains = device.getChildren("chains");
 
-  // Only chain index provided - return the chain
-  if (remainingSegments.length === 1) {
+  // Determine target in_note: "*" means catch-all (-1), otherwise convert note name
+  const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
+
+  if (targetInNote == null) {
+    return { target: null, targetType: "chain" };
+  }
+
+  // Chain index is first remaining segment (defaults to 0)
+  let chainIndexWithinNote = 0;
+  let nextSegmentStart = 0;
+
+  if (remainingSegments && remainingSegments.length > 0) {
+    chainIndexWithinNote = parseInt(remainingSegments[0], 10);
+
+    if (isNaN(chainIndexWithinNote)) {
+      return { target: null, targetType: "chain" };
+    }
+
+    nextSegmentStart = 1;
+  }
+
+  // Find chains with matching in_note
+  const matchingChains = findChainsByInNote(allChains, targetInNote);
+
+  if (
+    chainIndexWithinNote < 0 ||
+    chainIndexWithinNote >= matchingChains.length
+  ) {
+    return { target: null, targetType: "chain" };
+  }
+
+  const chain = matchingChains[chainIndexWithinNote];
+
+  // Check if we need to navigate further
+  const nextSegments = remainingSegments
+    ? remainingSegments.slice(nextSegmentStart)
+    : [];
+
+  if (nextSegments.length === 0) {
     return { target: chain, targetType: "chain" };
   }
 
   // Navigate to device within chain
-  const deviceIndex = parseInt(remainingSegments[1], 10);
+  const deviceIndex = parseInt(nextSegments[0], 10);
   const devices = chain.getChildren("devices");
 
   if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
     return { target: null, targetType: "device" };
   }
 
-  return { target: devices[deviceIndex], targetType: "device" };
+  const targetDevice = devices[deviceIndex];
+
+  // Check if there are more segments after the device index
+  const afterDeviceSegments = nextSegments.slice(1);
+
+  if (afterDeviceSegments.length === 0) {
+    return { target: targetDevice, targetType: "device" };
+  }
+
+  // Check if next segment is a nested drum pad (starts with 'p')
+  const nextSegment = afterDeviceSegments[0];
+
+  if (nextSegment.startsWith("p")) {
+    // Recurse into nested drum rack
+    const nestedNote = nextSegment.slice(1);
+
+    if (!nestedNote) {
+      return { target: null, targetType: "chain" };
+    }
+
+    return resolveDrumPadFromPath(
+      targetDevice.path,
+      nestedNote,
+      afterDeviceSegments.slice(1),
+    );
+  }
+
+  // Not a drum pad segment - this shouldn't happen with valid paths
+  return { target: null, targetType: "device" };
 }

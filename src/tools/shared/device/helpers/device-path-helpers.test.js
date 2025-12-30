@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiGet, liveApiId, liveApiType } from "#src/test/mock-live-api.js";
+import {
+  liveApiGet,
+  liveApiId,
+  liveApiPath,
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 import {
   extractDevicePath,
@@ -159,6 +164,14 @@ describe("device-path-helpers", () => {
 
     it("builds drum pad path for return track device", () => {
       expect(buildDrumPadPath("r0/0", "C3")).toBe("r0/0/pC3");
+    });
+
+    it("builds drum pad path with explicit chain index", () => {
+      expect(buildDrumPadPath("1/0", "C1", 1)).toBe("1/0/pC1/1");
+    });
+
+    it("builds catch-all drum pad path", () => {
+      expect(buildDrumPadPath("1/0", "*")).toBe("1/0/p*");
     });
   });
 
@@ -357,12 +370,12 @@ describe("device-path-helpers", () => {
       vi.clearAllMocks();
     });
 
-    // Helper to set up drum pad mocks
-    const setupDrumPadMocks = (config = {}) => {
+    // Helper to set up chain-based drum rack mocks
+    // Uses chains with in_note property instead of drum_pads
+    const setupChainMocks = (config = {}) => {
       const {
         deviceId = "drum-rack-1",
-        padIds = ["pad-36"],
-        padProperties = {},
+        chainIds = ["chain-36"],
         chainProperties = {},
       } = config;
 
@@ -375,7 +388,6 @@ describe("device-path-helpers", () => {
       liveApiType.mockImplementation(function () {
         const id = this._id ?? this.id;
 
-        if (id?.startsWith("pad-")) return "DrumPad";
         if (id?.startsWith("chain-"))
           return chainProperties[id]?.type ?? "DrumChain";
         if (id?.startsWith("device-")) return "Device";
@@ -386,21 +398,16 @@ describe("device-path-helpers", () => {
       liveApiGet.mockImplementation(function (prop) {
         const id = this._id ?? this.id;
 
+        // Device returns chains
         if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
+          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
         }
 
-        if (id?.startsWith("pad-")) {
-          const padProps = padProperties[id] ?? {};
-
-          if (prop === "note") return [padProps.note ?? 36];
-          if (prop === "chains")
-            return (padProps.chainIds ?? []).flatMap((c) => ["id", c]);
-        }
-
+        // Chain properties
         if (id?.startsWith("chain-")) {
           const chainProps = chainProperties[id] ?? {};
 
+          if (prop === "in_note") return [chainProps.inNote ?? 36];
           if (prop === "devices")
             return (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]);
         }
@@ -409,10 +416,10 @@ describe("device-path-helpers", () => {
       });
     };
 
-    it("returns drum pad when no remaining segments", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36 } },
+    it("returns chain when no remaining segments (defaults to chain 0)", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } }, // C1 = MIDI 36
       });
 
       const result = resolveDrumPadFromPath(
@@ -422,33 +429,36 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("pad-36");
-      expect(result.targetType).toBe("drum-pad");
+      expect(result.target.id).toBe("chain-36");
+      expect(result.targetType).toBe("chain");
     });
 
-    it("returns chain when one remaining segment", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
-        chainProperties: { "chain-1": {} },
+    it("returns chain when chain index specified", () => {
+      setupChainMocks({
+        chainIds: ["chain-36a", "chain-36b"],
+        chainProperties: {
+          "chain-36a": { inNote: 36 },
+          "chain-36b": { inNote: 36 }, // Second chain for same note (layered)
+        },
       });
 
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["0"],
+        ["1"], // Second chain for C1
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-1");
+      expect(result.target.id).toBe("chain-36b");
       expect(result.targetType).toBe("chain");
     });
 
-    it("returns device when two remaining segments", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
-        chainProperties: { "chain-1": { deviceIds: ["device-1"] } },
+    it("returns device when chain and device index specified", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: {
+          "chain-36": { inNote: 36, deviceIds: ["device-1"] },
+        },
       });
 
       const result = resolveDrumPadFromPath(
@@ -462,10 +472,27 @@ describe("device-path-helpers", () => {
       expect(result.targetType).toBe("device");
     });
 
-    it("returns null for non-existent drum pad note", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36 } }, // C1
+    it("returns catch-all chain when note is asterisk", () => {
+      setupChainMocks({
+        chainIds: ["chain-all"],
+        chainProperties: { "chain-all": { inNote: -1 } }, // Catch-all
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "*",
+        [],
+      );
+
+      expect(result.target).not.toBeNull();
+      expect(result.target.id).toBe("chain-all");
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns null for non-existent note", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } }, // C1
       });
 
       const result = resolveDrumPadFromPath(
@@ -475,19 +502,19 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).toBeNull();
-      expect(result.targetType).toBe("drum-pad");
+      expect(result.targetType).toBe("chain");
     });
 
     it("returns null for invalid chain index", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, chainIds: [] } }, // No chains
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } },
       });
 
       const result = resolveDrumPadFromPath(
         "live_set tracks 1 devices 0",
         "C1",
-        ["0"], // Chain index 0 doesn't exist
+        ["1"], // Chain index 1 doesn't exist (only 0)
       );
 
       expect(result.target).toBeNull();
@@ -495,10 +522,9 @@ describe("device-path-helpers", () => {
     });
 
     it("returns null for invalid device index", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
-        chainProperties: { "chain-1": { deviceIds: [] } }, // No devices
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, deviceIds: [] } },
       });
 
       const result = resolveDrumPadFromPath(
@@ -521,7 +547,97 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).toBeNull();
-      expect(result.targetType).toBe("drum-pad");
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns null for invalid note name", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "InvalidNote",
+        [],
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("resolves nested drum pad path", () => {
+      // Setup: outer drum rack -> catch-all chain -> nested drum rack -> C1 chain
+      const outerPath = "live_set tracks 1 devices 0";
+      const nestedPath = "live_set tracks 1 devices 0 chains 0 devices 0";
+      const catchAllChainId = "catch-all-chain";
+      const nestedRackId = "nested-rack";
+      const nestedChainId = "nested-chain-36";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === outerPath) return "outer-rack";
+        if (this._path === nestedPath) return nestedRackId;
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiPath.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id === nestedRackId) return nestedPath;
+
+        return this._path;
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id === catchAllChainId) return "DrumChain";
+        if (id === nestedChainId) return "DrumChain";
+        if (id === nestedRackId || this._path === nestedPath)
+          return "DrumGroupDevice";
+
+        return "RackDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        // Outer drum rack returns catch-all chain
+        if (this._path === outerPath) {
+          if (prop === "chains") return ["id", catchAllChainId];
+        }
+
+        // Catch-all chain properties
+        if (id === catchAllChainId) {
+          if (prop === "in_note") return [-1]; // Catch-all
+          if (prop === "devices") return ["id", nestedRackId];
+        }
+
+        // Nested drum rack returns C1 chain
+        if (id === nestedRackId || this._path === nestedPath) {
+          if (prop === "chains") return ["id", nestedChainId];
+        }
+
+        // Nested C1 chain properties
+        if (id === nestedChainId) {
+          if (prop === "in_note") return [36]; // C1
+        }
+
+        return [];
+      });
+
+      // Path: p*/0/0/pC1 means:
+      // - p* = catch-all chain (in_note=-1)
+      // - 0 = first chain with that in_note
+      // - 0 = device 0 in that chain (nested drum rack)
+      // - pC1 = C1 chain in nested drum rack
+      const result = resolveDrumPadFromPath(outerPath, "*", ["0", "0", "pC1"]);
+
+      expect(result.target).not.toBeNull();
+      expect(result.target.id).toBe(nestedChainId);
+      expect(result.targetType).toBe("chain");
     });
   });
 });

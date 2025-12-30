@@ -183,8 +183,7 @@ describe("readTrack", () => {
         ],
       });
     });
-    // TODO: Drum pad chains should have type: "DrumChain" (with mappedPitch) in production,
-    // but the mock defaults to "Chain". See read-device-path.test.js for accurate DrumChain tests.
+    // Tests drum pad solo/mute states with chains using in_note property
     it("handles drum rack drum chains with hasSoloedChain property", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
@@ -192,13 +191,9 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36":
-            return "kick_pad";
-          case "live_set tracks 0 devices 0 drum_pads 38":
-            return "snare_pad";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "kick_chain";
-          case "live_set tracks 0 devices 0 drum_pads 38 chains 0":
+          case "live_set tracks 0 devices 0 chains 1":
             return "snare_chain";
           default:
             return this._id;
@@ -217,24 +212,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("kick_pad", "snare_pad"),
+          chains: children("kick_chain", "snare_chain"), // Chains with in_note
           return_chains: [],
         },
-        kick_pad: {
-          name: "Kick",
-          note: 36,
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
-        snare_pad: {
-          name: "Snare",
-          note: 38,
-          mute: 0,
-          solo: 1,
-          chains: children("snare_chain"),
-        },
         kick_chain: {
+          in_note: 36, // C1 - chains use in_note
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -243,6 +225,7 @@ describe("readTrack", () => {
           devices: children("kick_device"),
         },
         snare_chain: {
+          in_note: 38, // D1
           name: "Snare",
           color: 65280,
           mute: 0,
@@ -288,7 +271,6 @@ describe("readTrack", () => {
         name: "My Drums",
         drumPads: [
           {
-            id: "kick_pad",
             name: "Kick",
             note: 36,
             pitch: "C1",
@@ -309,7 +291,6 @@ describe("readTrack", () => {
             ],
           },
           {
-            id: "snare_pad",
             name: "Snare",
             note: 38,
             pitch: "D1",

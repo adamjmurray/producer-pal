@@ -57,6 +57,18 @@ describe("readTrack", () => {
     });
 
     it("prefers direct drum rack over nested drum rack", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "directDrumRack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "drumchain1";
+          default:
+            return this._id;
+        }
+      });
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Direct and Nested Drum Racks",
@@ -65,31 +77,39 @@ describe("readTrack", () => {
         directDrumRack: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1"),
+          chains: children("drumchain1"),
         },
-        pad1: {
-          note: 60,
+        drumchain1: {
+          in_note: 60, // C3
           name: "Direct Kick",
-          chains: children("chain1"),
+          devices: children("kickdevice"),
+        },
+        kickdevice: {
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
         },
         instrumentRack: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
-          chains: children("chain1"),
+          chains: children("rackchain1"),
         },
-        chain1: {
+        rackchain1: {
           devices: children("nestedDrumRack"),
         },
         nestedDrumRack: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
-          drum_pads: children("pad2"),
+          chains: children("drumchain2"),
         },
-        pad2: {
-          note: 61,
+        drumchain2: {
+          in_note: 61, // Db3
           name: "Nested Snare",
-          chains: children("chain2"),
+          devices: children("snaredevice"),
+        },
+        snaredevice: {
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
         },
       });
       const result = readTrack({ trackIndex: 0 });
@@ -104,13 +124,9 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36":
-            return "kick_pad";
-          case "live_set tracks 0 devices 0 drum_pads 37":
-            return "empty_pad";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "kick_chain";
-          case "live_set tracks 0 devices 0 drum_pads 37 chains 0":
+          case "live_set tracks 0 devices 0 chains 1":
             return "empty_chain";
           default:
             return this._id;
@@ -129,24 +145,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("kick_pad", "empty_pad"),
+          chains: children("kick_chain", "empty_chain"),
           return_chains: [],
         },
-        kick_pad: {
-          name: "Kick",
-          note: 36,
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
-        empty_pad: {
-          name: "Empty",
-          note: 37,
-          mute: 0,
-          solo: 0,
-          chains: children("empty_chain"),
-        },
         kick_chain: {
+          in_note: 36, // C1
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -155,6 +158,7 @@ describe("readTrack", () => {
           devices: children("kick_device"),
         },
         empty_chain: {
+          in_note: 37, // Db1
           name: "Empty",
           color: 65280,
           mute: 0,
@@ -219,17 +223,11 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36":
-            return "kick_pad";
-          case "live_set tracks 0 devices 0 drum_pads 37":
-            return "empty_pad";
-          case "live_set tracks 0 devices 0 drum_pads 38":
-            return "snare_pad";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "kick_chain";
-          case "live_set tracks 0 devices 0 drum_pads 37 chains 0":
+          case "live_set tracks 0 devices 0 chains 1":
             return "empty_chain";
-          case "live_set tracks 0 devices 0 drum_pads 38 chains 0":
+          case "live_set tracks 0 devices 0 chains 2":
             return "snare_chain";
           default:
             return this._id;
@@ -248,31 +246,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("kick_pad", "empty_pad", "snare_pad"),
+          chains: children("kick_chain", "empty_chain", "snare_chain"),
           return_chains: [],
         },
-        kick_pad: {
-          name: "Kick",
-          note: 36, // C1
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
-        empty_pad: {
-          name: "Empty",
-          note: 37, // Db1
-          mute: 0,
-          solo: 0,
-          chains: children("empty_chain"),
-        },
-        snare_pad: {
-          name: "Snare",
-          note: 38, // D1
-          mute: 0,
-          solo: 0,
-          chains: children("snare_chain"),
-        },
         kick_chain: {
+          in_note: 36, // C1
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -281,6 +259,7 @@ describe("readTrack", () => {
           devices: children("kick_device"),
         },
         empty_chain: {
+          in_note: 37, // Db1
           name: "Empty",
           color: 65280,
           mute: 0,
@@ -289,6 +268,7 @@ describe("readTrack", () => {
           devices: [], // No devices = no instruments
         },
         snare_chain: {
+          in_note: 38, // D1
           name: "Snare",
           color: 255,
           mute: 0,
@@ -333,15 +313,13 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36":
-            return "kick_pad";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "kick_chain";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0":
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
             return "nested_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0 chains 0":
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
             return "nested_chain";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0 chains 0 devices 0":
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0":
             return "nested_instrument";
           default:
             return this._id;
@@ -360,17 +338,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("kick_pad"),
+          chains: children("kick_chain"),
           return_chains: [],
         },
-        kick_pad: {
-          name: "Kick",
-          note: 36,
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
         kick_chain: {
+          in_note: 36, // C1
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -397,7 +369,7 @@ describe("readTrack", () => {
           solo: 0,
           devices: children("nested_instrument"),
         },
-        nested_instruments: {
+        nested_instrument: {
           name: "Simpler",
           class_name: "Simpler",
           class_display_name: "Simpler",

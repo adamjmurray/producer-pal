@@ -184,23 +184,11 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("drum pad paths", () => {
-    // Helper functions for drum pad mock property lookups
-    const getPadProperty = (id, prop, padProperties) => {
-      const padProps = padProperties[id] ?? {};
-      const propMap = {
-        note: [padProps.note ?? 36],
-        name: [padProps.name ?? "Kick"],
-        mute: [padProps.mute ?? 0],
-        solo: [padProps.solo ?? 0],
-        chains: (padProps.chainIds ?? []).flatMap((c) => ["id", c]),
-      };
-
-      return propMap[prop] ?? [];
-    };
-
+    // Helper functions for drum chain mock property lookups
     const getChainProperty = (id, prop, chainProperties) => {
       const chainProps = chainProperties[id] ?? {};
       const propMap = {
+        in_note: [chainProps.inNote ?? 36],
         name: [chainProps.name ?? "Chain"],
         mute: [chainProps.mute ?? 0],
         solo: [chainProps.solo ?? 0],
@@ -221,8 +209,7 @@ describe("updateDevice with path parameter", () => {
     const setupDrumPadMocks = (config) => {
       const {
         deviceId = "drum-rack-1",
-        padIds = ["pad-36"],
-        padProperties = {},
+        chainIds = ["chain-36"],
         chainProperties = {},
         deviceProperties = {},
       } = config;
@@ -236,7 +223,6 @@ describe("updateDevice with path parameter", () => {
       liveApiType.mockImplementation(function () {
         const id = this._id ?? this.id;
 
-        if (id?.startsWith("pad-")) return "DrumPad";
         if (id?.startsWith("chain-"))
           return chainProperties[id]?.type ?? "DrumChain";
         if (id?.startsWith("device-")) return "Device";
@@ -249,11 +235,9 @@ describe("updateDevice with path parameter", () => {
 
         if (id === deviceId || this._path?.includes("devices 0")) {
           if (prop === "can_have_drum_pads") return [1];
-          if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
+          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
         }
 
-        if (id?.startsWith("pad-"))
-          return getPadProperty(id, prop, padProperties);
         if (id?.startsWith("chain-"))
           return getChainProperty(id, prop, chainProperties);
         if (id?.startsWith("device-"))
@@ -263,42 +247,42 @@ describe("updateDevice with path parameter", () => {
       });
     };
 
-    it("should update drum pad mute state by path", () => {
+    it("should update drum chain mute state by path (pNOTE)", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick" } },
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "1/0/pC1", mute: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "pad-36" }),
+        expect.objectContaining({ id: "chain-36" }),
         "mute",
         1,
       );
-      expect(result).toStrictEqual({ id: "pad-36" });
+      expect(result).toStrictEqual({ id: "chain-36" });
     });
 
-    it("should update drum pad solo state by path", () => {
+    it("should update drum chain solo state by path (pNOTE)", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick" } },
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "1/0/pC1", solo: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "pad-36" }),
+        expect.objectContaining({ id: "chain-36" }),
         "solo",
         1,
       );
-      expect(result).toStrictEqual({ id: "pad-36" });
+      expect(result).toStrictEqual({ id: "chain-36" });
     });
 
-    it("should return empty array for non-existent drum pad by path", () => {
+    it("should return empty array for non-existent drum chain by path", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } }, // C1, not C3
       });
 
       const result = updateDevice({ path: "1/0/pC3", mute: true });
@@ -306,50 +290,42 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual([]);
     });
 
-    it("should update drum chain by path", () => {
+    it("should update drum chain by path (pNOTE/index)", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: { "chain-1": { name: "Layer 1" } },
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "1/0/pC1/0", name: "New Layer" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-1" }),
+        expect.objectContaining({ id: "chain-36" }),
         "name",
         "New Layer",
       );
-      expect(result).toStrictEqual({ id: "chain-1" });
+      expect(result).toStrictEqual({ id: "chain-36" });
     });
 
-    it("should update drum chain mute state by path", () => {
+    it("should update drum chain mute state by path (pNOTE/index)", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: { "chain-1": { name: "Layer 1" } },
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "1/0/pC1/0", mute: true });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-1" }),
+        expect.objectContaining({ id: "chain-36" }),
         "mute",
         1,
       );
-      expect(result).toStrictEqual({ id: "chain-1" });
+      expect(result).toStrictEqual({ id: "chain-36" });
     });
 
-    it("should return empty array for invalid chain index in drum pad", () => {
+    it("should return empty array for invalid chain index", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: [] },
-        },
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "1/0/pC1/5", name: "Test" });
@@ -357,14 +333,11 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual([]);
     });
 
-    it("should update device inside drum pad chain by path", () => {
+    it("should update device inside drum chain by path", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
+        chainIds: ["chain-36"],
         chainProperties: {
-          "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+          "chain-36": { inNote: 36, name: "Kick", deviceIds: ["device-1"] },
         },
         deviceProperties: { "device-1": { name: "Simpler" } },
       });
@@ -379,13 +352,12 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "device-1" });
     });
 
-    it("should return empty array for invalid device index in drum pad chain", () => {
+    it("should return empty array for invalid device index in drum chain", () => {
       setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
+        chainIds: ["chain-36"],
+        chainProperties: {
+          "chain-36": { inNote: 36, name: "Kick", deviceIds: [] },
         },
-        chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
       });
 
       const result = updateDevice({ path: "1/0/pC1/0/5", name: "Test" });
