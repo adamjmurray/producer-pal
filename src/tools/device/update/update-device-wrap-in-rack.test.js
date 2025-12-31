@@ -229,13 +229,188 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should throw error when wrapping an instrument (Phase 2)", () => {
-    expect(() =>
-      updateDevice({
+  describe("instrument wrapping", () => {
+    beforeEach(() => {
+      // Extended mocks for instrument wrapping with temp track
+      let chainCount = 0;
+
+      liveApiType.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "Track";
+        if (this._path === "live_set tracks 1") return "Track"; // temp track
+        if (this._path === "live_set tracks 0 devices 3")
+          return "InstrumentDevice";
+        if (this._path === "live_set tracks 0 devices 4")
+          return "InstrumentDevice";
+        if (this._path === "live_set tracks 1 devices 0")
+          return "InstrumentDevice";
+        if (this._path === "id device-3") return "InstrumentDevice";
+        if (this._path === "id device-4") return "InstrumentDevice";
+        if (this._path === "id temp-track") return "Track";
+        if (this._path === "id new-rack") return "RackDevice";
+        if (this._path === "device-3") return "InstrumentDevice";
+        if (this._path === "device-4") return "InstrumentDevice";
+        if (this._path?.includes("rack")) return "RackDevice";
+        if (this._path?.includes("chains")) return "Chain";
+
+        return "Device";
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track-0";
+        if (this._path === "live_set tracks 1") return "temp-track";
+        if (this._path === "live_set tracks 0 devices 3") return "device-3";
+        if (this._path === "live_set tracks 0 devices 4") return "device-4";
+        if (this._path === "live_set tracks 1 devices 0") return "device-3";
+        if (this._path === "id device-3") return "device-3";
+        if (this._path === "id device-4") return "device-4";
+        if (this._path === "id temp-track") return "temp-track";
+        if (this._path === "id new-rack") return "new-rack";
+        if (this._path === "device-3") return "device-3";
+        if (this._path === "device-4") return "device-4";
+        if (this._path?.includes("chains 0")) return "chain-0";
+        if (this._path?.includes("chains 1")) return "chain-1";
+
+        return "0";
+      });
+
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id device-3") return "live_set tracks 0 devices 3";
+        if (this._path === "id device-4") return "live_set tracks 0 devices 4";
+        if (this._path === "id temp-track") return "live_set tracks 1";
+        if (this._path === "id new-rack") return "live_set tracks 0 devices 3";
+        if (this._path === "device-3") return "live_set tracks 0 devices 3";
+        if (this._path === "device-4") return "live_set tracks 0 devices 4";
+
+        return this._path;
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "type") {
+          if (
+            this._path === "live_set tracks 0 devices 3" ||
+            this._path === "id device-3" ||
+            this._path === "device-3" ||
+            this._path === "live_set tracks 0 devices 4" ||
+            this._path === "id device-4" ||
+            this._path === "device-4" ||
+            this._path === "live_set tracks 1 devices 0"
+          ) {
+            return [1]; // Instrument
+          }
+        }
+
+        // Return dynamic chain count for rack
+        if (prop === "chains" && this._path?.includes("new-rack")) {
+          const chains = [];
+
+          for (let i = 0; i < chainCount; i++) {
+            chains.push("id", `chain-${i}`);
+          }
+
+          return chains;
+        }
+
+        return [0];
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "create_midi_track") {
+          return ["id", "temp-track"];
+        }
+
+        if (method === "insert_device") {
+          return ["id", "new-rack"];
+        }
+
+        if (method === "insert_chain") {
+          chainCount++;
+
+          return ["id", `chain-${chainCount - 1}`];
+        }
+
+        if (method === "delete_track") {
+          return null;
+        }
+
+        return null;
+      });
+    });
+
+    it("should wrap a single instrument in an Instrument Rack", () => {
+      const result = updateDevice({
         path: "t0/d3",
         wrapInRack: true,
-      }),
-    ).toThrow("instruments not supported yet");
+      });
+
+      // Should create temp track
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "create_midi_track",
+        -1,
+      );
+
+      // Should move instrument to temp track
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id device-3",
+        "id temp-track",
+        0,
+      );
+
+      // Should create Instrument Rack at device position
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set tracks 0" }),
+        "insert_device",
+        "Instrument Rack",
+        3,
+      );
+
+      // Should delete temp track
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "delete_track",
+        expect.any(Number),
+      );
+
+      expect(result).toStrictEqual({
+        id: "new-rack",
+        type: "instrument-rack",
+        deviceCount: 1,
+      });
+    });
+
+    it("should wrap multiple instruments into rack with multiple chains", () => {
+      const result = updateDevice({
+        path: "t0/d3,t0/d4",
+        wrapInRack: true,
+      });
+
+      // Should create Instrument Rack
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set tracks 0" }),
+        "insert_device",
+        "Instrument Rack",
+        3,
+      );
+
+      expect(result).toStrictEqual({
+        id: "new-rack",
+        type: "instrument-rack",
+        deviceCount: 2,
+      });
+    });
+
+    it("should set rack name for instrument rack", () => {
+      const result = updateDevice({
+        path: "t0/d3",
+        wrapInRack: true,
+        name: "My Instrument Rack",
+      });
+
+      expect(result.id).toBe("new-rack");
+      expect(result.type).toBe("instrument-rack");
+    });
   });
 
   it("should throw error when mixing MIDI and Audio effects", () => {

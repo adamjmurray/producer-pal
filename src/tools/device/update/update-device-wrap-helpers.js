@@ -7,10 +7,12 @@ import {
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 
+const RACK_TYPE_INSTRUMENT = "instrument-rack";
+
 const RACK_TYPE_TO_DEVICE_NAME = {
   "audio-effect-rack": "Audio Effect Rack",
   "midi-effect-rack": "MIDI Effect Rack",
-  "instrument-rack": "Instrument Rack",
+  [RACK_TYPE_INSTRUMENT]: "Instrument Rack",
 };
 
 /**
@@ -32,6 +34,11 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   }
 
   const rackType = determineRackType(devices);
+
+  // Instruments require temp-track workaround
+  if (rackType === RACK_TYPE_INSTRUMENT) {
+    return wrapInstrumentsInRack(devices, toPath, name);
+  }
 
   const { container, position } = toPath
     ? resolveInsertionPath(toPath)
@@ -122,7 +129,7 @@ function determineRackType(devices) {
   }
 
   if (types.has(LIVE_API_DEVICE_TYPE_INSTRUMENT)) {
-    throw new Error("wrapInRack: instruments not supported yet (Phase 2)");
+    return RACK_TYPE_INSTRUMENT;
   }
 
   if (
@@ -152,4 +159,93 @@ function getDeviceInsertionPoint(device) {
   const position = match ? parseInt(match[1], 10) : 0;
 
   return { container, position };
+}
+
+/**
+ * Wrap instrument(s) in an Instrument Rack using temp-track workaround.
+ * Live doesn't allow creating Instrument Rack on track with existing instrument.
+ * @param {object[]} devices - Instrument device(s) to wrap
+ * @param {string} [toPath] - Target path for the new rack
+ * @param {string} [name] - Name for the new rack
+ * @returns {object} Info about the created rack
+ */
+function wrapInstrumentsInRack(devices, toPath, name) {
+  const liveSet = new LiveAPI("live_set");
+  const firstDevice = devices[0];
+
+  // 1. Get source track from first instrument
+  const { container: sourceContainer, position: devicePosition } =
+    getDeviceInsertionPoint(firstDevice);
+
+  // 2. Create temp MIDI track (appended)
+  const tempTrackId = liveSet.call("create_midi_track", -1);
+  const tempTrack = LiveAPI.from(tempTrackId);
+  const tempTrackIndex = tempTrack.trackIndex;
+
+  try {
+    // 3. Move ALL instruments to temp track
+    const tempTrackIdForMove = formatId(tempTrack.id);
+
+    for (const device of devices) {
+      liveSet.call("move_device", formatId(device.id), tempTrackIdForMove, 0);
+    }
+
+    // 4. Create Instrument Rack on source track (or toPath)
+    const { container, position } = toPath
+      ? resolveInsertionPath(toPath)
+      : { container: sourceContainer, position: devicePosition };
+
+    const rackId = container.call(
+      "insert_device",
+      "Instrument Rack",
+      position ?? 0,
+    );
+    const rack = LiveAPI.from(rackId);
+
+    if (name) {
+      rack.set("name", name);
+    }
+
+    // 5. Move each instrument from temp into rack's chains
+    // Instruments are now at devices 0, 1, 2... on temp track (in reverse order)
+    // We need to process them in reverse to maintain original order
+    for (let i = devices.length - 1; i >= 0; i--) {
+      // Create chain
+      rack.call("insert_chain");
+      const chainIndex = rack.getChildren("chains").length - 1;
+      const chain = new LiveAPI(`${rack.path} chains ${chainIndex}`);
+
+      // Get device at position 0 (always 0 since we move from front)
+      const tempDevice = new LiveAPI(`${tempTrack.path} devices 0`);
+
+      liveSet.call(
+        "move_device",
+        formatId(tempDevice.id),
+        formatId(chain.id),
+        0,
+      );
+    }
+
+    // 6. Delete temp track
+    liveSet.call("delete_track", tempTrackIndex);
+
+    return {
+      id: rack.id,
+      type: RACK_TYPE_INSTRUMENT,
+      deviceCount: devices.length,
+    };
+  } catch (error) {
+    // Cleanup: delete temp track if it still exists
+    try {
+      liveSet.call("delete_track", tempTrackIndex);
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    throw error;
+  }
+}
+
+function formatId(id) {
+  return id.startsWith("id ") ? id : `id ${id}`;
 }
