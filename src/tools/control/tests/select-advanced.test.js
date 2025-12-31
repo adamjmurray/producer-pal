@@ -330,6 +330,120 @@ describe("view", () => {
       expect(result).toStrictEqual(expectViewState());
     });
 
+    it("handles instrument selection using currently selected track when no category/index provided", () => {
+      // Set up selected track to return a valid track
+      global.LiveAPI.mockImplementation(function (path) {
+        this.path = path;
+        this._path = path;
+        this.exists = vi.fn().mockReturnValue(true);
+        this.set = liveApiSet;
+        this.call = liveApiCall;
+        this.get = liveApiGet;
+        this.getProperty = vi.fn();
+        this.setProperty = vi.fn((property, value) =>
+          this.set(property, value),
+        );
+
+        if (path === "live_app view") {
+          Object.assign(this, mockAppView);
+          this.getProperty.mockReturnValue(1);
+          this.call.mockReturnValue(0);
+        } else if (path === "live_set view") {
+          Object.assign(this, mockSongView);
+        } else if (path === "live_set view selected_track") {
+          this.exists.mockReturnValue(true);
+          this.category = "regular";
+          this.trackIndex = 3;
+          this.returnTrackIndex = null;
+          this.id = "id selected_track_123";
+          this.path = "live_set tracks 3";
+        } else if (path === "live_set view selected_scene") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set view detail_clip") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set view highlighted_clip_slot") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set tracks 3 view") {
+          // Track view for select_instrument
+          this.exists.mockReturnValue(true);
+        }
+
+        Object.defineProperty(this, "id", {
+          get: function () {
+            return liveApiId.apply(this);
+          },
+        });
+
+        return this;
+      });
+
+      // Call select with only instrument: true - no category/trackIndex
+      const result = select({ instrument: true });
+
+      // Should have called select_instrument on the currently selected track's view
+      expect(global.LiveAPI).toHaveBeenCalledWith(
+        "live_set view selected_track",
+      );
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 3 view");
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
+      expect(result).toBeDefined();
+    });
+
+    it("handles instrument selection on return track using currently selected track", () => {
+      global.LiveAPI.mockImplementation(function (path) {
+        this.path = path;
+        this._path = path;
+        this.exists = vi.fn().mockReturnValue(true);
+        this.set = liveApiSet;
+        this.call = liveApiCall;
+        this.get = liveApiGet;
+        this.getProperty = vi.fn();
+        this.setProperty = vi.fn((property, value) =>
+          this.set(property, value),
+        );
+
+        if (path === "live_app view") {
+          Object.assign(this, mockAppView);
+          this.getProperty.mockReturnValue(1);
+          this.call.mockReturnValue(0);
+        } else if (path === "live_set view") {
+          Object.assign(this, mockSongView);
+        } else if (path === "live_set view selected_track") {
+          this.exists.mockReturnValue(true);
+          this.category = "return";
+          this.trackIndex = null;
+          this.returnTrackIndex = 1;
+          this.id = "id return_track_123";
+          this.path = "live_set return_tracks 1";
+        } else if (path === "live_set view selected_scene") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set view detail_clip") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set view highlighted_clip_slot") {
+          this.exists.mockReturnValue(false);
+        } else if (path === "live_set return_tracks 1 view") {
+          this.exists.mockReturnValue(true);
+        }
+
+        Object.defineProperty(this, "id", {
+          get: function () {
+            return liveApiId.apply(this);
+          },
+        });
+
+        return this;
+      });
+
+      // Call select with only instrument: true on a return track
+      const result = select({ instrument: true });
+
+      expect(global.LiveAPI).toHaveBeenCalledWith(
+        "live_set return_tracks 1 view",
+      );
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
+      expect(result).toBeDefined();
+    });
+
     it("validates matching track ID and index are accepted", () => {
       liveApiId.mockReturnValue("id track_id_123");
       liveApiType.mockReturnValue("Track");
@@ -507,6 +621,104 @@ describe("view", () => {
           sceneIndex: null,
         },
         selectedClipSlot: null,
+      });
+    });
+
+    it("reads view state with device detail view visible", () => {
+      // Setup
+      readAppView.getProperty.mockReturnValue(1); // Session view
+      readAppView.call.mockImplementation((method, view) => {
+        // Return 0 for DETAIL_CLIP, 1 for DETAIL_DEVICE_CHAIN
+        if (
+          method === "is_view_visible" &&
+          view === LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN
+        ) {
+          return 1;
+        }
+
+        return 0;
+      });
+      readSelectedTrack.exists.mockReturnValue(false);
+      readSelectedScene.exists.mockReturnValue(false);
+      readDetailClip.exists.mockReturnValue(false);
+      readHighlightedSlot.exists.mockReturnValue(false);
+
+      // Execute
+      const result = select({});
+
+      // Verify
+      expect(result).toStrictEqual({
+        view: "session",
+        detailView: "device",
+        showBrowser: false,
+        selectedTrack: {
+          trackId: null,
+          category: null,
+        },
+        selectedClipId: null,
+        selectedDeviceId: null,
+        selectedScene: {
+          sceneId: null,
+          sceneIndex: null,
+        },
+        selectedClipSlot: null,
+      });
+    });
+
+    it("reads view state with return track selected showing returnTrackIndex", () => {
+      // Setup
+      readAppView.getProperty.mockReturnValue(1); // Session view
+      readAppView.call.mockReturnValue(0); // No detail views or browser visible
+      readSelectedTrack.exists.mockReturnValue(true);
+      readSelectedTrack.category = "return";
+      readSelectedTrack.returnTrackIndex = 2;
+      readSelectedTrack.trackIndex = null;
+      readSelectedTrack.id = "id return_456";
+      readSelectedTrack.path = "live_set return_tracks 2";
+      readSelectedScene.exists.mockReturnValue(false);
+      readDetailClip.exists.mockReturnValue(false);
+      readHighlightedSlot.exists.mockReturnValue(false);
+
+      // Mock LiveAPI to return return track view
+      global.LiveAPI.mockImplementation(function (path) {
+        if (path === "live_app view") {
+          return readAppView;
+        }
+
+        if (path === "live_set view selected_track") {
+          return readSelectedTrack;
+        }
+
+        if (path === "live_set view selected_scene") {
+          return readSelectedScene;
+        }
+
+        if (path === "live_set view detail_clip") {
+          return readDetailClip;
+        }
+
+        if (path === "live_set view highlighted_clip_slot") {
+          return readHighlightedSlot;
+        }
+
+        if (path === "live_set return_tracks 2 view") {
+          return {
+            exists: vi.fn().mockReturnValue(true),
+            get: vi.fn().mockReturnValue(["id", 789]),
+          };
+        }
+
+        return {};
+      });
+
+      // Execute
+      const result = select({});
+
+      // Verify return track with returnTrackIndex (not trackIndex)
+      expect(result.selectedTrack).toStrictEqual({
+        trackId: "id return_456",
+        category: "return",
+        returnTrackIndex: 2,
       });
     });
 
