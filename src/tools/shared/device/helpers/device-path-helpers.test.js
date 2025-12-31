@@ -451,6 +451,7 @@ describe("device-path-helpers", () => {
             return ids;
           }
 
+          if (prop === "can_have_chains") return [1]; // Is a rack
           if (prop === "can_have_drum_pads") return [0];
 
           return [];
@@ -479,6 +480,7 @@ describe("device-path-helpers", () => {
             return ids;
           }
 
+          if (prop === "can_have_chains") return [1]; // Is a rack
           if (prop === "can_have_drum_pads") return [0];
 
           return [];
@@ -495,6 +497,7 @@ describe("device-path-helpers", () => {
       it("throws for Drum Rack chain auto-creation", () => {
         liveApiGet.mockImplementation(function (prop) {
           if (prop === "chains") return []; // No chains
+          if (prop === "can_have_chains") return [1]; // Is a rack
           if (prop === "can_have_drum_pads") return [1]; // Is drum rack
 
           return [];
@@ -520,6 +523,7 @@ describe("device-path-helpers", () => {
       it("does not auto-create when chain already exists", () => {
         liveApiGet.mockImplementation(function (prop) {
           if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
+          if (prop === "can_have_chains") return [1]; // Is a rack
           if (prop === "can_have_drum_pads") return [0];
 
           return [];
@@ -532,6 +536,7 @@ describe("device-path-helpers", () => {
       it("throws when too many chains would be auto-created", () => {
         liveApiGet.mockImplementation(function (prop) {
           if (prop === "chains") return []; // No chains exist
+          if (prop === "can_have_chains") return [1]; // Is a rack
           if (prop === "can_have_drum_pads") return [0];
 
           return [];
@@ -540,6 +545,19 @@ describe("device-path-helpers", () => {
         // Chain index 20 would require creating 21 chains (0-20), exceeds limit of 16
         expect(() => resolveInsertionPath("t0/d0/c20")).toThrow(
           "Cannot auto-create 21 chains (max: 16)",
+        );
+      });
+
+      it("throws for device that cannot have chains", () => {
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") return []; // No chains
+          if (prop === "can_have_chains") return [0]; // Not a rack
+
+          return [];
+        });
+
+        expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
+          "does not support chains",
         );
       });
     });

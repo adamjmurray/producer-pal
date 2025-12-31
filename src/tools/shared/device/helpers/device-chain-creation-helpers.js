@@ -121,6 +121,11 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
  * @param {string} fullPath - Full path for error messages
  */
 function autoCreateChains(device, targetIndex, fullPath) {
+  // Check if device supports chains (prevents infinite loop on non-rack devices)
+  if (!device.getProperty("can_have_chains")) {
+    throw new Error(`Device at path "${fullPath}" does not support chains`);
+  }
+
   // Check if it's a Drum Rack
   if (device.getProperty("can_have_drum_pads") > 0) {
     throw new Error(
