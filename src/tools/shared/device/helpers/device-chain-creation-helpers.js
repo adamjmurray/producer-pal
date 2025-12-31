@@ -142,9 +142,16 @@ function autoCreateChains(device, targetIndex, fullPath) {
     );
   }
 
-  // Create chains until we have enough
-  while (targetIndex >= device.getChildren("chains").length) {
-    device.call("insert_chain");
+  // Create the exact number of chains needed (bounded loop, not while)
+  for (let i = 0; i < chainsToCreate; i++) {
+    const result = device.call("insert_chain");
+
+    // insert_chain returns ["id", chainId] on success, or 1 on failure
+    if (!Array.isArray(result) || result[0] !== "id") {
+      throw new Error(
+        `Failed to create chain ${i + 1}/${chainsToCreate} in path "${fullPath}"`,
+      );
+    }
   }
 }
 

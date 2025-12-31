@@ -457,7 +457,11 @@ describe("device-path-helpers", () => {
           return [];
         });
         liveApiCall.mockImplementation(function (method) {
-          if (method === "insert_chain") chainCount++;
+          if (method === "insert_chain") {
+            chainCount++;
+
+            return ["id", `chain-${chainCount - 1}`];
+          }
         });
 
         const result = resolveInsertionPath("t0/d0/c0");
@@ -486,7 +490,11 @@ describe("device-path-helpers", () => {
           return [];
         });
         liveApiCall.mockImplementation(function (method) {
-          if (method === "insert_chain") chainCount++;
+          if (method === "insert_chain") {
+            chainCount++;
+
+            return ["id", `chain-${chainCount - 1}`];
+          }
         });
 
         resolveInsertionPath("t0/d0/c2");
@@ -558,6 +566,25 @@ describe("device-path-helpers", () => {
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
           "does not support chains",
+        );
+      });
+
+      it("throws when insert_chain fails unexpectedly", () => {
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "chains") return []; // No chains
+          if (prop === "can_have_chains") return [1]; // Is a rack
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "insert_chain") {
+            return 1; // Failure return value
+          }
+        });
+
+        expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
+          "Failed to create chain 1/1",
         );
       });
     });
