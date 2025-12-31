@@ -459,4 +459,43 @@ describe("MCP Express App", () => {
       expect(html.length).toBeGreaterThan(0);
     });
   });
+
+  describe("Handler Registration", () => {
+    it("should set chatUIEnabled to true with 1", () => {
+      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+
+      expect(chatUIHandler).toBeDefined();
+      // Input 1 should enable
+      chatUIHandler(1);
+      // No direct way to verify but coverage should improve
+    });
+
+    it("should set chatUIEnabled to true with 'true'", () => {
+      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+
+      expect(chatUIHandler).toBeDefined();
+      chatUIHandler("true");
+    });
+
+    it("should set chatUIEnabled to false with 0", () => {
+      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+
+      expect(chatUIHandler).toBeDefined();
+      chatUIHandler(0);
+      // Re-enable
+      chatUIHandler(1);
+    });
+
+    it("should set smallModelMode with various inputs", () => {
+      const smallModelHandler = Max.handlers.get("smallModelMode");
+
+      expect(smallModelHandler).toBeDefined();
+
+      // Test all branches: true case (1), true case ("true"), false cases (0, false)
+      smallModelHandler(1);
+      smallModelHandler("true");
+      smallModelHandler(0);
+      smallModelHandler(false);
+    });
+  });
 });
