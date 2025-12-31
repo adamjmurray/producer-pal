@@ -5,7 +5,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "./mcp-response-utils.js";
+} from "#src/shared/mcp-response-utils.js";
 
 describe("mcp-response-utils", () => {
   describe("constants", () => {

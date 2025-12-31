@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  liveApiGet,
+  liveApiPath,
+  mockLiveApiGet,
+} from "#src/test/mock-live-api.js";
 import {
   parseArrangementLength,
+  getMinimalClipInfo,
   findRoutingOptionForDuplicateNames,
 } from "./duplicate-helpers.js";
 
@@ -43,6 +49,248 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
 }
 
 describe("duplicate-helpers", () => {
+  describe("getMinimalClipInfo", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
+      const clipId = "456";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks 2 arrangement_clips 0`;
+        }
+
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          start_time: 4.0,
+        },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 2 arrangement_clips 0`,
+        trackIndex: 2,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBe(2);
+      expect(result.arrangementStart).toBe("2|1");
+    });
+
+    it("omits trackIndex when specified in omitFields for arrangement clip", () => {
+      const clipId = "457";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks 2 arrangement_clips 0`;
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 2 arrangement_clips 0`,
+        trackIndex: 2,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip, ["trackIndex"]);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBeUndefined();
+      expect(result.arrangementStart).toBe("1|1");
+    });
+
+    it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
+      const clipId = "458";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks 2 arrangement_clips 0`;
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          start_time: 8.0,
+        },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 2 arrangement_clips 0`,
+        trackIndex: 2,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip, ["arrangementStart"]);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBe(2);
+      expect(result.arrangementStart).toBeUndefined();
+    });
+
+    it("returns id, trackIndex, and sceneIndex for session clip", () => {
+      const clipId = "789";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks 1 clip_slots 3 clip`;
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 0,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 1 clip_slots 3 clip`,
+        trackIndex: 1,
+        sceneIndex: 3,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBe(1);
+      expect(result.sceneIndex).toBe(3);
+    });
+
+    it("omits trackIndex when specified in omitFields for session clip", () => {
+      const clipId = "790";
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 0,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 1 clip_slots 3 clip`,
+        trackIndex: 1,
+        sceneIndex: 3,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip, ["trackIndex"]);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBeUndefined();
+      expect(result.sceneIndex).toBe(3);
+    });
+
+    it("omits sceneIndex when specified in omitFields for session clip", () => {
+      const clipId = "791";
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 0,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `live_set tracks 1 clip_slots 3 clip`,
+        trackIndex: 1,
+        sceneIndex: 3,
+        getProperty: liveApiGet,
+      };
+
+      const result = getMinimalClipInfo(mockClip, ["sceneIndex"]);
+
+      expect(result.id).toBe(clipId);
+      expect(result.trackIndex).toBe(1);
+      expect(result.sceneIndex).toBeUndefined();
+    });
+
+    it("throws error when trackIndex is null for arrangement clip", () => {
+      const clipId = "792";
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `invalid_path`,
+        trackIndex: null,
+        getProperty: liveApiGet,
+      };
+
+      expect(() => getMinimalClipInfo(mockClip)).toThrow(
+        "getMinimalClipInfo failed: could not determine trackIndex for clip",
+      );
+    });
+
+    it("throws error when trackIndex or sceneIndex is null for session clip", () => {
+      const clipId = "793";
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 0,
+        },
+      });
+
+      const mockClip = {
+        id: clipId,
+        path: `invalid_path`,
+        trackIndex: null,
+        sceneIndex: null,
+        getProperty: liveApiGet,
+      };
+
+      expect(() => getMinimalClipInfo(mockClip)).toThrow(
+        "getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip",
+      );
+    });
+  });
+
   describe("parseArrangementLength", () => {
     it("parses valid bar:beat duration to beats", () => {
       const result = parseArrangementLength("4:0", 4, 4);
