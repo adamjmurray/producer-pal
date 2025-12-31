@@ -270,6 +270,87 @@ describe("duplicate-track-scene-helpers", () => {
         1,
       );
     });
+
+    it("should not log arming when track is already armed", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet({
+        "live_set tracks 0": {
+          name: "Source Track",
+          arm: 1,
+          input_routing_type: { display_name: "No Input" },
+          available_input_routing_types: [],
+        },
+        "live_set tracks 1": {
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          available_output_routing_types: [
+            { display_name: "Source Track", identifier: "source_track_id" },
+          ],
+        },
+      });
+
+      duplicateTrack(0, null, false, false, true, 0);
+
+      // Should not log about arming since it was already armed
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Armed the source track"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should warn when track routing option is not found", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet({
+        "live_set tracks 0": {
+          name: "Source Track",
+          arm: 1,
+          input_routing_type: { display_name: "No Input" },
+          available_input_routing_types: [],
+        },
+        "live_set tracks 1": {
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          available_output_routing_types: [
+            { display_name: "Other Track", identifier: "other_track_id" },
+          ],
+        },
+      });
+
+      duplicateTrack(0, null, false, false, true, 0);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Could not find track "Source Track" in routing options',
+        ),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should delete session clips when withoutClips is true", () => {
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: [],
+          clip_slots: children("slot0"),
+          arrangement_clips: [],
+        },
+        "id slot0": { has_clip: 1 },
+      });
+
+      duplicateTrack(0, null, true);
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: expect.stringContaining("slot0") }),
+        "delete_clip",
+      );
+    });
   });
 
   describe("duplicateScene", () => {
