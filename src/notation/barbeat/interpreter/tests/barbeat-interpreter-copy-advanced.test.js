@@ -379,6 +379,22 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
       });
+
+      it("warns when source range has reversed order", () => {
+        interpretNotation("C3 1|1 @3=5-2");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid source range 5-2 (start > end)"),
+        );
+      });
+
+      it("warns when multi-bar source range has reversed order", () => {
+        interpretNotation("C3 1|1 @3-5=4-2");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "Invalid source range @3-5=4-2 (start > end)",
+          ),
+        );
+      });
     });
 
     describe("edge cases", () => {
