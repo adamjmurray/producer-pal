@@ -8,6 +8,7 @@ import { ModelSelector } from "./ModelSelector";
 describe("ModelSelector", () => {
   it("renders with correct selected model", () => {
     const setModel = vi.fn();
+
     render(
       <ModelSelector
         provider="gemini"
@@ -17,11 +18,13 @@ describe("ModelSelector", () => {
     );
 
     const select = screen.getByRole("combobox") as HTMLSelectElement;
+
     expect(select.value).toBe("gemini-2.5-flash");
   });
 
   it("displays all model options", () => {
     const setModel = vi.fn();
+
     render(
       <ModelSelector
         provider="gemini"
@@ -43,6 +46,7 @@ describe("ModelSelector", () => {
 
   it("has correct option values", () => {
     const setModel = vi.fn();
+
     render(
       <ModelSelector
         provider="gemini"
@@ -52,6 +56,7 @@ describe("ModelSelector", () => {
     );
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
+
     expect(options[0]!.value).toBe("gemini-2.5-flash");
     expect(options[1]!.value).toBe("gemini-3-pro-preview");
     expect(options[2]!.value).toBe("gemini-3-flash-preview");
@@ -61,6 +66,7 @@ describe("ModelSelector", () => {
 
   it("triggers setModel callback on change", () => {
     const setModel = vi.fn();
+
     render(
       <ModelSelector
         provider="gemini"
@@ -70,14 +76,15 @@ describe("ModelSelector", () => {
     );
 
     const select = screen.getByRole("combobox");
+
     fireEvent.change(select, { target: { value: "gemini-2.5-pro" } });
 
-    expect(setModel).toHaveBeenCalledOnce();
-    expect(setModel).toHaveBeenCalledWith("gemini-2.5-pro");
+    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
   });
 
   it("can select gemini-2.5-flash-lite", () => {
     const setModel = vi.fn();
+
     render(
       <ModelSelector
         provider="gemini"
@@ -87,6 +94,7 @@ describe("ModelSelector", () => {
     );
 
     const select = screen.getByRole("combobox");
+
     fireEvent.change(select, { target: { value: "gemini-2.5-flash-lite" } });
 
     expect(setModel).toHaveBeenCalledWith("gemini-2.5-flash-lite");
@@ -110,6 +118,7 @@ describe("ModelSelector", () => {
 
     it("calls setModel when OpenAI model changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="openai"
@@ -118,6 +127,7 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "gpt-5-mini-2025-08-07" } });
       expect(setModel).toHaveBeenCalledWith("gpt-5-mini-2025-08-07");
     });
@@ -142,6 +152,7 @@ describe("ModelSelector", () => {
 
     it("calls setModel when Mistral model changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="mistral"
@@ -150,6 +161,7 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "mistral-small-latest" } });
       expect(setModel).toHaveBeenCalledWith("mistral-small-latest");
     });
@@ -174,6 +186,7 @@ describe("ModelSelector", () => {
 
     it("calls setModel when OpenRouter model changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="openrouter"
@@ -182,6 +195,7 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, {
         target: { value: "mistralai/devstral-2512:free" },
       });
@@ -195,16 +209,19 @@ describe("ModelSelector", () => {
         <ModelSelector provider="custom" model="gpt-4" setModel={vi.fn()} />,
       );
       const input = screen.getByPlaceholderText(/e.g., gpt-4/);
+
       expect(input).toBeDefined();
       expect((input as HTMLInputElement).type).toBe("text");
     });
 
     it("calls setModel when custom input changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector provider="custom" model="gpt-4" setModel={setModel} />,
       );
       const input = screen.getByPlaceholderText(/e.g., gpt-4/);
+
       fireEvent.change(input, { target: { value: "claude-3-opus" } });
       expect(setModel).toHaveBeenCalledWith("claude-3-opus");
     });
@@ -220,11 +237,13 @@ describe("ModelSelector", () => {
         />,
       );
       const input = screen.getByPlaceholderText(/e.g., llama-3.1-70b/);
+
       expect(input).toBeDefined();
     });
 
     it("calls setModel when lmstudio input changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="lmstudio"
@@ -233,6 +252,7 @@ describe("ModelSelector", () => {
         />,
       );
       const input = screen.getByPlaceholderText(/e.g., llama-3.1-70b/);
+
       fireEvent.change(input, { target: { value: "qwen-2.5-72b" } });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
     });
@@ -253,6 +273,7 @@ describe("ModelSelector", () => {
 
     it("calls setModel when Ollama model changes", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="ollama"
@@ -261,6 +282,7 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "qwen3" } });
       expect(setModel).toHaveBeenCalledWith("qwen3");
     });
@@ -269,6 +291,7 @@ describe("ModelSelector", () => {
   describe("Other... functionality", () => {
     it("shows custom input when Other is selected", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="gemini"
@@ -277,15 +300,18 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "OTHER" } });
 
       // Custom input should now appear
       const customInput = screen.getByPlaceholderText(/e.g., gpt-4, claude/);
+
       expect(customInput).toBeDefined();
     });
 
     it("allows editing custom model in text input", () => {
       const setModel = vi.fn();
+
       render(
         <ModelSelector
           provider="gemini"
@@ -294,9 +320,11 @@ describe("ModelSelector", () => {
         />,
       );
       const select = screen.getByRole("combobox");
+
       fireEvent.change(select, { target: { value: "OTHER" } });
 
       const customInput = screen.getByPlaceholderText(/e.g., gpt-4, claude/);
+
       fireEvent.change(customInput, { target: { value: "custom-model-name" } });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
     });
@@ -312,10 +340,12 @@ describe("ModelSelector", () => {
 
       // Custom input should be visible initially
       const customInput = screen.getByPlaceholderText(/e.g., gpt-4, claude/);
+
       expect(customInput).toBeDefined();
 
       // Dropdown should show "OTHER"
       const select = screen.getByRole("combobox") as HTMLSelectElement;
+
       expect(select.value).toBe("OTHER");
     });
   });

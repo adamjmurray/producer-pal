@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "../../../../test/mock-live-api.js";
-import { setupMocks } from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
+import { liveApiCall, mockLiveApiGet } from "#src/test/mock-live-api.js";
+import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - Note update modes", () => {
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
@@ -123,7 +123,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
@@ -138,6 +138,7 @@ describe("updateClip - Note update modes", () => {
 
     // Mock empty existing notes, then return added notes on subsequent calls
     let addedNotes = [];
+
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
         addedNotes = args[0]?.notes || [];
@@ -146,6 +147,7 @@ describe("updateClip - Note update modes", () => {
           notes: addedNotes,
         });
       }
+
       return {};
     });
 
@@ -180,7 +182,7 @@ describe("updateClip - Note update modes", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
@@ -200,6 +202,7 @@ describe("updateClip - Note update modes", () => {
           notes: [],
         });
       }
+
       return {};
     });
 

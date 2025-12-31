@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { MAX_AUTO_CREATED_SCENES } from "../../constants.js";
+} from "#src/test/mock-live-api.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - audio clips", () => {
@@ -41,6 +41,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -61,7 +62,7 @@ describe("createClip - audio clips", () => {
       // Verify no add_new_notes call for audio clips
       expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes");
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -79,6 +80,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -112,7 +114,7 @@ describe("createClip - audio clips", () => {
       expect(liveApiSet).not.toHaveBeenCalledWith("loop_end");
       expect(liveApiSet).not.toHaveBeenCalledWith("start_marker");
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -133,13 +135,16 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         if (this._path === "live_set tracks 0 clip_slots 1 clip") {
           return "audio_clip_0_1";
         }
+
         // When querying length, use the same ID
         if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
           return this._id;
         }
+
         return this._id;
       });
 
@@ -163,7 +168,7 @@ describe("createClip - audio clips", () => {
         "/path/to/loop.wav",
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
           trackIndex: 0,
@@ -187,10 +192,12 @@ describe("createClip - audio clips", () => {
       });
 
       let clipIndex = 0;
+
       liveApiId.mockImplementation(function () {
         if (this._path.includes("clip_slots")) {
           return `audio_clip_0_${clipIndex++}`;
         }
+
         return this._id;
       });
 
@@ -231,7 +238,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should emit warning and return empty array when clip already exists", () => {
@@ -249,7 +256,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -259,6 +266,7 @@ describe("createClip - audio clips", () => {
         if (method === "create_audio_clip") {
           return ["id", "arrangement_audio_clip"];
         }
+
         return null;
       });
 
@@ -266,6 +274,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
+
         return this._id;
       });
 
@@ -290,7 +299,7 @@ describe("createClip - audio clips", () => {
         0, // Position in beats (1|1 = 0 beats)
       );
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "1|1",
@@ -303,6 +312,7 @@ describe("createClip - audio clips", () => {
         if (method === "create_audio_clip") {
           return ["id", "arrangement_audio_clip"];
         }
+
         return null;
       });
 
@@ -310,6 +320,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
+
         return this._id;
       });
 
@@ -339,7 +350,7 @@ describe("createClip - audio clips", () => {
         65280, // #00FF00 converted to integer
       );
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "5|1",
@@ -349,10 +360,12 @@ describe("createClip - audio clips", () => {
 
     it("should create multiple audio clips at specified positions in arrangement", () => {
       let clipCounter = 0;
+
       liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_audio_clip") {
           return ["id", `arrangement_audio_clip_${clipCounter++}`];
         }
+
         return null;
       });
 
@@ -361,6 +374,7 @@ describe("createClip - audio clips", () => {
         if (this._path?.startsWith("id arrangement_audio_clip_")) {
           return this._path.replace("id ", "");
         }
+
         // Handle direct construction with clip ID (for querying length)
         if (
           this._path === "arrangement_audio_clip_0" ||
@@ -369,6 +383,7 @@ describe("createClip - audio clips", () => {
         ) {
           return this._path;
         }
+
         return this._id;
       });
 
@@ -409,7 +424,7 @@ describe("createClip - audio clips", () => {
         8, // Third clip at position 8 (3|1)
       );
 
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "arrangement_audio_clip_0",
           trackIndex: 0,
@@ -447,7 +462,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Should return empty array (no clips created)
-      expect(result).toEqual([]);
+      expect(result).toStrictEqual([]);
     });
 
     it("should throw error when track does not exist", () => {
@@ -480,6 +495,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -491,7 +507,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Length should come from Live API, not calculated
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         trackIndex: 0,
         sceneIndex: 0,
@@ -504,13 +520,16 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         if (this._path === "live_set tracks 0 clip_slots 1 clip") {
           return "audio_clip_0_1";
         }
+
         // When querying length with clip ID, return the same ID
         if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
           return this._id;
         }
+
         return this._id;
       });
 
@@ -529,7 +548,7 @@ describe("createClip - audio clips", () => {
       });
 
       // Both clips should have same length
-      expect(result).toEqual([
+      expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
           trackIndex: 0,
@@ -557,6 +576,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 
@@ -590,6 +610,7 @@ describe("createClip - audio clips", () => {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
+
         return this._id;
       });
 

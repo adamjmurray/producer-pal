@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-} from "../../test/mock-live-api.js";
+import { liveApiCall, liveApiGet, liveApiId } from "#src/test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
 describe("readDevice", () => {
@@ -36,7 +32,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
     });
@@ -80,6 +76,7 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       return [];
     });
 
@@ -88,7 +85,7 @@ describe("readDevice", () => {
       include: ["chains"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "rack-device-123",
       type: "instrument-rack",
       chains: [],
@@ -123,21 +120,23 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "drum_pads") {
         return [];
       }
+
       if (method === "getChildren" && args[0] === "return_chains") {
         return [];
       }
+
       return [];
     });
 
     const result = readDevice({
       deviceId: "drum-rack-123",
-      include: ["drum-chains"],
+      include: ["drum-pads"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "drum-rack-123",
       type: "drum-rack",
-      drumChains: [], // Included because drum-chains was requested
+      drumPads: [], // Included because drum-pads was requested
     });
   });
 
@@ -171,9 +170,11 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       if (method === "getChildren" && args[0] === "return_chains") {
         return [];
       }
+
       return [];
     });
 
@@ -182,7 +183,7 @@ describe("readDevice", () => {
       include: ["*"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "audio-effect-rack",
       chains: [],
@@ -215,7 +216,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "audio-effect: EQ Eight",
       deactivated: true,
@@ -247,7 +248,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
       name: "My Custom Operator",
@@ -282,12 +283,13 @@ describe("readDevice", () => {
       if (method === "getChildren" && args[0] === "chains") {
         return [];
       }
+
       return [];
     });
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "midi-effect-rack",
       chains: [],
@@ -319,7 +321,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "midi-effect: Arpeggiator",
     });
@@ -330,6 +332,7 @@ describe("readDevice", () => {
       // Return valid IDs for both device and view
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id device-123 view") return "view-123";
+
       return "0";
     });
     liveApiGet.mockImplementation(function (prop) {
@@ -337,6 +340,7 @@ describe("readDevice", () => {
       if (this._path === "id device-123 view" && prop === "is_collapsed") {
         return [1]; // collapsed
       }
+
       // Handle device properties
       switch (prop) {
         case "name":
@@ -358,7 +362,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
       collapsed: true,
@@ -369,12 +373,14 @@ describe("readDevice", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id device-123 view") return "view-123";
+
       return "0";
     });
     liveApiGet.mockImplementation(function (prop) {
       if (this._path === "id device-123 view" && prop === "is_collapsed") {
         return [0]; // not collapsed
       }
+
       switch (prop) {
         case "name":
           return ["Operator"];
@@ -395,7 +401,7 @@ describe("readDevice", () => {
 
     const result = readDevice({ deviceId: "device-123" });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "device-123",
       type: "instrument: Operator",
     });
@@ -407,4 +413,116 @@ describe("readDevice", () => {
   // extensive LiveAPI mocking including drum pads, chains, and their properties.
   // Skipping these for now to focus on easier wins for test coverage.
   // Params tests are in read-device-params.test.js
+  // Path-based tests are in read-device-path.test.js
+
+  describe("Simpler sample reading", () => {
+    it("should include sample path for Simpler device with loaded sample", () => {
+      liveApiId.mockImplementation(function () {
+        // Return different IDs based on path
+        if (this._path === "id sample-obj") return "sample-obj";
+
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        // Sample object returns file_path
+        if (this._path === "id sample-obj") {
+          if (prop === "file_path") return ["/path/to/sample.wav"];
+
+          return [];
+        }
+
+        // Device properties
+        switch (prop) {
+          case "name":
+            return ["Simpler"];
+          case "class_display_name":
+            return ["Simpler"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "sample":
+            return ["id", "sample-obj"]; // Return sample child ID
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toStrictEqual({
+        id: "device-123",
+        type: "instrument: Simpler",
+        sample: "/path/to/sample.wav",
+      });
+    });
+
+    it("should not include sample for Simpler device without loaded sample", () => {
+      liveApiId.mockImplementation(function () {
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        switch (prop) {
+          case "name":
+            return ["Simpler"];
+          case "class_display_name":
+            return ["Simpler"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "sample":
+            return []; // No sample children
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toStrictEqual({
+        id: "device-123",
+        type: "instrument: Simpler",
+      });
+    });
+
+    it("should not include sample for non-Simpler instruments", () => {
+      liveApiId.mockImplementation(function () {
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        switch (prop) {
+          case "name":
+            return ["Operator"];
+          case "class_display_name":
+            return ["Operator"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toStrictEqual({
+        id: "device-123",
+        type: "instrument: Operator",
+      });
+    });
+  });
 });

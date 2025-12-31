@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { GeminiClient } from "./gemini-client";
 
 // Mock the Google GenAI SDK
-vi.mock("@google/genai/web", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@google/genai/web"), () => ({
   GoogleGenAI: class MockGoogleGenAI {
     chats = {
       create: vi.fn(),
@@ -16,7 +17,8 @@ vi.mock("@google/genai/web", () => ({
 }));
 
 // Mock MCP SDK
-vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: class MockClient {
     connect = vi.fn();
     close = vi.fn();
@@ -25,16 +27,17 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
   },
 }));
 
-vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 
 describe("GeminiClient", () => {
   it("constructs with default config", () => {
     const client = new GeminiClient("test-api-key");
+
     expect(client).toBeDefined();
     expect(client.mcpUrl).toBe("http://localhost:3350/mcp");
-    expect(client.chatHistory).toEqual([]);
+    expect(client.chatHistory).toStrictEqual([]);
   });
 
   it("constructs with custom config", () => {
@@ -45,14 +48,17 @@ describe("GeminiClient", () => {
       chatHistory: [{ role: "user" as const, parts: [{ text: "hello" }] }],
     };
     const client = new GeminiClient("test-api-key", config);
+
     expect(client.mcpUrl).toBe("http://custom:8080/mcp");
-    expect(client.chatHistory).toEqual(config.chatHistory);
+    expect(client.chatHistory).toStrictEqual(config.chatHistory);
   });
 
   it("throws error when sending message before initialization", async () => {
     const client = new GeminiClient("test-api-key");
+
     await expect(async () => {
       const stream = client.sendMessage("test");
+
       await stream.next();
     }).rejects.toThrow("Chat not initialized. Call initialize() first.");
   });
@@ -81,6 +87,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First call: model responds with functionCall
             yield {
@@ -130,6 +137,7 @@ describe("GeminiClient", () => {
 
       // Send message and collect history updates
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -144,6 +152,7 @@ describe("GeminiClient", () => {
 
       // Verify final history structure
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(4);
       expect(finalHistory![0]!.role).toBe("user"); // Initial message
@@ -183,6 +192,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First: model calls tool1
             yield {
@@ -237,6 +247,7 @@ describe("GeminiClient", () => {
 
       // Send message
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -247,6 +258,7 @@ describe("GeminiClient", () => {
 
       // Verify final history
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(6);
       expect(finalHistory![0]!.role).toBe("user"); // Initial
@@ -290,6 +302,7 @@ describe("GeminiClient", () => {
 
       // Send message
       const historyUpdates = [];
+
       for await (const history of client.sendMessage("test")) {
         historyUpdates.push(history);
       }
@@ -300,10 +313,75 @@ describe("GeminiClient", () => {
 
       // Verify final history
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(2);
       expect(finalHistory![0]!.role).toBe("user");
       expect(finalHistory![1]!.role).toBe("model");
+    });
+
+    it("applies showThoughts override to chat config", async () => {
+      const client = new GeminiClient("test-api-key", {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      });
+
+      // Mock the MCP client
+      const mockMcpClient = {
+        connect: vi.fn(),
+        listTools: vi.fn().mockResolvedValue({ tools: [] }),
+        callTool: vi.fn(),
+      };
+
+      // Track what config is passed to chats.create
+      const createCalls: unknown[] = [];
+      const mockChat = {
+        sendMessageStream: vi.fn().mockImplementation(async function* () {
+          yield {
+            candidates: [
+              {
+                content: {
+                  role: "model",
+                  parts: [{ text: "Response" }],
+                },
+              },
+            ],
+          };
+        }),
+      };
+
+      client.ai = {
+        chats: {
+          create: vi.fn((config) => {
+            createCalls.push(config);
+
+            return mockChat;
+          }),
+        },
+      } as unknown as typeof client.ai;
+
+      // Set up mocks
+      client.mcpClient = mockMcpClient as unknown as Client;
+      client.chat = mockChat as unknown as Chat;
+      client.chatConfig = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      };
+
+      // Send message with showThoughts override
+      const historyUpdates = [];
+
+      for await (const history of client.sendMessage("test", undefined, {
+        showThoughts: false,
+      })) {
+        historyUpdates.push(history);
+      }
+
+      // Verify chats.create was called with updated thinkingConfig
+      expect(createCalls.length).toBeGreaterThanOrEqual(1);
+      const lastCreateCall = createCalls[createCalls.length - 1] as {
+        config: { thinkingConfig: { includeThoughts: boolean } };
+      };
+
+      expect(lastCreateCall.config.thinkingConfig.includeThoughts).toBe(false);
     });
 
     it("stops loop when abort signal is triggered", async () => {
@@ -326,6 +404,7 @@ describe("GeminiClient", () => {
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           callCount++;
+
           if (callCount === 1) {
             // First call: return functionCall
             yield {
@@ -351,6 +430,7 @@ describe("GeminiClient", () => {
 
       // Send message with abort signal
       const historyUpdates = [];
+
       for await (const history of client.sendMessage(
         "test",
         abortController.signal,
@@ -364,6 +444,7 @@ describe("GeminiClient", () => {
 
       // Verify history stops after tool response
       const finalHistory = historyUpdates[historyUpdates.length - 1];
+
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(3);
       expect(finalHistory![0]!.role).toBe("user");

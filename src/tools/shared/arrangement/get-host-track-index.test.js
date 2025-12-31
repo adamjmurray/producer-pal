@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiPath } from "../../../test/mock-live-api.js";
+import { liveApiPath } from "#src/test/mock-live-api.js";
 import { getHostTrackIndex } from "./get-host-track-index.js";
 
 describe("getHostTrackIndex", () => {
@@ -26,6 +26,7 @@ describe("getHostTrackIndex", () => {
   it("should return null when LiveAPI constructor throws an error", () => {
     // Mock the global LiveAPI constructor to throw an error
     const originalLiveAPI = global.LiveAPI;
+
     global.LiveAPI = vi.fn(() => {
       throw new Error("LiveAPI not available");
     });
@@ -49,6 +50,7 @@ describe("getHostTrackIndex", () => {
       liveApiPath.mockReturnValue(path);
 
       const result = getHostTrackIndex();
+
       expect(result).toBe(expected);
     });
   });

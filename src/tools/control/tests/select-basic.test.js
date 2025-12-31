@@ -6,8 +6,8 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "../../../test/mock-live-api.js";
-import { select } from "../select.js";
+} from "#src/test/mock-live-api.js";
+import { select } from "#src/tools/control/select.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);
@@ -18,13 +18,15 @@ global.LiveAPI = vi.fn(function () {
 });
 
 // Mock utility functions
-vi.mock(import("../../shared/utils.js"), () => ({
+vi.mock(import("#src/tools/shared/utils.js"), () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
+
     return viewMap[view] || 1;
   }),
   fromLiveApiView: vi.fn((view) => {
     const viewMap = { 1: "session", 2: "arrangement" };
+
     return viewMap[view] || "session";
   }),
 }));
@@ -170,7 +172,7 @@ describe("view", () => {
       const result = select({ view: "session" });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", 1);
-      expect(result).toEqual(expectViewState({ view: "session" }));
+      expect(result).toStrictEqual(expectViewState({ view: "session" }));
     });
 
     it("updates view to arrangement", () => {
@@ -178,13 +180,13 @@ describe("view", () => {
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", 2);
       // Result reflects actual readViewState(), which returns default (session)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("returns full view state when no parameters provided", () => {
       const result = select();
 
-      expect(result).toEqual(getDefaultViewState());
+      expect(result).toStrictEqual(getDefaultViewState());
       // Read API calls are expected for reading current view state
       expect(liveApiSet).not.toHaveBeenCalled();
     });
@@ -197,7 +199,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_track", "id track_123");
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects regular track by index", () => {
@@ -212,7 +214,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects return track by index", () => {
@@ -227,7 +229,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects master track", () => {
@@ -239,7 +241,7 @@ describe("view", () => {
         "id track_id_123",
       );
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("defaults to regular track type when only index provided", () => {
@@ -247,7 +249,7 @@ describe("view", () => {
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 2");
       // Result reflects actual readViewState(), which returns default (no track selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("skips track selection when track does not exist", () => {
@@ -269,6 +271,7 @@ describe("view", () => {
             return liveApiId.apply(this);
           },
         });
+
         return this;
       });
 
@@ -278,7 +281,7 @@ describe("view", () => {
         "selected_track",
         expect.anything(),
       );
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -289,7 +292,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_scene", "id scene_123");
       // Result reflects actual readViewState(), which returns default (no scene selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects scene by index", () => {
@@ -301,7 +304,7 @@ describe("view", () => {
         "id scene_id_456",
       );
       // Result reflects actual readViewState(), which returns default (no scene selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("skips scene selection when scene does not exist", () => {
@@ -323,6 +326,7 @@ describe("view", () => {
             return liveApiId.apply(this);
           },
         });
+
         return this;
       });
 
@@ -332,7 +336,7 @@ describe("view", () => {
         "selected_scene",
         expect.anything(),
       );
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -343,7 +347,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_123");
       // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("deselects all clips when clipId is null", () => {
@@ -351,7 +355,7 @@ describe("view", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 0");
       // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 
@@ -363,6 +367,7 @@ describe("view", () => {
         _id: "id device_123",
         _path: "live_set tracks 0 devices 0",
       };
+
       Object.defineProperty(mockDeviceWithPath, "path", {
         get: function () {
           return this._path;
@@ -385,30 +390,39 @@ describe("view", () => {
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
         }
+
         if (path === "live_set view") {
           return mockSongView;
         }
+
         if (path === "live_set view selected_track") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "id device_123") {
           return mockDeviceWithPath;
         }
+
         if (path === "live_set tracks 0") {
           return mockTrackAPI;
         }
+
         if (path === "live_set tracks 0 view") {
           return mockTrackView;
         }
+
         return {};
       });
 
@@ -421,7 +435,7 @@ describe("view", () => {
         "id device_123",
       );
       // Result reflects actual readViewState(), which returns default (no device selected)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects instrument on specified track", () => {
@@ -434,7 +448,7 @@ describe("view", () => {
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 0 view");
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       // Result reflects actual readViewState(), not optimistic updates
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
 
     it("selects instrument on currently selected track", () => {
@@ -446,9 +460,11 @@ describe("view", () => {
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
         }
+
         if (path === "live_set view") {
           return mockSongView;
         }
+
         if (path === "live_set view selected_track") {
           return {
             exists: vi.fn().mockReturnValue(true),
@@ -458,15 +474,19 @@ describe("view", () => {
             path: "live_set tracks 1",
           };
         }
+
         if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
         }
+
         if (path === "live_set tracks 1 view") {
           return {
             exists: vi.fn().mockReturnValue(true),
@@ -474,6 +494,7 @@ describe("view", () => {
             get: vi.fn().mockReturnValue(null), // No selected device
           };
         }
+
         // Default fallback for any other LiveAPI object
         return {
           exists: vi.fn().mockReturnValue(true),
@@ -488,7 +509,7 @@ describe("view", () => {
       // The function should eventually call select_instrument
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       // Result reflects actual readViewState() with the mocked selected track
-      expect(result).toEqual(
+      expect(result).toStrictEqual(
         expectViewState({
           selectedTrack: {
             trackId: "id track_123",
@@ -514,7 +535,7 @@ describe("view", () => {
         "id clipslot_id_789",
       );
       // Result reflects actual readViewState(), which returns default (no clip slot highlighted)
-      expect(result).toEqual(expectViewState());
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 });

@@ -3,8 +3,8 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - routing", () => {
   it("includes routing information in tracks when includeRoutings is true", () => {
@@ -12,9 +12,11 @@ describe("readLiveSet - routing", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       return this._id;
     });
 
@@ -56,10 +58,10 @@ describe("readLiveSet - routing", () => {
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains", "routings"],
+      include: ["regular-tracks", "instruments", "chains", "routings"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         inputRoutingChannel: { name: "In 1", inputId: "1" },
@@ -86,9 +88,11 @@ describe("readLiveSet - routing", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       return this._id;
     });
 
@@ -105,10 +109,10 @@ describe("readLiveSet - routing", () => {
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains"],
+      include: ["regular-tracks", "instruments", "chains"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
       }),

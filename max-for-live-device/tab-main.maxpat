@@ -133,7 +133,7 @@
 					"presentation" : 1,
 					"presentation_linecount" : 2,
 					"presentation_rect" : [ 181.0, 118.0, 69.0, 29.0 ],
-					"text" : "© 2025 \nAdam Murray",
+					"text" : "© 2026 \nAdam Murray",
 					"textjustification" : 1
 				}
 
@@ -467,6 +467,16 @@
 		"parameters" : 		{
 			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
 			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
+			"parameterbanks" : 			{
+				"0" : 				{
+					"index" : 0,
+					"name" : "",
+					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
+					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
+				}
+
+			}
+,
 			"inherited_shortname" : 1
 		}
 ,

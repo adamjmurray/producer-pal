@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - arrangement view", () => {
@@ -19,6 +19,7 @@ describe("createClip - arrangement view", () => {
       if (method === "create_midi_clip") {
         return ["id", "arrangement_clip"];
       }
+
       return null;
     });
 
@@ -26,6 +27,7 @@ describe("createClip - arrangement view", () => {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
+
       return this._id;
     });
 
@@ -49,7 +51,7 @@ describe("createClip - arrangement view", () => {
       "Arrangement Clip",
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "arrangement_clip",
       trackIndex: 0,
       arrangementStart: "3|1",
@@ -69,6 +71,7 @@ describe("createClip - arrangement view", () => {
       if (method === "create_midi_clip") {
         return ["id", "arrangement_clip"];
       }
+
       return null;
     });
 
@@ -76,6 +79,7 @@ describe("createClip - arrangement view", () => {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
+
       return this._id;
     });
 
@@ -107,7 +111,7 @@ describe("createClip - arrangement view", () => {
       4,
     ); // 5|1 = 16 beats
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       {
         id: "arrangement_clip",
         trackIndex: 0,
@@ -150,11 +154,13 @@ describe("createClip - arrangement view", () => {
 
     // Mock the clip to not exist after creation
     const originalExists = global.LiveAPI.prototype.exists;
+
     global.LiveAPI.prototype.exists = vi.fn(function () {
       // Track exists, but clip doesn't
       if (this._path === "live_set tracks 0") {
         return true;
       }
+
       return false;
     });
 
@@ -167,7 +173,7 @@ describe("createClip - arrangement view", () => {
     });
 
     // Should return empty array (no clips created)
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
 
     global.LiveAPI.prototype.exists = originalExists;
   });

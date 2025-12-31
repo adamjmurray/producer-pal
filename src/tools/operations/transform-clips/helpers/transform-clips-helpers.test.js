@@ -1,11 +1,109 @@
-import { describe, expect, it } from "vitest";
-import { createSeededRNG, randomInRange } from "./transform-clips-helpers.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createSeededRNG,
+  parseTransposeValues,
+  randomInRange,
+} from "./transform-clips-helpers.js";
 import {
   calculateShufflePositions,
   shuffleArray,
 } from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips helpers", () => {
+  describe("parseTransposeValues", () => {
+    it("returns null when transposeValues is null", () => {
+      expect(parseTransposeValues(null, undefined, undefined)).toBeNull();
+    });
+
+    it("returns null when transposeValues is undefined", () => {
+      expect(parseTransposeValues(undefined, undefined, undefined)).toBeNull();
+    });
+
+    it("parses comma-separated transpose values", () => {
+      expect(parseTransposeValues("1,2,3", undefined, undefined)).toStrictEqual(
+        [1, 2, 3],
+      );
+    });
+
+    it("parses negative transpose values", () => {
+      expect(
+        parseTransposeValues("-5, -3, -1", undefined, undefined),
+      ).toStrictEqual([-5, -3, -1]);
+    });
+
+    it("parses mixed positive and negative values", () => {
+      expect(
+        parseTransposeValues("-12, 0, 7", undefined, undefined),
+      ).toStrictEqual([-12, 0, 7]);
+    });
+
+    it("filters out invalid numbers", () => {
+      expect(
+        parseTransposeValues("1, abc, 3", undefined, undefined),
+      ).toStrictEqual([1, 3]);
+    });
+
+    it("handles whitespace around values", () => {
+      expect(
+        parseTransposeValues("  1 ,  2  ,  3  ", undefined, undefined),
+      ).toStrictEqual([1, 2, 3]);
+    });
+
+    it("throws when all values are invalid (empty result)", () => {
+      expect(() =>
+        parseTransposeValues("abc, def, ghi", undefined, undefined),
+      ).toThrow("transposeValues must contain at least one valid number");
+    });
+
+    it("throws when string is just commas (empty result)", () => {
+      expect(() => parseTransposeValues(",,,", undefined, undefined)).toThrow(
+        "transposeValues must contain at least one valid number",
+      );
+    });
+
+    it("logs warning when transposeMin is provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", 0, undefined);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("logs warning when transposeMax is provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", undefined, 12);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("logs warning when both transposeMin and transposeMax are provided", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      parseTransposeValues("1,2,3", -5, 5);
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("parses decimal transpose values", () => {
+      expect(
+        parseTransposeValues("0.5, 1.25, -0.75", undefined, undefined),
+      ).toStrictEqual([0.5, 1.25, -0.75]);
+    });
+
+    it("handles single value", () => {
+      expect(parseTransposeValues("7", undefined, undefined)).toStrictEqual([
+        7,
+      ]);
+    });
+  });
+
   describe("createSeededRNG", () => {
     it("generates consistent random numbers with same seed", () => {
       const rng1 = createSeededRNG(12345);
@@ -28,6 +126,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = rng();
+
         expect(value).toBeGreaterThanOrEqual(0);
         expect(value).toBeLessThan(1);
       }
@@ -52,6 +151,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(10, 20, rng);
+
         expect(value).toBeGreaterThanOrEqual(10);
         expect(value).toBeLessThanOrEqual(20);
       }
@@ -69,6 +169,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(-10, -5, rng);
+
         expect(value).toBeGreaterThanOrEqual(-10);
         expect(value).toBeLessThanOrEqual(-5);
       }
@@ -79,6 +180,7 @@ describe("transform-clips helpers", () => {
 
       for (let i = 0; i < 100; i++) {
         const value = randomInRange(-5, 5, rng);
+
         expect(value).toBeGreaterThanOrEqual(-5);
         expect(value).toBeLessThanOrEqual(5);
       }
@@ -87,6 +189,7 @@ describe("transform-clips helpers", () => {
     it("returns min when min equals max", () => {
       const rng = createSeededRNG(12345);
       const value = randomInRange(42, 42, rng);
+
       expect(value).toBe(42);
     });
   });
@@ -105,7 +208,7 @@ describe("transform-clips helpers", () => {
       const input = [1, 2, 3, 4, 5];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled.sort()).toEqual(input.sort());
+      expect(shuffled.sort()).toStrictEqual(input.sort());
     });
 
     it("generates consistent shuffle with same seed", () => {
@@ -116,7 +219,7 @@ describe("transform-clips helpers", () => {
       const shuffled1 = shuffleArray(input, rng1);
       const shuffled2 = shuffleArray(input, rng2);
 
-      expect(shuffled1).toEqual(shuffled2);
+      expect(shuffled1).toStrictEqual(shuffled2);
     });
 
     it("generates different shuffle with different seed", () => {
@@ -127,7 +230,7 @@ describe("transform-clips helpers", () => {
       const shuffled1 = shuffleArray(input, rng1);
       const shuffled2 = shuffleArray(input, rng2);
 
-      expect(shuffled1).not.toEqual(shuffled2);
+      expect(shuffled1).not.toStrictEqual(shuffled2);
     });
 
     it("does not modify original array", () => {
@@ -137,7 +240,7 @@ describe("transform-clips helpers", () => {
 
       shuffleArray(input, rng);
 
-      expect(input).toEqual(inputCopy);
+      expect(input).toStrictEqual(inputCopy);
     });
 
     it("handles single element array", () => {
@@ -145,7 +248,7 @@ describe("transform-clips helpers", () => {
       const input = [42];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled).toEqual([42]);
+      expect(shuffled).toStrictEqual([42]);
     });
 
     it("handles empty array", () => {
@@ -153,7 +256,7 @@ describe("transform-clips helpers", () => {
       const input = [];
       const shuffled = shuffleArray(input, rng);
 
-      expect(shuffled).toEqual([]);
+      expect(shuffled).toStrictEqual([]);
     });
 
     it("handles array with duplicate values", () => {
@@ -162,7 +265,7 @@ describe("transform-clips helpers", () => {
       const shuffled = shuffleArray(input, rng);
 
       expect(shuffled).toHaveLength(6);
-      expect(shuffled.sort()).toEqual([1, 1, 2, 2, 3, 3]);
+      expect(shuffled.sort()).toStrictEqual([1, 1, 2, 2, 3, 3]);
     });
   });
 
@@ -176,8 +279,9 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // All same length, so positions stay [0, 1, 2]
-      expect(positions).toEqual([0, 1, 2]);
+      expect(positions).toStrictEqual([0, 1, 2]);
     });
 
     it("handles back-to-back clips with different lengths", () => {
@@ -189,8 +293,9 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // C(2)@0, A(1)@2, B(1)@3
-      expect(positions).toEqual([0, 2, 3]);
+      expect(positions).toStrictEqual([0, 2, 3]);
     });
 
     it("preserves gaps between clips", () => {
@@ -202,8 +307,9 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: C, A, B (indices 2, 0, 1)
       const positions = calculateShufflePositions(clips, [2, 0, 1]);
+
       // C(2)@0 ends@2, +gap3 → A(1)@5 ends@6, +gap3 → B(1)@9
-      expect(positions).toEqual([0, 5, 9]);
+      expect(positions).toStrictEqual([0, 5, 9]);
     });
 
     it("preserves mixed gap pattern", () => {
@@ -215,8 +321,9 @@ describe("transform-clips helpers", () => {
       ];
       // Shuffle to: B, C, A (indices 1, 2, 0)
       const positions = calculateShufflePositions(clips, [1, 2, 0]);
+
       // B(2)@0 ends@2, +gap2 → C(1)@4 ends@5, +gap0 → A(1)@5
-      expect(positions).toEqual([0, 4, 5]);
+      expect(positions).toStrictEqual([0, 4, 5]);
     });
 
     it("handles no shuffle (same order)", () => {
@@ -227,8 +334,9 @@ describe("transform-clips helpers", () => {
       ];
       // Same order: indices 0, 1, 2
       const positions = calculateShufflePositions(clips, [0, 1, 2]);
+
       // Should return original positions
-      expect(positions).toEqual([0, 4, 8]);
+      expect(positions).toStrictEqual([0, 4, 8]);
     });
 
     it("handles two clips", () => {
@@ -238,8 +346,9 @@ describe("transform-clips helpers", () => {
       ];
       // Swap: indices 1, 0
       const positions = calculateShufflePositions(clips, [1, 0]);
+
       // B(1)@0 ends@1, +gap2 → A(2)@3
-      expect(positions).toEqual([0, 3]);
+      expect(positions).toStrictEqual([0, 3]);
     });
   });
 });

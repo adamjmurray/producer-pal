@@ -1,8 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateModulation } from "../modulation-evaluator.js";
-import { evaluateModulationAST } from "../modulation-evaluator-helpers.js";
-import * as console from "../../../shared/v8-max-console.js";
-import * as barBeatTime from "../../barbeat/time/barbeat-time.js";
+import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
+import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.js";
+import * as console from "#src/shared/v8-max-console.js";
+import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.js";
 
 describe("Modulation Branch Coverage", () => {
   beforeEach(() => {
@@ -186,7 +186,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Assignment was skipped, so velocity should not be in result
       expect(result.velocity).toBeUndefined();
-      expect(Object.keys(result).length).toBe(0);
+      expect(Object.keys(result)).toHaveLength(0);
     });
   });
 });

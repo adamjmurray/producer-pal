@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 // Mock MCP SDK components
 const mockClient = {
   connect: vi.fn(),
@@ -64,7 +65,7 @@ const mockMcpServer = {
   },
 };
 
-vi.mock(import("../mcp-server/create-mcp-server.js"), () => ({
+vi.mock(import("#src/mcp-server/create-mcp-server.js"), () => ({
   createMcpServer: vi.fn(() => mockMcpServer),
 }));
 
@@ -103,7 +104,7 @@ describe("StdioHttpBridge", () => {
   describe("constructor", () => {
     it("initializes with correct default values", () => {
       expect(bridge.httpUrl).toBe("http://localhost:3350/mcp");
-      expect(bridge.options).toEqual({});
+      expect(bridge.options).toStrictEqual({});
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.httpClient).toBeNull();
       expect(bridge.isConnected).toBe(false);
@@ -118,26 +119,29 @@ describe("StdioHttpBridge", () => {
       );
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
-      expect(customBridge.options).toEqual(options);
+      expect(customBridge.options).toStrictEqual(options);
     });
 
     it("creates bridge with no options", () => {
       const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
-      expect(quietBridge.options).toEqual({});
+
+      expect(quietBridge.options).toStrictEqual({});
     });
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
       const tools = bridge.fallbackTools.tools;
-      expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
+
+      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
       expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);
+
       expect(toolNames).toContain("ppal-read-live-set");
       expect(toolNames).toContain("ppal-create-clip");
 
       // Verify tool structure
-      expect(tools[0]).toEqual({
+      expect(tools[0]).toStrictEqual({
         name: "ppal-read-live-set",
         title: "Read Live Set",
         description: "Read comprehensive information about the Live Set",
@@ -150,7 +154,7 @@ describe("StdioHttpBridge", () => {
     it("returns setup error response with correct structure", () => {
       const response = bridge._createSetupErrorResponse();
 
-      expect(response).toEqual({
+      expect(response).toStrictEqual({
         content: [
           {
             type: "text",
@@ -169,6 +173,25 @@ describe("StdioHttpBridge", () => {
     });
   });
 
+  describe("_createMisconfiguredUrlResponse", () => {
+    it("returns misconfigured URL error response with correct structure", () => {
+      const response = bridge._createMisconfiguredUrlResponse();
+
+      expect(response).toStrictEqual({
+        content: [
+          {
+            type: "text",
+            text: expect.stringContaining("Invalid URL"),
+          },
+        ],
+        isError: true,
+      });
+
+      expect(response.content[0].text).toContain("http://localhost:3350");
+      expect(response.content[0].text).toContain("Desktop Extension");
+    });
+  });
+
   describe("_ensureHttpConnection", () => {
     it("creates new connection when none exists", async () => {
       mockClient.connect.mockResolvedValue();
@@ -182,6 +205,7 @@ describe("StdioHttpBridge", () => {
 
     it("handles connection failure and throws appropriate error", async () => {
       const connectionError = new Error("ECONNREFUSED");
+
       mockClient.connect.mockRejectedValue(connectionError);
 
       await expect(bridge._ensureHttpConnection()).rejects.toThrow(
@@ -239,6 +263,7 @@ describe("StdioHttpBridge", () => {
       bridge.isConnected = false;
 
       const closeError = new Error("Close failed");
+
       mockClient.close.mockRejectedValue(closeError);
       mockClient.connect.mockResolvedValue();
 
@@ -281,12 +306,13 @@ describe("StdioHttpBridge", () => {
       const listToolsHandler = listToolsCall[1];
 
       const httpTools = { tools: [{ name: "test-tool" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.listTools.mockResolvedValue(httpTools);
 
       const result = await listToolsHandler();
 
-      expect(result).toEqual(httpTools);
+      expect(result).toStrictEqual(httpTools);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] tools/list successful via HTTP",
       );
@@ -306,7 +332,7 @@ describe("StdioHttpBridge", () => {
 
       const result = await listToolsHandler();
 
-      expect(result).toEqual(bridge.fallbackTools);
+      expect(result).toStrictEqual(bridge.fallbackTools);
       // Verify that fallback behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Returning fallback tools list",
@@ -324,6 +350,7 @@ describe("StdioHttpBridge", () => {
       const callToolHandler = callToolCall[1];
 
       const toolResult = { content: [{ type: "text", text: "Success" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.callTool.mockResolvedValue(toolResult);
 
@@ -340,7 +367,7 @@ describe("StdioHttpBridge", () => {
         name: "test-tool",
         arguments: { arg1: "value1" },
       });
-      expect(result).toEqual(toolResult);
+      expect(result).toStrictEqual(toolResult);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Tool call successful for test-tool",
       );
@@ -367,7 +394,7 @@ describe("StdioHttpBridge", () => {
 
       const result = await callToolHandler(request);
 
-      expect(result).toEqual(bridge._createSetupErrorResponse());
+      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
       // Verify that error response behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Connectivity problem detected. Returning setup error response",
@@ -385,6 +412,7 @@ describe("StdioHttpBridge", () => {
       const callToolHandler = callToolCall[1];
 
       const toolResult = { content: [{ type: "text", text: "Success" }] };
+
       mockClient.connect.mockResolvedValue();
       mockClient.callTool.mockResolvedValue(toolResult);
 
@@ -401,7 +429,7 @@ describe("StdioHttpBridge", () => {
         name: "test-tool",
         arguments: {},
       });
-      expect(result).toEqual(toolResult);
+      expect(result).toStrictEqual(toolResult);
     });
 
     it("logs tool call details", async () => {
@@ -429,6 +457,103 @@ describe("StdioHttpBridge", () => {
         '[Bridge] Tool call: ppal-read-live-set {"trackIndex":0}',
       );
     });
+
+    it("returns formatted error response for MCP protocol errors", async () => {
+      mockServer.connect.mockResolvedValue();
+      await bridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      const callToolCall = calls.find(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCall[1];
+
+      // Simulate MCP protocol error (has numeric code)
+      const mcpError = new Error("Invalid tool parameters");
+
+      mcpError.code = -32602;
+
+      mockClient.connect.mockResolvedValue();
+      mockClient.callTool.mockRejectedValue(mcpError);
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "Invalid tool parameters" }],
+        isError: true,
+      });
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] MCP protocol error detected (code -32602), returning the error to the client",
+      );
+    });
+
+    it("strips redundant MCP error prefix from error message", async () => {
+      mockServer.connect.mockResolvedValue();
+      await bridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      const callToolCall = calls.find(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCall[1];
+
+      // Error with redundant prefix
+      const mcpError = new Error("MCP error -32602: Invalid parameters");
+
+      mcpError.code = -32602;
+
+      mockClient.connect.mockResolvedValue();
+      mockClient.callTool.mockRejectedValue(mcpError);
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result.content[0].text).toBe("Invalid parameters");
+    });
+
+    it("returns misconfigured URL error for ERR_INVALID_URL", async () => {
+      // Create bridge with invalid URL that will cause ERR_INVALID_URL
+      const invalidBridge = new StdioHttpBridge("not-a-valid-url");
+
+      mockServer.connect.mockResolvedValue();
+      await invalidBridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      // Get the most recent call for CallToolRequestSchema (from invalidBridge)
+      const callToolCalls = calls.filter(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCalls[callToolCalls.length - 1][1];
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result).toStrictEqual(
+        invalidBridge._createMisconfiguredUrlResponse(),
+      );
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.",
+      );
+    });
   });
 
   describe("stop", () => {
@@ -449,6 +574,7 @@ describe("StdioHttpBridge", () => {
 
     it("handles errors when closing clients", async () => {
       const error = new Error("Close failed");
+
       mockClient.close.mockImplementation(() => {
         throw error;
       });

@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import { describe, it, expect } from "vitest";
-import { ensureSilenceWav, SILENCE_WAV } from "./silent-wav-generator.js";
+import {
+  ensureSilenceWav,
+  SILENCE_WAV,
+} from "#src/shared/silent-wav-generator.js";
 
 describe("silent-wav-generator", () => {
   describe("ensureSilenceWav", () => {

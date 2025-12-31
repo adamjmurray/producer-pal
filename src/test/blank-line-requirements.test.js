@@ -123,6 +123,7 @@ describe("Blank line requirements", () => {
         )
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
           `Add blank lines between logical sections to improve readability.`,
@@ -146,6 +147,7 @@ describe("Blank line requirements", () => {
         )
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
           `Add blank lines between logical sections to improve readability.`,
@@ -168,6 +170,7 @@ describe("Blank line requirements", () => {
         )
         .join("\n");
 
+      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
       expect.fail(
         `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
           `Add blank lines between logical sections to improve readability.`,

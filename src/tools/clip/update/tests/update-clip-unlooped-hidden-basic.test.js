@@ -4,9 +4,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
-import { mockContext } from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
+} from "#src/test/mock-live-api.js";
+import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => {
   it("should tile unlooped clip with chunks matching current arrangement length", () => {
@@ -20,12 +20,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -69,6 +72,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 
@@ -111,7 +115,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     // Note: 804 is consumed by holding area, 805 is the final partial tile
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: clipId },
       { id: "801" },
       { id: "802" },
@@ -130,12 +134,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -179,6 +186,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 
@@ -212,8 +220,8 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     expect(tileCount).toBe(6);
 
     // Should return original + all tiles
-    expect(result.length).toBe(7);
-    expect(result[0]).toEqual({ id: clipId });
+    expect(result).toHaveLength(7);
+    expect(result[0]).toStrictEqual({ id: clipId });
   });
 
   it("should handle start_marker offset correctly when tiling", () => {
@@ -227,12 +235,15 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (this._id === clipId || tileIds.includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -276,6 +287,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
+
       return undefined;
     });
 
@@ -318,8 +330,8 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     // Note: 824 is consumed by holding area, 825 is the final partial tile
-    expect(result.length).toBe(5);
-    expect(result[0]).toEqual({ id: clipId });
-    expect(result[4]).toEqual({ id: "825" });
+    expect(result).toHaveLength(5);
+    expect(result[0]).toStrictEqual({ id: clipId });
+    expect(result[4]).toStrictEqual({ id: "825" });
   });
 });

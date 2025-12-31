@@ -5,9 +5,9 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../../constants.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - inclusion", () => {
   it("returns sceneCount when includeScenes is false", () => {
@@ -78,13 +78,14 @@ describe("readLiveSet - inclusion", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
     const result = readLiveSet({ include: [] });
 
     // Should have basic song properties
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         id: "live_set",
         name: "Test Set",
@@ -110,14 +111,10 @@ describe("readLiveSet - inclusion", () => {
           return "track1";
         case "live_set tracks 0 devices 0":
           return "drumrack1";
-        case "live_set tracks 0 devices 0 drum_pads 60":
-          return "pad1";
-        case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
-          return "chain1";
-        case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
-          return "kick_device";
         case "live_set tracks 0 devices 0 chains 0":
-          return "main_chain";
+          return "chain1";
+        case "live_set tracks 0 devices 0 chains 0 devices 0":
+          return "kick_device";
         case "live_app":
           return "live_app";
         default:
@@ -164,27 +161,12 @@ describe("readLiveSet - inclusion", () => {
         is_active: 1,
         can_have_chains: 1,
         can_have_drum_pads: 1,
-        drum_pads: children("pad1"),
-        chains: children("main_chain"),
+        chains: children("chain1"), // Chains directly on drum rack with in_note
         return_chains: [],
       },
-      main_chain: {
-        name: "Main Chain",
-        mute: 0,
-        muted_via_solo: 0,
-        solo: 0,
-        devices: [],
-      },
-      pad1: {
-        note: 60, // C3
-        name: "Test Kick",
-        mute: 0,
-        muted_via_solo: 0,
-        solo: 0,
-        chains: children("chain1"),
-      },
       chain1: {
-        name: "Kick Chain",
+        in_note: 60, // C3 - chains use in_note instead of pad note
+        name: "Test Kick",
         mute: 0,
         muted_via_solo: 0,
         solo: 0,
@@ -204,16 +186,16 @@ describe("readLiveSet - inclusion", () => {
     const result = readLiveSet();
 
     // Should have drumMap on the track
-    expect(result.tracks[0].drumMap).toEqual({
+    expect(result.tracks[0].drumMap).toStrictEqual({
       C3: "Test Kick",
     });
 
-    // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
-    expect(result.tracks[0].instrument).toEqual({
+    // Should have instrument but NO chains (proving drum-maps is default, not chains)
+    expect(result.tracks[0].instrument).toStrictEqual({
       id: "drumrack1",
       name: "Test Drum Rack",
       type: "drum-rack",
-      // drumChains: [ // Only included when drum-chains is requested
+      // drumPads: [ // Only included when drum-pads is requested
       //   {
       //     name: "Test Kick",
       //     note: 60,
@@ -230,6 +212,7 @@ describe("readLiveSet - inclusion", () => {
       if (this._path === "live_set") {
         return "live_set";
       }
+
       return "id 0";
     });
 

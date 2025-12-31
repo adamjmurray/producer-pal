@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
-} from "../../../test/mock-live-api.js";
-import { rawLiveApi } from "../raw-live-api.js";
+} from "#src/test/mock-live-api.js";
+import { rawLiveApi } from "#src/tools/control/raw-live-api.js";
 
 describe("rawLiveApi", () => {
   beforeEach(() => {
@@ -25,6 +25,7 @@ describe("rawLiveApi", () => {
     // Mock LiveAPI extensions that get added to instances
     global.LiveAPI.prototype.getProperty = vi.fn(function (property) {
       const result = this.get(property);
+
       return Array.isArray(result) ? result[0] : result;
     });
 
@@ -32,6 +33,7 @@ describe("rawLiveApi", () => {
       if (!childType) {
         throw new Error("Missing child type");
       }
+
       return [`id_${childType}_1`, `id_${childType}_2`];
     });
 
@@ -44,6 +46,7 @@ describe("rawLiveApi", () => {
     global.LiveAPI.prototype.goto = vi.fn(function (path) {
       this._path = path;
       this._id = path.replace(/\s+/g, "/");
+
       return 1;
     });
   });
@@ -57,6 +60,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error if operations array exceeds 50 operations", () => {
       const operations = Array(51).fill({ type: "info" });
+
       expect(() => rawLiveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
       );
@@ -125,7 +129,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0].operation.type).toBe("call_method");
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -147,7 +151,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -225,6 +229,7 @@ describe("rawLiveApi", () => {
 
     it("should handle info operation", () => {
       const mockInfo = "Mock LiveAPI info";
+
       Object.defineProperty(global.LiveAPI.prototype, "info", {
         get: () => mockInfo,
         configurable: true,
@@ -266,7 +271,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toEqual([
+      expect(result.results[0].result).toStrictEqual([
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
@@ -374,11 +379,11 @@ describe("rawLiveApi", () => {
         operations: [{ type: "get", property: "tempo" }],
       });
 
-      expect(result.results[0].operation).toEqual({
+      expect(result.results[0].operation).toStrictEqual({
         type: "get",
         property: "tempo",
       });
-      expect(result.results[0].result).toEqual([120]);
+      expect(result.results[0].result).toStrictEqual([120]);
     });
   });
 
@@ -396,7 +401,7 @@ describe("rawLiveApi", () => {
         operations: [{ type: "info" }],
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         path: "live_set",
         id: "1",
         results: [

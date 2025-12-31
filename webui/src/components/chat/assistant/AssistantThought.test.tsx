@@ -10,12 +10,14 @@ describe("AssistantThought", () => {
     it("renders as details element", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
       const details = document.querySelector("details");
+
       expect(details).toBeDefined();
     });
 
     it("has correct styling classes", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
       const details = document.querySelector("details");
+
       expect(details!.className).toContain("bg-gray-200");
       expect(details!.className).toContain("dark:bg-gray-700");
       expect(details!.className).toContain("border-green-500");
@@ -26,12 +28,14 @@ describe("AssistantThought", () => {
     it("is open when isOpen is true", () => {
       render(<AssistantThought content="Test thought" isOpen={true} />);
       const details = document.querySelector("details");
+
       expect(details!.open).toBe(true);
     });
 
     it("is closed when isOpen is false", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
       const details = document.querySelector("details");
+
       expect(details!.open).toBe(false);
     });
   });
@@ -46,6 +50,7 @@ describe("AssistantThought", () => {
         />,
       );
       const details = document.querySelector("details");
+
       expect(details!.className).toContain("animate-pulse");
     });
 
@@ -58,12 +63,14 @@ describe("AssistantThought", () => {
         />,
       );
       const details = document.querySelector("details");
+
       expect(details!.className).not.toContain("animate-pulse");
     });
 
     it("does not have animate-pulse class when isOpen is true but isResponding is undefined", () => {
       render(<AssistantThought content="Test thought" isOpen={true} />);
       const details = document.querySelector("details");
+
       expect(details!.className).not.toContain("animate-pulse");
     });
 
@@ -76,6 +83,7 @@ describe("AssistantThought", () => {
         />,
       );
       const details = document.querySelector("details");
+
       expect(details!.className).not.toContain("animate-pulse");
     });
 
@@ -88,6 +96,7 @@ describe("AssistantThought", () => {
         />,
       );
       const details = document.querySelector("details");
+
       expect(details!.className).not.toContain("animate-pulse");
     });
   });
@@ -105,12 +114,14 @@ describe("AssistantThought", () => {
         <AssistantThought content="First line\nSecond line" isOpen={false} />,
       );
       const summary = document.querySelector("summary");
+
       expect(summary!.innerHTML).toContain("First line");
     });
 
     it("handles single-line content when closed", () => {
       render(<AssistantThought content="Single line" isOpen={false} />);
       const summary = document.querySelector("summary");
+
       expect(summary!.innerHTML).toContain("Single line");
     });
   });
@@ -124,6 +135,7 @@ describe("AssistantThought", () => {
         />,
       );
       const contentDiv = document.querySelector(".prose");
+
       expect(contentDiv!.innerHTML).toContain("First line");
       expect(contentDiv!.innerHTML).toContain("Second line");
       expect(contentDiv!.innerHTML).toContain("Third line");
@@ -151,6 +163,7 @@ describe("AssistantThought", () => {
 
       // The open version should definitely have all content
       const openContent = openContainer.querySelector(".prose");
+
       expect(openContent!.innerHTML).toContain("First line");
       expect(openContent!.innerHTML).toContain("Second line");
     });
@@ -160,12 +173,14 @@ describe("AssistantThought", () => {
     it("renders markdown in content", () => {
       render(<AssistantThought content="**bold** text" isOpen={true} />);
       const contentDiv = document.querySelector(".prose");
+
       expect(contentDiv!.innerHTML).toContain("<strong>");
     });
 
     it("renders inline markdown in summary when closed", () => {
       render(<AssistantThought content="**bold** text" isOpen={false} />);
       const summary = document.querySelector("summary");
+
       expect(summary!.innerHTML).toContain("<strong>");
     });
   });

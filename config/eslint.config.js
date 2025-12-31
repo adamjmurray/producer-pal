@@ -1,3 +1,4 @@
+import vitestPlugin from "@vitest/eslint-plugin";
 import js from "@eslint/js";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
@@ -21,6 +22,7 @@ const baseRules = {
   "prefer-const": "error", // Use const when variable isn't reassigned
 
   // Import Quality
+  "import/first": "error", // All imports must come before other statements
   "import/no-cycle": "error", // Prevent circular dependencies
   "import/no-self-import": "error", // File can't import itself
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
@@ -132,7 +134,7 @@ const jsdocRules = {
       publicOnly: { esm: true }, // Only require JSDoc on exported functions
     },
   ],
-  "jsdoc/require-param": "error",
+  "jsdoc/require-param": ["error", { enableFixer: false }],
   "jsdoc/require-param-description": "error",
   "jsdoc/require-param-type": "error",
   "jsdoc/require-returns": "error",
@@ -507,6 +509,32 @@ export default [
           message:
             "Do not use file extensions in relative imports (bundlers handle resolution)",
         },
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\./]",
+          message: "Use path alias (#webui/*) instead of ../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\./]",
+          message: "Use path alias (#webui/*) instead of ../ imports",
+        },
+      ],
+    },
+  },
+
+  // Enforce path aliases for parent directory imports in src files
+  {
+    files: ["src/**/*.js"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../ imports",
+        },
       ],
     },
   },
@@ -514,14 +542,28 @@ export default [
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],
+    plugins: {
+      vitest: vitestPlugin,
+    },
     rules: {
+      ...vitestPlugin.configs.recommended.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
       complexity: ["error", 30],
       "sonarjs/no-duplicate-string": "off",
-      "import/order": "off", // Test files need imports after vi.mock() calls
-      // TODO: Enable padding for tests after increasing max-lines or splitting large test files
-      "@stylistic/padding-line-between-statements": "off",
+      "import/first": "off", // Test files need imports after vi.mock() calls
+      "import/order": "off",
+      // Enforce vi.mock(import('...')) syntax for proper module mocking
+      "vitest/prefer-import-in-mock": "error",
+      "vitest/consistent-test-it": ["error", { fn: "it" }], // or "test" - pick one
+      "vitest/no-duplicate-hooks": "error",
+      "vitest/no-test-return-statement": "error",
+      "vitest/prefer-hooks-on-top": "error",
+      "vitest/prefer-hooks-in-order": "error",
+      "vitest/prefer-to-contain": "error",
+      "vitest/prefer-to-have-length": "error",
+      "vitest/prefer-comparison-matcher": "error",
+      "vitest/prefer-strict-equal": "error",
     },
   },
   {
@@ -565,13 +607,15 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures
+      "**/*-test-case.ts", // Test data fixtures (these could be given a separate longer max file length, if needed, or ignore on a per-file basis)
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 750,
+          max: 650,
+          skipBlankLines: true,
+          skipComments: true,
         },
       ],
     },

@@ -1,16 +1,19 @@
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
-} from "../../notation/midi-pitch-to-name.js";
-import { readScene } from "../scene/read-scene.js";
-import { readLocators } from "../shared/locator/locator-helpers.js";
+} from "#src/shared/pitch.js";
+import { readScene } from "#src/tools/scene/read-scene.js";
+import { readLocators } from "#src/tools/shared/locator/locator-helpers.js";
 import {
   includeArrayFromFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
-} from "../shared/tool-framework/include-params.js";
-import { readTrackMinimal } from "../track/read/helpers/read-track-helpers.js";
-import { readTrack, readTrackGeneric } from "../track/read/read-track.js";
+} from "#src/tools/shared/tool-framework/include-params.js";
+import { readTrackMinimal } from "#src/tools/track/read/helpers/read-track-helpers.js";
+import {
+  readTrack,
+  readTrackGeneric,
+} from "#src/tools/track/read/read-track.js";
 
 /**
  * Read comprehensive information about the Live Set

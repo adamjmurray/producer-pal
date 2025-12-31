@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject", () => {
@@ -12,6 +12,7 @@ describe("deleteObject", () => {
     const id = "track_2";
     const trackIndex = 1;
     const path = `live_set tracks ${trackIndex}`;
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case path:
@@ -36,7 +37,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: id, type: "track" });
 
-    expect(result).toEqual({ id, type: "track", deleted: true });
+    expect(result).toStrictEqual({ id, type: "track", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
@@ -46,6 +47,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple tracks in descending index order", () => {
     const ids = "track_0,track_1,track_2";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0":
@@ -98,7 +100,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_2", type: "track", deleted: true },
       { id: "track_1", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
@@ -109,6 +111,7 @@ describe("deleteObject", () => {
     const id = "scene_2";
     const sceneIndex = 1;
     const path = `live_set scenes ${sceneIndex}`;
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case path:
@@ -133,7 +136,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: id, type: "scene" });
 
-    expect(result).toEqual({ id, type: "scene", deleted: true });
+    expect(result).toStrictEqual({ id, type: "scene", deleted: true });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
@@ -143,6 +146,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple scenes in descending index order", () => {
     const ids = "scene_0, scene_2";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set scenes 0":
@@ -185,7 +189,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "scene_2", type: "scene", deleted: true },
       { id: "scene_0", type: "scene", deleted: true },
     ]);
@@ -193,6 +197,7 @@ describe("deleteObject", () => {
 
   it("should delete multiple clips (order doesn't matter for clips)", () => {
     const ids = "clip_0_0,clip_1_1";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 0 clip":
@@ -232,27 +237,28 @@ describe("deleteObject", () => {
       "id clip_1_1",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "clip_0_0", type: "clip", deleted: true },
       { id: "clip_1_1", type: "clip", deleted: true },
     ]);
   });
 
-  it("should throw an error when ids arg is missing", () => {
-    const expectedError = "delete failed: ids is required";
-    expect(() => deleteObject()).toThrow(expectedError);
-    expect(() => deleteObject({})).toThrow(expectedError);
+  it("should throw an error when neither ids nor path is provided", () => {
+    const expectedError = "delete failed: ids or path is required";
+
     expect(() => deleteObject({ type: "clip" })).toThrow(expectedError);
   });
 
   it("should throw an error when type arg is missing", () => {
     const expectedError = "delete failed: type is required";
+
     expect(() => deleteObject({ ids: "clip_1" })).toThrow(expectedError);
   });
 
   it("should throw an error when type arg is invalid", () => {
     const expectedError =
-      'delete failed: type must be one of "track", "scene", "clip", or "device"';
+      'delete failed: type must be one of "track", "scene", "clip", "device", or "drum-pad"';
+
     expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(
       expectedError,
     );
@@ -279,7 +285,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: "999", type: "track" });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "999" does not exist',
     );
@@ -300,6 +306,7 @@ describe("deleteObject", () => {
       if (this._id === "track_1") {
         return "Track";
       }
+
       if (this._id === "scene_1") {
         return "Scene";
       }
@@ -309,7 +316,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids: "scene_1", type: "track" });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "scene_1" is not a track (found Scene)',
     );
@@ -367,7 +374,7 @@ describe("deleteObject", () => {
       0,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_2", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
     ]);
@@ -386,7 +393,7 @@ describe("deleteObject", () => {
       type: "track",
     });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent1" does not exist',
@@ -401,9 +408,11 @@ describe("deleteObject", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       if (this._id === "track_1") {
         return "live_set tracks 1";
       }
+
       return this._path;
     });
     expect(() => deleteObject({ ids: "track_1", type: "track" })).toThrow(
@@ -413,6 +422,7 @@ describe("deleteObject", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const ids = " track_0 , track_1 ";
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0":
@@ -441,7 +451,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids, type: "track" });
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "track_1", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
     ]);
@@ -480,7 +490,7 @@ describe("deleteObject", () => {
       type: "track",
     });
 
-    expect(singleResult).toEqual({
+    expect(singleResult).toStrictEqual({
       id: "track_0",
       type: "track",
       deleted: true,
@@ -494,12 +504,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set tracks 0") {
         return "track_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "track_0") {
         return "invalid_path_without_track_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -518,12 +530,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set scenes 0") {
         return "scene_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "scene_0") {
         return "invalid_path_without_scene_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -542,12 +556,14 @@ describe("deleteObject", () => {
       if (this._path === "live_set tracks 0 clip_slots 0 clip") {
         return "clip_0";
       }
+
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
       if (this._id === "clip_0") {
         return "invalid_path_without_track_index";
       }
+
       return this._path;
     });
     liveApiType.mockImplementation(function () {
@@ -561,150 +577,5 @@ describe("deleteObject", () => {
     );
   });
 
-  describe("device deletion", () => {
-    it("should delete a device from a regular track", () => {
-      const id = "device_1";
-      const path = "live_set tracks 0 devices 1";
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toEqual({ id, type: "device", deleted: true });
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
-        "delete_device",
-        1,
-      );
-    });
-
-    it("should delete a device from a return track", () => {
-      const id = "device_2";
-      const path = "live_set return_tracks 0 devices 1";
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toEqual({ id, type: "device", deleted: true });
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set return_tracks 0" }),
-        "delete_device",
-        1,
-      );
-    });
-
-    it("should delete a device from the master track", () => {
-      const id = "device_3";
-      const path = "live_set master_track devices 0";
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toEqual({ id, type: "device", deleted: true });
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set master_track" }),
-        "delete_device",
-        0,
-      );
-    });
-
-    it("should delete multiple devices", () => {
-      const ids = "device_1,device_2";
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        switch (this._id) {
-          case "device_1":
-            return "live_set tracks 0 devices 0";
-          case "device_2":
-            return "live_set tracks 1 devices 1";
-          default:
-            return this._path;
-        }
-      });
-      liveApiType.mockImplementation(function () {
-        if (["device_1", "device_2"].includes(this._id)) {
-          return "Device";
-        }
-      });
-
-      const result = deleteObject({ ids, type: "device" });
-
-      expect(result).toEqual([
-        { id: "device_1", type: "device", deleted: true },
-        { id: "device_2", type: "device", deleted: true },
-      ]);
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
-        "delete_device",
-        0,
-      );
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "delete_device",
-        1,
-      );
-    });
-
-    it("should throw error when device path is malformed", () => {
-      const id = "device_0";
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return "invalid_path_without_devices";
-        }
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
-
-      expect(() => deleteObject({ ids: id, type: "device" })).toThrow(
-        'delete failed: could not extract track path from device "device_0" (path="invalid_path_without_devices")',
-      );
-    });
-  });
+  // Device deletion tests are in delete-device.test.js
 });

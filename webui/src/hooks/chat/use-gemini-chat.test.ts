@@ -7,7 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import { useGeminiChat } from "./use-gemini-chat";
 
 // Mock GeminiClient
-vi.mock("../chat/gemini-client.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: class MockGeminiClient {
     initialize = vi.fn();
     sendMessage = vi.fn();
@@ -15,21 +16,23 @@ vi.mock("../chat/gemini-client.js", () => ({
 }));
 
 // Mock formatter
-vi.mock("../chat/gemini-formatter.js", () => ({
+vi.mock(import("#webui/chat/gemini-formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) => messages),
 }));
 
 // Mock config
-vi.mock("../config.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("#webui/lib/config"), () => ({
   getThinkingBudget: vi.fn(() => ({ mode: "auto" })),
   SYSTEM_INSTRUCTION: "Test instruction",
 }));
 
 describe("useGeminiChat", () => {
   const defaultProps = {
+    provider: "gemini" as const,
     apiKey: "test-key",
     model: "gemini-2.5-flash",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: false,
     enabledTools: {},
@@ -40,7 +43,8 @@ describe("useGeminiChat", () => {
 
   it("initializes with empty messages", () => {
     const { result } = renderHook(() => useGeminiChat(defaultProps));
-    expect(result.current.messages).toEqual([]);
+
+    expect(result.current.messages).toStrictEqual([]);
     expect(result.current.isAssistantResponding).toBe(false);
     expect(result.current.activeModel).toBeNull();
     expect(result.current.activeThinking).toBeNull();
@@ -54,7 +58,7 @@ describe("useGeminiChat", () => {
       result.current.clearConversation();
     });
 
-    expect(result.current.messages).toEqual([]);
+    expect(result.current.messages).toStrictEqual([]);
     expect(result.current.activeModel).toBeNull();
     expect(result.current.activeThinking).toBeNull();
     expect(result.current.activeTemperature).toBeNull();

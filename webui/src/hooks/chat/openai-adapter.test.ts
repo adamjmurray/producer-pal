@@ -3,19 +3,20 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { openaiAdapter } from "./openai-adapter";
-import { OpenAIClient } from "../../chat/openai-client";
-import type { OpenAIMessage } from "../../types/messages";
-import { buildOpenAIConfig } from "../settings/config-builders";
-import { formatOpenAIMessages } from "../../chat/openai-formatter";
-import { createOpenAIErrorMessage } from "./streaming-helpers";
+import { OpenAIClient } from "#webui/chat/openai-client";
+import type { OpenAIMessage } from "#webui/types/messages";
+import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
+import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
-vi.mock("../../chat/openai-client", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("#webui/chat/openai-client"), () => ({
   OpenAIClient: vi.fn(),
 }));
 
 // Mock config builder
-vi.mock("../settings/config-builders", () => ({
+vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   buildOpenAIConfig: vi.fn(
     (model, temp, thinking, baseUrl, showThoughts, tools, history) => ({
       model,
@@ -30,7 +31,7 @@ vi.mock("../settings/config-builders", () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock("../../chat/openai-formatter", () => ({
+vi.mock(import("#webui/chat/openai-formatter"), () => ({
   formatOpenAIMessages: vi.fn((messages) =>
     messages.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -48,7 +49,7 @@ vi.mock("../../chat/openai-formatter", () => ({
   ),
 }));
 
-vi.mock("./streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   createOpenAIErrorMessage: vi.fn((chatHistory, error) => [
     ...chatHistory.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -226,9 +227,12 @@ describe("openai-adapter", () => {
       const result = openaiAdapter.createErrorMessage(error, chatHistory);
 
       const lastPart = result[result.length - 1]?.parts[0];
-      if (lastPart && "content" in lastPart) {
-        expect(lastPart.content).toContain("String error");
-      }
+
+      expect(lastPart).toBeDefined();
+      expect(lastPart).toHaveProperty("content");
+      expect((lastPart as { content: string }).content).toContain(
+        "String error",
+      );
     });
   });
 
@@ -334,7 +338,7 @@ describe("openai-adapter", () => {
 
       const result = openaiAdapter.createUserMessage(text);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         role: "user",
         content: "Hello world",
       });

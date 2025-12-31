@@ -5,9 +5,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateTrack } from "./update-track.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack - send properties", () => {
   beforeEach(() => {
@@ -16,6 +16,7 @@ describe("updateTrack - send properties", () => {
       if (this._path?.startsWith("id ")) {
         return this._path.slice(3);
       }
+
       switch (this._path) {
         case "id 123":
           return "123";

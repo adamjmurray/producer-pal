@@ -19,7 +19,7 @@ describe("barbeat-interpreter-helpers", () => {
 
       clearPitchBuffer(state);
 
-      expect(state.currentPitches).toEqual([]);
+      expect(state.currentPitches).toStrictEqual([]);
       expect(state.pitchGroupStarted).toBe(false);
       expect(state.pitchesEmitted).toBe(false);
       expect(state.stateChangedSinceLastPitch).toBe(false);
@@ -51,7 +51,7 @@ describe("barbeat-interpreter-helpers", () => {
       );
 
       expect(events).toHaveLength(1);
-      expect(events[0]).toEqual({
+      expect(events[0]).toStrictEqual({
         pitch: 60,
         start_time: 9.5,
         duration: 0.5,

@@ -1,7 +1,7 @@
 # Roadmap
 
 [Get Involved](#get-involved) · [In Progress](#in-progress) ·
-[Released](#released) · [Future Plans](#future-plans)
+[Planned Features](#planned-features) · [Changelog](#changelog)
 
 ## Get Involved
 
@@ -17,31 +17,15 @@ Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
 
-## In Progress
+## Changelog
 
-### 1.3.x
+### 1.3 - Device Control (December 2025)
 
-- Support moving/reordering devices (including from a track to inside a rack)
-- Change the samples played by Simpler
-
-## Released
-
-### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators
-
+- Full device control: add/delete/move native devices on any track, read/write
+  parameters, insert into rack chains
 - Rack macro and variation management
 - A/B comparison for device parameters
 - Arrangement locator support
-
-### 1.3.1 - maintenance (December 2025)
-
-- Auto-recover from rate limit errors in the built-in chat UI
-
-### 1.3.0 - Device Control (December 2025)
-
-- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
-  any track (audio/midi, return, master)
-- Delete devices
-- Read/write device parameters
 
 ### 1.2 - Audio clip and mixer support (November 2025)
 
@@ -64,7 +48,7 @@ Expanded features and support for multiple AI platforms.
 
 Initial public release with Claude Desktop support.
 
-## Future Plans
+## Planned Features
 
 ### 1.4 - Modulation
 
@@ -73,38 +57,37 @@ with more flexible modulation features:
 
 - Apply ramps and curves to MIDI velocity, audio gain and other properties
 - Randomize velocity and timing
-- Shuffle and groove support
+- Apply timing patterns like swing
 
-This is destructive modulation applied by modifying clip properties and the
-notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
-however, that could possibly be supported too via device control features.
-
-### 1.5 - Voice Interaction
-
-Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
-
-- Google Gemini
-- Maybe: OpenAI (so far, this works best during prototyping, but costs money per
-  interaction i.e. it is not covered by a flat-rate subscription plan)
-- Local/other options?
-
-### 1.6 - Code Execution
+### 1.5 - Code Execution
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.7 - Audio Editing and Synthesis
+### 1.6 - Customization
+
+- Custom skills, system prompts, tool descriptions, and task-focused personas
+  for experimentation and local model optimization
+
+### 1.7 - Harmony
+
+- Chord notation
+- Pitches as scale/chord degrees (instead of absolute pitches)
+- Microtonal support
+
+### 1.8 - Audio Editing and Synthesis
 
 - Reverse audio clips
 - Generate audio files on demand from a selection of synthesis algorithms and
   arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
 - Generate novel DSP algorithms
 
-### 1.8 - Harmony
-
-- Chord notation
-- Pitches as scale/chord degrees (instead of absolute pitches)
-- Microtonal support
-
 ### 1.x - Misc
 
+- Clip quantization
 - Take lane support
+- Groove support
+- Speak to Producer Pal instead of typing with:
+  - Google Gemini
+  - OpenAI ChatGPT
+  - Others? Wisprflow? AssemblyAI?
+  - Bidirectional / TTS: Gemini Live API, OpenAI Live API

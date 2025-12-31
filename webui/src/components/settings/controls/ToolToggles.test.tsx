@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { TOOLS } from "../../../lib/constants/tools";
+import { TOOLS } from "#webui/lib/constants/tools";
 import { ToolToggles } from "./ToolToggles";
 
 describe("ToolToggles", () => {
@@ -11,6 +11,7 @@ describe("ToolToggles", () => {
     enabledTools: TOOLS.reduce(
       (acc, tool) => {
         acc[tool.id] = true;
+
         return acc;
       },
       {} as Record<string, boolean>,
@@ -50,9 +51,11 @@ describe("ToolToggles", () => {
   describe("button interactions", () => {
     it("calls enableAllTools when Enable all button is clicked", () => {
       const enableAllTools = vi.fn();
+
       render(<ToolToggles {...defaultProps} enableAllTools={enableAllTools} />);
 
       const button = screen.getByRole("button", { name: "Enable all" });
+
       fireEvent.click(button);
 
       expect(enableAllTools).toHaveBeenCalledOnce();
@@ -60,11 +63,13 @@ describe("ToolToggles", () => {
 
     it("calls disableAllTools when Disable all button is clicked", () => {
       const disableAllTools = vi.fn();
+
       render(
         <ToolToggles {...defaultProps} disableAllTools={disableAllTools} />,
       );
 
       const button = screen.getByRole("button", { name: "Disable all" });
+
       fireEvent.click(button);
 
       expect(disableAllTools).toHaveBeenCalledOnce();
@@ -78,6 +83,7 @@ describe("ToolToggles", () => {
       const checkbox = screen.getByLabelText(
         "Connect to Ableton Live",
       ) as HTMLInputElement;
+
       expect(checkbox.checked).toBe(true);
     });
 
@@ -86,11 +92,13 @@ describe("ToolToggles", () => {
         ...defaultProps.enabledTools,
         "ppal-connect": false,
       };
+
       render(<ToolToggles {...defaultProps} enabledTools={enabledTools} />);
 
       const checkbox = screen.getByLabelText(
         "Connect to Ableton Live",
       ) as HTMLInputElement;
+
       expect(checkbox.checked).toBe(false);
     });
 
@@ -101,21 +109,25 @@ describe("ToolToggles", () => {
       const checkbox = screen.getByLabelText(
         "Connect to Ableton Live",
       ) as HTMLInputElement;
+
       expect(checkbox.checked).toBe(true);
     });
 
     it("calls setEnabledTools when checkbox is toggled", () => {
       const setEnabledTools = vi.fn();
+
       render(
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
       const checkbox = screen.getByLabelText("Connect to Ableton Live");
+
       fireEvent.click(checkbox);
 
       expect(setEnabledTools).toHaveBeenCalledOnce();
       // Check that it was called with the tool toggled
       const call = setEnabledTools.mock.calls[0]?.[0];
+
       expect(call?.["ppal-connect"]).toBe(false); // Was true, now false
     });
   });

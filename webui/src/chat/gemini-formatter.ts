@@ -6,7 +6,7 @@ import type {
   UIToolPart,
   UITextPart,
   UIThoughtPart,
-} from "../types/messages";
+} from "#webui/types/messages";
 
 /**
  * Formats Gemini's raw chat history into a UI-friendly structure.
@@ -130,6 +130,7 @@ function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
     role: "model",
     parts: [],
     rawHistoryIndex: rawIndex,
+    timestamp: Date.now(),
   };
 
   acc.push(message);
@@ -166,6 +167,7 @@ function getOrCreateMessage(
     role: typedRole,
     parts: [],
     rawHistoryIndex: rawIndex,
+    timestamp: Date.now(),
   };
 
   acc.push(message);

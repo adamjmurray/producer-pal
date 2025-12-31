@@ -4,13 +4,17 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
-import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
+} from "#src/test/mock-live-api.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
+
 // Mock the getHostTrackIndex function
-vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
-  getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  () => ({
+    getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
+  }),
+);
 
 describe("connect", () => {
   it("includes project notes when context is provided and enabled", () => {
@@ -26,6 +30,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -55,7 +60,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toEqual(
+    expect(result.projectNotes).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
@@ -77,6 +82,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -107,7 +113,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toEqual(
+    expect(result.projectNotes).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
@@ -132,6 +138,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -177,6 +184,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -215,6 +223,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -257,6 +266,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -302,6 +312,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -355,6 +366,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 

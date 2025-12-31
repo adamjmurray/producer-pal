@@ -6,8 +6,8 @@ import {
   liveApiSet,
   mockLiveApiGet,
   MockSequence,
-} from "../../../test/mock-live-api.js";
-import { MAX_AUTO_CREATED_SCENES } from "../../constants.js";
+} from "#src/test/mock-live-api.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - session view", () => {
@@ -105,7 +105,7 @@ describe("createClip - session view", () => {
       "fire",
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "clip_0_0",
       trackIndex: 0,
       sceneIndex: 0,
@@ -139,7 +139,7 @@ describe("createClip - session view", () => {
       expect.objectContaining({ path: "live_set scenes 0" }),
       "fire",
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
       sceneIndex: 0,
@@ -254,7 +254,7 @@ describe("createClip - session view", () => {
       "Loop 3",
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { id: "clip_0_1", trackIndex: 0, sceneIndex: 1 },
       { id: "clip_0_2", trackIndex: 0, sceneIndex: 2 },
       { id: "clip_0_3", trackIndex: 0, sceneIndex: 3 },
@@ -316,7 +316,7 @@ describe("createClip - session view", () => {
     });
 
     // Should return empty array (no clips created)
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("should emit warning and return empty array if sceneIndex exceeds maximum", () => {
@@ -333,6 +333,6 @@ describe("createClip - session view", () => {
     });
 
     // Should return empty array (no clips created)
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 });

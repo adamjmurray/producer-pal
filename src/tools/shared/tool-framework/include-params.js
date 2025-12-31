@@ -1,8 +1,9 @@
 // String constants for include options
-const DRUM_CHAINS = "drum-chains";
+const DRUM_PADS = "drum-pads";
 const DRUM_MAPS = "drum-maps";
 const CLIP_NOTES = "clip-notes";
-const RACK_CHAINS = "rack-chains";
+const CHAINS = "chains";
+const RETURN_CHAINS = "return-chains";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";
@@ -23,10 +24,11 @@ const LOCATORS = "locators";
  */
 const ALL_INCLUDE_OPTIONS = {
   song: [
-    DRUM_CHAINS,
+    DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    RACK_CHAINS,
+    CHAINS,
+    RETURN_CHAINS,
     "scenes",
     MIDI_EFFECTS,
     INSTRUMENTS,
@@ -46,10 +48,11 @@ const ALL_INCLUDE_OPTIONS = {
     LOCATORS,
   ],
   track: [
-    DRUM_CHAINS,
+    DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    RACK_CHAINS,
+    CHAINS,
+    RETURN_CHAINS,
     MIDI_EFFECTS,
     INSTRUMENTS,
     AUDIO_EFFECTS,
@@ -88,10 +91,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   // If no include array is provided (undefined), use defaults
   if (includeArray === undefined) {
     return {
-      includeDrumChains: Boolean(defaults.includeDrumChains),
+      includeDrumPads: Boolean(defaults.includeDrumPads),
       includeDrumMaps: Boolean(defaults.includeDrumMaps),
       includeClipNotes: Boolean(defaults.includeClipNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
+      includeReturnChains: Boolean(defaults.includeReturnChains),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstruments: Boolean(defaults.includeInstruments),
@@ -120,10 +124,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   // If an empty array was explicitly provided, return all false
   if (includeArray.length === 0) {
     return {
-      includeDrumChains: false,
+      includeDrumPads: false,
       includeDrumMaps: false,
       includeClipNotes: false,
       includeRackChains: false,
+      includeReturnChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: false,
@@ -144,10 +149,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   }
 
   const result = {
-    includeDrumChains: includeSet.has(DRUM_CHAINS),
+    includeDrumPads: includeSet.has(DRUM_PADS),
     includeDrumMaps: includeSet.has(DRUM_MAPS),
     includeClipNotes: includeSet.has(CLIP_NOTES),
-    includeRackChains: includeSet.has(RACK_CHAINS),
+    includeRackChains: includeSet.has(CHAINS),
+    includeReturnChains: includeSet.has(RETURN_CHAINS),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
     includeInstruments: includeSet.has(INSTRUMENTS),
@@ -173,10 +179,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
  * Mapping of flag properties to their include option strings
  */
 const FLAG_TO_OPTION = [
-  ["includeDrumChains", DRUM_CHAINS],
+  ["includeDrumPads", DRUM_PADS],
   ["includeDrumMaps", DRUM_MAPS],
   ["includeClipNotes", CLIP_NOTES],
-  ["includeRackChains", RACK_CHAINS],
+  ["includeRackChains", CHAINS],
+  ["includeReturnChains", RETURN_CHAINS],
   ["includeScenes", "scenes"],
   ["includeMidiEffects", MIDI_EFFECTS],
   ["includeInstruments", INSTRUMENTS],
@@ -210,10 +217,11 @@ export function includeArrayFromFlags(includeFlags) {
  * Default include parameters for read-live-set tool
  */
 export const READ_SONG_DEFAULTS = {
-  includeDrumChains: false,
+  includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: false,
   includeRackChains: false,
+  includeReturnChains: false,
   includeScenes: false,
   includeMidiEffects: false,
   includeInstruments: true,
@@ -234,10 +242,11 @@ export const READ_SONG_DEFAULTS = {
  * Default include parameters for read-track tool
  */
 export const READ_TRACK_DEFAULTS = {
-  includeDrumChains: false,
+  includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: true,
   includeRackChains: false,
+  includeReturnChains: false,
   includeMidiEffects: false,
   includeInstruments: true,
   includeAudioEffects: false,

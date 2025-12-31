@@ -5,10 +5,10 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
-import { setupMocks } from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
-import "../../../../live-api-adapter/live-api-extensions.js";
+} from "#src/test/mock-live-api.js";
+import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateClip - Properties and ID handling", () => {
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe("updateClip - Properties and ID handling", () => {
       "name",
       "Prefixed ID Clip",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -65,7 +65,7 @@ describe("updateClip - Properties and ID handling", () => {
       expect.anything(),
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -86,7 +86,7 @@ describe("updateClip - Properties and ID handling", () => {
       "looping",
       false,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
@@ -117,7 +117,7 @@ describe("updateClip - Properties and ID handling", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateClip: id "nonexistent" does not exist',
     );
@@ -139,8 +139,8 @@ describe("updateClip - Properties and ID handling", () => {
     const singleResult = updateClip({ ids: "123", name: "Single" });
     const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({ id: "123" });
-    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123" });
+    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -165,7 +165,7 @@ describe("updateClip - Properties and ID handling", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -198,7 +198,7 @@ describe("updateClip - Properties and ID handling", () => {
       "Filtered",
     );
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   describe("color quantization verification", () => {
@@ -218,9 +218,11 @@ describe("updateClip - Properties and ID handling", () => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
+
         if (prop === "is_arrangement_clip") return [0];
         if (prop === "is_midi_clip") return [1];
         if (prop === "is_audio_clip") return [0];
+
         return null;
       });
 
@@ -252,9 +254,11 @@ describe("updateClip - Properties and ID handling", () => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
+
         if (prop === "is_arrangement_clip") return [0];
         if (prop === "is_midi_clip") return [1];
         if (prop === "is_audio_clip") return [0];
+
         return null;
       });
 

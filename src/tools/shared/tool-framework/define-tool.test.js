@@ -21,6 +21,7 @@ describe("defineTool", () => {
 
     // Create and register the tool
     const toolRegistrar = defineTool(toolName, toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi);
 
     // Verify tool was registered
@@ -41,7 +42,7 @@ describe("defineTool", () => {
     const invalidArgs = { optionalParam: "not a number" };
     const result = await toolHandler(invalidArgs);
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       content: [
         {
           type: "text",
@@ -73,6 +74,7 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi);
 
     const toolHandler = mockServer.registerTool.mock.calls[0][2];
@@ -82,7 +84,7 @@ describe("defineTool", () => {
     const result = await toolHandler(validArgs);
 
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", validArgs);
-    expect(result).toEqual({ success: true });
+    expect(result).toStrictEqual({ success: true });
   });
 
   it("should filter schema parameters when smallModelMode is enabled", () => {
@@ -104,11 +106,13 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     // Verify tool was registered with filtered schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
-    expect(Object.keys(registeredConfig.inputSchema)).toEqual([
+
+    expect(Object.keys(registeredConfig.inputSchema)).toStrictEqual([
       "keepParam",
       "alsoKeep",
     ]);
@@ -139,11 +143,13 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
 
     // Verify tool was registered with full schema
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
-    expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
+
+    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
   });
 
   it("should strip filtered parameters in smallModelMode", async () => {
@@ -164,6 +170,7 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     const toolHandler = mockServer.registerTool.mock.calls[0][2];
@@ -173,6 +180,7 @@ describe("defineTool", () => {
       allowedParam: "valid",
       filteredParam: 123, // This should be stripped by Zod
     };
+
     await toolHandler(args);
 
     // Verify callLiveApi was called WITHOUT the filtered parameter
@@ -201,10 +209,50 @@ describe("defineTool", () => {
     };
 
     const toolRegistrar = defineTool("test-tool", toolOptions);
+
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     // Should use original schema even in small model mode
     const registeredConfig = mockServer.registerTool.mock.calls[0][1];
-    expect(registeredConfig.inputSchema).toEqual(toolOptions.inputSchema);
+
+    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
+  });
+
+  it("should format validation errors without path for root-level errors", async () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    // Create a tool with a refinement at the root level that produces an error with empty path
+    const toolOptions = {
+      title: "Test Tool",
+      description: "A test tool",
+      inputSchema: {
+        param: z.string(),
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi);
+
+    const toolHandler = mockServer.registerTool.mock.calls[0][2];
+
+    // Pass null which triggers a root-level error
+    // When safeParse receives null/undefined for an object, it creates an error with empty path
+    const result = await toolHandler(null);
+
+    expect(result).toStrictEqual({
+      content: [
+        {
+          type: "text",
+          text: expect.stringContaining("Validation error in test-tool:"),
+        },
+      ],
+      isError: true,
+    });
+    // The error message should not have a path prefix (just the message)
+    expect(result.content[0].text).toMatch(/Invalid input: expected object/);
   });
 });

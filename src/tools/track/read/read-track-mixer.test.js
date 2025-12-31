@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import * as console from "../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack - mixer properties", () => {
@@ -438,6 +438,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -487,8 +488,8 @@ describe("readTrack - mixer properties", () => {
 
     expect(result).toHaveProperty("sends");
     expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toEqual({ gainDb: -6.0, return: "Delay" });
+    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Delay" });
   });
 
   it("does not include sends property when track has no sends", () => {
@@ -496,6 +497,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -545,6 +547,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -601,7 +604,7 @@ describe("readTrack - mixer properties", () => {
 
     expect(result).toHaveProperty("sends");
     expect(result.sends).toHaveLength(1);
-    expect(result.sends[0]).toEqual({
+    expect(result.sends[0]).toStrictEqual({
       gainDb: -10.0,
       return: "FetchedReverb",
     });
@@ -614,6 +617,7 @@ describe("readTrack - mixer properties", () => {
       if (this.path?.startsWith("id ")) {
         return this.path.slice(3);
       }
+
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -666,8 +670,8 @@ describe("readTrack - mixer properties", () => {
     );
     // Still returns sends with fallback for missing name
     expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toEqual({ gainDb: -6.0, return: "Return 2" });
+    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Return 2" });
 
     consoleSpy.mockRestore();
   });

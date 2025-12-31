@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiType,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - clips", () => {
   it("passes clip loading parameters to readTrack", () => {
@@ -49,7 +49,7 @@ describe("readLiveSet - clips", () => {
 
     // Test with minimal clip loading (no session-clips or arrangement-clips in include)
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains"],
+      include: ["regular-tracks", "instruments", "chains"],
     });
 
     // When session-clips and arrangement-clips are not in include, we get counts instead of arrays
@@ -154,6 +154,7 @@ describe("readLiveSet - clips", () => {
     expect(result.tracks).toHaveLength(1);
 
     const track = result.tracks[0];
+
     // Minimal track info: id, type, trackIndex
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");
@@ -193,6 +194,7 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
+
       return undefined;
     });
 
@@ -224,6 +226,7 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
     const track = result.tracks[0];
+
     expect(track.id).toBe("track1");
     expect(track.type).toBe("audio");
     expect(track.trackIndex).toBe(0);
@@ -265,6 +268,7 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
+
       return undefined;
     });
 
@@ -304,6 +308,7 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["all-clips"] });
 
     const track = result.tracks[0];
+
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");
     expect(track.trackIndex).toBe(0);
@@ -361,6 +366,7 @@ describe("readLiveSet - clips", () => {
     });
 
     const track = result.tracks[0];
+
     // Should include full track properties
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");

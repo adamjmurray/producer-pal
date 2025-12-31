@@ -3,7 +3,7 @@ import {
   LiveAPI,
   liveApiCall,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { createPartialTile, tileClipToRange } from "./arrangement-tiling.js";
 
 // Mock context for tests
@@ -126,7 +126,7 @@ describe("tileClipToRange", () => {
     );
 
     expect(result).toHaveLength(3);
-    expect(result).toEqual([{ id: "200" }, { id: "201" }, { id: "202" }]);
+    expect(result).toStrictEqual([{ id: "200" }, { id: "201" }, { id: "202" }]);
   });
 
   // Integration test for full + partial tiles
@@ -231,7 +231,7 @@ describe("tileClipToRange", () => {
     );
 
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("handles only partial tile when total length less than clip length", () => {

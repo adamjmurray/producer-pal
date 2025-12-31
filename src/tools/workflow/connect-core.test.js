@@ -1,20 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { VERSION } from "../../shared/version.js";
+import { VERSION } from "#src/shared/version.js";
 import {
   children,
   liveApiCall,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
+} from "#src/test/mock-live-api.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function
-vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
-  getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  () => ({
+    getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
+  }),
+);
 
 describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {
@@ -41,6 +44,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.3";
       }
+
       return null;
     });
 
@@ -73,7 +77,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       connected: true,
       producerPalVersion: VERSION,
       abletonLiveVersion: "12.3",
@@ -118,6 +122,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -144,7 +149,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         liveSet: expect.objectContaining({
           tempo: 140,
@@ -178,6 +183,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -211,72 +217,11 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.messagesForUser).toEqual(
+    expect(result.messagesForUser).toStrictEqual(
       expect.stringContaining("* Save often!"),
     );
     expect(result.messagesForUser).not.toContain("No instruments found.");
   });
-
-  // it("warns when instrument is on host track", () => {
-  //   liveApiId.mockImplementation(function () {
-  //     switch (this._path) {
-  //       case "live_set":
-  //         return "live_set_id";
-  //       case "live_set tracks 0":
-  //         return "track0";
-  //       case "live_set tracks 0 devices 0":
-  //         return "host_instrument";
-  //       default:
-  //         return this._id;
-  //     }
-  //   });
-
-  //   liveApiPath.mockImplementation(function () {
-  //     return this._path;
-  //   });
-
-  //   liveApiCall.mockImplementation(function (method) {
-  //     if (method === "get_version_string") {
-  //       return "12.2";
-  //     }
-  //     return null;
-  //   });
-
-  //   mockLiveApiGet({
-  //     LiveSet: {
-  //       name: "Host Track Project",
-  //       tempo: 120,
-  //       signature_numerator: 4,
-  //       signature_denominator: 4,
-  //       is_playing: 0,
-  //       tracks: children("track0"),
-  //       scenes: children("scene0"),
-  //     },
-  //     AppView: {
-  //       focused_document_view: "Session",
-  //     },
-  //     "live_set tracks 0": {
-  //       has_midi_input: 1,
-  //       devices: children("host_instrument"),
-  //     },
-  //     host_instrument: {
-  //       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-  //     },
-  //   });
-
-  //   getHostTrackIndex.mockReturnValue(0); // Host track is track 0 with instrument
-
-  //   const result = connect();
-
-  //   expect(result.messagesForUser).toEqual(
-  //     expect.arrayContaining([
-  //       expect.stringContaining(
-  //         "There's an instrument on the Producer Pal track.",
-  //       ),
-  //       expect.stringContaining("Ready to create"),
-  //     ]),
-  //   );
-  // });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
     liveApiId.mockImplementation(function () {
@@ -300,6 +245,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -330,7 +276,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.messagesForUser).toEqual(
+    expect(result.messagesForUser).toStrictEqual(
       expect.stringContaining("* No instruments found."),
     );
   });
@@ -355,6 +301,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -382,7 +329,7 @@ describe("connect", () => {
     const result = connect();
 
     // Should still work - just won't find instruments on host track
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
         liveSet: expect.objectContaining({
@@ -411,6 +358,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -433,7 +381,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toEqual(
+    expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
         liveSet: expect.objectContaining({
@@ -458,6 +406,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -499,6 +448,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 
@@ -540,6 +490,7 @@ describe("connect", () => {
       if (method === "get_version_string") {
         return "12.2";
       }
+
       return null;
     });
 

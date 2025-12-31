@@ -8,8 +8,8 @@ import {
   liveApiType,
   LiveAPI,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { playback } from "../playback.js";
+} from "#src/test/mock-live-api.js";
+import { playback } from "#src/tools/control/playback.js";
 
 describe("transport", () => {
   beforeEach(() => {
@@ -164,6 +164,7 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -207,12 +208,15 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       if (this._path === "clip2") {
         return "live_set tracks 1 clip_slots 1 clip";
       }
+
       if (this._path === "clip3") {
         return "live_set tracks 2 clip_slots 2 clip";
       }
+
       return this._path;
     });
 
@@ -256,12 +260,15 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       if (this._path === "clip2") {
         return "live_set tracks 1 clip_slots 1 clip";
       }
+
       if (this._path === "clip3") {
         return "live_set tracks 2 clip_slots 2 clip";
       }
+
       return this._path;
     });
 
@@ -315,6 +322,7 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 99 clip_slots 0 clip"; // Track 99 doesn't exist
       }
+
       return this._path;
     });
 
@@ -322,6 +330,7 @@ describe("transport", () => {
       if (this._path === "live_set tracks 99 clip_slots 0") {
         return "id 0"; // This makes the clip slot not exist
       }
+
       return "id clip1";
     });
 
@@ -354,12 +363,15 @@ describe("transport", () => {
       if (this._path === "live_set") {
         return "LiveSet";
       }
+
       if (this._path === "live_set scenes 0") {
         return "Scene";
       }
+
       if (this._path === "id track1" || this._path === "id track2") {
         return "Track";
       }
+
       return this._type; // Fall back to default MockLiveAPI logic
     });
 
@@ -416,6 +428,7 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       return this._path;
     });
 
@@ -453,12 +466,15 @@ describe("transport", () => {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
+
       if (this._path === "clip2") {
         return "live_set tracks 1 clip_slots 1 clip";
       }
+
       if (this._path === "clip3") {
         return "live_set tracks 2 clip_slots 2 clip";
       }
+
       return this._path;
     });
 

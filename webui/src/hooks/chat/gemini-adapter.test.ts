@@ -3,19 +3,20 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
-import { GeminiClient } from "../../chat/gemini-client";
-import type { GeminiMessage } from "../../types/messages";
-import { buildGeminiConfig } from "../settings/config-builders";
-import { formatGeminiMessages } from "../../chat/gemini-formatter";
-import { createGeminiErrorMessage } from "./streaming-helpers";
+import { GeminiClient } from "#webui/chat/gemini-client";
+import type { GeminiMessage } from "#webui/types/messages";
+import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
+import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
+import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
-vi.mock("../../chat/gemini-client", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: vi.fn(),
 }));
 
 // Mock config builder
-vi.mock("../settings/config-builders", () => ({
+vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   buildGeminiConfig: vi.fn(
     (model, temp, thinking, showThoughts, tools, history) => ({
       model,
@@ -29,7 +30,7 @@ vi.mock("../settings/config-builders", () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock("../../chat/gemini-formatter", () => ({
+vi.mock(import("#webui/chat/gemini-formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) =>
     messages.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -42,7 +43,7 @@ vi.mock("../../chat/gemini-formatter", () => ({
   ),
 }));
 
-vi.mock("./streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
     ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -88,7 +89,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -97,7 +98,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -108,7 +109,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -117,7 +118,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -128,7 +129,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: false },
@@ -137,7 +138,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -145,12 +146,18 @@ describe("gemini-adapter", () => {
     });
 
     it("handles missing extraParams gracefully", () => {
-      geminiAdapter.buildConfig("gemini-2.5-flash", 1.0, "Auto", {}, undefined);
+      geminiAdapter.buildConfig(
+        "gemini-2.5-flash",
+        1.0,
+        "Default",
+        {},
+        undefined,
+      );
 
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -161,7 +168,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         {},
@@ -170,7 +177,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -185,7 +192,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         chatHistory,
         { showThoughts: true },
@@ -194,7 +201,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         chatHistory,
@@ -238,9 +245,12 @@ describe("gemini-adapter", () => {
       const result = geminiAdapter.createErrorMessage(error, chatHistory);
 
       const lastPart = result[result.length - 1]?.parts[0];
-      if (lastPart && "content" in lastPart) {
-        expect(lastPart.content).toContain("String error");
-      }
+
+      expect(lastPart).toBeDefined();
+      expect(lastPart).toHaveProperty("content");
+      expect((lastPart as { content: string }).content).toContain(
+        "String error",
+      );
     });
   });
 
@@ -322,7 +332,7 @@ describe("gemini-adapter", () => {
 
       const result = geminiAdapter.createUserMessage(text);
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         role: "user",
         parts: [{ text: "Hello world" }],
       });

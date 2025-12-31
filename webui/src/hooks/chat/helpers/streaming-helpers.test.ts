@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { GeminiMessage, OpenAIMessage } from "../../types/messages";
+import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
 import {
   handleMessageStream,
   createGeminiErrorMessage,
@@ -17,7 +17,12 @@ describe("streaming-helpers", () => {
         for (const h of mockHistory) yield h;
       })();
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 
@@ -40,8 +45,14 @@ describe("streaming-helpers", () => {
         yield []; // Required by ESLint even though we throw immediately
         throw new DOMException("Aborted", "AbortError");
       }
+
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 
@@ -66,8 +77,14 @@ describe("streaming-helpers", () => {
         yield [];
         throw new Error("Network failure");
       }
+
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 
@@ -85,6 +102,7 @@ describe("streaming-helpers", () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
       const firstPart = result[0]?.parts[0];
+
       expect(firstPart?.type).toBe("error");
       expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Test error",
@@ -96,6 +114,7 @@ describe("streaming-helpers", () => {
       const result = createGeminiErrorMessage("Error: Test", chatHistory);
 
       const firstPart = result[0]?.parts[0];
+
       expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Test",
       );
@@ -121,6 +140,7 @@ describe("streaming-helpers", () => {
 
     it("should throw for error status", async () => {
       const checkMcp = vi.fn().mockResolvedValue(undefined);
+
       await expect(
         validateMcpConnection("error", "Test error", checkMcp),
       ).rejects.toThrow("MCP connection failed");

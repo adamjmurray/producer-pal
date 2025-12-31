@@ -51,5 +51,53 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).not.toHaveBeenCalled();
     });
+
+    it("should post when verbose is enabled with 1", () => {
+      // Get the verbose handler from Max.handlers map
+      const verboseHandler = Max.handlers.get("verbose");
+
+      expect(verboseHandler).toBeDefined();
+
+      // Enable verbose mode with 1
+      verboseHandler(1);
+      logger.info("verbose info message");
+
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] verbose info message$/,
+        ),
+      );
+    });
+
+    it("should post when verbose is enabled with 'true'", () => {
+      const verboseHandler = Max.handlers.get("verbose");
+
+      verboseHandler("true");
+      logger.info("verbose string true message");
+
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] verbose string true message$/,
+        ),
+      );
+    });
+
+    it("should not post when verbose is disabled with 0", () => {
+      const verboseHandler = Max.handlers.get("verbose");
+
+      verboseHandler(0);
+      logger.info("should not post");
+
+      expect(Max.post).not.toHaveBeenCalled();
+    });
+
+    it("should not post when verbose is disabled with false", () => {
+      const verboseHandler = Max.handlers.get("verbose");
+
+      verboseHandler(false);
+      logger.info("should not post");
+
+      expect(Max.post).not.toHaveBeenCalled();
+    });
   });
 });

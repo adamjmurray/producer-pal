@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { duplicate } from "../duplicate.js";
-import { liveApiId, liveApiPath } from "../helpers/duplicate-test-helpers.js";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
+import {
+  liveApiId,
+  liveApiPath,
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Mock updateClip to avoid complex internal logic
-vi.mock(import("../../../clip/update/update-clip.js"), () => ({
+vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
   updateClip: vi.fn(({ ids }) => {
     // Return array format to simulate tiled clips
     return [{ id: ids }];
@@ -11,13 +14,14 @@ vi.mock(import("../../../clip/update/update-clip.js"), () => ({
 }));
 
 // Mock arrangement-tiling helpers
-vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
+vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
   })),
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -26,14 +30,17 @@ vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -105,6 +112,7 @@ describe("duplicate - return format", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 
@@ -122,6 +130,7 @@ describe("duplicate - return format", () => {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
+
       return this._path;
     });
 

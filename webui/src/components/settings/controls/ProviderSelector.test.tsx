@@ -3,32 +3,37 @@
  */
 import { render, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { Provider } from "../../../types/settings";
+import type { Provider } from "#webui/types/settings";
 import { ProviderSelector } from "./ProviderSelector";
 
 describe("ProviderSelector", () => {
   describe("basic rendering", () => {
     it("renders label and select element", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="gemini" setProvider={mockSetProvider} />,
       );
 
       const label = document.querySelector("label");
+
       expect(label).toBeDefined();
       expect(label!.textContent).toBe("Provider");
 
       const select = document.querySelector("select");
+
       expect(select).toBeDefined();
     });
 
     it("has correct styling classes", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="gemini" setProvider={mockSetProvider} />,
       );
 
       const select = document.querySelector("select");
+
       expect(select!.className).toContain("w-full");
       expect(select!.className).toContain("px-3");
       expect(select!.className).toContain("py-2");
@@ -40,12 +45,14 @@ describe("ProviderSelector", () => {
   describe("provider options", () => {
     it("renders all provider options", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="gemini" setProvider={mockSetProvider} />,
       );
 
       const options = document.querySelectorAll("option");
-      expect(options.length).toBe(7);
+
+      expect(options).toHaveLength(7);
 
       expect(options[0]!.value).toBe("gemini");
       expect(options[0]!.textContent).toBe("Google");
@@ -71,21 +78,25 @@ describe("ProviderSelector", () => {
 
     it("shows selected provider", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="openai" setProvider={mockSetProvider} />,
       );
 
       const select = document.querySelector("select") as HTMLSelectElement;
+
       expect(select.value).toBe("openai");
     });
 
     it("shows different selected provider", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="mistral" setProvider={mockSetProvider} />,
       );
 
       const select = document.querySelector("select") as HTMLSelectElement;
+
       expect(select.value).toBe("mistral");
     });
   });
@@ -93,11 +104,13 @@ describe("ProviderSelector", () => {
   describe("onChange behavior", () => {
     it("calls setProvider when selection changes", () => {
       const mockSetProvider = vi.fn();
+
       render(
         <ProviderSelector provider="gemini" setProvider={mockSetProvider} />,
       );
 
       const select = document.querySelector("select") as HTMLSelectElement;
+
       fireEvent.change(select, { target: { value: "openai" } });
 
       expect(mockSetProvider).toHaveBeenCalledTimes(1);
@@ -122,6 +135,7 @@ describe("ProviderSelector", () => {
         );
 
         const select = container.querySelector("select") as HTMLSelectElement;
+
         fireEvent.change(select, { target: { value: targetProvider } });
 
         expect(mockSetProvider).toHaveBeenCalledWith(targetProvider);

@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readClip } from "./read-clip.js";
 
 describe("readClip", () => {
@@ -44,6 +44,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
     mockLiveApiGet({
@@ -69,7 +70,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
@@ -121,6 +122,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
     mockLiveApiGet({
@@ -146,7 +148,7 @@ describe("readClip", () => {
       4,
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
@@ -204,6 +206,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -221,7 +224,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("3/4");
-    expect(result.length).toBe("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
+    expect(result).toHaveLength("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -270,6 +273,7 @@ describe("readClip", () => {
           ],
         });
       }
+
       return null;
     });
 
@@ -287,13 +291,14 @@ describe("readClip", () => {
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe("1:0"); // 3 Ableton beats = 1 bar in 6/8
+    expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
 
   it("returns null values when no clip exists", () => {
     liveApiId.mockReturnValue("id 0");
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
-    expect(result).toEqual({
+
+    expect(result).toStrictEqual({
       id: null,
       type: null,
       name: null,
@@ -319,7 +324,8 @@ describe("readClip", () => {
       },
     });
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
-    expect(result).toEqual({
+
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",
@@ -409,6 +415,7 @@ describe("readClip", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMode).toBe("complex");
     expect(result.warping).toBe(true);
   });
@@ -431,15 +438,17 @@ describe("readClip", () => {
       if (this._id === "session_clip_id") {
         return "live_set tracks 2 clip_slots 4 clip";
       }
+
       return this._path;
     });
 
     const result = readClip({ clipId: "id session_clip_id" });
+
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
     expect(result.sceneIndex).toBe(4);
     expect(result.view).toBe("session");
-    expect(result.length).toBe("1:0");
+    expect(result).toHaveLength("1:0");
     expect(result.start).toBe("1|2");
   });
 
@@ -467,6 +476,7 @@ describe("readClip", () => {
       if (this._id === "arrangement_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
+
       return this._path;
     });
 
@@ -474,10 +484,12 @@ describe("readClip", () => {
       if (this._id === "arrangement_clip_id") {
         return "Clip";
       }
+
       return this._type;
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });
+
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);
@@ -488,7 +500,7 @@ describe("readClip", () => {
     expect(result.arrangementLength).toBe("1:0");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
+    expect(result).toHaveLength("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 

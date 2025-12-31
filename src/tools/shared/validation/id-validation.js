@@ -90,5 +90,13 @@ function isTypeMatch(actualType, expectedType) {
   // Device subclass match: "hybridreverbdevice" matches "device"
   if (expected === "device" && actual.endsWith("device")) return true;
 
+  // DrumPad/DrumChain match: both "drumpad" and "drumchain" match "drum-pad"
+  // Drum pads are now represented as chains with in_note property
+  if (
+    expected === "drum-pad" &&
+    (actual === "drumpad" || actual === "drumchain")
+  )
+    return true;
+
   return false;
 }

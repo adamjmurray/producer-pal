@@ -3,11 +3,11 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
@@ -54,16 +54,19 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         name: "My Empty Rack",
         type: "instrument-rack",
         chains: [
           {
+            id: "empty_chain",
+            type: "Chain",
             name: "Empty Chain",
+            color: "#000000",
             devices: [],
           },
         ],
@@ -142,16 +145,19 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "device1",
@@ -161,7 +167,10 @@ describe("readTrack", () => {
             ],
           },
           {
+            id: "chain2",
+            type: "Chain",
             name: "Bass",
+            color: "#00FF00",
             state: "muted",
             devices: [
               {
@@ -174,6 +183,7 @@ describe("readTrack", () => {
         ],
       });
     });
+    // Tests drum pad solo/mute states with chains using in_note property
     it("handles drum rack drum chains with hasSoloedChain property", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
@@ -181,13 +191,9 @@ describe("readTrack", () => {
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 drum_pads 36":
-            return "kick_pad";
-          case "live_set tracks 0 devices 0 drum_pads 38":
-            return "snare_pad";
-          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "kick_chain";
-          case "live_set tracks 0 devices 0 drum_pads 38 chains 0":
+          case "live_set tracks 0 devices 0 chains 1":
             return "snare_chain";
           default:
             return this._id;
@@ -206,24 +212,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("kick_pad", "snare_pad"),
+          chains: children("kick_chain", "snare_chain"), // Chains with in_note
           return_chains: [],
         },
-        kick_pad: {
-          name: "Kick",
-          note: 36,
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
-        snare_pad: {
-          name: "Snare",
-          note: 38,
-          mute: 0,
-          solo: 1,
-          chains: children("snare_chain"),
-        },
         kick_chain: {
+          in_note: 36, // C1 - chains use in_note
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -232,6 +225,7 @@ describe("readTrack", () => {
           devices: children("kick_device"),
         },
         snare_chain: {
+          in_note: 38, // D1
           name: "Snare",
           color: 65280,
           mute: 0,
@@ -263,47 +257,58 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-chains",
+          "drum-pads",
         ],
       });
-      expect(result.instrument).toEqual({
+
+      expect(result.instrument).toStrictEqual({
         id: "drum_rack",
         type: "drum-rack",
         name: "My Drums",
-        drumChains: [
+        drumPads: [
           {
             name: "Kick",
             note: 36,
             pitch: "C1",
             state: "muted-via-solo",
-            chain: {
-              name: "Kick",
-              state: "muted-via-solo",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                id: "kick_chain",
+                type: "Chain",
+                name: "Kick",
+                color: "#FF0000",
+                state: "muted-via-solo",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
           {
             name: "Snare",
             note: 38,
             pitch: "D1",
             state: "soloed",
-            chain: {
-              name: "Snare",
-              state: "soloed",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                id: "snare_chain",
+                type: "Chain",
+                name: "Snare",
+                color: "#00FF00",
+                state: "soloed",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
         ],
       });
@@ -313,6 +318,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -343,14 +349,15 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
           "audio-effects",
         ],
       });
-      expect(result.audioEffects).toEqual([
+
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device1",
           type: "audio-effect: Reverb",

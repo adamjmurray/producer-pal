@@ -5,13 +5,17 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
-} from "../../../test/mock-live-api.js";
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateDevice - macroVariation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // macroVariation requires RackDevice type
+    liveApiType.mockImplementation(() => "RackDevice");
 
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -42,10 +46,12 @@ describe("updateDevice - macroVariation", () => {
         if (prop === "variation_count") return [3];
         if (prop === "selected_variation_index") return [1];
       }
+
       // Non-rack device (id 456)
       if (this._path === "id 456") {
         if (prop === "can_have_chains") return [0];
       }
+
       return [0];
     });
   });
@@ -62,7 +68,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macro variations only available on rack devices",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456" });
 
     consoleSpy.mockRestore();
   });
@@ -84,7 +90,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -99,7 +105,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "store_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call recall_selected_variation for 'load'", () => {
@@ -113,7 +119,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_selected_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call recall_last_used_variation for 'revert'", () => {
@@ -126,7 +132,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_last_used_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call delete_selected_variation for 'delete'", () => {
@@ -140,7 +146,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "delete_selected_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should call randomize_macros for 'randomize'", () => {
@@ -153,7 +159,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "randomize_macros",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set index before executing action for 'load'", () => {
@@ -173,7 +179,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "load",
     });
 
-    expect(callOrder).toEqual([
+    expect(callOrder).toStrictEqual([
       { method: "set", path: "id 123", prop: "selected_variation_index" },
       { method: "call", path: "id 123", fn: "recall_selected_variation" },
     ]);
@@ -195,7 +201,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -212,7 +218,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -229,7 +235,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -250,7 +256,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "store_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -271,7 +277,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "recall_last_used_variation",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });
@@ -292,7 +298,7 @@ describe("updateDevice - macroVariation", () => {
       expect.objectContaining({ _path: "id 123" }),
       "randomize_macros",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
 
     consoleSpy.mockRestore();
   });

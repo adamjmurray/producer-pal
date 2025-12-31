@@ -11,7 +11,7 @@ export function validateBasicInputs(type, id, count) {
     throw new Error("duplicate failed: type is required");
   }
 
-  const validTypes = ["track", "scene", "clip"];
+  const validTypes = ["track", "scene", "clip", "device"];
 
   if (!validTypes.includes(type)) {
     throw new Error(

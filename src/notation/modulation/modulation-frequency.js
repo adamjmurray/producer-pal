@@ -1,4 +1,4 @@
-import { barBeatDurationToMusicalBeats } from "../barbeat/time/barbeat-time.js";
+import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Parse a period parameter and convert to period in musical beats

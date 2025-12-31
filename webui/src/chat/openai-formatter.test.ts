@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  expectValidTimestamps,
+  stripTimestamps,
+} from "#webui/test-utils/message-test-utils";
 import { formatOpenAIMessages } from "./openai-formatter";
 import {
   expected,
@@ -10,14 +14,20 @@ import {
 } from "./test-cases/openai-formatter/empty-tool-call-args";
 
 describe("formatOpenAIMessages", () => {
-  it("handles the initial 'Connect to Ableton' flow  ", () => {
-    expect(formatOpenAIMessages(history)).toStrictEqual(expected);
+  it("handles the initial 'Connect to Ableton' flow", () => {
+    const result = formatOpenAIMessages(history);
+
+    expect(stripTimestamps(result)).toStrictEqual(expected);
+    expectValidTimestamps(result);
   });
 
-  it("handles tool calls with empty arguments ", () => {
-    expect(formatOpenAIMessages(historyWithEmptyToolCallArgs)).toStrictEqual(
+  it("handles tool calls with empty arguments", () => {
+    const result = formatOpenAIMessages(historyWithEmptyToolCallArgs);
+
+    expect(stripTimestamps(result)).toStrictEqual(
       expectedWithEmptyToolCallArgs,
     );
+    expectValidTimestamps(result);
   });
 
   it("handles reasoning_details in assistant message", () => {
@@ -36,7 +46,7 @@ describe("formatOpenAIMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("model");
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "thought", content: "Thinking step 1 and step 2" },
       { type: "text", content: "Hello" },
     ]);
@@ -51,7 +61,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "text", content: "Hello world" },
     ]);
   });
@@ -71,7 +81,8 @@ describe("formatOpenAIMessages", () => {
 
     expect(result).toHaveLength(1);
     const lastPart = result[0]!.parts.at(-1);
-    expect(lastPart).toEqual({
+
+    expect(lastPart).toStrictEqual({
       type: "thought",
       content: "Current thinking...",
       isOpen: true,
@@ -93,7 +104,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       { type: "thought", content: "Actual thought" },
       { type: "text", content: "Response" },
     ]);
@@ -120,7 +131,7 @@ describe("formatOpenAIMessages", () => {
     const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.parts).toEqual([
+    expect(result[0]!.parts).toStrictEqual([
       {
         type: "thought",
         content: "First thought Second thought",

@@ -3,21 +3,22 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "#webui/types/messages";
 import { MessageList } from "./MessageList";
 
 // Mock child components
-vi.mock("./controls/ActivityIndicator.jsx", () => ({
+vi.mock(import("./controls/ActivityIndicator"), () => ({
   ActivityIndicator: () => (
     <div data-testid="activity-indicator">Loading...</div>
   ),
 }));
 
-vi.mock("./assistant/AssistantMessage.jsx", () => ({
+vi.mock(import("./assistant/AssistantMessage"), () => ({
   AssistantMessage: ({ parts }: { parts: unknown[] }) => (
     <div data-testid="assistant-message">
       {parts.map((p, i: number) => {
         const part = p as { content?: string };
+
         return <span key={i}>{part.content ?? ""}</span>;
       })}
     </div>
@@ -36,6 +37,7 @@ describe("MessageList", () => {
           handleRetry={handleRetry}
         />,
       );
+
       expect(container.querySelector(".space-y-4")).toBeDefined();
     });
 
@@ -45,6 +47,7 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello there" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -57,6 +60,7 @@ describe("MessageList", () => {
 
       expect(screen.getByText("Hello there")).toBeDefined();
       const messageDiv = container.querySelector(".bg-blue-100");
+
       expect(messageDiv).toBeDefined();
     });
 
@@ -72,8 +76,10 @@ describe("MessageList", () => {
             },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -91,8 +97,10 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "I can help you" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -110,18 +118,22 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "How are you?" }],
           rawHistoryIndex: 2,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -139,14 +151,26 @@ describe("MessageList", () => {
   describe("message filtering", () => {
     it("filters out messages without content", () => {
       const messages = [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Valid message" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
-        { role: "model" as const, parts: [], rawHistoryIndex: 2 },
+        {
+          role: "model" as const,
+          parts: [],
+          rawHistoryIndex: 2,
+          timestamp: Date.now(),
+        },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -164,16 +188,23 @@ describe("MessageList", () => {
           handleRetry={handleRetry}
         />,
       );
-      expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
+
+      expect(container.querySelectorAll(".rounded-lg")).toHaveLength(1);
     });
 
     it("filters message with no parts and no content", () => {
       const messages: UIMessage[] = [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
         {
           role: "model" as const,
           rawHistoryIndex: 1,
           parts: [],
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -184,7 +215,7 @@ describe("MessageList", () => {
         />,
       );
 
-      expect(container.querySelectorAll(".rounded-lg").length).toBe(0);
+      expect(container.querySelectorAll(".rounded-lg")).toHaveLength(0);
     });
   });
 
@@ -224,8 +255,10 @@ describe("MessageList", () => {
             { type: "text" as const, content: "Part 2" },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -249,6 +282,7 @@ describe("MessageList", () => {
           rawHistoryIndex: 0,
         } as unknown,
       ] as UIMessage[];
+
       render(
         <MessageList
           messages={messages}
@@ -268,6 +302,7 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "User message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -279,6 +314,7 @@ describe("MessageList", () => {
       );
 
       const messageDiv = container.querySelector(".bg-blue-100");
+
       expect(messageDiv).toBeDefined();
       expect(messageDiv?.className).toContain("ml-auto");
     });
@@ -295,6 +331,7 @@ describe("MessageList", () => {
             },
           ],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -307,6 +344,7 @@ describe("MessageList", () => {
 
       // Check that error is rendered within a model message container
       const messageDiv = container.querySelector(".bg-gray-100");
+
       expect(messageDiv).toBeDefined();
       expect(screen.getByText("Error message")).toBeDefined();
     });
@@ -317,6 +355,7 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Model message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -328,6 +367,7 @@ describe("MessageList", () => {
       );
 
       const messageDiv = container.querySelector(".bg-gray-100");
+
       expect(messageDiv).toBeDefined();
     });
   });
@@ -344,6 +384,7 @@ describe("MessageList", () => {
 
       // The messagesEndRef div should exist
       const divs = container.querySelectorAll("div");
+
       expect(divs.length).toBeGreaterThan(0);
     });
   });
@@ -355,13 +396,16 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi there" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -371,6 +415,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       expect(retryButton).toBeDefined();
     });
 
@@ -380,13 +425,16 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hi there" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -396,6 +444,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.queryByTitle("Retry from your last message");
+
       expect(retryButton).toBeNull();
     });
 
@@ -406,13 +455,16 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "First question" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "First answer" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -422,10 +474,10 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       fireEvent.click(retryButton);
 
-      expect(handleRetryMock).toHaveBeenCalledOnce();
-      expect(handleRetryMock).toHaveBeenCalledWith(0);
+      expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(0);
     });
 
     it("does not show retry button when there is no previous user message", () => {
@@ -434,8 +486,10 @@ describe("MessageList", () => {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <MessageList
           messages={messages}
@@ -445,6 +499,7 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.queryByTitle("Retry from your last message");
+
       expect(retryButton).toBeNull();
     });
 
@@ -455,16 +510,19 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [], // Empty message - should be filtered out
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "user" as const,
           parts: [{ type: "text" as const, content: "Hello" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
         {
           role: "model" as const,
           parts: [{ type: "text" as const, content: "Response" }],
           rawHistoryIndex: 2,
+          timestamp: Date.now(),
         },
       ];
 
@@ -477,11 +535,11 @@ describe("MessageList", () => {
       );
 
       const retryButton = screen.getByTitle("Retry from your last message");
+
       fireEvent.click(retryButton);
 
       // Should use originalIdx=1 (the non-empty user message), not filtered idx=0
-      expect(handleRetryMock).toHaveBeenCalledOnce();
-      expect(handleRetryMock).toHaveBeenCalledWith(1);
+      expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(1);
     });
   });
 });

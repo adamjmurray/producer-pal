@@ -29,7 +29,7 @@ export default defineConfig({
       ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
-        "text", // Also display in console
+        "text-summary", // Minimal console output (just totals)
         "json-summary",
         "json",
         "html",
@@ -77,10 +77,10 @@ export default defineConfig({
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 93, /// Keep above 93
-        branches: 89.4, // TODO: get above 90
-        functions: 94, // Keep above 94
-        lines: 93.5, /// Keep above 93
+        statements: 96, // Keep above 96
+        branches: 91.9, // Keep above 92
+        functions: 96.9, // Keep above 97
+        lines: 96.3, // Keep above 96
       },
     },
   },

@@ -4,8 +4,8 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
-import { updateClip } from "../update-clip.js";
+} from "#src/test/mock-live-api.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties
 // are unreliable for detecting hidden audio content, we changed the behavior to
@@ -22,12 +22,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -69,6 +72,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -126,7 +130,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should calculate correct markers with start_marker offset)", () => {
@@ -138,12 +142,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -186,6 +193,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", revealedClipId];
       }
+
       return 1;
     });
 
@@ -236,7 +244,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip (NO empty clip for audio)
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
   it("should extend unwarped audio clip to target length using session holding area", () => {
@@ -250,20 +258,25 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._id === tempSessionClipId) {
         return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       if (
         this._path === `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`
       ) {
         return `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`;
       }
+
       return this._path;
     });
 
@@ -330,14 +343,17 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         // Session clip creation
         return ["id", tempSessionClipId];
       }
+
       if (method === "duplicate_clip_to_arrangement") {
         // Duplicating temp clip to arrangement
         return ["id", revealedClipId];
       }
+
       if (method === "delete_clip") {
         // Deleting temp session clip
         return 1;
       }
+
       return 1;
     });
 
@@ -361,6 +377,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     // visibleContentEnd = 0 + 6 = 6, targetEndMarker = 0 + 14 = 14
     // newStartMarker = 6, newEndMarker = 14
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
+
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_end",
@@ -412,7 +429,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should return original + revealed clip
-    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });
 
@@ -434,12 +451,15 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       ) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
+
       if (this._path === "live_set") {
         return "live_set";
       }
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
+
       return this._path;
     });
 
@@ -497,19 +517,24 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     });
 
     let duplicateCallCount = 0;
+
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
+
         if (duplicateCallCount === 1) {
           // First duplicate is the move operation
           return ["id", movedClipId];
         }
+
         // Second duplicate is the lengthen operation (revealing hidden content)
         return ["id", revealedClipId];
       }
+
       if (method === "delete_clip") {
         return 1;
       }
+
       return 1;
     });
 
@@ -542,6 +567,6 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     );
 
     // Should return moved clip + revealed clip
-    expect(result).toEqual([{ id: movedClipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([{ id: movedClipId }, { id: revealedClipId }]);
   });
 });

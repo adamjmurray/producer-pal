@@ -2,13 +2,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyModulations,
   evaluateModulation,
-} from "../modulation-evaluator.js";
+} from "#src/notation/modulation/modulation-evaluator.js";
 import {
   evaluateExpression,
   evaluateModulationAST,
-} from "../modulation-evaluator-helpers.js";
-import { evaluateFunction } from "../modulation-functions.js";
-import * as console from "../../../shared/v8-max-console.js";
+} from "#src/notation/modulation/modulation-evaluator-helpers.js";
+import { evaluateFunction } from "#src/notation/modulation/modulation-functions.js";
+import * as console from "#src/shared/v8-max-console.js";
 
 describe("Modulation Evaluator Error Handling", () => {
   beforeEach(() => {
@@ -193,6 +193,7 @@ describe("Modulation Evaluator Error Handling", () => {
         { start: 0, end: 4 },
         { pitch: 60 },
       );
+
       expect(result).toBe(60);
     });
   });
@@ -253,6 +254,7 @@ describe("Modulation Evaluator Error Handling", () => {
         {},
         evaluateExpression,
       );
+
       expect(typeof result).toBe("number");
     });
   });

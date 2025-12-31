@@ -82,6 +82,14 @@ export class LiveAPI {
     return ids;
   }
 
+  getChildren(name) {
+    return this.getChildIds(name).map((id) => new LiveAPI(id));
+  }
+
+  getProperty(property) {
+    return this.get(property)?.[0];
+  }
+
   get sceneIndex() {
     // Try scene path first
     let match = this.path.match(/live_set scenes (\d+)/);
@@ -137,6 +145,11 @@ export class LiveAPI {
 
     if (/^live_set tracks \d+ arrangement_clips \d+$/.test(this.path)) {
       return "Clip";
+    }
+
+    // Default chain type for paths like "id chain1" or paths containing "chains"
+    if (this.path?.includes("chain") || this._id?.includes("chain")) {
+      return "Chain";
     }
 
     return `TODO: Unknown type for path: "${this.path}"`;

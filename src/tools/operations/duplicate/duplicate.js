@@ -3,6 +3,7 @@ import { select } from "#src/tools/control/select.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
+import { duplicateDevice } from "./helpers/duplicate-device-helpers.js";
 import {
   duplicateTrack,
   duplicateScene,
@@ -52,25 +53,25 @@ function resolveArrangementPosition(
 
 /**
  * Duplicates an object based on its type.
- * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
  * @param {object} args - The parameters
- * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
+ * @param {string} args.type - Type of object to duplicate ("track", "scene", "clip", or "device")
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
- * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
- * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
- * @param {string} [args.arrangementLocatorId] - Locator ID for arrangement position (e.g., 'locator-0')
+ * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement")
+ * @param {string} [args.arrangementStart] - Start time in bar|beat format
+ * @param {string} [args.arrangementLocatorId] - Locator ID for arrangement position
  * @param {string} [args.arrangementLocatorName] - Locator name for arrangement position
- * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
+ * @param {string} [args.arrangementLength] - Duration in bar:beat format
  * @param {string} [args.name] - Optional name for the duplicated object(s)
- * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
- * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
- * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
- * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
- * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
- * @param {string} [args.toSceneIndex] - Destination scene index(es), comma-separated (required for session clips)
- * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
+ * @param {boolean} [args.withoutClips] - Whether to exclude clips
+ * @param {boolean} [args.withoutDevices] - Whether to exclude devices
+ * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering
+ * @param {boolean} [args.switchView=false] - Automatically switch view
+ * @param {number} [args.toTrackIndex] - Destination track index (for session clips)
+ * @param {string} [args.toSceneIndex] - Destination scene index(es)
+ * @param {string} [args.toPath] - Destination path for device duplication
+ * @param {object} [context] - Context object
+ * @returns {object | Array<object>} Result object(s)
  */
 export function duplicate(
   {
@@ -89,6 +90,7 @@ export function duplicate(
     switchView,
     toTrackIndex,
     toSceneIndex,
+    toPath,
   } = {},
   context = {},
 ) {
@@ -122,6 +124,11 @@ export function duplicate(
     arrangementLocatorId,
     arrangementLocatorName,
   );
+
+  // Handle device duplication separately (single copy only)
+  if (type === "device") {
+    return duplicateDevice(object, toPath, name, count);
+  }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
   const createdObjects =

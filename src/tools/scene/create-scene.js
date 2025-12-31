@@ -1,6 +1,6 @@
-import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
-import { select } from "../control/select.js";
-import { parseTimeSignature } from "../shared/utils.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import { select } from "#src/tools/control/select.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import { captureScene } from "./capture-scene.js";
 
 /**

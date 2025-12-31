@@ -5,7 +5,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readScene } from "./read-scene.js";
 
 describe("readScene", () => {
@@ -30,7 +30,7 @@ describe("readScene", () => {
 
     const result = readScene({ sceneIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "scene1",
       name: "Test Scene (1)",
       sceneIndex: 0,
@@ -45,7 +45,7 @@ describe("readScene", () => {
 
     const result = readScene({ sceneIndex: 99 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: null,
       name: null,
       sceneIndex: 99,
@@ -73,7 +73,7 @@ describe("readScene", () => {
 
     const result = readScene({ sceneIndex: 1 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "scene2",
       name: "Scene with Disabled Properties (2)",
       sceneIndex: 1,
@@ -103,7 +103,7 @@ describe("readScene", () => {
 
     const result = readScene({ sceneIndex: 2 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "scene3",
       name: "3",
       sceneIndex: 2,
@@ -150,7 +150,7 @@ describe("readScene", () => {
 
     const result = readScene({ sceneIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "scene_0",
       name: "Scene with 2 Clips (1)",
       sceneIndex: 0,
@@ -198,7 +198,7 @@ describe("readScene", () => {
       include: ["clips", "clip-notes"],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "scene_0",
       name: "Scene with Clips (1)",
       sceneIndex: 0,
@@ -263,10 +263,10 @@ describe("readScene", () => {
     });
 
     // Results should be identical
-    expect(resultWildcard).toEqual(resultExplicit);
+    expect(resultWildcard).toStrictEqual(resultExplicit);
 
     // Verify key properties are included
-    expect(resultWildcard).toEqual(
+    expect(resultWildcard).toStrictEqual(
       expect.objectContaining({
         id: "scene_0",
         name: "Wildcard Test Scene (1)",
@@ -295,6 +295,7 @@ describe("readScene", () => {
         if (this._path === "id 123") {
           return "live_set scenes 5";
         }
+
         return this._path;
       });
 
@@ -317,7 +318,7 @@ describe("readScene", () => {
 
       const result = readScene({ sceneId: "123" });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "123",
         name: "Scene by ID (6)",
         sceneIndex: 5,
@@ -347,6 +348,7 @@ describe("readScene", () => {
         if (this._path === "id 456") {
           return "live_set scenes 2";
         }
+
         return this._path;
       });
 
@@ -372,7 +374,7 @@ describe("readScene", () => {
         include: ["clips", "clip-notes"],
       });
 
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "456",
         name: "Scene with Clips by ID (3)",
         sceneIndex: 2,
@@ -420,6 +422,7 @@ describe("readScene", () => {
         if (this._path === "id 789") {
           return "live_set scenes 7";
         }
+
         return this._path;
       });
 

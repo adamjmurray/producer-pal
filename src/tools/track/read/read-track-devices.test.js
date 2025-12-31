@@ -3,12 +3,12 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
@@ -23,6 +23,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.instrument).toBeNull();
       expect(result.midiEffects).toBeUndefined();
       expect(result.audioEffects).toBeUndefined();
@@ -33,6 +34,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -72,7 +74,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -81,13 +83,13 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         type: "instrument: Analog",
         name: "Custom Analog",
       });
 
-      expect(result.audioEffects).toEqual([
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device2",
           type: "audio-effect: Reverb",
@@ -95,7 +97,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      expect(result.midiEffects).toEqual([
+      expect(result.midiEffects).toStrictEqual([
         {
           id: "device3",
           type: "midi-effect: Note Length",
@@ -110,6 +112,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -130,11 +133,12 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.instrument).toEqual({
+
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         name: "My Drums",
         type: "drum-rack",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
     });
 
@@ -143,6 +147,7 @@ describe("readTrack", () => {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -175,7 +180,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -183,15 +188,15 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
         type: "drum-rack",
         name: "My Drums",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
 
       expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toEqual({
+      expect(result.audioEffects[0]).toStrictEqual({
         id: "device2",
         type: "audio-effect: Reverb",
       });
@@ -249,16 +254,19 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "nested_device1",
@@ -325,7 +333,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -334,13 +342,16 @@ describe("readTrack", () => {
       });
 
       expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toEqual({
+      expect(result.audioEffects[0]).toStrictEqual({
         id: "fx_rack1",
         type: "audio-effect-rack",
         name: "Master FX",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Filter Chain",
+            color: "#0000FF",
             devices: [
               {
                 id: "nested_effect1",
@@ -428,16 +439,19 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toEqual({
+      expect(result.instrument).toStrictEqual({
         id: "outer_rack",
         type: "instrument-rack",
         name: "Master FX",
         chains: [
           {
+            id: "outer_chain",
+            type: "Chain",
             name: "Wet",
+            color: "#0000FF",
             devices: [
               {
                 id: "inner_rack",
@@ -445,7 +459,10 @@ describe("readTrack", () => {
                 name: "Reverb Chain",
                 chains: [
                   {
+                    id: "inner_chain",
+                    type: "Chain",
                     name: "Hall",
+                    color: "#00FF00",
                     state: "soloed",
                     devices: [
                       {

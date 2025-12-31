@@ -89,6 +89,7 @@ vi.mock(import("./ConnectionTab"), () => {
               onChange={(e) => {
                 const value = (e.target as HTMLInputElement).value;
                 const numValue = parseInt(value, 10);
+
                 if (!isNaN(numValue)) {
                   setPort(numValue);
                 }
@@ -198,12 +199,14 @@ describe("SettingsScreen", () => {
 
       // Switch to Behavior tab to check thinking and randomness
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
       expect(screen.getByTestId("randomness-slider")).toBeDefined();
 
       // Switch to Tools tab to check tool toggles
       const toolsTab = screen.getByRole("button", { name: "Tools" });
+
       fireEvent.click(toolsTab);
       expect(screen.getByTestId("tool-toggles")).toBeDefined();
     });
@@ -224,6 +227,7 @@ describe("SettingsScreen", () => {
       render(<SettingsScreen {...defaultProps} />);
       // Click on Appearance tab
       const appearanceTab = screen.getByRole("button", { name: "Appearance" });
+
       fireEvent.click(appearanceTab);
       expect(screen.getByRole("option", { name: "System" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
@@ -234,23 +238,27 @@ describe("SettingsScreen", () => {
       render(<SettingsScreen {...defaultProps} theme="dark" />);
       // Click on Appearance tab
       const appearanceTab = screen.getByRole("button", { name: "Appearance" });
+
       fireEvent.click(appearanceTab);
       const select = screen.getByLabelText("Theme") as HTMLSelectElement;
+
       expect(select.value).toBe("dark");
     });
 
     it("calls setTheme when changed", () => {
       const setTheme = vi.fn();
+
       render(<SettingsScreen {...defaultProps} setTheme={setTheme} />);
 
       // Click on Appearance tab
       const appearanceTab = screen.getByRole("button", { name: "Appearance" });
+
       fireEvent.click(appearanceTab);
       const select = screen.getByLabelText("Theme");
+
       fireEvent.change(select, { target: { value: "light" } });
 
-      expect(setTheme).toHaveBeenCalledOnce();
-      expect(setTheme).toHaveBeenCalledWith("light");
+      expect(setTheme).toHaveBeenCalledExactlyOnceWith("light");
     });
   });
 
@@ -259,6 +267,7 @@ describe("SettingsScreen", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
       // Click on Behavior tab
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
@@ -273,6 +282,7 @@ describe("SettingsScreen", () => {
       );
       // Click on Behavior tab
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
@@ -281,6 +291,7 @@ describe("SettingsScreen", () => {
       render(<SettingsScreen {...defaultProps} provider="mistral" />);
       // Click on Behavior tab
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
@@ -289,6 +300,7 @@ describe("SettingsScreen", () => {
       render(<SettingsScreen {...defaultProps} provider="custom" />);
       // Click on Behavior tab
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
@@ -302,11 +314,11 @@ describe("SettingsScreen", () => {
       ).toBeDefined();
     });
 
-    it("shows new conversation message when settings configured", () => {
+    it("does not show browser storage message when settings configured", () => {
       render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
       expect(
-        screen.getByText("Note: Settings changes apply to new conversations."),
-      ).toBeDefined();
+        screen.queryByText("Settings will be stored in this web browser."),
+      ).toBeNull();
     });
   });
 
@@ -323,6 +335,7 @@ describe("SettingsScreen", () => {
 
     it("calls cancelSettings when clicked", () => {
       const cancelSettings = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -332,6 +345,7 @@ describe("SettingsScreen", () => {
       );
 
       const button = screen.getByRole("button", { name: "Cancel" });
+
       fireEvent.click(button);
 
       expect(cancelSettings).toHaveBeenCalledOnce();
@@ -345,6 +359,7 @@ describe("SettingsScreen", () => {
       const button = screen.getByRole("button", {
         name: "Save",
       }) as HTMLButtonElement;
+
       expect(button.disabled).toBe(false);
     });
 
@@ -354,11 +369,13 @@ describe("SettingsScreen", () => {
       const button = screen.getByRole("button", {
         name: "Save",
       }) as HTMLButtonElement;
+
       expect(button.disabled).toBe(false);
     });
 
     it("calls saveSettings when clicked with empty API key", () => {
       const saveSettings = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -368,6 +385,7 @@ describe("SettingsScreen", () => {
       );
 
       const button = screen.getByRole("button", { name: "Save" });
+
       fireEvent.click(button);
 
       expect(saveSettings).toHaveBeenCalledOnce();
@@ -375,6 +393,7 @@ describe("SettingsScreen", () => {
 
     it("calls saveSettings when clicked with API key", () => {
       const saveSettings = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -384,6 +403,7 @@ describe("SettingsScreen", () => {
       );
 
       const button = screen.getByRole("button", { name: "Save" });
+
       fireEvent.click(button);
 
       expect(saveSettings).toHaveBeenCalledOnce();
@@ -407,6 +427,7 @@ describe("SettingsScreen", () => {
       const apiKeyInput = screen.getByPlaceholderText(
         /Enter your Gemini API key/i,
       ) as HTMLInputElement;
+
       expect(apiKeyInput.value).toBe("my-key");
       expect(apiKeyInput.type).toBe("password");
 
@@ -416,6 +437,7 @@ describe("SettingsScreen", () => {
 
       // Click on Behavior tab to check thinking and randomness
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       // ThinkingSettings now receives provider-model-thinking
       expect(screen.getByTestId("thinking-settings").textContent).toBe(
@@ -429,6 +451,7 @@ describe("SettingsScreen", () => {
     it("shows Gemini API key link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini API keys");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://aistudio.google.com/apikey",
@@ -439,6 +462,7 @@ describe("SettingsScreen", () => {
     it("shows OpenAI API key link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="openai" />);
       const link = screen.getByText("OpenAI API keys");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://platform.openai.com/api-keys",
@@ -448,6 +472,7 @@ describe("SettingsScreen", () => {
     it("shows Mistral API key link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="mistral" />);
       const link = screen.getByText("Mistral API keys");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://console.mistral.ai/home?workspace_dialog=apiKeys",
@@ -457,6 +482,7 @@ describe("SettingsScreen", () => {
     it("shows OpenRouter API key link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="openrouter" />);
       const link = screen.getByText("OpenRouter API keys");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://openrouter.ai/settings/keys",
@@ -503,14 +529,17 @@ describe("SettingsScreen", () => {
   describe("input handlers", () => {
     it("calls setApiKey when API key input changes", () => {
       const setApiKey = vi.fn();
+
       render(<SettingsScreen {...defaultProps} setApiKey={setApiKey} />);
       const input = screen.getByPlaceholderText(/Enter your Gemini API key/i);
+
       fireEvent.change(input, { target: { value: "new-api-key" } });
       expect(setApiKey).toHaveBeenCalledWith("new-api-key");
     });
 
     it("calls setPort when port input changes for lmstudio", () => {
       const setPort = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -520,12 +549,14 @@ describe("SettingsScreen", () => {
         />,
       );
       const input = screen.getByPlaceholderText("1234");
+
       fireEvent.change(input, { target: { value: "5678" } });
       expect(setPort).toHaveBeenCalledWith(5678);
     });
 
     it("calls setPort when port input changes for ollama", () => {
       const setPort = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -535,12 +566,14 @@ describe("SettingsScreen", () => {
         />,
       );
       const input = screen.getByPlaceholderText("11434");
+
       fireEvent.change(input, { target: { value: "8080" } });
       expect(setPort).toHaveBeenCalledWith(8080);
     });
 
     it("calls setBaseUrl when base URL input changes for custom provider", () => {
       const setBaseUrl = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -550,6 +583,7 @@ describe("SettingsScreen", () => {
         />,
       );
       const input = screen.getByPlaceholderText("https://api.example.com/v1");
+
       fireEvent.change(input, { target: { value: "https://custom.api/v1" } });
       expect(setBaseUrl).toHaveBeenCalledWith("https://custom.api/v1");
     });
@@ -558,6 +592,7 @@ describe("SettingsScreen", () => {
   describe("reset behavior button", () => {
     it("calls resetBehaviorToDefaults when clicked", () => {
       const resetBehaviorToDefaults = vi.fn();
+
       render(
         <SettingsScreen
           {...defaultProps}
@@ -566,10 +601,12 @@ describe("SettingsScreen", () => {
       );
       // Click on Behavior tab
       const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+
       fireEvent.click(behaviorTab);
       const resetButton = screen.getByRole("button", {
         name: "Reset to defaults",
       });
+
       fireEvent.click(resetButton);
       expect(resetBehaviorToDefaults).toHaveBeenCalledOnce();
     });
@@ -579,6 +616,7 @@ describe("SettingsScreen", () => {
     it("shows Gemini models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://ai.google.dev/gemini-api/docs/models",
@@ -589,6 +627,7 @@ describe("SettingsScreen", () => {
     it("shows OpenAI models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="openai" />);
       const link = screen.getByText("OpenAI models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://platform.openai.com/docs/models",
@@ -598,6 +637,7 @@ describe("SettingsScreen", () => {
     it("shows Mistral models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="mistral" />);
       const link = screen.getByText("Mistral models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://docs.mistral.ai/getting-started/models",
@@ -607,6 +647,7 @@ describe("SettingsScreen", () => {
     it("shows OpenRouter models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="openrouter" />);
       const link = screen.getByText("OpenRouter models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://openrouter.ai/models",
@@ -623,6 +664,7 @@ describe("SettingsScreen", () => {
         />,
       );
       const link = screen.getByText("LM Studio models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://lmstudio.ai/models",
@@ -639,6 +681,7 @@ describe("SettingsScreen", () => {
         />,
       );
       const link = screen.getByText("Ollama models");
+
       expect(link).toBeDefined();
       expect((link as HTMLAnchorElement).href).toBe(
         "https://ollama.com/search",

@@ -148,6 +148,10 @@ See `dev-docs/Architecture.md` for detailed system design and
   and linting issues), then `npm run check` (validates all checks pass), then
   `npm run build` (verifies all production artifacts compile successfully). This
   saves time and tokens by pre-emptively fixing likely errors before validation.
+- **Diagnosing coverage gaps**: If coverage thresholds fail, check
+  `coverage/coverage-summary.txt` for per-file breakdown (console only shows
+  totals). Look for files with low coverage percentages to identify what needs
+  tests.
 
 ## Project Constraints
 

@@ -7,11 +7,12 @@ import {
   setAllNonNull,
   toLiveApiView,
   withoutNulls,
-} from "../utils.js";
+} from "#src/tools/shared/utils.js";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       value: 42,
@@ -21,7 +22,7 @@ describe("setAllNonNull", () => {
       falseBool: false,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       name: "Test",
       value: 42,
       flag: true,
@@ -33,13 +34,14 @@ describe("setAllNonNull", () => {
 
   it("skips null values", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       nullValue: null,
       value: 42,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       name: "Test",
       value: 42,
     });
@@ -48,13 +50,14 @@ describe("setAllNonNull", () => {
 
   it("skips undefined values", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "Test",
       undefinedValue: undefined,
       value: 42,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       name: "Test",
       value: 42,
     });
@@ -63,12 +66,13 @@ describe("setAllNonNull", () => {
 
   it("allows zero as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       zero: 0,
       negativeZero: -0,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       zero: 0,
       negativeZero: -0,
     });
@@ -76,22 +80,24 @@ describe("setAllNonNull", () => {
 
   it("allows false as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       flag: false,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       flag: false,
     });
   });
 
   it("allows empty string as a valid value", () => {
     const target = {};
+
     setAllNonNull(target, {
       name: "",
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       name: "",
     });
   });
@@ -107,7 +113,7 @@ describe("setAllNonNull", () => {
       newProp: "new",
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       existingProp: "updated",
       keepThis: "unchanged",
       newProp: "new",
@@ -116,9 +122,10 @@ describe("setAllNonNull", () => {
 
   it("handles empty properties object", () => {
     const target = { existing: "value" };
+
     setAllNonNull(target, {});
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       existing: "value",
     });
   });
@@ -134,7 +141,7 @@ describe("setAllNonNull", () => {
       nullValue: null,
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       object: obj,
       array: arr,
     });
@@ -144,6 +151,7 @@ describe("setAllNonNull", () => {
 
   it("handles mixed null and non-null values", () => {
     const target = {};
+
     setAllNonNull(target, {
       a: "value",
       b: null,
@@ -154,7 +162,7 @@ describe("setAllNonNull", () => {
       g: "another",
     });
 
-    expect(target).toEqual({
+    expect(target).toStrictEqual({
       a: "value",
       c: 42,
       e: false,
@@ -167,7 +175,7 @@ describe("setAllNonNull", () => {
     const result = setAllNonNull(target, { new: "property" });
 
     expect(result).toBe(target);
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       existing: "value",
       new: "property",
     });
@@ -224,7 +232,7 @@ describe("withoutNulls", () => {
       falseBool: false,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       name: "Test",
       value: 42,
       flag: true,
@@ -241,7 +249,7 @@ describe("withoutNulls", () => {
       value: 42,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       name: "Test",
       value: 42,
     });
@@ -255,7 +263,7 @@ describe("withoutNulls", () => {
       value: 42,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       name: "Test",
       value: 42,
     });
@@ -268,7 +276,7 @@ describe("withoutNulls", () => {
       negativeZero: -0,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       zero: 0,
       negativeZero: -0,
     });
@@ -279,7 +287,7 @@ describe("withoutNulls", () => {
       flag: false,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       flag: false,
     });
   });
@@ -289,14 +297,15 @@ describe("withoutNulls", () => {
       name: "",
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       name: "",
     });
   });
 
   it("returns empty object for empty input", () => {
     const result = withoutNulls({});
-    expect(result).toEqual({});
+
+    expect(result).toStrictEqual({});
   });
 
   it("handles complex values like objects and arrays", () => {
@@ -309,7 +318,7 @@ describe("withoutNulls", () => {
       nullValue: null,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       object: obj,
       array: arr,
     });
@@ -328,7 +337,7 @@ describe("withoutNulls", () => {
       g: "another",
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       a: "value",
       c: 42,
       e: false,
@@ -345,13 +354,13 @@ describe("withoutNulls", () => {
 
     const result = withoutNulls(original);
 
-    expect(original).toEqual({
+    expect(original).toStrictEqual({
       keep: "this",
       remove: null,
       alsoKeep: 42,
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       keep: "this",
       alsoKeep: 42,
     });
@@ -363,94 +372,112 @@ describe("withoutNulls", () => {
 describe("parseCommaSeparatedIds", () => {
   it("parses simple comma-separated IDs", () => {
     const result = parseCommaSeparatedIds("1,2,3");
-    expect(result).toEqual(["1", "2", "3"]);
+
+    expect(result).toStrictEqual(["1", "2", "3"]);
   });
 
   it("trims whitespace around IDs", () => {
     const result = parseCommaSeparatedIds("1, 2 , 3");
-    expect(result).toEqual(["1", "2", "3"]);
+
+    expect(result).toStrictEqual(["1", "2", "3"]);
   });
 
   it("handles extra spaces and mixed formats", () => {
     const result = parseCommaSeparatedIds("  id1  ,  id2,id3  , id4  ");
-    expect(result).toEqual(["id1", "id2", "id3", "id4"]);
+
+    expect(result).toStrictEqual(["id1", "id2", "id3", "id4"]);
   });
 
   it("filters out empty strings", () => {
     const result = parseCommaSeparatedIds("1,,2,,,3");
-    expect(result).toEqual(["1", "2", "3"]);
+
+    expect(result).toStrictEqual(["1", "2", "3"]);
   });
 
   it("filters out empty strings with spaces", () => {
     const result = parseCommaSeparatedIds("1, , 2,  , 3");
-    expect(result).toEqual(["1", "2", "3"]);
+
+    expect(result).toStrictEqual(["1", "2", "3"]);
   });
 
   it("handles single ID without commas", () => {
     const result = parseCommaSeparatedIds("single-id");
-    expect(result).toEqual(["single-id"]);
+
+    expect(result).toStrictEqual(["single-id"]);
   });
 
   it("handles single ID with trailing comma", () => {
     const result = parseCommaSeparatedIds("single-id,");
-    expect(result).toEqual(["single-id"]);
+
+    expect(result).toStrictEqual(["single-id"]);
   });
 
   it("handles complex ID formats", () => {
     const result = parseCommaSeparatedIds("track_1, scene-2, clip:3");
-    expect(result).toEqual(["track_1", "scene-2", "clip:3"]);
+
+    expect(result).toStrictEqual(["track_1", "scene-2", "clip:3"]);
   });
 
   it("handles numeric and string IDs mixed", () => {
     const result = parseCommaSeparatedIds("123, id_456, 789");
-    expect(result).toEqual(["123", "id_456", "789"]);
+
+    expect(result).toStrictEqual(["123", "id_456", "789"]);
   });
 
   it("returns empty array for empty input after filtering", () => {
     const result = parseCommaSeparatedIds(",,, , ,");
-    expect(result).toEqual([]);
+
+    expect(result).toStrictEqual([]);
   });
 
   it("handles leading and trailing commas", () => {
     const result = parseCommaSeparatedIds(",1,2,3,");
-    expect(result).toEqual(["1", "2", "3"]);
+
+    expect(result).toStrictEqual(["1", "2", "3"]);
   });
 });
 
 describe("parseCommaSeparatedIndices", () => {
   it("parses simple comma-separated indices", () => {
     const result = parseCommaSeparatedIndices("0,1,2");
-    expect(result).toEqual([0, 1, 2]);
+
+    expect(result).toStrictEqual([0, 1, 2]);
   });
 
   it("trims whitespace around indices", () => {
     const result = parseCommaSeparatedIndices("0, 1 , 2");
-    expect(result).toEqual([0, 1, 2]);
+
+    expect(result).toStrictEqual([0, 1, 2]);
   });
 
   it("handles extra spaces", () => {
     const result = parseCommaSeparatedIndices("  0  ,  1,2  , 3  ");
-    expect(result).toEqual([0, 1, 2, 3]);
+
+    expect(result).toStrictEqual([0, 1, 2, 3]);
   });
 
   it("filters out empty strings", () => {
     const result = parseCommaSeparatedIndices("0,,1,,,2");
-    expect(result).toEqual([0, 1, 2]);
+
+    expect(result).toStrictEqual([0, 1, 2]);
   });
 
   it("handles single index without commas", () => {
     const result = parseCommaSeparatedIndices("5");
-    expect(result).toEqual([5]);
+
+    expect(result).toStrictEqual([5]);
   });
 
   it("handles negative indices", () => {
     const result = parseCommaSeparatedIndices("-1, 0, 1");
-    expect(result).toEqual([-1, 0, 1]);
+
+    expect(result).toStrictEqual([-1, 0, 1]);
   });
 
   it("handles large indices", () => {
     const result = parseCommaSeparatedIndices("100, 999, 1000");
-    expect(result).toEqual([100, 999, 1000]);
+
+    expect(result).toStrictEqual([100, 999, 1000]);
   });
 
   it("throws error for non-numeric strings", () => {
@@ -462,7 +489,8 @@ describe("parseCommaSeparatedIndices", () => {
   it("handles decimal numbers by truncating to integers", () => {
     // parseInt("1.5", 10) returns 1, so this is expected behavior
     const result = parseCommaSeparatedIndices("0, 1.5, 2");
-    expect(result).toEqual([0, 1, 2]);
+
+    expect(result).toStrictEqual([0, 1, 2]);
   });
 
   it("throws error for mixed valid and invalid", () => {
@@ -473,47 +501,73 @@ describe("parseCommaSeparatedIndices", () => {
 
   it("returns empty array for empty input after filtering", () => {
     const result = parseCommaSeparatedIndices(",,, , ,");
-    expect(result).toEqual([]);
+
+    expect(result).toStrictEqual([]);
   });
 
   it("handles leading and trailing commas", () => {
     const result = parseCommaSeparatedIndices(",0,1,2,");
-    expect(result).toEqual([0, 1, 2]);
+
+    expect(result).toStrictEqual([0, 1, 2]);
   });
 });
 
 describe("parseTimeSignature", () => {
   it("parses common time signatures", () => {
-    expect(parseTimeSignature("4/4")).toEqual({ numerator: 4, denominator: 4 });
-    expect(parseTimeSignature("3/4")).toEqual({ numerator: 3, denominator: 4 });
-    expect(parseTimeSignature("2/4")).toEqual({ numerator: 2, denominator: 4 });
-    expect(parseTimeSignature("6/8")).toEqual({ numerator: 6, denominator: 8 });
+    expect(parseTimeSignature("4/4")).toStrictEqual({
+      numerator: 4,
+      denominator: 4,
+    });
+    expect(parseTimeSignature("3/4")).toStrictEqual({
+      numerator: 3,
+      denominator: 4,
+    });
+    expect(parseTimeSignature("2/4")).toStrictEqual({
+      numerator: 2,
+      denominator: 4,
+    });
+    expect(parseTimeSignature("6/8")).toStrictEqual({
+      numerator: 6,
+      denominator: 8,
+    });
   });
 
   it("parses complex time signatures", () => {
-    expect(parseTimeSignature("7/8")).toEqual({ numerator: 7, denominator: 8 });
-    expect(parseTimeSignature("5/4")).toEqual({ numerator: 5, denominator: 4 });
-    expect(parseTimeSignature("9/8")).toEqual({ numerator: 9, denominator: 8 });
-    expect(parseTimeSignature("12/8")).toEqual({
+    expect(parseTimeSignature("7/8")).toStrictEqual({
+      numerator: 7,
+      denominator: 8,
+    });
+    expect(parseTimeSignature("5/4")).toStrictEqual({
+      numerator: 5,
+      denominator: 4,
+    });
+    expect(parseTimeSignature("9/8")).toStrictEqual({
+      numerator: 9,
+      denominator: 8,
+    });
+    expect(parseTimeSignature("12/8")).toStrictEqual({
       numerator: 12,
       denominator: 8,
     });
   });
 
   it("parses unusual time signatures", () => {
-    expect(parseTimeSignature("15/16")).toEqual({
+    expect(parseTimeSignature("15/16")).toStrictEqual({
       numerator: 15,
       denominator: 16,
     });
-    expect(parseTimeSignature("1/1")).toEqual({ numerator: 1, denominator: 1 });
-    expect(parseTimeSignature("11/4")).toEqual({
+    expect(parseTimeSignature("1/1")).toStrictEqual({
+      numerator: 1,
+      denominator: 1,
+    });
+    expect(parseTimeSignature("11/4")).toStrictEqual({
       numerator: 11,
       denominator: 4,
     });
   });
 
   it("handles large numbers", () => {
-    expect(parseTimeSignature("128/64")).toEqual({
+    expect(parseTimeSignature("128/64")).toStrictEqual({
       numerator: 128,
       denominator: 64,
     });

@@ -1,4 +1,6 @@
 {{
+  // Canonical source: src/shared/pitch.js
+  // This inline copy is required because Peggy cannot import JS modules.
   const PITCH_CLASS_VALUES = {
     "C": 0,
     "C#": 1, "Db": 1,

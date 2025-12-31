@@ -4,15 +4,16 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat, type ChatClient, type ChatAdapter } from "./use-chat";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "#webui/types/messages";
 
 // Mock streaming helpers
-vi.mock("./streaming-helpers", () => ({
+vi.mock(import("./helpers/streaming-helpers"), () => ({
   handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
     // Simulate processing the stream
     for await (const chatHistory of stream) {
       onUpdate(formatter(chatHistory));
     }
+
     return true;
   }),
   validateMcpConnection: vi.fn(),
@@ -89,12 +90,14 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
       role: msg.role === "user" ? ("user" as const) : ("model" as const),
       parts: [{ type: "text" as const, content: msg.content }],
       rawHistoryIndex: idx,
+      timestamp: Date.now(),
     }));
   }),
 
   createErrorMessage: vi.fn(
     (error: unknown, chatHistory: TestMessage[]): UIMessage[] => {
       const formatted = mockAdapter.formatMessages(chatHistory);
+
       return [
         ...formatted,
         {
@@ -107,6 +110,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
             },
           ],
           rawHistoryIndex: chatHistory.length,
+          timestamp: Date.now(),
         },
       ];
     },
@@ -126,9 +130,10 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
 
 describe("useChat", () => {
   const defaultProps = {
+    provider: "gemini" as const,
     apiKey: "test-key",
     model: "test-model",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     enabledTools: {},
     mcpStatus: "connected" as const,
@@ -145,7 +150,7 @@ describe("useChat", () => {
     it("initializes with empty messages and null state", () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
@@ -170,7 +175,7 @@ describe("useChat", () => {
         result.current.clearConversation();
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
       expect(result.current.activeTemperature).toBeNull();
@@ -203,7 +208,7 @@ describe("useChat", () => {
         await result.current.handleSend("");
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
@@ -214,7 +219,7 @@ describe("useChat", () => {
         await result.current.handleSend("   \n\t  ");
       });
 
-      expect(result.current.messages).toEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
@@ -229,12 +234,15 @@ describe("useChat", () => {
 
       const lastMessage =
         result.current.messages[result.current.messages.length - 1];
+
       expect(lastMessage?.role).toBe("model");
       const lastPart = lastMessage?.parts[0];
+
       expect(lastPart?.type).toBe("error");
-      if (lastPart && "content" in lastPart) {
-        expect(lastPart.content).toContain("No API key configured");
-      }
+      expect(lastPart).toHaveProperty("content");
+      expect((lastPart as { content: string }).content).toContain(
+        "No API key configured",
+      );
     });
 
     it("initializes client on first message", async () => {
@@ -247,7 +255,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
         temperature: 1.0,
-        thinking: "Auto",
+        thinking: "Default",
       });
     });
 
@@ -259,7 +267,7 @@ describe("useChat", () => {
       });
 
       expect(result.current.activeModel).toBe("test-model");
-      expect(result.current.activeThinking).toBe("Auto");
+      expect(result.current.activeThinking).toBe("Default");
       expect(result.current.activeTemperature).toBe(1.0);
     });
 
@@ -308,9 +316,11 @@ describe("useChat", () => {
         ...mockAdapter,
         createClient: vi.fn(() => {
           const client = new MockChatClient();
+
           client.initialize = vi.fn(async () => {
             throw new Error("Initialization failed");
           });
+
           return client;
         }),
       };
@@ -327,6 +337,7 @@ describe("useChat", () => {
       const lastMessage =
         result.current.messages[result.current.messages.length - 1];
       const lastPart = lastMessage?.parts[0];
+
       expect(lastPart?.type).toBe("error");
     });
 
@@ -342,9 +353,9 @@ describe("useChat", () => {
         (m) => m.role === "user",
       );
       const firstPart = userMessage?.parts[0];
-      if (firstPart && "content" in firstPart) {
-        expect(firstPart.content).toBe("Hello");
-      }
+
+      expect(firstPart).toHaveProperty("content");
+      expect((firstPart as { content: string }).content).toBe("Hello");
     });
   });
 
@@ -365,7 +376,7 @@ describe("useChat", () => {
         await result.current.handleRetry(0);
       });
 
-      expect(result.current.messages.length).toBe(initialLength);
+      expect(result.current.messages).toHaveLength(initialLength);
     });
 
     it("does nothing if message at index is not user role", async () => {
@@ -461,12 +472,14 @@ describe("useChat", () => {
         createClient: vi.fn(() => {
           callCount++;
           const client = new MockChatClient();
+
           if (callCount > 1) {
             // Second call (during retry) should fail
             client.initialize = vi.fn(async () => {
               throw new Error("Retry initialization failed");
             });
           }
+
           return client;
         }),
       };
@@ -625,7 +638,7 @@ describe("useChat", () => {
       });
 
       // Both calls should have received the original message
-      expect(receivedMessages).toEqual(["Hello", "Hello"]);
+      expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
 
     it("sends 'continue' on retry when content was already received", async () => {
@@ -679,7 +692,7 @@ describe("useChat", () => {
       });
 
       // First call should have original message, retry should have "continue"
-      expect(receivedMessages).toEqual(["Hello", "continue"]);
+      expect(receivedMessages).toStrictEqual(["Hello", "continue"]);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "../../shared/tool-framework/define-tool.js";
+import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
@@ -31,8 +31,9 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "instruments",
           "audio-effects",
           "all-devices",
-          "rack-chains",
-          "drum-chains",
+          "chains",
+          "return-chains",
+          "drum-pads",
           "drum-maps",
           "routings",
           "available-routings",
@@ -51,7 +52,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         "drum-maps",
       ])
       .describe(
-        'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), chains (rack/drum), drum-maps, routings (current/available/all), mixer, color, warp-markers, "*" for all',
+        'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, routings (current/available/all), mixer, color, warp-markers, "*" for all',
       ),
   },
 });

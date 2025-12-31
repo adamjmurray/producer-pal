@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiSet, mockLiveApiGet } from "../../../../test/mock-live-api.js";
-import { setupMocks } from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
+import { liveApiSet, mockLiveApiGet } from "#src/test/mock-live-api.js";
+import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - Clip boundaries (shortening)", () => {
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // loop_start (4) + length (8) = 12
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set firstStart for looping clips", () => {
@@ -69,7 +69,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should warn when firstStart provided for non-looping clips", () => {
@@ -100,7 +100,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     );
 
     consoleErrorSpy.mockRestore();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set end_marker for non-looping clips", () => {
@@ -132,7 +132,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set loop_start and loop_end for looping clips", () => {
@@ -169,6 +169,6 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // start (4) + length (8) = 12
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 });

@@ -1,8 +1,8 @@
-import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   findLocator,
   findLocatorsByName,
-} from "../shared/locator/locator-helpers.js";
+} from "#src/tools/shared/locator/locator-helpers.js";
 
 /**
  * Resolve a locator by ID or name to its time in beats

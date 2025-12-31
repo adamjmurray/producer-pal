@@ -1,14 +1,16 @@
-import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
-import { intervalsToPitchClasses } from "../../notation/midi-pitch-to-name.js";
-import { pitchClassNameToNumber } from "../../notation/pitch-class-name-to-number.js";
-import * as console from "../../shared/v8-max-console.js";
-import { waitUntil } from "../../shared/v8-sleep.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import {
+  intervalsToPitchClasses,
+  pitchClassToNumber,
+} from "#src/shared/pitch.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { waitUntil } from "#src/shared/v8-sleep.js";
 import {
   findLocator,
   findLocatorsByName,
   getLocatorId,
-} from "../shared/locator/locator-helpers.js";
-import { parseTimeSignature } from "../shared/utils.js";
+} from "#src/tools/shared/locator/locator-helpers.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
   cleanupTempClip,
   extendSongIfNeeded,
@@ -78,7 +80,11 @@ export async function updateLiveSet(
     } else {
       // Non-empty string sets the scale and enables it
       const { scaleRoot, scaleName } = parseScale(scale);
-      const scaleRootNumber = pitchClassNameToNumber(scaleRoot);
+      const scaleRootNumber = pitchClassToNumber(scaleRoot);
+
+      if (scaleRootNumber == null) {
+        throw new Error(`Invalid scale root: ${scaleRoot}`);
+      }
 
       liveSet.set("root_note", scaleRootNumber);
       liveSet.set("scale_name", scaleName);

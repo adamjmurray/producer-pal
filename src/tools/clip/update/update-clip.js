@@ -1,14 +1,14 @@
-import {
-  parseCommaSeparatedIds,
-  parseTimeSignature,
-} from "../../shared/utils.js";
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
-import { handleArrangementLengthOperation } from "../arrangement/arrangement-operations.js";
+import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
 import {
   validateAndParseArrangementParams,
   buildClipResultObject,
   emitArrangementWarnings,
-} from "../helpers/clip-result-helpers.js";
+} from "#src/tools/clip/helpers/clip-result-helpers.js";
+import {
+  parseCommaSeparatedIds,
+  parseTimeSignature,
+} from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
 
 /**

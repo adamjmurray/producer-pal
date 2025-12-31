@@ -11,13 +11,13 @@ interface ThinkingSettingsProps {
 
 /**
  * Settings for thinking/reasoning modes
- * @param {ThinkingSettingsProps} root0 - Component props
- * @param {Provider} root0.provider - Current provider
- * @param {string} root0.model - Current model
- * @param {string} root0.thinking - Thinking level
- * @param {(thinking: string) => void} root0.setThinking - Thinking setter callback
- * @param {boolean} root0.showThoughts - Whether to show thoughts
- * @param {(show: boolean) => void} root0.setShowThoughts - Show thoughts setter callback
+ * @param {ThinkingSettingsProps} props - Component props
+ * @param {Provider} props.provider - Current provider
+ * @param {string} props.model - Current model
+ * @param {string} props.thinking - Thinking level
+ * @param {(thinking: string) => void} props.setThinking - Thinking setter callback
+ * @param {boolean} props.showThoughts - Whether to show thoughts
+ * @param {(show: boolean) => void} props.setShowThoughts - Show thoughts setter callback
  * @returns {JSX.Element} - React component
  */
 export function ThinkingSettings({
@@ -38,8 +38,6 @@ export function ThinkingSettings({
   }
 
   const isGemini = provider === "gemini";
-  // OpenRouter uses OpenAI-style effort levels (not Gemini's budget system)
-  const useOpenAIOptions = provider === "openai" || provider === "openrouter";
 
   return (
     <>
@@ -50,26 +48,13 @@ export function ThinkingSettings({
           onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
           className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         >
-          {useOpenAIOptions ? (
-            <>
-              <option value="Default">Default</option>
-              <option value="Off">Off</option>
-              <option value="Minimal">Minimal</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="XHigh">Extra High</option>
-            </>
-          ) : (
-            <>
-              <option value="Off">Off</option>
-              <option value="Auto">Auto</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Ultra">Ultra</option>
-            </>
-          )}
+          <option value="Default">Default</option>
+          <option value="Off">Off</option>
+          <option value="Minimal">Minimal</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Ultra">Ultra</option>
         </select>
       </div>
       {/* Show "Show thinking process" checkbox for Gemini and OpenRouter */}

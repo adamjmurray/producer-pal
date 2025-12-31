@@ -95,9 +95,11 @@ describe("ConnectionTab", () => {
 
     it("calls setApiKey when API key input changes", () => {
       const setApiKey = vi.fn();
+
       render(<ConnectionTab {...defaultProps} setApiKey={setApiKey} />);
 
       const input = screen.getByPlaceholderText("Enter your Gemini API key");
+
       fireEvent.change(input, { target: { value: "new-api-key" } });
 
       expect(setApiKey).toHaveBeenCalledWith("new-api-key");
@@ -109,6 +111,7 @@ describe("ConnectionTab", () => {
       const input = screen.getByPlaceholderText(
         "Enter your Gemini API key",
       ) as HTMLInputElement;
+
       expect(input.value).toBe("existing-key");
     });
 
@@ -118,6 +121,7 @@ describe("ConnectionTab", () => {
       const input = screen.getByPlaceholderText(
         "Enter your Gemini API key",
       ) as HTMLInputElement;
+
       expect(input.type).toBe("password");
     });
   });
@@ -126,6 +130,7 @@ describe("ConnectionTab", () => {
     it("shows Gemini API key link", () => {
       render(<ConnectionTab {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini API keys") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://aistudio.google.com/apikey");
       expect(link.target).toBe("_blank");
     });
@@ -139,6 +144,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("OpenAI API keys") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://platform.openai.com/api-keys");
     });
 
@@ -151,6 +157,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("Mistral API keys") as HTMLAnchorElement;
+
       expect(link.href).toBe(
         "https://console.mistral.ai/home?workspace_dialog=apiKeys",
       );
@@ -165,6 +172,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("OpenRouter API keys") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://openrouter.ai/settings/keys");
     });
 
@@ -232,6 +240,7 @@ describe("ConnectionTab", () => {
 
     it("calls setPort when port input changes for LM Studio", () => {
       const setPort = vi.fn();
+
       render(
         <ConnectionTab
           {...defaultProps}
@@ -243,6 +252,7 @@ describe("ConnectionTab", () => {
       );
 
       const input = screen.getByPlaceholderText("1234");
+
       fireEvent.change(input, { target: { value: "5678" } });
 
       expect(setPort).toHaveBeenCalledWith(5678);
@@ -250,6 +260,7 @@ describe("ConnectionTab", () => {
 
     it("calls setPort when port input changes for Ollama", () => {
       const setPort = vi.fn();
+
       render(
         <ConnectionTab
           {...defaultProps}
@@ -261,6 +272,7 @@ describe("ConnectionTab", () => {
       );
 
       const input = screen.getByPlaceholderText("11434");
+
       fireEvent.change(input, { target: { value: "8080" } });
 
       expect(setPort).toHaveBeenCalledWith(8080);
@@ -268,6 +280,7 @@ describe("ConnectionTab", () => {
 
     it("does not call setPort for non-numeric input", () => {
       const setPort = vi.fn();
+
       render(
         <ConnectionTab
           {...defaultProps}
@@ -279,6 +292,7 @@ describe("ConnectionTab", () => {
       );
 
       const input = screen.getByPlaceholderText("1234");
+
       fireEvent.change(input, { target: { value: "abc" } });
 
       expect(setPort).not.toHaveBeenCalled();
@@ -336,6 +350,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const input = screen.getByPlaceholderText("1234") as HTMLInputElement;
+
       expect(input.value).toBe("9999");
     });
 
@@ -377,6 +392,7 @@ describe("ConnectionTab", () => {
 
     it("calls setBaseUrl when base URL input changes", () => {
       const setBaseUrl = vi.fn();
+
       render(
         <ConnectionTab
           {...defaultProps}
@@ -387,6 +403,7 @@ describe("ConnectionTab", () => {
       );
 
       const input = screen.getByPlaceholderText("https://api.example.com/v1");
+
       fireEvent.change(input, { target: { value: "https://my-api.com/v1" } });
 
       expect(setBaseUrl).toHaveBeenCalledWith("https://my-api.com/v1");
@@ -405,6 +422,7 @@ describe("ConnectionTab", () => {
       const input = screen.getByPlaceholderText(
         "https://api.example.com/v1",
       ) as HTMLInputElement;
+
       expect(input.value).toBe("https://existing.api/v1");
     });
 
@@ -421,6 +439,7 @@ describe("ConnectionTab", () => {
       const input = screen.getByPlaceholderText(
         "https://api.example.com/v1",
       ) as HTMLInputElement;
+
       expect(input.value).toBe("");
     });
 
@@ -454,6 +473,7 @@ describe("ConnectionTab", () => {
     it("shows Gemini models link", () => {
       render(<ConnectionTab {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://ai.google.dev/gemini-api/docs/models");
       expect(link.target).toBe("_blank");
     });
@@ -467,6 +487,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("OpenAI models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://platform.openai.com/docs/models");
     });
 
@@ -479,6 +500,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("Mistral models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://docs.mistral.ai/getting-started/models");
     });
 
@@ -491,6 +513,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("OpenRouter models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://openrouter.ai/models");
     });
 
@@ -504,6 +527,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("LM Studio models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://lmstudio.ai/models");
     });
 
@@ -517,6 +541,7 @@ describe("ConnectionTab", () => {
         />,
       );
       const link = screen.getByText("Ollama models") as HTMLAnchorElement;
+
       expect(link.href).toBe("https://ollama.com/search");
     });
 

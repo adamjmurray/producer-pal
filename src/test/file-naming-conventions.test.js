@@ -10,8 +10,10 @@ import { describe, it, expect } from "vitest";
  */
 function getAllFiles(dir, files = []) {
   const entries = readdirSync(dir);
+
   for (const entry of entries) {
     const fullPath = join(dir, entry);
+
     if (statSync(fullPath).isDirectory()) {
       if (entry !== "node_modules") {
         getAllFiles(fullPath, files);
@@ -20,6 +22,7 @@ function getAllFiles(dir, files = []) {
       files.push(fullPath);
     }
   }
+
   return files;
 }
 
@@ -89,8 +92,10 @@ describe("File naming conventions", () => {
       const message = violations
         .map((v) => `  ${v.file}: ${v.reason}`)
         .join("\n");
+
       throw new Error(`File naming violations found:\n${message}`);
     }
+
     expect(violations).toHaveLength(0);
   });
 
@@ -112,6 +117,7 @@ describe("File naming conventions", () => {
       const message = violations
         .map((v) => `  ${v.file}: ${v.reason}`)
         .join("\n");
+
       throw new Error(
         `File naming violations found:\n${message}\n\n` +
           `Allowed patterns:\n` +
@@ -125,6 +131,7 @@ describe("File naming conventions", () => {
           `  - name.config.js (use name-config.js)`,
       );
     }
+
     expect(violations).toHaveLength(0);
   });
 });

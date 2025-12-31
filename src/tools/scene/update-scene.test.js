@@ -5,9 +5,9 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateScene } from "./update-scene.js";
-import "../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateScene", () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe("updateScene", () => {
       "time_signature_enabled",
       true,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update multiple scenes by comma-separated IDs", () => {
@@ -124,7 +124,7 @@ describe("updateScene", () => {
       true,
     );
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle 'id ' prefixed scene IDs", () => {
@@ -138,7 +138,7 @@ describe("updateScene", () => {
       "name",
       "Prefixed ID Scene",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -153,7 +153,7 @@ describe("updateScene", () => {
       "Only Name Update",
     );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should disable tempo when -1 is passed", () => {
@@ -168,7 +168,7 @@ describe("updateScene", () => {
       false,
     );
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should disable time signature when 'disabled' is passed", () => {
@@ -190,7 +190,7 @@ describe("updateScene", () => {
       "time_signature_denominator",
       expect.any(Number),
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should throw error when ids is missing", () => {
@@ -208,7 +208,7 @@ describe("updateScene", () => {
 
     const result = updateScene({ ids: "nonexistent" });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateScene: id "nonexistent" does not exist',
     );
@@ -230,7 +230,7 @@ describe("updateScene", () => {
 
     const result = updateScene({ ids: "123, nonexistent", name: "Test" });
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateScene: id "nonexistent" does not exist',
     );
@@ -250,8 +250,8 @@ describe("updateScene", () => {
     const singleResult = updateScene({ ids: "123", name: "Single" });
     const arrayResult = updateScene({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({ id: "123" });
-    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123" });
+    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -260,7 +260,7 @@ describe("updateScene", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -270,7 +270,7 @@ describe("updateScene", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
-    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   describe("color quantization verification", () => {
@@ -283,6 +283,7 @@ describe("updateScene", () => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
+
         return null;
       });
 
@@ -307,6 +308,7 @@ describe("updateScene", () => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
+
         return null;
       });
 

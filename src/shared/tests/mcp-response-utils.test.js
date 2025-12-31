@@ -5,7 +5,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "./mcp-response-utils.js";
+} from "#src/shared/mcp-response-utils.js";
 
 describe("mcp-response-utils", () => {
   describe("constants", () => {
@@ -25,7 +25,8 @@ describe("mcp-response-utils", () => {
   describe("formatSuccessResponse", () => {
     it("formats string result correctly", () => {
       const result = formatSuccessResponse("test message");
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -37,7 +38,8 @@ describe("mcp-response-utils", () => {
 
     it("formats object result by JSON stringifying", () => {
       const result = formatSuccessResponse({ foo: "bar", count: 42 });
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -49,7 +51,8 @@ describe("mcp-response-utils", () => {
 
     it("formats array result by JSON stringifying", () => {
       const result = formatSuccessResponse([1, 2, 3]);
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -61,7 +64,8 @@ describe("mcp-response-utils", () => {
 
     it("formats number result by JSON stringifying", () => {
       const result = formatSuccessResponse(42);
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -73,7 +77,8 @@ describe("mcp-response-utils", () => {
 
     it("formats boolean result by JSON stringifying", () => {
       const result = formatSuccessResponse(true);
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -85,7 +90,8 @@ describe("mcp-response-utils", () => {
 
     it("formats null result by JSON stringifying", () => {
       const result = formatSuccessResponse(null);
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [
           {
             type: "text",
@@ -99,7 +105,8 @@ describe("mcp-response-utils", () => {
   describe("formatErrorResponse", () => {
     it("formats error message correctly", () => {
       const result = formatErrorResponse("Something went wrong");
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [{ type: "text", text: "Something went wrong" }],
         isError: true,
       });
@@ -107,7 +114,8 @@ describe("mcp-response-utils", () => {
 
     it("handles empty error message", () => {
       const result = formatErrorResponse("");
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [{ type: "text", text: "" }],
         isError: true,
       });
@@ -115,7 +123,8 @@ describe("mcp-response-utils", () => {
 
     it("handles multiline error message", () => {
       const result = formatErrorResponse("Error:\nLine 1\nLine 2");
-      expect(result).toEqual({
+
+      expect(result).toStrictEqual({
         content: [{ type: "text", text: "Error:\nLine 1\nLine 2" }],
         isError: true,
       });

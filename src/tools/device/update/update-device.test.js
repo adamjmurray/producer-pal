@@ -5,13 +5,17 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
-} from "../../../test/mock-live-api.js";
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateDevice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default: all objects are Device type (valid for update)
+    liveApiType.mockImplementation(() => "Device");
 
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -53,6 +57,7 @@ describe("updateDevice", () => {
       if (prop === "value") return [0.5];
       if (prop === "min") return [0];
       if (prop === "max") return [1];
+
       return [0];
     });
 
@@ -61,6 +66,7 @@ describe("updateDevice", () => {
         // Default to numeric label
         return String(value);
       }
+
       return null;
     });
   });
@@ -76,7 +82,7 @@ describe("updateDevice", () => {
       "name",
       "My Device",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update collapsed state to true", () => {
@@ -90,7 +96,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       1,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update collapsed state to false", () => {
@@ -104,7 +110,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       0,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update both name and collapsed", () => {
@@ -124,7 +130,7 @@ describe("updateDevice", () => {
       "is_collapsed",
       1,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update multiple devices", () => {
@@ -143,7 +149,7 @@ describe("updateDevice", () => {
       "name",
       "Same Name",
     );
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should skip non-existent devices with warning", () => {
@@ -155,9 +161,9 @@ describe("updateDevice", () => {
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'updateDevice: id "999" does not exist',
+      'updateDevice: target not found at id "999"',
     );
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
 
     consoleSpy.mockRestore();
   });
@@ -170,7 +176,7 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
 
     consoleSpy.mockRestore();
   });
@@ -186,7 +192,7 @@ describe("updateDevice", () => {
       "name",
       "Prefixed ID",
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not call set when no properties provided", () => {
@@ -195,7 +201,7 @@ describe("updateDevice", () => {
     });
 
     expect(liveApiSet).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   describe("params - numeric values", () => {
@@ -210,7 +216,7 @@ describe("updateDevice", () => {
         "display_value",
         1000,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set multiple param values", () => {
@@ -229,7 +235,7 @@ describe("updateDevice", () => {
         "display_value",
         1000,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should log error for invalid param ID but continue", () => {
@@ -243,9 +249,9 @@ describe("updateDevice", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'updateDevice: param id "999" does not exist',
+        'updateDevice: param "999" not found on device',
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -267,7 +273,9 @@ describe("updateDevice", () => {
           if (prop === "is_quantized") return [1];
           if (prop === "value_items") return ["Repitch", "Fade", "Jump"];
         }
+
         if (prop === "is_quantized") return [0];
+
         return [0];
       });
     });
@@ -283,7 +291,7 @@ describe("updateDevice", () => {
         "value",
         1,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should log error for invalid enum value", () => {
@@ -304,7 +312,7 @@ describe("updateDevice", () => {
         "value",
         expect.anything(),
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -322,7 +330,7 @@ describe("updateDevice", () => {
         "value",
         60,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle sharps and flats", () => {
@@ -348,7 +356,9 @@ describe("updateDevice", () => {
           if (prop === "min") return [0];
           if (prop === "max") return [1];
         }
+
         if (prop === "is_quantized") return [0];
+
         return [0];
       });
 
@@ -356,6 +366,7 @@ describe("updateDevice", () => {
         if (method === "str_for_value" && this._path === "id 792") {
           return "C"; // Pan label indicating center
         }
+
         return "0";
       });
     });
@@ -372,7 +383,7 @@ describe("updateDevice", () => {
         "value",
         0.25,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle full left pan", () => {
@@ -405,17 +416,25 @@ describe("updateDevice", () => {
   });
 
   // macroVariation tests are in update-device-macro-variation.test.js
+  // Chain and DrumPad tests are in update-device-chains.test.js
 
   describe("macroCount", () => {
     beforeEach(() => {
+      // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
+      liveApiType.mockImplementation(function () {
+        return this._path === "id 123" ? "RackDevice" : "Device";
+      });
+
       liveApiGet.mockImplementation(function (prop) {
         if (this._path === "id 123") {
           if (prop === "can_have_chains") return [1];
           if (prop === "visible_macro_count") return [4];
         }
+
         if (this._path === "id 456") {
           if (prop === "can_have_chains") return [0];
         }
+
         return [0];
       });
     });
@@ -431,10 +450,10 @@ describe("updateDevice", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "updateDevice: macro count only available on rack devices",
+        "updateDevice: 'macroCount' not applicable to Device",
       );
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -450,7 +469,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "add_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
@@ -464,7 +483,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "remove_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should do nothing when count matches", () => {
@@ -474,7 +493,7 @@ describe("updateDevice", () => {
       });
 
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should round odd counts up to next even and warn", () => {
@@ -495,7 +514,7 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "add_macro",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
 
       consoleSpy.mockRestore();
     });
@@ -508,10 +527,12 @@ describe("updateDevice", () => {
         if (this._path === "id 123") {
           if (prop === "can_compare_ab") return [1];
         }
+
         // Device without AB Compare support (id 456)
         if (this._path === "id 456") {
           if (prop === "can_compare_ab") return [0];
         }
+
         return [0];
       });
     });
@@ -531,7 +552,7 @@ describe("updateDevice", () => {
       );
       expect(liveApiSet).not.toHaveBeenCalled();
       expect(liveApiCall).not.toHaveBeenCalled();
-      expect(result).toEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456" });
 
       consoleSpy.mockRestore();
     });
@@ -547,7 +568,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         0,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set is_using_compare_preset_b to 1 for 'b'", () => {
@@ -561,7 +582,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         1,
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should call save_preset_to_compare_ab_slot for 'save'", () => {
@@ -574,7 +595,142 @@ describe("updateDevice", () => {
         expect.objectContaining({ _path: "id 123" }),
         "save_preset_to_compare_ab_slot",
       );
-      expect(result).toEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123" });
     });
   });
+
+  describe("toPath - device moving", () => {
+    beforeEach(() => {
+      // Mock to make containers exist
+      liveApiId.mockImplementation(function () {
+        // Source device
+        if (this._path === "id 123") return "123";
+        // Target containers - return valid IDs
+        if (this._path === "live_set tracks 1") return "track1";
+        if (this._path === "live_set tracks 0") return "track0";
+        if (this._path === "live_set tracks 0 devices 0") return "device0";
+        if (this._path === "live_set tracks 0 devices 0 chains 1")
+          return "chain1";
+        // Non-existent target
+        if (this._path === "live_set tracks 99") return "0";
+
+        return "valid-id";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
+        if (prop === "can_have_drum_pads") return [0];
+
+        return [0];
+      });
+    });
+
+    it("should move device to a different track", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+      });
+
+      // move_device takes "id X" format for live object parameters
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        0,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should move device to a specific position", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1/d2",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        2,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should move device into a rack chain", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t0/d0/c1",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id chain1",
+        0,
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should throw error when trying to move a Chain", () => {
+      liveApiType.mockReturnValue("Chain");
+
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t1",
+        }),
+      ).toThrow("cannot move Chain");
+    });
+
+    it("should throw error when trying to move a DrumPad", () => {
+      liveApiType.mockReturnValue("DrumPad");
+
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t1",
+        }),
+      ).toThrow("cannot move DrumPad");
+    });
+
+    it("should throw error when target path does not exist", () => {
+      expect(() =>
+        updateDevice({
+          ids: "123",
+          toPath: "t99",
+        }),
+      ).toThrow('move target at path "t99" does not exist');
+    });
+
+    it("should allow combining move with other updates", () => {
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+        name: "Moved Device",
+      });
+
+      // Should call move_device with "id X" format
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "live_set" }),
+        "move_device",
+        "id 123",
+        "id track1",
+        0,
+      );
+
+      // Should also set name
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "name",
+        "Moved Device",
+      );
+
+      expect(result).toStrictEqual({ id: "123" });
+    });
+  });
+
+  // Drum chain move tests are in update-device-drum-chain-move.test.js
 });

@@ -10,12 +10,14 @@ describe("AssistantError", () => {
     it("renders error container with correct styling", () => {
       render(<AssistantError content="Test error" />);
       const container = document.querySelector(".bg-red-100");
+
       expect(container).toBeDefined();
     });
 
     it("has error styling classes", () => {
       render(<AssistantError content="Test error" />);
       const container = document.querySelector(".bg-red-100");
+
       expect(container!.className).toContain("bg-red-100");
       expect(container!.className).toContain("dark:bg-red-900");
       expect(container!.className).toContain("text-red-900");
@@ -29,6 +31,7 @@ describe("AssistantError", () => {
     it("displays 'Error' heading", () => {
       render(<AssistantError content="Test error" />);
       const heading = document.querySelector(".font-semibold");
+
       expect(heading).toBeDefined();
       expect(heading!.textContent).toBe("Error");
     });
@@ -36,14 +39,17 @@ describe("AssistantError", () => {
     it("displays error content", () => {
       render(<AssistantError content="Something went wrong" />);
       const content = document.querySelector(".whitespace-pre-wrap");
+
       expect(content).toBeDefined();
       expect(content!.textContent).toBe("Something went wrong");
     });
 
     it("preserves whitespace in error content", () => {
       const multilineContent = "Line 1\nLine 2";
+
       render(<AssistantError content={multilineContent} />);
       const content = document.querySelector(".whitespace-pre-wrap");
+
       expect(content!.className).toContain("whitespace-pre-wrap");
       expect(content!.textContent).toBe(multilineContent);
     });
@@ -51,8 +57,10 @@ describe("AssistantError", () => {
     it("renders long error messages", () => {
       const longError =
         "This is a very long error message that contains multiple words";
+
       render(<AssistantError content={longError} />);
       const content = document.querySelector(".whitespace-pre-wrap");
+
       expect(content!.textContent).toBe(longError);
     });
   });

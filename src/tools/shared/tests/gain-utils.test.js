@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { liveGainToDb, dbToLiveGain } from "../gain-utils.js";
+import { liveGainToDb, dbToLiveGain } from "#src/tools/shared/gain-utils.js";
 
 describe("gain-utils", () => {
   describe("liveGainToDb", () => {
@@ -33,11 +33,21 @@ describe("gain-utils", () => {
       // Even at very low levels, lookup table should be accurate
       const result1 = liveGainToDb(0.1);
       const result2 = liveGainToDb(0.05);
+
       // Just verify they're in a reasonable range
       expect(result1).toBeGreaterThan(-35);
       expect(result1).toBeLessThan(-25);
       expect(result2).toBeGreaterThan(-45);
       expect(result2).toBeLessThan(-35);
+    });
+
+    it("should return -Infinity for negative gain values", () => {
+      expect(liveGainToDb(-0.1)).toBe(-Infinity);
+    });
+
+    it("should return 24 dB for gain values greater than 1", () => {
+      expect(liveGainToDb(1.5)).toBe(24);
+      expect(liveGainToDb(2.0)).toBe(24);
     });
 
     it("should format dB values cleanly (2 decimal places, no trailing zeros)", () => {
@@ -94,6 +104,11 @@ describe("gain-utils", () => {
     it("should clamp values below -70 dB to 0", () => {
       expect(dbToLiveGain(-100)).toBe(0);
     });
+
+    it("should handle extreme high dB values", () => {
+      expect(dbToLiveGain(50)).toBe(1.0);
+      expect(dbToLiveGain(1000)).toBe(1.0);
+    });
   });
 
   describe("round-trip conversion", () => {
@@ -103,6 +118,7 @@ describe("gain-utils", () => {
       for (const gain of testGains) {
         const dB = liveGainToDb(gain);
         const gainBack = dbToLiveGain(dB);
+
         // With lookup table, expect very good round-trip accuracy
         expect(gainBack).toBeCloseTo(gain, 2);
       }
@@ -114,6 +130,7 @@ describe("gain-utils", () => {
       for (const dB of testDbValues) {
         const gain = dbToLiveGain(dB);
         const dbBack = liveGainToDb(gain);
+
         // Expect < 0.5 dB round-trip error
         expect(dbBack).toBeCloseTo(dB, 0);
       }

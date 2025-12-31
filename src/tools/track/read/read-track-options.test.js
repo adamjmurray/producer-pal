@@ -6,11 +6,11 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
@@ -42,15 +42,19 @@ describe("readTrack", () => {
         if (this._path === "id arr_clip1") {
           return "Clip";
         }
+
         if (this._path === "id clip1") {
           return "Clip";
         }
+
         if (this._path === "id synth1") {
           return "Device";
         }
+
         if (this._path === "id effect1") {
           return "Device";
         }
+
         return this._type; // Fall back to default MockLiveAPI logic
       });
 
@@ -132,10 +136,10 @@ describe("readTrack", () => {
       const resultExplicit = readTrack({
         trackIndex: 0,
         include: [
-          "drum-chains",
+          "drum-pads",
           "drum-maps",
           "clip-notes",
-          "rack-chains",
+          "chains",
           "midi-effects",
           "instruments",
           "audio-effects",
@@ -152,10 +156,10 @@ describe("readTrack", () => {
       });
 
       // Results should be identical
-      expect(resultWildcard).toEqual(resultExplicit);
+      expect(resultWildcard).toStrictEqual(resultExplicit);
 
       // Verify key properties are included
-      expect(resultWildcard).toEqual(
+      expect(resultWildcard).toStrictEqual(
         expect.objectContaining({
           instrument: expect.any(Object),
           audioEffects: expect.any(Array),
@@ -177,6 +181,7 @@ describe("readTrack", () => {
           if (this.path === "live_set return_tracks 1") {
             return "return_track_1";
           }
+
           return "id 0";
         });
 
@@ -204,7 +209,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 1, category: "return" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "return_track_1",
           type: "audio",
           name: "Return B",
@@ -221,7 +226,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 99, category: "return" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: null,
           type: null,
           name: null,
@@ -234,6 +239,7 @@ describe("readTrack", () => {
           if (this.path === "live_set return_tracks 0") {
             return "return_track_1";
           }
+
           return "id 0";
         });
         liveApiPath.mockImplementation(function () {
@@ -287,15 +293,15 @@ describe("readTrack", () => {
         // Return tracks should have null input routing (they don't accept input)
         expect(result.inputRoutingType).toBeNull();
         expect(result.inputRoutingChannel).toBeNull();
-        expect(result.availableInputRoutingTypes).toEqual([]);
-        expect(result.availableInputRoutingChannels).toEqual([]);
+        expect(result.availableInputRoutingTypes).toStrictEqual([]);
+        expect(result.availableInputRoutingChannels).toStrictEqual([]);
 
         // But should have output routing
-        expect(result.outputRoutingType).toEqual({
+        expect(result.outputRoutingType).toStrictEqual({
           name: "Track Out",
           outputId: "25",
         });
-        expect(result.outputRoutingChannel).toEqual({
+        expect(result.outputRoutingChannel).toStrictEqual({
           name: "Master",
           outputId: "26",
         });
@@ -308,6 +314,7 @@ describe("readTrack", () => {
           if (this.path === "live_set master_track") {
             return "master_track";
           }
+
           return "id 0";
         });
 
@@ -344,7 +351,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 999, category: "master" }); // trackIndex should be ignored
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "master_track",
           type: "audio",
           name: "Master",
@@ -364,7 +371,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ trackIndex: 0, category: "master" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: null,
           type: null,
           name: null,
@@ -432,7 +439,7 @@ describe("readTrack", () => {
           include: ["audio-effects"],
         });
 
-        expect(result.audioEffects).toEqual([
+        expect(result.audioEffects).toStrictEqual([
           {
             id: "compressor1",
             type: "audio-effect: Compressor",
@@ -479,10 +486,10 @@ describe("readTrack", () => {
         expect(result.inputRoutingChannel).toBeNull();
         expect(result.outputRoutingType).toBeNull();
         expect(result.outputRoutingChannel).toBeNull();
-        expect(result.availableInputRoutingTypes).toEqual([]);
-        expect(result.availableInputRoutingChannels).toEqual([]);
-        expect(result.availableOutputRoutingTypes).toEqual([]);
-        expect(result.availableOutputRoutingChannels).toEqual([]);
+        expect(result.availableInputRoutingTypes).toStrictEqual([]);
+        expect(result.availableInputRoutingChannels).toStrictEqual([]);
+        expect(result.availableOutputRoutingTypes).toStrictEqual([]);
+        expect(result.availableOutputRoutingChannels).toStrictEqual([]);
       });
 
       it("reads master track without requiring trackIndex", () => {
@@ -511,7 +518,7 @@ describe("readTrack", () => {
 
         const result = readTrack({ category: "master" });
 
-        expect(result).toEqual({
+        expect(result).toStrictEqual({
           id: "master_track",
           type: "audio",
           name: "Master",

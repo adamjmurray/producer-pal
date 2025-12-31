@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { interpretNotation } from "../barbeat-interpreter.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - timing features", () => {
   describe("time-position-driven note emission", () => {
     it("emits pitch at single time position", () => {
       const result = interpretNotation("C1 1|1");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 36,
           start_time: 0,
@@ -19,6 +20,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("emits same pitch at multiple times (pitch persistence)", () => {
       const result = interpretNotation("C1 1|1 |2 |3 |4");
+
       expect(result).toHaveLength(4);
       expect(result.every((n) => n.pitch === 36)).toBe(true);
       expect(result[0].start_time).toBe(0);
@@ -29,6 +31,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("clears pitch buffer on first pitch after time", () => {
       const result = interpretNotation("C1 1|1 D1 1|2");
+
       expect(result).toHaveLength(2);
       expect(result[0].pitch).toBe(36); // C1
       expect(result[0].start_time).toBe(0);
@@ -38,6 +41,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("emits chord from buffered pitches", () => {
       const result = interpretNotation("C3 E3 G3 1|1");
+
       expect(result).toHaveLength(3);
       expect(result.every((n) => n.start_time === 0)).toBe(true);
       expect(result[0].pitch).toBe(60); // C3
@@ -47,6 +51,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("captures state with each pitch", () => {
       const result = interpretNotation("v100 C3 v80 E3 1|1");
+
       expect(result).toHaveLength(2);
       expect(result[0].pitch).toBe(60); // C3
       expect(result[0].velocity).toBe(100);
@@ -56,6 +61,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("updates buffered pitches when state changes after time", () => {
       const result = interpretNotation("v100 C4 1|1 v90 |2");
+
       expect(result).toHaveLength(2);
       expect(result[0].pitch).toBe(72); // C4
       expect(result[0].velocity).toBe(100);
@@ -67,6 +73,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles complex state updates with multiple pitches", () => {
       const result = interpretNotation("v80 C4 v90 G4 1|1 v100 |2");
+
       expect(result).toHaveLength(4);
       // At 1|1: C4@v80, G4@v90
       expect(result[0].pitch).toBe(72);
@@ -86,6 +93,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles duration updates after time", () => {
       const result = interpretNotation("C4 1|1 t0.5 |2 t0.25 |3");
+
       expect(result).toHaveLength(3);
       expect(result[0].duration).toBe(1);
       expect(result[1].duration).toBe(0.5);
@@ -94,6 +102,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles probability updates after time", () => {
       const result = interpretNotation("C4 1|1 p0.8 |2 p0.5 |3");
+
       expect(result).toHaveLength(3);
       expect(result[0].probability).toBe(1.0);
       expect(result[1].probability).toBe(0.8);
@@ -102,6 +111,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles velocity range updates after time", () => {
       const result = interpretNotation("C4 1|1 v80-100 |2");
+
       expect(result).toHaveLength(2);
       expect(result[0].velocity).toBe(100);
       expect(result[0].velocity_deviation).toBe(0);
@@ -111,13 +121,15 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("supports drum patterns", () => {
       const result = interpretNotation("C1 1|1 |2 |3 |4");
+
       expect(result).toHaveLength(4);
       expect(result.every((n) => n.pitch === 36)).toBe(true);
-      expect(result.map((n) => n.start_time)).toEqual([0, 1, 2, 3]);
+      expect(result.map((n) => n.start_time)).toStrictEqual([0, 1, 2, 3]);
     });
 
     it("supports layered drum patterns", () => {
       const result = interpretNotation("C1 1|1 |3  D1 1|2 |4");
+
       expect(result).toHaveLength(4);
       expect(result[0].pitch).toBe(36); // C1 at 1|1
       expect(result[0].start_time).toBe(0);
@@ -131,6 +143,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles state changes between pitches in chord", () => {
       const result = interpretNotation("v80 C4 v90 G4 1|1");
+
       expect(result).toHaveLength(2);
       expect(result[0].velocity).toBe(80);
       expect(result[1].velocity).toBe(90);
@@ -138,6 +151,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("warns when pitches buffered but no time position", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+
       interpretNotation("C3 E3 G3");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("3 pitch(es) buffered but no time position"),
@@ -147,6 +161,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("warns when time position has no pitches", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+
       interpretNotation("1|1");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Time position 1|1 has no pitches"),
@@ -156,6 +171,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("warns when state changes after pitch but before time", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+
       interpretNotation("C4 v100 1|1");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -168,11 +184,13 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("does not warn when state changes after pitch but before another pitch", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation();
       const result = interpretNotation("v80 C4 v90 G4 1|1");
+
       expect(result).toHaveLength(2);
       // Should only warn about "state change won't affect group", not about it happening
       const warningCalls = consoleSpy.mock.calls.filter(
         (call) => !call[0].includes("buffered but no time position"),
       );
+
       expect(warningCalls).toHaveLength(0);
       consoleSpy.mockRestore();
     });
@@ -180,11 +198,13 @@ describe("bar|beat interpretNotation() - timing features", () => {
     it("does not warn when state changes after time", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation();
       const result = interpretNotation("C4 1|1 v90 |2");
+
       expect(result).toHaveLength(2);
       // Should only warn about "state change won't affect group", not about it happening
       const warningCalls = consoleSpy.mock.calls.filter(
         (call) => !call[0].includes("buffered but no time position"),
       );
+
       expect(warningCalls).toHaveLength(0);
       consoleSpy.mockRestore();
     });
@@ -193,7 +213,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
   describe("|beat shortcut syntax", () => {
     it("uses |beat shortcut within same bar", () => {
       const result = interpretNotation("C3 1|1 |2 |3");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -223,7 +244,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("uses |beat shortcut after bar change", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 E3 |2 F3 |3");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -263,7 +285,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
       const result = interpretNotation(
         "C3 1|1 D3 |2 E3 3|1 F3 |4 G3 2|3 A3 |4",
       );
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -317,7 +340,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("handles |beat with sub-beat timing", () => {
       const result = interpretNotation("C3 1|1.5 D3 |2.25 E3 |3.75");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0.5,
@@ -347,7 +371,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("preserves state across |beat shortcuts", () => {
       const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 D3 |2 v100 E3 |3");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -380,7 +405,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
         timeSigNumerator: 3,
         timeSigDenominator: 4,
       });
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,
@@ -410,7 +436,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("assumes bar 1 when |beat is used at start without initial bar", () => {
       const result = interpretNotation("C3 |2");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 1,
@@ -424,7 +451,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("assumes bar 1 when |beat is used without any prior bar number", () => {
       const result = interpretNotation("v100 t0.5 C3 |2");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 1,
@@ -438,7 +466,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("assumes bar 1 when |beat is used after state changes but before any bar number", () => {
       const result = interpretNotation("v100 C3 |1");
-      expect(result).toEqual([
+
+      expect(result).toStrictEqual([
         {
           pitch: 60,
           start_time: 0,

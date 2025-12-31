@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyModulations } from "../modulation-evaluator.js";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 
 describe("applyModulations", () => {
   describe("basic functionality", () => {
@@ -13,6 +13,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, null, 4, 4);
       expect(notes[0].velocity).toBe(100);
     });
@@ -27,12 +28,14 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "", 4, 4);
       expect(notes[0].velocity).toBe(100);
     });
 
     it("does nothing with empty notes array", () => {
       const notes = [];
+
       applyModulations(notes, "velocity += 10", 4, 4);
       expect(notes).toStrictEqual([]);
     });
@@ -47,6 +50,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity += 10", 4, 4);
       expect(notes[0].velocity).toBe(110);
     });
@@ -61,6 +65,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = 64", 4, 4);
       expect(notes[0].velocity).toBe(64);
     });
@@ -76,6 +81,7 @@ describe("applyModulations", () => {
         },
       ];
       const originalNotes = notes;
+
       applyModulations(notes, "velocity += 10", 4, 4);
       expect(notes).toBe(originalNotes);
     });
@@ -86,6 +92,7 @@ describe("applyModulations", () => {
       const notes = [
         { pitch: 60, start_time: 0, duration: 1, velocity: 10, probability: 1 },
       ];
+
       applyModulations(notes, "velocity += -100", 4, 4);
       expect(notes[0].velocity).toBe(1);
     });
@@ -100,6 +107,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity += 100", 4, 4);
       expect(notes[0].velocity).toBe(127);
     });
@@ -114,6 +122,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = 0", 4, 4);
       expect(notes[0].velocity).toBe(1);
     });
@@ -128,6 +137,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = 200", 4, 4);
       expect(notes[0].velocity).toBe(127);
     });
@@ -142,6 +152,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "duration += -1", 4, 4);
       expect(notes[0].duration).toBe(0.001);
     });
@@ -156,6 +167,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "duration = -1", 4, 4);
       expect(notes[0].duration).toBe(0.001);
     });
@@ -170,6 +182,7 @@ describe("applyModulations", () => {
           probability: 0.5,
         },
       ];
+
       applyModulations(notes, "probability += -1", 4, 4);
       expect(notes[0].probability).toBe(0.0);
     });
@@ -184,6 +197,7 @@ describe("applyModulations", () => {
           probability: 0.5,
         },
       ];
+
       applyModulations(notes, "probability += 1", 4, 4);
       expect(notes[0].probability).toBe(1.0);
     });
@@ -198,6 +212,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "probability = -0.5", 4, 4);
       expect(notes[0].probability).toBe(0.0);
     });
@@ -212,6 +227,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "probability = 2.0", 4, 4);
       expect(notes[0].probability).toBe(1.0);
     });
@@ -226,6 +242,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "timing += 0.5", 4, 4);
       expect(notes[0].start_time).toBe(2.5);
     });
@@ -240,6 +257,7 @@ describe("applyModulations", () => {
           probability: 1,
         },
       ];
+
       applyModulations(notes, "timing = 5", 4, 4);
       expect(notes[0].start_time).toBe(5);
     });
@@ -260,6 +278,7 @@ describe("applyModulations", () => {
 timing += 0.05
 duration += 0.5
 probability += -0.2`;
+
       applyModulations(notes, modString, 4, 4);
       expect(notes[0].velocity).toBe(110);
       expect(notes[0].start_time).toBe(0.05);
@@ -279,6 +298,7 @@ probability += -0.2`;
         { pitch: 64, start_time: 1, duration: 1, velocity: 80, probability: 1 },
         { pitch: 67, start_time: 2, duration: 1, velocity: 90, probability: 1 },
       ];
+
       applyModulations(notes, "velocity += 10", 4, 4);
       expect(notes[0].velocity).toBe(110);
       expect(notes[1].velocity).toBe(90);
@@ -297,6 +317,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       // In 4/4, 1 Ableton beat = 1 musical beat, so cos(1t) at position 0 = 1
       applyModulations(notes, "velocity += 20 * cos(1t)", 4, 4);
       expect(notes[0].velocity).toBeCloseTo(120, 5);
@@ -312,6 +333,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       // In 3/4, 1 Ableton beat = 1 musical beat
       applyModulations(notes, "velocity += 20 * cos(1t)", 3, 4);
       expect(notes[0].velocity).toBeCloseTo(120, 5);
@@ -327,6 +349,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       // In 6/8, 1 Ableton beat = 2 musical beats (denominator/4 = 8/4 = 2)
       applyModulations(notes, "velocity += 20 * cos(1t)", 6, 8);
       expect(notes[0].velocity).toBeCloseTo(120, 5);
@@ -356,6 +379,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       // cos(1t) completes one cycle per beat: 0→1, 0.5→-1, 1→1
       applyModulations(notes, "velocity += 20 * cos(1t)", 4, 4);
       expect(notes[0].velocity).toBeCloseTo(120, 5); // cos(0) = 1
@@ -382,6 +406,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "C3 velocity += 20", 4, 4);
       expect(notes[0].velocity).toBe(120);
       expect(notes[1].velocity).toBe(100); // unchanged
@@ -404,6 +429,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity += 20", 4, 4);
       expect(notes[0].velocity).toBe(120);
       expect(notes[1].velocity).toBe(120);
@@ -435,6 +461,7 @@ probability += -0.2`;
           probability: 1,
         }, // bar 3, beat 1
       ];
+
       applyModulations(notes, "1|1-2|4 velocity += 20", 4, 4);
       expect(notes[0].velocity).toBe(120); // in range
       expect(notes[1].velocity).toBe(120); // in range
@@ -447,6 +474,7 @@ probability += -0.2`;
       const notes = [
         { pitch: 60, start_time: 0, duration: 1, velocity: 1, probability: 1 },
       ];
+
       applyModulations(notes, "velocity += -10", 4, 4);
       expect(notes[0].velocity).toBe(1);
     });
@@ -461,6 +489,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity += 10", 4, 4);
       expect(notes[0].velocity).toBe(127);
     });
@@ -475,6 +504,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "duration += -0.01", 4, 4);
       expect(notes[0].duration).toBe(0.001);
     });
@@ -496,6 +526,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "probability += 0.5", 4, 4);
       expect(notes[0].probability).toBe(0.5);
       expect(notes[1].probability).toBe(1.0); // clamped
@@ -522,6 +553,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = note.pitch", 4, 4);
       expect(notes[0].velocity).toBe(60);
       expect(notes[1].velocity).toBe(72);
@@ -538,6 +570,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = note.velocity / 2", 4, 4);
       expect(notes[0].velocity).toBe(50);
     });
@@ -553,6 +586,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity += note.velocityDeviation", 4, 4);
       expect(notes[0].velocity).toBe(120);
     });
@@ -568,6 +602,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "probability = note.duration", 4, 4);
       expect(notes[0].probability).toBe(0.5);
     });
@@ -583,6 +618,7 @@ probability += -0.2`;
           probability: 0.5,
         },
       ];
+
       applyModulations(notes, "velocity = note.probability * 127", 4, 4);
       expect(notes[0].velocity).toBeCloseTo(63.5, 1);
     });
@@ -606,6 +642,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       // In 4/4, start_time 0 = 0 beats, start_time 1 = 1 beat
       applyModulations(notes, "velocity = 64 + note.start * 10", 4, 4);
       expect(notes[0].velocity).toBe(64); // 64 + 0 * 10
@@ -631,6 +668,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(
         notes,
         "velocity = note.pitch + note.duration * 20",
@@ -652,6 +690,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
+
       applyModulations(notes, "velocity = note.velocity * cos(1t)", 4, 4);
       expect(notes[0].velocity).toBeCloseTo(100, 5); // 100 * cos(0) = 100 * 1
     });

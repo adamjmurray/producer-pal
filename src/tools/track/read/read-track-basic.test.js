@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { VERSION } from "../../../shared/version.js";
+import { VERSION } from "#src/shared/version.js";
 import {
   children,
   expectedClip,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
@@ -16,7 +16,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 99 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: null,
       type: null,
       name: null,
@@ -52,7 +52,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track1",
       type: "midi",
       name: "Track 1",
@@ -87,7 +87,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track2",
       type: "audio",
       name: "Audio Track",
@@ -131,7 +131,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 0 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track1",
       type: "midi",
       name: "Track 1",
@@ -154,6 +154,7 @@ describe("readTrack", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       return this._path;
     });
 
@@ -163,10 +164,12 @@ describe("readTrack", () => {
     });
 
     const result = readTrack({ trackIndex: 1 });
+
     expect(result.hasProducerPalDevice).toBe(true);
     expect(result.producerPalVersion).toBe(VERSION);
 
     const result2 = readTrack({ trackIndex: 0 });
+
     expect(result2.hasProducerPalDevice).toBeUndefined();
     expect(result2.producerPalVersion).toBeUndefined();
   });
@@ -176,6 +179,7 @@ describe("readTrack", () => {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
+
       return this._path;
     });
 
@@ -188,11 +192,13 @@ describe("readTrack", () => {
 
     // Producer Pal host track with null instrument - should omit the property
     const hostResult = readTrack({ trackIndex: 1 });
+
     expect(hostResult.hasProducerPalDevice).toBe(true);
     expect(hostResult).not.toHaveProperty("instrument");
 
     // Regular track with null instrument - should include the property
     const regularResult = readTrack({ trackIndex: 0 });
+
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
     expect(regularResult).toHaveProperty("instrument");
     expect(regularResult.instrument).toBe(null);
@@ -231,7 +237,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "track3",
       type: "midi",
       name: "Track with Clips",
@@ -297,7 +303,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result.arrangementClips.length).toBe(2);
+    expect(result.arrangementClips).toHaveLength(2);
     expect(result.arrangementClips[0].id).toBe("arr_clip1");
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });
@@ -357,7 +363,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "rack-chains", "instruments"],
+      include: ["clip-notes", "chains", "instruments"],
     });
 
     // Since clips exist at slots 0 and 2, we should get a count of 2
@@ -387,7 +393,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "rack-chains", "instruments"],
+      include: ["clip-notes", "chains", "instruments"],
     });
 
     expect(result.arrangementClipCount).toBe(2);
@@ -417,7 +423,7 @@ describe("readTrack", () => {
     // Call with includeArrangementClips explicitly false to get count
     const result = readTrack({
       trackIndex: 1,
-      include: ["clip-notes", "rack-chains", "instruments"], // excludes "arrangement-clips"
+      include: ["clip-notes", "chains", "instruments"], // excludes "arrangement-clips"
     });
 
     // Verify that we get a count instead of clip details

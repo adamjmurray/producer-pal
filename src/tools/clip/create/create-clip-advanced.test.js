@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - advanced features", () => {
@@ -34,7 +34,7 @@ describe("createClip - advanced features", () => {
       "signature_denominator",
       8,
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
       sceneIndex: 0,
@@ -90,12 +90,12 @@ describe("createClip - advanced features", () => {
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0]).toEqual({
+    expect(arrayResult[0]).toStrictEqual({
       id: expect.any(String),
       trackIndex: 0,
       sceneIndex: 1,
     });
-    expect(arrayResult[1]).toEqual({
+    expect(arrayResult[1]).toStrictEqual({
       id: expect.any(String),
       trackIndex: 0,
       sceneIndex: 2,
@@ -140,7 +140,7 @@ describe("createClip - advanced features", () => {
       },
     );
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
       sceneIndex: 0,
@@ -212,7 +212,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/0/clip",
         trackIndex: 0,
         sceneIndex: 0,
@@ -229,6 +229,7 @@ describe("createClip - advanced features", () => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }
+
         return null;
       });
 
@@ -236,6 +237,7 @@ describe("createClip - advanced features", () => {
         if (this._path === "id arrangement_clip") {
           return "arrangement_clip";
         }
+
         return this._id;
       });
 
@@ -247,7 +249,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         id: "arrangement_clip",
         trackIndex: 0,
         arrangementStart: "1|1",

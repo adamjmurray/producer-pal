@@ -4,9 +4,9 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
-import { setupMocks } from "../helpers/update-clip-test-helpers.js";
-import { updateClip } from "../update-clip.js";
+} from "#src/test/mock-live-api.js";
+import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - Basic operations", () => {
   beforeEach(() => {
@@ -52,8 +52,10 @@ describe("updateClip - Basic operations", () => {
         if (addedNotes.length === 0) {
           return JSON.stringify({ notes: existingNotes });
         }
+
         return JSON.stringify({ notes: addedNotes });
       }
+
       return {};
     });
 
@@ -73,7 +75,7 @@ describe("updateClip - Basic operations", () => {
       1000000,
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
   });
 
   it("should log warning when clip ID doesn't exist", () => {
@@ -86,7 +88,7 @@ describe("updateClip - Basic operations", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'updateClip: id "nonexistent" does not exist',
     );
@@ -123,7 +125,7 @@ describe("updateClip - Basic operations", () => {
       true,
     );
 
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update a single arrangement clip by ID", () => {
@@ -160,7 +162,7 @@ describe("updateClip - Basic operations", () => {
       6,
     ); // start (2) + length (4) = 6 Ableton beats
 
-    expect(result).toEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", () => {
@@ -180,7 +182,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Verify result is returned (view switching is a side effect)
-    expect(result).toEqual({ id: "999" });
+    expect(result).toStrictEqual({ id: "999" });
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
@@ -233,7 +235,7 @@ describe("updateClip - Basic operations", () => {
       false,
     );
 
-    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should update time signature when provided", () => {
@@ -259,7 +261,7 @@ describe("updateClip - Basic operations", () => {
       "signature_denominator",
       8,
     );
-    expect(result).toEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
@@ -311,7 +313,7 @@ describe("updateClip - Basic operations", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", () => {
@@ -365,7 +367,7 @@ describe("updateClip - Basic operations", () => {
       "signature_denominator",
       8,
     );
-    expect(result).toEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
@@ -409,7 +411,7 @@ describe("updateClip - Basic operations", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", () => {
@@ -478,7 +480,7 @@ describe("updateClip - Basic operations", () => {
       },
     );
 
-    expect(result).toEqual({ id: "123", noteCount: 5 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 5 });
   });
 
   it("should throw error for invalid time signature format", () => {

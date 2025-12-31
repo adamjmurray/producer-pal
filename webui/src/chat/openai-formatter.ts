@@ -1,11 +1,11 @@
+import type { ReasoningDetail } from "#webui/chat/openai-client";
 import type {
   OpenAIMessage,
   OpenAIToolCall,
   UIMessage,
   UIPart,
   UIThoughtPart,
-} from "../types/messages";
-import type { ReasoningDetail } from "./openai-client";
+} from "#webui/types/messages";
 
 /**
  * Add reasoning details to parts array
@@ -260,6 +260,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
         role: msg.role === "assistant" ? "model" : "user",
         parts: [],
         rawHistoryIndex: rawIndex,
+        timestamp: Date.now(),
       };
       messages.push(currentMessage);
     }

@@ -1,5 +1,5 @@
 import * as console from "#src/shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_TRACKS } from "../../constants.js";
+import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
 
 /**
  * Create a single track via Live API

@@ -3,7 +3,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "./ChatScreen";
 
 describe("ChatScreen", () => {
@@ -21,11 +21,12 @@ describe("ChatScreen", () => {
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
     activeModel: "gemini-1.5-flash",
-    activeThinking: null,
-    activeTemperature: 1.0,
     activeProvider: "gemini" as const,
-    defaultThinking: "Auto",
+    provider: "gemini" as const,
+    model: "gemini-2.0-flash-thinking",
+    defaultThinking: "Default",
     defaultTemperature: 1.0,
+    defaultShowThoughts: true,
     enabledToolsCount: 20,
     totalToolsCount: 20,
     mcpStatus: "connected" as const,
@@ -40,6 +41,7 @@ describe("ChatScreen", () => {
     it("renders container with correct classes", () => {
       render(<ChatScreen {...defaultProps} />);
       const container = document.querySelector(".flex.flex-col.h-screen");
+
       expect(container).toBeDefined();
     });
 
@@ -47,6 +49,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} />);
       // ChatHeader renders a header element
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
     });
 
@@ -54,6 +57,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} />);
       // ChatInput renders a textarea
       const textarea = document.querySelector("textarea");
+
       expect(textarea).toBeDefined();
     });
   });
@@ -63,6 +67,7 @@ describe("ChatScreen", () => {
       render(<ChatScreen {...defaultProps} messages={[]} />);
       // ChatStart renders its welcome content
       const chatStart = document.querySelector(".flex.flex-col.items-center");
+
       expect(chatStart).toBeDefined();
     });
 
@@ -72,11 +77,14 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(<ChatScreen {...defaultProps} messages={messages} />);
       // MessageList renders messages with specific structure
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
     });
 
@@ -86,6 +94,7 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -93,6 +102,7 @@ describe("ChatScreen", () => {
       );
       // Verify we have a message container but no welcome screen
       const messageContainer = container.querySelector(".space-y-4");
+
       expect(messageContainer).toBeDefined();
     });
   });
@@ -103,20 +113,20 @@ describe("ChatScreen", () => {
         <ChatScreen
           {...defaultProps}
           activeModel="test-model"
-          activeThinking="extended"
-          activeTemperature={0.7}
           activeProvider="openai"
           messages={[
             {
               role: "user",
               parts: [{ type: "text", content: "Test" }],
               rawHistoryIndex: 0,
+              timestamp: Date.now(),
             },
           ]}
         />,
       );
       // ChatHeader displays model info when present
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
       // Model name should be in the header
       expect(header!.textContent).toContain("test-model");
@@ -131,6 +141,7 @@ describe("ChatScreen", () => {
         />,
       );
       const chatStart = document.querySelector(".flex.flex-col.items-center");
+
       expect(chatStart).toBeDefined();
     });
 
@@ -140,15 +151,19 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Test message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model",
           parts: [{ type: "text", content: "Response" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
+
       render(<ChatScreen {...defaultProps} messages={messages} />);
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
       // Messages are rendered (plus scroll anchor div at the end)
       expect(messageList!.children.length).toBeGreaterThanOrEqual(2);
@@ -160,8 +175,10 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Test" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
+
       render(
         <ChatScreen
           {...defaultProps}
@@ -170,6 +187,7 @@ describe("ChatScreen", () => {
         />,
       );
       const messageList = document.querySelector(".space-y-4");
+
       expect(messageList).toBeDefined();
     });
 
@@ -179,6 +197,7 @@ describe("ChatScreen", () => {
       const sendButton = Array.from(document.querySelectorAll("button")).find(
         (btn) => btn.textContent === "...",
       );
+
       expect(sendButton).toBeDefined();
       expect(sendButton!.disabled).toBe(true);
     });

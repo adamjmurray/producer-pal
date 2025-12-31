@@ -6,8 +6,8 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { playback } from "../playback.js";
+} from "#src/test/mock-live-api.js";
+import { playback } from "#src/tools/control/playback.js";
 
 describe("transport", () => {
   beforeEach(() => {
@@ -185,15 +185,19 @@ describe("transport", () => {
         if (this._path === "live_set") {
           return "LiveSet";
         }
+
         if (this._path === "live_app view") {
           return "AppView";
         }
+
         if (this._path === "live_set scenes 0") {
           return "Scene";
         }
+
         if (this._path === "id track1" || this._path === "id track2") {
           return "Track";
         }
+
         return this._type; // Fall back to default MockLiveAPI logic
       });
 
@@ -222,6 +226,7 @@ describe("transport", () => {
         if (this._path === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }
+
         return this._path;
       });
 

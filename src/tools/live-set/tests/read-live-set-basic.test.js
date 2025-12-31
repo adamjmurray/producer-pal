@@ -7,12 +7,12 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../../constants.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/tools/constants.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - basic reading", () => {
   it("returns live set information including tracks and scenes", () => {
@@ -132,7 +132,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "scenes",
         "session-clips",
         "arrangement-clips",
@@ -140,7 +140,7 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set_id",
       name: "Test Live Set",
       isPlaying: true,
@@ -197,6 +197,7 @@ describe("readLiveSet - basic reading", () => {
             id: "track3",
             trackIndex: 2,
           });
+
           return track;
         })(),
       ],
@@ -234,6 +235,7 @@ describe("readLiveSet - basic reading", () => {
       if (this.path === "live_set") {
         return "live_set";
       }
+
       return "id 0"; // All selection objects return non-existent IDs
     });
 
@@ -265,14 +267,14 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "session-clips",
         "arrangement-clips",
         "clip-notes",
       ],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       id: "live_set",
       name: "Empty Live Set",
       tempo: 100,
@@ -282,17 +284,20 @@ describe("readLiveSet - basic reading", () => {
     });
   });
 
-  it("includes device information across multiple tracks with includeDrumChains", () => {
+  it("includes device information across multiple tracks with includeDrumPads", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 1") {
         return "track2";
       }
+
       return this._id;
     });
 
@@ -345,14 +350,14 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
-        "drum-chains",
+        "chains",
+        "drum-pads",
         "audio-effects",
       ],
     });
 
     // Check that tracks have the expected device configurations
-    expect(result.tracks).toEqual([
+    expect(result.tracks).toStrictEqual([
       expect.objectContaining({
         name: "Synth Track",
         instrument: expect.objectContaining({
@@ -381,21 +386,27 @@ describe("readLiveSet - basic reading", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 0 devices 0") {
         return "drum_rack1";
       }
+
       if (this._path === "live_set tracks 0 devices 1") {
         return "reverb1";
       }
+
       if (this._path === "live_set tracks 0 devices 0 drum_pads 36") {
         return "kick_pad";
       }
+
       if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0") {
         return "kick_chain";
       }
+
       return this._id;
     });
 
@@ -459,7 +470,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "audio-effects",
         "session-clips",
         "arrangement-clips",
@@ -467,27 +478,28 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    // Check that drum rack devices are included (drumChains hidden - drumMap provides the critical pitch-name mapping)
-    expect(result.tracks[0].instrument).toEqual(
+    // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
+    expect(result.tracks[0].instrument).toStrictEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
-        // drumChains: expect.any(Array), // Only included when drum-chains is requested
+        // drumPads: expect.any(Array), // Only included when drum-pads is requested
       }),
     );
-    expect(result.tracks[0].audioEffects).toEqual([
+    expect(result.tracks[0].audioEffects).toStrictEqual([
       expect.objectContaining({
         type: "audio-effect: Reverb",
       }),
     ]);
-    // Drum rack device should be present (drumChains hidden)
+    // Drum rack device should be present (drumPads hidden)
     const drumRack = result.tracks[0].instrument;
+
     expect(drumRack).toBeDefined();
-    // drumChains hidden - drumMap provides the critical pitch-name mapping
-    // expect(drumRack.drumChains).toBeDefined();
-    // // If drumChains exist, they should not have chain property when includeDrumChains=false
-    // if (drumRack.drumChains && drumRack.drumChains.length > 0) {
-    //   expect(drumRack.drumChains[0].chain).toBeUndefined();
+    // drumPads hidden - drumMap provides the critical pitch-name mapping
+    // expect(drumRack.drumPads).toBeDefined();
+    // // If drumPads exist, they should not have chain property when includeDrumPads=false
+    // if (drumRack.drumPads && drumRack.drumPads.length > 0) {
+    //   expect(drumRack.drumPads[0].chain).toBeUndefined();
     // }
   });
 });

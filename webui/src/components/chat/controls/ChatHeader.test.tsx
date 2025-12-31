@@ -10,6 +10,8 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     activeModel: null,
     activeProvider: null,
+    model: "gemini-2.5-pro",
+    provider: "gemini" as const,
     enabledToolsCount: 20,
     totalToolsCount: 20,
     hasMessages: false,
@@ -26,6 +28,7 @@ describe("ChatHeader", () => {
     it("renders logo image", () => {
       render(<ChatHeader {...defaultProps} />);
       const logo = screen.getByAltText("Producer Pal");
+
       expect(logo).toBeDefined();
     });
 
@@ -53,9 +56,10 @@ describe("ChatHeader", () => {
   });
 
   describe("activeModel display", () => {
-    it("does not show model when activeModel is null", () => {
+    it("shows fallback model when activeModel is null", () => {
       render(<ChatHeader {...defaultProps} activeModel={null} />);
-      expect(screen.queryByText(/Gemini/)).toBeNull();
+      // Falls back to model prop from settings
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
@@ -102,7 +106,7 @@ describe("ChatHeader", () => {
       expect(screen.getByText("OpenAI | unknown-model")).toBeDefined();
     });
 
-    it("does not show model when activeProvider is null", () => {
+    it("shows fallback provider when activeProvider is null", () => {
       render(
         <ChatHeader
           {...defaultProps}
@@ -110,7 +114,8 @@ describe("ChatHeader", () => {
           activeProvider={null}
         />,
       );
-      expect(screen.queryByText(/Gemini 2.5 Pro/)).toBeNull();
+      // Falls back to provider prop from settings
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
     });
   });
 
@@ -164,9 +169,11 @@ describe("ChatHeader", () => {
   describe("Settings button", () => {
     it("calls onOpenSettings when clicked", () => {
       const onOpenSettings = vi.fn();
+
       render(<ChatHeader {...defaultProps} onOpenSettings={onOpenSettings} />);
 
       const button = screen.getByRole("button", { name: "Settings" });
+
       fireEvent.click(button);
 
       expect(onOpenSettings).toHaveBeenCalledOnce();
@@ -284,11 +291,13 @@ describe("ChatHeader", () => {
 
     it("calls window.confirm when Restart clicked", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(false);
 
       render(<ChatHeader {...defaultProps} hasMessages={true} />);
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(window.confirm).toHaveBeenCalledWith(
@@ -299,9 +308,11 @@ describe("ChatHeader", () => {
 
     it("does not call onClearConversation when user cancels confirmation", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(false);
 
       const onClearConversation = vi.fn();
+
       render(
         <ChatHeader
           {...defaultProps}
@@ -311,6 +322,7 @@ describe("ChatHeader", () => {
       );
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(onClearConversation).not.toHaveBeenCalled();
@@ -319,9 +331,11 @@ describe("ChatHeader", () => {
 
     it("calls onClearConversation when user confirms", () => {
       const originalConfirm = window.confirm;
+
       window.confirm = vi.fn().mockReturnValue(true);
 
       const onClearConversation = vi.fn();
+
       render(
         <ChatHeader
           {...defaultProps}
@@ -331,6 +345,7 @@ describe("ChatHeader", () => {
       );
 
       const button = screen.getByRole("button", { name: "Restart" });
+
       fireEvent.click(button);
 
       expect(onClearConversation).toHaveBeenCalledOnce();

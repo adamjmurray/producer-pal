@@ -3,33 +3,34 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
 // Mock all the custom hooks
-vi.mock("../hooks/settings/use-settings.js", () => ({
+vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 
-vi.mock("../hooks/theme/use-theme.js", () => ({
+vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock("../hooks/connection/use-mcp-connection.js", () => ({
+vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
   useMcpConnection: vi.fn(),
 }));
 
-vi.mock("../hooks/chat/use-gemini-chat.js", () => ({
+vi.mock(import("#webui/hooks/chat/use-gemini-chat"), () => ({
   useGeminiChat: vi.fn(),
 }));
 
-vi.mock("../hooks/chat/use-openai-chat.js", () => ({
+vi.mock(import("#webui/hooks/chat/use-openai-chat"), () => ({
   useOpenAIChat: vi.fn(),
 }));
 
 // Import mocked modules to access them in tests
-import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
-import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
-import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
-import { useSettings } from "../hooks/settings/use-settings";
-import { useTheme } from "../hooks/theme/use-theme";
+import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
+import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
+import { useSettings } from "#webui/hooks/settings/use-settings";
+import { useTheme } from "#webui/hooks/theme/use-theme";
 import { App } from "./App";
 
 describe("App", () => {
@@ -95,6 +96,7 @@ describe("App", () => {
       render(<App />);
       // ChatScreen contains a header
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
     });
 
@@ -107,6 +109,7 @@ describe("App", () => {
       // SettingsScreen contains the settings form
       // Look for something unique to settings screen like the provider selector label
       const settingsContent = document.body.textContent;
+
       expect(settingsContent).toContain("Provider");
     });
 
@@ -116,6 +119,7 @@ describe("App", () => {
         settingsConfigured: false,
       });
       const { container } = render(<App />);
+
       // Settings screen should be visible
       expect(container.textContent).toContain("Provider");
     });
@@ -128,6 +132,7 @@ describe("App", () => {
       render(<App />);
       // Chat screen should be visible
       const header = document.querySelector("header");
+
       expect(header).toBeDefined();
     });
   });
@@ -218,6 +223,7 @@ describe("App", () => {
       // At least one of the chat hooks should receive settings
       const geminiCalls = (useGeminiChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(geminiCalls.length).toBeGreaterThan(0);
       expect(geminiCalls[0]![0]).toHaveProperty("apiKey");
       expect(geminiCalls[0]![0]).toHaveProperty("model");
@@ -227,6 +233,7 @@ describe("App", () => {
   describe("settings interactions", () => {
     it("calls saveSettings when save button is clicked in settings screen", () => {
       const mockSaveSettings = vi.fn();
+
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         settingsConfigured: false,
@@ -236,10 +243,13 @@ describe("App", () => {
       const saveButton = Array.from(container.querySelectorAll("button")).find(
         (btn) => btn.textContent === "Save",
       );
+
       expect(saveButton).toBeDefined();
+
       if (saveButton) {
         fireEvent.click(saveButton);
       }
+
       expect(mockSaveSettings).toHaveBeenCalledOnce();
     });
 
@@ -264,7 +274,9 @@ describe("App", () => {
       const settingsButton = Array.from(
         container.querySelectorAll("button"),
       ).find((btn) => btn.textContent === "Settings");
+
       expect(settingsButton).toBeDefined();
+
       if (settingsButton) {
         fireEvent.click(settingsButton);
       }
@@ -281,7 +293,9 @@ describe("App", () => {
       const cancelButton = Array.from(
         container.querySelectorAll("button"),
       ).find((btn) => btn.textContent === "Cancel");
+
       expect(cancelButton).toBeDefined();
+
       if (cancelButton) {
         fireEvent.click(cancelButton);
       }
@@ -293,6 +307,7 @@ describe("App", () => {
     it("saves theme reference when transitioning to settings screen", () => {
       const mockSetTheme = vi.fn();
       const initialTheme = "light";
+
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         settingsConfigured: false,
@@ -363,6 +378,7 @@ describe("App", () => {
       // Verify OpenAI chat hook was called with custom baseUrl
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("https://custom.api.com/v1");
     });
 
@@ -375,6 +391,7 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
     });
 
@@ -387,7 +404,47 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+    });
+
+    it("uses default port 1234 for lmstudio when port not specified", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        port: undefined,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("uses default port 11434 for ollama when port not specified", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "ollama",
+        port: undefined,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+    });
+
+    it("uses 'not-needed' apiKey for lmstudio when apiKey is empty", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        apiKey: "",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+
+      expect(openAICalls[0]![0].apiKey).toBe("not-needed");
     });
 
     it("uses provider-specific baseUrl for openai provider", () => {
@@ -398,6 +455,7 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("https://api.openai.com/v1");
     });
 
@@ -409,6 +467,7 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("https://api.mistral.ai/v1");
     });
 
@@ -420,6 +479,7 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBe("https://openrouter.ai/api/v1");
     });
 
@@ -431,6 +491,7 @@ describe("App", () => {
       render(<App />);
       const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
         .calls;
+
       expect(openAICalls[0]![0].baseUrl).toBeUndefined();
     });
   });

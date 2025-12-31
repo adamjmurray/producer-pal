@@ -3,13 +3,14 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - locators", () => {
   it("should not include locators by default", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
+
       return this._id;
     });
 
@@ -36,6 +37,7 @@ describe("readLiveSet - locators", () => {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
       if (this._path === "id cue2") return "cue2";
+
       return this._id;
     });
 
@@ -62,7 +64,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Intro", time: "1|1" },
       { id: "locator-1", name: "Verse", time: "5|1" },
     ]);
@@ -71,6 +73,7 @@ describe("readLiveSet - locators", () => {
   it("should handle empty locators array", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
+
       return this._id;
     });
 
@@ -89,13 +92,14 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([]);
+    expect(result.locators).toStrictEqual([]);
   });
 
   it("should format locator times correctly in different time signatures", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
+
       return this._id;
     });
 
@@ -118,7 +122,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Chorus", time: "3|1" },
     ]);
   });
@@ -127,6 +131,7 @@ describe("readLiveSet - locators", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
+
       return this._id;
     });
 
@@ -149,7 +154,7 @@ describe("readLiveSet - locators", () => {
 
     const result = readLiveSet({ include: ["*"] });
 
-    expect(result.locators).toEqual([
+    expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Bridge", time: "9|1" },
     ]);
   });

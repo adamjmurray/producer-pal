@@ -1,15 +1,15 @@
 import * as console from "#src/shared/v8-max-console.js";
 import {
+  DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
+import { extractDevicePath } from "./helpers/device-path-helpers.js";
 import {
   isRedundantDeviceClassName,
-  processDrumChains,
-  processRegularChains,
-  processReturnChains,
+  processDeviceChains,
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
@@ -53,27 +53,27 @@ export function getDeviceType(device) {
 }
 
 /**
- * Clean up internal _processedDrumChains property from device objects
+ * Clean up internal _processedDrumPads property from device objects
  * @param {object | Array} obj - Device object or array of devices to clean
  * @returns {object | Array} Cleaned object/array
  */
-export function cleanupInternalDrumChains(obj) {
+export function cleanupInternalDrumPads(obj) {
   if (!obj || typeof obj !== "object") {
     return obj;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(cleanupInternalDrumChains);
+    return obj.map(cleanupInternalDrumPads);
   }
 
-  const { _processedDrumChains, ...rest } = obj;
+  const { _processedDrumPads, ...rest } = obj;
 
   if (rest.chains) {
     rest.chains = rest.chains.map((chain) => {
       if (chain.devices) {
         return {
           ...chain,
-          devices: cleanupInternalDrumChains(chain.devices),
+          devices: cleanupInternalDrumPads(chain.devices),
         };
       }
 
@@ -87,7 +87,7 @@ export function cleanupInternalDrumChains(obj) {
 /**
  * Extract track-level drum map from the processed device structure
  * @param {Array} devices - Array of processed device objects
- * @returns {object | null} Object mapping pitch names to drum chain names, or null if none found
+ * @returns {object | null} Object mapping pitch names to drum pad names, or null if none found
  */
 export function getDrumMap(devices) {
   /**
@@ -101,7 +101,7 @@ export function getDrumMap(devices) {
     for (const device of deviceList) {
       if (
         device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
-        device._processedDrumChains
+        device._processedDrumPads
       ) {
         drumRacks.push(device);
       }
@@ -126,11 +126,11 @@ export function getDrumMap(devices) {
 
   const drumMap = {};
 
-  drumRacks[0]._processedDrumChains.forEach((drumChain) => {
-    if (drumChain.hasInstrument !== false) {
-      const pitchName = drumChain.pitch;
+  drumRacks[0]._processedDrumPads.forEach((drumPad) => {
+    if (drumPad.hasInstrument !== false) {
+      const noteName = drumPad.pitch;
 
-      drumMap[pitchName] = drumChain.name;
+      drumMap[noteName] = drumPad.name;
     }
   });
 
@@ -142,21 +142,25 @@ export function getDrumMap(devices) {
  * @param {object} device - Live API device object
  * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
- * @param {boolean} options.includeDrumChains - Include drum pad chains and return chains
+ * @param {boolean} options.includeReturnChains - Include return chains in rack devices
+ * @param {boolean} options.includeDrumPads - Include drum pads
  * @param {boolean} options.includeParams - Include device parameters
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
+ * @param {string} options.parentPath - Override path extraction (used for drum pad devices)
  * @returns {object} Device object with nested structure
  */
 export function readDevice(device, options = {}) {
   const {
     includeChains = true,
-    includeDrumChains = false,
+    includeReturnChains = false,
+    includeDrumPads = false,
     includeParams = false,
     includeParamValues = false,
     paramSearch,
     depth = 0,
     maxDepth = 4,
+    parentPath,
   } = options;
 
   if (depth > maxDepth) {
@@ -169,9 +173,12 @@ export function readDevice(device, options = {}) {
   const className = device.getProperty("class_display_name");
   const userDisplayName = device.getProperty("name");
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
+  // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
+  const path = parentPath ?? extractDevicePath(device.path);
 
   const deviceInfo = {
     id: device.id,
+    ...(path && { path }),
     type: isRedundant ? deviceType : `${deviceType}: ${className}`,
   };
 
@@ -195,43 +202,19 @@ export function readDevice(device, options = {}) {
   Object.assign(deviceInfo, readMacroVariations(device));
   // Add A/B Compare state (spreads empty object if device doesn't support it)
   Object.assign(deviceInfo, readABCompare(device));
+  // Add Simpler sample path (spreads empty object if not Simpler or no sample)
+  Object.assign(deviceInfo, readSimplerSample(device, className));
 
-  if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
-    if (deviceType === DEVICE_TYPE.DRUM_RACK) {
-      processDrumChains(
-        device,
-        deviceInfo,
-        includeChains,
-        includeDrumChains,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    } else {
-      processRegularChains(
-        device,
-        deviceInfo,
-        includeChains,
-        includeDrumChains,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    }
-
-    if (includeDrumChains) {
-      processReturnChains(
-        device,
-        deviceInfo,
-        deviceType,
-        includeChains,
-        includeDrumChains,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    }
-  }
+  // Process chains for rack devices
+  processDeviceChains(device, deviceInfo, deviceType, {
+    includeChains,
+    includeReturnChains,
+    includeDrumPads,
+    depth,
+    maxDepth,
+    readDeviceFn: readDevice,
+    devicePath: path,
+  });
 
   if (includeParams) {
     deviceInfo.parameters = readDeviceParameters(device, {
@@ -241,4 +224,31 @@ export function readDevice(device, options = {}) {
   }
 
   return deviceInfo;
+}
+
+/**
+ * Read sample path from Simpler device
+ * @param {object} device - Live API device object
+ * @param {string} className - Device class display name
+ * @returns {object} Object with sample property, or empty object
+ */
+function readSimplerSample(device, className) {
+  if (className !== DEVICE_CLASS.SIMPLER) {
+    return {};
+  }
+
+  // Multisample mode doesn't expose a single sample file path
+  if (device.getProperty("multi_sample_mode") > 0) {
+    return { multisample: true };
+  }
+
+  const samples = device.getChildren("sample");
+
+  if (samples.length === 0) {
+    return {};
+  }
+
+  const samplePath = samples[0].getProperty("file_path");
+
+  return samplePath ? { sample: samplePath } : {};
 }

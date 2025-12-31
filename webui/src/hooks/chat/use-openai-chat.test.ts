@@ -7,7 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import { useOpenAIChat } from "./use-openai-chat";
 
 // Mock OpenAI
-vi.mock("openai", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("openai"), () => ({
   default: class MockOpenAI {
     chat = {
       completions: {
@@ -18,12 +19,14 @@ vi.mock("openai", () => ({
 }));
 
 // Mock config
-vi.mock("../config.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("#webui/lib/config"), () => ({
   SYSTEM_INSTRUCTION: "Test instruction",
 }));
 
 // Mock MCP SDK
-vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: class MockClient {
     connect = vi.fn();
     close = vi.fn();
@@ -32,12 +35,13 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
   },
 }));
 
-vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 
 describe("useOpenAIChat", () => {
   const defaultProps = {
+    provider: "openai" as const,
     apiKey: "test-key",
     model: "gpt-4",
     thinking: "Low",
@@ -52,7 +56,8 @@ describe("useOpenAIChat", () => {
 
   it("initializes with empty messages", () => {
     const { result } = renderHook(() => useOpenAIChat(defaultProps));
-    expect(result.current.messages).toEqual([]);
+
+    expect(result.current.messages).toStrictEqual([]);
     expect(result.current.isAssistantResponding).toBe(false);
     expect(result.current.activeModel).toBeNull();
     expect(result.current.activeThinking).toBeNull();
@@ -66,7 +71,7 @@ describe("useOpenAIChat", () => {
       result.current.clearConversation();
     });
 
-    expect(result.current.messages).toEqual([]);
+    expect(result.current.messages).toStrictEqual([]);
     expect(result.current.activeModel).toBeNull();
     expect(result.current.activeThinking).toBeNull();
     expect(result.current.activeTemperature).toBeNull();

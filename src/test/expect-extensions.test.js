@@ -6,6 +6,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "the-mock-id",
       fn: vi.fn(),
     };
+
     mock.fn("a", 1, { value: false });
     expect(mock.fn).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "the-mock-id" }),
@@ -20,6 +21,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("first", "call");
     mock.fn("second", "call");
     mock.fn("third", "call");
@@ -36,6 +38,7 @@ describe("toHaveBeenCalledWithThis", () => {
       value: 42,
       fn: vi.fn(),
     };
+
     mock.fn();
     expect(mock.fn).toHaveBeenCalledWithThis(
       expect.objectContaining({ value: 42 }),
@@ -44,6 +47,7 @@ describe("toHaveBeenCalledWithThis", () => {
 
   it("fails when called on non-mock function", () => {
     const regularFunction = () => {};
+
     expect(() => {
       expect(regularFunction).toHaveBeenCalledWithThis({}, "arg");
     }).toThrow("Expected a mock function");
@@ -60,6 +64,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "test",
       fn: vi.fn(),
     };
+
     expect(() => {
       expect(mock.fn).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "test" }),
@@ -73,6 +78,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "correct-id",
       fn: vi.fn(),
     };
+
     mock.fn("arg1", "arg2");
 
     expect(() => {
@@ -89,6 +95,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("correct", "args");
 
     expect(() => {
@@ -105,6 +112,7 @@ describe("toHaveBeenCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("only", "two");
 
     expect(() => {
@@ -123,8 +131,11 @@ describe("toHaveBeenCalledWithThis", () => {
       name: "test-name",
       fn: vi.fn(),
     };
+
     mock.fn("first", 1);
     mock.fn("second", 2);
+
+    let caughtError;
 
     try {
       expect(mock.fn).toHaveBeenCalledWithThis(
@@ -133,17 +144,20 @@ describe("toHaveBeenCalledWithThis", () => {
         1,
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called with:",
-      );
-      expect(error.message).toContain("Context:");
-      expect(error.message).toContain("Args:");
-      expect(error.message).toContain("But it was called with:");
-      expect(error.message).toContain("Call 1:");
-      expect(error.message).toContain("Call 2:");
-      expect(error.message).toContain('"first"');
-      expect(error.message).toContain('"second"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called with:",
+    );
+    expect(caughtError.message).toContain("Context:");
+    expect(caughtError.message).toContain("Args:");
+    expect(caughtError.message).toContain("But it was called with:");
+    expect(caughtError.message).toContain("Call 1:");
+    expect(caughtError.message).toContain("Call 2:");
+    expect(caughtError.message).toContain('"first"');
+    expect(caughtError.message).toContain('"second"');
   });
 
   it("works with complex nested objects", () => {
@@ -156,6 +170,7 @@ describe("toHaveBeenCalledWithThis", () => {
       },
       fn: vi.fn(),
     };
+
     mock.fn({ complex: "object" }, ["array", "arg"]);
 
     expect(mock.fn).toHaveBeenCalledWithThis(
@@ -176,6 +191,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("first", "call");
     mock.fn("second", "call");
     mock.fn("third", "call");
@@ -193,6 +209,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       value: 42,
       fn: vi.fn(),
     };
+
     mock.fn("only", "call");
 
     expect(mock.fn).toHaveBeenNthCalledWithThis(
@@ -208,6 +225,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       name: "test",
       fn: vi.fn(),
     };
+
     mock.fn("first");
     mock.fn("second");
     mock.fn("last", "call");
@@ -222,6 +240,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
 
   it("fails when called on non-mock function", () => {
     const regularFunction = () => {};
+
     expect(() => {
       expect(regularFunction).toHaveBeenNthCalledWithThis(1, {}, "arg");
     }).toThrow("Expected a mock function");
@@ -232,6 +251,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "test",
       fn: vi.fn(),
     };
+
     mock.fn("call");
 
     expect(() => {
@@ -256,6 +276,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "test",
       fn: vi.fn(),
     };
+
     mock.fn("only", "call");
 
     expect(() => {
@@ -275,6 +296,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "correct-id",
       fn: vi.fn(),
     };
+
     mock.fn("first");
     mock.fn("second");
 
@@ -292,6 +314,7 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("first");
     mock.fn("second");
 
@@ -309,8 +332,11 @@ describe("toHaveBeenNthCalledWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("first", 1);
     mock.fn("second", 2);
+
+    let caughtError;
 
     try {
       expect(mock.fn).toHaveBeenNthCalledWithThis(
@@ -320,13 +346,16 @@ describe("toHaveBeenNthCalledWithThis", () => {
         "args",
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called the 2th time with:",
-      );
-      expect(error.message).toContain("But the 2th call was:");
-      expect(error.message).toContain('"second"');
-      expect(error.message).toContain("2");
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called the 2th time with:",
+    );
+    expect(caughtError.message).toContain("But the 2th call was:");
+    expect(caughtError.message).toContain('"second"');
+    expect(caughtError.message).toContain("2");
   });
 });
 
@@ -336,6 +365,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("single", "call");
 
     expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
@@ -350,6 +380,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       value: 42,
       fn: vi.fn(),
     };
+
     mock.fn();
 
     expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
@@ -359,6 +390,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
 
   it("fails when called on non-mock function", () => {
     const regularFunction = () => {};
+
     expect(() => {
       expect(regularFunction).toHaveBeenCalledExactlyOnceWithThis({}, "arg");
     }).toThrow("Expected a mock function");
@@ -385,6 +417,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "test",
       fn: vi.fn(),
     };
+
     mock.fn("first");
     mock.fn("second");
 
@@ -403,6 +436,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "correct-id",
       fn: vi.fn(),
     };
+
     mock.fn("arg");
 
     expect(() => {
@@ -418,6 +452,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("correct");
 
     expect(() => {
@@ -433,9 +468,12 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("first", 1);
     mock.fn("second", 2);
     mock.fn("third", 3);
+
+    let caughtError;
 
     try {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
@@ -444,16 +482,19 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
         1,
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called exactly once, but it was called 3 times:",
-      );
-      expect(error.message).toContain("Call 1:");
-      expect(error.message).toContain("Call 2:");
-      expect(error.message).toContain("Call 3:");
-      expect(error.message).toContain('"first"');
-      expect(error.message).toContain('"second"');
-      expect(error.message).toContain('"third"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called exactly once, but it was called 3 times:",
+    );
+    expect(caughtError.message).toContain("Call 1:");
+    expect(caughtError.message).toContain("Call 2:");
+    expect(caughtError.message).toContain("Call 3:");
+    expect(caughtError.message).toContain('"first"');
+    expect(caughtError.message).toContain('"second"');
+    expect(caughtError.message).toContain('"third"');
   });
 
   it("provides detailed error message for mismatched single call", () => {
@@ -461,7 +502,10 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       id: "test-id",
       fn: vi.fn(),
     };
+
     mock.fn("actual", "call");
+
+    let caughtError;
 
     try {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
@@ -470,12 +514,15 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
         "call",
       );
     } catch (error) {
-      expect(error.message).toContain(
-        "Expected mock function to have been called exactly once with:",
-      );
-      expect(error.message).toContain("But it was called once with:");
-      expect(error.message).toContain('"actual"');
-      expect(error.message).toContain('"expected"');
+      caughtError = error;
     }
+
+    expect(caughtError).toBeDefined();
+    expect(caughtError.message).toContain(
+      "Expected mock function to have been called exactly once with:",
+    );
+    expect(caughtError.message).toContain("But it was called once with:");
+    expect(caughtError.message).toContain('"actual"');
+    expect(caughtError.message).toContain('"expected"');
   });
 });

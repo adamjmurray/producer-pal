@@ -3,7 +3,7 @@ import {
   LiveAPI,
   liveApiCall,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,
@@ -61,7 +61,7 @@ describe("createShortenedClipInHolding", () => {
     expect(liveApiCall).toHaveBeenNthCalledWith(3, "delete_clip", "id 300");
 
     // Verify return value
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       holdingClipId: "200",
       holdingClip: expect.any(LiveAPI),
     });
@@ -157,6 +157,7 @@ describe("createShortenedClipInHolding", () => {
 
     // Verify session clip was set up with warping and looping
     const sessionClip = new LiveAPI("id 400");
+
     expect(sessionClip.set).toHaveBeenCalledWith("warping", 1);
     expect(sessionClip.set).toHaveBeenCalledWith("looping", 1);
     expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 8);
@@ -172,7 +173,7 @@ describe("createShortenedClipInHolding", () => {
     expect(liveApiCall).toHaveBeenNthCalledWith(5, "delete_clip", "id 500"); // Temp clip
 
     // Verify return value
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       holdingClipId: "200",
       holdingClip: expect.any(LiveAPI),
     });

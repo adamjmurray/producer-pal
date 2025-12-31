@@ -1,3 +1,6 @@
+// Note: pitch utilities have been centralized in #src/shared/pitch.js
+// Import from there directly instead of through this file
+
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP = {
   0: "active",
@@ -11,21 +14,6 @@ export const AUTOMATION_STATE_MAP = {
   1: "active",
   2: "overridden",
 };
-
-const NOTE_NAMES = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
-];
 
 /**
  * Label parsing patterns for extracting values and units from display labels.
@@ -143,44 +131,6 @@ export function extractMaxPanValue(label) {
   const match = label.match(/^(\d+)[LR]$/);
 
   return match ? parseInt(match[1]) : 50;
-}
-
-/**
- * Convert MIDI note number to note name.
- * @param {number} midi - MIDI note number (0-127)
- * @returns {string} Note name (e.g., "C4", "F#-1")
- */
-export function midiToNoteName(midi) {
-  const octave = Math.floor(midi / 12) - 2;
-  const note = NOTE_NAMES[midi % 12];
-
-  return `${note}${octave}`;
-}
-
-/**
- * Convert note name to MIDI note number.
- * @param {string} name - Note name (e.g., "C4", "F#-1", "Db3")
- * @returns {number|null} MIDI note number or null if invalid
- */
-export function noteNameToMidi(name) {
-  const match = name.match(/^([A-G])([#b]?)(-?\d+)$/);
-
-  if (!match) return null;
-
-  const [, letter, accidental, octave] = match;
-  const semitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter];
-  const modifier = accidental === "#" ? 1 : accidental === "b" ? -1 : 0;
-
-  return semitones + modifier + (parseInt(octave) + 2) * 12;
-}
-
-/**
- * Check if a string is a valid note name.
- * @param {string} value - Value to check
- * @returns {boolean} True if valid note name
- */
-export function isNoteName(value) {
-  return typeof value === "string" && /^[A-G][#b]?-?\d+$/.test(value);
 }
 
 function addStateFlags(result, paramApi, state, automationState) {

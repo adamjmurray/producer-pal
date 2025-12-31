@@ -3,17 +3,17 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
-  describe("drumChains", () => {
+  describe("drumPads", () => {
     it("returns null when the track has no devices", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({
@@ -23,6 +23,7 @@ describe("readTrack", () => {
         }),
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -37,6 +38,7 @@ describe("readTrack", () => {
         effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
@@ -52,17 +54,20 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
     });
 
-    it("returns empty array when the drum rack has no pads", () => {
+    it("returns empty array when the drum rack has no chains", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
         }
+
         if (this._path === "live_set tracks 0 devices 0") {
           return "drumrack";
         }
+
         return this._id;
       });
       mockLiveApiGet({
@@ -78,30 +83,25 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: [],
+          chains: [], // Empty chains instead of drum_pads
           return_chains: [],
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toEqual({});
+
+      expect(result.drumMap).toStrictEqual({});
     });
 
-    it("only includes drum chains that have chains to play a sound", () => {
+    it("includes all drum chains that have instruments", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drumrack";
-          case "live_set tracks 0 devices 0 drum_pads 60":
-            return "pad1";
-          case "live_set tracks 0 devices 0 drum_pads 62":
-            return "pad2";
-          case "live_set tracks 0 devices 0 drum_pads 64":
-            return "pad3";
-          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+          case "live_set tracks 0 devices 0 chains 0":
             return "chain1";
-          case "live_set tracks 0 devices 0 drum_pads 64 chains 0":
+          case "live_set tracks 0 devices 0 chains 1":
             return "chain2";
           default:
             return this._id;
@@ -109,42 +109,22 @@ describe("readTrack", () => {
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
-          name: "Track Drum Rack With Pads",
+          name: "Track Drum Rack With Chains",
           devices: children("drumrack"),
         }),
         drumrack: {
-          name: "Drum Rack With Pads",
+          name: "Drum Rack With Chains",
           class_name: "DrumGroupDevice",
           class_display_name: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1", "pad2", "pad3"),
+          chains: children("chain1", "chain2"), // Chains directly on drum rack
           return_chains: [],
         },
-        pad1: {
-          note: 60, // C3
-          name: "Kick",
-          mute: 0,
-          solo: 0,
-          chains: children("chain1"),
-        },
-        pad2: {
-          note: 62, // D3
-          name: "Snare",
-          mute: 0,
-          solo: 0,
-          chains: [], // No chains, should be excluded
-        },
-        pad3: {
-          note: 64, // E3
-          name: "Hi-hat",
-          mute: 0,
-          solo: 0,
-          chains: children("chain2"),
-        },
         chain1: {
+          in_note: 60, // C3 - chains use in_note instead of note
           name: "Kick",
           color: 16711680,
           mute: 0,
@@ -152,6 +132,7 @@ describe("readTrack", () => {
           devices: children("kick_device"),
         },
         chain2: {
+          in_note: 64, // E3
           name: "Hi-hat",
           color: 65280,
           mute: 0,
@@ -178,7 +159,8 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toEqual({
+
+      expect(result.drumMap).toStrictEqual({
         C3: "Kick",
         E3: "Hi-hat",
       });
@@ -195,13 +177,9 @@ describe("readTrack", () => {
             return "drumrack1";
           case "live_set tracks 0 devices 2":
             return "drumrack2";
-          case "live_set tracks 0 devices 1 drum_pads 60":
-            return "pad1";
-          case "live_set tracks 0 devices 1 drum_pads 60 chains 0":
+          case "live_set tracks 0 devices 1 chains 0":
             return "chain1";
-          case "live_set tracks 0 devices 2 drum_pads 61":
-            return "pad2";
-          case "live_set tracks 0 devices 2 drum_pads 61 chains 0":
+          case "live_set tracks 0 devices 2 chains 0":
             return "chain2";
           default:
             return this._id;
@@ -231,17 +209,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1"),
+          chains: children("chain1"),
           return_chains: [],
         },
-        pad1: {
-          note: 60, // C3
-          name: "First Drum Rack Kick",
-          mute: 0,
-          solo: 0,
-          chains: children("chain1"),
-        },
         chain1: {
+          in_note: 60, // C3
           name: "First Drum Rack Kick",
           color: 16711680,
           mute: 0,
@@ -265,17 +237,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad2"),
+          chains: children("chain2"),
           return_chains: [],
         },
-        pad2: {
-          note: 61, // Db3
-          name: "Second Drum Rack Snare",
-          mute: 0,
-          solo: 0,
-          chains: children("chain2"),
-        },
         chain2: {
+          in_note: 61, // Db3
           name: "Second Drum Rack Snare",
           color: 65280,
           mute: 0,
@@ -293,7 +259,8 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toEqual({
+
+      expect(result.drumMap).toStrictEqual({
         C3: "First Drum Rack Kick",
       });
     });
@@ -306,16 +273,12 @@ describe("readTrack", () => {
           case "live_set tracks 0 devices 0":
             return "instrumentRack";
           case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
+            return "rackchain1";
           case "live_set tracks 0 devices 0 chains 0 devices 0":
             return "nestedDrumRack";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 36":
-            return "pad1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 37":
-            return "pad2";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 36 chains 0":
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
             return "drumchain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 37 chains 0":
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 1":
             return "drumchain2";
           default:
             return this._id;
@@ -334,10 +297,10 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
-          chains: children("chain1"),
+          chains: children("rackchain1"),
           return_chains: [],
         },
-        chain1: {
+        rackchain1: {
           name: "Chain 1",
           color: 16711680,
           mute: 0,
@@ -352,24 +315,11 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          drum_pads: children("pad1", "pad2"),
+          chains: children("drumchain1", "drumchain2"),
           return_chains: [],
         },
-        pad1: {
-          note: 36, // C1
-          name: "Kick Dub",
-          mute: 0,
-          solo: 0,
-          chains: children("drumchain1"),
-        },
-        pad2: {
-          note: 37, // Db1
-          name: "Snare Dub",
-          mute: 0,
-          solo: 0,
-          chains: children("drumchain2"),
-        },
         drumchain1: {
+          in_note: 36, // C1
           name: "Kick Dub",
           color: 16711680,
           mute: 0,
@@ -377,6 +327,7 @@ describe("readTrack", () => {
           devices: children("kickdevice"),
         },
         drumchain2: {
+          in_note: 37, // Db1
           name: "Snare Dub",
           color: 65280,
           mute: 0,
@@ -403,7 +354,8 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toEqual({
+
+      expect(result.drumMap).toStrictEqual({
         C1: "Kick Dub",
         Db1: "Snare Dub",
       });
@@ -423,7 +375,142 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
+
       expect(result.drumMap).toBeUndefined();
+    });
+
+    it("handles catch-all chains (in_note=-1) in drum racks", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "drumrack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "catchAllChain";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "nestedDrumRack";
+          default:
+            return this._id;
+        }
+      });
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Drum Rack With Catch-All",
+          devices: children("drumrack"),
+        }),
+        drumrack: {
+          name: "Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          chains: children("catchAllChain"),
+          return_chains: [],
+        },
+        catchAllChain: {
+          in_note: -1, // Catch-all chain - receives all notes
+          name: "Nested Rack",
+          color: 16711680,
+          mute: 0,
+          solo: 0,
+          devices: children("nestedDrumRack"),
+        },
+        nestedDrumRack: {
+          name: "Nested Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          chains: [],
+          return_chains: [],
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instruments", "drum-pads", "chains"],
+      });
+
+      // Catch-all chain should show up with pitch "*" and note -1
+      expect(result.instrument.drumPads).toHaveLength(1);
+      expect(result.instrument.drumPads[0]).toMatchObject({
+        note: -1,
+        pitch: "*",
+        name: "Nested Rack",
+      });
+      // Verify the chain has the catch-all path format
+      expect(result.instrument.drumPads[0].chains[0]).toMatchObject({
+        id: "catchAllChain",
+        name: "Nested Rack",
+      });
+    });
+
+    it("aggregates muted state from chains", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "drumrack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "mutedChain";
+          default:
+            return this._id;
+        }
+      });
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Muted Drum Chain",
+          devices: children("drumrack"),
+        }),
+        drumrack: {
+          name: "Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          chains: children("mutedChain"),
+          return_chains: [],
+        },
+        mutedChain: {
+          in_note: 60, // C3
+          name: "Muted Pad",
+          color: 16711680,
+          mute: 1, // Muted
+          muted_via_solo: 0,
+          solo: 0,
+          devices: children("simplerDevice"),
+        },
+        simplerDevice: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instruments", "drum-pads"],
+      });
+
+      // The drum pad should show as muted
+      expect(result.instrument.drumPads[0]).toMatchObject({
+        note: 60,
+        pitch: "C3",
+        name: "Muted Pad",
+        state: "muted",
+      });
     });
   });
 });

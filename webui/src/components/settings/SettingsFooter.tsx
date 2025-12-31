@@ -6,10 +6,10 @@ interface SettingsFooterProps {
 
 /**
  * Settings footer component with save/cancel buttons
- * @param {object} root0 - Component props
- * @param {boolean} root0.settingsConfigured - Whether settings have been configured
- * @param {Function} root0.saveSettings - Function to save settings
- * @param {Function} root0.cancelSettings - Function to cancel settings changes
+ * @param {object} props - Component props
+ * @param {boolean} props.settingsConfigured - Whether settings have been configured
+ * @param {Function} props.saveSettings - Function to save settings
+ * @param {Function} props.cancelSettings - Function to cancel settings changes
  * @returns {JSX.Element} Settings footer component
  */
 export function SettingsFooter({
@@ -19,11 +19,11 @@ export function SettingsFooter({
 }: SettingsFooterProps) {
   return (
     <>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
-        {settingsConfigured
-          ? "Note: Settings changes apply to new conversations."
-          : "Settings will be stored in this web browser."}
-      </p>
+      {!settingsConfigured && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
+          Settings will be stored in this web browser.
+        </p>
+      )}
 
       <div className="flex gap-2 mt-4">
         <button

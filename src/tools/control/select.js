@@ -1,6 +1,6 @@
-import { LIVE_API_VIEW_NAMES } from "../constants.js";
-import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
-import { validateIdType } from "../shared/validation/id-validation.js";
+import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
+import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 
 const MASTER_TRACK_PATH = "live_set master_track";
 
@@ -189,15 +189,15 @@ function buildTrackPath(category, trackIndex) {
 /**
  * Validate selection parameters for conflicts
  *
- * @param {object} root0 - Parameters object
- * @param {string} root0.trackId - Track ID
- * @param {string} root0.category - Track category
- * @param {number} root0.trackIndex - Track index
- * @param {string} root0.sceneId - Scene ID
- * @param {number} root0.sceneIndex - Scene index
- * @param {string} root0.deviceId - Device ID
- * @param {boolean} root0.instrument - Instrument selection flag
- * @param {object} root0.clipSlot - Clip slot coordinates
+ * @param {object} options - Parameters object
+ * @param {string} options.trackId - Track ID
+ * @param {string} options.category - Track category
+ * @param {number} options.trackIndex - Track index
+ * @param {string} options.sceneId - Scene ID
+ * @param {number} options.sceneIndex - Scene index
+ * @param {string} options.deviceId - Device ID
+ * @param {boolean} options.instrument - Instrument selection flag
+ * @param {object} options.clipSlot - Clip slot coordinates
  */
 function validateParameters({
   trackId,
@@ -247,11 +247,11 @@ function validateParameters({
 /**
  * Update track selection in Live
  *
- * @param {object} root0 - Selection parameters
- * @param {object} root0.songView - LiveAPI instance for live_set view
- * @param {string} root0.trackId - Track ID to select
- * @param {string} root0.category - Track category
- * @param {number} root0.trackIndex - Track index
+ * @param {object} options - Selection parameters
+ * @param {object} options.songView - LiveAPI instance for live_set view
+ * @param {string} options.trackId - Track ID to select
+ * @param {string} options.category - Track category
+ * @param {number} options.trackIndex - Track index
  * @returns {object} Selection result with track info
  */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
@@ -301,10 +301,10 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
 /**
  * Update scene selection in Live
  *
- * @param {object} root0 - Selection parameters
- * @param {object} root0.songView - LiveAPI instance for live_set view
- * @param {string} root0.sceneId - Scene ID to select
- * @param {number} root0.sceneIndex - Scene index
+ * @param {object} options - Selection parameters
+ * @param {object} options.songView - LiveAPI instance for live_set view
+ * @param {string} options.sceneId - Scene ID to select
+ * @param {number} options.sceneIndex - Scene index
  * @returns {object} Selection result with scene info
  */
 function updateSceneSelection({ songView, sceneId, sceneIndex }) {
@@ -339,10 +339,10 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 /**
  * Update device selection in Live
  *
- * @param {object} root0 - Selection parameters
- * @param {string} root0.deviceId - Device ID to select
- * @param {boolean} root0.instrument - Whether to select instrument
- * @param {object} root0.trackSelectionResult - Previous track selection result
+ * @param {object} options - Selection parameters
+ * @param {string} options.deviceId - Device ID to select
+ * @param {boolean} options.instrument - Whether to select instrument
+ * @param {object} options.trackSelectionResult - Previous track selection result
  */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
@@ -392,9 +392,9 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
 /**
  * Update highlighted clip slot in Live
  *
- * @param {object} root0 - Selection parameters
- * @param {object} root0.songView - LiveAPI instance for live_set view
- * @param {object} root0.clipSlot - Clip slot coordinates {trackIndex, sceneIndex}
+ * @param {object} options - Selection parameters
+ * @param {object} options.songView - LiveAPI instance for live_set view
+ * @param {object} options.clipSlot - Clip slot coordinates {trackIndex, sceneIndex}
  */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {

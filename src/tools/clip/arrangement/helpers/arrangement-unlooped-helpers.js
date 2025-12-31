@@ -1,23 +1,23 @@
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "../../../shared/arrangement/arrangement-tiling.js";
-import { revealAudioContentAtPosition } from "../../update/helpers/update-clip-audio-helpers.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 const EPSILON = 0.001;
 
 /**
  * Handle unlooped clip lengthening
- * @param {object} root0 - Parameters object
- * @param {object} root0.clip - The LiveAPI clip object
- * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
- * @param {number} root0.arrangementLengthBeats - Target length in beats
- * @param {number} root0.currentArrangementLength - Current length in beats
- * @param {number} root0._currentStartTime - Current start time in beats (unused)
- * @param {number} root0.currentEndTime - Current end time in beats
- * @param {number} root0.clipStartMarker - Clip start marker position
- * @param {object} root0.track - The LiveAPI track object
- * @param {object} root0.context - Tool execution context
+ * @param {object} options - Parameters object
+ * @param {object} options.clip - The LiveAPI clip object
+ * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
+ * @param {number} options.arrangementLengthBeats - Target length in beats
+ * @param {number} options.currentArrangementLength - Current length in beats
+ * @param {number} options._currentStartTime - Current start time in beats (unused)
+ * @param {number} options.currentEndTime - Current end time in beats
+ * @param {number} options.clipStartMarker - Clip start marker position
+ * @param {object} options.track - The LiveAPI track object
+ * @param {object} options.context - Tool execution context
  * @returns {Array<object>} - Array of updated clip info
  */
 export function handleUnloopedLengthening({

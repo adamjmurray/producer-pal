@@ -5,12 +5,12 @@
 import { renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { GeminiClient } from "../../chat/gemini-client";
+import { GeminiClient } from "#webui/chat/gemini-client";
 import { useMcpConnection } from "./use-mcp-connection";
 
 // Mock GeminiClient
 // @ts-expect-error - Mock factory doesn't need full class structure
-vi.mock(import("../../chat/gemini-client.js"), () => ({
+vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: {
     testConnection: vi.fn(),
   },
@@ -44,6 +44,7 @@ describe("useMcpConnection", () => {
 
   it("sets status to error on connection failure", async () => {
     const errorMessage = "Connection failed";
+
     mockTestConnection.mockRejectedValue(new Error(errorMessage));
     const { result } = renderHook(() => useMcpConnection());
 

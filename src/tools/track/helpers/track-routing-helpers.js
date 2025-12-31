@@ -3,7 +3,7 @@ import {
   LIVE_API_MONITORING_STATE_IN,
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 
 /**
  * Process current routing settings for a track

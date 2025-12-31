@@ -1,11 +1,11 @@
-import { PITCH_CLASS_NAMES } from "../../notation/midi-pitch-to-name.js";
-import { VERSION } from "../../shared/version.js";
+import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
+import { VERSION } from "#src/shared/version.js";
 import {
   skills as basicSkills,
   buildInstructions as buildBasicInstruction,
-} from "../../skills/basic.js";
-import { buildInstructions, skills } from "../../skills/standard.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
+} from "#src/skills/basic.js";
+import { buildInstructions, skills } from "#src/skills/standard.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety

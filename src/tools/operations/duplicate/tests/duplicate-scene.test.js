@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { duplicate } from "../duplicate.js";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   children,
   liveApiCall,
@@ -7,10 +7,10 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../helpers/duplicate-test-helpers.js";
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Mock updateClip to avoid complex internal logic
-vi.mock(import("../../../clip/update/update-clip.js"), () => ({
+vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
   updateClip: vi.fn(({ ids }) => {
     // Return array format to simulate tiled clips
     return [{ id: ids }];
@@ -18,13 +18,14 @@ vi.mock(import("../../../clip/update/update-clip.js"), () => ({
 }));
 
 // Mock arrangement-tiling helpers
-vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
+vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
   })),
   moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -33,14 +34,17 @@ vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };
@@ -53,6 +57,7 @@ describe("duplicate - scene duplication", () => {
       if (this._id === "scene1") {
         return "live_set scenes 0";
       }
+
       return this._path;
     });
 
@@ -94,6 +99,7 @@ describe("duplicate - scene duplication", () => {
       if (this._id === "scene1") {
         return "live_set scenes 0";
       }
+
       return this._path;
     });
 
@@ -174,6 +180,7 @@ describe("duplicate - scene duplication", () => {
       if (this._id === "scene1") {
         return "live_set scenes 0";
       }
+
       return this._path;
     });
 
@@ -215,6 +222,7 @@ describe("duplicate - scene duplication", () => {
     const deleteCallCount = liveApiCall.mock.calls.filter(
       (call) => call[0] === "delete_clip",
     ).length;
+
     expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
   });
 
@@ -224,6 +232,7 @@ describe("duplicate - scene duplication", () => {
         if (this._id === "scene1") {
           return "live_set scenes 0";
         }
+
         return this._path;
       });
 
@@ -243,6 +252,7 @@ describe("duplicate - scene duplication", () => {
         if (this._id === "scene1") {
           return "live_set scenes 0";
         }
+
         return this._path;
       });
 
@@ -284,12 +294,15 @@ describe("duplicate - scene duplication", () => {
             // Extract track index from the clip ID path
             const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
             const trackIndex = trackMatch ? trackMatch[1] : "0";
+
             // Return a mock arrangement clip ID
             return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
           }
+
           if (method === "get_notes_extended") {
             return JSON.stringify({ notes: [] }); // Empty notes for testing
           }
+
           return null;
         },
       );
@@ -306,6 +319,7 @@ describe("duplicate - scene duplication", () => {
         ) {
           return this._path.slice(3); // Remove "id " prefix
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -317,10 +331,12 @@ describe("duplicate - scene duplication", () => {
         ) {
           return [1];
         }
+
         // Check if this is an arrangement clip requesting start_time
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [16];
         }
+
         // Otherwise use the original mock implementation
         return originalGet ? originalGet.call(this, prop) : [];
       });
@@ -362,6 +378,7 @@ describe("duplicate - scene duplication", () => {
         if (this._id === "scene1") {
           return "live_set scenes 0";
         }
+
         return this._path;
       });
 
@@ -385,17 +402,22 @@ describe("duplicate - scene duplication", () => {
       });
 
       let clipCounter = 0;
+
       liveApiCall.mockImplementation(
         function (method, _clipIdOrStartTime, _startTimeOrLength) {
           if (method === "duplicate_clip_to_arrangement") {
             // Return unique clip IDs for each duplication
             const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+
             clipCounter++;
+
             return ["id", clipId];
           }
+
           if (method === "get_notes_extended") {
             return JSON.stringify({ notes: [] }); // Empty notes for testing
           }
+
           return null;
         },
       );
@@ -412,6 +434,7 @@ describe("duplicate - scene duplication", () => {
         ) {
           return this._path.slice(3); // Remove "id " prefix
         }
+
         return originalPath ? originalPath.call(this) : this._path;
       });
 
@@ -423,16 +446,21 @@ describe("duplicate - scene duplication", () => {
         ) {
           return [1];
         }
+
         // Check if this is an arrangement clip requesting start_time
         if (this._path.includes("arrangement_clips") && prop === "start_time") {
           // Return different start times based on clip index
           const clipMatch = this._path.match(/arrangement_clips (\d+)/);
+
           if (clipMatch) {
             const clipIndex = parseInt(clipMatch[1]);
+
             return [16 + clipIndex * 8]; // 16, 24, 32
           }
+
           return [16];
         }
+
         // Otherwise use the original mock implementation
         return originalGet ? originalGet.call(this, prop) : [];
       });
@@ -506,6 +534,7 @@ describe("duplicate - scene duplication", () => {
         if (this._id === "scene1") {
           return "live_set scenes 0";
         }
+
         return this._path;
       });
 
@@ -536,6 +565,7 @@ describe("duplicate - scene duplication", () => {
         if (this._id === "scene1") {
           return "live_set scenes 0";
         }
+
         return this._path;
       });
 

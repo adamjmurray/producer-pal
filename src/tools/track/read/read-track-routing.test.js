@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { liveApiId, mockLiveApiGet } from "../../../test/mock-live-api.js";
+import { liveApiId, mockLiveApiGet } from "#src/test/mock-live-api.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
@@ -85,35 +85,35 @@ describe("readTrack", () => {
         include: ["all-routings"],
       });
 
-      expect(result.availableInputRoutingChannels).toEqual([
+      expect(result.availableInputRoutingChannels).toStrictEqual([
         { name: "In 1", inputId: "1" },
         { name: "In 2", inputId: "2" },
       ]);
-      expect(result.availableInputRoutingTypes).toEqual([
+      expect(result.availableInputRoutingTypes).toStrictEqual([
         { name: "Ext. In", inputId: "17" },
         { name: "Resampling", inputId: "18" },
       ]);
-      expect(result.availableOutputRoutingChannels).toEqual([
+      expect(result.availableOutputRoutingChannels).toStrictEqual([
         { name: "Master", outputId: "26" },
         { name: "A", outputId: "27" },
       ]);
-      expect(result.availableOutputRoutingTypes).toEqual([
+      expect(result.availableOutputRoutingTypes).toStrictEqual([
         { name: "Track Out", outputId: "25" },
         { name: "Send Only", outputId: "28" },
       ]);
-      expect(result.inputRoutingChannel).toEqual({
+      expect(result.inputRoutingChannel).toStrictEqual({
         name: "In 1",
         inputId: "1",
       });
-      expect(result.inputRoutingType).toEqual({
+      expect(result.inputRoutingType).toStrictEqual({
         name: "Ext. In",
         inputId: "17",
       });
-      expect(result.outputRoutingChannel).toEqual({
+      expect(result.outputRoutingChannel).toStrictEqual({
         name: "Master",
         outputId: "26",
       });
-      expect(result.outputRoutingType).toEqual({
+      expect(result.outputRoutingType).toStrictEqual({
         name: "Track Out",
         outputId: "25",
       });
@@ -141,10 +141,10 @@ describe("readTrack", () => {
         include: ["all-routings"],
       });
 
-      expect(result.availableInputRoutingChannels).toEqual([]);
-      expect(result.availableInputRoutingTypes).toEqual([]);
-      expect(result.availableOutputRoutingChannels).toEqual([]);
-      expect(result.availableOutputRoutingTypes).toEqual([]);
+      expect(result.availableInputRoutingChannels).toStrictEqual([]);
+      expect(result.availableInputRoutingTypes).toStrictEqual([]);
+      expect(result.availableOutputRoutingChannels).toStrictEqual([]);
+      expect(result.availableOutputRoutingTypes).toStrictEqual([]);
       expect(result.inputRoutingChannel).toBeNull();
       expect(result.inputRoutingType).toBeNull();
       expect(result.outputRoutingChannel).toBeNull();
@@ -186,19 +186,19 @@ describe("readTrack", () => {
       expect(result.inputRoutingType).toBeUndefined();
 
       // But should still have output routing properties
-      expect(result.availableOutputRoutingChannels).toEqual([
+      expect(result.availableOutputRoutingChannels).toStrictEqual([
         { name: "Master", outputId: "26" },
         { name: "A", outputId: "27" },
       ]);
-      expect(result.availableOutputRoutingTypes).toEqual([
+      expect(result.availableOutputRoutingTypes).toStrictEqual([
         { name: "Track Out", outputId: "25" },
         { name: "Send Only", outputId: "28" },
       ]);
-      expect(result.outputRoutingChannel).toEqual({
+      expect(result.outputRoutingChannel).toStrictEqual({
         name: "Master",
         outputId: "26",
       });
-      expect(result.outputRoutingType).toEqual({
+      expect(result.outputRoutingType).toStrictEqual({
         name: "Track Out",
         outputId: "25",
       });
@@ -226,10 +226,10 @@ describe("readTrack", () => {
       expect(result.monitoringState).toBe("unknown");
 
       // Other routing properties should still work
-      expect(result.availableInputRoutingChannels).toEqual([]);
-      expect(result.availableInputRoutingTypes).toEqual([]);
-      expect(result.availableOutputRoutingChannels).toEqual([]);
-      expect(result.availableOutputRoutingTypes).toEqual([]);
+      expect(result.availableInputRoutingChannels).toStrictEqual([]);
+      expect(result.availableInputRoutingTypes).toStrictEqual([]);
+      expect(result.availableOutputRoutingChannels).toStrictEqual([]);
+      expect(result.availableOutputRoutingTypes).toStrictEqual([]);
     });
 
     it("omits monitoring state for tracks that cannot be armed", () => {
@@ -245,7 +245,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",

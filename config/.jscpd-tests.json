@@ -1,0 +1,7 @@
+{
+  "threshold": 16,
+  "reporters": ["console"],
+  "ignore": ["**/node_modules/**", "**/parser/*.js"],
+  "pattern": "**/*.test.{js,ts,tsx}",
+  "path": ["../src", "../webui/src"]
+}

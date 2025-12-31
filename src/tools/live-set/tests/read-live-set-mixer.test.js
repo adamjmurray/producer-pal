@@ -3,8 +3,8 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - mixer properties", () => {
   it("includes mixer properties in tracks when mixer include is specified", () => {
@@ -12,18 +12,23 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device") {
         return "mixer_1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device volume") {
         return "volume_param_1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device panning") {
         return "panning_param_1";
       }
+
       return this._id;
     });
 
@@ -56,7 +61,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: -6,
@@ -70,9 +75,11 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       return this._id;
     });
 
@@ -104,18 +111,23 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set return_tracks 0") {
         return "return1";
       }
+
       if (this._path === "live_set return_tracks 0 mixer_device") {
         return "mixer_1";
       }
+
       if (this._path === "live_set return_tracks 0 mixer_device volume") {
         return "volume_param_1";
       }
+
       if (this._path === "live_set return_tracks 0 mixer_device panning") {
         return "panning_param_1";
       }
+
       return this._id;
     });
 
@@ -148,7 +160,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["return-tracks", "mixer"],
     });
 
-    expect(result.returnTracks[0]).toEqual(
+    expect(result.returnTracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Return Track",
         gainDb: -3,
@@ -162,18 +174,23 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set master_track") {
         return "master";
       }
+
       if (this._path === "live_set master_track mixer_device") {
         return "mixer_1";
       }
+
       if (this._path === "live_set master_track mixer_device volume") {
         return "volume_param_1";
       }
+
       if (this._path === "live_set master_track mixer_device panning") {
         return "panning_param_1";
       }
+
       return this._id;
     });
 
@@ -205,7 +222,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["master-track", "mixer"],
     });
 
-    expect(result.masterTrack).toEqual(
+    expect(result.masterTrack).toStrictEqual(
       expect.objectContaining({
         name: "Master",
         gainDb: 0,
@@ -219,18 +236,23 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device") {
         return "mixer_1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device volume") {
         return "volume_param_1";
       }
+
       if (this._path === "live_set tracks 0 mixer_device panning") {
         return "panning_param_1";
       }
+
       return this._id;
     });
 
@@ -263,7 +285,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["*"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: 2,
@@ -277,30 +299,39 @@ describe("readLiveSet - mixer properties", () => {
       if (this._path === "live_set") {
         return "live_set_id";
       }
+
       if (this._path === "live_set tracks 0") {
         return "track1";
       }
+
       if (this._path === "live_set tracks 1") {
         return "track2";
       }
+
       if (this._path === "live_set tracks 0 mixer_device") {
         return "mixer_1";
       }
+
       if (this._path === "live_set tracks 1 mixer_device") {
         return "mixer_2";
       }
+
       if (this._path === "live_set tracks 0 mixer_device volume") {
         return "volume_param_1";
       }
+
       if (this._path === "live_set tracks 1 mixer_device volume") {
         return "volume_param_2";
       }
+
       if (this._path === "live_set tracks 0 mixer_device panning") {
         return "panning_param_1";
       }
+
       if (this._path === "live_set tracks 1 mixer_device panning") {
         return "panning_param_2";
       }
+
       return this._id;
     });
 
@@ -342,14 +373,14 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toEqual(
+    expect(result.tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Track 1",
         gainDb: -6,
         pan: 0.5,
       }),
     );
-    expect(result.tracks[1]).toEqual(
+    expect(result.tracks[1]).toStrictEqual(
       expect.objectContaining({
         name: "Track 2",
         gainDb: -12,

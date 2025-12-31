@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mockLiveApiGet } from "../../../test/mock-live-api.js";
+import { mockLiveApiGet } from "#src/test/mock-live-api.js";
 import { readClip } from "./read-clip.js";
 
 describe("readClip - warp markers", () => {
@@ -25,7 +25,8 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
-    expect(result.warpMarkers).toEqual([
+
+    expect(result.warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
       { sampleTime: 88200, beatTime: 2.0 },
@@ -55,7 +56,8 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
-    expect(result.warpMarkers).toEqual([
+
+    expect(result.warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
     ]);
@@ -79,6 +81,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -100,6 +103,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -117,6 +121,7 @@ describe("readClip - warp markers", () => {
       },
     });
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 
@@ -135,6 +140,7 @@ describe("readClip - warp markers", () => {
       sceneIndex: 0,
       include: ["warp-markers"],
     });
+
     expect(result.warpMarkers).toBeUndefined();
   });
 });

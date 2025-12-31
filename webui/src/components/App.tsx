@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "preact/hooks";
+import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
 import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -30,28 +31,43 @@ function getEnabledToolsCount(enabledTools: Record<string, boolean>): number {
 }
 
 /**
+ * Get API base URL for the current provider
+ * @param {string} provider - Provider identifier
+ * @param {string | undefined} baseUrl - Custom base URL for custom provider
+ * @param {number | undefined} port - Port for local providers
+ * @returns {string | undefined} - Base URL or undefined for Gemini
+ */
+function getBaseUrl(
+  provider: string,
+  baseUrl: string | undefined,
+  port: number | undefined,
+): string | undefined {
+  if (provider === "custom") return baseUrl;
+  if (provider === "gemini") return undefined;
+  if (provider === "lmstudio") return `http://localhost:${port ?? 1234}/v1`;
+  if (provider === "ollama") return `http://localhost:${port ?? 11434}/v1`;
+
+  return PROVIDER_BASE_URLS[provider as keyof typeof PROVIDER_BASE_URLS];
+}
+
+/**
  *
  * @returns {JSX.Element} - React component
  */
+// eslint-disable-next-line max-lines-per-function
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
   const { mcpStatus, mcpError, checkMcpConnection } = useMcpConnection();
-
-  // Determine base URL for OpenAI-compatible providers
-  const baseUrl =
-    settings.provider === "custom"
-      ? settings.baseUrl
-      : settings.provider === "gemini"
-        ? undefined
-        : settings.provider === "lmstudio"
-          ? `http://localhost:${settings.port ?? 1234}/v1`
-          : settings.provider === "ollama"
-            ? `http://localhost:${settings.port ?? 11434}/v1`
-            : PROVIDER_BASE_URLS[settings.provider];
+  const baseUrl = getBaseUrl(
+    settings.provider,
+    settings.baseUrl,
+    settings.port,
+  );
 
   // Use Gemini chat for Gemini provider
   const geminiChat = useGeminiChat({
+    provider: settings.provider,
     apiKey: settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
@@ -65,6 +81,7 @@ export function App() {
 
   // Use OpenAI chat for OpenAI-compatible providers
   const openaiChat = useOpenAIChat({
+    provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
         ? settings.apiKey || "not-needed"
@@ -80,8 +97,13 @@ export function App() {
     checkMcpConnection,
   });
 
-  // Route to appropriate chat based on provider
-  const chat = settings.provider === "gemini" ? geminiChat : openaiChat;
+  // Lock conversation to the provider used when chat started
+  const { chat, wrappedHandleSend, wrappedClearConversation } =
+    useConversationLock({
+      settingsProvider: settings.provider,
+      geminiChat,
+      openaiChat,
+    });
 
   // Calculate tools counts for header display
   const enabledToolsCount = getEnabledToolsCount(settings.enabledTools);
@@ -153,21 +175,22 @@ export function App() {
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
       rateLimitState={chat.rateLimitState}
-      handleSend={chat.handleSend}
+      handleSend={wrappedHandleSend}
       handleRetry={chat.handleRetry}
-      activeModel={chat.activeModel ?? settings.model}
-      activeThinking={chat.activeThinking}
-      activeTemperature={chat.activeTemperature}
-      activeProvider={settings.provider}
+      activeModel={chat.activeModel}
+      activeProvider={chat.activeProvider}
+      provider={settings.provider}
+      model={settings.model}
       defaultThinking={settings.thinking}
       defaultTemperature={settings.temperature}
+      defaultShowThoughts={settings.showThoughts}
       enabledToolsCount={enabledToolsCount}
       totalToolsCount={VISIBLE_TOOLS.length}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}
       onOpenSettings={() => setShowSettings(true)}
-      onClearConversation={chat.clearConversation}
+      onClearConversation={wrappedClearConversation}
       onStop={chat.stopResponse}
     />
   );

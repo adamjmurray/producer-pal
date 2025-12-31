@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { error, log, warn } from "./v8-max-console.js";
+import { error, log, warn } from "#src/shared/v8-max-console.js";
 
 describe("v8-max-console", () => {
   let consoleLogSpy;
@@ -13,6 +13,31 @@ describe("v8-max-console", () => {
   afterEach(() => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    // Clean up any global mocks for Max environment
+    delete globalThis.post;
+    delete globalThis.error;
+  });
+
+  describe("Max environment simulation", () => {
+    it("uses post() function when available", () => {
+      const mockPost = vi.fn();
+
+      globalThis.post = mockPost;
+
+      log("test message");
+      expect(mockPost).toHaveBeenCalledWith("test message", "\n");
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it("uses globalThis.error() function when available", () => {
+      const mockError = vi.fn();
+
+      globalThis.error = mockError;
+
+      error("error message");
+      expect(mockError).toHaveBeenCalledWith("error message", "\n");
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("log", () => {
@@ -58,6 +83,7 @@ describe("v8-max-console", () => {
 
     it("logs Maps", () => {
       const map = new Map();
+
       map.set("key1", "value1");
       map.set("key2", "value2");
       log(map);
@@ -78,6 +104,7 @@ describe("v8-max-console", () => {
         }
       }
       const instance = new CustomClass();
+
       log(instance);
       expect(consoleLogSpy).toHaveBeenCalledWith('CustomClass{"prop":"value"}');
     });

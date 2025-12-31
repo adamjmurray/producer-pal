@@ -3,9 +3,9 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../../constants.js";
-import { readLiveSet } from "../read-live-set.js";
+} from "#src/test/mock-live-api.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
@@ -73,7 +73,7 @@ describe("readLiveSet - track types", () => {
       ],
     });
 
-    expect(resultAll).toEqual(
+    expect(resultAll).toStrictEqual(
       expect.objectContaining({
         tracks: [
           expect.objectContaining({
@@ -232,9 +232,9 @@ describe("readLiveSet - track types", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readLiveSet({
       include: [
-        "drum-chains",
+        "drum-pads",
         "clip-notes",
-        "rack-chains",
+        "chains",
         "scenes",
         "midi-effects",
         "instruments",
@@ -251,10 +251,10 @@ describe("readLiveSet - track types", () => {
     });
 
     // Results should be identical
-    expect(resultWildcard).toEqual(resultExplicit);
+    expect(resultWildcard).toStrictEqual(resultExplicit);
 
     // Verify key properties are included
-    expect(resultWildcard).toEqual(
+    expect(resultWildcard).toStrictEqual(
       expect.objectContaining({
         tracks: expect.any(Array),
         returnTracks: expect.any(Array),
@@ -264,7 +264,7 @@ describe("readLiveSet - track types", () => {
     );
 
     // Verify track has all expected properties
-    expect(resultWildcard.tracks[0]).toEqual(
+    expect(resultWildcard.tracks[0]).toStrictEqual(
       expect.objectContaining({
         instrument: expect.any(Object),
         inputRoutingChannel: expect.any(Object),
