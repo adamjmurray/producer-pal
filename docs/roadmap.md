@@ -17,6 +17,37 @@ Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
 
+## Changelog
+
+### 1.3 - Device Control (December 2025)
+
+- Full device control: add/delete/move native devices on any track, read/write
+  parameters, insert into rack chains
+- Rack macro and variation management
+- A/B comparison for device parameters
+- Arrangement locator support
+
+### 1.2 - Audio clip and mixer support (November 2025)
+
+- Audio clip support with a `read-samples` tool to scan folders for samples
+- Track mixer control: gain, panning, and sends
+- Arrangement clip positioning and length control
+- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
+  randomizing clips
+
+### 1.1 - Built-in chat UI (November 2025)
+
+Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
+Studio, Ollama, and more.
+
+### 1.0 - Support for more LLMs (October 2025)
+
+Expanded features and support for multiple AI platforms.
+
+### 0.9 - Public Beta with Claude Desktop (July 2025)
+
+Initial public release with Claude Desktop support.
+
 ## Planned Features
 
 ### 1.4 - Modulation
@@ -67,51 +98,3 @@ however, that could possibly be supported too via device control features.
   - OpenAI ChatGPT
   - Others? Wisprflow? AssemblyAI?
   - Bidirection / TTS: Gemini Live API, OpenAI Live API
-
-## Changelog
-
-### 1.3.3 - Move devices, Rack chain support (December 2025)
-
-- Support moving/reordering devices
-- Support inserting devices into arbitrary rack chains, creating new chains as
-  needed
-- Read samples in Simpler devices (which can then be used to create audio clips)
-- Change thinking & randomness settings per message in the built-in chat UI
-
-### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators (December 2025)
-
-- Rack macro and variation management
-- A/B comparison for device parameters
-- Arrangement locator support
-
-### 1.3.1 - maintenance (December 2025)
-
-- Auto-recover from rate limit errors in the built-in chat UI
-
-### 1.3.0 - Device Control (December 2025)
-
-- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
-  any track (audio/midi, return, master)
-- Delete devices
-- Read/write device parameters
-
-### 1.2 - Audio clip and mixer support (November 2025)
-
-- Audio clip support with a `read-samples` tool to scan folders for samples
-- Track mixer control: gain, panning, and sends
-- Arrangement clip positioning and length control
-- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
-  randomizing clips
-
-### 1.1 - Built-in chat UI (November 2025)
-
-Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
-Studio, Ollama, and more.
-
-### 1.0 - Support for more LLMs (October 2025)
-
-Expanded features and support for multiple AI platforms.
-
-### 0.9 - Public Beta with Claude Desktop (July 2025)
-
-Initial public release with Claude Desktop support.
