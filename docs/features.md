@@ -112,12 +112,13 @@ create.
 - Add native Live devices (instruments, MIDI effects, audio effects)
 - Place devices on any track type: MIDI, audio, return, or master
 - Position devices at a specific index in the device chain
+- Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
 
 ### Read Device (`ppal-read-device`)
 
-- Get detailed information about a device by ID
-- View device chains and drum pad chains
+- Get detailed information about a device by ID or path
+- View device chains, return chains, and drum pad chains
 - List parameter names or full parameter details with values
 - Search parameters by name substring
 - View macro variation info for rack devices (count and selected index)
@@ -130,10 +131,16 @@ create.
 - Collapse or expand device view in Live's UI
 - Modify device parameters by value or display string
 - Bulk update multiple devices at once
+- Move devices between tracks or into rack chains
+- Wrap effect devices in a new rack (auto-detects rack type)
 - Rack macro variations: store, recall, delete, or randomize macro settings
 - Select macro variation by index for recall or delete operations
 - Set visible macro count on rack devices (adds/removes macros)
 - A/B Compare: switch between presets or save current state to other slot
+- Chain properties: mute, solo, color
+- Drum pad properties: mute, solo
+- Drum chain settings: choke group (0-16), mapped pitch (output MIDI note)
+- Move drum chains between pads
 
 ## Clip Creation & Editing
 
