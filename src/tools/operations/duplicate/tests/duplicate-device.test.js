@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiCall,
+  liveApiId,
   liveApiPath,
   liveApiSet,
   liveApiType,
@@ -274,6 +275,71 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t2/d0",
+    );
+  });
+
+  it("should throw and cleanup if device not found in duplicated track", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "device1") {
+        return "live_set tracks 0 devices 0";
+      }
+
+      return this._path;
+    });
+
+    // Mock id to return "0" for the temp device path (makes exists() return false)
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 1 devices 0") {
+        return "0"; // Makes exists() return false
+      }
+
+      return this._id;
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this._id === "device1") {
+        return "PluginDevice";
+      }
+
+      return undefined;
+    });
+
+    expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
+      "device not found in duplicated track",
+    );
+
+    // Should still delete the temp track after error
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_track",
+      1,
+    );
+  });
+
+  it("should not adjust non-track destination path (return/master)", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "device1") {
+        return "live_set tracks 0 devices 0";
+      }
+
+      return this._path;
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this._id === "device1") {
+        return "PluginDevice";
+      }
+
+      return undefined;
+    });
+
+    // Using a path that doesn't start with "t" should not be adjusted
+    duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
+
+    // Should pass the path through unchanged (return track)
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "r0/d0",
     );
   });
 });
