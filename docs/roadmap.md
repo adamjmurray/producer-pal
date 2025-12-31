@@ -57,11 +57,7 @@ with more flexible modulation features:
 
 - Apply ramps and curves to MIDI velocity, audio gain and other properties
 - Randomize velocity and timing
-- Shuffle and custom (not built-in) groove support
-
-This is destructive modulation applied by modifying clip properties and the
-notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
-however, that could possibly be supported too via device control features.
+- Apply timing patterns like swing
 
 ### 1.5 - Code Execution
 
@@ -69,11 +65,8 @@ however, that could possibly be supported too via device control features.
 
 ### 1.6 - Customization
 
-- Override the Producer Pal skills, system prompt (for the chat UI), and MCP
-  tool descriptions for experimentation and local model optimization purposes.
-- Provide different personas for different tasks (focus on project setup with
-  track/device editing, focus on MIDI editing, focus on arrangement, etc) and
-  make it easy to switch between them for more focus / local model optimization
+- Custom skills, system prompts, tool descriptions, and task-focused personas
+  for experimentation and local model optimization
 
 ### 1.7 - Harmony
 
@@ -97,4 +90,4 @@ however, that could possibly be supported too via device control features.
   - Google Gemini
   - OpenAI ChatGPT
   - Others? Wisprflow? AssemblyAI?
-  - Bidirection / TTS: Gemini Live API, OpenAI Live API
+  - Bidirectional / TTS: Gemini Live API, OpenAI Live API
