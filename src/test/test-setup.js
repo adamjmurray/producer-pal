@@ -29,8 +29,12 @@ class Max {
 
   static mcpResponseHandler = null;
   static defaultMcpResponseHandler = null; // Store the default handler
+  static handlers = new Map(); // Store all handlers
 
   static addHandler = vi.fn((message, handler) => {
+    // Store all handlers in a map for tests to access
+    Max.handlers.set(message, handler);
+
     if (message === "mcp_response") {
       Max.mcpResponseHandler = handler;
 
