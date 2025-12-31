@@ -530,4 +530,49 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual([{ id: "device-100" }, { id: "chain-200" }]);
     });
   });
+
+  describe("multiple paths with params", () => {
+    beforeEach(() => {
+      liveApiType.mockReturnValue("Device");
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        if (this._path === "live_set tracks 0 devices 0 parameters 5")
+          return "param-100-5";
+        if (this._path === "live_set tracks 1 devices 0") return "device-200";
+        if (this._path === "live_set tracks 1 devices 0 parameters 5")
+          return "param-200-5";
+
+        return "0";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "is_quantized") return [0];
+
+        return [0];
+      });
+    });
+
+    it("should update params on multiple devices using path-based param IDs", () => {
+      // Using a path that ends with "parameters N" should resolve relative to each device
+      const result = updateDevice({
+        path: "t0/d0, t1/d0",
+        params: '{"live_set tracks 0 devices 0 parameters 5": 1000}',
+      });
+
+      // Both devices should have their parameter 5 updated
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "param-100-5" }),
+        "display_value",
+        1000,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "param-200-5" }),
+        "display_value",
+        1000,
+      );
+      expect(result).toStrictEqual([
+        { id: "device-100" },
+        { id: "device-200" },
+      ]);
+    });
+  });
 });

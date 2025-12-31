@@ -347,7 +347,7 @@ function updateDeviceProperties(target, type, options) {
   }
 
   if (params != null) {
-    setParamValues(params);
+    setParamValues(target, params);
   }
 
   if (abCompare != null) {

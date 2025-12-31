@@ -99,21 +99,41 @@ export function updateCollapsedState(device, collapsed) {
 
 /**
  * Set parameter values from JSON string
+ * @param {object} device - LiveAPI device object to update
  * @param {string} paramsJson - JSON object mapping param IDs to values
  */
-export function setParamValues(paramsJson) {
+export function setParamValues(device, paramsJson) {
   const paramValues = JSON.parse(paramsJson);
 
   for (const [paramId, inputValue] of Object.entries(paramValues)) {
-    const param = LiveAPI.from(paramId);
+    const param = resolveParamForDevice(device, paramId);
 
-    if (!param.exists()) {
-      console.error(`updateDevice: param id "${paramId}" does not exist`);
+    if (!param || !param.exists()) {
+      console.error(`updateDevice: param "${paramId}" not found on device`);
       continue;
     }
 
     setParamValue(param, inputValue);
   }
+}
+
+/**
+ * Resolve a param ID relative to a target device
+ * @param {object} device - LiveAPI device object
+ * @param {string} paramId - Param identifier (path ending in "parameters N", or absolute ID)
+ * @returns {object|null} LiveAPI param object or null
+ */
+function resolveParamForDevice(device, paramId) {
+  // If paramId ends with "parameters N", extract index and resolve relative to device
+  // This enables multi-path param updates where the same param index is applied to each device
+  const match = paramId.match(/parameters (\d+)$/);
+
+  if (match) {
+    return new LiveAPI(`${device.path} parameters ${match[1]}`);
+  }
+
+  // Default: use absolute ID resolution (backward compatible for single-device updates)
+  return LiveAPI.from(paramId);
 }
 
 function setParamValue(param, inputValue) {

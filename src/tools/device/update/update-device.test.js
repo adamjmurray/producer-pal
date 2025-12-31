@@ -249,7 +249,7 @@ describe("updateDevice", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'updateDevice: param id "999" does not exist',
+        'updateDevice: param "999" not found on device',
       );
       expect(result).toStrictEqual({ id: "123" });
 
