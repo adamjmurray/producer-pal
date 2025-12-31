@@ -76,5 +76,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe("output MIDI note e.g. 'C3' (drum chains only)"),
+    wrapInRack: z
+      .boolean()
+      .optional()
+      .describe(
+        "Wrap device(s) in a new rack (auto-detects type from device). Effects only.",
+      ),
   },
 });

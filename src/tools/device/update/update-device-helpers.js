@@ -1,6 +1,80 @@
-import { isValidNoteName, noteNameToMidi } from "#src/shared/pitch.js";
+import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { isPanLabel } from "#src/tools/shared/device/helpers/device-display-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+
+// ============================================================================
+// Device move helpers
+// ============================================================================
+
+/**
+ * Parse drum pad note from a path
+ * @param {string} path - Path that may contain a drum pad segment
+ * @returns {string|null} Note name (e.g., "C1", "F#2") or null if not a drum pad path
+ */
+function parseDrumPadNoteFromPath(path) {
+  const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
+
+  return match ? match[1] : null;
+}
+
+/**
+ * Move a device to a new location
+ * @param {object} device - LiveAPI device object
+ * @param {string} toPath - Target path
+ */
+export function moveDeviceToPath(device, toPath) {
+  const { container, position } = resolveInsertionPath(toPath);
+
+  if (!container || !container.exists()) {
+    throw new Error(
+      `updateDevice: move target at path "${toPath}" does not exist`,
+    );
+  }
+
+  const liveSet = new LiveAPI("live_set");
+  const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
+  const containerId = container.id.startsWith("id ")
+    ? container.id
+    : `id ${container.id}`;
+
+  liveSet.call("move_device", deviceId, containerId, position ?? 0);
+}
+
+/**
+ * Move a drum chain to a different pad by updating in_note
+ * @param {object} chain - LiveAPI drum chain object
+ * @param {string} toPath - Target drum pad path
+ * @param {boolean} moveEntirePad - If true, move all chains with same in_note
+ */
+export function moveDrumChainToPath(chain, toPath, moveEntirePad) {
+  const targetNote = parseDrumPadNoteFromPath(toPath);
+
+  if (targetNote == null) {
+    throw new Error(`updateDevice: toPath "${toPath}" is not a drum pad path`);
+  }
+
+  const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
+
+  if (targetInNote == null) {
+    throw new Error(`updateDevice: invalid note "${targetNote}" in toPath`);
+  }
+
+  if (moveEntirePad) {
+    const sourceInNote = chain.getProperty("in_note");
+    const drumRackPath = chain.path.replace(/ chains \d+$/, "");
+    const drumRack = new LiveAPI(drumRackPath);
+    const allChains = drumRack.getChildren("chains");
+
+    for (const c of allChains) {
+      if (c.getProperty("in_note") === sourceInNote) {
+        c.set("in_note", targetInNote);
+      }
+    }
+  } else {
+    chain.set("in_note", targetInNote);
+  }
+}
 
 // ============================================================================
 // Collapsed state

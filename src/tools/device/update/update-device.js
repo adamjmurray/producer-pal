@@ -2,17 +2,19 @@ import { noteNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
   resolveDrumPadFromPath,
-  resolveInsertionPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import {
+  moveDeviceToPath,
+  moveDrumChainToPath,
   setParamValues,
   updateABCompare,
   updateCollapsedState,
   updateMacroCount,
   updateMacroVariation,
 } from "./update-device-helpers.js";
+import { wrapDevicesInRack } from "./update-device-wrap-helpers.js";
 
 // ============================================================================
 // Type detection helpers
@@ -64,6 +66,7 @@ function warnIfSet(paramName, value, type) {
  * @param {string} [args.color] - Color #RRGGBB (chains only)
  * @param {number} [args.chokeGroup] - Choke group 0-16 (drum chains only)
  * @param {string} [args.mappedPitch] - Output MIDI note (drum chains only)
+ * @param {boolean} [args.wrapInRack] - Wrap device(s) in a new rack
  * @returns {object|Array} Updated object info(s)
  */
 export function updateDevice({
@@ -82,6 +85,7 @@ export function updateDevice({
   color,
   chokeGroup,
   mappedPitch,
+  wrapInRack,
 }) {
   // Validate: exactly one of ids or path required
   if (!ids && !path) {
@@ -90,6 +94,11 @@ export function updateDevice({
 
   if (ids && path) {
     throw new Error("Provide either ids or path, not both");
+  }
+
+  // Handle wrapInRack separately (creates rack and moves devices into it)
+  if (wrapInRack) {
+    return wrapDevicesInRack({ ids, path, toPath, name });
   }
 
   const updateOptions = {
@@ -279,79 +288,6 @@ function resolveChainTarget(liveApiPath) {
 // ============================================================================
 // Target update logic
 // ============================================================================
-
-/**
- * Parse drum pad note from a path
- * @param {string} path - Path that may contain a drum pad segment
- * @returns {string|null} Note name (e.g., "C1", "F#2") or null if not a drum pad path
- */
-function parseDrumPadNoteFromPath(path) {
-  // Match the last pXX segment in the path (note name or *)
-  const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
-
-  return match ? match[1] : null;
-}
-
-/**
- * Move a device to a new location
- * @param {object} device - LiveAPI device object
- * @param {string} toPath - Target path
- */
-function moveDeviceToPath(device, toPath) {
-  const { container, position } = resolveInsertionPath(toPath);
-
-  if (!container || !container.exists()) {
-    throw new Error(
-      `updateDevice: move target at path "${toPath}" does not exist`,
-    );
-  }
-
-  const liveSet = new LiveAPI("live_set");
-
-  // Format ids as "id X" for live object parameters
-  const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
-  const containerId = container.id.startsWith("id ")
-    ? container.id
-    : `id ${container.id}`;
-
-  liveSet.call("move_device", deviceId, containerId, position ?? 0);
-}
-
-/**
- * Move a drum chain to a different pad by updating in_note
- * @param {object} chain - LiveAPI drum chain object
- * @param {string} toPath - Target drum pad path
- * @param {boolean} moveEntirePad - If true, move all chains with same in_note
- */
-function moveDrumChainToPath(chain, toPath, moveEntirePad) {
-  const targetNote = parseDrumPadNoteFromPath(toPath);
-
-  if (targetNote == null) {
-    throw new Error(`updateDevice: toPath "${toPath}" is not a drum pad path`);
-  }
-
-  const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
-
-  if (targetInNote == null) {
-    throw new Error(`updateDevice: invalid note "${targetNote}" in toPath`);
-  }
-
-  if (moveEntirePad) {
-    // Move all chains with same in_note as source chain
-    const sourceInNote = chain.getProperty("in_note");
-    const drumRackPath = chain.path.replace(/ chains \d+$/, "");
-    const drumRack = new LiveAPI(drumRackPath);
-    const allChains = drumRack.getChildren("chains");
-
-    for (const c of allChains) {
-      if (c.getProperty("in_note") === sourceInNote) {
-        c.set("in_note", targetInNote);
-      }
-    }
-  } else {
-    chain.set("in_note", targetInNote);
-  }
-}
 
 function updateTarget(target, options) {
   const type = target.type;
