@@ -1,0 +1,191 @@
+import { describe, expect, it } from "vitest";
+import {
+  shuffleArray,
+  calculateShufflePositions,
+} from "./transform-clips-shuffling-helpers.js";
+
+describe("transform-clips-shuffling-helpers", () => {
+  describe("shuffleArray", () => {
+    it("should return array with same elements in different order", () => {
+      const array = [1, 2, 3, 4, 5];
+      // Use a seeded RNG that produces predictable results
+      let seed = 0.5;
+
+      const rng = () => {
+        seed = (seed * 9301 + 49297) % 233280;
+
+        return seed / 233280;
+      };
+
+      const shuffled = shuffleArray(array, rng);
+
+      expect(shuffled).toHaveLength(array.length);
+      expect(shuffled.sort()).toStrictEqual(array.sort());
+    });
+
+    it("should not modify the original array", () => {
+      const array = [1, 2, 3, 4, 5];
+      const originalCopy = [...array];
+      const rng = () => 0.5;
+
+      shuffleArray(array, rng);
+
+      expect(array).toStrictEqual(originalCopy);
+    });
+
+    it("should handle empty array", () => {
+      const rng = () => 0.5;
+
+      const shuffled = shuffleArray([], rng);
+
+      expect(shuffled).toStrictEqual([]);
+    });
+
+    it("should handle single element array", () => {
+      const rng = () => 0.5;
+
+      const shuffled = shuffleArray([42], rng);
+
+      expect(shuffled).toStrictEqual([42]);
+    });
+
+    it("should produce different results with different RNG values", () => {
+      const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const rng1 = () => 0.1;
+      const rng2 = () => 0.9;
+
+      const shuffled1 = shuffleArray(array, rng1);
+      const shuffled2 = shuffleArray(array, rng2);
+
+      // With different constant RNG values, shuffles should differ
+      expect(shuffled1).not.toStrictEqual(shuffled2);
+    });
+  });
+
+  describe("calculateShufflePositions", () => {
+    it("should calculate correct positions for sequential clips without gaps", () => {
+      const sortedClipInfo = [
+        { startTime: 0, length: 4 },
+        { startTime: 4, length: 4 },
+        { startTime: 8, length: 4 },
+      ];
+      // Keep same order
+      const shuffledIndices = [0, 1, 2];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      expect(positions).toStrictEqual([0, 4, 8]);
+    });
+
+    it("should preserve gaps when shuffling", () => {
+      // Clips with 2-beat gaps between them
+      const sortedClipInfo = [
+        { startTime: 0, length: 4 },
+        { startTime: 6, length: 4 }, // gap of 2
+        { startTime: 12, length: 4 }, // gap of 2
+      ];
+      // Keep same order
+      const shuffledIndices = [0, 1, 2];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      expect(positions).toStrictEqual([0, 6, 12]);
+    });
+
+    it("should handle reversed order", () => {
+      const sortedClipInfo = [
+        { startTime: 0, length: 4 },
+        { startTime: 4, length: 8 },
+        { startTime: 12, length: 2 },
+      ];
+      // Reverse order
+      const shuffledIndices = [2, 1, 0];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      // clip 2 (length 2) at position 0
+      // clip 1 (length 8) at position 2 (0 + 2 + gap of 0)
+      // clip 0 (length 4) at position 10 (2 + 8 + gap of 0)
+      expect(positions).toStrictEqual([0, 2, 10]);
+    });
+
+    it("should handle clips with varying lengths", () => {
+      const sortedClipInfo = [
+        { startTime: 0, length: 2 },
+        { startTime: 2, length: 6 },
+        { startTime: 8, length: 4 },
+      ];
+      // Shuffle: second clip first, then third, then first
+      const shuffledIndices = [1, 2, 0];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      // clip 1 (length 6) at position 0
+      // clip 2 (length 4) at position 6 (0 + 6 + gap of 0)
+      // clip 0 (length 2) at position 10 (6 + 4 + gap of 0)
+      expect(positions).toStrictEqual([0, 6, 10]);
+    });
+
+    it("should preserve gap pattern when shuffling with gaps", () => {
+      // Original: clips at 0-4, 6-10, 14-18 (gaps of 2, then 4)
+      const sortedClipInfo = [
+        { startTime: 0, length: 4 },
+        { startTime: 6, length: 4 }, // gap of 2
+        { startTime: 14, length: 4 }, // gap of 4
+      ];
+      // Reverse order
+      const shuffledIndices = [2, 1, 0];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      // clip 2 (length 4) at position 0
+      // clip 1 (length 4) at position 6 (0 + 4 + gap of 2)
+      // clip 0 (length 4) at position 14 (6 + 4 + gap of 4)
+      expect(positions).toStrictEqual([0, 6, 14]);
+    });
+
+    it("should handle single clip", () => {
+      const sortedClipInfo = [{ startTime: 8, length: 4 }];
+      const shuffledIndices = [0];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      expect(positions).toStrictEqual([8]);
+    });
+
+    it("should handle clips starting at non-zero position", () => {
+      const sortedClipInfo = [
+        { startTime: 16, length: 4 },
+        { startTime: 20, length: 4 },
+      ];
+      const shuffledIndices = [1, 0];
+
+      const positions = calculateShufflePositions(
+        sortedClipInfo,
+        shuffledIndices,
+      );
+
+      // clip 1 (length 4) at position 16 (original start)
+      // clip 0 (length 4) at position 20 (16 + 4 + gap of 0)
+      expect(positions).toStrictEqual([16, 20]);
+    });
+  });
+});
