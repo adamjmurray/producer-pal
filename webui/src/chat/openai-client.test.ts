@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   extractReasoningFromDelta,
   OpenAIClient,
@@ -7,6 +7,21 @@ import {
   type ReasoningDetail,
 } from "./openai-client";
 import type { OpenAIToolCall } from "#webui/types/messages";
+
+// Mock MCP SDK
+// @ts-expect-error vi.mock partial implementation
+vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
+  Client: class MockClient {
+    connect = vi.fn();
+    close = vi.fn();
+    listTools = vi.fn();
+    callTool = vi.fn();
+  },
+}));
+
+vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
+  StreamableHTTPClientTransport: vi.fn(),
+}));
 
 describe("extractReasoningFromDelta", () => {
   it("should return empty string for regular content (not reasoning)", () => {

@@ -173,6 +173,25 @@ describe("StdioHttpBridge", () => {
     });
   });
 
+  describe("_createMisconfiguredUrlResponse", () => {
+    it("returns misconfigured URL error response with correct structure", () => {
+      const response = bridge._createMisconfiguredUrlResponse();
+
+      expect(response).toStrictEqual({
+        content: [
+          {
+            type: "text",
+            text: expect.stringContaining("Invalid URL"),
+          },
+        ],
+        isError: true,
+      });
+
+      expect(response.content[0].text).toContain("http://localhost:3350");
+      expect(response.content[0].text).toContain("Desktop Extension");
+    });
+  });
+
   describe("_ensureHttpConnection", () => {
     it("creates new connection when none exists", async () => {
       mockClient.connect.mockResolvedValue();
@@ -436,6 +455,103 @@ describe("StdioHttpBridge", () => {
 
       expect(logger.debug).toHaveBeenCalledWith(
         '[Bridge] Tool call: ppal-read-live-set {"trackIndex":0}',
+      );
+    });
+
+    it("returns formatted error response for MCP protocol errors", async () => {
+      mockServer.connect.mockResolvedValue();
+      await bridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      const callToolCall = calls.find(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCall[1];
+
+      // Simulate MCP protocol error (has numeric code)
+      const mcpError = new Error("Invalid tool parameters");
+
+      mcpError.code = -32602;
+
+      mockClient.connect.mockResolvedValue();
+      mockClient.callTool.mockRejectedValue(mcpError);
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "Invalid tool parameters" }],
+        isError: true,
+      });
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] MCP protocol error detected (code -32602), returning the error to the client",
+      );
+    });
+
+    it("strips redundant MCP error prefix from error message", async () => {
+      mockServer.connect.mockResolvedValue();
+      await bridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      const callToolCall = calls.find(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCall[1];
+
+      // Error with redundant prefix
+      const mcpError = new Error("MCP error -32602: Invalid parameters");
+
+      mcpError.code = -32602;
+
+      mockClient.connect.mockResolvedValue();
+      mockClient.callTool.mockRejectedValue(mcpError);
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result.content[0].text).toBe("Invalid parameters");
+    });
+
+    it("returns misconfigured URL error for ERR_INVALID_URL", async () => {
+      // Create bridge with invalid URL that will cause ERR_INVALID_URL
+      const invalidBridge = new StdioHttpBridge("not-a-valid-url");
+
+      mockServer.connect.mockResolvedValue();
+      await invalidBridge.start();
+
+      const calls = mockServer.setRequestHandler.mock.calls;
+      // Get the most recent call for CallToolRequestSchema (from invalidBridge)
+      const callToolCalls = calls.filter(
+        (call) => call[0] === "CallToolRequestSchema",
+      );
+      const callToolHandler = callToolCalls[callToolCalls.length - 1][1];
+
+      const request = {
+        params: {
+          name: "test-tool",
+          arguments: {},
+        },
+      };
+
+      const result = await callToolHandler(request);
+
+      expect(result).toStrictEqual(
+        invalidBridge._createMisconfiguredUrlResponse(),
+      );
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.",
       );
     });
   });
