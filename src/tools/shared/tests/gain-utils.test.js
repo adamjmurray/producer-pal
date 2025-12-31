@@ -41,6 +41,15 @@ describe("gain-utils", () => {
       expect(result2).toBeLessThan(-35);
     });
 
+    it("should return -Infinity for negative gain values", () => {
+      expect(liveGainToDb(-0.1)).toBe(-Infinity);
+    });
+
+    it("should return 24 dB for gain values greater than 1", () => {
+      expect(liveGainToDb(1.5)).toBe(24);
+      expect(liveGainToDb(2.0)).toBe(24);
+    });
+
     it("should format dB values cleanly (2 decimal places, no trailing zeros)", () => {
       // Test that formatting removes unnecessary precision
       const gain = dbToLiveGain(-17);
@@ -94,6 +103,11 @@ describe("gain-utils", () => {
 
     it("should clamp values below -70 dB to 0", () => {
       expect(dbToLiveGain(-100)).toBe(0);
+    });
+
+    it("should handle extreme high dB values", () => {
+      expect(dbToLiveGain(50)).toBe(1.0);
+      expect(dbToLiveGain(1000)).toBe(1.0);
     });
   });
 

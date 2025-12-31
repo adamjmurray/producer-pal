@@ -116,5 +116,35 @@ describe("calculateEffectiveSettings", () => {
       expect(result.reasoningEffort).toBe("low");
       expect(result.excludeReasoning).toBe(false);
     });
+
+    it("sets excludeReasoning based on showThoughts override", () => {
+      const result = calculateEffectiveSettings(
+        { showThoughts: true },
+        openRouterConfig,
+      );
+
+      expect(result.excludeReasoning).toBe(false);
+    });
+
+    it("hides reasoning when showThoughts is false", () => {
+      const result = calculateEffectiveSettings(
+        { showThoughts: false },
+        openRouterConfig,
+      );
+
+      expect(result.excludeReasoning).toBe(true);
+    });
+  });
+
+  describe("showThoughts for non-OpenRouter", () => {
+    it("ignores showThoughts override for non-OpenRouter providers", () => {
+      const result = calculateEffectiveSettings(
+        { showThoughts: false },
+        gpt5Config,
+      );
+
+      // excludeReasoning should remain as config value (false)
+      expect(result.excludeReasoning).toBe(false);
+    });
   });
 });

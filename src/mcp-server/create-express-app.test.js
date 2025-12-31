@@ -458,6 +458,10 @@ describe("MCP Express App", () => {
       expect(html).toBeDefined();
       expect(html.length).toBeGreaterThan(0);
     });
+
+    // NOTE: Testing chatUIEnabled=false requires creating a separate Express app instance
+    // because the module-level variable is captured at import time.
+    // The handler registration tests below verify the handler logic works correctly.
   });
 
   describe("Handler Registration", () => {
