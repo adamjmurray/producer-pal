@@ -217,4 +217,42 @@ describe("defineTool", () => {
 
     expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
   });
+
+  it("should format validation errors without path for root-level errors", async () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    // Create a tool with a refinement at the root level that produces an error with empty path
+    const toolOptions = {
+      title: "Test Tool",
+      description: "A test tool",
+      inputSchema: {
+        param: z.string(),
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi);
+
+    const toolHandler = mockServer.registerTool.mock.calls[0][2];
+
+    // Pass null which triggers a root-level error
+    // When safeParse receives null/undefined for an object, it creates an error with empty path
+    const result = await toolHandler(null);
+
+    expect(result).toStrictEqual({
+      content: [
+        {
+          type: "text",
+          text: expect.stringContaining("Validation error in test-tool:"),
+        },
+      ],
+      isError: true,
+    });
+    // The error message should not have a path prefix (just the message)
+    expect(result.content[0].text).toMatch(/Invalid input: expected object/);
+  });
 });
