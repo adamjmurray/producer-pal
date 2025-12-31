@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.js";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -30,106 +29,11 @@ describe("createDevice", () => {
     });
   });
 
-  describe("successful device creation", () => {
-    it("should create an instrument at end of chain", () => {
-      const result = createDevice({
-        trackIndex: 0,
-        deviceName: "Wavetable",
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
-        "insert_device",
-        "Wavetable",
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 2,
-      });
-    });
-
-    it("should create a MIDI effect", () => {
-      const result = createDevice({
-        trackIndex: 1,
-        deviceName: "Arpeggiator",
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 1" }),
-        "insert_device",
-        "Arpeggiator",
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 2,
-      });
-    });
-
-    it("should create an audio effect", () => {
-      const result = createDevice({
-        trackIndex: 0,
-        deviceName: "Compressor",
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
-        "insert_device",
-        "Compressor",
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 2,
-      });
-    });
-
-    it("should create device at specific index", () => {
-      liveApiPath.mockReturnValue("live_set tracks 0 devices 1");
-
-      const result = createDevice({
-        trackIndex: 0,
-        deviceName: "EQ Eight",
-        deviceIndex: 1,
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
-        "insert_device",
-        "EQ Eight",
-        1,
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 1,
-      });
-    });
-
-    it("should create device at index 0", () => {
-      liveApiPath.mockReturnValue("live_set tracks 0 devices 0");
-
-      const result = createDevice({
-        trackIndex: 0,
-        deviceName: "Utility",
-        deviceIndex: 0,
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
-        "insert_device",
-        "Utility",
-        0,
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 0,
-      });
-    });
-  });
-
   describe("device name validation", () => {
     it("should throw error for invalid device name", () => {
       expect(() =>
         createDevice({
-          trackIndex: 0,
+          path: "t0",
           deviceName: "NotARealDevice",
         }),
       ).toThrow(/createDevice failed: invalid deviceName "NotARealDevice"/);
@@ -138,7 +42,7 @@ describe("createDevice", () => {
     it("should include valid devices in error message", () => {
       expect(() =>
         createDevice({
-          trackIndex: 0,
+          path: "t0",
           deviceName: "",
         }),
       ).toThrow(/Instruments:.*Wavetable/);
@@ -147,7 +51,7 @@ describe("createDevice", () => {
     it("should include MIDI effects in error message", () => {
       expect(() =>
         createDevice({
-          trackIndex: 0,
+          path: "t0",
           deviceName: "invalid",
         }),
       ).toThrow(/MIDI Effects:.*Arpeggiator/);
@@ -156,7 +60,7 @@ describe("createDevice", () => {
     it("should include audio effects in error message", () => {
       expect(() =>
         createDevice({
-          trackIndex: 0,
+          path: "t0",
           deviceName: "invalid",
         }),
       ).toThrow(/Audio Effects:.*Compressor/);
@@ -183,7 +87,7 @@ describe("createDevice", () => {
 
       for (const device of instruments) {
         expect(() =>
-          createDevice({ trackIndex: 0, deviceName: device }),
+          createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
       }
     });
@@ -203,7 +107,7 @@ describe("createDevice", () => {
 
       for (const device of midiEffects) {
         expect(() =>
-          createDevice({ trackIndex: 0, deviceName: device }),
+          createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
       }
     });
@@ -257,67 +161,9 @@ describe("createDevice", () => {
 
       for (const device of audioEffects) {
         expect(() =>
-          createDevice({ trackIndex: 0, deviceName: device }),
+          createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
       }
-    });
-  });
-
-  describe("track validation", () => {
-    it("should throw error for non-existent regular track", () => {
-      liveApiId.mockReturnValue("0");
-
-      expect(() =>
-        createDevice({
-          trackIndex: 99,
-          deviceName: "Compressor",
-        }),
-      ).toThrow("createDevice failed: regular track 99 does not exist");
-    });
-
-    it("should throw error for non-existent return track", () => {
-      liveApiId.mockReturnValue("0");
-
-      expect(() =>
-        createDevice({
-          trackCategory: "return",
-          trackIndex: 99,
-          deviceName: "Compressor",
-        }),
-      ).toThrow("createDevice failed: return track 99 does not exist");
-    });
-  });
-
-  describe("API failure handling", () => {
-    it("should throw error when insert_device fails", () => {
-      liveApiCall.mockReturnValue(["id", "0"]);
-      liveApiId.mockImplementation(function () {
-        return this._path.includes("id 0") ? "0" : "device123";
-      });
-
-      expect(() =>
-        createDevice({
-          trackIndex: 0,
-          deviceName: "Compressor",
-        }),
-      ).toThrow('createDevice failed: could not insert "Compressor" at end');
-    });
-
-    it("should include deviceIndex in error when provided", () => {
-      liveApiCall.mockReturnValue(["id", "0"]);
-      liveApiId.mockImplementation(function () {
-        return this._path.includes("id 0") ? "0" : "device123";
-      });
-
-      expect(() =>
-        createDevice({
-          trackIndex: 0,
-          deviceName: "Arpeggiator",
-          deviceIndex: 5,
-        }),
-      ).toThrow(
-        'createDevice failed: could not insert "Arpeggiator" at index 5',
-      );
     });
   });
 
@@ -330,7 +176,7 @@ describe("createDevice", () => {
       expect(result.audioEffects).toContain("Compressor");
     });
 
-    it("should return valid devices list without trackIndex", () => {
+    it("should return valid devices list without path", () => {
       const result = createDevice({});
 
       expect(result).toHaveProperty("instruments");
@@ -348,123 +194,11 @@ describe("createDevice", () => {
     });
   });
 
-  describe("trackIndex validation", () => {
-    it("should throw error when deviceName provided but trackIndex missing for regular", () => {
+  describe("path validation", () => {
+    it("should throw error when deviceName provided but path missing", () => {
       expect(() => createDevice({ deviceName: "Compressor" })).toThrow(
-        "createDevice failed: trackIndex is required for regular tracks",
+        "createDevice failed: path is required when creating a device",
       );
-    });
-
-    it("should throw error when trackIndex missing for return tracks", () => {
-      expect(() =>
-        createDevice({ trackCategory: "return", deviceName: "Compressor" }),
-      ).toThrow(
-        "createDevice failed: trackIndex is required for return tracks",
-      );
-    });
-  });
-
-  describe("return track device creation", () => {
-    it("should create device on return track", () => {
-      liveApiPath.mockReturnValue("live_set return_tracks 0 devices 2");
-
-      const result = createDevice({
-        trackCategory: "return",
-        trackIndex: 0,
-        deviceName: "Compressor",
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set return_tracks 0" }),
-        "insert_device",
-        "Compressor",
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 2,
-      });
-    });
-
-    it("should create device at specific index on return track", () => {
-      liveApiPath.mockReturnValue("live_set return_tracks 1 devices 0");
-
-      const result = createDevice({
-        trackCategory: "return",
-        trackIndex: 1,
-        deviceName: "Reverb",
-        deviceIndex: 0,
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set return_tracks 1" }),
-        "insert_device",
-        "Reverb",
-        0,
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 0,
-      });
-    });
-  });
-
-  describe("master track device creation", () => {
-    it("should create device on master track without trackIndex", () => {
-      liveApiPath.mockReturnValue("live_set master_track devices 2");
-
-      const result = createDevice({
-        trackCategory: "master",
-        deviceName: "Limiter",
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set master_track" }),
-        "insert_device",
-        "Limiter",
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 2,
-      });
-    });
-
-    it("should create device at specific index on master track", () => {
-      liveApiPath.mockReturnValue("live_set master_track devices 0");
-
-      const result = createDevice({
-        trackCategory: "master",
-        deviceName: "EQ Eight",
-        deviceIndex: 0,
-      });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set master_track" }),
-        "insert_device",
-        "EQ Eight",
-        0,
-      );
-      expect(result).toStrictEqual({
-        deviceId: "device123",
-        deviceIndex: 0,
-      });
-    });
-
-    it("should warn when trackIndex provided for master track", () => {
-      liveApiPath.mockReturnValue("live_set master_track devices 2");
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-      createDevice({
-        trackCategory: "master",
-        trackIndex: 0,
-        deviceName: "Limiter",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "createDevice: trackIndex is ignored for master track",
-      );
-      consoleSpy.mockRestore();
     });
   });
 
@@ -612,26 +346,6 @@ describe("createDevice", () => {
           deviceId: "device123",
           deviceIndex: 0,
         });
-      });
-    });
-
-    describe("deviceIndex warning", () => {
-      it("should warn when deviceIndex provided with path", () => {
-        liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
-        const consoleSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
-
-        createDevice({
-          path: "t0",
-          deviceName: "Compressor",
-          deviceIndex: 5,
-        });
-
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "createDevice: deviceIndex is ignored when path is provided",
-        );
-        consoleSpy.mockRestore();
       });
     });
 

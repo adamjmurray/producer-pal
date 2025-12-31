@@ -9,32 +9,16 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     destructiveHint: true,
   },
   inputSchema: {
-    trackCategory: z
-      .enum(["regular", "return", "master"])
-      .default("regular")
-      .describe("regular/return tracks use trackIndex, master has no index"),
-    trackIndex: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based track index (required for regular/return tracks)"),
     deviceName: z
       .string()
       .optional()
       .describe("device name, omit to list available devices"),
-    deviceIndex: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("position in device chain, omit to append"),
     path: z
       .string()
       .optional()
       .describe(
-        "device path: t=track, rt=return, mt=master, d=device, c=chain, rc=return chain, p=drum pad. " +
-          "E.g., 't0/d0/c0' append to chain, 't0/d0/c0/d1' insert at position 1",
+        "insertion path (required when deviceName provided): t=track, rt=return, mt=master, d=device position, c=chain, rc=return chain, p=drum pad. " +
+          "E.g., 't0' append to track, 't0/d1' insert at position 1, 't0/d0/c0' append to chain",
       ),
   },
 });
