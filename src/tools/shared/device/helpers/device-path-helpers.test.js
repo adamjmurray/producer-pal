@@ -46,7 +46,7 @@ describe("device-path-helpers", () => {
     describe("return track devices", () => {
       it("extracts path for return track device", () => {
         expect(extractDevicePath("live_set return_tracks 0 devices 0")).toBe(
-          "r0/d0",
+          "rt0/d0",
         );
       });
 
@@ -55,21 +55,21 @@ describe("device-path-helpers", () => {
           extractDevicePath(
             "live_set return_tracks 1 devices 0 chains 0 devices 1",
           ),
-        ).toBe("r1/d0/c0/d1");
+        ).toBe("rt1/d0/c0/d1");
       });
     });
 
     describe("master track devices", () => {
       it("extracts path for master track device", () => {
         expect(extractDevicePath("live_set master_track devices 0")).toBe(
-          "m/d0",
+          "mt/d0",
         );
       });
 
       it("extracts path for master track nested device", () => {
         expect(
           extractDevicePath("live_set master_track devices 0 chains 0"),
-        ).toBe("m/d0/c0");
+        ).toBe("mt/d0/c0");
       });
 
       it("extracts path for master track deeply nested", () => {
@@ -77,7 +77,7 @@ describe("device-path-helpers", () => {
           extractDevicePath(
             "live_set master_track devices 0 chains 1 devices 2",
           ),
-        ).toBe("m/d0/c1/d2");
+        ).toBe("mt/d0/c1/d2");
       });
     });
 
@@ -85,7 +85,7 @@ describe("device-path-helpers", () => {
       it("extracts path for return chain", () => {
         expect(
           extractDevicePath("live_set tracks 1 devices 0 return_chains 0"),
-        ).toBe("t1/d0/e0");
+        ).toBe("t1/d0/rc0");
       });
 
       it("extracts path for device in return chain", () => {
@@ -93,7 +93,7 @@ describe("device-path-helpers", () => {
           extractDevicePath(
             "live_set tracks 1 devices 0 return_chains 0 devices 1",
           ),
-        ).toBe("t1/d0/e0/d1");
+        ).toBe("t1/d0/rc0/d1");
       });
 
       it("extracts path for return chain in return track rack", () => {
@@ -101,7 +101,7 @@ describe("device-path-helpers", () => {
           extractDevicePath(
             "live_set return_tracks 0 devices 0 return_chains 1",
           ),
-        ).toBe("r0/d0/e1");
+        ).toBe("rt0/d0/rc1");
       });
     });
 
@@ -123,11 +123,11 @@ describe("device-path-helpers", () => {
     });
 
     it("builds chain path for return track device", () => {
-      expect(buildChainPath("r0/d0", 0)).toBe("r0/d0/c0");
+      expect(buildChainPath("rt0/d0", 0)).toBe("rt0/d0/c0");
     });
 
     it("builds chain path for master track device", () => {
-      expect(buildChainPath("m/d0", 1)).toBe("m/d0/c1");
+      expect(buildChainPath("mt/d0", 1)).toBe("mt/d0/c1");
     });
 
     it("builds nested chain path", () => {
@@ -137,15 +137,15 @@ describe("device-path-helpers", () => {
 
   describe("buildReturnChainPath", () => {
     it("builds return chain path", () => {
-      expect(buildReturnChainPath("t1/d0", 0)).toBe("t1/d0/e0");
+      expect(buildReturnChainPath("t1/d0", 0)).toBe("t1/d0/rc0");
     });
 
     it("builds return chain path for return track device", () => {
-      expect(buildReturnChainPath("r0/d0", 1)).toBe("r0/d0/e1");
+      expect(buildReturnChainPath("rt0/d0", 1)).toBe("rt0/d0/rc1");
     });
 
     it("builds return chain path for master track device", () => {
-      expect(buildReturnChainPath("m/d0", 0)).toBe("m/d0/e0");
+      expect(buildReturnChainPath("mt/d0", 0)).toBe("mt/d0/rc0");
     });
   });
 
@@ -163,7 +163,7 @@ describe("device-path-helpers", () => {
     });
 
     it("builds drum pad path for return track device", () => {
-      expect(buildDrumPadPath("r0/d0", "C3")).toBe("r0/d0/pC3");
+      expect(buildDrumPadPath("rt0/d0", "C3")).toBe("rt0/d0/pC3");
     });
 
     it("builds drum pad path with explicit chain index", () => {
@@ -185,14 +185,14 @@ describe("device-path-helpers", () => {
       });
 
       it("resolves return track device", () => {
-        expect(resolvePathToLiveApi("r0/d0")).toStrictEqual({
+        expect(resolvePathToLiveApi("rt0/d0")).toStrictEqual({
           liveApiPath: "live_set return_tracks 0 devices 0",
           targetType: "device",
         });
       });
 
       it("resolves master track device", () => {
-        expect(resolvePathToLiveApi("m/d0")).toStrictEqual({
+        expect(resolvePathToLiveApi("mt/d0")).toStrictEqual({
           liveApiPath: "live_set master_track devices 0",
           targetType: "device",
         });
@@ -231,7 +231,7 @@ describe("device-path-helpers", () => {
       });
 
       it("resolves master track chain", () => {
-        expect(resolvePathToLiveApi("m/d0/c0")).toStrictEqual({
+        expect(resolvePathToLiveApi("mt/d0/c0")).toStrictEqual({
           liveApiPath: "live_set master_track devices 0 chains 0",
           targetType: "chain",
         });
@@ -240,21 +240,21 @@ describe("device-path-helpers", () => {
 
     describe("return chain paths", () => {
       it("resolves return chain in rack", () => {
-        expect(resolvePathToLiveApi("t1/d0/e0")).toStrictEqual({
+        expect(resolvePathToLiveApi("t1/d0/rc0")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0",
           targetType: "return-chain",
         });
       });
 
       it("resolves device in return chain", () => {
-        expect(resolvePathToLiveApi("t1/d0/e0/d1")).toStrictEqual({
+        expect(resolvePathToLiveApi("t1/d0/rc0/d1")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0 devices 1",
           targetType: "device",
         });
       });
 
       it("resolves return chain in return track rack", () => {
-        expect(resolvePathToLiveApi("r0/d0/e1")).toStrictEqual({
+        expect(resolvePathToLiveApi("rt0/d0/rc1")).toStrictEqual({
           liveApiPath: "live_set return_tracks 0 devices 0 return_chains 1",
           targetType: "return-chain",
         });
@@ -334,7 +334,7 @@ describe("device-path-helpers", () => {
       });
 
       it("throws on invalid return track index", () => {
-        expect(() => resolvePathToLiveApi("rx/d0")).toThrow(
+        expect(() => resolvePathToLiveApi("rtx/d0")).toThrow(
           "Invalid return track index",
         );
       });
@@ -352,7 +352,7 @@ describe("device-path-helpers", () => {
       });
 
       it("throws on invalid return chain index", () => {
-        expect(() => resolvePathToLiveApi("t1/d0/ex")).toThrow(
+        expect(() => resolvePathToLiveApi("t1/d0/rcx")).toThrow(
           "Invalid return chain index",
         );
       });
@@ -512,7 +512,7 @@ describe("device-path-helpers", () => {
           return "valid-id";
         });
 
-        expect(() => resolveInsertionPath("t0/d0/e0")).toThrow(
+        expect(() => resolveInsertionPath("t0/d0/rc0")).toThrow(
           "Return chain in path",
         );
       });

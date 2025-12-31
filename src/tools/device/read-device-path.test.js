@@ -259,11 +259,11 @@ describe("readDevice with path parameter", () => {
       return [];
     });
 
-    const result = readDevice({ path: "t1/d0/e0" });
+    const result = readDevice({ path: "t1/d0/rc0" });
 
     expect(result).toStrictEqual({
       id: "return-chain-101",
-      path: "t1/d0/e0",
+      path: "t1/d0/rc0",
       type: "Chain",
       name: "Return A",
       color: "#0088FF",
@@ -347,11 +347,11 @@ describe("readDevice with path parameter", () => {
       }
     });
 
-    const result = readDevice({ path: "r0/d0" });
+    const result = readDevice({ path: "rt0/d0" });
 
     expect(result).toStrictEqual({
       id: "return-device-123",
-      path: "r0/d0",
+      path: "rt0/d0",
       type: "audio-effect: Reverb",
     });
   });
@@ -379,11 +379,11 @@ describe("readDevice with path parameter", () => {
       }
     });
 
-    const result = readDevice({ path: "m/d0" });
+    const result = readDevice({ path: "mt/d0" });
 
     expect(result).toStrictEqual({
       id: "master-device-123",
-      path: "m/d0",
+      path: "mt/d0",
       type: "audio-effect: Limiter",
     });
   });

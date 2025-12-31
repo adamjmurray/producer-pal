@@ -513,7 +513,7 @@ describe("createDevice", () => {
         liveApiPath.mockReturnValue("live_set return_tracks 0 devices 0");
 
         const result = createDevice({
-          path: "r0/d0",
+          path: "rt0/d0",
           deviceName: "Reverb",
         });
 
@@ -533,7 +533,7 @@ describe("createDevice", () => {
         liveApiPath.mockReturnValue("live_set master_track devices 0");
 
         const result = createDevice({
-          path: "m",
+          path: "mt",
           deviceName: "Limiter",
         });
 
@@ -596,7 +596,7 @@ describe("createDevice", () => {
         );
 
         const result = createDevice({
-          path: "t0/d0/e0/d0",
+          path: "t0/d0/rc0/d0",
           deviceName: "Delay",
         });
 

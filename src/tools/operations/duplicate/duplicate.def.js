@@ -75,7 +75,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "device destination: t=track, r=return, m=master, d=device index, c=chain (e.g., 't1/d0')",
+        "device destination: t=track, rt=return, mt=master, d=device index, c=chain (e.g., 't1/d0')",
       ),
   },
 });

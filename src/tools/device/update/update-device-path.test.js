@@ -76,7 +76,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device by path on return track", () => {
-      const result = updateDevice({ path: "r0/d0", name: "Return Device" });
+      const result = updateDevice({ path: "rt0/d0", name: "Return Device" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "return-device-123" }),
@@ -87,7 +87,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device by path on master track", () => {
-      const result = updateDevice({ path: "m/d0", name: "Master Device" });
+      const result = updateDevice({ path: "mt/d0", name: "Master Device" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "master-device-789" }),
@@ -172,7 +172,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update return chain by path", () => {
-      const result = updateDevice({ path: "t1/d0/e0", name: "Return Chain" });
+      const result = updateDevice({ path: "t1/d0/rc0", name: "Return Chain" });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "return-chain-456" }),
