@@ -62,8 +62,20 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     const device = devices[i];
 
     // Ensure chain exists (create if needed)
-    while (i >= rack.getChildren("chains").length) {
-      rack.call("insert_chain");
+    const currentChainCount = rack.getChildren("chains").length;
+
+    if (i >= currentChainCount) {
+      const chainsNeeded = i + 1 - currentChainCount;
+
+      for (let j = 0; j < chainsNeeded; j++) {
+        const result = rack.call("insert_chain");
+
+        if (!Array.isArray(result) || result[0] !== "id") {
+          throw new Error(
+            `wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
+          );
+        }
+      }
     }
 
     const chainPath = `${rack.path} chains ${i}`;

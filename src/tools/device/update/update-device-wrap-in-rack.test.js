@@ -498,4 +498,46 @@ describe("updateDevice - wrapInRack", () => {
       }),
     ).toThrow("no devices found");
   });
+
+  it("should throw error when insert_chain fails", () => {
+    // Mock rack with no pre-existing chains
+    liveApiGet.mockImplementation(function (prop) {
+      if (prop === "type") {
+        if (
+          this._path === "live_set tracks 0 devices 0" ||
+          this._path === "id device-0" ||
+          this._path === "device-0"
+        ) {
+          return [2]; // Audio effect
+        }
+      }
+
+      // Rack starts with no chains
+      if (prop === "chains" && this._path?.includes("new-rack")) {
+        return [];
+      }
+
+      return [0];
+    });
+
+    // Mock insert_chain to fail (returns 1 instead of ["id", "chain-id"])
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "insert_device") {
+        return ["id", "new-rack"];
+      }
+
+      if (method === "insert_chain") {
+        return 1; // Failure
+      }
+
+      return null;
+    });
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        wrapInRack: true,
+      }),
+    ).toThrow("wrapInRack: failed to create chain 1/1");
+  });
 });
