@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -78,7 +78,7 @@
     "marked": "^17.0.1",
     "openai": "^6.15.0",
     "preact": "^10.28.1",
-    "zod": "^4.3.2"
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",
