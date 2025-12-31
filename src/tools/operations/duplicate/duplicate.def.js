@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
-  title: "Duplicate Track/Scene/Clip",
+  title: "Duplicate Track/Scene/Clip/Device",
   description: "Duplicate an object",
   annotations: {
     readOnlyHint: false,
@@ -10,7 +10,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
   inputSchema: {
     type: z
-      .enum(["track", "scene", "clip"])
+      .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
     id: z.string().describe("object to duplicate"),
     count: z
@@ -70,6 +70,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe(
         "destination scene index(es), comma-separated for multiple (e.g., '1' or '1,3,5')",
+      ),
+    toPath: z
+      .string()
+      .optional()
+      .describe(
+        "device destination: t=track, r=return, m=master, d=device index, c=chain (e.g., 't1/d0')",
       ),
   },
 });
