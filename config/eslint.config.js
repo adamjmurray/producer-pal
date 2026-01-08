@@ -224,6 +224,8 @@ const tsOnlyRules = {
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
   "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
+  "@typescript-eslint/method-signature-style": ["error", "property"], // func: () => T, not func(): T
+  "@typescript-eslint/return-await": ["error", "always"], // Consistent async returns
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
@@ -564,6 +566,9 @@ export default [
       "vitest/prefer-to-have-length": "error",
       "vitest/prefer-comparison-matcher": "error",
       "vitest/prefer-strict-equal": "error",
+      "vitest/no-conditional-tests": "error", // No if/switch in test blocks
+      "vitest/no-standalone-expect": "error", // expect() must be inside it()
+      "vitest/max-expects": ["error", { max: 30 }], // Focused tests (TODO: ratchet down)
     },
   },
   {
