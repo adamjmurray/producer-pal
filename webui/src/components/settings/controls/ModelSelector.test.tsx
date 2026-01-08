@@ -25,7 +25,7 @@ function renderModelSelector(
   return { ...result, setModel };
 }
 
-function selectAndExpectModel(value: string, setModel: Mock): void {
+function expectModelSelected(value: string, setModel: Mock): void {
   fireEvent.change(screen.getByRole("combobox"), { target: { value } });
   expect(setModel).toHaveBeenCalledWith(value);
 }
@@ -65,15 +65,14 @@ describe("ModelSelector", () => {
   it("triggers setModel callback on change", () => {
     const { setModel } = renderModelSelector();
 
-    selectAndExpectModel("gemini-2.5-pro", setModel);
+    expectModelSelected("gemini-2.5-pro", setModel);
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
   });
 
-  // eslint-disable-next-line vitest/expect-expect -- expects in helper
   it("can select gemini-2.5-flash-lite", () => {
     const { setModel } = renderModelSelector();
 
-    selectAndExpectModel("gemini-2.5-flash-lite", setModel);
+    expectModelSelected("gemini-2.5-flash-lite", setModel);
   });
 
   describe("OpenAI provider", () => {
@@ -86,14 +85,13 @@ describe("ModelSelector", () => {
       ).toBeDefined();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
         model: "gpt-5-2025-08-07",
       });
 
-      selectAndExpectModel("gpt-5-mini-2025-08-07", setModel);
+      expectModelSelected("gpt-5-mini-2025-08-07", setModel);
     });
   });
 
@@ -111,14 +109,13 @@ describe("ModelSelector", () => {
       ).toBeDefined();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("calls setModel when Mistral model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "mistral",
         model: "mistral-large-latest",
       });
 
-      selectAndExpectModel("mistral-small-latest", setModel);
+      expectModelSelected("mistral-small-latest", setModel);
     });
   });
 
@@ -136,14 +133,13 @@ describe("ModelSelector", () => {
       ).toBeDefined();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("calls setModel when OpenRouter model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openrouter",
         model: "qwen/qwen3-coder:free",
       });
 
-      selectAndExpectModel("mistralai/devstral-2512:free", setModel);
+      expectModelSelected("mistralai/devstral-2512:free", setModel);
     });
   });
 
@@ -195,14 +191,13 @@ describe("ModelSelector", () => {
       expect(screen.getByRole("option", { name: /Qwen3 Coder/ })).toBeDefined();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("calls setModel when Ollama model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "ollama",
         model: "ministral-3",
       });
 
-      selectAndExpectModel("qwen3", setModel);
+      expectModelSelected("qwen3", setModel);
     });
   });
 

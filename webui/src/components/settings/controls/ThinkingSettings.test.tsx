@@ -61,19 +61,16 @@ describe("ThinkingSettings", () => {
       );
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("displays all thinking options", () => {
       renderThinkingSettings();
       expectAllThinkingOptions();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("shows checkbox when thinking is not Off", () => {
       renderThinkingSettings();
       expectCheckboxVisible();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("hides checkbox when thinking is Off", () => {
       renderThinkingSettings({ thinking: "Off" });
       expectCheckboxHidden();
@@ -81,7 +78,6 @@ describe("ThinkingSettings", () => {
   });
 
   describe("OpenAI provider", () => {
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("renders all thinking options (unified with other providers)", () => {
       renderThinkingSettings({
         provider: "openai",
@@ -91,7 +87,6 @@ describe("ThinkingSettings", () => {
       expectAllThinkingOptions();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("does not show checkbox for OpenAI provider", () => {
       renderThinkingSettings({
         provider: "openai",
@@ -116,7 +111,6 @@ describe("ThinkingSettings", () => {
   });
 
   describe("OpenRouter provider", () => {
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("renders all unified thinking options", () => {
       renderThinkingSettings({
         provider: "openrouter",
@@ -126,7 +120,6 @@ describe("ThinkingSettings", () => {
       expectAllThinkingOptions();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("shows checkbox when thinking is not Off", () => {
       renderThinkingSettings({
         provider: "openrouter",
@@ -136,7 +129,6 @@ describe("ThinkingSettings", () => {
       expectCheckboxVisible();
     });
 
-    // eslint-disable-next-line vitest/expect-expect -- expects in helper
     it("hides checkbox when thinking is Off", () => {
       renderThinkingSettings({
         provider: "openrouter",

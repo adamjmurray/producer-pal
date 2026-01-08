@@ -589,6 +589,7 @@ export default [
       "vitest/no-conditional-tests": "error", // No if/switch in test blocks
       "vitest/no-standalone-expect": "error", // expect() must be inside it()
       "vitest/max-expects": ["error", { max: 14 }], // Focused tests (TODO: ratchet down)
+      "vitest/expect-expect": ["error", { assertFunctionNames: ["expect*"] }],
     },
   },
   {
