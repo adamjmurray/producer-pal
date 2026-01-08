@@ -32,7 +32,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
       get trackIndex() {
         const matched = path.match(/tracks (\d+)/);
 
-        return matched ? parseInt(matched[1]) : null;
+        return matched ? Number.parseInt(matched[1]) : null;
       },
     };
   }),

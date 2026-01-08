@@ -111,7 +111,7 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
       localStorage.getItem("gemini_temperature");
 
     if (temperature != null) {
-      legacySettings.temperature = parseFloat(temperature);
+      legacySettings.temperature = Number.parseFloat(temperature);
     }
 
     const showThoughts =

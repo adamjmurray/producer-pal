@@ -35,7 +35,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
       get trackIndex() {
         const match = arrClipPath.match(/tracks (\d+)/);
 
-        return match ? parseInt(match[1]) : null;
+        return match ? Number.parseInt(match[1]) : null;
       },
     };
   }),
@@ -443,7 +443,7 @@ describe("duplicate - scene duplication", () => {
           const clipMatch = this._path.match(/arrangement_clips (\d+)/);
 
           if (clipMatch) {
-            const clipIndex = parseInt(clipMatch[1]);
+            const clipIndex = Number.parseInt(clipMatch[1]);
 
             return [16 + clipIndex * 8]; // 16, 24, 32
           }

@@ -26,7 +26,7 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
       const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
 
       if (deviceIndexMatch) {
-        const deviceIndex = parseInt(deviceIndexMatch[1]);
+        const deviceIndex = Number.parseInt(deviceIndexMatch[1]);
 
         newTrack.call("delete_device", deviceIndex);
         console.error(

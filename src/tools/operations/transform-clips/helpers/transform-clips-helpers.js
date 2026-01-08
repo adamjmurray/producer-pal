@@ -54,8 +54,8 @@ export function parseTransposeValues(
 
   const transposeValuesArray = transposeValues
     .split(",")
-    .map((v) => parseFloat(v.trim()))
-    .filter((v) => !isNaN(v));
+    .map((v) => Number.parseFloat(v.trim()))
+    .filter((v) => !Number.isNaN(v));
 
   if (transposeValuesArray.length === 0) {
     throw new Error("transposeValues must contain at least one valid number");

@@ -203,6 +203,7 @@ const unicornRules = {
   "unicorn/prefer-set-has": "error", // Use Set.has() instead of Array.includes() for repeated checks
   "unicorn/no-lonely-if": "error", // Use else if instead of if inside else block
   "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
+  "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
 };
 
 const jsOnlyRules = {
@@ -639,6 +640,7 @@ export default [
       "**/*.test.tsx",
       "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
+      "src/tools/shared/device/helpers/device-path-helpers.js", // Complex path parsing
     ],
     rules: {
       "max-lines": [

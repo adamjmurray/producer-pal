@@ -101,18 +101,19 @@ function parseTrackSegment(trackSegment, path) {
   if (trackSegment === "mt") return "live_set master_track";
 
   if (trackSegment.startsWith("rt")) {
-    const index = parseInt(trackSegment.slice(2), 10);
+    const index = Number.parseInt(trackSegment.slice(2));
 
-    if (isNaN(index))
+    if (Number.isNaN(index))
       throw new Error(`Invalid return track index in path: ${path}`);
 
     return `live_set return_tracks ${index}`;
   }
 
   if (trackSegment.startsWith("t")) {
-    const index = parseInt(trackSegment.slice(1), 10);
+    const index = Number.parseInt(trackSegment.slice(1));
 
-    if (isNaN(index)) throw new Error(`Invalid track index in path: ${path}`);
+    if (Number.isNaN(index))
+      throw new Error(`Invalid track index in path: ${path}`);
 
     return `live_set tracks ${index}`;
   }
@@ -150,9 +151,9 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
 
   // Return chain (rc prefix)
   if (segment.startsWith("rc")) {
-    const returnChainIndex = parseInt(segment.slice(2), 10);
+    const returnChainIndex = Number.parseInt(segment.slice(2));
 
-    if (isNaN(returnChainIndex)) {
+    if (Number.isNaN(returnChainIndex)) {
       throw new Error(`Invalid return chain index in path: ${path}`);
     }
 
@@ -164,9 +165,9 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
 
   // Regular chain (c prefix)
   if (segment.startsWith("c")) {
-    const chainIndex = parseInt(segment.slice(1), 10);
+    const chainIndex = Number.parseInt(segment.slice(1));
 
-    if (isNaN(chainIndex)) {
+    if (Number.isNaN(chainIndex)) {
       throw new Error(`Invalid chain index in path: ${path}`);
     }
 
@@ -211,9 +212,9 @@ export function resolvePathToLiveApi(path) {
 
     if (segment.startsWith("d")) {
       // Device segment
-      const deviceIndex = parseInt(segment.slice(1), 10);
+      const deviceIndex = Number.parseInt(segment.slice(1));
 
-      if (isNaN(deviceIndex)) {
+      if (Number.isNaN(deviceIndex)) {
         throw new Error(`Invalid device index in path: ${path}`);
       }
 
@@ -277,9 +278,9 @@ export function resolveDrumPadFromPath(
 
     // Only consume segment if it's a chain index (c prefix)
     if (firstSegment.startsWith("c")) {
-      chainIndexWithinNote = parseInt(firstSegment.slice(1), 10);
+      chainIndexWithinNote = Number.parseInt(firstSegment.slice(1));
 
-      if (isNaN(chainIndexWithinNote)) {
+      if (Number.isNaN(chainIndexWithinNote)) {
         return { target: null, targetType: "chain" };
       }
 
@@ -317,10 +318,14 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "device" };
   }
 
-  const deviceIndex = parseInt(deviceSegment.slice(1), 10);
+  const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 
-  if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
+  if (
+    Number.isNaN(deviceIndex) ||
+    deviceIndex < 0 ||
+    deviceIndex >= devices.length
+  ) {
     return { target: null, targetType: "device" };
   }
 
@@ -344,7 +349,7 @@ export function resolveDrumPadFromPath(
  * @returns {object|null} Child object or null if invalid
  */
 function getChildAtIndex(parent, childType, index) {
-  if (isNaN(index)) return null;
+  if (Number.isNaN(index)) return null;
   const c = parent.getChildren(childType);
 
   return index >= 0 && index < c.length ? c[index] : null;
@@ -378,14 +383,18 @@ function navigateRemainingSegments(startDevice, segments) {
       const c = getChildAtIndex(
         current,
         isRc ? "return_chains" : "chains",
-        parseInt(seg.slice(isRc ? 2 : 1), 10),
+        Number.parseInt(seg.slice(isRc ? 2 : 1)),
       );
 
       if (!c) return { target: null, targetType: "chain" };
       current = c;
       currentType = "chain";
     } else if (seg.startsWith("d")) {
-      const c = getChildAtIndex(current, "devices", parseInt(seg.slice(1), 10));
+      const c = getChildAtIndex(
+        current,
+        "devices",
+        Number.parseInt(seg.slice(1)),
+      );
 
       if (!c) return { target: null, targetType: "device" };
       current = c;
@@ -415,13 +424,13 @@ function resolveTrack(segment) {
   }
 
   if (segment.startsWith("rt")) {
-    const returnIndex = parseInt(segment.slice(2), 10);
+    const returnIndex = Number.parseInt(segment.slice(2));
 
     return new LiveAPI(`live_set return_tracks ${returnIndex}`);
   }
 
   if (segment.startsWith("t")) {
-    const trackIndex = parseInt(segment.slice(1), 10);
+    const trackIndex = Number.parseInt(segment.slice(1));
 
     return new LiveAPI(`live_set tracks ${trackIndex}`);
   }
@@ -493,13 +502,13 @@ function resolveDrumPadContainer(path) {
       const chainSegment = resolved.remainingSegments[0];
 
       if (chainSegment.startsWith("c")) {
-        chainIndex = parseInt(chainSegment.slice(1), 10);
+        chainIndex = Number.parseInt(chainSegment.slice(1));
       } else {
-        chainIndex = parseInt(chainSegment, 10);
+        chainIndex = Number.parseInt(chainSegment);
       }
     }
 
-    if (isNaN(chainIndex) || chainIndex < 0) {
+    if (Number.isNaN(chainIndex) || chainIndex < 0) {
       return null;
     }
 
@@ -565,9 +574,9 @@ export function resolveInsertionPath(path) {
   const hasPosition = lastSegment.startsWith("d");
 
   if (hasPosition) {
-    const position = parseInt(lastSegment.slice(1), 10);
+    const position = Number.parseInt(lastSegment.slice(1));
 
-    if (isNaN(position) || position < 0) {
+    if (Number.isNaN(position) || position < 0) {
       throw new Error(`Invalid device position in path: ${path}`);
     }
 

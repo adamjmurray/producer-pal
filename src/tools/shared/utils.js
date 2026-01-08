@@ -55,9 +55,9 @@ export function parseCommaSeparatedIndices(indices) {
     .map((index) => index.trim())
     .filter((index) => index.length > 0)
     .map((index) => {
-      const parsed = parseInt(index, 10);
+      const parsed = Number.parseInt(index);
 
-      if (isNaN(parsed)) {
+      if (Number.isNaN(parsed)) {
         throw new Error(`Invalid index "${index}" - must be a valid integer`);
       }
 
@@ -79,8 +79,8 @@ export function parseTimeSignature(timeSignature) {
   }
 
   return {
-    numerator: parseInt(match[1], 10),
-    denominator: parseInt(match[2], 10),
+    numerator: Number.parseInt(match[1]),
+    denominator: Number.parseInt(match[2]),
   };
 }
 

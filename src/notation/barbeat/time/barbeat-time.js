@@ -193,7 +193,7 @@ function parseBeatValue(beatsStr, context) {
     const [intPart, fracPart] = beatsStr.split("+");
     const num = Number.parseInt(intPart);
 
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       throw new Error(`Invalid integer+fraction format: "${context}"`);
     }
 
@@ -205,7 +205,7 @@ function parseBeatValue(beatsStr, context) {
       throw new Error(`Invalid fraction: division by zero in "${context}"`);
     }
 
-    if (isNaN(fracNum) || isNaN(fracDen)) {
+    if (Number.isNaN(fracNum) || Number.isNaN(fracDen)) {
       throw new Error(`Invalid integer+fraction format: "${context}"`);
     }
 
@@ -221,7 +221,7 @@ function parseBeatValue(beatsStr, context) {
       throw new Error(`Invalid fraction: division by zero in "${context}"`);
     }
 
-    if (isNaN(num) || isNaN(den)) {
+    if (Number.isNaN(num) || Number.isNaN(den)) {
       throw new Error(`Invalid fraction format: "${context}"`);
     }
 
@@ -230,7 +230,7 @@ function parseBeatValue(beatsStr, context) {
 
   const beats = Number.parseFloat(beatsStr);
 
-  if (isNaN(beats)) {
+  if (Number.isNaN(beats)) {
     throw new Error(`Invalid duration format: "${context}"`);
   }
 

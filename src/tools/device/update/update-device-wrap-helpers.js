@@ -168,7 +168,7 @@ function getDeviceInsertionPoint(device) {
   const parentPath = device.path.replace(/ devices \d+$/, "");
   const container = new LiveAPI(parentPath);
   const match = device.path.match(/ devices (\d+)$/);
-  const position = match ? parseInt(match[1], 10) : 0;
+  const position = match ? Number.parseInt(match[1]) : 0;
 
   return { container, position };
 }

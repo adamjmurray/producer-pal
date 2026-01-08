@@ -202,9 +202,13 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
   // Parse chain index from prefixed segment (e.g., "c0" -> 0)
   const chainSegment = remainingSegments[0];
-  const chainIndex = parseInt(chainSegment.slice(1), 10);
+  const chainIndex = Number.parseInt(chainSegment.slice(1));
 
-  if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
+  if (
+    Number.isNaN(chainIndex) ||
+    chainIndex < 0 ||
+    chainIndex >= chains.length
+  ) {
     throw new Error(`Invalid chain index in path: ${fullPath}`);
   }
 
@@ -218,10 +222,14 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   // Navigate to device within chain
   // Parse device index from prefixed segment (e.g., "d0" -> 0)
   const deviceSegment = remainingSegments[1];
-  const deviceIndex = parseInt(deviceSegment.slice(1), 10);
+  const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 
-  if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
+  if (
+    Number.isNaN(deviceIndex) ||
+    deviceIndex < 0 ||
+    deviceIndex >= devices.length
+  ) {
     throw new Error(`Invalid device index in path: ${fullPath}`);
   }
 

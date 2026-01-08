@@ -48,7 +48,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
 
-        return match ? parseInt(match[1]) : null;
+        return match ? Number.parseInt(match[1]) : null;
       },
     };
   }),

@@ -85,7 +85,7 @@ function ExpandedPanel({
             value={temperature}
             onInput={(e) =>
               onTemperatureChange(
-                parseFloat((e.target as HTMLInputElement).value),
+                Number.parseFloat((e.target as HTMLInputElement).value),
               )
             }
             className="w-full"

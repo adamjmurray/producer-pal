@@ -48,7 +48,7 @@ describe("formatTimestamp", () => {
   });
 
   it("returns 'Invalid Date' for NaN input", () => {
-    const result = formatTimestamp(NaN);
+    const result = formatTimestamp(Number.NaN);
 
     expect(result).toBe("Invalid Date");
   });

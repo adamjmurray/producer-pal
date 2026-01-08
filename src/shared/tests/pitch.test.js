@@ -98,7 +98,7 @@ describe("isValidMidi", () => {
     expect(isValidMidi(null)).toBe(false);
     expect(isValidMidi()).toBe(false);
     expect(isValidMidi("60")).toBe(false);
-    expect(isValidMidi(NaN)).toBe(false);
+    expect(isValidMidi(Number.NaN)).toBe(false);
   });
 });
 

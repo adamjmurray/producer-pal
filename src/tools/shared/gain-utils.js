@@ -71,7 +71,7 @@ export function liveGainToDb(gain) {
   const dB = lower.dB + t * (upper.dB - lower.dB);
 
   // Round to 2 decimal places and remove trailing zeros
-  return parseFloat(dB.toFixed(2));
+  return Number.parseFloat(dB.toFixed(2));
 }
 
 /**

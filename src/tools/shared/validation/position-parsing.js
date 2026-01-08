@@ -13,9 +13,9 @@ export function parseSceneIndexList(input) {
     .map((s) => s.trim())
     .filter((s) => s !== "")
     .map((s) => {
-      const num = parseInt(s, 10);
+      const num = Number.parseInt(s);
 
-      if (isNaN(num) || num < 0) {
+      if (Number.isNaN(num) || num < 0) {
         throw new Error(
           `invalid sceneIndex "${s}" - must be a non-negative integer`,
         );

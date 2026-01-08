@@ -46,7 +46,7 @@ export const moveClipFromHoldingMock = vi.fn(
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
 
-        return match ? parseInt(match[1]) : null;
+        return match ? Number.parseInt(match[1]) : null;
       },
     };
   },

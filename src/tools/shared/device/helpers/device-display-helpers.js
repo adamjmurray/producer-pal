@@ -70,14 +70,14 @@ export function parseLabel(label) {
 
     if (pattern.isPan) {
       // Will be normalized later when we know the max pan value
-      const num = parseInt(match[1]);
+      const num = Number.parseInt(match[1]);
       const dir = match[2];
 
       return { value: num, unit: "pan", direction: dir };
     }
 
     return {
-      value: parseFloat(match[1]) * (pattern.multiplier || 1),
+      value: Number.parseFloat(match[1]) * (pattern.multiplier || 1),
       unit: pattern.unit,
     };
   }
@@ -86,7 +86,7 @@ export function parseLabel(label) {
   const numMatch = label.match(/^([\d.-]+)/);
 
   if (numMatch) {
-    return { value: parseFloat(numMatch[1]), unit: null };
+    return { value: Number.parseFloat(numMatch[1]), unit: null };
   }
 
   return { value: null, unit: null };
@@ -116,7 +116,7 @@ export function normalizePan(label, maxPanValue) {
 
   if (!match) return 0;
 
-  const num = parseInt(match[1]);
+  const num = Number.parseInt(match[1]);
   const dir = match[2];
 
   return dir === "L" ? -num / maxPanValue : num / maxPanValue;
@@ -130,7 +130,7 @@ export function normalizePan(label, maxPanValue) {
 export function extractMaxPanValue(label) {
   const match = label.match(/^(\d+)[LR]$/);
 
-  return match ? parseInt(match[1]) : 50;
+  return match ? Number.parseInt(match[1]) : 50;
 }
 
 function addStateFlags(result, paramApi, state, automationState) {

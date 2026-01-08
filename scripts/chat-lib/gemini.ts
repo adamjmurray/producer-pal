@@ -147,7 +147,8 @@ function buildConfig(options: ChatOptions): GeminiConfig {
 
   if (options.thinking) {
     const budget =
-      GEMINI_THINKING_MAP[options.thinking] ?? parseInt(options.thinking, 10);
+      GEMINI_THINKING_MAP[options.thinking] ??
+      Number.parseInt(options.thinking, 10);
 
     config.thinkingConfig = {
       includeThoughts: budget !== 0,
