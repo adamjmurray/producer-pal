@@ -501,11 +501,9 @@ function resolveDrumPadContainer(path) {
     if (resolved.remainingSegments?.length > 0) {
       const chainSegment = resolved.remainingSegments[0];
 
-      if (chainSegment.startsWith("c")) {
-        chainIndex = Number.parseInt(chainSegment.slice(1));
-      } else {
-        chainIndex = Number.parseInt(chainSegment);
-      }
+      chainIndex = chainSegment.startsWith("c")
+        ? Number.parseInt(chainSegment.slice(1))
+        : Number.parseInt(chainSegment);
     }
 
     if (Number.isNaN(chainIndex) || chainIndex < 0) {

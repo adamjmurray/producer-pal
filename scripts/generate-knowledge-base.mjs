@@ -67,11 +67,9 @@ async function main() {
     await cleanAndCreateOutputDir(config.outputDir);
 
     // Process files based on mode
-    if (isConcatMode) {
-      await processConcatMode(config, excludeGroups);
-    } else {
-      await processFlatMode(config, excludeGroups);
-    }
+    await (isConcatMode
+      ? processConcatMode(config, excludeGroups)
+      : processFlatMode(config, excludeGroups));
 
     // Display summary
     console.log(

@@ -108,11 +108,10 @@ function stripVerboseFields(obj: unknown): unknown {
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    if (VERBOSE_FIELDS.has(key) && Array.isArray(value)) {
-      result[key] = `[${value.length} items]`;
-    } else {
-      result[key] = stripVerboseFields(value);
-    }
+    result[key] =
+      VERBOSE_FIELDS.has(key) && Array.isArray(value)
+        ? `[${value.length} items]`
+        : stripVerboseFields(value);
   }
 
   return result;

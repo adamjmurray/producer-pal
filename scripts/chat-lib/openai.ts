@@ -170,11 +170,9 @@ async function sendMessage(
 
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
-  if (options.stream) {
-    await handleStreamingResponse(ctx, requestBody);
-  } else {
-    await handleNonStreamingResponse(ctx, requestBody);
-  }
+  await (options.stream
+    ? handleStreamingResponse(ctx, requestBody)
+    : handleNonStreamingResponse(ctx, requestBody));
 }
 
 function buildRequestBody(

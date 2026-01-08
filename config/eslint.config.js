@@ -204,6 +204,7 @@ const unicornRules = {
   "unicorn/no-lonely-if": "error", // Use else if instead of if inside else block
   "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
   "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
+  "unicorn/prefer-ternary": ["error", "only-single-line"], // Simple if-else to ternary
 };
 
 const jsOnlyRules = {
