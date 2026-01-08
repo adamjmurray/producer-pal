@@ -1,9 +1,9 @@
 {
-  "threshold": 1.2,
+  "threshold": 1,
   "reporters": ["console"],
   "ignore": [
     "**/node_modules/**",
-    "**/parser/*.js",
+    "**/barbeat-parser.js",
     "**/*.test.js",
     "**/*.test.ts",
     "**/*.test.tsx",

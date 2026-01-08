@@ -1,6 +1,5 @@
 import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.js";
 import {
-  DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
@@ -8,7 +7,10 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
 } from "#src/notation/barbeat/barbeat-config.js";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.js";
-import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import {
+  barBeatDurationToMusicalBeats,
+  parseBeatsPerBar,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
   validateBufferedState,
@@ -337,23 +339,8 @@ export function interpretNotation(barBeatExpression, options = {}) {
     return [];
   }
 
-  const {
-    beatsPerBar: beatsPerBarOption,
-    timeSigNumerator,
-    timeSigDenominator,
-  } = options;
-
-  if (
-    (timeSigNumerator != null && timeSigDenominator == null) ||
-    (timeSigDenominator != null && timeSigNumerator == null)
-  ) {
-    throw new Error(
-      "Time signature must be specified with both numerator and denominator",
-    );
-  }
-
-  const beatsPerBar =
-    timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
+  const { timeSigNumerator, timeSigDenominator } = options;
+  const beatsPerBar = parseBeatsPerBar(options);
 
   try {
     const ast = parser.parse(barBeatExpression);

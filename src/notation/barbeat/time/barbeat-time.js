@@ -1,3 +1,33 @@
+import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.js";
+
+/**
+ * Parses beatsPerBar from options, validating time signature consistency.
+ * @param {object} options - Options object
+ * @param {number} [options.beatsPerBar] - Legacy beatsPerBar option
+ * @param {number} [options.timeSigNumerator] - Time signature numerator
+ * @param {number} [options.timeSigDenominator] - Time signature denominator
+ * @returns {number} Resolved beatsPerBar value
+ * @throws {Error} If only one of timeSigNumerator/timeSigDenominator is specified
+ */
+export function parseBeatsPerBar(options = {}) {
+  const {
+    beatsPerBar: beatsPerBarOption,
+    timeSigNumerator,
+    timeSigDenominator,
+  } = options;
+
+  if (
+    (timeSigNumerator != null && timeSigDenominator == null) ||
+    (timeSigDenominator != null && timeSigNumerator == null)
+  ) {
+    throw new Error(
+      "Time signature must be specified with both numerator and denominator",
+    );
+  }
+
+  return timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
+}
+
 /**
  * TODO: rename the non-duration-based functions in here (i.e. not the last two) to clearly indicate we are handling bar|beat positions
  * Convert beats to bar|beat format
