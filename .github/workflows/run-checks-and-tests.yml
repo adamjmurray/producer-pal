@@ -58,10 +58,11 @@ jobs:
 
           | Artifact | Status |
           |----------|--------|
-          | Max for Live device | ✅ built |
-          | npm package | ✅ built |
-          | Claude Desktop extension | ✅ built |
-          | Release | ✅ built |
+          | Max for Live device | ✅ |
+          | Built-in chat UI | ✅ |
+          | npm package | ✅ |
+          | Claude Desktop extension | ✅ |
+          | Release | ✅ |
           EOF
 
           # Write to step summary and output (base64 encoded for multiline)
@@ -104,7 +105,7 @@ jobs:
           BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
 
           cat > /tmp/summary.md << EOF
-          ## Coverage Report
+          ## Unit Test Coverage
 
           | Category | Coverage |
           |----------|----------|
@@ -232,7 +233,7 @@ jobs:
           # Extract result summary for job summary
           RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
           cat > /tmp/summary.md << EOF
-          ## Playwright Tests
+          ## End-to-End Tests
 
           | Suite | Result |
           |-------|--------|
