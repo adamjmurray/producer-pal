@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import type { Provider } from "#webui/types/settings";
 
-interface MessageSettingsToolbarProps {
+export interface MessageSettingsToolbarProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
