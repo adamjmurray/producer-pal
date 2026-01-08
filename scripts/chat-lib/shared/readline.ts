@@ -20,7 +20,9 @@ export function createReadline(): Interface {
  * @returns User input
  */
 export function question(rl: Interface, prompt: string): Promise<string> {
-  return new Promise((resolve) => rl.question(prompt, resolve));
+  return new Promise((resolve) => {
+    rl.question(prompt, resolve);
+  });
 }
 
 /**

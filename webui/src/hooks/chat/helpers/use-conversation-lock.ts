@@ -41,7 +41,7 @@ export function useConversationLock<T extends ChatHookResult>({
     useState<Provider | null>(null);
 
   const effectiveProvider = conversationProvider ?? settingsProvider;
-  const chat = (effectiveProvider === "gemini" ? geminiChat : openaiChat) as T;
+  const chat = effectiveProvider === "gemini" ? geminiChat : openaiChat;
 
   const wrappedHandleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {

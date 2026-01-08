@@ -416,7 +416,7 @@ function handleResponseCompleted(
 ): void {
   // Display reasoning from completed event if not already streamed via deltas
   if (!state.displayedReasoning && event.response?.output) {
-    for (const item of event.response.output as ResponseOutput[]) {
+    for (const item of event.response.output) {
       if (item.type === "reasoning") {
         const reasoningText = extractReasoningText(item);
 

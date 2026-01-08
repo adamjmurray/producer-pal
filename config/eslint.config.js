@@ -227,6 +227,14 @@ const tsOnlyRules = {
   "@typescript-eslint/method-signature-style": ["error", "property"], // func: () => T, not func(): T
   "@typescript-eslint/return-await": ["error", "always"], // Consistent async returns
 
+  // Strict type-checked rules
+  "@typescript-eslint/no-unnecessary-type-assertion": "error", // Remove redundant `as X` casts
+  "@typescript-eslint/restrict-plus-operands": "error", // Only add numbers or strings
+  "@typescript-eslint/restrict-template-expressions": "error", // Only strings in templates
+  "@typescript-eslint/unified-signatures": "error", // Merge overloads when possible
+  "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
+  "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
+
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
   "jsdoc/require-returns-type": "off", // TypeScript types are authoritative
@@ -575,6 +583,8 @@ export default [
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "sonarjs/cognitive-complexity": ["error", 40],
+      // Allow DOM element narrowing casts (e.g., `as HTMLSelectElement`) in tests
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
 

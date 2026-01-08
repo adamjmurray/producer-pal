@@ -44,11 +44,10 @@ export const TOOLS: Tool[] = [
   },
 ];
 
-export const DEFAULT_ENABLED_TOOLS: Record<string, boolean> = TOOLS.reduce(
-  (acc, tool) => {
-    acc[tool.id] = true;
+export const DEFAULT_ENABLED_TOOLS: Record<string, boolean> = TOOLS.reduce<
+  Record<string, boolean>
+>((acc, tool) => {
+  acc[tool.id] = true;
 
-    return acc;
-  },
-  {} as Record<string, boolean>,
-);
+  return acc;
+}, {});

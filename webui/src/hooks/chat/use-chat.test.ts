@@ -105,7 +105,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
           parts: [
             {
               type: "error" as const,
-              content: `${error}`,
+              content: String(error),
               isError: true,
             },
           ],
