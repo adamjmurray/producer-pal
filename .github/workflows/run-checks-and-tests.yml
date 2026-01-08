@@ -65,10 +65,10 @@ jobs:
           # Format duplication report as markdown table for job summary
           echo "## Code Duplication Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Type | Clones | Files | Duplication % |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|-------|---------------|" >> $GITHUB_STEP_SUMMARY
-          grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \1 | \3 | \2% |/' >> $GITHUB_STEP_SUMMARY
-          grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \1 | \3 | \2% |/' >> $GITHUB_STEP_SUMMARY
+          echo "| Code Group | Line Dupe % | Files with Dupes | Exact Clones |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|-------------|------------------|--------------|" >> $GITHUB_STEP_SUMMARY
+          grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
+          grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
 
       - name: Run tests with coverage
         id: tests
