@@ -144,6 +144,53 @@ describe("view", () => {
     }));
   });
 
+  // Helper to create a customized LiveAPI mock implementation
+  function createLiveAPIMock(overrides = {}) {
+    return function (path) {
+      this.path = path;
+      this._path = path;
+      this.exists = vi.fn().mockReturnValue(true);
+      this.set = liveApiSet;
+      this.call = liveApiCall;
+      this.get = liveApiGet;
+      this.getProperty = vi.fn();
+      this.setProperty = vi.fn((property, value) => this.set(property, value));
+
+      if (path === "live_app view") {
+        Object.assign(this, mockAppView);
+        this.getProperty.mockReturnValue(1);
+        this.call.mockReturnValue(0);
+      } else if (path === "live_set view") {
+        Object.assign(this, mockSongView);
+      } else if (path === "live_set view selected_track") {
+        const trackOverrides = overrides.selectedTrack || {};
+
+        this.exists.mockReturnValue(trackOverrides.exists ?? true);
+        this.category = trackOverrides.category ?? "regular";
+        this.trackIndex = trackOverrides.trackIndex ?? 3;
+        this.returnTrackIndex = trackOverrides.returnTrackIndex ?? null;
+        this.id = trackOverrides.id ?? "id selected_track_123";
+        this.path = trackOverrides.path ?? "live_set tracks 3";
+      } else if (path === "live_set view selected_scene") {
+        this.exists.mockReturnValue(false);
+      } else if (path === "live_set view detail_clip") {
+        this.exists.mockReturnValue(false);
+      } else if (path === "live_set view highlighted_clip_slot") {
+        this.exists.mockReturnValue(false);
+      } else if (overrides.trackViewPath && path === overrides.trackViewPath) {
+        this.exists.mockReturnValue(true);
+      }
+
+      Object.defineProperty(this, "id", {
+        get: function () {
+          return liveApiId.apply(this);
+        },
+      });
+
+      return this;
+    };
+  }
+
   // Helper function to get expected default view state
   const getDefaultViewState = () => ({
     view: "session",
@@ -331,51 +378,9 @@ describe("view", () => {
     });
 
     it("handles instrument selection using currently selected track when no category/index provided", () => {
-      // Set up selected track to return a valid track
-      global.LiveAPI.mockImplementation(function (path) {
-        this.path = path;
-        this._path = path;
-        this.exists = vi.fn().mockReturnValue(true);
-        this.set = liveApiSet;
-        this.call = liveApiCall;
-        this.get = liveApiGet;
-        this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) =>
-          this.set(property, value),
-        );
-
-        if (path === "live_app view") {
-          Object.assign(this, mockAppView);
-          this.getProperty.mockReturnValue(1);
-          this.call.mockReturnValue(0);
-        } else if (path === "live_set view") {
-          Object.assign(this, mockSongView);
-        } else if (path === "live_set view selected_track") {
-          this.exists.mockReturnValue(true);
-          this.category = "regular";
-          this.trackIndex = 3;
-          this.returnTrackIndex = null;
-          this.id = "id selected_track_123";
-          this.path = "live_set tracks 3";
-        } else if (path === "live_set view selected_scene") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view detail_clip") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view highlighted_clip_slot") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set tracks 3 view") {
-          // Track view for select_instrument
-          this.exists.mockReturnValue(true);
-        }
-
-        Object.defineProperty(this, "id", {
-          get: function () {
-            return liveApiId.apply(this);
-          },
-        });
-
-        return this;
-      });
+      global.LiveAPI.mockImplementation(
+        createLiveAPIMock({ trackViewPath: "live_set tracks 3 view" }),
+      );
 
       // Call select with only instrument: true - no category/trackIndex
       const result = select({ instrument: true });
@@ -390,49 +395,18 @@ describe("view", () => {
     });
 
     it("handles instrument selection on return track using currently selected track", () => {
-      global.LiveAPI.mockImplementation(function (path) {
-        this.path = path;
-        this._path = path;
-        this.exists = vi.fn().mockReturnValue(true);
-        this.set = liveApiSet;
-        this.call = liveApiCall;
-        this.get = liveApiGet;
-        this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) =>
-          this.set(property, value),
-        );
-
-        if (path === "live_app view") {
-          Object.assign(this, mockAppView);
-          this.getProperty.mockReturnValue(1);
-          this.call.mockReturnValue(0);
-        } else if (path === "live_set view") {
-          Object.assign(this, mockSongView);
-        } else if (path === "live_set view selected_track") {
-          this.exists.mockReturnValue(true);
-          this.category = "return";
-          this.trackIndex = null;
-          this.returnTrackIndex = 1;
-          this.id = "id return_track_123";
-          this.path = "live_set return_tracks 1";
-        } else if (path === "live_set view selected_scene") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view detail_clip") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view highlighted_clip_slot") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set return_tracks 1 view") {
-          this.exists.mockReturnValue(true);
-        }
-
-        Object.defineProperty(this, "id", {
-          get: function () {
-            return liveApiId.apply(this);
+      global.LiveAPI.mockImplementation(
+        createLiveAPIMock({
+          selectedTrack: {
+            category: "return",
+            trackIndex: null,
+            returnTrackIndex: 1,
+            id: "id return_track_123",
+            path: "live_set return_tracks 1",
           },
-        });
-
-        return this;
-      });
+          trackViewPath: "live_set return_tracks 1 view",
+        }),
+      );
 
       // Call select with only instrument: true on a return track
       const result = select({ instrument: true });

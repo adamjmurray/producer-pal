@@ -399,10 +399,21 @@ describe("device-path-helpers", () => {
       vi.clearAllMocks();
     });
 
-    it("auto-creates first chain when no chain exists for note", () => {
+    /**
+     * Setup mocks for auto-creation tests
+     * @param {object} config - Configuration
+     * @param {string[]} config.chainIds - Initial chain IDs (mutable)
+     * @param {object} config.chainProperties - Initial chain properties (mutable)
+     * @param {boolean} config.includeCreationMocks - Include insert_chain and in_note mocks
+     */
+
+    function setupAutoCreationMocks(config = {}) {
+      const {
+        chainIds = [],
+        chainProperties = {},
+        includeCreationMocks = true,
+      } = config;
       const deviceId = "drum-rack-1";
-      const chainIds = [];
-      const chainProperties = {};
 
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") return "track-0";
@@ -436,22 +447,30 @@ describe("device-path-helpers", () => {
         return [];
       });
 
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "insert_chain") {
-          const newId = `chain-new-${chainIds.length}`;
+      if (includeCreationMocks) {
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "insert_chain") {
+            const newId = `chain-new-${chainIds.length}`;
 
-          chainIds.push(newId);
-          chainProperties[newId] = { inNote: -1 }; // Default to All Notes
-        }
-      });
+            chainIds.push(newId);
+            chainProperties[newId] = { inNote: -1 };
+          }
+        });
 
-      liveApiSet.mockImplementation(function (prop, value) {
-        const id = this._id ?? this.id;
+        liveApiSet.mockImplementation(function (prop, value) {
+          const id = this._id ?? this.id;
 
-        if (prop === "in_note" && id?.startsWith("chain-")) {
-          chainProperties[id] = { inNote: value };
-        }
-      });
+          if (prop === "in_note" && id?.startsWith("chain-")) {
+            chainProperties[id] = { inNote: value };
+          }
+        });
+      }
+
+      return { chainIds, chainProperties };
+    }
+
+    it("auto-creates first chain when no chain exists for note", () => {
+      setupAutoCreationMocks();
 
       const result = resolveInsertionPath("t0/d0/pC1"); // MIDI 36
 
@@ -462,57 +481,9 @@ describe("device-path-helpers", () => {
     });
 
     it("auto-creates multiple chains for layering", () => {
-      const deviceId = "drum-rack-1";
-      const chainIds = ["chain-existing"];
-      const chainProperties = { "chain-existing": { inNote: 36 } };
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-")) return "DrumChain";
-
-        return "DrumGroupDevice";
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
-
-        if (id?.startsWith("chain-")) {
-          const chainProps = chainProperties[id] ?? {};
-
-          if (prop === "in_note") return [chainProps.inNote ?? 36];
-        }
-
-        return [];
-      });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "insert_chain") {
-          const newId = `chain-new-${chainIds.length}`;
-
-          chainIds.push(newId);
-          chainProperties[newId] = { inNote: -1 };
-        }
-      });
-
-      liveApiSet.mockImplementation(function (prop, value) {
-        const id = this._id ?? this.id;
-
-        if (prop === "in_note" && id?.startsWith("chain-")) {
-          chainProperties[id] = { inNote: value };
-        }
+      setupAutoCreationMocks({
+        chainIds: ["chain-existing"],
+        chainProperties: { "chain-existing": { inNote: 36 } },
       });
 
       // Request chain index 2 when only one chain exists (index 0)
@@ -548,40 +519,10 @@ describe("device-path-helpers", () => {
     });
 
     it("does not auto-create when chain already exists", () => {
-      const deviceId = "drum-rack-1";
-      const chainIds = ["chain-36"];
-      const chainProperties = { "chain-36": { inNote: 36 } };
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-")) return "DrumChain";
-
-        return "DrumGroupDevice";
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
-
-        if (id?.startsWith("chain-")) {
-          const chainProps = chainProperties[id] ?? {};
-
-          if (prop === "in_note") return [chainProps.inNote ?? 36];
-        }
-
-        return [];
+      setupAutoCreationMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } },
+        includeCreationMocks: false,
       });
 
       const result = resolveInsertionPath("t0/d0/pC1");

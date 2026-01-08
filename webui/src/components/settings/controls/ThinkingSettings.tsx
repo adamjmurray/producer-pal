@@ -1,6 +1,6 @@
 import type { Provider } from "#webui/types/settings";
 
-interface ThinkingSettingsProps {
+export interface ThinkingSettingsProps {
   provider: Provider;
   model: string;
   thinking: string;

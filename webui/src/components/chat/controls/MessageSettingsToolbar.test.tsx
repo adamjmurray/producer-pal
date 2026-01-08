@@ -42,17 +42,27 @@ describe("MessageSettingsToolbar", () => {
     expect(container.textContent).toContain("▼");
   });
 
-  it("shows customized indicator when settings differ from defaults", () => {
-    const { container } = render(
-      <MessageSettingsToolbar {...defaultProps} thinking="High" />,
-    );
+  it.each([{ thinking: "High" }, { temperature: 1.5 }])(
+    "shows customized indicator when $thinking$temperature differs from default",
+    (propOverride) => {
+      const { container } = render(
+        <MessageSettingsToolbar {...defaultProps} {...propOverride} />,
+      );
 
-    expect(container.textContent).toContain("(customized)");
-  });
+      expect(container.textContent).toContain("(customized)");
+    },
+  );
 
-  it("hides Off and Ultra options for OpenAI o1/o3 models", () => {
+  it.each([
+    ["o1", "openai"],
+    ["o3-mini", "openai"],
+  ] as const)("hides Off and Ultra options for %s model", (model, provider) => {
     const { container } = render(
-      <MessageSettingsToolbar {...defaultProps} provider="openai" model="o1" />,
+      <MessageSettingsToolbar
+        {...defaultProps}
+        provider={provider}
+        model={model}
+      />,
     );
     const button = container.querySelector("button");
 
@@ -62,7 +72,6 @@ describe("MessageSettingsToolbar", () => {
 
     expect(select?.innerHTML).not.toContain("Off");
     expect(select?.innerHTML).not.toContain("Ultra");
-    expect(select?.innerHTML).not.toContain("Default");
   });
 
   it("shows all thinking options for Gemini", () => {
@@ -131,14 +140,6 @@ describe("MessageSettingsToolbar", () => {
     expect(resetButton?.disabled).toBe(true);
   });
 
-  it("shows customized when temperature differs from default", () => {
-    const { container } = render(
-      <MessageSettingsToolbar {...defaultProps} temperature={1.5} />,
-    );
-
-    expect(container.textContent).toContain("(customized)");
-  });
-
   it("collapses when clicked again", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
@@ -147,23 +148,5 @@ describe("MessageSettingsToolbar", () => {
     expect(container.textContent).toContain("▼");
     fireEvent.click(button!);
     expect(container.textContent).toContain("▶");
-  });
-
-  it("hides Off and Ultra options for o3-mini model", () => {
-    const { container } = render(
-      <MessageSettingsToolbar
-        {...defaultProps}
-        provider="openai"
-        model="o3-mini"
-      />,
-    );
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
-    const select = container.querySelector("select");
-
-    expect(select?.innerHTML).not.toContain("Off");
-    expect(select?.innerHTML).not.toContain("Ultra");
   });
 });

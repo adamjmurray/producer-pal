@@ -5,43 +5,33 @@ import {
   liveApiPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
+// [duplicate-validation] updateClip mock for validation tests
 vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
+  updateClip: vi.fn((config) => [{ id: config.ids }]),
 }));
 
-// Mock arrangement-tiling helpers
+// [duplicate-validation] arrangement-tiling mocks
 vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  createShortenedClipInHolding: vi
+    .fn()
+    .mockImplementation(() => ({ holdingClipId: "holding_clip_id" })),
+  moveClipFromHolding: vi.fn((_holdClipId, trk, startBeat) => {
+    const arrangementPath = `${trk.path} arrangement_clips 0`;
 
     return {
-      id: clipId,
-      path: clipId,
+      id: arrangementPath,
+      path: arrangementPath,
       set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
+      getProperty: vi.fn((key) => {
+        if (key === "is_arrangement_clip") return 1;
+        if (key === "start_time") return startBeat;
 
         return null;
       }),
-      // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
+        const found = arrangementPath.match(/tracks (\d+)/);
 
-        return match ? parseInt(match[1]) : null;
+        return found ? parseInt(found[1]) : null;
       },
     };
   }),

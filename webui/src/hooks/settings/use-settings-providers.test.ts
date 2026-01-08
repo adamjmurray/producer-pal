@@ -11,117 +11,41 @@ describe("useSettings - provider-specific settings", () => {
     localStorage.clear();
   });
   describe("setThinking for all providers", () => {
-    it("sets thinking for mistral provider", async () => {
+    it.each([
+      ["mistral", "High"],
+      ["openrouter", "Medium"],
+      ["lmstudio", "Low"],
+      ["ollama", "High"],
+      ["custom", "Medium"],
+    ] as const)("sets thinking for %s provider", async (provider, thinking) => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => {
-        result.current.setProvider("mistral");
+        result.current.setProvider(provider);
       });
       await act(() => {
-        result.current.setThinking("High");
+        result.current.setThinking(thinking);
       });
-      expect(result.current.thinking).toBe("High");
-    });
-    it("sets thinking for openrouter provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("openrouter");
-      });
-      await act(() => {
-        result.current.setThinking("Medium");
-      });
-      expect(result.current.thinking).toBe("Medium");
-    });
-    it("sets thinking for lmstudio provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("lmstudio");
-      });
-      await act(() => {
-        result.current.setThinking("Low");
-      });
-      expect(result.current.thinking).toBe("Low");
-    });
-    it("sets thinking for ollama provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("ollama");
-      });
-      await act(() => {
-        result.current.setThinking("High");
-      });
-      expect(result.current.thinking).toBe("High");
-    });
-    it("sets thinking for custom provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("custom");
-      });
-      await act(() => {
-        result.current.setThinking("Medium");
-      });
-      expect(result.current.thinking).toBe("Medium");
+      expect(result.current.thinking).toBe(thinking);
     });
   });
   describe("setTemperature for all providers", () => {
-    it("sets temperature for mistral provider", async () => {
+    it.each([
+      ["mistral", 0.8],
+      ["openrouter", 0.5],
+      ["lmstudio", 0.9],
+      ["ollama", 0.7],
+      ["custom", 0.6],
+    ] as const)("sets temperature for %s provider", async (provider, temp) => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => {
-        result.current.setProvider("mistral");
+        result.current.setProvider(provider);
       });
       await act(() => {
-        result.current.setTemperature(0.8);
+        result.current.setTemperature(temp);
       });
-      expect(result.current.temperature).toBe(0.8);
-    });
-    it("sets temperature for openrouter provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("openrouter");
-      });
-      await act(() => {
-        result.current.setTemperature(0.5);
-      });
-      expect(result.current.temperature).toBe(0.5);
-    });
-    it("sets temperature for lmstudio provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("lmstudio");
-      });
-      await act(() => {
-        result.current.setTemperature(0.9);
-      });
-      expect(result.current.temperature).toBe(0.9);
-    });
-    it("sets temperature for ollama provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("ollama");
-      });
-      await act(() => {
-        result.current.setTemperature(0.7);
-      });
-      expect(result.current.temperature).toBe(0.7);
-    });
-    it("sets temperature for custom provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("custom");
-      });
-      await act(() => {
-        result.current.setTemperature(0.6);
-      });
-      expect(result.current.temperature).toBe(0.6);
+      expect(result.current.temperature).toBe(temp);
     });
   });
   describe("setBaseUrl", () => {
@@ -146,27 +70,19 @@ describe("useSettings - provider-specific settings", () => {
     });
   });
   describe("setPort", () => {
-    it("sets port for lmstudio provider", async () => {
+    it.each([
+      ["lmstudio", 5678],
+      ["ollama", 9999],
+    ] as const)("sets port for %s provider", async (provider, port) => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => {
-        result.current.setProvider("lmstudio");
+        result.current.setProvider(provider);
       });
       await act(() => {
-        result.current.setPort!(5678);
+        result.current.setPort!(port);
       });
-      expect(result.current.port).toBe(5678);
-    });
-    it("sets port for ollama provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("ollama");
-      });
-      await act(() => {
-        result.current.setPort!(9999);
-      });
-      expect(result.current.port).toBe(9999);
+      expect(result.current.port).toBe(port);
     });
     it("setPort is undefined for non-port-based providers", async () => {
       const { result } = renderHook(() => useSettings());
