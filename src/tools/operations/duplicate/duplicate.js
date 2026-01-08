@@ -185,7 +185,7 @@ export function duplicate(
  */
 function generateObjectName(baseName, count, index) {
   if (baseName == null) {
-    return undefined;
+    return;
   }
 
   if (count === 1) {

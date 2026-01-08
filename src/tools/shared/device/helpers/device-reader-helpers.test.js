@@ -349,7 +349,7 @@ describe("device-reader-helpers", () => {
   describe("hasInstrumentInDevices", () => {
     it("returns false for empty or null devices", () => {
       expect(hasInstrumentInDevices(null)).toBe(false);
-      expect(hasInstrumentInDevices(undefined)).toBe(false);
+      expect(hasInstrumentInDevices()).toBe(false);
       expect(hasInstrumentInDevices([])).toBe(false);
     });
 

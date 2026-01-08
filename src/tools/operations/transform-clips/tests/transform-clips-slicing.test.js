@@ -251,8 +251,6 @@ describe("transformClips - slicing", () => {
       if (method === "create_midi_clip") {
         return ["id", "temp_1"];
       }
-
-      return undefined;
     });
 
     // First clip would create 64 slices (at the limit)
@@ -441,8 +439,6 @@ describe("transformClips - slicing", () => {
       if (method === "create_audio_clip") {
         return ["id", "temp_1"];
       }
-
-      return undefined;
     });
 
     const result = transformClips(

@@ -304,7 +304,7 @@ export function findRoutingOptionForDuplicateNames(
       `Warning: Could not find source track in duplicate name list for "${sourceTrackName}"`,
     );
 
-    return undefined;
+    return;
   }
 
   // Return the routing option at the same position

@@ -72,8 +72,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
-
-      return undefined;
     });
 
     const consoleErrorSpy = vi
@@ -186,8 +184,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
-
-      return undefined;
     });
 
     const consoleErrorSpy = vi
@@ -287,8 +283,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tileIds[tileCount++]}`;
       }
-
-      return undefined;
     });
 
     const consoleErrorSpy = vi

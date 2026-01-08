@@ -173,8 +173,6 @@ export function createSlicingCallMock(opts = {}) {
     if (method === "create_midi_clip") {
       return ["id", "temp_1"];
     }
-
-    return undefined;
   });
 
   return state;

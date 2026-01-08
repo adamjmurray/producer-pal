@@ -27,7 +27,7 @@ describe("LiveAPI extensions - color methods", () => {
     });
 
     it("returns null when color property is undefined", () => {
-      api.getProperty = vi.fn().mockReturnValue(undefined);
+      api.getProperty = vi.fn().mockReturnValue();
       expect(api.getColor()).toBeNull();
     });
 

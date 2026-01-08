@@ -133,7 +133,7 @@ function applyTimeSignatureProperty(scene, timeSignature) {
  */
 function buildSceneName(name, index, count) {
   if (name == null) {
-    return undefined;
+    return;
   }
 
   if (count === 1 || index === 0) {

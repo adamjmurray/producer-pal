@@ -114,8 +114,6 @@ describe("transformClips - slicing unlooped clips", () => {
       }
 
       if (method === "create_midi_clip") return ["id", "temp_1"];
-
-      return undefined;
     });
 
     liveApiSet.mockImplementation(function (prop, value) {
@@ -224,8 +222,6 @@ describe("transformClips - slicing unlooped clips", () => {
       }
 
       if (method === "create_audio_clip") return ["id", sessionClipId];
-
-      return undefined;
     });
 
     transformClips(

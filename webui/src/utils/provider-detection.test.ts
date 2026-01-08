@@ -15,7 +15,7 @@ describe("isOpenRouterProvider", () => {
   });
 
   it("returns false for undefined", () => {
-    expect(isOpenRouterProvider(undefined)).toBe(false);
+    expect(isOpenRouterProvider()).toBe(false);
   });
 
   it("returns false for empty string", () => {

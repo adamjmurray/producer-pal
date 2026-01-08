@@ -169,7 +169,7 @@ describe("device-reader", () => {
   describe("cleanupInternalDrumPads", () => {
     it("returns primitive values unchanged", () => {
       expect(cleanupInternalDrumPads(null)).toBe(null);
-      expect(cleanupInternalDrumPads(undefined)).toBe(undefined);
+      expect(cleanupInternalDrumPads()).toBe(undefined);
       expect(cleanupInternalDrumPads(42)).toBe(42);
       expect(cleanupInternalDrumPads("test")).toBe("test");
     });

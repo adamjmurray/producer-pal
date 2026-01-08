@@ -5,7 +5,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   it("returns empty array for empty input", () => {
     expect(interpretNotation("")).toStrictEqual([]);
     expect(interpretNotation(null)).toStrictEqual([]);
-    expect(interpretNotation(undefined)).toStrictEqual([]);
+    expect(interpretNotation()).toStrictEqual([]);
   });
 
   it("parses simple notes with defaults", () => {

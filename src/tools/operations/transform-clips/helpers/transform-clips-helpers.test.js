@@ -12,51 +12,41 @@ import {
 describe("transform-clips helpers", () => {
   describe("parseTransposeValues", () => {
     it("returns null when transposeValues is null", () => {
-      expect(parseTransposeValues(null, undefined, undefined)).toBeNull();
+      expect(parseTransposeValues(null)).toBeNull();
     });
 
     it("returns null when transposeValues is undefined", () => {
-      expect(parseTransposeValues(undefined, undefined, undefined)).toBeNull();
+      expect(parseTransposeValues()).toBeNull();
     });
 
     it("parses comma-separated transpose values", () => {
-      expect(parseTransposeValues("1,2,3", undefined, undefined)).toStrictEqual(
-        [1, 2, 3],
-      );
+      expect(parseTransposeValues("1,2,3")).toStrictEqual([1, 2, 3]);
     });
 
     it("parses negative transpose values", () => {
-      expect(
-        parseTransposeValues("-5, -3, -1", undefined, undefined),
-      ).toStrictEqual([-5, -3, -1]);
+      expect(parseTransposeValues("-5, -3, -1")).toStrictEqual([-5, -3, -1]);
     });
 
     it("parses mixed positive and negative values", () => {
-      expect(
-        parseTransposeValues("-12, 0, 7", undefined, undefined),
-      ).toStrictEqual([-12, 0, 7]);
+      expect(parseTransposeValues("-12, 0, 7")).toStrictEqual([-12, 0, 7]);
     });
 
     it("filters out invalid numbers", () => {
-      expect(
-        parseTransposeValues("1, abc, 3", undefined, undefined),
-      ).toStrictEqual([1, 3]);
+      expect(parseTransposeValues("1, abc, 3")).toStrictEqual([1, 3]);
     });
 
     it("handles whitespace around values", () => {
-      expect(
-        parseTransposeValues("  1 ,  2  ,  3  ", undefined, undefined),
-      ).toStrictEqual([1, 2, 3]);
+      expect(parseTransposeValues("  1 ,  2  ,  3  ")).toStrictEqual([1, 2, 3]);
     });
 
     it("throws when all values are invalid (empty result)", () => {
-      expect(() =>
-        parseTransposeValues("abc, def, ghi", undefined, undefined),
-      ).toThrow("transposeValues must contain at least one valid number");
+      expect(() => parseTransposeValues("abc, def, ghi")).toThrow(
+        "transposeValues must contain at least one valid number",
+      );
     });
 
     it("throws when string is just commas (empty result)", () => {
-      expect(() => parseTransposeValues(",,,", undefined, undefined)).toThrow(
+      expect(() => parseTransposeValues(",,,")).toThrow(
         "transposeValues must contain at least one valid number",
       );
     });
@@ -64,7 +54,7 @@ describe("transform-clips helpers", () => {
     it("logs warning when transposeMin is provided", () => {
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      parseTransposeValues("1,2,3", 0, undefined);
+      parseTransposeValues("1,2,3", 0);
       expect(errorSpy).toHaveBeenCalledWith(
         "Warning: transposeValues ignores transposeMin/transposeMax",
       );
@@ -92,15 +82,13 @@ describe("transform-clips helpers", () => {
     });
 
     it("parses decimal transpose values", () => {
-      expect(
-        parseTransposeValues("0.5, 1.25, -0.75", undefined, undefined),
-      ).toStrictEqual([0.5, 1.25, -0.75]);
+      expect(parseTransposeValues("0.5, 1.25, -0.75")).toStrictEqual([
+        0.5, 1.25, -0.75,
+      ]);
     });
 
     it("handles single value", () => {
-      expect(parseTransposeValues("7", undefined, undefined)).toStrictEqual([
-        7,
-      ]);
+      expect(parseTransposeValues("7")).toStrictEqual([7]);
     });
   });
 

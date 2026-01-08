@@ -288,8 +288,6 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${movedClipId}`;
       }
-
-      return undefined;
     });
 
     const result = updateClip({
@@ -376,8 +374,6 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tempArrangementClipId}`;
       }
-
-      return undefined;
     });
 
     // Mock createAudioClipInSession to verify it's called with correct arguments

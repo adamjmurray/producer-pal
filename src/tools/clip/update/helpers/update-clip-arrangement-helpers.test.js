@@ -84,8 +84,6 @@ describe("update-clip-arrangement-helpers", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${newClipId}`;
         }
-
-        return undefined;
       });
 
       const mockClip = {
@@ -128,8 +126,6 @@ describe("update-clip-arrangement-helpers", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${newClipId}`;
         }
-
-        return undefined;
       });
 
       const mockClip = {

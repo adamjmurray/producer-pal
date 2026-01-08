@@ -194,8 +194,6 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
-
-      return undefined;
     });
 
     mockLiveApiGet({
@@ -268,8 +266,6 @@ describe("readLiveSet - clips", () => {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
-
-      return undefined;
     });
 
     mockLiveApiGet({

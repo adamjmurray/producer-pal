@@ -202,6 +202,7 @@ const unicornRules = {
   "unicorn/prefer-at": "error", // Use array.at(-1) instead of array[array.length - 1]
   "unicorn/prefer-set-has": "error", // Use Set.has() instead of Array.includes() for repeated checks
   "unicorn/no-lonely-if": "error", // Use else if instead of if inside else block
+  "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
 };
 
 const jsOnlyRules = {

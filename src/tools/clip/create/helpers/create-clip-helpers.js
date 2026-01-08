@@ -42,7 +42,7 @@ export function parseSceneIndexList(input) {
  */
 export function buildClipName(name, count, i) {
   if (name == null) {
-    return undefined;
+    return;
   }
 
   if (count === 1) {

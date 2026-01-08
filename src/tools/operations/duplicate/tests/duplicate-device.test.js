@@ -42,8 +42,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     const result = duplicate({ type: "device", id: "device1" });
@@ -88,8 +86,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     const result = duplicate({
@@ -124,8 +120,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "rack_device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     const result = duplicate({ type: "device", id: "rack_device1" });
@@ -170,8 +164,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     duplicate({ type: "device", id: "device1", count: 3 });
@@ -194,8 +186,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "return_device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     expect(() => duplicate({ type: "device", id: "return_device1" })).toThrow(
@@ -216,8 +206,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "master_device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     expect(() => duplicate({ type: "device", id: "master_device1" })).toThrow(
@@ -238,8 +226,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     duplicate({ type: "device", id: "device1", name: "My Effect" });
@@ -265,8 +251,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     duplicate({ type: "device", id: "device1", toPath: "t2/d0" });
@@ -300,8 +284,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
@@ -329,8 +311,6 @@ describe("duplicate - device duplication", () => {
       if (this._id === "device1") {
         return "PluginDevice";
       }
-
-      return undefined;
     });
 
     // Using a path that doesn't start with "t" should not be adjusted

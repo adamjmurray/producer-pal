@@ -31,7 +31,7 @@ function createSingleTrack(liveSet, type, currentIndex) {
  * @returns {string|undefined} Track name
  */
 function buildTrackName(baseName, count, index, parsedNames = null) {
-  if (baseName == null) return undefined;
+  if (baseName == null) return;
 
   // If we have parsed names from comma-separated input
   if (parsedNames != null) {
@@ -61,7 +61,7 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
  * @returns {string|undefined} Color for this track
  */
 function getColorForIndex(color, index, parsedColors) {
-  if (color == null) return undefined;
+  if (color == null) return;
   if (parsedColors == null) return color;
 
   return parsedColors[index % parsedColors.length];

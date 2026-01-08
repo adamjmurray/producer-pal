@@ -60,7 +60,5 @@ export function setupMocks() {
 
       return JSON.stringify({ notes });
     }
-
-    return undefined;
   });
 }

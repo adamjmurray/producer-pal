@@ -39,6 +39,7 @@ export function useTheme() {
       return () => mediaQuery.removeEventListener("change", applyTheme);
     }
 
+    // eslint-disable-next-line unicorn/no-useless-undefined -- TypeScript requires explicit return
     return undefined;
   }, [theme]);
 

@@ -141,7 +141,7 @@ describe("device-display-helpers", () => {
 
       it("handles null/undefined/non-string input", () => {
         expect(parseLabel(null)).toStrictEqual({ value: null, unit: null });
-        expect(parseLabel(undefined)).toStrictEqual({
+        expect(parseLabel()).toStrictEqual({
           value: null,
           unit: null,
         });
@@ -162,7 +162,7 @@ describe("device-display-helpers", () => {
       expect(isPanLabel("50 Hz")).toBe(false);
       expect(isPanLabel("Center")).toBe(false);
       expect(isPanLabel(null)).toBe(false);
-      expect(isPanLabel(undefined)).toBe(false);
+      expect(isPanLabel()).toBe(false);
     });
   });
 

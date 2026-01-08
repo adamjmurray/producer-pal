@@ -468,7 +468,7 @@ describe("readDevice with path parameter", () => {
           return chainProperties[id]?.type ?? "DrumChain";
         }
 
-        return undefined; // Let default mock handle other types
+        // Let default mock handle other types
       });
 
       liveApiGet.mockImplementation(function (prop) {

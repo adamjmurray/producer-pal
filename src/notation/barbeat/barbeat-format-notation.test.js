@@ -5,7 +5,7 @@ describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
     expect(formatNotation([])).toBe("");
     expect(formatNotation(null)).toBe("");
-    expect(formatNotation(undefined)).toBe("");
+    expect(formatNotation()).toBe("");
   });
 
   it("formats simple notes with defaults", () => {

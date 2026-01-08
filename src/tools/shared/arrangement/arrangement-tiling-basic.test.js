@@ -335,7 +335,7 @@ describe("adjustClipPreRoll", () => {
     // 1. create_audio_clip (return value not used)
     // 2. duplicate_clip_to_arrangement (creates temp clip with id 800)
     liveApiCall
-      .mockReturnValueOnce(undefined) // create_audio_clip
+      .mockReturnValueOnce() // create_audio_clip
       .mockReturnValueOnce(["id", "800"]); // duplicate_clip_to_arrangement
 
     adjustClipPreRoll(clip, track, false, mockContext);

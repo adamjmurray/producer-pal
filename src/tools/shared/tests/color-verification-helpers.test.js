@@ -132,7 +132,7 @@ describe("verifyColorQuantization", () => {
     it("should emit warning if getColor returns undefined", () => {
       const mockObject = {
         type: "Scene",
-        getColor: vi.fn().mockReturnValue(undefined),
+        getColor: vi.fn().mockReturnValue(),
       };
 
       verifyColorQuantization(mockObject, "#00FF00");
