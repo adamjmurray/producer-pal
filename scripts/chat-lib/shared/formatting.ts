@@ -93,7 +93,7 @@ export function formatToolResult(result: string | undefined): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Fields to abbreviate in debug output */
-const VERBOSE_FIELDS = ["tools", "input"];
+const VERBOSE_FIELDS = new Set(["tools", "input"]);
 
 /**
  * Strip verbose fields from an object for cleaner debug output
@@ -108,7 +108,7 @@ function stripVerboseFields(obj: unknown): unknown {
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    if (VERBOSE_FIELDS.includes(key) && Array.isArray(value)) {
+    if (VERBOSE_FIELDS.has(key) && Array.isArray(value)) {
       result[key] = `[${value.length} items]`;
     } else {
       result[key] = stripVerboseFields(value);

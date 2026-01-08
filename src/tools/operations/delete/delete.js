@@ -7,7 +7,7 @@ import {
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
-const PATH_SUPPORTED_TYPES = ["device", "drum-pad"];
+const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 
 /**
  * Deletes objects by ids and/or paths
@@ -30,7 +30,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   }
 
   // Handle path parameter - only valid for devices and drum-pads
-  if (path && !PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && !PATH_SUPPORTED_TYPES.has(type)) {
     console.error(
       `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
     );
@@ -40,7 +40,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
 
   // Resolve paths to IDs for device or drum-pad types
-  if (path && PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && PATH_SUPPORTED_TYPES.has(type)) {
     const paths = parseCommaSeparatedIds(path);
     const pathIds = resolvePathsToIds(paths, type);
 

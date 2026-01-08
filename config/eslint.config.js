@@ -200,6 +200,7 @@ const unicornRules = {
   "unicorn/no-useless-spread": "error", // Remove unnecessary spread operators
   "unicorn/no-array-for-each": "error", // Prefer for...of over Array.forEach
   "unicorn/prefer-at": "error", // Use array.at(-1) instead of array[array.length - 1]
+  "unicorn/prefer-set-has": "error", // Use Set.has() instead of Array.includes() for repeated checks
 };
 
 const jsOnlyRules = {

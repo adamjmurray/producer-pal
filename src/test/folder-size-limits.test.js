@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "../..");
 
 const MAX_ITEMS_PER_FOLDER = 12;
-const IGNORE_ITEMS = [".DS_Store"];
+const IGNORE_ITEMS = new Set([".DS_Store"]);
 
 /**
  * Recursively scans directories and returns folders exceeding the item limit.
@@ -20,7 +20,7 @@ function findOversizedFolders(dirPath, excludeDirs = []) {
   const results = [];
   const items = fs
     .readdirSync(dirPath)
-    .filter((item) => !IGNORE_ITEMS.includes(item));
+    .filter((item) => !IGNORE_ITEMS.has(item));
 
   // Check current directory
   if (items.length > MAX_ITEMS_PER_FOLDER) {

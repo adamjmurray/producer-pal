@@ -115,13 +115,13 @@ function buildDrumPadFromChains(inNote, processedChains) {
   };
 
   // Aggregate state from chains
-  const states = processedChains
-    .map((c) => c.state)
-    .filter((s) => s !== undefined);
+  const states = new Set(
+    processedChains.map((c) => c.state).filter((s) => s !== undefined),
+  );
 
-  if (states.includes(STATE.SOLOED)) {
+  if (states.has(STATE.SOLOED)) {
     drumPadInfo.state = STATE.SOLOED;
-  } else if (states.includes(STATE.MUTED)) {
+  } else if (states.has(STATE.MUTED)) {
     drumPadInfo.state = STATE.MUTED;
   }
 
