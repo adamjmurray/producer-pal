@@ -107,74 +107,42 @@ function findFilesWithInsufficientBlankLines(dirPath, excludeDirs = []) {
   return results;
 }
 
-describe("Blank line requirements", () => {
-  it("should enforce minimum blank line ratio in src/", () => {
-    const srcPath = path.join(projectRoot, "src");
-    const insufficientFiles = findFilesWithInsufficientBlankLines(srcPath, [
-      "node_modules",
-    ]);
+/**
+ * Assert that all files in a directory meet the minimum blank line ratio
+ * @param {string} dirPath - Directory to check
+ */
+function assertBlankLineRatio(dirPath) {
+  const insufficientFiles = findFilesWithInsufficientBlankLines(dirPath, [
+    "node_modules",
+  ]);
 
-    if (insufficientFiles.length > 0) {
-      const details = insufficientFiles
-        .sort((a, b) => a.ratio - b.ratio)
-        .map(
-          (f) =>
-            `  - ${f.path}: ${(f.ratio * 100).toFixed(1)}% blank (${f.blankLines}/${f.totalLines} lines)`,
-        )
-        .join("\n");
+  if (insufficientFiles.length > 0) {
+    const details = insufficientFiles
+      .sort((a, b) => a.ratio - b.ratio)
+      .map(
+        (f) =>
+          `  - ${f.path}: ${(f.ratio * 100).toFixed(1)}% blank (${f.blankLines}/${f.totalLines} lines)`,
+      )
+      .join("\n");
 
-      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
-      expect.fail(
-        `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
-          `Add blank lines between logical sections to improve readability.`,
-      );
-    }
-  });
-
-  it("should enforce minimum blank line ratio in webui/src/", () => {
-    const webuiSrcPath = path.join(projectRoot, "webui", "src");
-    const insufficientFiles = findFilesWithInsufficientBlankLines(
-      webuiSrcPath,
-      ["node_modules"],
+    expect.fail(
+      `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
+        `Add blank lines between logical sections to improve readability.`,
     );
+  }
 
-    if (insufficientFiles.length > 0) {
-      const details = insufficientFiles
-        .sort((a, b) => a.ratio - b.ratio)
-        .map(
-          (f) =>
-            `  - ${f.path}: ${(f.ratio * 100).toFixed(1)}% blank (${f.blankLines}/${f.totalLines} lines)`,
-        )
-        .join("\n");
+  expect(insufficientFiles).toHaveLength(0);
+}
 
-      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
-      expect.fail(
-        `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
-          `Add blank lines between logical sections to improve readability.`,
-      );
-    }
-  });
+describe("Blank line requirements", () => {
+  it.each([
+    ["src/", ["src"]],
+    ["webui/src/", ["webui", "src"]],
+    ["scripts/", ["scripts"]],
+  ])("should enforce minimum blank line ratio in %s", (_name, pathParts) => {
+    const dirPath = path.join(projectRoot, ...pathParts);
 
-  it("should enforce minimum blank line ratio in scripts/", () => {
-    const scriptsPath = path.join(projectRoot, "scripts");
-    const insufficientFiles = findFilesWithInsufficientBlankLines(scriptsPath, [
-      "node_modules",
-    ]);
-
-    if (insufficientFiles.length > 0) {
-      const details = insufficientFiles
-        .sort((a, b) => a.ratio - b.ratio)
-        .map(
-          (f) =>
-            `  - ${f.path}: ${(f.ratio * 100).toFixed(1)}% blank (${f.blankLines}/${f.totalLines} lines)`,
-        )
-        .join("\n");
-
-      // eslint-disable-next-line vitest/no-conditional-expect -- Conditional provides detailed failure message
-      expect.fail(
-        `Found ${insufficientFiles.length} file(s) with less than ${MIN_BLANK_LINE_RATIO * 100}% blank lines:\n${details}\n\n` +
-          `Add blank lines between logical sections to improve readability.`,
-      );
-    }
+    assertBlankLineRatio(dirPath);
+    expect(true).toBe(true); // Satisfy vitest/expect-expect rule
   });
 });
