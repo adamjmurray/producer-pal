@@ -12,14 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks-and-unit-tests:
+  quality-checks:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to checkout and write comments on commits
-      contents: write
-      # Required to put a comment into the pull-request
-      pull-requests: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -70,9 +67,27 @@ jobs:
           grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
           grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
 
+  tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - run: npm ci
+
+      - name: Build parser
+        run: npm run parser:build
+
       - name: Run tests with coverage
         id: tests
-        if: success()
         run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"
@@ -170,3 +185,78 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  post-summary:
+    needs: [quality-checks, tests, build-verification, playwright-tests]
+    if: always()
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post summary comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find PR associated with this push (if any)
+            const { data: prs } = await github.rest.pulls.list({
+              ...context.repo,
+              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+              state: 'open'
+            });
+
+            if (prs.length === 0) {
+              console.log('No open PR found for this branch, skipping comment');
+              return;
+            }
+
+            const prNumber = prs[0].number;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+
+            // Check job statuses
+            const jobs = {
+              'Quality Checks': '${{ needs.quality-checks.result }}',
+              'Tests': '${{ needs.tests.result }}',
+              'Build': '${{ needs.build-verification.result }}',
+              'Playwright': '${{ needs.playwright-tests.result }}'
+            };
+            const allPassed = Object.values(jobs).every(s => s === 'success');
+
+            const statusEmoji = allPassed ? '✅' : '❌';
+            const statusText = allPassed ? 'All checks passed' : 'Some checks failed';
+            const icon = s => s === 'success' ? '✅' : '❌';
+
+            const marker = '<!-- ci-summary-bot -->';
+            const body = `${marker}
+            ## ${statusEmoji} CI Results: ${statusText}
+
+            | Job | Status |
+            |-----|--------|
+            | Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |
+            | Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |
+            | Build | ${icon(jobs['Build'])} ${jobs['Build']} |
+            | Playwright | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |
+
+            [View full summary](${runUrl})`;
+
+            // Find existing comment from this bot
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: prNumber
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: prNumber,
+                body
+              });
+            }
