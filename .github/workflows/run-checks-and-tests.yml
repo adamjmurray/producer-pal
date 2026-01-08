@@ -12,6 +12,83 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-verification:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all production artifacts
+        run: npm run build
+
+      - name: Verify all build artifacts exist
+        run: |
+          # Verify Max for Live device artifacts
+          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
+          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
+          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
+
+          # Verify npm artifacts
+          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
+
+          # Verify Claude Desktop extension
+          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
+
+          # Verify release artifacts
+          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
+
+          # Write build summary
+          echo "## Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Max for Live device | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm package | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| Claude Desktop extension | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release | ✅ built |" >> $GITHUB_STEP_SUMMARY
+
+  tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - run: npm ci
+
+      - name: Build parser
+        run: npm run parser:build
+
+      - name: Run tests with coverage
+        id: tests
+        run: FORCE_COLOR=3 npm run test:coverage
+
+      - name: "Report Coverage"
+        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
+        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          vite-config-path: "./config/vite.config.mjs"
+          file-coverage-mode: "all"
+
   quality-checks:
     runs-on: ubuntu-latest
 
@@ -66,83 +143,6 @@ jobs:
           echo "|------------|-------------|------------------|--------------|" >> $GITHUB_STEP_SUMMARY
           grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
           grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
-
-  tests:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22.x"
-
-      - run: npm ci
-
-      - name: Build parser
-        run: npm run parser:build
-
-      - name: Run tests with coverage
-        id: tests
-        run: FORCE_COLOR=3 npm run test:coverage
-
-      - name: "Report Coverage"
-        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
-        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          vite-config-path: "./config/vite.config.mjs"
-          file-coverage-mode: "all"
-
-  build-verification:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22.x"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build all production artifacts
-        run: npm run build
-
-      - name: Verify all build artifacts exist
-        run: |
-          # Verify Max for Live device artifacts
-          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
-          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
-          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
-
-          # Verify npm artifacts
-          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
-
-          # Verify Claude Desktop extension
-          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
-          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
-
-          # Verify release artifacts
-          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
-
-          # Write build summary
-          echo "## Build Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Max for Live device | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| npm package | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| Claude Desktop extension | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release | ✅ built |" >> $GITHUB_STEP_SUMMARY
 
   playwright-tests:
     runs-on: ubuntu-latest
