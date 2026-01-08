@@ -8,35 +8,34 @@ import {
   mockLiveApiGet,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
+// [duplicate-locator] updateClip mock for locator-based tests
 vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    return [{ id: ids }];
-  }),
+  updateClip: vi.fn((opts) => [{ id: opts.ids }]),
 }));
 
-// Mock arrangement-tiling helpers
+// [duplicate-locator] arrangement-tiling mocks
 vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    const clipId = `${track.path} arrangement_clips 0`;
+  createShortenedClipInHolding: vi
+    .fn()
+    .mockReturnValue({ holdingClipId: "holding_clip_id" }),
+  moveClipFromHolding: vi.fn((_holdId, trackParam, beatPosition) => {
+    const pathStr = `${trackParam.path} arrangement_clips 0`;
 
     return {
-      id: clipId,
-      path: clipId,
+      id: pathStr,
+      path: pathStr,
       set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") return 1;
-        if (prop === "start_time") return _startBeats;
-
-        return null;
-      }),
+      getProperty: vi.fn((propName) =>
+        propName === "is_arrangement_clip"
+          ? 1
+          : propName === "start_time"
+            ? beatPosition
+            : null,
+      ),
       get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
+        const result = pathStr.match(/tracks (\d+)/);
 
-        return match ? parseInt(match[1]) : null;
+        return result ? parseInt(result[1]) : null;
       },
     };
   }),

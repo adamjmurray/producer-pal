@@ -14,154 +14,85 @@ function createMockChat(name: string) {
   };
 }
 
-describe("useConversationLock", () => {
-  it("uses settingsProvider initially", () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
-
-    const { result } = renderHook(() =>
+function renderConversationLock(initialProvider: Provider = "gemini") {
+  const geminiChat = createMockChat("gemini");
+  const openaiChat = createMockChat("openai");
+  const hook = renderHook(
+    ({ provider }: { provider: Provider }) =>
       useConversationLock({
-        settingsProvider: "gemini",
+        settingsProvider: provider,
         geminiChat,
         openaiChat,
       }),
-    );
+    { initialProps: { provider: initialProvider } },
+  );
+
+  return { ...hook, geminiChat, openaiChat };
+}
+
+describe("useConversationLock", () => {
+  it("uses settingsProvider initially", () => {
+    const { result } = renderConversationLock("gemini");
 
     expect(result.current.chat.name).toBe("gemini");
   });
 
   it("locks to provider on first message", async () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
+    const { result, rerender, geminiChat } = renderConversationLock("gemini");
 
-    const { result, rerender } = renderHook(
-      ({ provider }: { provider: Provider }) =>
-        useConversationLock({
-          settingsProvider: provider,
-          geminiChat,
-          openaiChat,
-        }),
-      { initialProps: { provider: "gemini" as Provider } },
-    );
-
-    // Send first message
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
     });
-
     expect(geminiChat.handleSend).toHaveBeenCalledWith("Hello", undefined);
 
-    // Change settings provider
     rerender({ provider: "openai" });
-
-    // Should still be locked to gemini
-    expect(result.current.chat.name).toBe("gemini");
+    expect(result.current.chat.name).toBe("gemini"); // Still locked
   });
 
   it("uses new provider after settings change if no messages sent", () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
-
-    const { result, rerender } = renderHook(
-      ({ provider }: { provider: Provider }) =>
-        useConversationLock({
-          settingsProvider: provider,
-          geminiChat,
-          openaiChat,
-        }),
-      { initialProps: { provider: "gemini" as Provider } },
-    );
+    const { result, rerender } = renderConversationLock("gemini");
 
     expect(result.current.chat.name).toBe("gemini");
 
-    // Change settings without sending a message
     rerender({ provider: "openai" });
-
-    // Should switch to openai since no lock
-    expect(result.current.chat.name).toBe("openai");
+    expect(result.current.chat.name).toBe("openai"); // Switches since no lock
   });
 
   it("clears lock on clearConversation", async () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
+    const { result, rerender, geminiChat } = renderConversationLock("gemini");
 
-    const { result, rerender } = renderHook(
-      ({ provider }: { provider: Provider }) =>
-        useConversationLock({
-          settingsProvider: provider,
-          geminiChat,
-          openaiChat,
-        }),
-      { initialProps: { provider: "gemini" as Provider } },
-    );
-
-    // Send message to lock provider
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
     });
 
-    // Change settings
     rerender({ provider: "openai" });
     expect(result.current.chat.name).toBe("gemini"); // Still locked
 
-    // Clear conversation
     await act(async () => {
       result.current.wrappedClearConversation();
     });
-
     expect(geminiChat.clearConversation).toHaveBeenCalled();
-
-    // Now should use new settings provider
-    expect(result.current.chat.name).toBe("openai");
+    expect(result.current.chat.name).toBe("openai"); // Now unlocked
   });
 
   it("passes message options to handleSend", async () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
-
-    const { result } = renderHook(() =>
-      useConversationLock({
-        settingsProvider: "gemini",
-        geminiChat,
-        openaiChat,
-      }),
-    );
-
+    const { result, geminiChat } = renderConversationLock("gemini");
     const options = { thinking: "High", temperature: 0.5 };
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello", options);
     });
-
     expect(geminiChat.handleSend).toHaveBeenCalledWith("Hello", options);
   });
 
   it("routes to openai when settingsProvider is openai", () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
-
-    const { result } = renderHook(() =>
-      useConversationLock({
-        settingsProvider: "openai",
-        geminiChat,
-        openaiChat,
-      }),
-    );
+    const { result } = renderConversationLock("openai");
 
     expect(result.current.chat.name).toBe("openai");
   });
 
   it("routes non-gemini providers to openai chat", () => {
-    const geminiChat = createMockChat("gemini");
-    const openaiChat = createMockChat("openai");
-
-    const { result } = renderHook(() =>
-      useConversationLock({
-        settingsProvider: "openrouter",
-        geminiChat,
-        openaiChat,
-      }),
-    );
+    const { result } = renderConversationLock("openrouter");
 
     expect(result.current.chat.name).toBe("openai");
   });

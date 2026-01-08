@@ -9,41 +9,35 @@ import {
   mockLiveApiGet,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
+// [duplicate-arrangement-length] updateClip mock for arrangement length tests
 vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
+  updateClip: vi.fn(({ ids: clipIds }) => [{ id: clipIds }]),
 }));
 
-// Mock arrangement-tiling helpers
+// [duplicate-arrangement-length] arrangement-tiling mocks
 vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  createShortenedClipInHolding: vi
+    .fn()
+    .mockImplementation(() => ({ holdingClipId: "holding_clip_id" })),
+  moveClipFromHolding: vi.fn((_holdingId, trackObj, timeStart) => {
+    const arrPath = `${trackObj.path} arrangement_clips 0`;
 
     return {
-      id: clipId,
-      path: clipId,
+      id: arrPath,
+      path: arrPath,
       set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
+      getProperty: vi.fn((name) => {
+        switch (name) {
+          case "is_arrangement_clip":
+            return 1;
+          case "start_time":
+            return timeStart;
+          default:
+            return null;
         }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
-
-        return null;
       }),
-      // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
+        const match = arrPath.match(/tracks (\d+)/);
 
         return match ? parseInt(match[1]) : null;
       },
