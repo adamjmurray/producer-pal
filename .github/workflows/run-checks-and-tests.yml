@@ -124,15 +124,25 @@ jobs:
           test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
           test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
 
-          # Verify portal artifacts
-          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
-          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
+          # Verify npm artifacts
           test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
 
           # Verify Claude Desktop extension
           test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
 
-          echo "All build artifacts verified successfully!"
+          # Verify release artifacts
+          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
+
+          # Write build summary
+          echo "## Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Max for Live device | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm package | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| Claude Desktop extension | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release | ✅ built |" >> $GITHUB_STEP_SUMMARY
 
   playwright-tests:
     runs-on: ubuntu-latest
