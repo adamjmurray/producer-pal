@@ -182,11 +182,17 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Build documentation site
-        run: npm run docs:build
-
       - name: Test documentation site with Playwright
-        run: npx playwright test -c config/playwright.docs.config.mjs
+        run: |
+          npm run docs:test 2>&1 | tee playwright-output.txt
+
+          # Extract result summary for job summary
+          echo "## Playwright Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
+          echo "| Docs | ${RESULT} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
