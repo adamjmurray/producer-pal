@@ -193,7 +193,7 @@ describe("SettingsScreen", () => {
 
       // Connection tab is active by default
       expect(
-        screen.getByPlaceholderText(/Enter your Gemini API key/i),
+        screen.getByPlaceholderText(/enter your gemini api key/i),
       ).toBeDefined();
       expect(screen.getByTestId("model-selector")).toBeDefined();
 
@@ -425,7 +425,7 @@ describe("SettingsScreen", () => {
       // Connection tab is active by default
       // API key input now uses password input (no longer GeminiApiKeyInput component)
       const apiKeyInput = screen.getByPlaceholderText(
-        /Enter your Gemini API key/i,
+        /enter your gemini api key/i,
       ) as HTMLInputElement;
 
       expect(apiKeyInput.value).toBe("my-key");
@@ -531,7 +531,7 @@ describe("SettingsScreen", () => {
       const setApiKey = vi.fn();
 
       render(<SettingsScreen {...defaultProps} setApiKey={setApiKey} />);
-      const input = screen.getByPlaceholderText(/Enter your Gemini API key/i);
+      const input = screen.getByPlaceholderText(/enter your gemini api key/i);
 
       fireEvent.change(input, { target: { value: "new-api-key" } });
       expect(setApiKey).toHaveBeenCalledWith("new-api-key");

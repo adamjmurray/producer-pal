@@ -45,7 +45,7 @@ describe("rawLiveApi", () => {
 
     global.LiveAPI.prototype.goto = vi.fn(function (path) {
       this._path = path;
-      this._id = path.replace(/\s+/g, "/");
+      this._id = path.replaceAll(/\s+/g, "/");
 
       return 1;
     });

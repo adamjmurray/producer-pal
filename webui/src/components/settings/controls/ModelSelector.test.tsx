@@ -126,10 +126,10 @@ describe("ModelSelector", () => {
         model: "qwen/qwen3-coder:free",
       });
       expect(
-        screen.getByRole("option", { name: /\[Free\] Qwen3 Coder/ }),
+        screen.getByRole("option", { name: /\[Free] Qwen3 Coder/ }),
       ).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /\[Free\] Z\.AI GLM/ }),
+        screen.getByRole("option", { name: /\[Free] Z\.AI GLM/ }),
       ).toBeDefined();
     });
 

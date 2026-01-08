@@ -1,6 +1,6 @@
-import { appendFileSync, existsSync, mkdirSync } from "fs";
-import { homedir } from "os";
-import { join } from "path";
+import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 // Check logging environment variables
 const enableLogging = process.env.ENABLE_LOGGING === "true";

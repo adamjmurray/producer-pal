@@ -46,7 +46,7 @@ if (typeof LiveAPI !== "undefined") {
           try {
             const parsed = JSON.parse(rawValue[0]);
             return parsed[property];
-          } catch (_e) {
+          } catch {
             return null;
           }
         }

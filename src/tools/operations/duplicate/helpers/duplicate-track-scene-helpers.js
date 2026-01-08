@@ -33,7 +33,7 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
-    } catch (_error) {
+    } catch {
       // If we can't access this_device, just continue without removing anything
       console.error(
         "Warning: Could not check for Producer Pal device in duplicated track",

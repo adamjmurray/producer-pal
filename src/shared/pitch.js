@@ -100,7 +100,7 @@ export function isValidMidi(midi) {
 export function isValidNoteName(name) {
   if (typeof name !== "string") return false;
 
-  const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
+  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
 
   if (!match) return false;
 
@@ -184,7 +184,7 @@ export function noteNameToMidi(name) {
     return null;
   }
 
-  const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
+  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
 
   if (!match) {
     return null;

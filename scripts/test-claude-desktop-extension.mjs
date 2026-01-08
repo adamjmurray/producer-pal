@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Test script for the stdio-HTTP bridge without requiring Claude Desktop installation
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 
 const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 const JSON_RPC_VERSION = "2.0";
@@ -138,10 +138,10 @@ function parseResponse(data) {
     responseBuffer = ""; // Clear buffer on successful parse
 
     return response;
-  } catch (_e) {
+  } catch {
     // If parse fails, check if we have a complete JSON by counting braces
-    const openBraces = (responseBuffer.match(/\{/g) || []).length;
-    const closeBraces = (responseBuffer.match(/\}/g) || []).length;
+    const openBraces = (responseBuffer.match(/{/g) || []).length;
+    const closeBraces = (responseBuffer.match(/}/g) || []).length;
 
     if (openBraces === closeBraces && openBraces > 0) {
       // We have balanced braces but still can't parse - it's a real error

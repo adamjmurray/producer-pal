@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createKnowledgeBaseConfig } from "./helpers/kb-config.mjs";
 import {
   processFlatMode,
@@ -19,7 +19,7 @@ async function cleanAndCreateOutputDir(outputDir) {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
     console.log(`Removed existing outputDir: ${outputDir}`);
-  } catch (_error) {
+  } catch {
     // Directory doesn't exist, which is fine
   }
 

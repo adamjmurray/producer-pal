@@ -7,6 +7,7 @@ import importPlugin from "eslint-plugin-import";
 import jsdoc from "eslint-plugin-jsdoc";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
+import unicorn from "eslint-plugin-unicorn";
 import globals from "globals";
 
 // See .claude/skills/refactoring/SKILL.md for refactoring guidelines
@@ -189,6 +190,16 @@ const sonarCoreRules = {
   "sonarjs/prefer-single-boolean-return": "error", // simplify `if (x) return true; return false`
 };
 
+const unicornRules = {
+  "unicorn/prefer-node-protocol": "error", // Use node: prefix for Node.js builtins
+  "unicorn/better-regex": "error", // Optimize regex patterns
+  "unicorn/prefer-string-replace-all": "error", // Use replaceAll() instead of replace(/g)
+  "unicorn/prefer-array-find": "error", // Use find() instead of filter()[0]
+  "unicorn/no-array-push-push": "error", // Combine multiple push() calls
+  "unicorn/prefer-optional-catch-binding": "error", // Omit unused catch binding
+  "unicorn/no-useless-spread": "error", // Remove unnecessary spread operators
+};
+
 const jsOnlyRules = {
   "no-unused-vars": [
     // Unused variables (allow _prefixed to signal intentional)
@@ -286,6 +297,7 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     settings: {
       "import/resolver": {
@@ -303,6 +315,7 @@ export default [
       ...js.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsOnlyRules,
       ...jsdocRules,
     },
@@ -332,12 +345,14 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },
@@ -371,12 +386,14 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },
