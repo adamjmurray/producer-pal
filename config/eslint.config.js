@@ -107,6 +107,11 @@ const baseRules = {
     { blankLine: "always", prev: "*", next: "multiline-block-like" },
     { blankLine: "always", prev: "multiline-block-like", next: "*" },
   ],
+  "@stylistic/lines-between-class-members": [
+    "error",
+    "always",
+    { exceptAfterSingleLine: true },
+  ], // Blank lines between methods, not properties
 
   // Complexity rules
   "max-lines-per-function": [
@@ -175,6 +180,13 @@ const sonarCoreRules = {
   // Test quality
   "sonarjs/assertions-in-tests": "error", // tests need assertions
   "sonarjs/no-exclusive-tests": "error", // no .only() in commits
+
+  // Code simplification
+  "sonarjs/no-nested-template-literals": "error", // avoid `${`nested`}` templates
+  "sonarjs/no-redundant-boolean": "error", // no `x ? true : false`
+  "sonarjs/no-redundant-jump": "error", // no unnecessary return/continue/break
+  "sonarjs/prefer-immediate-return": "error", // return directly instead of temp var
+  "sonarjs/prefer-single-boolean-return": "error", // simplify `if (x) return true; return false`
 };
 
 const jsOnlyRules = {

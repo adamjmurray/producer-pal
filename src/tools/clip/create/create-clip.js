@@ -411,12 +411,7 @@ function calculateClipLength(
   }
 
   // Empty clip, use 1 bar minimum
-  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  return abletonBeatsPerBar;
+  return timeSigToAbletonBeatsPerBar(timeSigNumerator, timeSigDenominator);
 }
 
 /**

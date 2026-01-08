@@ -44,9 +44,8 @@ function parseSitemap() {
 
   // Extract all <loc> URLs from sitemap
   const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
-  const urls = Array.from(urlMatches, (match) => match[1]);
 
-  return urls;
+  return Array.from(urlMatches, (match) => match[1]);
 }
 
 /**

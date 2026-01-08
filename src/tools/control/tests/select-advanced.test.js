@@ -499,7 +499,7 @@ describe("view", () => {
 
       // Mock LiveAPI constructor to return appropriate instances
       global.LiveAPI.mockImplementation(function (path) {
-        const instance = (() => {
+        return (() => {
           if (path === "live_app view") {
             return readAppView;
           }
@@ -544,8 +544,6 @@ describe("view", () => {
 
           return {};
         })();
-
-        return instance;
       });
     });
 

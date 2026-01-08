@@ -371,13 +371,11 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   }
 
   // Return optimistic metadata
-  const result = {
+  return {
     id: newScene.id,
     sceneIndex: newSceneIndex,
     clips: duplicatedClips,
   };
-
-  return result;
 }
 
 /**

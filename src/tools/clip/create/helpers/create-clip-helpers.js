@@ -322,7 +322,7 @@ export function processClipIteration(
     }
   }
 
-  const clipResult = buildClipResult(
+  return buildClipResult(
     clip,
     trackIndex,
     view,
@@ -335,6 +335,4 @@ export function processClipIteration(
     timeSigDenominator,
     sampleFile,
   );
-
-  return clipResult;
 }
