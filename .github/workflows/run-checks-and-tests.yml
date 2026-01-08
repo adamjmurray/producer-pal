@@ -196,8 +196,36 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  repo-stats:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cloc
+        run: sudo apt-get install -y cloc
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate lines of code report
+        run: |
+          echo "## Lines of Code" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm run loc --silent >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
   post-summary:
-    needs: [quality-checks, tests, build-verification, playwright-tests]
+    needs:
+      [quality-checks, tests, build-verification, playwright-tests, repo-stats]
     if: always()
     runs-on: ubuntu-latest
 
@@ -229,7 +257,8 @@ jobs:
               'Quality Checks': '${{ needs.quality-checks.result }}',
               'Tests': '${{ needs.tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
-              'Playwright': '${{ needs.playwright-tests.result }}'
+              'Playwright': '${{ needs.playwright-tests.result }}',
+              'Repo Stats': '${{ needs.repo-stats.result }}'
             };
             const allPassed = Object.values(jobs).every(s => s === 'success');
 
@@ -247,6 +276,7 @@ jobs:
             | Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |
             | Build | ${icon(jobs['Build'])} ${jobs['Build']} |
             | Playwright | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |
+            | Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |
 
             [View full summary](${runUrl})`;
 
