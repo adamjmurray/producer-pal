@@ -48,9 +48,11 @@ describe("device-path-helpers", () => {
         const id = this._id ?? this.id;
 
         // Device returns chains
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
+        if (
+          (id === deviceId || this._path?.includes("devices 0")) &&
+          prop === "chains"
+        )
+          return chainIds.flatMap((c) => ["id", c]);
 
         // Chain properties
         if (id?.startsWith("chain-")) {
@@ -254,9 +256,8 @@ describe("device-path-helpers", () => {
         const id = this._id ?? this.id;
 
         // Outer drum rack returns catch-all chain
-        if (this._path === outerPath) {
-          if (prop === "chains") return ["id", catchAllChainId];
-        }
+        if (this._path === outerPath && prop === "chains")
+          return ["id", catchAllChainId];
 
         // Catch-all chain properties
         if (id === catchAllChainId) {
@@ -265,14 +266,14 @@ describe("device-path-helpers", () => {
         }
 
         // Nested drum rack returns C1 chain
-        if (id === nestedRackId || this._path === nestedPath) {
-          if (prop === "chains") return ["id", nestedChainId];
-        }
+        if (
+          (id === nestedRackId || this._path === nestedPath) &&
+          prop === "chains"
+        )
+          return ["id", nestedChainId];
 
         // Nested C1 chain properties
-        if (id === nestedChainId) {
-          if (prop === "in_note") return [36]; // C1
-        }
+        if (id === nestedChainId && prop === "in_note") return [36]; // C1
 
         return [];
       });
@@ -329,9 +330,8 @@ describe("device-path-helpers", () => {
           const id = this._id ?? this.id;
 
           // Drum rack returns C1 chain
-          if (this._path === drumRackPath) {
-            if (prop === "chains") return ["id", drumChainId];
-          }
+          if (this._path === drumRackPath && prop === "chains")
+            return ["id", drumChainId];
 
           // Drum chain properties
           if (id === drumChainId) {
@@ -340,14 +340,12 @@ describe("device-path-helpers", () => {
           }
 
           // Instrument rack returns chain
-          if (id === instrRackId) {
-            if (prop === "chains") return ["id", rackChainId];
-          }
+          if (id === instrRackId && prop === "chains")
+            return ["id", rackChainId];
 
           // Rack chain returns device
-          if (id === rackChainId) {
-            if (prop === "devices") return ["id", finalDeviceId];
-          }
+          if (id === rackChainId && prop === "devices")
+            return ["id", finalDeviceId];
 
           return [];
         });
@@ -434,9 +432,11 @@ describe("device-path-helpers", () => {
       liveApiGet.mockImplementation(function (prop) {
         const id = this._id ?? this.id;
 
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
+        if (
+          (id === deviceId || this._path?.includes("devices 0")) &&
+          prop === "chains"
+        )
+          return chainIds.flatMap((c) => ["id", c]);
 
         if (id?.startsWith("chain-")) {
           const chainProps = chainProperties[id] ?? {};

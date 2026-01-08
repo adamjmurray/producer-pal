@@ -431,9 +431,7 @@ describe("updateDevice", () => {
           if (prop === "visible_macro_count") return [4];
         }
 
-        if (this._path === "id 456") {
-          if (prop === "can_have_chains") return [0];
-        }
+        if (this._path === "id 456" && prop === "can_have_chains") return [0];
 
         return [0];
       });
@@ -524,14 +522,10 @@ describe("updateDevice", () => {
     beforeEach(() => {
       liveApiGet.mockImplementation(function (prop) {
         // Device with AB Compare support (id 123)
-        if (this._path === "id 123") {
-          if (prop === "can_compare_ab") return [1];
-        }
+        if (this._path === "id 123" && prop === "can_compare_ab") return [1];
 
         // Device without AB Compare support (id 456)
-        if (this._path === "id 456") {
-          if (prop === "can_compare_ab") return [0];
-        }
+        if (this._path === "id 456" && prop === "can_compare_ab") return [0];
 
         return [0];
       });

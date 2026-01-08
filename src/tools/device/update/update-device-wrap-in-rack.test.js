@@ -285,18 +285,17 @@ describe("updateDevice - wrapInRack", () => {
       });
 
       liveApiGet.mockImplementation(function (prop) {
-        if (prop === "type") {
-          if (
-            this._path === "live_set tracks 0 devices 3" ||
+        if (
+          prop === "type" &&
+          (this._path === "live_set tracks 0 devices 3" ||
             this._path === "id device-3" ||
             this._path === "device-3" ||
             this._path === "live_set tracks 0 devices 4" ||
             this._path === "id device-4" ||
             this._path === "device-4" ||
-            this._path === "live_set tracks 1 devices 0"
-          ) {
-            return [1]; // Instrument
-          }
+            this._path === "live_set tracks 1 devices 0")
+        ) {
+          return [1]; // Instrument
         }
 
         // Return dynamic chain count for rack
@@ -502,14 +501,13 @@ describe("updateDevice - wrapInRack", () => {
   it("should throw error when insert_chain fails", () => {
     // Mock rack with no pre-existing chains
     liveApiGet.mockImplementation(function (prop) {
-      if (prop === "type") {
-        if (
-          this._path === "live_set tracks 0 devices 0" ||
+      if (
+        prop === "type" &&
+        (this._path === "live_set tracks 0 devices 0" ||
           this._path === "id device-0" ||
-          this._path === "device-0"
-        ) {
-          return [2]; // Audio effect
-        }
+          this._path === "device-0")
+      ) {
+        return [2]; // Audio effect
       }
 
       // Rack starts with no chains

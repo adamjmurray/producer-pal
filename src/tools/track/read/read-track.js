@@ -190,13 +190,14 @@ function processDevices(categorizedDevices, config) {
       : categorizedDevices.midiEffects;
   }
 
-  if (includeInstruments) {
-    if (!(isProducerPalHost && categorizedDevices.instrument === null)) {
-      result.instrument =
-        shouldFetchChainsForDrumMaps && categorizedDevices.instrument
-          ? stripChains(categorizedDevices.instrument)
-          : categorizedDevices.instrument;
-    }
+  if (
+    includeInstruments &&
+    !(isProducerPalHost && categorizedDevices.instrument === null)
+  ) {
+    result.instrument =
+      shouldFetchChainsForDrumMaps && categorizedDevices.instrument
+        ? stripChains(categorizedDevices.instrument)
+        : categorizedDevices.instrument;
   }
 
   if (includeAudioEffects) {

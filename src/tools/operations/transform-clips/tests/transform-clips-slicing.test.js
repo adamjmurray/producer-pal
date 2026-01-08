@@ -234,10 +234,8 @@ describe("transformClips - slicing", () => {
         }
       }
 
-      if (this._path === "live_set tracks 0") {
-        if (prop === "track_index") {
-          return [0];
-        }
+      if (this._path === "live_set tracks 0" && prop === "track_index") {
+        return [0];
       }
 
       return [0];
