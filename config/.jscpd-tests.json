@@ -2,6 +2,6 @@
   "threshold": 16,
   "reporters": ["console"],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
-  "pattern": "**/*.test.{js,ts,tsx}",
+  "pattern": "**/{*.test.{js,ts,tsx},test-utils/*.{js,ts},test-cases/**/*.{js,ts}}",
   "path": ["../src", "../webui/src"]
 }
