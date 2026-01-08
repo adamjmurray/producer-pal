@@ -234,7 +234,7 @@ describe("gemini-adapter", () => {
       const result = geminiAdapter.createErrorMessage(error, chatHistory);
 
       expect(createGeminiErrorMessage).toHaveBeenCalledWith(error, chatHistory);
-      expect(result[result.length - 1]?.parts[0]?.type).toBe("error");
+      expect(result.at(-1)?.parts[0]?.type).toBe("error");
     });
 
     it("handles string errors", () => {
@@ -243,7 +243,7 @@ describe("gemini-adapter", () => {
 
       const result = geminiAdapter.createErrorMessage(error, chatHistory);
 
-      const lastPart = result[result.length - 1]?.parts[0];
+      const lastPart = result.at(-1)?.parts[0];
 
       expect(lastPart).toBeDefined();
       expect(lastPart).toHaveProperty("content");

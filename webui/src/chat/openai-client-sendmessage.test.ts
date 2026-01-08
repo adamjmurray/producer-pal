@@ -135,7 +135,7 @@ describe("OpenAIClient.sendMessage", () => {
     }
 
     // Last update should have accumulated content
-    const finalHistory = historyUpdates[historyUpdates.length - 1];
+    const finalHistory = historyUpdates.at(-1);
 
     expect(finalHistory).toHaveLength(2);
     expect(finalHistory?.[1]).toMatchObject({
@@ -243,7 +243,7 @@ describe("OpenAIClient.sendMessage", () => {
     });
 
     // Verify final history includes tool message
-    const finalHistory = historyUpdates[historyUpdates.length - 1];
+    const finalHistory = historyUpdates.at(-1);
 
     expect(finalHistory?.some((msg) => msg.role === "tool")).toBe(true);
   });
@@ -311,7 +311,7 @@ describe("OpenAIClient.sendMessage", () => {
     }
 
     // Verify error was added to history as tool message
-    const finalHistory = historyUpdates[historyUpdates.length - 1];
+    const finalHistory = historyUpdates.at(-1);
     const toolMessage = finalHistory?.find((msg) => msg.role === "tool");
 
     expect(toolMessage).toBeDefined();

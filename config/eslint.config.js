@@ -198,6 +198,8 @@ const unicornRules = {
   "unicorn/no-array-push-push": "error", // Combine multiple push() calls
   "unicorn/prefer-optional-catch-binding": "error", // Omit unused catch binding
   "unicorn/no-useless-spread": "error", // Remove unnecessary spread operators
+  "unicorn/no-array-for-each": "error", // Prefer for...of over Array.forEach
+  "unicorn/prefer-at": "error", // Use array.at(-1) instead of array[array.length - 1]
 };
 
 const jsOnlyRules = {

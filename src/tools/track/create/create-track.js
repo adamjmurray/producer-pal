@@ -40,7 +40,7 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
     }
 
     // Fall back to numbering from the last name (starting from 2)
-    const lastName = parsedNames[parsedNames.length - 1];
+    const lastName = parsedNames.at(-1);
     const fallbackIndex = index - parsedNames.length + 2;
 
     return `${lastName} ${fallbackIndex}`;

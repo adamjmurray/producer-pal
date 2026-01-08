@@ -232,8 +232,7 @@ describe("useChat", () => {
         await result.current.handleSend("Hello");
       });
 
-      const lastMessage =
-        result.current.messages[result.current.messages.length - 1];
+      const lastMessage = result.current.messages.at(-1);
 
       expect(lastMessage?.role).toBe("model");
       const lastPart = lastMessage?.parts[0];
@@ -334,8 +333,7 @@ describe("useChat", () => {
       });
 
       expect(errorAdapter.createErrorMessage).toHaveBeenCalled();
-      const lastMessage =
-        result.current.messages[result.current.messages.length - 1];
+      const lastMessage = result.current.messages.at(-1);
       const lastPart = lastMessage?.parts[0];
 
       expect(lastPart?.type).toBe("error");

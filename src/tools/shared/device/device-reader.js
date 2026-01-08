@@ -126,13 +126,13 @@ export function getDrumMap(devices) {
 
   const drumMap = {};
 
-  drumRacks[0]._processedDrumPads.forEach((drumPad) => {
+  for (const drumPad of drumRacks[0]._processedDrumPads) {
     if (drumPad.hasInstrument !== false) {
       const noteName = drumPad.pitch;
 
       drumMap[noteName] = drumPad.name;
     }
-  });
+  }
 
   return Object.keys(drumMap).length > 0 ? drumMap : {};
 }

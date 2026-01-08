@@ -7,11 +7,11 @@ import * as console from "./node-for-max-logger.js";
 let port = 3350;
 const args = process.argv;
 
-args.forEach((arg, index) => {
+for (const [index, arg] of args.entries()) {
   if (arg === "port") {
     port = args[index + 1] ?? port;
   }
-});
+}
 
 console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
 

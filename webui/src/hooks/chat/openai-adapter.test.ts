@@ -216,7 +216,7 @@ describe("openai-adapter", () => {
 
       // Note: createOpenAIErrorMessage takes (chatHistory, error) - different order than Gemini
       expect(createOpenAIErrorMessage).toHaveBeenCalledWith(chatHistory, error);
-      expect(result[result.length - 1]?.parts[0]?.type).toBe("error");
+      expect(result.at(-1)?.parts[0]?.type).toBe("error");
     });
 
     it("handles string errors", () => {
@@ -225,7 +225,7 @@ describe("openai-adapter", () => {
 
       const result = openaiAdapter.createErrorMessage(error, chatHistory);
 
-      const lastPart = result[result.length - 1]?.parts[0];
+      const lastPart = result.at(-1)?.parts[0];
 
       expect(lastPart).toBeDefined();
       expect(lastPart).toHaveProperty("content");

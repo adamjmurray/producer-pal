@@ -183,7 +183,7 @@ export function autoCreateDrumPadChains(
 
     // Get the new chain (it's at the end)
     const chains = device.getChildren("chains");
-    const newChain = chains[chains.length - 1];
+    const newChain = chains.at(-1);
 
     // Set in_note to assign it to the correct pad
     newChain.set("in_note", targetInNote);

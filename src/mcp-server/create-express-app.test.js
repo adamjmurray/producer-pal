@@ -163,7 +163,7 @@ describe("MCP Express App", () => {
       const result = await client.listTools();
 
       // Every tool should have required fields
-      result.tools.forEach((tool) => {
+      for (const tool of result.tools) {
         try {
           expect(tool.name).toBeDefined();
           expect(typeof tool.name).toBe("string");
@@ -183,7 +183,7 @@ describe("MCP Express App", () => {
             `Tool "${tool.name}" validation failed: ${error.message}`,
           );
         }
-      });
+      }
 
       // Check create-clip specifically since it had the issue
       const createClipTool = result.tools.find(
@@ -371,10 +371,10 @@ describe("MCP Express App", () => {
           clients.map((client) => client.listTools()),
         );
 
-        results.forEach((result) => {
+        for (const result of results) {
           expect(result.tools).toBeDefined();
           expect(result.tools.length).toBeGreaterThan(0);
-        });
+        }
       } finally {
         // Clean up all clients
         await Promise.all(transports.map((transport) => transport.close()));

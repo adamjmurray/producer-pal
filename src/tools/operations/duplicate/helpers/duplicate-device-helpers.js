@@ -132,7 +132,7 @@ function calculateDefaultDestination(devicePath, trackIndex) {
 
   // Parse the path to increment the last device index
   const segments = simplifiedPath.split("/");
-  const lastSegment = segments[segments.length - 1];
+  const lastSegment = segments.at(-1);
 
   if (lastSegment.startsWith("d")) {
     const deviceIndex = parseInt(lastSegment.slice(1), 10);

@@ -165,7 +165,7 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const lastMatch = deviceMatches[deviceMatches.length - 1];
+  const lastMatch = deviceMatches.at(-1);
   const deviceIndex = Number(lastMatch[1]);
 
   // Parent path is everything before the last "devices X"

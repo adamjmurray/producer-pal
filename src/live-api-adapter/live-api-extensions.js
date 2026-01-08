@@ -233,7 +233,7 @@ if (typeof LiveAPI !== "undefined") {
       get: function () {
         const matches = this.path.match(/devices (\d+)/g);
         if (!matches) return null;
-        const lastMatch = matches[matches.length - 1].match(/devices (\d+)/);
+        const lastMatch = matches.at(-1).match(/devices (\d+)/);
         return lastMatch ? Number(lastMatch[1]) : null;
       },
     });

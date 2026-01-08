@@ -151,7 +151,7 @@ describe("GeminiClient", () => {
       });
 
       // Verify final history structure
-      const finalHistory = historyUpdates[historyUpdates.length - 1];
+      const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(4);
@@ -257,7 +257,7 @@ describe("GeminiClient", () => {
       expect(mockMcpClient.callTool).toHaveBeenCalledTimes(2);
 
       // Verify final history
-      const finalHistory = historyUpdates[historyUpdates.length - 1];
+      const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(6);
@@ -312,7 +312,7 @@ describe("GeminiClient", () => {
       expect(mockMcpClient.callTool).not.toHaveBeenCalled();
 
       // Verify final history
-      const finalHistory = historyUpdates[historyUpdates.length - 1];
+      const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(2);
@@ -377,7 +377,7 @@ describe("GeminiClient", () => {
 
       // Verify chats.create was called with updated thinkingConfig
       expect(createCalls.length).toBeGreaterThanOrEqual(1);
-      const lastCreateCall = createCalls[createCalls.length - 1] as {
+      const lastCreateCall = createCalls.at(-1) as {
         config: { thinkingConfig: { includeThoughts: boolean } };
       };
 
@@ -443,7 +443,7 @@ describe("GeminiClient", () => {
       expect(mockMcpClient.callTool).toHaveBeenCalledTimes(1);
 
       // Verify history stops after tool response
-      const finalHistory = historyUpdates[historyUpdates.length - 1];
+      const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
       expect(finalHistory).toHaveLength(3);

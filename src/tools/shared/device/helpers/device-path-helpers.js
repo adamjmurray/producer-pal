@@ -561,7 +561,7 @@ export function resolveInsertionPath(path) {
   }
 
   // Simple prefix-based logic: path ending with 'd' = position, otherwise = append
-  const lastSegment = segments[segments.length - 1];
+  const lastSegment = segments.at(-1);
   const hasPosition = lastSegment.startsWith("d");
 
   if (hasPosition) {

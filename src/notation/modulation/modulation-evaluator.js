@@ -35,7 +35,7 @@ export function applyModulations(
 
   // Calculate the overall clip timeRange in musical beats
   const clipStartTime = notes[0].start_time * (timeSigDenominator / 4);
-  const lastNote = notes[notes.length - 1];
+  const lastNote = notes.at(-1);
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 

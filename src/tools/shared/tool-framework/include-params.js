@@ -322,7 +322,7 @@ function expandWildcardIncludes(includeArray, defaults) {
   // Create set with all non-'*' options plus all available options
   const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
 
-  allOptions.forEach((option) => expandedSet.add(option));
+  for (const option of allOptions) expandedSet.add(option);
 
   return Array.from(expandedSet);
 }

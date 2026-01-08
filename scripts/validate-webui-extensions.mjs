@@ -24,7 +24,7 @@ try {
       "The webui directory must contain only TypeScript files (.ts/.tsx).\n",
     );
     console.error("Found the following violations:\n");
-    files.forEach((file) => console.error(`  - ${file}`));
+    for (const file of files) console.error(`  - ${file}`);
     console.error(
       "\nPlease convert these files to TypeScript or remove them.\n",
     );

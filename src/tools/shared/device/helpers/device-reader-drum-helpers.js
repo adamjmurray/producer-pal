@@ -85,7 +85,7 @@ function processDrumRackChain(chain, inNote, indexWithinNote, options) {
 function groupChainsByNote(chains) {
   const noteGroups = new Map();
 
-  chains.forEach((chain) => {
+  for (const chain of chains) {
     const inNote = chain.getProperty("in_note");
 
     if (!noteGroups.has(inNote)) {
@@ -93,7 +93,7 @@ function groupChainsByNote(chains) {
     }
 
     noteGroups.get(inNote).push(chain);
-  });
+  }
 
   return noteGroups;
 }
@@ -148,7 +148,7 @@ export function updateDrumPadSoloStates(processedDrumPads) {
     return;
   }
 
-  processedDrumPads.forEach((drumPadInfo) => {
+  for (const drumPadInfo of processedDrumPads) {
     if (drumPadInfo.state === STATE.SOLOED) {
       // Keep soloed state as-is
     } else if (drumPadInfo.state === STATE.MUTED) {
@@ -156,7 +156,7 @@ export function updateDrumPadSoloStates(processedDrumPads) {
     } else if (!drumPadInfo.state) {
       drumPadInfo.state = STATE.MUTED_VIA_SOLO;
     }
-  });
+  }
 }
 
 /**
