@@ -34,6 +34,9 @@ jobs:
       - name: Build all production artifacts
         run: npm run build
 
+      - name: Build documentation site
+        run: npm run docs:build
+
       - name: Verify all build artifacts exist
         id: summary
         run: |
@@ -52,17 +55,19 @@ jobs:
           # Verify release artifacts
           test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
 
+          # Verify documentation site
+          test -f docs/.vitepress/dist/index.html || { echo "Missing: docs/.vitepress/dist/index.html"; exit 1; }
+
           # Write build summary
           cat > /tmp/summary.md << 'EOF'
           ## Build Artifacts
 
-          | Artifact | Status |
-          |----------|--------|
-          | Max for Live device | ✅ |
-          | Built-in chat UI | ✅ |
-          | npm package | ✅ |
-          | Claude Desktop extension | ✅ |
-          | Release | ✅ |
+          - ✅ Max for Live device
+          - ✅ Built-in chat UI
+          - ✅ npm package
+          - ✅ Claude Desktop extension
+          - ✅ Release artifacts
+          - ✅ Documentation site
           EOF
 
           # Write to step summary and output (base64 encoded for multiline)
@@ -344,10 +349,10 @@ jobs:
             const tableRows = [
               '| Job | Status |',
               '|-----|--------|',
-              `| Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |`,
-              `| Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |`,
-              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
-              `| Playwright | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
+              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,              
+              `| Unit Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |`,
+              `| Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |`,              
+              `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');
             const body = [
