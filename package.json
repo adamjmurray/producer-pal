@@ -110,7 +110,7 @@
     "eslint-plugin-jsdoc": "^61.5.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-sonarjs": "^3.0.5",
-    "happy-dom": "^20.0.11",
+    "happy-dom": "^20.1.0",
     "jscpd": "^4.0.5",
     "peggy": "^5.0.6",
     "prettier": "^3.7.4",
