@@ -10,7 +10,6 @@ import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
-// @ts-expect-error vi.mock partial implementation
 vi.mock(import("#webui/chat/openai-client"), () => ({
   OpenAIClient: vi.fn(),
 }));

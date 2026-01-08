@@ -10,7 +10,6 @@ import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
-// @ts-expect-error vi.mock partial implementation
 vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: vi.fn(),
 }));

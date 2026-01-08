@@ -58,21 +58,6 @@ export class GeminiClient {
   }
 
   /**
-   * Tests connection to the MCP server without creating a client instance.
-   * @param {string} mcpUrl - MCP server URL to test
-   */
-  static async testConnection(mcpUrl = getMcpUrl()): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
-    const client = new Client({
-      name: "producer-pal-chat-ui-test",
-      version: "1.0.0",
-    });
-
-    await client.connect(transport);
-    await client.close();
-  }
-
-  /**
    * Initializes the MCP connection and creates a Gemini chat session.
    */
   async initialize(): Promise<void> {

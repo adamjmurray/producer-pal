@@ -100,22 +100,6 @@ export class OpenAIClient {
   }
 
   /**
-   * Tests connection to the MCP server without creating a client instance.
-   * @param {string} [mcpUrl] - MCP server URL to test (defaults to current origin)
-   * @throws If connection fails
-   */
-  static async testConnection(mcpUrl = getMcpUrl()): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
-    const client = new Client({
-      name: "producer-pal-chat-ui-test",
-      version: "1.0.0",
-    });
-
-    await client.connect(transport);
-    await client.close();
-  }
-
-  /**
    * Initializes the MCP connection.
    * Must be called before sending messages.
    * @throws If MCP connection fails
