@@ -18,6 +18,9 @@ jobs:
     permissions:
       contents: read
 
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -32,6 +35,7 @@ jobs:
         run: npm run build
 
       - name: Verify all build artifacts exist
+        id: summary
         run: |
           # Verify Max for Live device artifacts
           test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
@@ -49,21 +53,29 @@ jobs:
           test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
 
           # Write build summary
-          echo "## Build Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Max for Live device | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| npm package | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| Claude Desktop extension | ✅ built |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release | ✅ built |" >> $GITHUB_STEP_SUMMARY
+          cat > /tmp/summary.md << 'EOF'
+          ## Build Artifacts
+
+          | Artifact | Status |
+          |----------|--------|
+          | Max for Live device | ✅ built |
+          | npm package | ✅ built |
+          | Claude Desktop extension | ✅ built |
+          | Release | ✅ built |
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   tests:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
 
     steps:
       - uses: actions/checkout@v6
@@ -81,19 +93,39 @@ jobs:
         id: tests
         run: FORCE_COLOR=3 npm run test:coverage
 
-      - name: "Report Coverage"
-        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
+      - name: Report Coverage
+        id: summary
         if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          vite-config-path: "./config/vite.config.mjs"
-          file-coverage-mode: "all"
+        run: |
+          # Extract coverage percentages from JSON
+          LINES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
+          STATEMENTS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.statements.pct)")
+          FUNCTIONS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.functions.pct)")
+          BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
+
+          cat > /tmp/summary.md << EOF
+          ## Coverage Report
+
+          | Category | Coverage |
+          |----------|----------|
+          | Lines | ${LINES}% |
+          | Statements | ${STATEMENTS}% |
+          | Functions | ${FUNCTIONS}% |
+          | Branches | ${BRANCHES}% |
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   quality-checks:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
 
     steps:
       - uses: actions/checkout@v6
@@ -133,22 +165,32 @@ jobs:
         run: npm run format:check
 
       - name: Check code duplication
+        id: summary
         run: |
           npm run duplication 2>&1 | tee duplication-output.txt
 
-          # Format duplication report as markdown table for job summary
-          echo "## Code Duplication Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Code Group | Line Dupe % | Files with Dupes | Exact Clones |" >> $GITHUB_STEP_SUMMARY
-          echo "|------------|-------------|------------------|--------------|" >> $GITHUB_STEP_SUMMARY
-          grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
-          grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> $GITHUB_STEP_SUMMARY
+          # Format duplication report as markdown table
+          cat > /tmp/summary.md << 'EOF'
+          ## Code Duplication Report
+
+          | Code Group | Line Dupe % | Files with Dupes | Exact Clones |
+          |------------|-------------|------------------|--------------|
+          EOF
+          grep "Duplications detection" duplication-output.txt | head -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> /tmp/summary.md
+          grep "Duplications detection" duplication-output.txt | tail -1 | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> /tmp/summary.md
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   playwright-tests:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
 
     steps:
       - uses: actions/checkout@v6
@@ -183,16 +225,23 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Test documentation site with Playwright
+        id: summary
         run: |
           npm run docs:test 2>&1 | tee playwright-output.txt
 
           # Extract result summary for job summary
-          echo "## Playwright Tests" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Suite | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
-          echo "| Docs | ${RESULT} |" >> $GITHUB_STEP_SUMMARY
+          cat > /tmp/summary.md << EOF
+          ## Playwright Tests
+
+          | Suite | Result |
+          |-------|--------|
+          | Docs | ${RESULT} |
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
@@ -208,6 +257,9 @@ jobs:
     permissions:
       contents: read
 
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -222,12 +274,17 @@ jobs:
         run: npm ci
 
       - name: Generate lines of code report
+        id: summary
         run: |
-          echo "## Lines of Code" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          npm run loc --silent >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Lines of Code" > /tmp/summary.md
+          echo "" >> /tmp/summary.md
+          echo '```' >> /tmp/summary.md
+          npm run loc --silent >> /tmp/summary.md
+          echo '```' >> /tmp/summary.md
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   post-summary:
     needs:
@@ -272,19 +329,38 @@ jobs:
             const statusText = allPassed ? 'All checks passed' : 'Some checks failed';
             const icon = s => s === 'success' ? '✅' : '❌';
 
+            // Decode base64 job summaries
+            const decode = (b64) => b64 ? Buffer.from(b64, 'base64').toString('utf-8') : '';
+            const summaries = [
+              decode(`${{ needs.build-verification.outputs.summary }}`),
+              decode(`${{ needs.tests.outputs.summary }}`),
+              decode(`${{ needs.quality-checks.outputs.summary }}`),
+              decode(`${{ needs.playwright-tests.outputs.summary }}`),
+              decode(`${{ needs.repo-stats.outputs.summary }}`)
+            ].filter(s => s && s.trim()).join('\n\n');
+
             const marker = '<!-- ci-summary-bot -->';
-            const body = `${marker}
-            ## ${statusEmoji} CI Results: ${statusText}
-
-            | Job | Status |
-            |-----|--------|
-            | Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |
-            | Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |
-            | Build | ${icon(jobs['Build'])} ${jobs['Build']} |
-            | Playwright | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |
-            | Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |
-
-            [View full summary](${runUrl})`;
+            const tableRows = [
+              '| Job | Status |',
+              '|-----|--------|',
+              `| Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |`,
+              `| Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |`,
+              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
+              `| Playwright | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
+              `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
+            ].join('\n');
+            const body = [
+              marker,
+              `## ${statusEmoji} CI Results: ${statusText}`,
+              '',
+              tableRows,
+              '',
+              `[View full summary](${runUrl})`,
+              '',
+              '---',
+              '',
+              summaries
+            ].join('\n');
 
             // Find existing comment from this bot
             const { data: comments } = await github.rest.issues.listComments({
