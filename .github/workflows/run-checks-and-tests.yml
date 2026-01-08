@@ -1,6 +1,10 @@
 # .github/workflows/run-tests.yml
 name: "Run Test Suite"
 
+# NOTE: We run individual check steps (lint, typecheck, format:check, duplication,
+# test:coverage) instead of `npm run check` so each step appears separately in the
+# GitHub Actions UI, making it easier to identify which check failed.
+
 on: push
 
 concurrency:
@@ -53,6 +57,18 @@ jobs:
 
       - name: Check formatting
         run: npm run format:check
+
+      - name: Check code duplication
+        run: |
+          # Run duplication check and capture output (uses verbose mode for details)
+          npm run duplication:verbose 2>&1 | tee duplication-output.txt
+
+          # Add duplication report to job summary
+          echo "## Code Duplication Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat duplication-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run tests with coverage
         id: tests
