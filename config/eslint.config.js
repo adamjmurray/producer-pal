@@ -205,6 +205,7 @@ const unicornRules = {
   "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
   "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
   "unicorn/prefer-ternary": ["error", "only-single-line"], // Simple if-else to ternary
+  "unicorn/prefer-top-level-await": "error", // Use top-level await instead of async IIFE
 };
 
 const jsOnlyRules = {
