@@ -121,41 +121,42 @@ describe("MCP Express App", () => {
 
     it("should provide tool schemas with correct names and descriptions", async () => {
       const result = await client.listTools();
-
-      const readLiveSetTool = result.tools.find(
-        (tool) => tool.name === "ppal-read-live-set",
+      const toolsByName = Object.fromEntries(
+        result.tools.map((tool) => [tool.name, tool]),
       );
 
-      expect(readLiveSetTool).toBeDefined();
-      expect(readLiveSetTool.description).toContain("Read Live Set");
-      expect(readLiveSetTool.description).toContain("global settings");
-      expect(readLiveSetTool.description).toContain("tracks, scenes, devices");
+      // Verify key tools exist with expected structure
+      expect(toolsByName).toMatchObject({
+        "ppal-read-live-set": {
+          description: expect.stringContaining("Read Live Set"),
+        },
+        "ppal-update-clip": {
+          inputSchema: {
+            properties: { ids: expect.anything() },
+          },
+        },
+        "ppal-create-track": {
+          description: expect.stringContaining("Create track(s)"),
+          inputSchema: {
+            properties: {
+              trackIndex: expect.anything(),
+              count: expect.anything(),
+            },
+          },
+        },
+        "ppal-update-track": {
+          description: expect.stringContaining("Update track(s)"),
+          inputSchema: {
+            properties: { ids: expect.anything() },
+          },
+        },
+      });
 
-      const updateClipTool = result.tools.find(
-        (tool) => tool.name === "ppal-update-clip",
-      );
+      // Additional description checks for read-live-set
+      const readLiveSetDesc = toolsByName["ppal-read-live-set"].description;
 
-      expect(updateClipTool).toBeDefined();
-      expect(updateClipTool.inputSchema).toBeDefined();
-      expect(updateClipTool.inputSchema.properties).toBeDefined();
-      expect(updateClipTool.inputSchema.properties.ids).toBeDefined();
-
-      const createTrackTool = result.tools.find(
-        (tool) => tool.name === "ppal-create-track",
-      );
-
-      expect(createTrackTool).toBeDefined();
-      expect(createTrackTool.description).toContain("Create track(s)");
-      expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
-      expect(createTrackTool.inputSchema.properties.count).toBeDefined();
-
-      const updateTrackTool = result.tools.find(
-        (tool) => tool.name === "ppal-update-track",
-      );
-
-      expect(updateTrackTool).toBeDefined();
-      expect(updateTrackTool.description).toContain("Update track(s)");
-      expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
+      expect(readLiveSetDesc).toContain("global settings");
+      expect(readLiveSetDesc).toContain("tracks, scenes, devices");
     });
 
     it("should have valid input schemas for all tools", async () => {

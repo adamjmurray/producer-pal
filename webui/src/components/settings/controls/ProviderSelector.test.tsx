@@ -54,26 +54,20 @@ describe("ProviderSelector", () => {
 
       expect(options).toHaveLength(7);
 
-      expect(options[0]!.value).toBe("gemini");
-      expect(options[0]!.textContent).toBe("Google");
+      const optionData = Array.from(options).map((opt) => ({
+        value: opt.value,
+        text: opt.textContent,
+      }));
 
-      expect(options[1]!.value).toBe("openai");
-      expect(options[1]!.textContent).toBe("OpenAI");
-
-      expect(options[2]!.value).toBe("mistral");
-      expect(options[2]!.textContent).toBe("Mistral");
-
-      expect(options[3]!.value).toBe("openrouter");
-      expect(options[3]!.textContent).toBe("OpenRouter");
-
-      expect(options[4]!.value).toBe("lmstudio");
-      expect(options[4]!.textContent).toBe("LM Studio (local)");
-
-      expect(options[5]!.value).toBe("ollama");
-      expect(options[5]!.textContent).toBe("Ollama (local)");
-
-      expect(options[6]!.value).toBe("custom");
-      expect(options[6]!.textContent).toBe("Custom (OpenAI-compatible)");
+      expect(optionData).toStrictEqual([
+        { value: "gemini", text: "Google" },
+        { value: "openai", text: "OpenAI" },
+        { value: "mistral", text: "Mistral" },
+        { value: "openrouter", text: "OpenRouter" },
+        { value: "lmstudio", text: "LM Studio (local)" },
+        { value: "ollama", text: "Ollama (local)" },
+        { value: "custom", text: "Custom (OpenAI-compatible)" },
+      ]);
     });
 
     it("shows selected provider", () => {
