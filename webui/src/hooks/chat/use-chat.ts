@@ -104,7 +104,7 @@ export interface RateLimitState {
   delayMs: number;
 }
 
-interface UseChatReturn {
+export interface UseChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
