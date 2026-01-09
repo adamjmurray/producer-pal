@@ -23,7 +23,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       clipId,
       revealedClipId,
       sourceEndTime: 8.0,
-      targetEndMarker: 14.0,
+      targetLength: 14.0,
       name: "Audio No Hidden start==firstStart",
     });
 
@@ -44,7 +44,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       clipId,
       revealedClipId,
       sourceEndTime: 5.0,
-      targetEndMarker: 14.0,
+      targetLength: 14.0,
       name: "Audio Hidden start==firstStart",
     });
 
@@ -65,7 +65,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       clipId,
       revealedClipId,
       sourceEndTime: 8.0,
-      targetEndMarker: 14.0,
+      targetLength: 14.0,
       name: "Audio No Hidden start<firstStart",
     });
 
@@ -86,7 +86,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       clipId,
       revealedClipId,
       sourceEndTime: 5.0,
-      targetEndMarker: 14.0,
+      targetLength: 14.0,
       name: "Audio Hidden start<firstStart",
     });
 

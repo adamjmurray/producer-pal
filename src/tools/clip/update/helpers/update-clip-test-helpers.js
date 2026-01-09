@@ -94,7 +94,7 @@ export function setupArrangementClipPath(trackIndex, clipIds) {
  * @param {object} opts - Options
  * @param {string} opts.clipId - Clip ID
  * @param {number} opts.trackIndex - Track index
- * @param {number} opts.endTime - End time in beats
+ * @param {number} opts.endTime - End time in beats (arrangement visible length)
  * @param {number} [opts.startMarker=0] - Start marker position
  * @param {string} [opts.name="Audio Clip"] - Clip name
  * @returns {object} Clip mock data object keyed by clip ID
@@ -106,6 +106,9 @@ export function buildAudioClipMock({
   startMarker = 0,
   name = "Audio Clip",
 }) {
+  // end_marker = startMarker + visibleLength (endTime)
+  const endMarker = startMarker + endTime;
+
   return {
     [clipId]: {
       is_arrangement_clip: 1,
@@ -116,9 +119,9 @@ export function buildAudioClipMock({
       start_time: 0.0,
       end_time: endTime,
       start_marker: startMarker,
-      end_marker: endTime,
+      end_marker: endMarker,
       loop_start: startMarker,
-      loop_end: endTime,
+      loop_end: endMarker,
       name,
       trackIndex,
     },
@@ -244,8 +247,8 @@ export function assertRevealedClipMarkers(clipId, startMarker, endMarker) {
  * @param {number} opts.trackIndex - Track index
  * @param {string} opts.clipId - Source clip ID
  * @param {string} opts.revealedClipId - Revealed clip ID
- * @param {number} opts.sourceEndTime - Source clip end time
- * @param {number} opts.targetEndMarker - Target end marker (e.g., 14 for "3:2")
+ * @param {number} opts.sourceEndTime - Source clip visible end time (arrangement length)
+ * @param {number} opts.targetLength - Target arrangement length in beats (e.g., 14 for "3:2")
  * @param {number} [opts.startMarker=0] - Source clip start marker
  * @param {string} [opts.name="Audio Clip"] - Clip name
  */
@@ -254,7 +257,7 @@ export function setupAudioArrangementTest({
   clipId,
   revealedClipId,
   sourceEndTime,
-  targetEndMarker,
+  targetLength,
   startMarker = 0,
   name = "Audio Clip",
 }) {
@@ -268,12 +271,18 @@ export function setupAudioArrangementTest({
     name,
   });
 
+  // Calculate marker positions for revealed clip
+  // visibleContentEnd = startMarker + sourceEndTime
+  const visibleContentEnd = startMarker + sourceEndTime;
+  // targetEndMarker = startMarker + targetLength
+  const targetEndMarker = startMarker + targetLength;
+
   const revealedMock = buildRevealedClipMock({
     clipId: revealedClipId,
     trackIndex,
     startTime: sourceEndTime,
-    endTime: targetEndMarker,
-    startMarker: startMarker + sourceEndTime,
+    endTime: targetLength,
+    startMarker: visibleContentEnd,
     endMarker: targetEndMarker,
   });
 
