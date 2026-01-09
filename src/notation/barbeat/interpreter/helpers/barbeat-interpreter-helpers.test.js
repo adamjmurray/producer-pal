@@ -7,6 +7,7 @@ import {
 import {
   copyNoteToDestination,
   handleBarCopyRangeDestination,
+  handleBarCopySingleDestination,
 } from "./barbeat-interpreter-copy-helpers.js";
 
 describe("barbeat-interpreter-helpers", () => {
@@ -305,6 +306,81 @@ describe("barbeat-interpreter-helpers", () => {
         expect.stringContaining("Skipping copy of bar 2 to itself"),
       );
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("handleBarCopySingleDestination", () => {
+    it("returns null when source is invalid (no bar, range, or previous)", () => {
+      const element = {
+        source: {}, // Invalid - no bar, range, or "previous"
+        destination: { bar: 2 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+    });
+
+    it("returns null when no notes were copied from source bar", () => {
+      const element = {
+        source: { bar: 1 },
+        destination: { bar: 2 },
+      };
+
+      // Empty notesByBar means no notes to copy
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(), // Empty - no notes in bar 1
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+    });
+
+    it("copies notes when source bar has content", () => {
+      const notesByBar = new Map();
+
+      notesByBar.set(1, [
+        { pitch: 60, relativeTime: 0, duration: 1, velocity: 100 },
+      ]);
+
+      const events = [];
+      const element = {
+        source: { bar: 1 },
+        destination: { bar: 2 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        notesByBar,
+        events,
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: { bar: 2, beat: 1 },
+        hasExplicitBarNumber: true,
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0].start_time).toBe(4); // Bar 2 starts at beat 4
     });
   });
 });
