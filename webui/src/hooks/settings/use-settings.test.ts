@@ -621,4 +621,69 @@ describe("useSettings", () => {
     // Cleanup
     localStorage.removeItem("producer_pal_provider_gemini");
   });
+
+  it("setBaseUrl updates baseUrl for custom provider", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.setProvider("custom");
+    });
+    await act(() => {
+      result.current.setBaseUrl("http://localhost:8080");
+    });
+
+    expect(result.current.baseUrl).toBe("http://localhost:8080");
+  });
+
+  it("setPort updates port for ollama provider", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.setProvider("ollama");
+    });
+    await act(() => {
+      result.current.setPort(11434);
+    });
+
+    expect(result.current.port).toBe(11434);
+  });
+
+  it("setPort updates port for lmstudio provider", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.setProvider("lmstudio");
+    });
+    await act(() => {
+      result.current.setPort(1234);
+    });
+
+    expect(result.current.port).toBe(1234);
+  });
+
+  it("setBaseUrl is undefined for non-custom providers", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // gemini is the default provider - setBaseUrl should be undefined
+    expect(result.current.setBaseUrl).toBeUndefined();
+    expect(result.current.baseUrl).toBeUndefined();
+  });
+
+  it("setPort is undefined for non-ollama/lmstudio providers", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // gemini is the default provider - setPort should be undefined
+    expect(result.current.setPort).toBeUndefined();
+    expect(result.current.port).toBeUndefined();
+  });
+
+  it("handles invalid JSON in enabled tools localStorage gracefully", () => {
+    localStorage.setItem("producer_pal_enabled_tools", "invalid json{");
+    const { result } = renderHook(() => useSettings());
+
+    // Should fallback to defaults, all tools enabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    // Cleanup
+    localStorage.removeItem("producer_pal_enabled_tools");
+  });
 });
