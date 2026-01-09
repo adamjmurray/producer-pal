@@ -26,6 +26,19 @@ describe("MessageSettingsToolbar", () => {
     onResetToDefaults: mockOnResetToDefaults,
   };
 
+  /**
+   * Render toolbar expanded and return container
+   * @param props - Props to pass to MessageSettingsToolbar
+   * @returns Container element
+   */
+  function renderExpanded(props = defaultProps) {
+    const { container } = render(<MessageSettingsToolbar {...props} />);
+
+    fireEvent.click(container.querySelector("button")!);
+
+    return container;
+  }
+
   it("renders collapsed by default", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const toolbar = container.querySelector(".w-full.px-4.py-2");
@@ -34,12 +47,14 @@ describe("MessageSettingsToolbar", () => {
     expect(toolbar?.textContent).toContain("▶");
   });
 
-  it("expands when clicked", () => {
+  it("expands and collapses when clicked", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
 
     fireEvent.click(button!);
     expect(container.textContent).toContain("▼");
+    fireEvent.click(button!);
+    expect(container.textContent).toContain("▶");
   });
 
   it.each([{ thinking: "High" }, { temperature: 1.5 }])(
@@ -75,11 +90,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("shows all thinking options for Gemini", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
+    const container = renderExpanded();
     const select = container.querySelector("select");
 
     expect(select?.innerHTML).toContain("Default");
@@ -88,11 +99,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("calls onThinkingChange when thinking changes", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
+    const container = renderExpanded();
     const select = container.querySelector("select");
 
     fireEvent.change(select!, { target: { value: "High" } });
@@ -100,11 +107,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("calls onTemperatureChange when slider changes", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
+    const container = renderExpanded();
     const slider = container.querySelector('input[type="range"]');
 
     fireEvent.input(slider!, { target: { value: "1.5" } });
@@ -112,13 +115,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("calls onResetToDefaults when reset button clicked", () => {
-    const { container } = render(
-      <MessageSettingsToolbar {...defaultProps} thinking="High" />,
-    );
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
+    const container = renderExpanded({ ...defaultProps, thinking: "High" });
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Use defaults"),
     );
@@ -128,25 +125,11 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("disables reset button when using defaults", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
+    const container = renderExpanded();
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Use defaults"),
     );
 
     expect(resetButton?.disabled).toBe(true);
-  });
-
-  it("collapses when clicked again", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-    expect(container.textContent).toContain("▼");
-    fireEvent.click(button!);
-    expect(container.textContent).toContain("▶");
   });
 });

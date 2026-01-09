@@ -33,30 +33,20 @@ describe("LiveAPI extensions - setter methods", () => {
       expect(api.set).toHaveBeenCalledTimes(5);
     });
 
-    it("skips null values", () => {
+    it.each([
+      ["null", null],
+      ["undefined", undefined],
+    ])("skips %s values", (_name, skipValue) => {
       api.setAll({
         name: "Test",
-        start_marker: null,
+        start_marker: skipValue,
         end_marker: 4,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Test");
       expect(api.set).toHaveBeenCalledWith("end_marker", 4);
       expect(api.set).toHaveBeenCalledTimes(2);
-      expect(api.set).not.toHaveBeenCalledWith("start_marker", null);
-    });
-
-    it("skips undefined values", () => {
-      api.setAll({
-        name: "Test",
-        start_marker: undefined,
-        end_marker: 4,
-      });
-
-      expect(api.set).toHaveBeenCalledWith("name", "Test");
-      expect(api.set).toHaveBeenCalledWith("end_marker", 4);
-      expect(api.set).toHaveBeenCalledTimes(2);
-      expect(api.set).not.toHaveBeenCalledWith("start_marker", undefined);
+      expect(api.set).not.toHaveBeenCalledWith("start_marker", skipValue);
     });
 
     it("uses setColor for color property", () => {

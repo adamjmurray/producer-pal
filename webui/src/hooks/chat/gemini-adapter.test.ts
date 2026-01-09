@@ -28,39 +28,27 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   ),
 }));
 
+// Helper for mock message transform
+const mockTransformMessage = (msg: GeminiMessage, idx: number) => ({
+  role: msg.role === "user" ? "user" : "model",
+  parts: (msg.parts ?? []).map((part) => ({
+    type: "text",
+    content: part.text ?? "",
+  })),
+  rawHistoryIndex: idx,
+});
+
 // Mock formatters and helpers
 vi.mock(import("#webui/chat/gemini-formatter"), () => ({
-  formatGeminiMessages: vi.fn((messages) =>
-    messages.map((msg: GeminiMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: (msg.parts ?? []).map((part) => ({
-        type: "text",
-        content: part.text ?? "",
-      })),
-      rawHistoryIndex: idx,
-    })),
-  ),
+  formatGeminiMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 
 vi.mock(import("./helpers/streaming-helpers"), () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
-    ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: (msg.parts ?? []).map((part) => ({
-        type: "text",
-        content: part.text ?? "",
-      })),
-      rawHistoryIndex: idx,
-    })),
+    ...chatHistory.map(mockTransformMessage),
     {
       role: "model",
-      parts: [
-        {
-          type: "error",
-          content: `${error}`,
-          isError: true,
-        },
-      ],
+      parts: [{ type: "error", content: `${error}`, isError: true }],
       rawHistoryIndex: chatHistory.length,
     },
   ]),
@@ -84,26 +72,6 @@ describe("gemini-adapter", () => {
   });
 
   describe("buildConfig", () => {
-    it("calls buildGeminiConfig with correct parameters", () => {
-      geminiAdapter.buildConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Default",
-        {},
-        undefined,
-        { showThoughts: true },
-      );
-
-      expect(buildGeminiConfig).toHaveBeenCalledWith(
-        "gemini-2.5-flash",
-        1.0,
-        "Default",
-        true,
-        {},
-        undefined,
-      );
-    });
-
     it("extracts showThoughts as true from extraParams", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",

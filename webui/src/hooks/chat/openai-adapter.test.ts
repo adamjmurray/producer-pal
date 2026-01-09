@@ -29,49 +29,32 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   ),
 }));
 
+// Helper for mock message transform
+const mockTransformMessage = (msg: OpenAIMessage, idx: number) => ({
+  role: msg.role === "user" ? "user" : "model",
+  parts: [
+    {
+      type: "text",
+      content:
+        typeof msg.content === "string"
+          ? msg.content
+          : JSON.stringify(msg.content),
+    },
+  ],
+  rawHistoryIndex: idx,
+});
+
 // Mock formatters and helpers
 vi.mock(import("#webui/chat/openai-formatter"), () => ({
-  formatOpenAIMessages: vi.fn((messages) =>
-    messages.map((msg: OpenAIMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [
-        {
-          type: "text",
-          content:
-            typeof msg.content === "string"
-              ? msg.content
-              : JSON.stringify(msg.content),
-        },
-      ],
-      rawHistoryIndex: idx,
-    })),
-  ),
+  formatOpenAIMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 
 vi.mock(import("./helpers/streaming-helpers"), () => ({
   createOpenAIErrorMessage: vi.fn((chatHistory, error) => [
-    ...chatHistory.map((msg: OpenAIMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [
-        {
-          type: "text",
-          content:
-            typeof msg.content === "string"
-              ? msg.content
-              : JSON.stringify(msg.content),
-        },
-      ],
-      rawHistoryIndex: idx,
-    })),
+    ...chatHistory.map(mockTransformMessage),
     {
       role: "model",
-      parts: [
-        {
-          type: "error",
-          content: `${error}`,
-          isError: true,
-        },
-      ],
+      parts: [{ type: "error", content: `${error}`, isError: true }],
       rawHistoryIndex: chatHistory.length,
     },
   ]),

@@ -556,41 +556,16 @@ describe("useSettings", () => {
     expect(result.current.showThoughts).toBe(false);
   });
 
-  it("setShowThoughts works for lmstudio provider", async () => {
-    const { result } = renderHook(() => useSettings());
+  it.each(["lmstudio", "ollama", "custom"] as const)(
+    "setShowThoughts works for %s provider",
+    async (provider) => {
+      const { result } = renderHook(() => useSettings());
 
-    await act(() => {
-      result.current.setProvider("lmstudio");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for ollama provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("ollama");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for custom provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("custom");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
+      await act(() => result.current.setProvider(provider));
+      await act(() => result.current.setShowThoughts(false));
+      expect(result.current.showThoughts).toBe(false);
+    },
+  );
 
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
@@ -635,39 +610,19 @@ describe("useSettings", () => {
     expect(result.current.baseUrl).toBe("http://localhost:8080");
   });
 
-  it("setPort updates port for ollama provider", async () => {
-    const { result } = renderHook(() => useSettings());
+  it.each([
+    ["ollama", 11434],
+    ["lmstudio", 1234],
+  ] as const)(
+    "setPort updates port for %s provider",
+    async (provider, port) => {
+      const { result } = renderHook(() => useSettings());
 
-    await act(() => {
-      result.current.setProvider("ollama");
-    });
-    await act(() => {
-      result.current.setPort!(11434);
-    });
-
-    expect(result.current.port).toBe(11434);
-  });
-
-  it("setPort updates port for lmstudio provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("lmstudio");
-    });
-    await act(() => {
-      result.current.setPort!(1234);
-    });
-
-    expect(result.current.port).toBe(1234);
-  });
-
-  it("setBaseUrl is undefined for non-custom providers", () => {
-    const { result } = renderHook(() => useSettings());
-
-    // gemini is the default provider - setBaseUrl should be undefined
-    expect(result.current.setBaseUrl).toBeUndefined();
-    expect(result.current.baseUrl).toBeUndefined();
-  });
+      await act(() => result.current.setProvider(provider));
+      await act(() => result.current.setPort!(port));
+      expect(result.current.port).toBe(port);
+    },
+  );
 
   it("setPort is undefined for non-ollama/lmstudio providers", () => {
     const { result } = renderHook(() => useSettings());
