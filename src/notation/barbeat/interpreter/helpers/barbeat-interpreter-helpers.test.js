@@ -1,10 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   clearPitchBuffer,
   trackStateChange,
   updateBufferedPitches,
 } from "./barbeat-interpreter-buffer-helpers.js";
-import { copyNoteToDestination } from "./barbeat-interpreter-copy-helpers.js";
+import {
+  copyNoteToDestination,
+  handleBarCopyRangeDestination,
+  handleBarCopySingleDestination,
+} from "./barbeat-interpreter-copy-helpers.js";
 
 describe("barbeat-interpreter-helpers", () => {
   describe("clearPitchBuffer", () => {
@@ -203,6 +207,180 @@ describe("barbeat-interpreter-helpers", () => {
       });
 
       expect(state.stateChangedAfterEmission).toBe(false);
+    });
+  });
+
+  describe("handleBarCopyRangeDestination", () => {
+    it("returns null when destination start is zero or negative", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: "previous",
+        destination: { range: [0, 2] },
+      };
+
+      const result = handleBarCopyRangeDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid destination range"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("returns null when source bar is zero or negative", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: { bar: 0 },
+        destination: { range: [2, 3] },
+      };
+
+      const result = handleBarCopyRangeDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Cannot copy from bar 0"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("returns null when all destination bars match source bar", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const notesByBar = new Map();
+
+      notesByBar.set(2, [{ pitch: 60, relativeTime: 0, duration: 1 }]);
+
+      const element = {
+        source: { bar: 2 },
+        destination: { range: [2, 2] },
+      };
+
+      const bufferState = {
+        inBuffer: false,
+        currentPitches: [],
+        pitchesEmitted: true,
+      };
+
+      const result = handleBarCopyRangeDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        notesByBar,
+        [],
+        bufferState,
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping copy of bar 2 to itself"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("handleBarCopySingleDestination", () => {
+    it("returns null when source is invalid (no bar, range, or previous)", () => {
+      const element = {
+        source: {}, // Invalid - no bar, range, or "previous"
+        destination: { bar: 2 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+    });
+
+    it("returns null when no notes were copied from source bar", () => {
+      const element = {
+        source: { bar: 1 },
+        destination: { bar: 2 },
+      };
+
+      // Empty notesByBar means no notes to copy
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(), // Empty - no notes in bar 1
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+    });
+
+    it("copies notes when source bar has content", () => {
+      const notesByBar = new Map();
+
+      notesByBar.set(1, [
+        { pitch: 60, relativeTime: 0, duration: 1, velocity: 100 },
+      ]);
+
+      const events = [];
+      const element = {
+        source: { bar: 1 },
+        destination: { bar: 2 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        notesByBar,
+        events,
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: { bar: 2, beat: 1 },
+        hasExplicitBarNumber: true,
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0].start_time).toBe(4); // Bar 2 starts at beat 4
     });
   });
 });
