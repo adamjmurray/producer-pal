@@ -20,9 +20,15 @@ vi.mock(import("@google/genai/web"), () => ({
 // @ts-expect-error vi.mock partial implementation
 vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: class MockClient {
-    connect = vi.fn();
+    connect = vi.fn().mockResolvedValue(undefined);
     close = vi.fn();
-    listTools = vi.fn();
+    listTools = vi.fn().mockResolvedValue({
+      tools: [
+        { name: "ppal-connect", description: "Connect tool", inputSchema: {} },
+        { name: "ppal-read-track", description: "Read track", inputSchema: {} },
+      ],
+    });
+
     callTool = vi.fn();
   },
 }));
@@ -61,6 +67,78 @@ describe("GeminiClient", () => {
 
       await stream.next();
     }).rejects.toThrow("Chat not initialized. Call initialize() first.");
+  });
+
+  describe("initialize", () => {
+    it("creates chat with tools from MCP server", async () => {
+      const client = new GeminiClient("test-api-key", {
+        model: "gemini-2.5-flash",
+      });
+
+      // Mock the AI chats.create to track what's passed
+      const mockCreate = vi.fn().mockReturnValue({});
+
+      client.ai = {
+        chats: { create: mockCreate },
+      } as unknown as typeof client.ai;
+
+      await client.initialize();
+
+      // Verify chat was created with correct model
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "gemini-2.5-flash",
+        }),
+      );
+
+      // Verify internal state is set up
+      expect(client.chat).not.toBeNull();
+      expect(client.mcpClient).not.toBeNull();
+      expect(client.chatConfig).not.toBeNull();
+    });
+
+    it("filters tools based on enabledTools config", async () => {
+      const client = new GeminiClient("test-api-key", {
+        enabledTools: { "ppal-connect": true, "ppal-read-track": false },
+      });
+
+      // Mock the AI chats.create to track what config is passed
+      const createCalls: unknown[] = [];
+      const mockCreate = vi.fn((config) => {
+        createCalls.push(config);
+
+        return {};
+      });
+
+      client.ai = {
+        chats: { create: mockCreate },
+      } as unknown as typeof client.ai;
+
+      await client.initialize();
+
+      // The chatConfig should have filtered tools
+      expect(client.chatConfig).toBeDefined();
+    });
+
+    it("uses default model when not specified", async () => {
+      const client = new GeminiClient("test-api-key");
+
+      // Mock the AI chats.create to track what's passed
+      const mockCreate = vi.fn().mockReturnValue({});
+
+      client.ai = {
+        chats: { create: mockCreate },
+      } as unknown as typeof client.ai;
+
+      await client.initialize();
+
+      // Verify chat was created with default model
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "gemini-2.5-flash-lite",
+        }),
+      );
+    });
   });
 
   describe("multi-step tool execution", () => {
@@ -451,6 +529,68 @@ describe("GeminiClient", () => {
       expect(finalHistory![1]!.role).toBe("model");
       expect(finalHistory![2]!.role).toBe("user"); // functionResponse
       // No fourth message because loop was aborted
+    });
+
+    it("warns when max iterations reached", async () => {
+      const client = new GeminiClient("test-api-key");
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
+
+      // Mock the MCP client
+      const mockMcpClient = {
+        connect: vi.fn(),
+        listTools: vi.fn().mockResolvedValue({
+          tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+        }),
+        callTool: vi.fn().mockResolvedValue({ result: "result" }),
+      };
+
+      // Mock the chat to always return tool calls (never stops)
+      const mockChat = {
+        sendMessageStream: vi.fn().mockImplementation(async function* () {
+          yield {
+            candidates: [
+              {
+                content: {
+                  role: "model",
+                  parts: [{ functionCall: { name: "test-tool", args: {} } }],
+                },
+              },
+            ],
+          };
+        }),
+      };
+
+      // Mock AI with chats.create that returns our mockChat
+      client.ai = {
+        chats: {
+          create: vi.fn().mockReturnValue(mockChat),
+        },
+      } as unknown as typeof client.ai;
+
+      // Set up mocks
+      client.mcpClient = mockMcpClient as unknown as Client;
+      client.chat = mockChat as unknown as Chat;
+      client.chatConfig = {};
+
+      // Send message and collect updates (will hit max iterations)
+      const historyUpdates = [];
+
+      for await (const history of client.sendMessage("test")) {
+        historyUpdates.push(history);
+      }
+
+      // Should have called sendMessageStream exactly 10 times (max iterations)
+      expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(10);
+
+      // Should have warned about max iterations
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Gemini tool calling loop reached max iterations:",
+        10,
+      );
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });
