@@ -6,56 +6,45 @@ import {
 } from "#src/test/mock-live-api.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
+// Helper to set up mocks for a single track with mixer properties
+function setupSingleTrackMixerMock({ displayValue, panValue }) {
+  liveApiId.mockImplementation(function () {
+    if (this._path === "live_set") return "live_set_id";
+    if (this._path === "live_set tracks 0") return "track1";
+    if (this._path === "live_set tracks 0 mixer_device") return "mixer_1";
+    if (this._path === "live_set tracks 0 mixer_device volume")
+      return "volume_param_1";
+    if (this._path === "live_set tracks 0 mixer_device panning")
+      return "panning_param_1";
+
+    return this._id;
+  });
+
+  mockLiveApiGet({
+    LiveSet: {
+      name: "Mixer Test Set",
+      tracks: children("track1"),
+      scenes: [],
+    },
+    "live_set tracks 0": {
+      has_midi_input: 1,
+      name: "Test Track",
+      mixer_device: children("mixer_1"),
+      clip_slots: [],
+      devices: [],
+    },
+    MixerDevice: {
+      volume: children("volume_param_1"),
+      panning: children("panning_param_1"),
+    },
+    volume_param_1: { display_value: displayValue },
+    panning_param_1: { value: panValue },
+  });
+}
+
 describe("readLiveSet - mixer properties", () => {
   it("includes mixer properties in tracks when mixer include is specified", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device") {
-        return "mixer_1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device volume") {
-        return "volume_param_1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device panning") {
-        return "panning_param_1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        mixer_device: children("mixer_1"),
-        clip_slots: [],
-        devices: [],
-      },
-      MixerDevice: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-      },
-      volume_param_1: {
-        display_value: -6,
-      },
-      panning_param_1: {
-        value: 0.5,
-      },
-    });
+    setupSingleTrackMixerMock({ displayValue: -6, panValue: 0.5 });
 
     const result = readLiveSet({
       include: ["regular-tracks", "mixer"],
@@ -232,54 +221,7 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties with wildcard include", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device") {
-        return "mixer_1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device volume") {
-        return "volume_param_1";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device panning") {
-        return "panning_param_1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        mixer_device: children("mixer_1"),
-        clip_slots: [],
-        devices: [],
-      },
-      MixerDevice: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-      },
-      volume_param_1: {
-        display_value: 2,
-      },
-      panning_param_1: {
-        value: -1,
-      },
-    });
+    setupSingleTrackMixerMock({ displayValue: 2, panValue: -1 });
 
     const result = readLiveSet({
       include: ["*"],
