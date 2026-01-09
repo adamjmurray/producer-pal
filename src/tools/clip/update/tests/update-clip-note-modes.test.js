@@ -3,6 +3,34 @@ import { liveApiCall, mockLiveApiGet } from "#src/test/mock-live-api.js";
 import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
+const DEFAULT_C3_NOTE = {
+  pitch: 60,
+  start_time: 0,
+  duration: 1,
+  velocity: 100,
+  probability: 1.0,
+  velocity_deviation: 0,
+};
+
+function expectNoteReplaceAndAddCalls(
+  clipId,
+  expectedNotes = [DEFAULT_C3_NOTE],
+) {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "remove_notes_extended",
+    0,
+    128,
+    0,
+    1000000,
+  );
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "add_new_notes",
+    { notes: expectedNotes },
+  );
+}
+
 describe("updateClip - Note update modes", () => {
   beforeEach(() => {
     setupMocks();
@@ -98,30 +126,7 @@ describe("updateClip - Note update modes", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectNoteReplaceAndAddCalls("123");
 
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
@@ -157,30 +162,7 @@ describe("updateClip - Note update modes", () => {
       noteUpdateMode: "merge",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectNoteReplaceAndAddCalls("123");
 
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
