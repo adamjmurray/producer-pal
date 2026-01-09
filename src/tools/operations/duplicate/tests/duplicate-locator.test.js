@@ -6,6 +6,7 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
+  setupArrangementClipMocks,
   setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
@@ -146,35 +147,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         return null;
       });
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3);
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [16];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks();
 
       const result = duplicate({
         type: "scene",
