@@ -5,6 +5,7 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
@@ -87,14 +88,7 @@ export function updateDevice({
   mappedPitch,
   wrapInRack,
 }) {
-  // Validate: exactly one of ids or path required
-  if (!ids && !path) {
-    throw new Error("Either ids or path must be provided");
-  }
-
-  if (ids && path) {
-    throw new Error("Provide either ids or path, not both");
-  }
+  validateExclusiveParams(ids, path, "ids", "path");
 
   // Handle wrapInRack separately (creates rack and moves devices into it)
   if (wrapInRack) {

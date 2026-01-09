@@ -6,6 +6,7 @@ import {
 } from "#src/tools/shared/device/device-reader.js";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)
@@ -26,14 +27,7 @@ export function readDevice({
   include = ["chains"],
   paramSearch,
 }) {
-  // Validate: exactly one of deviceId or path required
-  if (!deviceId && !path) {
-    throw new Error("Either deviceId or path must be provided");
-  }
-
-  if (deviceId && path) {
-    throw new Error("Provide either deviceId or path, not both");
-  }
+  validateExclusiveParams(deviceId, path, "deviceId", "path");
 
   const includeChains = include.includes("*") || include.includes("chains");
   const includeReturnChains =
