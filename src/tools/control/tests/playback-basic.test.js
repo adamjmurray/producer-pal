@@ -511,6 +511,82 @@ describe("transport", () => {
     expect(result).toBeDefined(); // Operation continues but with no clips stopped
   });
 
+  it("should throw error when clip has no trackIndex for play-session-clips", () => {
+    // Mock a clip that exists but has no trackIndex
+    liveApiPath.mockImplementation(function () {
+      // Return path without track info for clip1
+      if (this._id === "clip1") {
+        return "some_invalid_path"; // No track info in path
+      }
+
+      return this._path;
+    });
+
+    liveApiId.mockImplementation(function () {
+      // Return valid ID for clip1 (LiveAPI constructor stores ID in _id)
+      if (this._id === "clip1") {
+        return "id clip1";
+      }
+
+      return "id 1";
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this._id === "clip1") {
+        return "Clip";
+      }
+
+      return "LiveSet";
+    });
+
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        clipIds: "clip1",
+      }),
+    ).toThrow(
+      "playback play-session-clips action failed: could not determine track/scene for clipId=id clip1",
+    );
+  });
+
+  it("should throw error when clip has no trackIndex for stop-session-clips", () => {
+    // Mock a clip that exists but has no trackIndex
+    liveApiPath.mockImplementation(function () {
+      // Return path without track info for clip1
+      if (this._id === "clip1") {
+        return "some_invalid_path"; // No track info in path
+      }
+
+      return this._path;
+    });
+
+    liveApiId.mockImplementation(function () {
+      // Return valid ID for clip1 (LiveAPI constructor stores ID in _id)
+      if (this._id === "clip1") {
+        return "id clip1";
+      }
+
+      return "id 1";
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this._id === "clip1") {
+        return "Clip";
+      }
+
+      return "LiveSet";
+    });
+
+    expect(() =>
+      playback({
+        action: "stop-session-clips",
+        clipIds: "clip1",
+      }),
+    ).toThrow(
+      "playback stop-session-clips action failed: could not determine track for clipId=id clip1",
+    );
+  });
+
   it("should handle stop-all-clips action", () => {
     mockLiveApiGet({
       LiveSet: {
