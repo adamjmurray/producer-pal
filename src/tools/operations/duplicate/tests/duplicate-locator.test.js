@@ -196,11 +196,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {
@@ -400,11 +396,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("error handling", () => {
     it("should throw error for non-existent locator ID", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {
@@ -431,11 +423,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error for non-existent locator name", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {

@@ -7,6 +7,8 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupScenePath,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-advanced-features] updateClip mock
@@ -336,13 +338,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating scenes", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
-    });
+    setupScenePath("scene1");
 
     duplicate({
       type: "scene",
@@ -354,13 +350,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should not switch views when switchView=false", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     duplicate({
       type: "track",
