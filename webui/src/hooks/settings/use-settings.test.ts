@@ -629,7 +629,7 @@ describe("useSettings", () => {
       result.current.setProvider("custom");
     });
     await act(() => {
-      result.current.setBaseUrl("http://localhost:8080");
+      result.current.setBaseUrl!("http://localhost:8080");
     });
 
     expect(result.current.baseUrl).toBe("http://localhost:8080");
@@ -642,7 +642,7 @@ describe("useSettings", () => {
       result.current.setProvider("ollama");
     });
     await act(() => {
-      result.current.setPort(11434);
+      result.current.setPort!(11434);
     });
 
     expect(result.current.port).toBe(11434);
@@ -655,7 +655,7 @@ describe("useSettings", () => {
       result.current.setProvider("lmstudio");
     });
     await act(() => {
-      result.current.setPort(1234);
+      result.current.setPort!(1234);
     });
 
     expect(result.current.port).toBe(1234);
