@@ -1,4 +1,6 @@
 import { vi } from "vitest";
+// Import for use in helper functions below
+import { liveApiGet, liveApiPath } from "#src/test/mock-live-api.js";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {
@@ -10,8 +12,6 @@ export {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-
-import { liveApiGet, liveApiPath } from "#src/test/mock-live-api.js";
 
 /**
  * Setup liveApiPath mock for track duplication tests.

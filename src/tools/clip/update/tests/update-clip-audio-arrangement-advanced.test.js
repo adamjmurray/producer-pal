@@ -34,7 +34,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio No Hidden start>firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     // targetEndMarker = startMarker + targetLength = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
@@ -58,7 +61,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio Hidden start>firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     // targetEndMarker = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
@@ -149,15 +155,22 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "create_audio_clip") return ["id", tempSessionClipId];
-      if (method === "duplicate_clip_to_arrangement") return ["id", revealedClipId];
+      if (method === "duplicate_clip_to_arrangement")
+        return ["id", revealedClipId];
       if (method === "delete_clip") return 1;
 
       return 1;
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
-    expect(liveApiCall).toHaveBeenCalledWith("create_audio_clip", "/path/to/audio.wav");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/path/to/audio.wav",
+    );
 
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
 
@@ -223,6 +236,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       }
 
       if (this._path === "live_set") return "live_set";
+
       if (this._path === `live_set tracks ${trackIndex}`) {
         return `live_set tracks ${trackIndex}`;
       }
@@ -280,7 +294,9 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
 
-        return duplicateCallCount === 1 ? ["id", movedClipId] : ["id", revealedClipId];
+        return duplicateCallCount === 1
+          ? ["id", movedClipId]
+          : ["id", revealedClipId];
       }
 
       if (method === "delete_clip") return 1;

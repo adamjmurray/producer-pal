@@ -27,7 +27,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio No Hidden start==firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     assertSourceClipEndMarker(clipId, 14.0);
     assertDuplicateClipCalled(clipId, 8.0);
@@ -48,7 +51,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio Hidden start==firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     assertSourceClipEndMarker(clipId, 14.0);
     assertDuplicateClipCalled(clipId, 5.0);
@@ -69,7 +75,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio No Hidden start<firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     assertSourceClipEndMarker(clipId, 14.0);
     assertDuplicateClipCalled(clipId, 8.0);
@@ -90,7 +99,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio Hidden start<firstStart",
     });
 
-    const result = updateClip({ ids: clipId, arrangementLength: "3:2" }, mockContext);
+    const result = updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
 
     assertSourceClipEndMarker(clipId, 14.0);
     assertDuplicateClipCalled(clipId, 5.0);
