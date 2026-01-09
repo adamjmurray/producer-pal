@@ -3,6 +3,7 @@ import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import { STATE } from "#src/tools/constants.js";
 import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.js";
+import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.js";
 import {
   processAvailableRouting,
   processCurrentRouting,
@@ -247,41 +248,6 @@ export function addStateIfNotDefault(result, track, category) {
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
-}
-
-/**
- * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @param {string} category - Track category (regular, return, or master)
- * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
- */
-function computeState(liveObject, category = "regular") {
-  // Master track doesn't have mute/solo/muted_via_solo properties
-  if (category === "master") {
-    return STATE.ACTIVE;
-  }
-
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
-
-  if (isSoloed) {
-    return STATE.SOLOED;
-  }
-
-  if (isMuted && isMutedViaSolo) {
-    return STATE.MUTED_ALSO_VIA_SOLO;
-  }
-
-  if (isMutedViaSolo) {
-    return STATE.MUTED_VIA_SOLO;
-  }
-
-  if (isMuted) {
-    return STATE.MUTED;
-  }
-
-  return STATE.ACTIVE;
 }
 
 /**
