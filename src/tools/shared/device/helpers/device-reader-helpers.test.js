@@ -9,6 +9,7 @@ import {
   updateDrumPadSoloStates,
   readMacroVariations,
   readABCompare,
+  processDeviceChains,
 } from "./device-reader-helpers.js";
 
 describe("device-reader-helpers", () => {
@@ -603,6 +604,99 @@ describe("device-reader-helpers", () => {
       };
 
       expect(readABCompare(device)).toStrictEqual({ abCompare: "b" });
+    });
+  });
+
+  describe("processDeviceChains", () => {
+    const createMockChain = (name, overrides = {}) => ({
+      id: `chain-${name}`,
+      type: "Chain",
+      getProperty: (prop) => {
+        if (prop === "name") return name;
+        if (prop === "mute") return 0;
+        if (prop === "solo") return 0;
+        if (prop === "muted_via_solo") return 0;
+
+        return 0;
+      },
+      getColor: () => null,
+      getChildren: (child) => {
+        if (child === "devices") return overrides.devices || [];
+
+        return [];
+      },
+    });
+
+    it("processes return chains when includeReturnChains is true", () => {
+      const mockDevice = {
+        getChildren: (child) => {
+          if (child === "chains") return [];
+
+          if (child === "return_chains") {
+            return [createMockChain("Return A"), createMockChain("Return B")];
+          }
+
+          return [];
+        },
+      };
+
+      const deviceInfo = {};
+      const mockReadDevice = (d) => ({ id: d.id, type: "effect" });
+
+      processDeviceChains(
+        mockDevice,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn: mockReadDevice,
+          devicePath: "0",
+        },
+      );
+
+      expect(deviceInfo.returnChains).toHaveLength(2);
+      expect(deviceInfo.returnChains[0]).toMatchObject({
+        id: "chain-Return A",
+        name: "Return A",
+      });
+      expect(deviceInfo.returnChains[1]).toMatchObject({
+        id: "chain-Return B",
+        name: "Return B",
+      });
+    });
+
+    it("skips return chains when device has none", () => {
+      const mockDevice = {
+        getChildren: (child) => {
+          if (child === "chains") return [];
+          if (child === "return_chains") return [];
+
+          return [];
+        },
+      };
+
+      const deviceInfo = {};
+
+      processDeviceChains(
+        mockDevice,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn: () => ({}),
+          devicePath: null,
+        },
+      );
+
+      expect(deviceInfo.returnChains).toBeUndefined();
     });
   });
 });

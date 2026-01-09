@@ -498,6 +498,84 @@ describe("updateDevice - wrapInRack", () => {
     ).toThrow("no devices found");
   });
 
+  it("should throw error when toPath container does not exist", () => {
+    // Mock device exists but target container doesn't
+    liveApiType.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 devices 0")
+        return "AudioEffectDevice";
+      if (this._path === "id device-0") return "AudioEffectDevice";
+      if (this._path === "device-0") return "AudioEffectDevice";
+      // Track 99 doesn't exist
+      if (this._path === "live_set tracks 99") return "Track";
+
+      return "Device";
+    });
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 devices 0") return "device-0";
+      if (this._path === "id device-0") return "device-0";
+      if (this._path === "device-0") return "device-0";
+      // Non-existent track returns "0"
+      if (this._path === "live_set tracks 99") return "0";
+
+      return "0";
+    });
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        wrapInRack: true,
+        toPath: "t99",
+      }),
+    ).toThrow("target container does not exist");
+  });
+
+  it("should throw error when device type is unrecognized", () => {
+    // Mock device with unknown type (not instrument=1, audio=2, or midi=4)
+    liveApiType.mockImplementation(function () {
+      if (
+        this._path === "live_set tracks 0 devices 0" ||
+        this._path === "id device-0" ||
+        this._path === "device-0"
+      ) {
+        return "UnknownDevice";
+      }
+
+      return "Device";
+    });
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 devices 0") return "device-0";
+      if (this._path === "id device-0") return "device-0";
+      if (this._path === "device-0") return "device-0";
+
+      return "0";
+    });
+
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "id device-0") return "live_set tracks 0 devices 0";
+      if (this._path === "device-0") return "live_set tracks 0 devices 0";
+
+      return this._path;
+    });
+
+    liveApiGet.mockImplementation(function (prop) {
+      // Return unknown device type (0 = unknown)
+      if (prop === "type") {
+        return [0];
+      }
+
+      return [0];
+    });
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        wrapInRack: true,
+      }),
+    ).toThrow("no valid effect devices found");
+  });
+
   it("should throw error when insert_chain fails", () => {
     // Mock rack with no pre-existing chains
     liveApiGet.mockImplementation(function (prop) {

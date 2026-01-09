@@ -81,7 +81,6 @@ export default defineConfig({
         branches: 92.75, // Keep above 93
         functions: 97.9, // Keep above 97
         lines: 97.3, // Keep above 97
-        //  97
       },
     },
   },
