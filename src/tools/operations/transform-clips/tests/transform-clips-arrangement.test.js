@@ -342,4 +342,68 @@ describe("transformClips - arrangement", () => {
       expect.stringContaining("no clips found in arrangement range"),
     );
   });
+
+  it("should throw error when arrangementLength is zero", () => {
+    liveApiType.mockImplementation(function () {
+      if (this._path === "live_set tracks 0") {
+        return "Track";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "live_set") {
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+      }
+
+      return [0];
+    });
+
+    expect(() =>
+      transformClips({
+        arrangementTrackIndex: "0",
+        arrangementStart: "1|1.0",
+        arrangementLength: "0:0.0", // Zero length
+        seed: 12345,
+      }),
+    ).toThrow("arrangementLength must be greater than 0");
+  });
+
+  it("should throw error when track does not exist", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 99") {
+        return "0"; // Non-existent
+      }
+
+      return this._id;
+    });
+    liveApiType.mockImplementation(function () {
+      // Track doesn't exist - return undefined
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "live_set") {
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+      }
+
+      return [0];
+    });
+
+    expect(() =>
+      transformClips({
+        arrangementTrackIndex: "99",
+        arrangementStart: "1|1.0",
+        seed: 12345,
+      }),
+    ).toThrow("transformClips failed: track 99 not found");
+  });
 });
