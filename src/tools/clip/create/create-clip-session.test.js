@@ -148,6 +148,46 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("should throw error when scene does not exist for auto=play-scene", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+      Clip: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock scene to not exist
+    const originalExists = global.LiveAPI.prototype.exists;
+
+    global.LiveAPI.prototype.exists = vi.fn(function () {
+      // Scene does not exist
+      if (this._path?.startsWith("live_set scenes")) {
+        return false;
+      }
+
+      return true;
+    });
+
+    expect(() =>
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: "0",
+        notes: "C3 1|1",
+        auto: "play-scene",
+      }),
+    ).toThrow(
+      'createClip auto="play-scene" failed: scene at sceneIndex=0 does not exist',
+    );
+
+    global.LiveAPI.prototype.exists = originalExists;
+  });
+
   it("should throw error for invalid auto value", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
