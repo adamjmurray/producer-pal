@@ -6,6 +6,7 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
+  setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-locator] updateClip mock for locator-based tests
@@ -44,11 +45,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
     it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -62,11 +59,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -82,11 +75,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -102,11 +91,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -124,11 +109,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("scene duplication with locator", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock scene with one clip
       // Note: cue point keys use the id ("cue0", "cue1") from children() helper

@@ -29,6 +29,21 @@ export function setupTrackPath(trackId, trackIndex = 0) {
 }
 
 /**
+ * Setup liveApiPath mock for scene duplication tests.
+ * @param {string} sceneId - Scene ID (e.g., "scene1")
+ * @param {number} sceneIndex - Scene index (e.g., 0)
+ */
+export function setupScenePath(sceneId, sceneIndex = 0) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === sceneId) {
+      return `live_set scenes ${sceneIndex}`;
+    }
+
+    return this._path;
+  });
+}
+
+/**
  * Setup arrangement clip mocks for scene-to-arrangement tests.
  * Extends existing liveApiPath and liveApiGet mocks to handle arrangement clips.
  * @param {object} opts - Options
