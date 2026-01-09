@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { children, liveApiCall, liveApiGet } from "#src/test/mock-live-api.js";
 import {
   shuffleArray,
   calculateShufflePositions,
+  performShuffling,
 } from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips-shuffling-helpers", () => {
@@ -186,6 +188,119 @@ describe("transform-clips-shuffling-helpers", () => {
       // clip 1 (length 4) at position 16 (original start)
       // clip 0 (length 4) at position 20 (16 + 4 + gap of 0)
       expect(positions).toStrictEqual([16, 20]);
+    });
+  });
+
+  describe("performShuffling", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should warn and return early when arrangementClips is empty", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const clips = [];
+      const warnings = new Set();
+      const rng = () => 0.5;
+      const context = { holdingAreaStartBeats: 1000 };
+
+      performShuffling([], clips, warnings, rng, context);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Warning: shuffleOrder requires arrangement clips",
+      );
+      expect(warnings.has("shuffle-no-arrangement")).toBe(true);
+      expect(clips).toHaveLength(0);
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should not warn twice for empty arrangementClips", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const clips = [];
+      const warnings = new Set();
+
+      warnings.add("shuffle-no-arrangement");
+      const rng = () => 0.5;
+      const context = { holdingAreaStartBeats: 1000 };
+
+      performShuffling([], clips, warnings, rng, context);
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should return early without changes for single clip", () => {
+      const mockClip = {
+        id: "clip1",
+        trackIndex: 0,
+        getProperty: vi.fn((prop) => {
+          if (prop === "start_time") return 0;
+          if (prop === "length") return 4;
+
+          return null;
+        }),
+      };
+      const clips = [mockClip];
+      const warnings = new Set();
+      const rng = () => 0.5;
+      const context = { holdingAreaStartBeats: 1000 };
+
+      performShuffling([mockClip], clips, warnings, rng, context);
+
+      // Should not call any LiveAPI methods for single clip
+      expect(liveApiCall).not.toHaveBeenCalled();
+    });
+
+    it("should shuffle multiple arrangement clips", () => {
+      // Create mock clips with proper structure
+      const mockClip1 = {
+        id: "clip1",
+        trackIndex: 0,
+        getProperty: vi.fn((prop) => {
+          if (prop === "start_time") return 0;
+          if (prop === "length") return 4;
+
+          return null;
+        }),
+      };
+      const mockClip2 = {
+        id: "clip2",
+        trackIndex: 0,
+        getProperty: vi.fn((prop) => {
+          if (prop === "start_time") return 4;
+          if (prop === "length") return 4;
+
+          return null;
+        }),
+      };
+
+      liveApiCall.mockReturnValue(["id", "tempClip"]);
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "arrangement_clips") {
+          return children("newClip1", "newClip2");
+        }
+
+        return [];
+      });
+
+      const clips = [];
+      const warnings = new Set();
+      const rng = () => 0.5;
+      const context = { holdingAreaStartBeats: 1000 };
+
+      performShuffling([mockClip1, mockClip2], clips, warnings, rng, context);
+
+      // Should call duplicate_clip_to_arrangement for each clip
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.any(String),
+        expect.any(Number),
+      );
+      // clips array should be repopulated with fresh clips
+      expect(clips).toHaveLength(2);
     });
   });
 });
