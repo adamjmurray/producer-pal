@@ -45,37 +45,48 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   }),
 }));
 
+function setupClipPathMock(clipId = "clip1") {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clipId) return "live_set tracks 0 clip_slots 0 clip";
+
+    return this._path;
+  });
+}
+
+function setupArrangementClipPathMock() {
+  const original = liveApiPath.getMockImplementation();
+
+  liveApiPath.mockImplementation(function () {
+    if (
+      this._path.startsWith("id live_set tracks") &&
+      this._path.includes("arrangement_clips")
+    ) {
+      return this._path.slice(3);
+    }
+
+    return original ? original.call(this) : this._path;
+  });
+}
+
+function setupDuplicateToArrangementMock({ includeNotes = true } = {}) {
+  liveApiCall.mockImplementation(function (method) {
+    if (method === "duplicate_clip_to_arrangement") {
+      return ["id", "live_set tracks 0 arrangement_clips 0"];
+    }
+
+    if (includeNotes && method === "get_notes_extended") {
+      return JSON.stringify({ notes: [] });
+    }
+
+    return null;
+  });
+}
+
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] }); // Empty notes for testing
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupClipPathMock();
+    setupDuplicateToArrangementMock();
+    setupArrangementClipPathMock();
 
     mockLiveApiGet({
       clip1: {
@@ -115,43 +126,12 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should duplicate a looping clip with lengthening via updateClip", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] }); // Empty notes for testing
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (
-        this._path.startsWith("id live_set tracks") &&
-        this._path.includes("arrangement_clips")
-      ) {
-        return this._path.slice(3);
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupClipPathMock();
+    setupDuplicateToArrangementMock();
+    setupArrangementClipPathMock();
 
     liveApiId.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set/tracks/0/clip_slots/0/clip";
-      }
+      if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
 
       return this._id;
     });
@@ -206,39 +186,12 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should duplicate a non-looping clip at original length when requested length is longer", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (
-        this._path.startsWith("id live_set tracks") &&
-        this._path.includes("arrangement_clips")
-      ) {
-        return this._path.slice(3);
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupClipPathMock();
+    setupDuplicateToArrangementMock({ includeNotes: false });
+    setupArrangementClipPathMock();
 
     liveApiId.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set/tracks/0/clip_slots/0/clip";
-      }
+      if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
 
       return this._id;
     });
@@ -456,13 +409,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should error when arrangementLength is zero or negative", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
+    setupClipPathMock();
 
     mockLiveApiGet({
       clip1: {
@@ -486,31 +433,9 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should work normally without arrangementLength (backward compatibility)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupClipPathMock();
+    setupDuplicateToArrangementMock({ includeNotes: false });
+    setupArrangementClipPathMock();
 
     mockLiveApiGet({
       clip1: {

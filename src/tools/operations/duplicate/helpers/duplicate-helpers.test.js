@@ -198,53 +198,41 @@ describe("duplicate-helpers", () => {
       expect(result.sceneIndex).toBe(3);
     });
 
-    it("omits trackIndex when specified in omitFields for session clip", () => {
-      const clipId = "790";
+    it.each([
+      {
+        omitField: "trackIndex",
+        clipId: "790",
+        expectedTrackIndex: undefined,
+        expectedSceneIndex: 3,
+      },
+      {
+        omitField: "sceneIndex",
+        clipId: "791",
+        expectedTrackIndex: 1,
+        expectedSceneIndex: undefined,
+      },
+    ])(
+      "omits $omitField when specified in omitFields for session clip",
+      ({ omitField, clipId, expectedTrackIndex, expectedSceneIndex }) => {
+        mockLiveApiGet({
+          [clipId]: { is_arrangement_clip: 0 },
+        });
 
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 0,
-        },
-      });
+        const mockClip = {
+          id: clipId,
+          path: `live_set tracks 1 clip_slots 3 clip`,
+          trackIndex: 1,
+          sceneIndex: 3,
+          getProperty: liveApiGet,
+        };
 
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 1 clip_slots 3 clip`,
-        trackIndex: 1,
-        sceneIndex: 3,
-        getProperty: liveApiGet,
-      };
+        const result = getMinimalClipInfo(mockClip, [omitField]);
 
-      const result = getMinimalClipInfo(mockClip, ["trackIndex"]);
-
-      expect(result.id).toBe(clipId);
-      expect(result.trackIndex).toBeUndefined();
-      expect(result.sceneIndex).toBe(3);
-    });
-
-    it("omits sceneIndex when specified in omitFields for session clip", () => {
-      const clipId = "791";
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 0,
-        },
-      });
-
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 1 clip_slots 3 clip`,
-        trackIndex: 1,
-        sceneIndex: 3,
-        getProperty: liveApiGet,
-      };
-
-      const result = getMinimalClipInfo(mockClip, ["sceneIndex"]);
-
-      expect(result.id).toBe(clipId);
-      expect(result.trackIndex).toBe(1);
-      expect(result.sceneIndex).toBeUndefined();
-    });
+        expect(result.id).toBe(clipId);
+        expect(result.trackIndex).toBe(expectedTrackIndex);
+        expect(result.sceneIndex).toBe(expectedSceneIndex);
+      },
+    );
 
     it("throws error when trackIndex is null for arrangement clip", () => {
       const clipId = "792";
