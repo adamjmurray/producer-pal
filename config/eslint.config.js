@@ -206,6 +206,10 @@ const unicornRules = {
   "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
   "unicorn/prefer-ternary": ["error", "only-single-line"], // Simple if-else to ternary
   "unicorn/prefer-top-level-await": "error", // Use top-level await instead of async IIFE
+  "unicorn/no-invalid-fetch-options": "error", // Catch invalid fetch/Request options
+  "unicorn/no-thenable": "error", // Prevent accidental Promise-like objects
+  "unicorn/no-await-expression-member": "error", // Prevent (await foo).bar which can error
+  "unicorn/prefer-includes": "error", // Use .includes() instead of .indexOf() !== -1
 };
 
 const jsOnlyRules = {
