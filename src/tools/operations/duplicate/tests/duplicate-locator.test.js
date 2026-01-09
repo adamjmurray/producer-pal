@@ -205,34 +205,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         return null;
       });
 
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3);
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [32];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks({ getStartTime: () => 32 });
 
       const result = duplicate({
         type: "scene",
