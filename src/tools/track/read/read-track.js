@@ -1,5 +1,4 @@
 import * as console from "#src/shared/v8-max-console.js";
-import { readClip } from "#src/tools/clip/read/read-clip.js";
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
@@ -19,8 +18,12 @@ import {
   addSlotIndices,
   addStateIfNotDefault,
   cleanupDeviceChains,
+  countArrangementClips,
+  countSessionClips,
   handleNonExistentTrack,
+  readArrangementClips,
   readMixerProperties,
+  readSessionClips,
 } from "./helpers/read-track-helpers.js";
 
 /**
@@ -96,32 +99,10 @@ function processSessionClips(
   }
 
   if (includeSessionClips) {
-    const sessionClips = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex,
-          include: include,
-        }),
-      )
-      .filter((clip) => clip.id != null);
-
-    return { sessionClips };
+    return { sessionClips: readSessionClips(track, trackIndex, include) };
   }
 
-  const sessionClipCount = track
-    .getChildIds("clip_slots")
-    .map((_clipSlotId, sceneIndex) => {
-      const clip = new LiveAPI(
-        `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-      );
-
-      return clip.exists() ? clip : null;
-    })
-    .filter(Boolean).length;
-
-  return { sessionClipCount };
+  return { sessionClipCount: countSessionClips(track, trackIndex) };
 }
 
 /**
@@ -147,22 +128,10 @@ function processArrangementClips(
   }
 
   if (includeArrangementClips) {
-    const arrangementClips = track
-      .getChildIds("arrangement_clips")
-      .map((clipId) =>
-        readClip({
-          clipId,
-          include: include,
-        }),
-      )
-      .filter((clip) => clip.id != null);
-
-    return { arrangementClips };
+    return { arrangementClips: readArrangementClips(track, include) };
   }
 
-  const clipIds = track.getChildIds("arrangement_clips");
-
-  return { arrangementClipCount: clipIds.length };
+  return { arrangementClipCount: countArrangementClips(track) };
 }
 
 /**

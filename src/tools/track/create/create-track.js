@@ -1,5 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
+import { buildIndexedName } from "#src/tools/shared/utils.js";
 
 /**
  * Create a single track via Live API
@@ -46,11 +47,7 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
     return `${lastName} ${fallbackIndex}`;
   }
 
-  // Original behavior when no comma-separated names
-  if (count === 1) return baseName;
-  if (index === 0) return baseName;
-
-  return `${baseName} ${index + 1}`;
+  return buildIndexedName(baseName, count, index);
 }
 
 /**

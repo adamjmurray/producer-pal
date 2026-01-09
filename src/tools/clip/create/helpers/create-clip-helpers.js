@@ -4,6 +4,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
   parseSceneIndexList as parseSceneIndexListBase,
   parseArrangementStartList,
@@ -41,19 +42,7 @@ export function parseSceneIndexList(input) {
  * @returns {string|undefined} - Generated clip name
  */
 export function buildClipName(name, count, i) {
-  if (name == null) {
-    return;
-  }
-
-  if (count === 1) {
-    return name;
-  }
-
-  if (i === 0) {
-    return name;
-  }
-
-  return `${name} ${i + 1}`;
+  return buildIndexedName(name, count, i);
 }
 
 /**

@@ -9,6 +9,72 @@ import {
 } from "#src/tools/track/helpers/track-routing-helpers.js";
 
 /**
+ * Read all session clips from a track
+ * @param {LiveAPI} track - Track object
+ * @param {number} trackIndex - Track index
+ * @param {Array<string>} [include] - Include array for nested reads
+ * @returns {Array<object>} Array of clip objects (only clips that exist)
+ */
+export function readSessionClips(track, trackIndex, include = null) {
+  return track
+    .getChildIds("clip_slots")
+    .map((_clipSlotId, sceneIndex) =>
+      readClip({
+        trackIndex,
+        sceneIndex,
+        ...(include && { include }),
+      }),
+    )
+    .filter((clip) => clip.id != null);
+}
+
+/**
+ * Count session clips in a track (faster than reading full clip details)
+ * @param {LiveAPI} track - Track object
+ * @param {number} trackIndex - Track index
+ * @returns {number} Number of clips
+ */
+export function countSessionClips(track, trackIndex) {
+  return track
+    .getChildIds("clip_slots")
+    .map((_clipSlotId, sceneIndex) => {
+      const clip = new LiveAPI(
+        `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+      );
+
+      return clip.exists() ? clip : null;
+    })
+    .filter(Boolean).length;
+}
+
+/**
+ * Read all arrangement clips from a track
+ * @param {LiveAPI} track - Track object
+ * @param {Array<string>} [include] - Include array for nested reads
+ * @returns {Array<object>} Array of clip objects (only clips that exist)
+ */
+export function readArrangementClips(track, include = null) {
+  return track
+    .getChildIds("arrangement_clips")
+    .map((clipId) =>
+      readClip({
+        clipId,
+        ...(include && { include }),
+      }),
+    )
+    .filter((clip) => clip.id != null);
+}
+
+/**
+ * Count arrangement clips in a track
+ * @param {LiveAPI} track - Track object
+ * @returns {number} Number of clips
+ */
+export function countArrangementClips(track) {
+  return track.getChildIds("arrangement_clips").length;
+}
+
+/**
  * Read minimal track information for auto-inclusion when clips are requested.
  * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
  * @param {object} args - The parameters
@@ -37,26 +103,9 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
   // Session clips - only for regular tracks
   if (includeFlags.includeSessionClips || includeFlags.includeAllClips) {
-    result.sessionClips = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex,
-        }),
-      )
-      .filter((clip) => clip.id != null);
+    result.sessionClips = readSessionClips(track, trackIndex);
   } else {
-    result.sessionClipCount = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) => {
-        const clip = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-        );
-
-        return clip.exists() ? clip : null;
-      })
-      .filter(Boolean).length;
+    result.sessionClipCount = countSessionClips(track, trackIndex);
   }
 
   // Arrangement clips - exclude group tracks which have no arrangement clips
@@ -72,14 +121,9 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
     includeFlags.includeArrangementClips ||
     includeFlags.includeAllClips
   ) {
-    result.arrangementClips = track
-      .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId }))
-      .filter((clip) => clip.id != null);
+    result.arrangementClips = readArrangementClips(track);
   } else {
-    const clipIds = track.getChildIds("arrangement_clips");
-
-    result.arrangementClipCount = clipIds.length;
+    result.arrangementClipCount = countArrangementClips(track);
   }
 
   return result;

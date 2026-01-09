@@ -84,6 +84,22 @@ export function parseCommaSeparatedFloats(values) {
 }
 
 /**
+ * Builds an indexed name for batch-created items (clips, tracks, etc.)
+ * First item keeps base name, subsequent items get numbered suffix.
+ * @param {string|null|undefined} baseName - Base name for the item
+ * @param {number} count - Total number of items being created
+ * @param {number} index - Current item index (0-based)
+ * @returns {string|undefined} - Generated name or undefined if baseName is null
+ */
+export function buildIndexedName(baseName, count, index) {
+  if (baseName == null) return;
+  if (count === 1) return baseName;
+  if (index === 0) return baseName;
+
+  return `${baseName} ${index + 1}`;
+}
+
+/**
  * Parses a time signature string into numerator and denominator
  * @param {string} timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
  * @returns {{numerator: number, denominator: number}} Object with numerator and denominator
