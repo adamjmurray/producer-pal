@@ -114,10 +114,10 @@ jobs:
 
           | Category | Coverage |
           |----------|----------|
-          | Lines | ${LINES}% |
           | Statements | ${STATEMENTS}% |
-          | Functions | ${FUNCTIONS}% |
           | Branches | ${BRANCHES}% |
+          | Functions | ${FUNCTIONS}% |
+          | Lines | ${LINES}% |
           EOF
 
           # Write to step summary and output (base64 encoded for multiline)
