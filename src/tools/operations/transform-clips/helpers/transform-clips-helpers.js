@@ -4,6 +4,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
+  parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.js";
@@ -52,10 +53,7 @@ export function parseTransposeValues(
     return null;
   }
 
-  const transposeValuesArray = transposeValues
-    .split(",")
-    .map((v) => Number.parseFloat(v.trim()))
-    .filter((v) => !Number.isNaN(v));
+  const transposeValuesArray = parseCommaSeparatedFloats(transposeValues);
 
   if (transposeValuesArray.length === 0) {
     throw new Error("transposeValues must contain at least one valid number");

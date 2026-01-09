@@ -29,7 +29,9 @@ describe("createClip - basic validation and time signatures", () => {
         trackIndex: 0,
         sceneIndex: "invalid",
       }),
-    ).toThrow('createClip failed: invalid sceneIndex "invalid"');
+    ).toThrow(
+      'createClip failed: Invalid index "invalid" - must be a valid integer',
+    );
   });
 
   it("should validate time signature early when provided", () => {

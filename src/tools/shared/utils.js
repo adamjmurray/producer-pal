@@ -33,10 +33,12 @@ export function withoutNulls(obj) {
 
 /**
  * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
- * @param {string} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
+ * @param {string|null|undefined} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
  * @returns {Array<string>} Array of trimmed ID strings
  */
 export function parseCommaSeparatedIds(ids) {
+  if (ids == null) return [];
+
   return ids
     .split(",")
     .map((id) => id.trim())
@@ -45,11 +47,13 @@ export function parseCommaSeparatedIds(ids) {
 
 /**
  * Parses a comma-separated string of indices into an array of integers
- * @param {string} indices - Comma-separated string of indices (e.g., "0, 1, 2")
+ * @param {string|null|undefined} indices - Comma-separated string of indices (e.g., "0, 1, 2")
  * @returns {Array<number>} Array of integer indices
  * @throws {Error} If any index is not a valid integer
  */
 export function parseCommaSeparatedIndices(indices) {
+  if (indices == null) return [];
+
   return indices
     .split(",")
     .map((index) => index.trim())
@@ -63,6 +67,20 @@ export function parseCommaSeparatedIndices(indices) {
 
       return parsed;
     });
+}
+
+/**
+ * Parses a comma-separated string of values into an array of floats, filtering invalid values
+ * @param {string|null|undefined} values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
+ * @returns {Array<number>} Array of valid float values (NaN values are filtered out)
+ */
+export function parseCommaSeparatedFloats(values) {
+  if (values == null) return [];
+
+  return values
+    .split(",")
+    .map((v) => Number.parseFloat(v.trim()))
+    .filter((v) => !Number.isNaN(v));
 }
 
 /**
