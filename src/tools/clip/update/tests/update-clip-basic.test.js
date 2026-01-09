@@ -5,7 +5,10 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import {
+  setupMidiClipMock,
+  setupMocks,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - Basic operations", () => {
@@ -95,12 +98,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should update a single session clip by ID", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -239,12 +237,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should update time signature when provided", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -265,14 +258,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -317,12 +303,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -371,14 +352,10 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 3, // 3/4 time
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123", {
+      signature_numerator: 3,
+      signature_denominator: 4,
+    }); // 3/4 time
 
     const result = updateClip({
       ids: "123",
@@ -415,14 +392,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -484,12 +454,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should throw error for invalid time signature format", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
+    setupMidiClipMock("123");
 
     expect(() =>
       updateClip({

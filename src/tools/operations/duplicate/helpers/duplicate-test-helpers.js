@@ -127,6 +127,48 @@ export const moveClipFromHoldingMock = vi.fn(
   },
 );
 
+/**
+ * Setup mock for routeToSource track tests.
+ * @param {object} opts - Options
+ * @param {string} [opts.trackName] - Track name (default: "Source Track")
+ * @param {number} [opts.monitoringState] - Current monitoring state (default: 0 = IN)
+ * @param {string} [opts.inputRoutingName] - Input routing display name (default: "No Input")
+ * @param {number} [opts.arm] - Arm state (default: undefined)
+ * @returns {object} Mock data keyed by track path
+ */
+export function setupRouteToSourceMock(opts = {}) {
+  const {
+    trackName = "Source Track",
+    monitoringState = 0,
+    inputRoutingName = "No Input",
+    arm,
+  } = opts;
+
+  const sourceTrackMock = {
+    name: trackName,
+    current_monitoring_state: monitoringState,
+    input_routing_type: { display_name: inputRoutingName },
+    available_input_routing_types: [
+      { display_name: "No Input", identifier: "no_input_id" },
+      { display_name: "Audio In", identifier: "audio_in_id" },
+    ],
+  };
+
+  if (arm !== undefined) {
+    sourceTrackMock.arm = arm;
+  }
+
+  return {
+    "live_set tracks 0": sourceTrackMock,
+    "live_set tracks 1": {
+      available_output_routing_types: [
+        { display_name: "Master", identifier: "master_id" },
+        { display_name: trackName, identifier: "source_track_id" },
+      ],
+    },
+  };
+}
+
 // Setup mocks for vi.mock calls
 /**
  *

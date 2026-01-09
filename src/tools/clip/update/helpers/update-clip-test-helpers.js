@@ -244,14 +244,36 @@ export function assertRevealedClipMarkers(clipId, startMarker, endMarker) {
 /**
  * Setup mockLiveApiGet for a standard session MIDI clip.
  * @param {string} clipId - Clip ID
+ * @param {object} [opts] - Additional clip properties
+ * @param {number} [opts.looping] - Whether clip is looping (0 or 1)
+ * @param {number} [opts.length] - Clip length in beats
  */
-export function setupMidiClipMock(clipId) {
+export function setupMidiClipMock(clipId, opts = {}) {
   mockLiveApiGet({
     [clipId]: {
       is_arrangement_clip: 0,
       is_midi_clip: 1,
       signature_numerator: 4,
       signature_denominator: 4,
+      ...opts,
+    },
+  });
+}
+
+/**
+ * Setup mockLiveApiGet for a standard session audio clip.
+ * @param {string} clipId - Clip ID
+ * @param {object} [opts] - Additional clip properties
+ */
+export function setupAudioClipMock(clipId, opts = {}) {
+  mockLiveApiGet({
+    [clipId]: {
+      is_arrangement_clip: 0,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      ...opts,
     },
   });
 }
