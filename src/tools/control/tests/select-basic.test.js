@@ -252,6 +252,24 @@ describe("view", () => {
       expect(result).toStrictEqual(expectViewState());
     });
 
+    it("selects track by ID with category hint", () => {
+      liveApiType.mockReturnValue("Track");
+      const result = select({ trackId: "id track_123", category: "return" });
+
+      expect(liveApiSet).toHaveBeenCalledWith("selected_track", "id track_123");
+      // Category hint is passed through for internal use
+      expect(result).toStrictEqual(expectViewState());
+    });
+
+    it("selects track by ID with trackIndex hint", () => {
+      liveApiType.mockReturnValue("Track");
+      liveApiId.mockReturnValue("id track_123"); // Match trackId to avoid mismatch error
+      const result = select({ trackId: "id track_123", trackIndex: 2 });
+
+      expect(liveApiSet).toHaveBeenCalledWith("selected_track", "id track_123");
+      expect(result).toStrictEqual(expectViewState());
+    });
+
     it("skips track selection when track does not exist", () => {
       // Mock the exists method to return false for this test
       global.LiveAPI.mockImplementation(function (path) {
@@ -304,6 +322,15 @@ describe("view", () => {
         "id scene_id_456",
       );
       // Result reflects actual readViewState(), which returns default (no scene selected)
+      expect(result).toStrictEqual(expectViewState());
+    });
+
+    it("selects scene by ID with sceneIndex hint", () => {
+      liveApiType.mockReturnValue("Scene");
+      liveApiId.mockReturnValue("id scene_123"); // Match sceneId to avoid mismatch error
+      const result = select({ sceneId: "id scene_123", sceneIndex: 3 });
+
+      expect(liveApiSet).toHaveBeenCalledWith("selected_scene", "id scene_123");
       expect(result).toStrictEqual(expectViewState());
     });
 
