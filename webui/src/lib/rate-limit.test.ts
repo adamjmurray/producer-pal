@@ -116,6 +116,95 @@ describe("detectRateLimit", () => {
     expect(result.isRateLimited).toBe(true);
     expect(result.retryAfterMs).toBe(30000);
   });
+
+  it("converts retryAfter from seconds to milliseconds when < 1000", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: 30, // 30 seconds (< 1000, so will be multiplied by 1000)
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(30000);
+  });
+
+  it("returns null retryAfterMs for invalid string retryAfter", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: "invalid", // Not a valid number
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(null);
+  });
+
+  it("extracts status code from nested error.code property", () => {
+    const error = {
+      error: {
+        code: 429,
+        message: "Too many requests",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+  });
+
+  it("extracts message from plain object with message property", () => {
+    const error = { message: "rate limit exceeded" };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.message).toContain("Rate limit");
+  });
+
+  it("handles nested error without message property", () => {
+    const error = {
+      error: {
+        code: 500,
+        status: "INTERNAL_ERROR",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(false);
+  });
+
+  it("handles nested error with non-numeric code", () => {
+    const error = {
+      error: {
+        code: "RATE_LIMITED",
+        message: "rate limit hit",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+  });
+
+  it("falls back to String() for non-object errors", () => {
+    const error = 12345;
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(false);
+  });
+
+  it("extracts retryAfter from headers object", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      headers: {
+        "retry-after": 60,
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(60000);
+  });
 });
 
 describe("calculateRetryDelay", () => {

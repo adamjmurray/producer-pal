@@ -108,6 +108,23 @@ describe("gemini-client-helpers", () => {
 
       expect(result.functionResponse.response.error).toBe("call failed");
     });
+
+    it("handles undefined function name with empty string fallback", async () => {
+      const mockClient = {
+        callTool: vi.fn().mockResolvedValue({ content: "success" }),
+      } as unknown as Client;
+
+      const result = (await executeSingleTool(
+        { functionCall: {} },
+        mockClient,
+      )) as { functionResponse: { name: undefined; response: unknown } };
+
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "",
+        arguments: undefined,
+      });
+      expect(result.functionResponse.name).toBeUndefined();
+    });
   });
 
   describe("executeToolCalls", () => {
@@ -206,6 +223,16 @@ describe("gemini-client-helpers", () => {
       addOrMergePartToTurn(turn, { text: " world" } as Part);
       expect(turn.parts).toHaveLength(1);
       expect((turn.parts[0] as { text: string }).text).toBe("hello world");
+    });
+
+    it("does not merge when last part has no text property", () => {
+      const turn = {
+        role: "model" as const,
+        parts: [{ functionCall: { name: "test" } }] as Part[],
+      };
+
+      addOrMergePartToTurn(turn, { text: "hello" } as Part);
+      expect(turn.parts).toHaveLength(2);
     });
   });
 });

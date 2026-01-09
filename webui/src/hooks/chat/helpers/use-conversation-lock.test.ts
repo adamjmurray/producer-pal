@@ -96,4 +96,24 @@ describe("useConversationLock", () => {
 
     expect(result.current.chat.name).toBe("openai");
   });
+
+  it("does not re-lock provider on subsequent messages", async () => {
+    const { result, rerender, geminiChat } = renderConversationLock("gemini");
+
+    // First message locks provider
+    await act(async () => {
+      await result.current.wrappedHandleSend("First message");
+    });
+
+    // Change settings provider
+    rerender({ provider: "openai" });
+
+    // Second message should use locked provider (gemini), not re-lock to openai
+    await act(async () => {
+      await result.current.wrappedHandleSend("Second message");
+    });
+
+    expect(geminiChat.handleSend).toHaveBeenCalledTimes(2);
+    expect(result.current.chat.name).toBe("gemini");
+  });
 });
