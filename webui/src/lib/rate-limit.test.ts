@@ -116,6 +116,42 @@ describe("detectRateLimit", () => {
     expect(result.isRateLimited).toBe(true);
     expect(result.retryAfterMs).toBe(30000);
   });
+
+  it("converts retryAfter from seconds to milliseconds when < 1000", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: 30, // 30 seconds (< 1000, so will be multiplied by 1000)
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(30000);
+  });
+
+  it("returns null retryAfterMs for invalid string retryAfter", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: "invalid", // Not a valid number
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(null);
+  });
+
+  it("extracts status code from nested error.code property", () => {
+    const error = {
+      error: {
+        code: 429,
+        message: "Too many requests",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+  });
 });
 
 describe("calculateRetryDelay", () => {
