@@ -436,7 +436,7 @@ describe("readLiveSet - clips", () => {
     expect(track.trackIndex).toBe(0);
 
     // Group tracks should return empty arrangement clips array
-    expect(track.arrangementClips).toEqual([]);
+    expect(track.arrangementClips).toStrictEqual([]);
     // Session clips should still be counted
     expect(track.sessionClipCount).toBe(0);
   });
