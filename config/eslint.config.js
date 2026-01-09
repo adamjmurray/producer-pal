@@ -201,7 +201,7 @@ const unicornRules = {
   "unicorn/no-array-for-each": "error", // Prefer for...of over Array.forEach
   "unicorn/prefer-at": "error", // Use array.at(-1) instead of array[array.length - 1]
   "unicorn/prefer-set-has": "error", // Use Set.has() instead of Array.includes() for repeated checks
-  "unicorn/no-lonely-if": "error", // Use else if instead of if inside else block
+  "unicorn/no-lonely-if": "error", // Combine nested if with && (complements core no-lonely-if)
   "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
   "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
   "unicorn/prefer-ternary": ["error", "only-single-line"], // Simple if-else to ternary
