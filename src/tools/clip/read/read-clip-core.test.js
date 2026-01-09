@@ -8,47 +8,55 @@ import {
 } from "#src/test/mock-live-api.js";
 import { readClip } from "./read-clip.js";
 
+// Default test notes: C3, D3, E3 at beats 0, 1, 2
+const defaultTestNotes = [
+  {
+    note_id: 1,
+    pitch: 60,
+    start_time: 0,
+    duration: 1,
+    velocity: 100,
+    probability: 1.0,
+    velocity_deviation: 0,
+  },
+  {
+    note_id: 2,
+    pitch: 62,
+    start_time: 1,
+    duration: 1,
+    velocity: 100,
+    probability: 1.0,
+    velocity_deviation: 0,
+  },
+  {
+    note_id: 3,
+    pitch: 64,
+    start_time: 2,
+    duration: 1,
+    velocity: 100,
+    probability: 1.0,
+    velocity_deviation: 0,
+  },
+];
+
+// Helper to set up mocks for a MIDI clip with notes
+function setupMidiClipMock({ notes = defaultTestNotes, clipProps }) {
+  liveApiCall.mockImplementation(function (method) {
+    if (method === "get_notes_extended") {
+      return JSON.stringify({ notes });
+    }
+
+    return null;
+  });
+  mockLiveApiGet({
+    "live_set/tracks/1/clip_slots/1/clip": clipProps,
+  });
+}
+
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              note_id: 1,
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 2,
-              pitch: 62,
-              start_time: 1,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 3,
-              pitch: 64,
-              start_time: 2,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-          ],
-        });
-      }
-
-      return null;
-    });
-    mockLiveApiGet({
-      "live_set/tracks/1/clip_slots/1/clip": {
+    setupMidiClipMock({
+      clipProps: {
         signature_numerator: 4,
         signature_denominator: 4,
         length: 4, // Ableton beats
@@ -88,45 +96,8 @@ describe("readClip", () => {
   });
 
   it("returns clip information when a valid MIDI clip exists (6/8 time)", () => {
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              note_id: 1,
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 2,
-              pitch: 62,
-              start_time: 1,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 3,
-              pitch: 64,
-              start_time: 2,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-          ],
-        });
-      }
-
-      return null;
-    });
-    mockLiveApiGet({
-      "live_set/tracks/1/clip_slots/1/clip": {
+    setupMidiClipMock({
+      clipProps: {
         signature_numerator: 6,
         signature_denominator: 8,
         length: 4, // Ableton beats
