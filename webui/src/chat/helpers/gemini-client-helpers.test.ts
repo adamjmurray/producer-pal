@@ -108,6 +108,23 @@ describe("gemini-client-helpers", () => {
 
       expect(result.functionResponse.response.error).toBe("call failed");
     });
+
+    it("handles undefined function name with empty string fallback", async () => {
+      const mockClient = {
+        callTool: vi.fn().mockResolvedValue({ content: "success" }),
+      } as unknown as Client;
+
+      const result = (await executeSingleTool(
+        { functionCall: {} },
+        mockClient,
+      )) as { functionResponse: { name: undefined; response: unknown } };
+
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "",
+        arguments: undefined,
+      });
+      expect(result.functionResponse.name).toBeUndefined();
+    });
   });
 
   describe("executeToolCalls", () => {
