@@ -271,67 +271,151 @@ describe("duplicate-track-scene-helpers", () => {
       );
     });
 
+    // Helper to setup routing mock config with JSON-encoded routing properties
+    const routingMock = (sourceConfig, outputRoutingTypes) => ({
+      "live_set tracks 0": {
+        name: "Source Track",
+        ...sourceConfig,
+        input_routing_type: JSON.stringify({
+          input_routing_type: sourceConfig.input_routing_type,
+        }),
+        available_input_routing_types: JSON.stringify({
+          available_input_routing_types:
+            sourceConfig.available_input_routing_types ?? [],
+        }),
+      },
+      "live_set tracks 1": {
+        devices: [],
+        clip_slots: [],
+        arrangement_clips: [],
+        available_output_routing_types: JSON.stringify({
+          available_output_routing_types: outputRoutingTypes,
+        }),
+      },
+    });
+
     it("should not log arming when track is already armed", () => {
-      const consoleErrorSpy = vi
+      const consoleSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          arm: 1,
-          input_routing_type: { display_name: "No Input" },
-          available_input_routing_types: [],
-        },
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          available_output_routing_types: [
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      mockLiveApiGet(
+        routingMock(
+          { arm: 1, input_routing_type: { display_name: "No Input" } },
+          [{ display_name: "Source Track", identifier: "source_track_id" }],
+        ),
+      );
 
       duplicateTrack(0, null, false, false, true, 0);
 
-      // Should not log about arming since it was already armed
-      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      expect(consoleSpy).not.toHaveBeenCalledWith(
         expect.stringContaining("Armed the source track"),
       );
-      consoleErrorSpy.mockRestore();
+      consoleSpy.mockRestore();
     });
 
     it("should warn when track routing option is not found", () => {
-      const consoleErrorSpy = vi
+      const consoleSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          arm: 1,
-          input_routing_type: { display_name: "No Input" },
-          available_input_routing_types: [],
-        },
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          available_output_routing_types: [
-            { display_name: "Other Track", identifier: "other_track_id" },
-          ],
-        },
-      });
+      mockLiveApiGet(
+        routingMock(
+          { arm: 1, input_routing_type: { display_name: "No Input" } },
+          [{ display_name: "Other Track", identifier: "other_track_id" }],
+        ),
+      );
 
       duplicateTrack(0, null, false, false, true, 0);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
           'Could not find track "Source Track" in routing options',
         ),
       );
-      consoleErrorSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+
+    it("should warn when duplicate track names prevent routing", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet(
+        routingMock(
+          { arm: 1, input_routing_type: { display_name: "No Input" } },
+          [
+            { display_name: "Source Track", identifier: "source_track_id_1" },
+            { display_name: "Source Track", identifier: "source_track_id_2" },
+          ],
+        ),
+      );
+
+      duplicateTrack(0, null, false, false, true, 0);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Could not route to "Source Track" due to duplicate track names',
+        ),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("should change source track input routing from non-'No Input' to 'No Input'", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet(
+        routingMock(
+          {
+            arm: 0,
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          [{ display_name: "Source Track", identifier: "source_track_id" }],
+        ),
+      );
+
+      duplicateTrack(0, null, false, false, true, 0);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Changed track "Source Track" input routing from "Audio In" to "No Input"',
+        ),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("should warn when No Input routing option is not available", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet(
+        routingMock(
+          {
+            arm: 0,
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          [{ display_name: "Source Track", identifier: "source_track_id" }],
+        ),
+      );
+
+      duplicateTrack(0, null, false, false, true, 0);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Tried to change track "Source Track" input routing from "Audio In" to "No Input" but could not find "No Input"',
+        ),
+      );
+      consoleSpy.mockRestore();
     });
 
     it("should delete session clips when withoutClips is true", () => {
