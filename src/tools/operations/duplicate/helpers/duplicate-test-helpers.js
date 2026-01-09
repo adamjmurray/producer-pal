@@ -11,6 +11,23 @@ export {
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 
+import { liveApiPath } from "#src/test/mock-live-api.js";
+
+/**
+ * Setup liveApiPath mock for track duplication tests.
+ * @param {string} trackId - Track ID (e.g., "track1")
+ * @param {number} trackIndex - Track index (e.g., 0)
+ */
+export function setupTrackPath(trackId, trackIndex = 0) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === trackId) {
+      return `live_set tracks ${trackIndex}`;
+    }
+
+    return this._path;
+  });
+}
+
 // Mock updateClip to avoid complex internal logic
 export const updateClipMock = vi.fn(({ ids }) => {
   // Return array format to simulate tiled clips

@@ -7,6 +7,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-track] updateClip mock - track duplication tests
@@ -44,13 +45,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1" });
 
@@ -68,13 +63,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate multiple tracks with auto-incrementing names", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({
       type: "track",
@@ -135,13 +124,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without clips when withoutClips is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     // Mock track with clips
     mockLiveApiGet({
@@ -204,13 +187,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without devices when withoutDevices is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     // Mock track with devices
     mockLiveApiGet({
@@ -256,15 +233,8 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track with devices by default (withoutDevices not specified)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
+    setupTrackPath("track1");
 
-      return this._path;
-    });
-
-    // Mock track with devices
     mockLiveApiGet({
       "live_set tracks 1": {
         devices: children("device0", "device1"),
@@ -296,15 +266,8 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track with devices when withoutDevices is false", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
+    setupTrackPath("track1");
 
-      return this._path;
-    });
-
-    // Mock track with devices
     mockLiveApiGet({
       "live_set tracks 1": {
         devices: children("device0", "device1"),
@@ -440,13 +403,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should configure routing when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       // Mock track properties for routing configuration
       mockLiveApiGet({
@@ -484,13 +441,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not change source track monitoring if already set to In", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       // Mock track with monitoring already set to "In"
       mockLiveApiGet({
@@ -520,13 +471,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not change source track input routing if already set to No Input", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       // Mock track with input already set to "No Input"
       mockLiveApiGet({
@@ -557,13 +502,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should override withoutClips to true when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       const result = duplicate({
         type: "track",
@@ -580,13 +519,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should override withoutDevices to true when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       const result = duplicate({
         type: "track",
@@ -603,13 +536,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should arm the source track when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       // Mock track properties for routing configuration
       mockLiveApiGet({
@@ -644,13 +571,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not emit arm warning when source track is already armed", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       // Mock track properties with track already armed
       mockLiveApiGet({
