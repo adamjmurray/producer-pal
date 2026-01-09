@@ -494,13 +494,15 @@ describe("readDevice param-values include option", () => {
     });
   });
 
-  it.each([
-    [1, "active", "should include automation when not 'none'"],
-    [0, undefined, "should omit automation when 'none'"],
-  ])("automation_state=%i -> %s", (automationState, expectedAutomation) => {
+  /**
+   * Setup mocks for automation tests
+   * @param {number} automationState - The automation state value
+   */
+  function setupAutomationMocks(automationState) {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
+
       return "0";
     });
 
@@ -515,8 +517,10 @@ describe("readDevice param-values include option", () => {
           is_active: [1],
           parameters: ["id", "param-1"],
         };
+
         return deviceProps[prop] ?? [];
       }
+
       if (this._path === "id param-1") {
         const paramProps = {
           name: ["Volume"],
@@ -531,8 +535,10 @@ describe("readDevice param-values include option", () => {
           default_value: [0.7],
           display_value: [-6],
         };
+
         return paramProps[prop] ?? [];
       }
+
       return [];
     });
 
@@ -540,18 +546,32 @@ describe("readDevice param-values include option", () => {
       if (this._path === "id param-1" && method === "str_for_value") {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
+
         return "-6 dB";
       }
+
       return [];
     });
+  }
 
-    const result = readDevice({ deviceId: "device-123", include: ["param-values"] });
+  it("should include automation when not 'none'", () => {
+    setupAutomationMocks(1);
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["param-values"],
+    });
 
-    if (expectedAutomation) {
-      expect(result.parameters[0].automation).toBe(expectedAutomation);
-    } else {
-      expect(result.parameters[0]).not.toHaveProperty("automation");
-    }
+    expect(result.parameters[0].automation).toBe("active");
+  });
+
+  it("should omit automation when 'none'", () => {
+    setupAutomationMocks(0);
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["param-values"],
+    });
+
+    expect(result.parameters[0]).not.toHaveProperty("automation");
   });
 });
 

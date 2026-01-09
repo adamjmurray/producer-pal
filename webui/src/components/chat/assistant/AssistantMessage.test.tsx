@@ -71,19 +71,26 @@ describe("AssistantMessage", () => {
       expect(details!.open).toBe(true);
     });
 
-    it.each([
-      [true, "shows animate-pulse when responding"],
-      [false, "hides animate-pulse when not responding"],
-    ])("isResponding=%s: %s", (isResponding, _description) => {
-      const parts: UIPart[] = [{ type: "thought", content: "Thinking...", isOpen: true }];
-      render(<AssistantMessage parts={parts} isResponding={isResponding} />);
+    it("shows animate-pulse when responding", () => {
+      const parts: UIPart[] = [
+        { type: "thought", content: "Thinking...", isOpen: true },
+      ];
+
+      render(<AssistantMessage parts={parts} isResponding={true} />);
       const details = document.querySelector("details");
 
-      if (isResponding) {
-        expect(details!.className).toContain("animate-pulse");
-      } else {
-        expect(details!.className).not.toContain("animate-pulse");
-      }
+      expect(details!.className).toContain("animate-pulse");
+    });
+
+    it("hides animate-pulse when not responding", () => {
+      const parts: UIPart[] = [
+        { type: "thought", content: "Thinking...", isOpen: true },
+      ];
+
+      render(<AssistantMessage parts={parts} isResponding={false} />);
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("animate-pulse");
     });
   });
 

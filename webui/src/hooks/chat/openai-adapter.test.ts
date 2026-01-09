@@ -32,10 +32,15 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
 // Helper for mock message transform
 const mockTransformMessage = (msg: OpenAIMessage, idx: number) => ({
   role: msg.role === "user" ? "user" : "model",
-  parts: [{
-    type: "text",
-    content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
-  }],
+  parts: [
+    {
+      type: "text",
+      content:
+        typeof msg.content === "string"
+          ? msg.content
+          : JSON.stringify(msg.content),
+    },
+  ],
   rawHistoryIndex: idx,
 });
 

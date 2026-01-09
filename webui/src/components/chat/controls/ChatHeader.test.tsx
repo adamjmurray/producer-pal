@@ -306,24 +306,41 @@ describe("ChatHeader", () => {
       window.confirm = originalConfirm;
     });
 
-    it.each([
-      [false, "does not call onClearConversation when user cancels"],
-      [true, "calls onClearConversation when user confirms"],
-    ])("confirm=%s: %s", (confirmResult, _description) => {
-      const originalConfirm = window.confirm;
+    /**
+     * Test confirm behavior with given confirm result
+     * @param confirmResult - Whether user confirms or cancels
+     * @returns onClearConversation mock
+     */
+    function testConfirmBehavior(confirmResult: boolean) {
       window.confirm = vi.fn().mockReturnValue(confirmResult);
       const onClearConversation = vi.fn();
 
       render(
-        <ChatHeader {...defaultProps} hasMessages={true} onClearConversation={onClearConversation} />,
+        <ChatHeader
+          {...defaultProps}
+          hasMessages={true}
+          onClearConversation={onClearConversation}
+        />,
       );
       fireEvent.click(screen.getByRole("button", { name: "Restart" }));
 
-      if (confirmResult) {
-        expect(onClearConversation).toHaveBeenCalledOnce();
-      } else {
-        expect(onClearConversation).not.toHaveBeenCalled();
-      }
+      return onClearConversation;
+    }
+
+    it("does not call onClearConversation when user cancels", () => {
+      const originalConfirm = window.confirm;
+      const onClearConversation = testConfirmBehavior(false);
+
+      expect(onClearConversation).not.toHaveBeenCalled();
+      window.confirm = originalConfirm;
+    });
+
+    it("calls onClearConversation when user confirms", () => {
+      const originalConfirm = window.confirm;
+      const onClearConversation = testConfirmBehavior(true);
+
+      expect(onClearConversation).toHaveBeenCalledOnce();
+
       window.confirm = originalConfirm;
     });
   });

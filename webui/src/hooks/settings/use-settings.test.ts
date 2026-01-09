@@ -560,6 +560,7 @@ describe("useSettings", () => {
     "setShowThoughts works for %s provider",
     async (provider) => {
       const { result } = renderHook(() => useSettings());
+
       await act(() => result.current.setProvider(provider));
       await act(() => result.current.setShowThoughts(false));
       expect(result.current.showThoughts).toBe(false);
@@ -612,12 +613,16 @@ describe("useSettings", () => {
   it.each([
     ["ollama", 11434],
     ["lmstudio", 1234],
-  ] as const)("setPort updates port for %s provider", async (provider, port) => {
-    const { result } = renderHook(() => useSettings());
-    await act(() => result.current.setProvider(provider));
-    await act(() => result.current.setPort!(port));
-    expect(result.current.port).toBe(port);
-  });
+  ] as const)(
+    "setPort updates port for %s provider",
+    async (provider, port) => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => result.current.setProvider(provider));
+      await act(() => result.current.setPort!(port));
+      expect(result.current.port).toBe(port);
+    },
+  );
 
   it("setPort is undefined for non-ollama/lmstudio providers", () => {
     const { result } = renderHook(() => useSettings());

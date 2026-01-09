@@ -116,14 +116,23 @@ describe("ChatInput", () => {
     });
 
     const sendTriggers = [
-      ["button click", () => fireEvent.click(screen.getByRole("button", { name: "Send" }))],
-      ["Enter key", (el: HTMLElement) => fireEvent.keyDown(el, { key: "Enter", shiftKey: false })],
+      [
+        "button click",
+        () => fireEvent.click(screen.getByRole("button", { name: "Send" })),
+      ],
+      [
+        "Enter key",
+        (el: HTMLElement) =>
+          fireEvent.keyDown(el, { key: "Enter", shiftKey: false }),
+      ],
     ] as const;
 
     it.each(sendTriggers)("sends message via %s", (_method, triggerSend) => {
       const handleSend = vi.fn();
+
       render(<ChatInput {...defaultProps} handleSend={handleSend} />);
       const textarea = screen.getByRole("textbox");
+
       fireEvent.input(textarea, { target: { value: "Hello" } });
       triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
@@ -133,17 +142,20 @@ describe("ChatInput", () => {
       });
     });
 
-    it.each(sendTriggers)("clears input after %s send", (_method, triggerSend) => {
-      render(<ChatInput {...defaultProps} />);
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      triggerSend(textarea);
-      expect(textarea.value).toBe("");
-    });
+    it.each(sendTriggers)(
+      "clears input after %s send",
+      (_method, triggerSend) => {
+        render(<ChatInput {...defaultProps} />);
+        const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+
+        fireEvent.input(textarea, { target: { value: "Hello" } });
+        triggerSend(textarea);
+        expect(textarea.value).toBe("");
+      },
+    );
   });
 
   describe("Enter key handling", () => {
-
     it.each([
       {
         name: "Shift+Enter",

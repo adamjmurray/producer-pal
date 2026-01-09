@@ -5,6 +5,29 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
+/**
+ * Create a test client and transport, returning cleanup function
+ * @param {Function} getServerUrl - Function to get server URL
+ * @returns {{ client: Client|null, transport: StreamableHTTPClientTransport|null }} Test state object
+ */
+function setupTestClient(getServerUrl) {
+  const state = { client: null, transport: null };
+
+  beforeAll(async () => {
+    state.client = new Client({ name: "test-client", version: "1.0.0" });
+    state.transport = new StreamableHTTPClientTransport(
+      new URL(getServerUrl()),
+    );
+    await state.client.connect(state.transport);
+  });
+
+  afterAll(async () => {
+    if (state.transport) await state.transport.close();
+  });
+
+  return state;
+}
+
 describe("MCP Express App", () => {
   let server;
   let serverUrl;
@@ -67,26 +90,10 @@ describe("MCP Express App", () => {
   });
 
   describe("List Tools", () => {
-    let client;
-    let transport;
-
-    beforeAll(async () => {
-      client = new Client({
-        name: "test-client",
-        version: "1.0.0",
-      });
-
-      transport = new StreamableHTTPClientTransport(new URL(serverUrl));
-      await client.connect(transport);
-    });
-
-    afterAll(async () => {
-      if (transport) {
-        await transport.close();
-      }
-    });
+    const testState = setupTestClient(() => serverUrl);
 
     it("should list all available tools", async () => {
+      const { client } = testState;
       const result = await client.listTools();
 
       expect(Array.isArray(result.tools)).toBe(true);
@@ -120,6 +127,7 @@ describe("MCP Express App", () => {
     });
 
     it("should provide tool schemas with correct names and descriptions", async () => {
+      const { client } = testState;
       const result = await client.listTools();
       const toolsByName = Object.fromEntries(
         result.tools.map((tool) => [tool.name, tool]),
@@ -160,6 +168,7 @@ describe("MCP Express App", () => {
     });
 
     it("should have valid input schemas for all tools", async () => {
+      const { client } = testState;
       const result = await client.listTools();
 
       // Every tool should have required fields
@@ -198,26 +207,10 @@ describe("MCP Express App", () => {
   });
 
   describe("Call Tool", () => {
-    let client;
-    let transport;
-
-    beforeAll(async () => {
-      client = new Client({
-        name: "test-client",
-        version: "1.0.0",
-      });
-
-      transport = new StreamableHTTPClientTransport(new URL(serverUrl));
-      await client.connect(transport);
-    });
-
-    afterAll(async () => {
-      if (transport) {
-        await transport.close();
-      }
-    });
+    const testState = setupTestClient(() => serverUrl);
 
     it("should call ppal-read-track tool", async () => {
+      const { client } = testState;
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
@@ -264,6 +257,7 @@ describe("MCP Express App", () => {
     });
 
     it("should call list-tracks tool and timeout appropriately", async () => {
+      const { client } = testState;
       // This test verifies the MCP server is working but will timeout quickly
       // since we can't mock the full Live API response chain easily
 
@@ -291,6 +285,7 @@ describe("MCP Express App", () => {
     });
 
     it("should handle tool with missing required arguments", async () => {
+      const { client } = testState;
       const result = await client.callTool({
         name: "delete-scene",
         arguments: {}, // Missing sceneIndex
@@ -301,6 +296,7 @@ describe("MCP Express App", () => {
     });
 
     it("should handle unknown tool", async () => {
+      const { client } = testState;
       const result = await client.callTool({
         name: "nonexistent-tool",
         arguments: {},
@@ -311,6 +307,7 @@ describe("MCP Express App", () => {
     });
 
     it("should return isError: true when Max.outlet throws", async () => {
+      const { client } = testState;
       // This test verifies that errors thrown when sending to Max are properly
       // caught and returned as MCP error responses with isError: true
       const errorMessage = "Simulated tool error";
@@ -383,33 +380,20 @@ describe("MCP Express App", () => {
   });
 
   describe("Error Handling", () => {
-    it("should return method not allowed for GET /mcp", async () => {
-      const response = await fetch(serverUrl, {
-        method: "GET",
-      });
+    it.each(["GET", "DELETE"])(
+      "should return method not allowed for %s /mcp",
+      async (method) => {
+        const response = await fetch(serverUrl, { method });
 
-      expect(response.status).toBe(405);
-      const errorResponse = await response.json();
+        expect(response.status).toBe(405);
+        const errorResponse = await response.json();
 
-      expect(errorResponse.jsonrpc).toBe("2.0");
-      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
-      expect(errorResponse.error.message).toBe("Method not allowed.");
-      expect(errorResponse.id).toBe(null);
-    });
-
-    it("should return method not allowed for DELETE /mcp", async () => {
-      const response = await fetch(serverUrl, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(405);
-      const errorResponse = await response.json();
-
-      expect(errorResponse.jsonrpc).toBe("2.0");
-      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
-      expect(errorResponse.error.message).toBe("Method not allowed.");
-      expect(errorResponse.id).toBe(null);
-    });
+        expect(errorResponse.jsonrpc).toBe("2.0");
+        expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
+        expect(errorResponse.error.message).toBe("Method not allowed.");
+        expect(errorResponse.id).toBe(null);
+      },
+    );
   });
 
   describe("Configuration Options", () => {

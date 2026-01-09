@@ -6,18 +6,25 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTheme } from "./use-theme";
 
-/** Create a MediaQueryList mock with optional overrides */
-const createMediaQueryListMock = (overrides: Partial<MediaQueryList> = {}): MediaQueryList => ({
-  matches: false,
-  media: "(prefers-color-scheme: dark)",
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  onchange: null,
-  addListener: vi.fn(),
-  removeListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-  ...overrides,
-} as MediaQueryList);
+/**
+ * Create a MediaQueryList mock with optional overrides
+ * @param overrides - Optional properties to override in the mock
+ * @returns Mock MediaQueryList object
+ */
+const createMediaQueryListMock = (
+  overrides: Partial<MediaQueryList> = {},
+): MediaQueryList =>
+  ({
+    matches: false,
+    media: "(prefers-color-scheme: dark)",
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    ...overrides,
+  }) as MediaQueryList;
 
 describe("useTheme", () => {
   let matchMediaMock: ReturnType<typeof vi.fn>;
@@ -70,16 +77,22 @@ describe("useTheme", () => {
   it.each([
     [true, "dark"],
     [false, "light"],
-  ])("respects system preference for %s mode when theme is system", async (matches, mode) => {
-    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches }));
+  ])(
+    "respects system preference for %s mode when theme is system",
+    async (matches, mode) => {
+      matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches }));
 
-    const { result } = renderHook(() => useTheme());
-    await act(() => result.current.setTheme("system"));
+      const { result } = renderHook(() => useTheme());
 
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(mode === "dark");
-    });
-  });
+      await act(() => result.current.setTheme("system"));
+
+      await waitFor(() => {
+        expect(document.documentElement.classList.contains("dark")).toBe(
+          mode === "dark",
+        );
+      });
+    },
+  );
 
   it("saves and updates theme in localStorage", async () => {
     const { result } = renderHook(() => useTheme());
@@ -93,24 +106,35 @@ describe("useTheme", () => {
 
   it("adds event listener for system theme changes", () => {
     const mockAddEventListener = vi.fn();
+
     matchMediaMock.mockReturnValue(
       createMediaQueryListMock({ addEventListener: mockAddEventListener }),
     );
 
     renderHook(() => useTheme());
 
-    expect(mockAddEventListener).toHaveBeenCalledWith("change", expect.any(Function));
+    expect(mockAddEventListener).toHaveBeenCalledWith(
+      "change",
+      expect.any(Function),
+    );
   });
 
   it("removes event listener on cleanup when using system theme", () => {
     const mockRemoveEventListener = vi.fn();
+
     matchMediaMock.mockReturnValue(
-      createMediaQueryListMock({ removeEventListener: mockRemoveEventListener }),
+      createMediaQueryListMock({
+        removeEventListener: mockRemoveEventListener,
+      }),
     );
 
     const { unmount } = renderHook(() => useTheme());
+
     unmount();
 
-    expect(mockRemoveEventListener).toHaveBeenCalledWith("change", expect.any(Function));
+    expect(mockRemoveEventListener).toHaveBeenCalledWith(
+      "change",
+      expect.any(Function),
+    );
   });
 });

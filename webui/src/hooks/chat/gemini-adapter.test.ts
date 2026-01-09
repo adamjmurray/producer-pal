@@ -31,7 +31,10 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
 // Helper for mock message transform
 const mockTransformMessage = (msg: GeminiMessage, idx: number) => ({
   role: msg.role === "user" ? "user" : "model",
-  parts: (msg.parts ?? []).map((part) => ({ type: "text", content: part.text ?? "" })),
+  parts: (msg.parts ?? []).map((part) => ({
+    type: "text",
+    content: part.text ?? "",
+  })),
   rawHistoryIndex: idx,
 });
 
