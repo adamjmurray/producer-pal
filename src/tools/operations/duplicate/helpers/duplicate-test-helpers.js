@@ -11,7 +11,7 @@ export {
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 
-import { liveApiPath } from "#src/test/mock-live-api.js";
+import { liveApiGet, liveApiPath } from "#src/test/mock-live-api.js";
 
 /**
  * Setup liveApiPath mock for track duplication tests.
@@ -25,6 +25,49 @@ export function setupTrackPath(trackId, trackIndex = 0) {
     }
 
     return this._path;
+  });
+}
+
+/**
+ * Setup arrangement clip mocks for scene-to-arrangement tests.
+ * Extends existing liveApiPath and liveApiGet mocks to handle arrangement clips.
+ * @param {object} opts - Options
+ * @param {function} [opts.getStartTime] - Function to get start time based on path (default: returns 16)
+ */
+export function setupArrangementClipMocks(opts = {}) {
+  const { getStartTime = () => 16 } = opts;
+
+  const originalGet = liveApiGet.getMockImplementation();
+  const originalPath = liveApiPath.getMockImplementation();
+
+  liveApiPath.mockImplementation(function () {
+    // For arrangement clips created by ID, return a proper path
+    if (
+      this._path.startsWith("id live_set tracks") &&
+      this._path.includes("arrangement_clips")
+    ) {
+      return this._path.slice(3); // Remove "id " prefix
+    }
+
+    return originalPath ? originalPath.call(this) : this._path;
+  });
+
+  liveApiGet.mockImplementation(function (prop) {
+    // Check if this is an arrangement clip requesting is_arrangement_clip
+    if (
+      this._path.includes("arrangement_clips") &&
+      prop === "is_arrangement_clip"
+    ) {
+      return [1];
+    }
+
+    // Check if this is an arrangement clip requesting start_time
+    if (this._path.includes("arrangement_clips") && prop === "start_time") {
+      return [getStartTime(this._path)];
+    }
+
+    // Otherwise use the original mock implementation
+    return originalGet ? originalGet.call(this, prop) : [];
   });
 }
 

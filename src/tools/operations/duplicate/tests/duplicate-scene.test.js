@@ -7,6 +7,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupArrangementClipMocks,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-scene] updateClip mock for scene duplication tests
@@ -297,39 +298,7 @@ describe("duplicate - scene duplication", () => {
         },
       );
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        // For arrangement clips created by ID, return a proper path
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3); // Remove "id " prefix
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        // Check if this is an arrangement clip requesting is_arrangement_clip
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        // Check if this is an arrangement clip requesting start_time
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [16];
-        }
-
-        // Otherwise use the original mock implementation
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks();
 
       const result = duplicate({
         type: "scene",
@@ -412,47 +381,18 @@ describe("duplicate - scene duplication", () => {
         },
       );
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        // For arrangement clips created by ID, return a proper path
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3); // Remove "id " prefix
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        // Check if this is an arrangement clip requesting is_arrangement_clip
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        // Check if this is an arrangement clip requesting start_time
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          // Return different start times based on clip index
-          const clipMatch = this._path.match(/arrangement_clips (\d+)/);
+      setupArrangementClipMocks({
+        getStartTime: (path) => {
+          const clipMatch = path.match(/arrangement_clips (\d+)/);
 
           if (clipMatch) {
             const clipIndex = Number.parseInt(clipMatch[1]);
 
-            return [16 + clipIndex * 8]; // 16, 24, 32
+            return 16 + clipIndex * 8; // 16, 24, 32
           }
 
-          return [16];
-        }
-
-        // Otherwise use the original mock implementation
-        return originalGet ? originalGet.call(this, prop) : [];
+          return 16;
+        },
       });
 
       const result = duplicate({
