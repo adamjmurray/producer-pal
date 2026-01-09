@@ -1,5 +1,6 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
+import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
   parseSceneIndexList,
   parseArrangementStartList,
@@ -8,29 +9,6 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.js";
-
-/**
- * Generates a name for a duplicated clip
- * @param {string} baseName - Base name for the clip
- * @param {number} count - Total number of duplicates
- * @param {number} index - Current duplicate index
- * @returns {string | undefined} Generated name or undefined
- */
-function generateClipName(baseName, count, index) {
-  if (baseName == null) {
-    return;
-  }
-
-  if (count === 1) {
-    return baseName;
-  }
-
-  if (index === 0) {
-    return baseName;
-  }
-
-  return `${baseName} ${index + 1}`;
-}
 
 /**
  * Duplicates a clip to explicit positions
@@ -74,7 +52,7 @@ export function duplicateClipWithPositions(
     }
 
     for (let i = 0; i < sceneIndices.length; i++) {
-      const objectName = generateClipName(name, sceneIndices.length, i);
+      const objectName = buildIndexedName(name, sceneIndices.length, i);
       const result = duplicateClipSlot(
         trackIndex,
         sourceSceneIndex,
@@ -102,7 +80,7 @@ export function duplicateClipWithPositions(
     );
 
     for (let i = 0; i < positionsInBeats.length; i++) {
-      const objectName = generateClipName(name, positionsInBeats.length, i);
+      const objectName = buildIndexedName(name, positionsInBeats.length, i);
       const result = duplicateClipToArrangement(
         id,
         positionsInBeats[i],
