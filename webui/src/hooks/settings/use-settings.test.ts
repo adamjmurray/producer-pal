@@ -619,14 +619,6 @@ describe("useSettings", () => {
     expect(result.current.port).toBe(port);
   });
 
-  it("setBaseUrl is undefined for non-custom providers", () => {
-    const { result } = renderHook(() => useSettings());
-
-    // gemini is the default provider - setBaseUrl should be undefined
-    expect(result.current.setBaseUrl).toBeUndefined();
-    expect(result.current.baseUrl).toBeUndefined();
-  });
-
   it("setPort is undefined for non-ollama/lmstudio providers", () => {
     const { result } = renderHook(() => useSettings());
 

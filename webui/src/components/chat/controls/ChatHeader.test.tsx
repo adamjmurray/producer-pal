@@ -306,49 +306,24 @@ describe("ChatHeader", () => {
       window.confirm = originalConfirm;
     });
 
-    it("does not call onClearConversation when user cancels confirmation", () => {
+    it.each([
+      [false, "does not call onClearConversation when user cancels"],
+      [true, "calls onClearConversation when user confirms"],
+    ])("confirm=%s: %s", (confirmResult, _description) => {
       const originalConfirm = window.confirm;
-
-      window.confirm = vi.fn().mockReturnValue(false);
-
+      window.confirm = vi.fn().mockReturnValue(confirmResult);
       const onClearConversation = vi.fn();
 
       render(
-        <ChatHeader
-          {...defaultProps}
-          hasMessages={true}
-          onClearConversation={onClearConversation}
-        />,
+        <ChatHeader {...defaultProps} hasMessages={true} onClearConversation={onClearConversation} />,
       );
+      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
 
-      const button = screen.getByRole("button", { name: "Restart" });
-
-      fireEvent.click(button);
-
-      expect(onClearConversation).not.toHaveBeenCalled();
-      window.confirm = originalConfirm;
-    });
-
-    it("calls onClearConversation when user confirms", () => {
-      const originalConfirm = window.confirm;
-
-      window.confirm = vi.fn().mockReturnValue(true);
-
-      const onClearConversation = vi.fn();
-
-      render(
-        <ChatHeader
-          {...defaultProps}
-          hasMessages={true}
-          onClearConversation={onClearConversation}
-        />,
-      );
-
-      const button = screen.getByRole("button", { name: "Restart" });
-
-      fireEvent.click(button);
-
-      expect(onClearConversation).toHaveBeenCalledOnce();
+      if (confirmResult) {
+        expect(onClearConversation).toHaveBeenCalledOnce();
+      } else {
+        expect(onClearConversation).not.toHaveBeenCalled();
+      }
       window.confirm = originalConfirm;
     });
   });

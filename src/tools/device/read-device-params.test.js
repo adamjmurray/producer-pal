@@ -494,65 +494,45 @@ describe("readDevice param-values include option", () => {
     });
   });
 
-  it("should include automation when not 'none'", () => {
+  it.each([
+    [1, "active", "should include automation when not 'none'"],
+    [0, undefined, "should omit automation when 'none'"],
+  ])("automation_state=%i -> %s", (automationState, expectedAutomation) => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
-
       return "0";
     });
 
     liveApiGet.mockImplementation(function (prop) {
       if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
+        const deviceProps = {
+          name: ["Operator"],
+          class_display_name: ["Operator"],
+          type: [1],
+          can_have_chains: [0],
+          can_have_drum_pads: [0],
+          is_active: [1],
+          parameters: ["id", "param-1"],
+        };
+        return deviceProps[prop] ?? [];
       }
-
       if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Volume"];
-          case "original_name":
-            return ["Volume"];
-          case "value":
-            return [0.5];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [1]; // active automation
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [0.7];
-          case "display_value":
-            return [-6];
-          default:
-            return [];
-        }
+        const paramProps = {
+          name: ["Volume"],
+          original_name: ["Volume"],
+          value: [0.5],
+          state: [0],
+          is_enabled: [1],
+          automation_state: [automationState],
+          min: [0],
+          max: [1],
+          is_quantized: [0],
+          default_value: [0.7],
+          display_value: [-6],
+        };
+        return paramProps[prop] ?? [];
       }
-
       return [];
     });
 
@@ -560,100 +540,18 @@ describe("readDevice param-values include option", () => {
       if (this._path === "id param-1" && method === "str_for_value") {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
-
         return "-6 dB";
       }
-
       return [];
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
+    const result = readDevice({ deviceId: "device-123", include: ["param-values"] });
 
-    expect(result.parameters[0].automation).toBe("active");
-  });
-
-  it("should omit automation when 'none'", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Volume"];
-          case "original_name":
-            return ["Volume"];
-          case "value":
-            return [0.5];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0]; // no automation
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [0.7];
-          case "display_value":
-            return [-6];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method, value) {
-      if (this._path === "id param-1" && method === "str_for_value") {
-        if (value === 0) return "-inf dB";
-        if (value === 1) return "0 dB";
-
-        return "-6 dB";
-      }
-
-      return [];
-    });
-
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
-
-    expect(result.parameters[0]).not.toHaveProperty("automation");
+    if (expectedAutomation) {
+      expect(result.parameters[0].automation).toBe(expectedAutomation);
+    } else {
+      expect(result.parameters[0]).not.toHaveProperty("automation");
+    }
   });
 });
 

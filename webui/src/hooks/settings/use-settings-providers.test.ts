@@ -49,17 +49,6 @@ describe("useSettings - provider-specific settings", () => {
     });
   });
   describe("setBaseUrl", () => {
-    it("sets baseUrl for custom provider", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("custom");
-      });
-      await act(() => {
-        result.current.setBaseUrl!("https://my-api.com/v1");
-      });
-      expect(result.current.baseUrl).toBe("https://my-api.com/v1");
-    });
     it("setBaseUrl is undefined for non-custom providers", async () => {
       const { result } = renderHook(() => useSettings());
 

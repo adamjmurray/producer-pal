@@ -34,12 +34,14 @@ describe("MessageSettingsToolbar", () => {
     expect(toolbar?.textContent).toContain("▶");
   });
 
-  it("expands when clicked", () => {
+  it("expands and collapses when clicked", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
 
     fireEvent.click(button!);
     expect(container.textContent).toContain("▼");
+    fireEvent.click(button!);
+    expect(container.textContent).toContain("▶");
   });
 
   it.each([{ thinking: "High" }, { temperature: 1.5 }])(
@@ -138,15 +140,5 @@ describe("MessageSettingsToolbar", () => {
     );
 
     expect(resetButton?.disabled).toBe(true);
-  });
-
-  it("collapses when clicked again", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-    expect(container.textContent).toContain("▼");
-    fireEvent.click(button!);
-    expect(container.textContent).toContain("▶");
   });
 });

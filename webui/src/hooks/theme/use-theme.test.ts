@@ -67,64 +67,28 @@ describe("useTheme", () => {
     });
   });
 
-  it("respects system preference for dark mode when theme is system", async () => {
-    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches: true }));
+  it.each([
+    [true, "dark"],
+    [false, "light"],
+  ])("respects system preference for %s mode when theme is system", async (matches, mode) => {
+    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches }));
 
     const { result } = renderHook(() => useTheme());
-
-    await act(() => {
-      result.current.setTheme("system");
-    });
+    await act(() => result.current.setTheme("system"));
 
     await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(true);
+      expect(document.documentElement.classList.contains("dark")).toBe(mode === "dark");
     });
   });
 
-  it("respects system preference for light mode when theme is system", async () => {
-    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches: false }));
-
+  it("saves and updates theme in localStorage", async () => {
     const { result } = renderHook(() => useTheme());
 
-    await act(() => {
-      result.current.setTheme("system");
-    });
+    await act(() => result.current.setTheme("dark"));
+    await waitFor(() => expect(localStorage.getItem("theme")).toBe("dark"));
 
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(false);
-    });
-  });
-
-  it("saves theme to localStorage when changed", async () => {
-    const { result } = renderHook(() => useTheme());
-
-    await act(() => {
-      result.current.setTheme("dark");
-    });
-
-    await waitFor(() => {
-      expect(localStorage.getItem("theme")).toBe("dark");
-    });
-  });
-
-  it("updates localStorage when theme changes", async () => {
-    const { result } = renderHook(() => useTheme());
-
-    await act(() => {
-      result.current.setTheme("dark");
-    });
-
-    await waitFor(() => {
-      expect(localStorage.getItem("theme")).toBe("dark");
-    });
-
-    await act(() => {
-      result.current.setTheme("light");
-    });
-
-    await waitFor(() => {
-      expect(localStorage.getItem("theme")).toBe("light");
-    });
+    await act(() => result.current.setTheme("light"));
+    await waitFor(() => expect(localStorage.getItem("theme")).toBe("light"));
   });
 
   it("adds event listener for system theme changes", () => {
