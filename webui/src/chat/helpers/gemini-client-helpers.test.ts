@@ -207,5 +207,15 @@ describe("gemini-client-helpers", () => {
       expect(turn.parts).toHaveLength(1);
       expect((turn.parts[0] as { text: string }).text).toBe("hello world");
     });
+
+    it("does not merge when last part has no text property", () => {
+      const turn = {
+        role: "model" as const,
+        parts: [{ functionCall: { name: "test" } }] as Part[],
+      };
+
+      addOrMergePartToTurn(turn, { text: "hello" } as Part);
+      expect(turn.parts).toHaveLength(2);
+    });
   });
 });
