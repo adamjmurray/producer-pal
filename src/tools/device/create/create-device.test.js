@@ -367,11 +367,7 @@ describe("createDevice", () => {
 
         global.LiveAPI.prototype.exists = vi.fn(function () {
           // Chains container doesn't exist
-          if (this._path?.includes("chains")) {
-            return false;
-          }
-
-          return true;
+          return !this._path?.includes("chains");
         });
 
         expect(() =>
@@ -379,7 +375,9 @@ describe("createDevice", () => {
             path: "t0/d0/c0",
             deviceName: "Compressor",
           }),
-        ).toThrow('createDevice failed: container at path "t0/d0/c0" does not exist');
+        ).toThrow(
+          'createDevice failed: container at path "t0/d0/c0" does not exist',
+        );
 
         global.LiveAPI.prototype.exists = originalExists;
       });

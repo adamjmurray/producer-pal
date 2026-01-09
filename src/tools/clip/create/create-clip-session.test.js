@@ -166,11 +166,7 @@ describe("createClip - session view", () => {
 
     global.LiveAPI.prototype.exists = vi.fn(function () {
       // Scene does not exist
-      if (this._path?.startsWith("live_set scenes")) {
-        return false;
-      }
-
-      return true;
+      return !this._path?.startsWith("live_set scenes");
     });
 
     expect(() =>

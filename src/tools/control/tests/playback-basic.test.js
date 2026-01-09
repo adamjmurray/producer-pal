@@ -608,11 +608,7 @@ describe("transport", () => {
     const originalExists = global.LiveAPI.prototype.exists;
 
     global.LiveAPI.prototype.exists = vi.fn(function () {
-      if (this._path?.startsWith("live_set tracks")) {
-        return false;
-      }
-
-      return true;
+      return !this._path?.startsWith("live_set tracks");
     });
 
     expect(() =>
