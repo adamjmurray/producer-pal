@@ -242,6 +242,21 @@ export function assertRevealedClipMarkers(clipId, startMarker, endMarker) {
 }
 
 /**
+ * Setup mockLiveApiGet for a standard session MIDI clip.
+ * @param {string} clipId - Clip ID
+ */
+export function setupMidiClipMock(clipId) {
+  mockLiveApiGet({
+    [clipId]: {
+      is_arrangement_clip: 0,
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+    },
+  });
+}
+
+/**
  * Setup a complete audio arrangement length test scenario.
  * @param {object} opts - Options
  * @param {number} opts.trackIndex - Track index

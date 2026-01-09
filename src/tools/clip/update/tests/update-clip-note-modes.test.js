@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiCall, mockLiveApiGet } from "#src/test/mock-live-api.js";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import {
+  setupMocks,
+  setupMidiClipMock,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 const DEFAULT_C3_NOTE = {
@@ -37,14 +40,7 @@ describe("updateClip - Note update modes", () => {
   });
 
   it("should filter out v0 notes when updating clips", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -81,14 +77,7 @@ describe("updateClip - Note update modes", () => {
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     updateClip({
       ids: "123",
@@ -111,14 +100,7 @@ describe("updateClip - Note update modes", () => {
   });
 
   it("should replace notes when noteUpdateMode is 'replace'", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -132,14 +114,7 @@ describe("updateClip - Note update modes", () => {
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock empty existing notes, then return added notes on subsequent calls
     let addedNotes = [];
@@ -168,14 +143,7 @@ describe("updateClip - Note update modes", () => {
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock empty existing notes
     liveApiCall.mockImplementation(function (method, ..._args) {
