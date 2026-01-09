@@ -6,27 +6,26 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTheme } from "./use-theme";
 
+/** Create a MediaQueryList mock with optional overrides */
+const createMediaQueryListMock = (overrides: Partial<MediaQueryList> = {}): MediaQueryList => ({
+  matches: false,
+  media: "(prefers-color-scheme: dark)",
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+  ...overrides,
+} as MediaQueryList);
+
 describe("useTheme", () => {
   let matchMediaMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
-
-    // Mock window.matchMedia
-    matchMediaMock = vi.fn(
-      (): MediaQueryList =>
-        ({
-          matches: false,
-          media: "(prefers-color-scheme: dark)",
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        }) as MediaQueryList,
-    );
+    matchMediaMock = vi.fn(() => createMediaQueryListMock());
     window.matchMedia = matchMediaMock as unknown as typeof window.matchMedia;
   });
 
@@ -69,16 +68,7 @@ describe("useTheme", () => {
   });
 
   it("respects system preference for dark mode when theme is system", async () => {
-    matchMediaMock.mockReturnValue({
-      matches: true,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    } as MediaQueryList);
+    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches: true }));
 
     const { result } = renderHook(() => useTheme());
 
@@ -92,16 +82,7 @@ describe("useTheme", () => {
   });
 
   it("respects system preference for light mode when theme is system", async () => {
-    matchMediaMock.mockReturnValue({
-      matches: false,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    } as MediaQueryList);
+    matchMediaMock.mockReturnValue(createMediaQueryListMock({ matches: false }));
 
     const { result } = renderHook(() => useTheme());
 
@@ -148,47 +129,24 @@ describe("useTheme", () => {
 
   it("adds event listener for system theme changes", () => {
     const mockAddEventListener = vi.fn();
-
-    matchMediaMock.mockReturnValue({
-      matches: false,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: mockAddEventListener,
-      removeEventListener: vi.fn(),
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    } as MediaQueryList);
+    matchMediaMock.mockReturnValue(
+      createMediaQueryListMock({ addEventListener: mockAddEventListener }),
+    );
 
     renderHook(() => useTheme());
 
-    expect(mockAddEventListener).toHaveBeenCalledWith(
-      "change",
-      expect.any(Function),
-    );
+    expect(mockAddEventListener).toHaveBeenCalledWith("change", expect.any(Function));
   });
 
   it("removes event listener on cleanup when using system theme", () => {
     const mockRemoveEventListener = vi.fn();
-
-    matchMediaMock.mockReturnValue({
-      matches: false,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: vi.fn(),
-      removeEventListener: mockRemoveEventListener,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    } as MediaQueryList);
+    matchMediaMock.mockReturnValue(
+      createMediaQueryListMock({ removeEventListener: mockRemoveEventListener }),
+    );
 
     const { unmount } = renderHook(() => useTheme());
-
     unmount();
 
-    expect(mockRemoveEventListener).toHaveBeenCalledWith(
-      "change",
-      expect.any(Function),
-    );
+    expect(mockRemoveEventListener).toHaveBeenCalledWith("change", expect.any(Function));
   });
 });
