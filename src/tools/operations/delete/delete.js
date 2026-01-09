@@ -4,7 +4,10 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
@@ -76,12 +79,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (deletedObjects.length === 0) {
-    return [];
-  }
-
-  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
+  return unwrapSingleResult(deletedObjects);
 }
 
 /**

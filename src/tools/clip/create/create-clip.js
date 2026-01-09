@@ -6,7 +6,10 @@ import {
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
+import {
+  parseTimeSignature,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
@@ -152,8 +155,7 @@ export function createClip(
     select({ view });
   }
 
-  // Return single object if one position, array if multiple
-  return createdClips.length === 1 ? createdClips[0] : createdClips;
+  return unwrapSingleResult(createdClips);
 }
 
 /**

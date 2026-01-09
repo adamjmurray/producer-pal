@@ -4,7 +4,10 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 import {
   moveDeviceToPath,
@@ -165,11 +168,7 @@ function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
     }
   }
 
-  if (results.length === 0) {
-    return [];
-  }
-
-  return results.length === 1 ? results[0] : results;
+  return unwrapSingleResult(results);
 }
 
 /**

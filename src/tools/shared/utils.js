@@ -100,6 +100,17 @@ export function buildIndexedName(baseName, count, index) {
 }
 
 /**
+ * Unwraps a single-element array to its element, otherwise returns the array
+ * Used for tool results that should return a single object when one item,
+ * or an array when multiple items.
+ * @param {Array} array - Array of results
+ * @returns {*} Single element if array has one item, otherwise the full array
+ */
+export function unwrapSingleResult(array) {
+  return array.length === 1 ? array[0] : array;
+}
+
+/**
  * Parses a time signature string into numerator and denominator
  * @param {string} timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
  * @returns {{numerator: number, denominator: number}} Object with numerator and denominator
