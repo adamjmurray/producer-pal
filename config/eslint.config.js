@@ -210,6 +210,11 @@ const unicornRules = {
   "unicorn/no-thenable": "error", // Prevent accidental Promise-like objects
   "unicorn/no-await-expression-member": "error", // Prevent (await foo).bar which can error
   "unicorn/prefer-includes": "error", // Use .includes() instead of .indexOf() !== -1
+  "unicorn/prefer-array-flat": "error", // Use .flat() instead of [].concat(...arr)
+  "unicorn/prefer-array-flat-map": "error", // Use .flatMap() instead of .map().flat()
+  "unicorn/prefer-string-starts-ends-with": "error", // Use .startsWith()/.endsWith()
+  "unicorn/no-object-as-default-parameter": "error", // Prevent mutable default params
+  "unicorn/explicit-length-check": "error", // Require explicit .length > 0
 };
 
 const jsOnlyRules = {
