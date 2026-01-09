@@ -12,12 +12,12 @@ import {
   parseBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { validateBufferedState } from "./helpers/barbeat-interpreter-buffer-helpers.js";
 import {
-  validateBufferedState,
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
   handleClearBuffer,
-} from "./helpers/barbeat-interpreter-helpers.js";
+} from "./helpers/barbeat-interpreter-copy-helpers.js";
 import {
   calculatePositions,
   handlePitchEmission,

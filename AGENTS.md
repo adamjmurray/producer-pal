@@ -72,6 +72,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   prefix is required by Node.js for unbundled execution (build scripts, CLI
   tools). Never use relative paths like `../../` when a path alias is available.
 
+- **No barrel files**: Do not create index.js or other files that only re-export
+  from other modules. Import directly from the source file instead.
+
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 

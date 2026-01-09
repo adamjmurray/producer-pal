@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   clearPitchBuffer,
-  copyNoteToDestination,
   trackStateChange,
   updateBufferedPitches,
-} from "./barbeat-interpreter-helpers.js";
+} from "./barbeat-interpreter-buffer-helpers.js";
+import { copyNoteToDestination } from "./barbeat-interpreter-copy-helpers.js";
 
 describe("barbeat-interpreter-helpers", () => {
   describe("clearPitchBuffer", () => {
