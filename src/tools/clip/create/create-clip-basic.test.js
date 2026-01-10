@@ -439,4 +439,24 @@ describe("createClip - basic validation and time signatures", () => {
       ),
     );
   });
+
+  it("sets playing_position when firstStart is used with looping clips", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      Clip: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: "0",
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: true,
+    });
+
+    // 1|2 = 1 beat in 4/4 time
+    expect(liveApiSet).toHaveBeenCalledWith("playing_position", 1);
+  });
 });

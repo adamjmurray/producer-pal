@@ -394,6 +394,17 @@ describe("MCP Express App", () => {
         expect(errorResponse.id).toBe(null);
       },
     );
+
+    it("should return parse error for invalid JSON", async () => {
+      const response = await fetch(serverUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not valid json",
+      });
+
+      // Express json middleware returns 400 for invalid JSON
+      expect(response.status).toBe(400);
+    });
   });
 
   describe("Configuration Options", () => {

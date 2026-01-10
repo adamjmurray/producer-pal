@@ -413,4 +413,14 @@ describe("rawLiveApi", () => {
       });
     });
   });
+
+  describe("error handling", () => {
+    it("should throw error for unknown operation type", () => {
+      expect(() =>
+        rawLiveApi({
+          operations: [{ type: "unknown_operation" }],
+        }),
+      ).toThrow("Unknown operation type: unknown_operation");
+    });
+  });
 });
