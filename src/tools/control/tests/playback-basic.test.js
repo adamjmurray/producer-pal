@@ -587,6 +587,42 @@ describe("transport", () => {
     );
   });
 
+  it("should throw error when track does not exist for stop-session-clips", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock the clip to resolve to a valid track path
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+
+      return this._path;
+    });
+
+    // Mock track to not exist
+    const originalExists = global.LiveAPI.prototype.exists;
+
+    global.LiveAPI.prototype.exists = vi.fn(function () {
+      return !this._path?.startsWith("live_set tracks");
+    });
+
+    expect(() =>
+      playback({
+        action: "stop-session-clips",
+        clipIds: "clip1",
+      }),
+    ).toThrow(
+      "playback stop-session-clips action failed: track for clip path does not exist",
+    );
+
+    global.LiveAPI.prototype.exists = originalExists;
+  });
+
   it("should handle stop-all-clips action", () => {
     mockLiveApiGet({
       LiveSet: {

@@ -415,47 +415,38 @@ describe("device-reader-helpers", () => {
   });
 
   describe("updateDrumPadSoloStates", () => {
+    // Helper to create drum pad chain objects
+    const drumPad = (pitch, name, state) =>
+      state !== undefined ? { pitch, name, state } : { pitch, name };
+
     it("does nothing when no drum chain is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick" },
-        { pitch: "D3", name: "Snare" },
-      ];
+      const chains = [drumPad("C3", "Kick"), drumPad("D3", "Snare")];
 
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBeUndefined();
       expect(chains[1].state).toBeUndefined();
     });
 
-    it("keeps soloed state unchanged", () => {
+    it("keeps soloed state unchanged and sets others to MUTED_VIA_SOLO", () => {
       const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare" },
-      ];
-
-      updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-    });
-
-    it("sets muted chains to MUTED_ALSO_VIA_SOLO when another is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare", state: STATE.MUTED },
-      ];
-
-      updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-      expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
-    });
-
-    it("sets unset chains to MUTED_VIA_SOLO when another is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare" },
+        drumPad("C3", "Kick", STATE.SOLOED),
+        drumPad("D3", "Snare"),
       ];
 
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
+    });
+
+    it("sets muted chains to MUTED_ALSO_VIA_SOLO when another is soloed", () => {
+      const chains = [
+        drumPad("C3", "Kick", STATE.SOLOED),
+        drumPad("D3", "Snare", STATE.MUTED),
+      ];
+
+      updateDrumPadSoloStates(chains);
+      expect(chains[0].state).toBe(STATE.SOLOED);
+      expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
     });
   });
 

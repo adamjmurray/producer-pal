@@ -370,4 +370,110 @@ describe("readLiveSet - clips", () => {
     expect(track.name).toBe("Test Track");
     expect(track.arrangementFollower).toBe(true);
   });
+
+  it("returns null values for non-existent track in minimal mode", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "0"; // Non-existent track
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Non-existent Track Test",
+        tracks: children("track1"),
+        scenes: [],
+      },
+    });
+
+    const result = readLiveSet({ include: ["session-clips"] });
+
+    // Track should have null id and type when it doesn't exist
+    expect(result.tracks).toBeDefined();
+    expect(result.tracks).toHaveLength(1);
+    expect(result.tracks[0].id).toBeNull();
+    expect(result.tracks[0].type).toBeNull();
+    expect(result.tracks[0].trackIndex).toBe(0);
+  });
+
+  it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "group_track";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Group Track Test",
+        tracks: children("group_track"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        clip_slots: [],
+        arrangement_clips: [],
+        devices: [],
+        is_foldable: 1, // This is a group track
+      },
+    });
+
+    const result = readLiveSet({ include: ["arrangement-clips"] });
+
+    const track = result.tracks[0];
+
+    expect(track.id).toBe("group_track");
+    expect(track.trackIndex).toBe(0);
+
+    // Group tracks should return empty arrangement clips array
+    expect(track.arrangementClips).toStrictEqual([]);
+    // Session clips should still be counted
+    expect(track.sessionClipCount).toBe(0);
+  });
+
+  it("returns zero count for arrangement clips on group tracks when counting", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "group_track";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Group Track Count Test",
+        tracks: children("group_track"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        clip_slots: [],
+        arrangement_clips: [],
+        devices: [],
+        is_foldable: 1,
+      },
+    });
+
+    // Without arrangement-clips, should get count instead of array
+    const result = readLiveSet({ include: ["session-clips"] });
+
+    const track = result.tracks[0];
+
+    expect(track.arrangementClipCount).toBe(0);
+    expect(track.arrangementClips).toBeUndefined();
+  });
 });

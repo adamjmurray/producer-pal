@@ -96,6 +96,60 @@ describe("duplicate - input validation", () => {
   });
 });
 
+describe("duplicate - clip session validation", () => {
+  it("should throw an error when toTrackIndex is missing for session destination", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
+      return this._path;
+    });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toSceneIndex: "0",
+      }),
+    ).toThrow("duplicate failed: toTrackIndex is required for session clips");
+  });
+
+  it("should throw an error when toSceneIndex is missing for session destination", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
+      return this._path;
+    });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toTrackIndex: 0,
+      }),
+    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
+  });
+
+  it("should throw an error when toSceneIndex is empty for session destination", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
+      return this._path;
+    });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toTrackIndex: 0,
+        toSceneIndex: "  ",
+      }),
+    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
+  });
+});
+
 describe("duplicate - return format", () => {
   it("should return single object format when count=1", () => {
     liveApiPath.mockImplementation(function () {
