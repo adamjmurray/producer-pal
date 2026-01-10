@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createNote } from "#src/test/test-data-builders.js";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - time signatures", () => {
@@ -6,22 +7,8 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     const result = interpretNotation("C3 1|1 D3 2|1", { beatsPerBar: 3 });
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
     ]);
   });
   it("supports different time signatures via timeSigNumerator/timeSigDenominator", () => {
@@ -31,22 +18,8 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     });
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
     ]);
   });
   it("converts time signatures with half-note denominators correctly", () => {
@@ -56,22 +29,8 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     });
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 2,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 2,
-        duration: 2,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ duration: 2 }),
+      createNote({ pitch: 62, start_time: 2, duration: 2 }),
     ]);
   });
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
@@ -82,22 +41,8 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     });
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
     ]);
   });
   it("converts time signatures with different denominators correctly", () => {
@@ -107,22 +52,8 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     });
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.5,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 1,
-        duration: 0.5,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ duration: 0.5 }),
+      createNote({ pitch: 62, start_time: 1, duration: 0.5 }),
     ]);
   });
   it("throws error when only timeSigNumerator is provided", () => {
