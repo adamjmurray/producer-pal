@@ -651,7 +651,6 @@ export default [
       "**/*.test.tsx",
       "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
-      "src/tools/shared/device/helpers/device-path-helpers.js", // Complex path parsing
     ],
     rules: {
       "max-lines": [

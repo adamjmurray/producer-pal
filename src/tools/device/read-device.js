@@ -4,8 +4,8 @@ import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.js";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 
 // ============================================================================

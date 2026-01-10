@@ -3,7 +3,7 @@ import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/device-path-helpers.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,

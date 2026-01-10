@@ -1,6 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.js";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 /**
  * Duplicate a device using the track duplication workaround.
