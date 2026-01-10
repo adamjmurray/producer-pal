@@ -6,7 +6,7 @@ import {
 } from "./device-reader-drum-helpers.js";
 
 // Mock device-path-helpers
-vi.mock(import("./device-path-helpers.js"), () => ({
+vi.mock(import("./path/device-path-helpers.js"), () => ({
   extractDevicePath: vi.fn((path) => path),
 }));
 

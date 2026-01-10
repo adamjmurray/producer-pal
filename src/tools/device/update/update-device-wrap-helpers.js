@@ -4,7 +4,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";

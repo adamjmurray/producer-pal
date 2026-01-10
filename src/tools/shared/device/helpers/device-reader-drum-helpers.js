@@ -1,10 +1,10 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
 import { STATE } from "#src/tools/constants.js";
-import { extractDevicePath } from "./device-path-helpers.js";
 import {
   buildChainInfo,
   hasInstrumentInDevices,
 } from "./device-state-helpers.js";
+import { extractDevicePath } from "./path/device-path-helpers.js";
 
 /**
  * Build path for a drum rack chain based on its in_note and position within that note group

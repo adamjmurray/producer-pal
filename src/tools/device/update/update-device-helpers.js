@@ -1,7 +1,7 @@
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { isPanLabel } from "#src/tools/shared/device/helpers/device-display-helpers.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 // ============================================================================
 // Device move helpers
