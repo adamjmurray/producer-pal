@@ -6,6 +6,8 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
+  setupArrangementClipMocks,
+  setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-locator] updateClip mock for locator-based tests
@@ -44,11 +46,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
     it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -62,11 +60,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -82,11 +76,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -102,11 +92,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -124,11 +110,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("scene duplication with locator", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock scene with one clip
       // Note: cue point keys use the id ("cue0", "cue1") from children() helper
@@ -165,35 +147,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         return null;
       });
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3);
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [16];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks();
 
       const result = duplicate({
         type: "scene",
@@ -215,11 +169,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {
@@ -255,34 +205,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         return null;
       });
 
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3);
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [32];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks({ getStartTime: () => 32 });
 
       const result = duplicate({
         type: "scene",
@@ -419,11 +342,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("error handling", () => {
     it("should throw error for non-existent locator ID", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {
@@ -450,11 +369,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error for non-existent locator name", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") return "live_set scenes 0";
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       mockLiveApiGet({
         LiveSet: {

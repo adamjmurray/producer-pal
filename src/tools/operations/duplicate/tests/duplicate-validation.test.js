@@ -3,6 +3,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiId,
   liveApiPath,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-validation] updateClip mock for validation tests
@@ -152,13 +153,7 @@ describe("duplicate - clip session validation", () => {
 
 describe("duplicate - return format", () => {
   it("should return single object format when count=1", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1", count: 1 });
 
@@ -170,13 +165,7 @@ describe("duplicate - return format", () => {
   });
 
   it("should return objects array format when count>1", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1", count: 2 });
 

@@ -3,10 +3,10 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   children,
   liveApiCall,
-  liveApiGet,
-  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupArrangementClipMocks,
+  setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // [duplicate-scene] updateClip mock for scene duplication tests
@@ -43,13 +43,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 
 describe("duplicate - scene duplication", () => {
   it("should duplicate a single scene to session view (default behavior)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
-    });
+    setupScenePath("scene1");
 
     // Mock scene with clips in tracks 0 and 1
     mockLiveApiGet({
@@ -85,13 +79,7 @@ describe("duplicate - scene duplication", () => {
   });
 
   it("should duplicate multiple scenes with auto-incrementing names", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
-    });
+    setupScenePath("scene1");
 
     // Mock scene with clips in tracks 0 and 1
     mockLiveApiGet({
@@ -166,13 +154,7 @@ describe("duplicate - scene duplication", () => {
   });
 
   it("should duplicate a scene without clips when withoutClips is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
-    });
+    setupScenePath("scene1");
 
     // Mock scene with clips in tracks 0 and 1
     mockLiveApiGet({
@@ -218,13 +200,7 @@ describe("duplicate - scene duplication", () => {
 
   describe("arrangement destination", () => {
     it("should throw error when arrangementStartTime is missing for scene to arrangement", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       expect(() =>
         duplicate({
@@ -238,13 +214,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should duplicate a scene to arrangement view", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock scene with clips in tracks 0 and 2
       mockLiveApiGet({
@@ -297,39 +267,7 @@ describe("duplicate - scene duplication", () => {
         },
       );
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        // For arrangement clips created by ID, return a proper path
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3); // Remove "id " prefix
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        // Check if this is an arrangement clip requesting is_arrangement_clip
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        // Check if this is an arrangement clip requesting start_time
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [16];
-        }
-
-        // Otherwise use the original mock implementation
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementClipMocks();
 
       const result = duplicate({
         type: "scene",
@@ -364,13 +302,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock scene with one clip of length 8 beats
       mockLiveApiGet({
@@ -412,47 +344,18 @@ describe("duplicate - scene duplication", () => {
         },
       );
 
-      // Add mocking for the arrangement clips
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        // For arrangement clips created by ID, return a proper path
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3); // Remove "id " prefix
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        // Check if this is an arrangement clip requesting is_arrangement_clip
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        // Check if this is an arrangement clip requesting start_time
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          // Return different start times based on clip index
-          const clipMatch = this._path.match(/arrangement_clips (\d+)/);
+      setupArrangementClipMocks({
+        getStartTime: (path) => {
+          const clipMatch = path.match(/arrangement_clips (\d+)/);
 
           if (clipMatch) {
             const clipIndex = Number.parseInt(clipMatch[1]);
 
-            return [16 + clipIndex * 8]; // 16, 24, 32
+            return 16 + clipIndex * 8; // 16, 24, 32
           }
 
-          return [16];
-        }
-
-        // Otherwise use the original mock implementation
-        return originalGet ? originalGet.call(this, prop) : [];
+          return 16;
+        },
       });
 
       const result = duplicate({
@@ -520,13 +423,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should handle empty scenes gracefully", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock empty scene
       mockLiveApiGet({
@@ -551,13 +448,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should duplicate a scene to arrangement without clips when withoutClips is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePath("scene1");
 
       // Mock scene with clips in tracks 0 and 2
       mockLiveApiGet({
