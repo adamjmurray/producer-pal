@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createNote } from "#src/test/test-data-builders.js";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - pattern features", () => {
@@ -7,38 +8,10 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       const result = interpretNotation("C1 1|1x4@1");
 
       expect(result).toStrictEqual([
-        {
-          pitch: 36,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 36,
-          start_time: 1,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 36,
-          start_time: 2,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 36,
-          start_time: 3,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ pitch: 36 }),
+        createNote({ pitch: 36, start_time: 1 }),
+        createNote({ pitch: 36, start_time: 2 }),
+        createNote({ pitch: 36, start_time: 3 }),
       ]);
     });
 
@@ -245,46 +218,16 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("deletes note with same pitch and time when v0 is encountered", () => {
       const result = interpretNotation("C3 D3 1|1 v0 C3 1|1");
 
-      expect(result).toStrictEqual([
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toStrictEqual([createNote({ pitch: 62 })]);
     });
 
     it("v0 note does not affect notes with different pitch", () => {
       const result = interpretNotation("C3 D3 E3 1|1 v0 F3 1|2");
 
       expect(result).toStrictEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 64,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
+        createNote({ pitch: 62 }),
+        createNote({ pitch: 64 }),
       ]);
     });
 
@@ -292,53 +235,21 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       const result = interpretNotation("C3 1|1 C3 1|2 v0 C3 1|3");
 
       expect(result).toStrictEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 60,
-          start_time: 1,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
+        createNote({ start_time: 1 }),
       ]);
     });
 
     it("handles multiple v0 notes", () => {
       const result = interpretNotation("C3 D3 E3 1|1 v0 C3 D3 1|1");
 
-      expect(result).toStrictEqual([
-        {
-          pitch: 64,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toStrictEqual([createNote({ pitch: 64 })]);
     });
 
     it("v0 note followed by same note at same time works correctly", () => {
       const result = interpretNotation("C3 1|1 v0 C3 1|1 v100 C3 1|1");
 
-      expect(result).toStrictEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toStrictEqual([createNote()]);
     });
 
     it("v0 deletions work after bar copy", () => {
@@ -346,47 +257,12 @@ describe("bar|beat interpretNotation() - pattern features", () => {
 
       expect(result).toStrictEqual([
         // Bar 1: original notes
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 64,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
+        createNote({ pitch: 62 }),
+        createNote({ pitch: 64 }),
         // Bar 2: copied notes (but D3 is deleted by v0)
-        {
-          pitch: 60,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 64,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ start_time: 4 }),
+        createNote({ pitch: 64, start_time: 4 }),
       ]);
     });
 
@@ -395,48 +271,13 @@ describe("bar|beat interpretNotation() - pattern features", () => {
 
       expect(result).toStrictEqual([
         // Bar 1: original
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
+        createNote({ pitch: 62 }),
         // Bar 2: copied, D3 deleted
-        {
-          pitch: 60,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ start_time: 4 }),
         // Bar 3: copied
-        {
-          pitch: 60,
-          start_time: 8,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 8,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ start_time: 8 }),
+        createNote({ pitch: 62, start_time: 8 }),
       ]);
     });
 
@@ -445,51 +286,16 @@ describe("bar|beat interpretNotation() - pattern features", () => {
 
       expect(result).toStrictEqual([
         // Bar 1: original C3
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
         // Bar 2: original D3
-        {
-          pitch: 62,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ pitch: 62, start_time: 4 }),
         // Bar 3: tiled C3
-        {
-          pitch: 60,
-          start_time: 8,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ start_time: 8 }),
         // Bar 4: tiled D3
-        {
-          pitch: 62,
-          start_time: 12,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ pitch: 62, start_time: 12 }),
         // Bar 5: tiled C3, but deleted by v0
         // Bar 6: tiled D3
-        {
-          pitch: 62,
-          start_time: 20,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ pitch: 62, start_time: 20 }),
       ]);
     });
 
@@ -500,16 +306,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       });
 
       // In 6/8 time, each beat is an 8th note, so beats are 0.5 apart in Ableton beats
-      expect(result).toStrictEqual([
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 0.5,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toStrictEqual([createNote({ pitch: 62, duration: 0.5 })]);
     });
 
     it("complex scenario: v0 deletions with bar copies and multiple notes", () => {
@@ -519,48 +316,13 @@ describe("bar|beat interpretNotation() - pattern features", () => {
 
       expect(result).toStrictEqual([
         // Bar 1: original notes, D3 deleted
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 64,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote(),
+        createNote({ pitch: 64 }),
         // Bar 2: copied notes, E3 deleted
-        {
-          pitch: 60,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ start_time: 4 }),
+        createNote({ pitch: 62, start_time: 4 }),
         // New F3 note
-        {
-          pitch: 65,
-          start_time: 5,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        createNote({ pitch: 65, start_time: 5 }),
       ]);
     });
 
@@ -575,16 +337,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     it("v0 only deletes notes that appear before it in serial order", () => {
       const result = interpretNotation("v0 C3 1|1 v100 C3 1|1");
 
-      expect(result).toStrictEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toStrictEqual([createNote()]);
     });
 
     it("v0 preserves note properties like duration, probability", () => {
