@@ -131,37 +131,6 @@ See [dev-docs/Releasing.md](dev-docs/Releasing.md) for the complete release
 process, including version bumping, building, creating GitHub releases, testing
 checklists, and publishing to npm.
 
-## Coding Agents and AI Assistance
-
-Coding agents assist with development of this project. The primary agent is
-Claude Code, with Gemini CLI and OpenAI Codex CLI as supported alternatives. An
-`AGENTS.md` file provides coding standards, with `CLAUDE.md` and `GEMINI.md`
-triggering their respective agents to use it. The `doc` folder contains
-reference documentation for development tasks.
-
-Additionally, there is a feature `npm run knowledge-base` (or the shortcut
-`npm run kb`) which flattens the project contents into a `knowledge-base`
-folder. This can be imported into AI chat projects (Claude Projects, ChatGPT
-Projects, Gemini Projects, etc.) for complex brainstorming and planning
-sessions. Results can then be fed back into coding agents (for example by
-generating new files for the `doc` folder). There's a few variations of this
-command:
-
-- `npm run kb` generates the full knowledge base with one file per original file
-  (nearly everything in the repo except stuff like gitignored files, generated
-  files, dependencies)
-- `npm run kb:small` generates the knowledge base without any tests because
-  tests take up the majority of space and typically don't need to be analyzed
-  unless you're specifically improving the test suite
-- `npm run kb:chatgpt` concatenates groups of files together (like every folder
-  under src) to stay under the 20 file limit for ChatGPT projects (NOTE: it's
-  unclear how well this works in practice - results seem less impressive than
-  Claude Project with the kb or kb:small knowledge base)
-
-When using a chat project, copy `dev-docs/AI-Chat-Project-Instructions.md` into
-the project instructions for the AI chat app of choice. This file provides
-useful information similar to `AGENTS.md` but adapted for standalone chat apps.
-
 ## Development Testing with Claude Code
 
 For the best development experience, add the MCP server directly to Claude Code:
