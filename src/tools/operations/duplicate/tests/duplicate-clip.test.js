@@ -7,34 +7,26 @@ import {
   mockLiveApiGet,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// [duplicate-clip] Mock updateClip - avoid complex internal logic
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => [{ id: ids }]),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// [duplicate-clip] Mock arrangement-tiling helpers
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, startBeats) => ({
-    id: `${track.path} arrangement_clips 0`,
-    path: `${track.path} arrangement_clips 0`,
-    set: vi.fn(),
-    getProperty: vi.fn((prop) =>
-      prop === "is_arrangement_clip"
-        ? 1
-        : prop === "start_time"
-          ? startBeats
-          : null,
-    ),
-    get trackIndex() {
-      const m = this.path.match(/tracks (\d+)/);
+  return { updateClip: updateClipMock };
+});
 
-      return m ? Number.parseInt(m[1]) : null;
-    },
-  })),
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
+
+    return {
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
+    };
+  },
+);
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {
