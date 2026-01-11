@@ -65,7 +65,7 @@ npm run fix  # Runs format + lint:fix
 Code quality checks must always pass:
 
 ```
-npm run check  # Runs all checks: lint + typecheck + format check + tests
+npm run check  # Runs all checks: lint + typecheck + format check + duplication + tests
 ```
 
 **Recommended workflow**: Run `npm run fix` before `npm run check` to
@@ -78,6 +78,7 @@ npm run lint
 npm run typecheck  # UI code only
 npm test
 npm run format:check
+npm run duplication
 ```
 
 ## Web UI Development
