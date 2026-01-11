@@ -121,11 +121,11 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev-docs/Development-Tools.md) for the CLI tool, Raw Live
-API tool, MCP Inspector setup, debugging tips, and testing workflows.
+See [Development-Tools](dev-docs/Development-Tools.md) for the CLI tool, Raw
+Live API tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ## Releasing
 
-See [Releasing](dev-docs/Releasing.md) for the complete release process, including
-version bumping, building, creating GitHub releases, testing checklists, and
-publishing to npm.
+See [Releasing](dev-docs/Releasing.md) for the complete release process,
+including version bumping, building, creating GitHub releases, testing
+checklists, and publishing to npm.
