@@ -90,8 +90,8 @@ Quick commands:
 - `npm run ui:dev` - Dev server at localhost:5173 with hot reload
 - `npm run ui:build` - Production build to `max-for-live-device/chat-ui.html`
 
-See [dev-docs/Chat-UI.md](dev-docs/Chat-UI.md) for architecture, component
-structure, and detailed development workflows.
+See [Chat-UI](dev-docs/Chat-UI.md) for architecture, component structure, and
+detailed development workflows.
 
 ## Documentation Site
 
@@ -106,8 +106,8 @@ Quick commands:
 
 **Clean URLs**: Use `/installation/chat-ui` not `/installation/chat-ui.html`.
 
-See [dev-docs/Documentation-Site.md](dev-docs/Documentation-Site.md) for
-deployment, configuration, and content guidelines.
+See [Documentation-Site](dev-docs/Documentation-Site.md) for deployment,
+configuration, and content guidelines.
 
 ## Testing and Debugging
 
@@ -121,12 +121,11 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [dev-docs/Development-Tools.md](dev-docs/Development-Tools.md) for the CLI
-tool, Raw Live API tool, MCP Inspector setup, debugging tips, and testing
-workflows.
+See [Development-Tools](dev-docs/Development-Tools.md) for the CLI tool, Raw Live
+API tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ## Releasing
 
-See [dev-docs/Releasing.md](dev-docs/Releasing.md) for the complete release
-process, including version bumping, building, creating GitHub releases, testing
-checklists, and publishing to npm.
+See [Releasing](dev-docs/Releasing.md) for the complete release process, including
+version bumping, building, creating GitHub releases, testing checklists, and
+publishing to npm.
