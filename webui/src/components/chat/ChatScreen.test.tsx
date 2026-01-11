@@ -107,6 +107,68 @@ describe("ChatScreen", () => {
     });
   });
 
+  describe("override state management", () => {
+    it("resets override state to defaults when reset button is clicked", () => {
+      // Use custom defaults different from the settings
+      const customProps = {
+        ...defaultProps,
+        defaultThinking: "High",
+        defaultTemperature: 0.8,
+        defaultShowThoughts: false,
+      };
+
+      render(<ChatScreen {...customProps} />);
+
+      // Expand the message settings panel
+      const settingsButton = Array.from(
+        document.querySelectorAll("button"),
+      ).find((btn) => btn.textContent.includes("Message settings"));
+
+      expect(settingsButton).toBeDefined();
+      fireEvent.click(settingsButton!);
+
+      // Find and click the reset button
+      const resetButton = Array.from(document.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("Use defaults"),
+      );
+
+      expect(resetButton).toBeDefined();
+      // Initially disabled since we're using defaults
+      expect(resetButton!.disabled).toBe(true);
+    });
+
+    it("enables reset button when settings differ from defaults", () => {
+      render(<ChatScreen {...defaultProps} />);
+
+      // Expand the message settings panel
+      const settingsButton = Array.from(
+        document.querySelectorAll("button"),
+      ).find((btn) => btn.textContent.includes("Message settings"));
+
+      fireEvent.click(settingsButton!);
+
+      // Change the thinking setting to differ from default
+      const thinkingSelect = document.querySelector("select");
+
+      expect(thinkingSelect).toBeDefined();
+      fireEvent.change(thinkingSelect!, { target: { value: "High" } });
+
+      // Reset button should now be enabled
+      const resetButton = Array.from(document.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("Use defaults"),
+      );
+
+      expect(resetButton).toBeDefined();
+      expect(resetButton!.disabled).toBe(false);
+
+      // Click reset button
+      fireEvent.click(resetButton!);
+
+      // After reset, button should be disabled again (settings match defaults)
+      expect(resetButton!.disabled).toBe(true);
+    });
+  });
+
   describe("prop passing", () => {
     it("passes correct props to ChatHeader", () => {
       render(
