@@ -29,13 +29,11 @@ export function createMockMcpClient(
 
   const callTool = callToolError
     ? vi.fn().mockRejectedValue(callToolError)
-    : vi
-        .fn()
-        .mockResolvedValue(
-          callToolResult ?? {
-            content: [{ type: "text", text: "Tool result" }],
-          },
-        );
+    : vi.fn().mockResolvedValue(
+        callToolResult ?? {
+          content: [{ type: "text", text: "Tool result" }],
+        },
+      );
 
   return {
     connect: vi.fn(),
