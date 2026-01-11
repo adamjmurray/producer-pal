@@ -421,17 +421,10 @@ describe("GeminiClient", () => {
 
     it("stops loop when abort signal is triggered", async () => {
       const client = new GeminiClient("test-api-key");
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-        }),
-        callTool: vi.fn().mockResolvedValue({ result: "result" }),
-      };
-
-      // Create abort controller
+      const mockMcpClient = createMockGeminiMcpClient({
+        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+        callToolResults: [{ result: "result" }],
+      });
       const abortController = new AbortController();
 
       // Mock the chat
@@ -493,15 +486,10 @@ describe("GeminiClient", () => {
       const consoleWarnSpy = vi
         .spyOn(console, "warn")
         .mockImplementation(() => {});
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-        }),
-        callTool: vi.fn().mockResolvedValue({ result: "result" }),
-      };
+      const mockMcpClient = createMockGeminiMcpClient({
+        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+        callToolResults: [{ result: "result" }],
+      });
 
       // Mock the chat to always return tool calls (never stops)
       const mockChat = {
@@ -519,7 +507,6 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
       client.ai = {
         chats: {
           create: vi.fn().mockReturnValue(mockChat),
