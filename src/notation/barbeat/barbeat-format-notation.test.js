@@ -5,7 +5,7 @@ describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
     expect(formatNotation([])).toBe("");
     expect(formatNotation(null)).toBe("");
-    expect(formatNotation(undefined)).toBe("");
+    expect(formatNotation()).toBe("");
   });
 
   it("formats simple notes with defaults", () => {
@@ -531,5 +531,20 @@ describe("bar|beat formatNotation()", () => {
     const result = formatNotation(notes);
 
     expect(result).toBe("v80 C3 v100 p0.7 D3 v100-120 p1 E3 1|1");
+  });
+
+  it("throws error for invalid MIDI pitch", () => {
+    const notes = [
+      {
+        pitch: -1,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ];
+
+    expect(() => formatNotation(notes)).toThrow("Invalid MIDI pitch: -1");
   });
 });

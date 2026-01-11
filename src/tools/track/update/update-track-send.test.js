@@ -239,4 +239,84 @@ describe("updateTrack - send properties", () => {
     // Should only set name, not any send values
     expect(liveApiSet).not.toHaveBeenCalledWith("display_value", -12);
   });
+
+  it("should throw error when mixer device does not exist", () => {
+    // Override liveApiId to return "0" for mixer path
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 mixer_device") {
+        return "0"; // Non-existent
+      }
+
+      if (this._path?.startsWith("id ")) {
+        return this._path.slice(3);
+      }
+
+      switch (this._path) {
+        case "id 123":
+          return "123";
+        default:
+          return this._id;
+      }
+    });
+
+    expect(() =>
+      updateTrack({
+        ids: "123",
+        sendGainDb: -12,
+        sendReturn: "A",
+      }),
+    ).toThrow("track 123 has no mixer device");
+  });
+
+  it("should throw error when send index exceeds available sends", () => {
+    // Setup: 3 return tracks but only 2 sends
+    mockLiveApiGet({
+      mixer_1: {
+        sends: children("send_1", "send_2"), // Only 2 sends (indices 0 and 1)
+      },
+      liveSet: {
+        return_tracks: children("return_A", "return_B", "return_C"), // 3 return tracks
+      },
+      return_A: {
+        name: "A-Reverb",
+      },
+      return_B: {
+        name: "B-Delay",
+      },
+      return_C: {
+        name: "C-Echo", // Third return track - index 2, but only 2 sends available
+      },
+    });
+
+    liveApiId.mockImplementation(function () {
+      if (this._path?.startsWith("id ")) {
+        return this._path.slice(3);
+      }
+
+      switch (this._path) {
+        case "id 123":
+          return "123";
+        case "live_set tracks 0 mixer_device":
+          return "mixer_1";
+        case "live_set":
+          return "liveSet";
+        case "live_set return_tracks 0":
+          return "return_A";
+        case "live_set return_tracks 1":
+          return "return_B";
+        case "live_set return_tracks 2":
+          return "return_C";
+        default:
+          return this._id;
+      }
+    });
+
+    expect(() =>
+      updateTrack({
+        ids: "123",
+        sendGainDb: -12,
+        sendReturn: "C", // Matches return track at index 2
+      }),
+    ).toThrow("send 2 doesn't exist on track 123");
+  });
 });

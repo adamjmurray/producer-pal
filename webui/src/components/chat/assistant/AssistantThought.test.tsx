@@ -25,19 +25,18 @@ describe("AssistantThought", () => {
   });
 
   describe("open state", () => {
-    it("is open when isOpen is true", () => {
-      render(<AssistantThought content="Test thought" isOpen={true} />);
-      const details = document.querySelector("details");
+    it.each([
+      { isOpen: true, expected: true },
+      { isOpen: false, expected: false },
+    ])(
+      "details.open is $expected when isOpen is $isOpen",
+      ({ isOpen, expected }) => {
+        render(<AssistantThought content="Test thought" isOpen={isOpen} />);
+        const details = document.querySelector("details");
 
-      expect(details!.open).toBe(true);
-    });
-
-    it("is closed when isOpen is false", () => {
-      render(<AssistantThought content="Test thought" isOpen={false} />);
-      const details = document.querySelector("details");
-
-      expect(details!.open).toBe(false);
-    });
+        expect(details!.open).toBe(expected);
+      },
+    );
   });
 
   describe("animation behavior", () => {
@@ -54,45 +53,29 @@ describe("AssistantThought", () => {
       expect(details!.className).toContain("animate-pulse");
     });
 
-    it("does not have animate-pulse class when isOpen is true but isResponding is false", () => {
+    it.each([
+      {
+        name: "isOpen true, isResponding false",
+        isOpen: true,
+        isResponding: false,
+      },
+      {
+        name: "isOpen true, isResponding undefined",
+        isOpen: true,
+        isResponding: undefined,
+      },
+      {
+        name: "isOpen false, isResponding true",
+        isOpen: false,
+        isResponding: true,
+      },
+      { name: "both false", isOpen: false, isResponding: false },
+    ])("does not have animate-pulse when $name", ({ isOpen, isResponding }) => {
       render(
         <AssistantThought
           content="Test thought"
-          isOpen={true}
-          isResponding={false}
-        />,
-      );
-      const details = document.querySelector("details");
-
-      expect(details!.className).not.toContain("animate-pulse");
-    });
-
-    it("does not have animate-pulse class when isOpen is true but isResponding is undefined", () => {
-      render(<AssistantThought content="Test thought" isOpen={true} />);
-      const details = document.querySelector("details");
-
-      expect(details!.className).not.toContain("animate-pulse");
-    });
-
-    it("does not have animate-pulse class when isOpen is false", () => {
-      render(
-        <AssistantThought
-          content="Test thought"
-          isOpen={false}
-          isResponding={true}
-        />,
-      );
-      const details = document.querySelector("details");
-
-      expect(details!.className).not.toContain("animate-pulse");
-    });
-
-    it("does not have animate-pulse class when both are false", () => {
-      render(
-        <AssistantThought
-          content="Test thought"
-          isOpen={false}
-          isResponding={false}
+          isOpen={isOpen}
+          isResponding={isResponding}
         />,
       );
       const details = document.querySelector("details");

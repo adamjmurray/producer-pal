@@ -4,7 +4,6 @@ import type {
   OpenAIToolCall,
   UIMessage,
   UIPart,
-  UIThoughtPart,
 } from "#webui/types/messages";
 
 /**
@@ -193,7 +192,7 @@ function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastPart = lastMessage.parts.at(-1);
 
   if (lastPart?.type === "thought") {
-    (lastPart as UIThoughtPart).isOpen = true;
+    lastPart.isOpen = true;
   }
 }
 

@@ -6,7 +6,6 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { extractDevicePath } from "./helpers/device-path-helpers.js";
 import {
   isRedundantDeviceClassName,
   processDeviceChains,
@@ -14,6 +13,7 @@ import {
   readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reader-helpers.js";
+import { extractDevicePath } from "./helpers/path/device-path-helpers.js";
 
 /**
  * Determine device type from Live API properties
@@ -126,13 +126,13 @@ export function getDrumMap(devices) {
 
   const drumMap = {};
 
-  drumRacks[0]._processedDrumPads.forEach((drumPad) => {
+  for (const drumPad of drumRacks[0]._processedDrumPads) {
     if (drumPad.hasInstrument !== false) {
       const noteName = drumPad.pitch;
 
       drumMap[noteName] = drumPad.name;
     }
-  });
+  }
 
   return Object.keys(drumMap).length > 0 ? drumMap : {};
 }

@@ -1,6 +1,6 @@
 import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
 
-interface ChatStartProps {
+export interface ChatStartProps {
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;

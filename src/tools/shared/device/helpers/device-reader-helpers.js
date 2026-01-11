@@ -1,6 +1,5 @@
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
-import { buildChainPath, buildReturnChainPath } from "./device-path-helpers.js";
 import {
   processDrumPads,
   updateDrumPadSoloStates,
@@ -11,6 +10,10 @@ import {
   hasInstrumentInDevices,
   isInstrumentDevice,
 } from "./device-state-helpers.js";
+import {
+  buildChainPath,
+  buildReturnChainPath,
+} from "./path/device-path-helpers.js";
 
 // Re-export for external use
 export {

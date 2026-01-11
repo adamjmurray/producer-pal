@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { execSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -24,7 +24,7 @@ try {
       "The webui directory must contain only TypeScript files (.ts/.tsx).\n",
     );
     console.error("Found the following violations:\n");
-    files.forEach((file) => console.error(`  - ${file}`));
+    for (const file of files) console.error(`  - ${file}`);
     console.error(
       "\nPlease convert these files to TypeScript or remove them.\n",
     );

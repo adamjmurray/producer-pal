@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "preact/hooks";
+import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
-import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
+import { openaiAdapter } from "#webui/hooks/chat/openai-adapter";
+import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
@@ -66,21 +67,22 @@ export function App() {
   );
 
   // Use Gemini chat for Gemini provider
-  const geminiChat = useGeminiChat({
+  const geminiChat = useChat({
     provider: settings.provider,
     apiKey: settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
-    showThoughts: settings.showThoughts,
     enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    adapter: geminiAdapter,
+    extraParams: { showThoughts: settings.showThoughts },
   });
 
   // Use OpenAI chat for OpenAI-compatible providers
-  const openaiChat = useOpenAIChat({
+  const openaiChat = useChat({
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
@@ -89,12 +91,12 @@ export function App() {
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
-    baseUrl,
-    showThoughts: settings.showThoughts,
     enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    adapter: openaiAdapter,
+    extraParams: { baseUrl, showThoughts: settings.showThoughts },
   });
 
   // Lock conversation to the provider used when chat started

@@ -8,14 +8,11 @@ import { ToolToggles } from "./ToolToggles";
 
 describe("ToolToggles", () => {
   const defaultProps = {
-    enabledTools: TOOLS.reduce(
-      (acc, tool) => {
-        acc[tool.id] = true;
+    enabledTools: TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
+      acc[tool.id] = true;
 
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    ),
+      return acc;
+    }, {}),
     setEnabledTools: vi.fn(),
     enableAllTools: vi.fn(),
     disableAllTools: vi.fn(),

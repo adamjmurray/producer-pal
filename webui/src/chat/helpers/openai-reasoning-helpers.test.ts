@@ -147,6 +147,70 @@ describe("extractReasoningFromDelta", () => {
 
     expect(result).toBe("");
   });
+
+  it("should ignore regular content and only extract reasoning", () => {
+    const delta = {
+      content: "Response: ",
+      reasoning_content: "After careful thought, ",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe("After careful thought, ");
+  });
+
+  it("should ignore regular content when reasoning_details present", () => {
+    const delta = {
+      content: "Answer: ",
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          text: "Based on my analysis, ",
+          index: 0,
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe("Based on my analysis, ");
+  });
+
+  it("should handle real-world OpenRouter minimax-m2 chunk structure", () => {
+    const delta = {
+      role: "assistant",
+      content: "",
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          text: 'The user has just greeted me with "hi".',
+          index: 0,
+          format: null,
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe('The user has just greeted me with "hi".');
+  });
+
+  it("should extract reasoning even when content is empty", () => {
+    const delta = {
+      content: "",
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          text: "Reasoning text when content is empty",
+          index: 0,
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe("Reasoning text when content is empty");
+  });
 });
 
 describe("processReasoningDelta", () => {

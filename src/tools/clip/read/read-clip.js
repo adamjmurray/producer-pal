@@ -167,7 +167,7 @@ function processWarpMarkers(clip) {
     const warpMarkersJson = clip.getProperty("warp_markers");
 
     if (!warpMarkersJson || warpMarkersJson === "") {
-      return undefined;
+      return;
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
@@ -187,15 +187,11 @@ function processWarpMarkers(clip) {
     ) {
       return warpMarkersData.warp_markers.map(mapMarker);
     }
-
-    return undefined;
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.error(
       `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
     );
-
-    return undefined;
   }
 }
 

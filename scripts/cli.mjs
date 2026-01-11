@@ -12,9 +12,99 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 function printLargeText(text, prefix = "") {
   const lines = text.split("\n");
 
-  lines.forEach((line) => {
+  for (const line of lines) {
     console.log(prefix + line);
+  }
+}
+
+/**
+ * Print a single tool's details
+ *
+ * @param {object} tool - Tool object with name, description, inputSchema
+ * @param {number} index - Tool index for display
+ */
+function printTool(tool, index) {
+  console.log(`\n${index + 1}. ${tool.name}`);
+
+  if (tool.description) {
+    console.log(`   Description: ${tool.description}`);
+  }
+
+  if (tool.inputSchema) {
+    console.log(`   Input Schema:`);
+    const schemaJson = JSON.stringify(tool.inputSchema, null, 2);
+
+    printLargeText(schemaJson, "   ");
+  }
+}
+
+/**
+ * Print a single content item from tool result
+ *
+ * @param {object} content - Content object
+ * @param {number} index - Content index for display
+ */
+function printContentItem(content, index) {
+  if (content.type === "text") {
+    console.log(content.text);
+  } else if (content.type === "resource") {
+    console.log(`Resource: ${content.resource.uri}`);
+
+    if (content.resource.text) {
+      console.log(content.resource.text);
+    }
+  } else {
+    console.log(`Content ${index}:`, JSON.stringify(content, null, 2));
+  }
+}
+
+/**
+ * Handle tools/list command
+ *
+ * @param {object} client - MCP client
+ */
+async function handleToolsList(client) {
+  console.log("\nAvailable Tools:");
+  const { tools } = await client.listTools();
+
+  if (tools?.length > 0) {
+    for (const [index, tool] of tools.entries()) {
+      printTool(tool, index);
+    }
+  } else {
+    console.log("  No tools found");
+  }
+}
+
+/**
+ * Handle tools/call command
+ *
+ * @param {object} client - MCP client
+ * @param {string} toolName - Name of the tool to call
+ * @param {object} toolArgs - Arguments to pass to the tool
+ */
+async function handleToolsCall(client, toolName, toolArgs) {
+  console.log(`\nCalling tool: ${toolName}`);
+  console.log(`Arguments: ${JSON.stringify(toolArgs, null, 2)}`);
+
+  const result = await client.callTool({
+    name: toolName,
+    arguments: toolArgs,
   });
+
+  console.log("\nResult:");
+
+  if (result.isError) {
+    console.log("ERROR:");
+  }
+
+  if (result.content) {
+    for (const [index, content] of result.content.entries()) {
+      printContentItem(content, index);
+    }
+  } else {
+    console.log(JSON.stringify(result, null, 2));
+  }
 }
 
 // Default URL for the MCP server running in Ableton Live
@@ -105,59 +195,9 @@ async function main() {
 
     // Handle commands
     if (command === "tools/list") {
-      console.log("\nAvailable Tools:");
-      const { tools } = await client.listTools();
-
-      if (tools?.length > 0) {
-        tools.forEach((tool, index) => {
-          console.log(`\n${index + 1}. ${tool.name}`);
-
-          if (tool.description) {
-            console.log(`   Description: ${tool.description}`);
-          }
-
-          if (tool.inputSchema) {
-            console.log(`   Input Schema:`);
-            const schemaJson = JSON.stringify(tool.inputSchema, null, 2);
-
-            printLargeText(schemaJson, "   ");
-          }
-        });
-      } else {
-        console.log("  No tools found");
-      }
+      await handleToolsList(client);
     } else if (command === "tools/call") {
-      console.log(`\nCalling tool: ${toolName}`);
-      console.log(`Arguments: ${JSON.stringify(toolArgs, null, 2)}`);
-
-      const result = await client.callTool({
-        name: toolName,
-        arguments: toolArgs,
-      });
-
-      console.log("\nResult:");
-
-      if (result.isError) {
-        console.log("ERROR:");
-      }
-
-      if (result.content) {
-        result.content.forEach((content, index) => {
-          if (content.type === "text") {
-            console.log(content.text);
-          } else if (content.type === "resource") {
-            console.log(`Resource: ${content.resource.uri}`);
-
-            if (content.resource.text) {
-              console.log(content.resource.text);
-            }
-          } else {
-            console.log(`Content ${index}:`, JSON.stringify(content, null, 2));
-          }
-        });
-      } else {
-        console.log(JSON.stringify(result, null, 2));
-      }
+      await handleToolsCall(client, toolName, toolArgs);
     } else if (command) {
       console.error(`\nError: Unknown command '${command}'`);
       console.error("Available commands: tools/list, tools/call");
@@ -202,4 +242,8 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   process.exit(0);
 }
 
-main().catch(console.error);
+try {
+  await main();
+} catch (error) {
+  console.error(error);
+}

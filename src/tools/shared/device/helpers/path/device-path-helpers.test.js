@@ -436,43 +436,11 @@ describe("device-path-helpers", () => {
     });
 
     describe("chain auto-creation", () => {
-      it("auto-creates chain when it does not exist", () => {
-        let chainCount = 0;
-
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") {
-            // Return current chains based on chainCount
-            const ids = [];
-
-            for (let i = 0; i < chainCount; i++) {
-              ids.push("id", `chain-${i}`);
-            }
-
-            return ids;
-          }
-
-          if (prop === "can_have_chains") return [1]; // Is a rack
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
-        });
-        liveApiCall.mockImplementation(function (method) {
-          if (method === "insert_chain") {
-            chainCount++;
-
-            return ["id", `chain-${chainCount - 1}`];
-          }
-        });
-
-        const result = resolveInsertionPath("t0/d0/c0");
-
-        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
-        expect(result.container._path).toBe(
-          "live_set tracks 0 devices 0 chains 0",
-        );
-      });
-
-      it("auto-creates multiple chains up to requested index", () => {
+      /**
+       * Sets up mocks for chain auto-creation tests.
+       * @returns {{ getChainCount: () => number }} Object with chainCount getter
+       */
+      function setupChainAutoCreateMocks() {
         let chainCount = 0;
 
         liveApiGet.mockImplementation(function (prop) {
@@ -484,7 +452,7 @@ describe("device-path-helpers", () => {
             return ids;
           }
 
-          if (prop === "can_have_chains") return [1]; // Is a rack
+          if (prop === "can_have_chains") return [1];
           if (prop === "can_have_drum_pads") return [0];
 
           return [];
@@ -496,6 +464,23 @@ describe("device-path-helpers", () => {
             return ["id", `chain-${chainCount - 1}`];
           }
         });
+
+        return { getChainCount: () => chainCount };
+      }
+
+      it("auto-creates chain when it does not exist", () => {
+        setupChainAutoCreateMocks();
+
+        const result = resolveInsertionPath("t0/d0/c0");
+
+        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(result.container._path).toBe(
+          "live_set tracks 0 devices 0 chains 0",
+        );
+      });
+
+      it("auto-creates multiple chains up to requested index", () => {
+        setupChainAutoCreateMocks();
 
         resolveInsertionPath("t0/d0/c2");
         // Should create chains 0, 1, 2
@@ -585,6 +570,42 @@ describe("device-path-helpers", () => {
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
           "Failed to create chain 1/1",
+        );
+      });
+
+      it("auto-creates chain on master track device", () => {
+        setupChainAutoCreateMocks();
+
+        const result = resolveInsertionPath("mt/d0/c0");
+
+        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(result.container._path).toBe(
+          "live_set master_track devices 0 chains 0",
+        );
+      });
+
+      it("auto-creates chain on return track device", () => {
+        setupChainAutoCreateMocks();
+
+        const result = resolveInsertionPath("rt0/d0/c0");
+
+        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(result.container._path).toBe(
+          "live_set return_tracks 0 devices 0 chains 0",
+        );
+      });
+
+      it("throws when device does not exist during chain navigation", () => {
+        liveApiId.mockImplementation(function () {
+          // Track exists but device doesn't
+          if (this._path === "live_set tracks 0") return "track-id";
+          if (this._path === "live_set tracks 0 devices 0") return "0"; // Non-existent
+
+          return "valid-id";
+        });
+
+        expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
+          'Device in path "t0/d0/c0" does not exist',
         );
       });
     });

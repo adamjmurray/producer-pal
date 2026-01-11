@@ -306,6 +306,20 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           expect.stringContaining("Skipping copy of bar 6 to itself"),
         );
       });
+
+      it("returns no copies when all source bars result in skips", () => {
+        // Copy bars 3-4 to range 3-4 (all are self-copies, should skip all)
+        const result = interpretNotation("C3 3|1 D3 4|1 @3-4=3-4");
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Skipping copy of bar 3 to itself"),
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Skipping copy of bar 4 to itself"),
+        );
+        // Should only have the original 2 notes, no copies
+        expect(result).toHaveLength(2);
+      });
     });
 
     describe("warnings and errors", () => {

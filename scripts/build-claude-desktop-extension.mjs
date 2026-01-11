@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
@@ -42,10 +42,10 @@ const template = readFileSync(
   "utf8",
 );
 const manifest = template
-  .replace(/"\{\{version\}\}"/g, JSON.stringify(version))
-  .replace(
-    /"\{\{tools\}\}"/g,
-    JSON.stringify(tools, null, 2).replace(/\n/g, "\n  "),
+  .replaceAll('"{{version}}"', JSON.stringify(version))
+  .replaceAll(
+    '"{{tools}}"',
+    JSON.stringify(tools, null, 2).replaceAll("\n", "\n  "),
   );
 
 // Write generated manifest

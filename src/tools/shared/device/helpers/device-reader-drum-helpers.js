@@ -1,10 +1,10 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
 import { STATE } from "#src/tools/constants.js";
-import { extractDevicePath } from "./device-path-helpers.js";
 import {
   buildChainInfo,
   hasInstrumentInDevices,
 } from "./device-state-helpers.js";
+import { extractDevicePath } from "./path/device-path-helpers.js";
 
 /**
  * Build path for a drum rack chain based on its in_note and position within that note group
@@ -85,7 +85,7 @@ function processDrumRackChain(chain, inNote, indexWithinNote, options) {
 function groupChainsByNote(chains) {
   const noteGroups = new Map();
 
-  chains.forEach((chain) => {
+  for (const chain of chains) {
     const inNote = chain.getProperty("in_note");
 
     if (!noteGroups.has(inNote)) {
@@ -93,7 +93,7 @@ function groupChainsByNote(chains) {
     }
 
     noteGroups.get(inNote).push(chain);
-  });
+  }
 
   return noteGroups;
 }
@@ -115,13 +115,13 @@ function buildDrumPadFromChains(inNote, processedChains) {
   };
 
   // Aggregate state from chains
-  const states = processedChains
-    .map((c) => c.state)
-    .filter((s) => s !== undefined);
+  const states = new Set(
+    processedChains.map((c) => c.state).filter((s) => s !== undefined),
+  );
 
-  if (states.includes(STATE.SOLOED)) {
+  if (states.has(STATE.SOLOED)) {
     drumPadInfo.state = STATE.SOLOED;
-  } else if (states.includes(STATE.MUTED)) {
+  } else if (states.has(STATE.MUTED)) {
     drumPadInfo.state = STATE.MUTED;
   }
 
@@ -148,7 +148,7 @@ export function updateDrumPadSoloStates(processedDrumPads) {
     return;
   }
 
-  processedDrumPads.forEach((drumPadInfo) => {
+  for (const drumPadInfo of processedDrumPads) {
     if (drumPadInfo.state === STATE.SOLOED) {
       // Keep soloed state as-is
     } else if (drumPadInfo.state === STATE.MUTED) {
@@ -156,7 +156,7 @@ export function updateDrumPadSoloStates(processedDrumPads) {
     } else if (!drumPadInfo.state) {
       drumPadInfo.state = STATE.MUTED_VIA_SOLO;
     }
-  });
+  }
 }
 
 /**

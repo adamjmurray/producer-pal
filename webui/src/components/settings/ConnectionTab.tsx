@@ -103,9 +103,9 @@ export function ConnectionTab({
             value={port?.toString() ?? ""}
             onChange={(e) => {
               const value = (e.target as HTMLInputElement).value;
-              const numValue = parseInt(value, 10);
+              const numValue = Number.parseInt(value);
 
-              if (!isNaN(numValue)) {
+              if (!Number.isNaN(numValue)) {
                 setPort(numValue);
               }
             }}

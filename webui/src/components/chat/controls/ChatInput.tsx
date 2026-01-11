@@ -1,24 +1,14 @@
 import { useState } from "preact/hooks";
 import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
-import type { Provider } from "#webui/types/settings";
-import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
+import {
+  MessageSettingsToolbar,
+  type MessageSettingsToolbarProps,
+} from "./MessageSettingsToolbar";
 
-interface ChatInputProps {
+interface ChatInputProps extends MessageSettingsToolbarProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
-  provider: Provider;
-  model: string;
-  defaultThinking: string;
-  defaultTemperature: number;
-  defaultShowThoughts: boolean;
-  thinking: string;
-  temperature: number;
-  showThoughts: boolean;
-  onThinkingChange: (thinking: string) => void;
-  onTemperatureChange: (temperature: number) => void;
-  onShowThoughtsChange: (showThoughts: boolean) => void;
-  onResetToDefaults: () => void;
 }
 
 /**

@@ -100,7 +100,7 @@ describe("transformClips - slice + shuffle combination", () => {
         if (prop === "end_marker") return [1];
         if (prop === "gain") return [1.0];
 
-        const clipNum = parseInt(clipId.split("_")[1]);
+        const clipNum = Number.parseInt(clipId.split("_")[1]);
 
         if (prop === "start_time") return [clipNum - 1];
         if (prop === "end_time") return [clipNum];

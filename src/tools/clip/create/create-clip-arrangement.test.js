@@ -157,11 +157,7 @@ describe("createClip - arrangement view", () => {
 
     global.LiveAPI.prototype.exists = vi.fn(function () {
       // Track exists, but clip doesn't
-      if (this._path === "live_set tracks 0") {
-        return true;
-      }
-
-      return false;
+      return this._path === "live_set tracks 0";
     });
 
     // Runtime errors during clip creation are now warnings, not fatal errors

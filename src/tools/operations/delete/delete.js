@@ -3,11 +3,14 @@ import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
-const PATH_SUPPORTED_TYPES = ["device", "drum-pad"];
+const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 
 /**
  * Deletes objects by ids and/or paths
@@ -30,7 +33,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   }
 
   // Handle path parameter - only valid for devices and drum-pads
-  if (path && !PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && !PATH_SUPPORTED_TYPES.has(type)) {
     console.error(
       `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
     );
@@ -40,7 +43,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
 
   // Resolve paths to IDs for device or drum-pad types
-  if (path && PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && PATH_SUPPORTED_TYPES.has(type)) {
     const paths = parseCommaSeparatedIds(path);
     const pathIds = resolvePathsToIds(paths, type);
 
@@ -76,12 +79,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (deletedObjects.length === 0) {
-    return [];
-  }
-
-  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
+  return unwrapSingleResult(deletedObjects);
 }
 
 /**
@@ -165,7 +163,7 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const lastMatch = deviceMatches[deviceMatches.length - 1];
+  const lastMatch = deviceMatches.at(-1);
   const deviceIndex = Number(lastMatch[1]);
 
   // Parent path is everything before the last "devices X"

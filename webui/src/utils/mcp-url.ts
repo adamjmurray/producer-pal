@@ -21,5 +21,7 @@ export function getMcpUrl(): string {
   }
 
   // Production: use same origin as the page (UI served from MCP server)
-  return `${protocol}//${hostname}${port ? `:${port}` : ""}/mcp`;
+  const portPart = port ? `:${port}` : "";
+
+  return `${protocol}//${hostname}${portPart}/mcp`;
 }

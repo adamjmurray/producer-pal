@@ -4,7 +4,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
@@ -168,7 +168,7 @@ function getDeviceInsertionPoint(device) {
   const parentPath = device.path.replace(/ devices \d+$/, "");
   const container = new LiveAPI(parentPath);
   const match = device.path.match(/ devices (\d+)$/);
-  const position = match ? parseInt(match[1], 10) : 0;
+  const position = match ? Number.parseInt(match[1]) : 0;
 
   return { container, position };
 }

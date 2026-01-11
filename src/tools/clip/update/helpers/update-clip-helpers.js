@@ -168,10 +168,8 @@ export function buildClipPropertiesToSet({
   }
 
   // Set end_marker for non-looping clips
-  if (!isLooping || looping === false) {
-    if (endBeats != null) {
-      propsToSet.end_marker = endBeats;
-    }
+  if ((!isLooping || looping === false) && endBeats != null) {
+    propsToSet.end_marker = endBeats;
   }
 
   return propsToSet;

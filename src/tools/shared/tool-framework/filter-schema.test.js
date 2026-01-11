@@ -51,7 +51,7 @@ describe("filterSchemaForSmallModel", () => {
       param2: z.number(),
     };
 
-    const filtered = filterSchemaForSmallModel(schema, undefined);
+    const filtered = filterSchemaForSmallModel(schema);
 
     expect(filtered).toStrictEqual(schema);
   });

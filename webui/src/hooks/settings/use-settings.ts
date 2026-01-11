@@ -155,13 +155,11 @@ export function useSettings(): UseSettingsReturn {
       setApiKey: createSetter("apiKey"),
       setModel: createSetter("model"),
       setBaseUrl:
-        provider === "custom"
-          ? createSetter("baseUrl")
-          : (_url: string) => undefined,
+        provider === "custom" ? createSetter("baseUrl") : (_url: string) => {},
       setPort:
         provider === "lmstudio" || provider === "ollama"
           ? createSetter("port")
-          : (_port: number) => undefined,
+          : (_port: number) => {},
       setThinking: createSetter("thinking"),
       setTemperature: createSetter("temperature"),
       setShowThoughts: createSetter("showThoughts"),

@@ -78,9 +78,9 @@ beforeEach(() => {
 
   // Set up default mock implementations for id, path, and type getters
   // Return undefined to fall back to instance properties (_id, _path) and auto-detection
-  liveApiId.mockImplementation(() => undefined);
-  liveApiPath.mockImplementation(() => undefined);
-  liveApiType.mockImplementation(() => undefined);
+  liveApiId.mockImplementation(() => {});
+  liveApiPath.mockImplementation(() => {});
+  liveApiType.mockImplementation(() => {});
 
   liveApiCall.mockImplementation(function (method) {
     switch (method) {

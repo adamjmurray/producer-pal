@@ -76,6 +76,19 @@ In project resources:
   https://producer-pal.org/installation/)
 - `LICENSE` - The software license (MIT)
 
+## Generating the Knowledge Base
+
+Use `npm run knowledge-base` (or `npm run kb`) to flatten the project contents
+into a `knowledge-base` folder for import into AI chat projects:
+
+- `npm run kb` - Full knowledge base with one file per original file
+- `npm run kb:small` - Excludes tests (smaller, for most use cases)
+- `npm run kb:chatgpt` - Concatenates files to stay under ChatGPT's 20-file
+  limit
+
+Copy this file (`dev-docs/AI-Chat-Project-Instructions.md`) into the project
+instructions for your AI chat app of choice.
+
 ## Trusted Resources
 
 If web search needed:

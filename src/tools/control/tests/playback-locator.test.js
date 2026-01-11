@@ -7,6 +7,7 @@ import {
   liveApiSet,
 } from "#src/test/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
+import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.js";
 
 describe("playback - locator support", () => {
   beforeEach(() => {
@@ -382,6 +383,19 @@ describe("playback - locator support", () => {
         },
         arrangementFollowerTrackIds: "",
       });
+    });
+  });
+
+  describe("resolveLocatorToBeats", () => {
+    it("should return null when no locator is specified", () => {
+      const mockLiveSet = {};
+      const result = resolveLocatorToBeats(
+        mockLiveSet,
+        { locatorId: undefined, locatorName: undefined },
+        "start",
+      );
+
+      expect(result).toBeNull();
     });
   });
 });

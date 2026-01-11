@@ -72,6 +72,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   prefix is required by Node.js for unbundled execution (build scripts, CLI
   tools). Never use relative paths like `../../` when a path alias is available.
 
+- **No barrel files**: Do not create index.js or other files that only re-export
+  from other modules. Import directly from the source file instead.
+
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
@@ -117,6 +120,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
     `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
   - Test helpers use `{feature}-test-helpers.js` for shared test utilities
+  - **Test file location**: Use colocated tests (same directory as source) for
+    1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
+    a feature to keep the main directory focused on source code
 
 ## TypeScript (WebUI Only)
 

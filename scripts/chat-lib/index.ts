@@ -29,8 +29,12 @@ program
     "Reasoning summary detail (auto, concise, detailed) - provider-specific",
     "auto",
   )
-  .option("-r, --randomness <number>", "Temperature (0.0-1.0)", parseFloat)
-  .option("-o, --output-tokens <number>", "Max output tokens", parseInt)
+  .option(
+    "-r, --randomness <number>",
+    "Temperature (0.0-1.0)",
+    Number.parseFloat,
+  )
+  .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
   .option("-p, --system-prompt <text>", "System instructions")
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], options: ChatOptions) => {

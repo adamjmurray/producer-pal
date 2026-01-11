@@ -22,12 +22,12 @@ export interface MessageOverrides {
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
-  initialize(): Promise<void>;
-  sendMessage(
+  initialize: () => Promise<void>;
+  sendMessage: (
     message: string,
     signal: AbortSignal,
     overrides?: MessageOverrides,
-  ): AsyncIterable<TMessage[]>;
+  ) => AsyncIterable<TMessage[]>;
 }
 
 /**
@@ -41,39 +41,39 @@ export interface ChatAdapter<
   /**
    * Create a new client instance
    */
-  createClient(apiKey: string, config: TConfig): TClient;
+  createClient: (apiKey: string, config: TConfig) => TClient;
 
   /**
    * Build provider-specific configuration
    */
-  buildConfig(
+  buildConfig: (
     model: string,
     temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
     chatHistory: TMessage[] | undefined,
     extraParams?: Record<string, unknown>,
-  ): TConfig;
+  ) => TConfig;
 
   /**
    * Format messages for UI display
    */
-  formatMessages(messages: TMessage[]): UIMessage[];
+  formatMessages: (messages: TMessage[]) => UIMessage[];
 
   /**
    * Create error message in provider's format
    */
-  createErrorMessage(error: unknown, chatHistory: TMessage[]): UIMessage[];
+  createErrorMessage: (error: unknown, chatHistory: TMessage[]) => UIMessage[];
 
   /**
    * Extract user message text from a message for retry
    */
-  extractUserMessage(message: TMessage): string | undefined;
+  extractUserMessage: (message: TMessage) => string | undefined;
 
   /**
    * Create initial user message for error display
    */
-  createUserMessage(text: string): TMessage;
+  createUserMessage: (text: string) => TMessage;
 }
 
 interface UseChatProps<
@@ -104,7 +104,7 @@ export interface RateLimitState {
   delayMs: number;
 }
 
-interface UseChatReturn {
+export interface UseChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;

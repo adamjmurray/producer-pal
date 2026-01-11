@@ -7,6 +7,24 @@ import {
   validateMcpConnection,
 } from "./streaming-helpers";
 
+function createMockFormatter() {
+  return vi.fn(() => [
+    {
+      role: "user" as const,
+      parts: [],
+      rawHistoryIndex: 0,
+      timestamp: Date.now(),
+    },
+  ]);
+}
+
+async function* createThrowingStream(
+  error: Error,
+): AsyncGenerator<GeminiMessage[], void, unknown> {
+  yield [];
+  throw error;
+}
+
 describe("streaming-helpers", () => {
   describe("handleMessageStream", () => {
     it("should handle successful stream", async () => {
@@ -16,80 +34,35 @@ describe("streaming-helpers", () => {
       const mockStream = (async function* () {
         for (const h of mockHistory) yield h;
       })();
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
       const onUpdate = vi.fn();
 
-      const result = await handleMessageStream(mockStream, formatter, onUpdate);
+      const result = await handleMessageStream(
+        mockStream,
+        createMockFormatter(),
+        onUpdate,
+      );
 
       expect(result).toBe(true);
       expect(onUpdate).toHaveBeenCalled();
     });
 
     it("should handle AbortError", async () => {
-      /**
-       *
-       * @returns {any} - Hook return value
-       */
-      async function* throwingStream(): AsyncGenerator<
-        GeminiMessage[],
-        void,
-        unknown
-      > {
-        yield []; // Required by ESLint even though we throw immediately
-        throw new DOMException("Aborted", "AbortError");
-      }
-
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
-      const onUpdate = vi.fn();
-
       const result = await handleMessageStream(
-        throwingStream(),
-        formatter,
-        onUpdate,
+        createThrowingStream(new DOMException("Aborted", "AbortError")),
+        createMockFormatter(),
+        vi.fn(),
       );
 
       expect(result).toBe(false);
     });
 
     it("should re-throw non-AbortError", async () => {
-      /**
-       * @returns {any} - Hook return value
-       */
-      async function* throwingStream(): AsyncGenerator<
-        GeminiMessage[],
-        void,
-        unknown
-      > {
-        yield [];
-        throw new Error("Network failure");
-      }
-
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
-      const onUpdate = vi.fn();
-
       await expect(
-        handleMessageStream(throwingStream(), formatter, onUpdate),
+        handleMessageStream(
+          createThrowingStream(new Error("Network failure")),
+          createMockFormatter(),
+          vi.fn(),
+        ),
       ).rejects.toThrow("Network failure");
     });
   });

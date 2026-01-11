@@ -74,11 +74,9 @@ export async function runOpenRouter(
 ): Promise<void> {
   const apiStyle = options.api ?? "chat";
 
-  if (apiStyle === "responses") {
-    await runOpenRouterResponses(initialText, options);
-  } else {
-    await runOpenRouterChat(initialText, options);
-  }
+  await (apiStyle === "responses"
+    ? runOpenRouterResponses(initialText, options)
+    : runOpenRouterChat(initialText, options));
 }
 
 // =============================================================================

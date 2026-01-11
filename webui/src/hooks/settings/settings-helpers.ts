@@ -111,7 +111,7 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
       localStorage.getItem("gemini_temperature");
 
     if (temperature != null) {
-      legacySettings.temperature = parseFloat(temperature);
+      legacySettings.temperature = Number.parseFloat(temperature);
     }
 
     const showThoughts =
@@ -252,14 +252,11 @@ export function loadEnabledTools(): Record<string, boolean> {
  * @returns {any} - Hook return value
  */
 export function createAllToolsEnabled(): Record<string, boolean> {
-  return TOOLS.reduce(
-    (acc, tool) => {
-      acc[tool.id] = true;
+  return TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
+    acc[tool.id] = true;
 
-      return acc;
-    },
-    {} as Record<string, boolean>,
-  );
+    return acc;
+  }, {});
 }
 
 /**
@@ -267,14 +264,11 @@ export function createAllToolsEnabled(): Record<string, boolean> {
  * @returns {any} - Hook return value
  */
 export function createAllToolsDisabled(): Record<string, boolean> {
-  return TOOLS.reduce(
-    (acc, tool) => {
-      acc[tool.id] = false;
+  return TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
+    acc[tool.id] = false;
 
-      return acc;
-    },
-    {} as Record<string, boolean>,
-  );
+    return acc;
+  }, {});
 }
 
 /**

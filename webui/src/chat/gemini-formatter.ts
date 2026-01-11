@@ -4,8 +4,6 @@ import type {
   UIMessage,
   UIPart,
   UIToolPart,
-  UITextPart,
-  UIThoughtPart,
 } from "#webui/types/messages";
 
 /**
@@ -264,7 +262,7 @@ function handleTextPart(
     canMergeWithLastPart(lastPart, isThought);
 
   if (canMerge) {
-    (lastPart as UITextPart | UIThoughtPart).content += text;
+    lastPart.content += text;
   } else {
     currentParts.push({
       type: isThought ? "thought" : "text",

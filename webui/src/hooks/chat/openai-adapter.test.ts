@@ -10,7 +10,6 @@ import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
-// @ts-expect-error vi.mock partial implementation
 vi.mock(import("#webui/chat/openai-client"), () => ({
   OpenAIClient: vi.fn(),
 }));
@@ -30,49 +29,32 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   ),
 }));
 
+// Helper for mock message transform
+const mockTransformMessage = (msg: OpenAIMessage, idx: number) => ({
+  role: msg.role === "user" ? "user" : "model",
+  parts: [
+    {
+      type: "text",
+      content:
+        typeof msg.content === "string"
+          ? msg.content
+          : JSON.stringify(msg.content),
+    },
+  ],
+  rawHistoryIndex: idx,
+});
+
 // Mock formatters and helpers
 vi.mock(import("#webui/chat/openai-formatter"), () => ({
-  formatOpenAIMessages: vi.fn((messages) =>
-    messages.map((msg: OpenAIMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [
-        {
-          type: "text",
-          content:
-            typeof msg.content === "string"
-              ? msg.content
-              : JSON.stringify(msg.content),
-        },
-      ],
-      rawHistoryIndex: idx,
-    })),
-  ),
+  formatOpenAIMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 
 vi.mock(import("./helpers/streaming-helpers"), () => ({
   createOpenAIErrorMessage: vi.fn((chatHistory, error) => [
-    ...chatHistory.map((msg: OpenAIMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [
-        {
-          type: "text",
-          content:
-            typeof msg.content === "string"
-              ? msg.content
-              : JSON.stringify(msg.content),
-        },
-      ],
-      rawHistoryIndex: idx,
-    })),
+    ...chatHistory.map(mockTransformMessage),
     {
       role: "model",
-      parts: [
-        {
-          type: "error",
-          content: `${error}`,
-          isError: true,
-        },
-      ],
+      parts: [{ type: "error", content: `${error}`, isError: true }],
       rawHistoryIndex: chatHistory.length,
     },
   ]),
@@ -217,7 +199,7 @@ describe("openai-adapter", () => {
 
       // Note: createOpenAIErrorMessage takes (chatHistory, error) - different order than Gemini
       expect(createOpenAIErrorMessage).toHaveBeenCalledWith(chatHistory, error);
-      expect(result[result.length - 1]?.parts[0]?.type).toBe("error");
+      expect(result.at(-1)?.parts[0]?.type).toBe("error");
     });
 
     it("handles string errors", () => {
@@ -226,7 +208,7 @@ describe("openai-adapter", () => {
 
       const result = openaiAdapter.createErrorMessage(error, chatHistory);
 
-      const lastPart = result[result.length - 1]?.parts[0];
+      const lastPart = result.at(-1)?.parts[0];
 
       expect(lastPart).toBeDefined();
       expect(lastPart).toHaveProperty("content");

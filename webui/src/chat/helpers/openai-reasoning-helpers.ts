@@ -75,7 +75,7 @@ export function processReasoningDelta(
   if (!details) return;
 
   for (const detail of details) {
-    const index = (detail.index ?? 0) as number;
+    const index = detail.index ?? 0;
     const key = `${detail.type}-${index}`;
     const existing = reasoningDetailsMap.get(key);
 

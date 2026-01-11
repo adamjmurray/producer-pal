@@ -47,11 +47,11 @@ describe("createPartialTile", () => {
       },
     });
     liveApiCall.mockReturnValueOnce(["id", "300"]);
-    liveApiCall.mockReturnValueOnce(undefined); // delete temp clip
+    liveApiCall.mockReturnValueOnce(); // delete temp clip
 
     // Mock moveClipFromHolding
     liveApiCall.mockReturnValueOnce(["id", "400"]);
-    liveApiCall.mockReturnValueOnce(undefined); // delete holding clip
+    liveApiCall.mockReturnValueOnce(); // delete holding clip
 
     createPartialTile(sourceClip, track, 500, 8, 1000, true, {}, false);
 

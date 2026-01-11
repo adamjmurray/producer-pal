@@ -5,6 +5,29 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
+/**
+ * Create a test client and transport, returning cleanup function
+ * @param {Function} getServerUrl - Function to get server URL
+ * @returns {{ client: Client|null, transport: StreamableHTTPClientTransport|null }} Test state object
+ */
+function setupTestClient(getServerUrl) {
+  const state = { client: null, transport: null };
+
+  beforeAll(async () => {
+    state.client = new Client({ name: "test-client", version: "1.0.0" });
+    state.transport = new StreamableHTTPClientTransport(
+      new URL(getServerUrl()),
+    );
+    await state.client.connect(state.transport);
+  });
+
+  afterAll(async () => {
+    if (state.transport) await state.transport.close();
+  });
+
+  return state;
+}
+
 describe("MCP Express App", () => {
   let server;
   let serverUrl;
@@ -67,26 +90,10 @@ describe("MCP Express App", () => {
   });
 
   describe("List Tools", () => {
-    let client;
-    let transport;
-
-    beforeAll(async () => {
-      client = new Client({
-        name: "test-client",
-        version: "1.0.0",
-      });
-
-      transport = new StreamableHTTPClientTransport(new URL(serverUrl));
-      await client.connect(transport);
-    });
-
-    afterAll(async () => {
-      if (transport) {
-        await transport.close();
-      }
-    });
+    const testState = setupTestClient(() => serverUrl);
 
     it("should list all available tools", async () => {
+      const { client } = testState;
       const result = await client.listTools();
 
       expect(Array.isArray(result.tools)).toBe(true);
@@ -120,49 +127,52 @@ describe("MCP Express App", () => {
     });
 
     it("should provide tool schemas with correct names and descriptions", async () => {
+      const { client } = testState;
       const result = await client.listTools();
-
-      const readLiveSetTool = result.tools.find(
-        (tool) => tool.name === "ppal-read-live-set",
+      const toolsByName = Object.fromEntries(
+        result.tools.map((tool) => [tool.name, tool]),
       );
 
-      expect(readLiveSetTool).toBeDefined();
-      expect(readLiveSetTool.description).toContain("Read Live Set");
-      expect(readLiveSetTool.description).toContain("global settings");
-      expect(readLiveSetTool.description).toContain("tracks, scenes, devices");
+      // Verify key tools exist with expected structure
+      expect(toolsByName).toMatchObject({
+        "ppal-read-live-set": {
+          description: expect.stringContaining("Read Live Set"),
+        },
+        "ppal-update-clip": {
+          inputSchema: {
+            properties: { ids: expect.anything() },
+          },
+        },
+        "ppal-create-track": {
+          description: expect.stringContaining("Create track(s)"),
+          inputSchema: {
+            properties: {
+              trackIndex: expect.anything(),
+              count: expect.anything(),
+            },
+          },
+        },
+        "ppal-update-track": {
+          description: expect.stringContaining("Update track(s)"),
+          inputSchema: {
+            properties: { ids: expect.anything() },
+          },
+        },
+      });
 
-      const updateClipTool = result.tools.find(
-        (tool) => tool.name === "ppal-update-clip",
-      );
+      // Additional description checks for read-live-set
+      const readLiveSetDesc = toolsByName["ppal-read-live-set"].description;
 
-      expect(updateClipTool).toBeDefined();
-      expect(updateClipTool.inputSchema).toBeDefined();
-      expect(updateClipTool.inputSchema.properties).toBeDefined();
-      expect(updateClipTool.inputSchema.properties.ids).toBeDefined();
-
-      const createTrackTool = result.tools.find(
-        (tool) => tool.name === "ppal-create-track",
-      );
-
-      expect(createTrackTool).toBeDefined();
-      expect(createTrackTool.description).toContain("Create track(s)");
-      expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
-      expect(createTrackTool.inputSchema.properties.count).toBeDefined();
-
-      const updateTrackTool = result.tools.find(
-        (tool) => tool.name === "ppal-update-track",
-      );
-
-      expect(updateTrackTool).toBeDefined();
-      expect(updateTrackTool.description).toContain("Update track(s)");
-      expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
+      expect(readLiveSetDesc).toContain("global settings");
+      expect(readLiveSetDesc).toContain("tracks, scenes, devices");
     });
 
     it("should have valid input schemas for all tools", async () => {
+      const { client } = testState;
       const result = await client.listTools();
 
       // Every tool should have required fields
-      result.tools.forEach((tool) => {
+      for (const tool of result.tools) {
         try {
           expect(tool.name).toBeDefined();
           expect(typeof tool.name).toBe("string");
@@ -182,7 +192,7 @@ describe("MCP Express App", () => {
             `Tool "${tool.name}" validation failed: ${error.message}`,
           );
         }
-      });
+      }
 
       // Check create-clip specifically since it had the issue
       const createClipTool = result.tools.find(
@@ -197,26 +207,10 @@ describe("MCP Express App", () => {
   });
 
   describe("Call Tool", () => {
-    let client;
-    let transport;
-
-    beforeAll(async () => {
-      client = new Client({
-        name: "test-client",
-        version: "1.0.0",
-      });
-
-      transport = new StreamableHTTPClientTransport(new URL(serverUrl));
-      await client.connect(transport);
-    });
-
-    afterAll(async () => {
-      if (transport) {
-        await transport.close();
-      }
-    });
+    const testState = setupTestClient(() => serverUrl);
 
     it("should call ppal-read-track tool", async () => {
+      const { client } = testState;
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
@@ -255,7 +249,7 @@ describe("MCP Express App", () => {
 
       expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
-        expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
+        expect.stringMatching(/^[\da-f-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
         '{"category":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
         expect.stringContaining("silenceWavPath"), // contextJSON
@@ -263,6 +257,7 @@ describe("MCP Express App", () => {
     });
 
     it("should call list-tracks tool and timeout appropriately", async () => {
+      const { client } = testState;
       // This test verifies the MCP server is working but will timeout quickly
       // since we can't mock the full Live API response chain easily
 
@@ -290,6 +285,7 @@ describe("MCP Express App", () => {
     });
 
     it("should handle tool with missing required arguments", async () => {
+      const { client } = testState;
       const result = await client.callTool({
         name: "delete-scene",
         arguments: {}, // Missing sceneIndex
@@ -300,6 +296,7 @@ describe("MCP Express App", () => {
     });
 
     it("should handle unknown tool", async () => {
+      const { client } = testState;
       const result = await client.callTool({
         name: "nonexistent-tool",
         arguments: {},
@@ -310,6 +307,7 @@ describe("MCP Express App", () => {
     });
 
     it("should return isError: true when Max.outlet throws", async () => {
+      const { client } = testState;
       // This test verifies that errors thrown when sending to Max are properly
       // caught and returned as MCP error responses with isError: true
       const errorMessage = "Simulated tool error";
@@ -370,10 +368,10 @@ describe("MCP Express App", () => {
           clients.map((client) => client.listTools()),
         );
 
-        results.forEach((result) => {
+        for (const result of results) {
           expect(result.tools).toBeDefined();
           expect(result.tools.length).toBeGreaterThan(0);
-        });
+        }
       } finally {
         // Clean up all clients
         await Promise.all(transports.map((transport) => transport.close()));
@@ -382,32 +380,30 @@ describe("MCP Express App", () => {
   });
 
   describe("Error Handling", () => {
-    it("should return method not allowed for GET /mcp", async () => {
+    it.each(["GET", "DELETE"])(
+      "should return method not allowed for %s /mcp",
+      async (method) => {
+        const response = await fetch(serverUrl, { method });
+
+        expect(response.status).toBe(405);
+        const errorResponse = await response.json();
+
+        expect(errorResponse.jsonrpc).toBe("2.0");
+        expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
+        expect(errorResponse.error.message).toBe("Method not allowed.");
+        expect(errorResponse.id).toBe(null);
+      },
+    );
+
+    it("should return parse error for invalid JSON", async () => {
       const response = await fetch(serverUrl, {
-        method: "GET",
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not valid json",
       });
 
-      expect(response.status).toBe(405);
-      const errorResponse = await response.json();
-
-      expect(errorResponse.jsonrpc).toBe("2.0");
-      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
-      expect(errorResponse.error.message).toBe("Method not allowed.");
-      expect(errorResponse.id).toBe(null);
-    });
-
-    it("should return method not allowed for DELETE /mcp", async () => {
-      const response = await fetch(serverUrl, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(405);
-      const errorResponse = await response.json();
-
-      expect(errorResponse.jsonrpc).toBe("2.0");
-      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
-      expect(errorResponse.error.message).toBe("Method not allowed.");
-      expect(errorResponse.id).toBe(null);
+      // Express json middleware returns 400 for invalid JSON
+      expect(response.status).toBe(400);
     });
   });
 

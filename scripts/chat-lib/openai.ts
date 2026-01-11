@@ -170,11 +170,9 @@ async function sendMessage(
 
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
-  if (options.stream) {
-    await handleStreamingResponse(ctx, requestBody);
-  } else {
-    await handleNonStreamingResponse(ctx, requestBody);
-  }
+  await (options.stream
+    ? handleStreamingResponse(ctx, requestBody)
+    : handleNonStreamingResponse(ctx, requestBody));
 }
 
 function buildRequestBody(
@@ -416,7 +414,7 @@ function handleResponseCompleted(
 ): void {
   // Display reasoning from completed event if not already streamed via deltas
   if (!state.displayedReasoning && event.response?.output) {
-    for (const item of event.response.output as ResponseOutput[]) {
+    for (const item of event.response.output) {
       if (item.type === "reasoning") {
         const reasoningText = extractReasoningText(item);
 

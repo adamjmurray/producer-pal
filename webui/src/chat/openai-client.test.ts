@@ -1,12 +1,11 @@
-import type OpenAI from "openai";
 import { describe, expect, it, vi } from "vitest";
 import {
-  extractReasoningFromDelta,
   OpenAIClient,
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
 } from "./openai-client";
 import type { OpenAIToolCall } from "#webui/types/messages";
+import { createToolCallsMap } from "#webui/test-utils/openai-client-test-utils";
 
 // Mock MCP SDK
 // @ts-expect-error vi.mock partial implementation
@@ -23,178 +22,7 @@ vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 
-describe("extractReasoningFromDelta", () => {
-  it("should return empty string for regular content (not reasoning)", () => {
-    const delta = {
-      content: "Hello",
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("");
-  });
-
-  it("should return empty string for empty delta", () => {
-    const delta =
-      {} as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("");
-  });
-
-  it("should extract reasoning from reasoning_content (OpenAI format)", () => {
-    const delta = {
-      reasoning_content: "Thinking about the problem...",
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("Thinking about the problem...");
-  });
-
-  it("should extract reasoning from reasoning_details (OpenRouter format)", () => {
-    const delta = {
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: "Let me analyze this step by step.",
-          index: 0,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("Let me analyze this step by step.");
-  });
-
-  it("should extract multiple reasoning details chunks", () => {
-    const delta = {
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: "First, ",
-          index: 0,
-        },
-        {
-          type: "reasoning.text",
-          text: "I need to understand the requirements.",
-          index: 1,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("First, I need to understand the requirements.");
-  });
-
-  it("should ignore non-text reasoning details", () => {
-    const delta = {
-      reasoning_details: [
-        {
-          type: "reasoning.summary",
-          summary: "This should be ignored",
-          index: 0,
-        },
-        {
-          type: "reasoning.text",
-          text: "This should be included",
-          index: 1,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("This should be included");
-  });
-
-  it("should prioritize reasoning_content over reasoning_details", () => {
-    const delta = {
-      reasoning_content: "From reasoning_content",
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: "From reasoning_details",
-          index: 0,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("From reasoning_content");
-  });
-
-  it("should ignore regular content and only extract reasoning", () => {
-    const delta = {
-      content: "Response: ",
-      reasoning_content: "After careful thought, ",
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("After careful thought, ");
-  });
-
-  it("should ignore regular content when reasoning_details present", () => {
-    const delta = {
-      content: "Answer: ",
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: "Based on my analysis, ",
-          index: 0,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("Based on my analysis, ");
-  });
-
-  it("should handle real-world OpenRouter minimax-m2 chunk structure", () => {
-    // This is based on the actual chunk structure from OpenRouter's minimax-m2:free model
-    const delta = {
-      role: "assistant",
-      content: "",
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: 'The user has just greeted me with "hi". They haven\'t asked me to connect to Ableton Live yet, so I should respond as Producer Pal and ask if they want to connect.',
-          index: 0,
-          format: null,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe(
-      'The user has just greeted me with "hi". They haven\'t asked me to connect to Ableton Live yet, so I should respond as Producer Pal and ask if they want to connect.',
-    );
-  });
-
-  it("should extract reasoning even when content is empty (common in reasoning models)", () => {
-    const delta = {
-      content: "",
-      reasoning_details: [
-        {
-          type: "reasoning.text",
-          text: "Reasoning text when content is empty",
-          index: 0,
-        },
-      ],
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = extractReasoningFromDelta(delta);
-
-    expect(result).toBe("Reasoning text when content is empty");
-  });
-});
+// Note: extractReasoningFromDelta tests are in openai-reasoning-helpers.test.ts
 
 describe("OpenAIClient constructor", () => {
   it("initializes with default chat history when not provided", () => {
@@ -298,23 +126,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       content: "Thinking...",
     };
 
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "incomplete',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "incomplete');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       null, // finish_reason is null during streaming
     );
@@ -330,24 +146,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "Here's the answer",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "test"}',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "test"}');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       "stop",
     );
@@ -363,24 +166,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "test"}',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "test"}');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       "tool_calls", // finish_reason indicates tool calls are complete
     );
@@ -527,21 +317,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_xyz",
-          type: "function",
-          function: {
-            name: "analyze",
-            arguments: '{"data": "test"}',
-          },
-        },
-      ],
-    ]);
-
+    const toolCallsMap = createToolCallsMap(
+      "analyze",
+      '{"data": "test"}',
+      "call_xyz",
+    );
     const reasoningDetailsMap = new Map<string, ReasoningDetail>([
       [
         "reasoning.text-0",
@@ -555,7 +335,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       reasoningDetailsMap,
       "tool_calls",
     );
@@ -586,20 +366,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "I'll help you.",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_abc",
-          type: "function",
-          function: {
-            name: "ppal-connect",
-            arguments: "{}",
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("ppal-connect", "{}", "call_abc");
 
     const emptyReasoningMap = new Map<string, ReasoningDetail>();
 
@@ -607,7 +374,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // Chunk 1-2: Tool calls accumulating, finish_reason: null
     const streamingResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       null, // Still streaming
     );
@@ -617,7 +384,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // Chunk 3: finish_reason: "tool_calls" - tool_calls should be included
     const finalizedResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       "tool_calls", // Finalized
     );
@@ -630,7 +397,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // so it would pass "tool_calls" here instead of null
     const preservedResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       "tool_calls", // Streaming loop passes "tool_calls" (not null) after finalization
     );

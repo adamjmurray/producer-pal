@@ -25,7 +25,7 @@ describe("toCompactJSLiteral - Primitives", () => {
   });
 
   it("converts top-level undefined to empty string", () => {
-    expect(toCompactJSLiteral(undefined)).toBe("");
+    expect(toCompactJSLiteral()).toBe("");
   });
 });
 

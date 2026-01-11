@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 
 /**
  * Creates the items array defining what to include in knowledge base
@@ -134,7 +134,7 @@ export function createKnowledgeBaseConfig(projectRoot) {
    * @returns {string} - Flattened path string
    */
   function flattenPath(pathStr) {
-    return pathStr.replace(/[/\\]/g, FLAT_SEP);
+    return pathStr.replaceAll(/[/\\]/g, FLAT_SEP);
   }
 
   /**

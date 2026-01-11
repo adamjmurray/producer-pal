@@ -104,7 +104,7 @@ export function extractGptVersion(model: string): number | null {
   // Match gpt-X.Y where X.Y is a decimal version (e.g., gpt-5.1, gpt-5.2)
   const match = model.match(/^gpt-(\d+\.\d+)/);
 
-  return match?.[1] ? parseFloat(match[1]) : null;
+  return match?.[1] ? Number.parseFloat(match[1]) : null;
 }
 
 /**

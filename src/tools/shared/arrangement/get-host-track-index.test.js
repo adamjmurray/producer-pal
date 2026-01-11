@@ -46,12 +46,12 @@ describe("getHostTrackIndex", () => {
       { path: "live_set tracks 99 devices 1", expected: 99 },
     ];
 
-    testCases.forEach(({ path, expected }) => {
+    for (const { path, expected } of testCases) {
       liveApiPath.mockReturnValue(path);
 
       const result = getHostTrackIndex();
 
       expect(result).toBe(expected);
-    });
+    }
   });
 });

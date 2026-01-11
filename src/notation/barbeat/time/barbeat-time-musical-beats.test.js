@@ -140,9 +140,9 @@ describe("duration function round-trip consistency", () => {
     { timeSig: [3, 4], abletonBeats: [0, 1, 2, 3, 4, 6, 9, 1.5, 2.5] },
   ];
 
-  testCases.forEach(({ timeSig, abletonBeats }) => {
+  for (const { timeSig, abletonBeats } of testCases) {
     describe(`${timeSig[0]}/${timeSig[1]} time signature`, () => {
-      abletonBeats.forEach((beats) => {
+      for (const beats of abletonBeats) {
         it(`round-trip consistency for ${beats} Ableton beats`, () => {
           const duration = abletonBeatsToBarBeatDuration(
             beats,
@@ -157,7 +157,7 @@ describe("duration function round-trip consistency", () => {
 
           expect(converted).toBeCloseTo(beats, 10); // High precision due to floating point
         });
-      });
+      }
     });
-  });
+  }
 });

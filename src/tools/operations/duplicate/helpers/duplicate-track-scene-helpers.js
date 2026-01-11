@@ -26,14 +26,14 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
       const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
 
       if (deviceIndexMatch) {
-        const deviceIndex = parseInt(deviceIndexMatch[1]);
+        const deviceIndex = Number.parseInt(deviceIndexMatch[1]);
 
         newTrack.call("delete_device", deviceIndex);
         console.error(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
-    } catch (_error) {
+    } catch {
       // If we can't access this_device, just continue without removing anything
       console.error(
         "Warning: Could not check for Producer Pal device in duplicated track",
@@ -371,13 +371,11 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   }
 
   // Return optimistic metadata
-  const result = {
+  return {
     id: newScene.id,
     sceneIndex: newSceneIndex,
     clips: duplicatedClips,
   };
-
-  return result;
 }
 
 /**

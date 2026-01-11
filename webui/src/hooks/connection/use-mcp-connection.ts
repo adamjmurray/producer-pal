@@ -1,5 +1,7 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { GeminiClient } from "#webui/chat/gemini-client";
+import { getMcpUrl } from "#webui/utils/mcp-url";
 
 type McpStatus = "connected" | "connecting" | "error";
 
@@ -10,8 +12,7 @@ interface UseMcpConnectionReturn {
 }
 
 /**
- *
- * @returns {any} - Hook return value
+ * @returns {UseMcpConnectionReturn} - Hook return value
  */
 export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpStatus, setMcpStatus] = useState<McpStatus>("connecting");
@@ -22,7 +23,14 @@ export function useMcpConnection(): UseMcpConnectionReturn {
     setMcpError(null);
 
     try {
-      await GeminiClient.testConnection();
+      const transport = new StreamableHTTPClientTransport(new URL(getMcpUrl()));
+      const client = new Client({
+        name: "producer-pal-chat-ui-test",
+        version: "1.0.0",
+      });
+
+      await client.connect(transport);
+      await client.close();
       setMcpStatus("connected");
     } catch (error: unknown) {
       setMcpStatus("error");

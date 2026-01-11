@@ -90,7 +90,7 @@ function navigateToDevice(currentPath, segment, fullPath) {
 function navigateToChain(parentDevice, currentPath, segment, fullPath) {
   // Return chain (rc prefix) - no auto-creation
   if (segment.startsWith("rc")) {
-    const returnIndex = parseInt(segment.slice(2), 10);
+    const returnIndex = Number.parseInt(segment.slice(2));
     const chainPath = `${currentPath} return_chains ${returnIndex}`;
     const chain = new LiveAPI(chainPath);
 
@@ -102,7 +102,7 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
   }
 
   // Regular chain (c prefix) - may need auto-creation
-  const chainIndex = parseInt(segment.slice(1), 10);
+  const chainIndex = Number.parseInt(segment.slice(1));
   const chains = parentDevice.getChildren("chains");
 
   if (chainIndex >= chains.length) {
@@ -183,7 +183,7 @@ export function autoCreateDrumPadChains(
 
     // Get the new chain (it's at the end)
     const chains = device.getChildren("chains");
-    const newChain = chains[chains.length - 1];
+    const newChain = chains.at(-1);
 
     // Set in_note to assign it to the correct pad
     newChain.set("in_note", targetInNote);

@@ -64,11 +64,38 @@ describe("ChatInput", () => {
   });
 
   describe("send button", () => {
-    it("is disabled when input is empty", () => {
-      render(<ChatInput {...defaultProps} />);
+    it.each([
+      {
+        name: "empty input",
+        inputValue: undefined,
+        isResponding: false,
+        buttonName: "Send",
+      },
+      {
+        name: "assistant responding",
+        inputValue: "Hello",
+        isResponding: true,
+        buttonName: "...",
+      },
+      {
+        name: "whitespace only",
+        inputValue: "   ",
+        isResponding: false,
+        buttonName: "Send",
+      },
+    ])("is disabled when $name", ({ inputValue, isResponding, buttonName }) => {
+      render(
+        <ChatInput {...defaultProps} isAssistantResponding={isResponding} />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+
+      if (inputValue !== undefined) {
+        fireEvent.input(textarea, { target: { value: inputValue } });
+      }
 
       const button = screen.getByRole("button", {
-        name: "Send",
+        name: buttonName,
       }) as HTMLButtonElement;
 
       expect(button.disabled).toBe(true);
@@ -88,47 +115,26 @@ describe("ChatInput", () => {
       expect(button.disabled).toBe(false);
     });
 
-    it("is disabled when assistant is responding", () => {
-      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
+    const sendTriggers = [
+      [
+        "button click",
+        () => fireEvent.click(screen.getByRole("button", { name: "Send" })),
+      ],
+      [
+        "Enter key",
+        (el: HTMLElement) =>
+          fireEvent.keyDown(el, { key: "Enter", shiftKey: false }),
+      ],
+    ] as const;
 
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-
-      const button = screen.getByRole("button", {
-        name: "...",
-      }) as HTMLButtonElement;
-
-      expect(button.disabled).toBe(true);
-    });
-
-    it("is disabled when input is only whitespace", () => {
-      render(<ChatInput {...defaultProps} />);
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "   " } });
-
-      const button = screen.getByRole("button", {
-        name: "Send",
-      }) as HTMLButtonElement;
-
-      expect(button.disabled).toBe(true);
-    });
-
-    it("calls handleSend with input when clicked", () => {
+    it.each(sendTriggers)("sends message via %s", (_method, triggerSend) => {
       const handleSend = vi.fn();
 
       render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-
       const textarea = screen.getByRole("textbox");
 
       fireEvent.input(textarea, { target: { value: "Hello" } });
-
-      const button = screen.getByRole("button", { name: "Send" });
-
-      fireEvent.click(button);
-
+      triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
@@ -136,129 +142,72 @@ describe("ChatInput", () => {
       });
     });
 
-    it("clears input after sending", () => {
-      render(<ChatInput {...defaultProps} />);
+    it.each(sendTriggers)(
+      "clears input after %s send",
+      (_method, triggerSend) => {
+        render(<ChatInput {...defaultProps} />);
+        const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
 
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-
-      const button = screen.getByRole("button", { name: "Send" });
-
-      fireEvent.click(button);
-
-      expect(textarea.value).toBe("");
-    });
+        fireEvent.input(textarea, { target: { value: "Hello" } });
+        triggerSend(textarea);
+        expect(textarea.value).toBe("");
+      },
+    );
   });
 
   describe("Enter key handling", () => {
-    it("sends message on Enter key", () => {
-      const handleSend = vi.fn();
+    it.each([
+      {
+        name: "Shift+Enter",
+        inputValue: "Hello",
+        shiftKey: true,
+        isResponding: false,
+      },
+      {
+        name: "assistant responding",
+        inputValue: "Hello",
+        shiftKey: false,
+        isResponding: true,
+      },
+      {
+        name: "empty input",
+        inputValue: undefined,
+        shiftKey: false,
+        isResponding: false,
+      },
+      {
+        name: "whitespace only",
+        inputValue: "   ",
+        shiftKey: false,
+        isResponding: false,
+      },
+    ])(
+      "does not send on Enter when $name",
+      ({ inputValue, shiftKey, isResponding }) => {
+        const handleSend = vi.fn();
 
-      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
+        render(
+          <ChatInput
+            {...defaultProps}
+            handleSend={handleSend}
+            isAssistantResponding={isResponding}
+          />,
+        );
 
-      const textarea = screen.getByRole("textbox");
+        const textarea = screen.getByRole("textbox");
 
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+        if (inputValue !== undefined) {
+          fireEvent.input(textarea, { target: { value: inputValue } });
+        }
 
-      expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
-        thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
-      });
-    });
+        fireEvent.keyDown(textarea, { key: "Enter", shiftKey });
 
-    it("clears input after Enter key send", () => {
-      render(<ChatInput {...defaultProps} />);
-
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-
-      expect(textarea.value).toBe("");
-    });
-
-    it("does not send on Shift+Enter", () => {
-      const handleSend = vi.fn();
-
-      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
-
-      expect(handleSend).not.toHaveBeenCalled();
-    });
-
-    it("does not send when assistant is responding", () => {
-      const handleSend = vi.fn();
-
-      render(
-        <ChatInput
-          {...defaultProps}
-          handleSend={handleSend}
-          isAssistantResponding={true}
-        />,
-      );
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-
-      expect(handleSend).not.toHaveBeenCalled();
-    });
-
-    it("does not send when input is empty", () => {
-      const handleSend = vi.fn();
-
-      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-
-      expect(handleSend).not.toHaveBeenCalled();
-    });
-
-    it("does not send when input is only whitespace", () => {
-      const handleSend = vi.fn();
-
-      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "   " } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-
-      expect(handleSend).not.toHaveBeenCalled();
-    });
+        expect(handleSend).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("per-message settings", () => {
-    it("passes default thinking and temperature on send", () => {
-      const handleSend = vi.fn();
-
-      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-
-      const button = screen.getByRole("button", { name: "Send" });
-
-      fireEvent.click(button);
-
-      expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
-      });
-    });
-
     it("calls onResetToDefaults when reset button clicked", () => {
       const onResetToDefaults = vi.fn();
       const { container } = render(

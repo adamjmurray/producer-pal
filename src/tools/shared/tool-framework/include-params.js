@@ -148,7 +148,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     };
   }
 
-  const result = {
+  return {
     includeDrumPads: includeSet.has(DRUM_PADS),
     includeDrumMaps: includeSet.has(DRUM_MAPS),
     includeClipNotes: includeSet.has(CLIP_NOTES),
@@ -171,8 +171,6 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeMixer: includeSet.has(MIXER),
     includeLocators: includeSet.has(LOCATORS),
   };
-
-  return result;
 }
 
 /**
@@ -324,7 +322,7 @@ function expandWildcardIncludes(includeArray, defaults) {
   // Create set with all non-'*' options plus all available options
   const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
 
-  allOptions.forEach((option) => expandedSet.add(option));
+  for (const option of allOptions) expandedSet.add(option);
 
   return Array.from(expandedSet);
 }

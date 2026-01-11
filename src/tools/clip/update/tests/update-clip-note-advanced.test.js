@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { liveApiCall, liveApiSet } from "#src/test/mock-live-api.js";
 import {
-  liveApiCall,
-  liveApiSet,
-  mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+  setupAudioClipMock,
+  setupMidiClipMock,
+  setupMocks,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - Advanced note operations", () => {
@@ -13,15 +13,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should set loop start when start is provided", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 1,
-      },
-    });
+    setupMidiClipMock("123", { looping: 1 });
 
     updateClip({
       ids: "123",
@@ -36,14 +28,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should delete specific notes with v0 when noteUpdateMode is 'merge'", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock existing notes in the clip
     liveApiCall.mockImplementation(function (method, ..._args) {
@@ -143,14 +128,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should handle v0 notes when no existing notes match", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock existing notes that don't match the v0 note
     liveApiCall.mockImplementation(function (method, ..._args) {
@@ -214,14 +192,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should call get_notes_extended in merge mode to format existing notes", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock existing notes
     liveApiCall.mockImplementation(function (method, ..._args) {
@@ -276,14 +247,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should support bar copy with existing notes in merge mode", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
     const existingNotes = [
@@ -372,15 +336,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should report noteCount only for notes within clip playback region when length is set", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 8, // 2 bars
-      },
-    });
+    setupMidiClipMock("123", { length: 8 }); // 2 bars
 
     // Mock to track added notes and return subset based on length parameter
     let allAddedNotes = [];
@@ -428,14 +384,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should support bar copy with v0 deletions in merge mode", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupMidiClipMock("123");
 
     // Mock existing notes in bar 1
     liveApiCall.mockImplementation(function (method, ..._args) {
@@ -503,15 +452,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update warp mode for audio clips", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupAudioClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -528,15 +469,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update warping on/off for audio clips", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupAudioClipMock("123");
 
     const result = updateClip({
       ids: "123",
@@ -553,15 +486,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update both warp mode and warping together", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupAudioClipMock("123");
 
     const result = updateClip({
       ids: "123",

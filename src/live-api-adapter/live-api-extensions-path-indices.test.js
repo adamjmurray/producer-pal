@@ -208,6 +208,22 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(device.deviceIndex).toBe(15);
     });
+
+    it("should return last device index for nested rack devices", () => {
+      const device = new LiveAPI(
+        "live_set tracks 0 devices 0 chains 0 devices 5",
+      );
+
+      expect(device.deviceIndex).toBe(5);
+    });
+
+    it("should return last device index for deeply nested rack devices", () => {
+      const device = new LiveAPI(
+        "live_set tracks 0 devices 0 chains 0 devices 1 chains 0 devices 9",
+      );
+
+      expect(device.deviceIndex).toBe(9);
+    });
   });
 
   describe("session view integration", () => {

@@ -75,6 +75,24 @@ export function validateIdTypes(
 }
 
 /**
+ * Validates that exactly one of two mutually exclusive parameters is provided
+ * @param {*} param1 - First parameter value
+ * @param {*} param2 - Second parameter value
+ * @param {string} name1 - Name of first parameter for error message
+ * @param {string} name2 - Name of second parameter for error message
+ * @throws {Error} If neither or both parameters are provided
+ */
+export function validateExclusiveParams(param1, param2, name1, name2) {
+  if (!param1 && !param2) {
+    throw new Error(`Either ${name1} or ${name2} must be provided`);
+  }
+
+  if (param1 && param2) {
+    throw new Error(`Provide either ${name1} or ${name2}, not both`);
+  }
+}
+
+/**
  * Checks if the actual type matches the expected type.
  * Handles device subclasses (e.g., "HybridReverbDevice" matches "device").
  * @param {string} actualType - The actual type from the Live API object

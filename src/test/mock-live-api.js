@@ -58,12 +58,6 @@ export class LiveAPI {
     return this.path;
   }
 
-  get trackIndex() {
-    const match = this.path.match(/live_set tracks (\d+)/);
-
-    return match ? Number(match[1]) : null;
-  }
-
   getChildIds(name) {
     const idArray = this.get(name);
 
@@ -88,20 +82,6 @@ export class LiveAPI {
 
   getProperty(property) {
     return this.get(property)?.[0];
-  }
-
-  get sceneIndex() {
-    // Try scene path first
-    let match = this.path.match(/live_set scenes (\d+)/);
-
-    if (match) {
-      return Number(match[1]);
-    }
-
-    // Also try clip_slots path (scene index is the clip slot index in session view)
-    match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
-
-    return match ? Number(match[1]) : null;
   }
 
   get type() {

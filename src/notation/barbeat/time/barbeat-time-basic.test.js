@@ -350,12 +350,12 @@ describe("barbeat-time utilities", () => {
         { beats: 5.667, beatsPerBar: 6 },
       ];
 
-      testCases.forEach(({ beats, beatsPerBar }) => {
+      for (const { beats, beatsPerBar } of testCases) {
         const barBeat = beatsToBarBeat(beats, beatsPerBar);
         const backToBeats = barBeatToBeats(barBeat, beatsPerBar);
 
         expect(backToBeats).toBeCloseTo(beats, 10);
-      });
+      }
     });
 
     it("fractional notation round-trips correctly", () => {
@@ -368,11 +368,11 @@ describe("barbeat-time utilities", () => {
         { barBeat: "1|3/2", beatsPerBar: 4, expectedBeats: 0.5 },
       ];
 
-      testCases.forEach(({ barBeat, beatsPerBar, expectedBeats }) => {
+      for (const { barBeat, beatsPerBar, expectedBeats } of testCases) {
         const beats = barBeatToBeats(barBeat, beatsPerBar);
 
         expect(beats).toBeCloseTo(expectedBeats, 10);
-      });
+      }
     });
 
     it("abletonBeatsToBarBeat and barBeatToAbletonBeats are inverses", () => {
@@ -389,12 +389,12 @@ describe("barbeat-time utilities", () => {
         { abletonBeats: 1.75, num: 12, den: 16 },
       ];
 
-      testCases.forEach(({ abletonBeats, num, den }) => {
+      for (const { abletonBeats, num, den } of testCases) {
         const barBeat = abletonBeatsToBarBeat(abletonBeats, num, den);
         const backToAbletonBeats = barBeatToAbletonBeats(barBeat, num, den);
 
         expect(backToAbletonBeats).toBeCloseTo(abletonBeats, 10);
-      });
+      }
     });
   });
 

@@ -6,7 +6,10 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.js";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 /**
@@ -371,10 +374,5 @@ export function updateTrack(
     });
   }
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (updatedTracks.length === 0) {
-    return [];
-  }
-
-  return updatedTracks.length === 1 ? updatedTracks[0] : updatedTracks;
+  return unwrapSingleResult(updatedTracks);
 }

@@ -337,13 +337,9 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("cue1", "cue2");
 
-        if (this._path === "id cue1") {
-          if (prop === "time") return [0];
-        }
+        if (this._path === "id cue1" && prop === "time") return [0];
 
-        if (this._path === "id cue2") {
-          if (prop === "time") return [16];
-        }
+        if (this._path === "id cue2" && prop === "time") return [16];
 
         return [0];
       });

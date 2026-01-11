@@ -3,49 +3,29 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiId,
   liveApiPath,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// Mock arrangement-tiling helpers
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  return { updateClip: updateClipMock };
+});
+
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
     return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
-
-        return null;
-      }),
-      // Add trackIndex getter for getMinimalClipInfo
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
-
-        return match ? parseInt(match[1]) : null;
-      },
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
     };
-  }),
-}));
+  },
+);
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", () => {
@@ -106,15 +86,63 @@ describe("duplicate - input validation", () => {
   });
 });
 
-describe("duplicate - return format", () => {
-  it("should return single object format when count=1", () => {
+describe("duplicate - clip session validation", () => {
+  it("should throw an error when toTrackIndex is missing for session destination", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
 
       return this._path;
     });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toSceneIndex: "0",
+      }),
+    ).toThrow("duplicate failed: toTrackIndex is required for session clips");
+  });
+
+  it("should throw an error when toSceneIndex is missing for session destination", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
+      return this._path;
+    });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toTrackIndex: 0,
+      }),
+    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
+  });
+
+  it("should throw an error when toSceneIndex is empty for session destination", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
+
+      return this._path;
+    });
+
+    expect(() =>
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        toTrackIndex: 0,
+        toSceneIndex: "  ",
+      }),
+    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
+  });
+});
+
+describe("duplicate - return format", () => {
+  it("should return single object format when count=1", () => {
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1", count: 1 });
 
@@ -126,13 +154,7 @@ describe("duplicate - return format", () => {
   });
 
   it("should return objects array format when count>1", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1", count: 2 });
 

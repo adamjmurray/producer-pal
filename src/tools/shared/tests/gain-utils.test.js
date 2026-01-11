@@ -111,6 +111,50 @@ describe("gain-utils", () => {
     });
   });
 
+  describe("edge cases with lookup table boundaries", () => {
+    it("should handle dB value at upper boundary of table (just under 24)", () => {
+      // Test a value very close to 24 dB where upperIndex might be the last entry
+      const gain = dbToLiveGain(23.9);
+
+      expect(gain).toBeGreaterThan(0.99);
+      expect(gain).toBeLessThan(1);
+    });
+
+    it("should handle very small positive gain near zero", () => {
+      // Test gain values near the first non-null entry in the lookup table
+      const dB = liveGainToDb(0.0001);
+
+      expect(dB).toBeLessThan(-60);
+    });
+
+    it("should handle gain value exactly at first lookup table entry after zero", () => {
+      // First entry after null at gain=0 is approximately 0.001953125
+      const dB = liveGainToDb(0.001953125);
+
+      expect(dB).toBeCloseTo(-65.7, 0);
+    });
+
+    it("should return lower.dB when upper.dB is null or -Infinity", () => {
+      // Test a very small gain value that falls between a valid lower entry
+      // and an invalid upper entry (if the table has any such gaps)
+      // The lookup table doesn't actually have this case, but test near boundary
+      const dB = liveGainToDb(0.0019);
+
+      // Should return a finite dB value from lower entry interpolation
+      expect(Number.isFinite(dB)).toBe(true);
+      expect(dB).toBeLessThan(-60);
+    });
+
+    it("should return the last valid gain when dB is very close to max", () => {
+      // Test case where we traverse entire table without finding upperIndex
+      // (i.e., target dB is at or near the maximum entry)
+      const gain = dbToLiveGain(23.99);
+
+      expect(gain).toBeGreaterThan(0.999);
+      expect(gain).toBeLessThanOrEqual(1);
+    });
+  });
+
   describe("round-trip conversion", () => {
     it("should round-trip accurately across full range", () => {
       const testGains = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];

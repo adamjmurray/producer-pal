@@ -7,49 +7,30 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupScenePath,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// Mock arrangement-tiling helpers
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  return { updateClip: updateClipMock };
+});
+
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
     return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
-
-        return null;
-      }),
-      // Add trackIndex getter for getMinimalClipInfo
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
-
-        return match ? parseInt(match[1]) : null;
-      },
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
     };
-  }),
-}));
+  },
+);
 
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
@@ -349,13 +330,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating scenes", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
-    });
+    setupScenePath("scene1");
 
     duplicate({
       type: "scene",
@@ -367,13 +342,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should not switch views when switchView=false", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     duplicate({
       type: "track",

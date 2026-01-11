@@ -184,7 +184,7 @@ describe("update-live-set-helpers", () => {
 
     it("should do nothing if tempClipInfo is undefined", () => {
       // Should not throw
-      expect(() => cleanupTempClip(undefined)).not.toThrow();
+      expect(() => cleanupTempClip()).not.toThrow();
     });
 
     it("should delete MIDI clip from arrangement", () => {

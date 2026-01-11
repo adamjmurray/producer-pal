@@ -17,18 +17,13 @@ vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
   useMcpConnection: vi.fn(),
 }));
 
-vi.mock(import("#webui/hooks/chat/use-gemini-chat"), () => ({
-  useGeminiChat: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/chat/use-openai-chat"), () => ({
-  useOpenAIChat: vi.fn(),
+vi.mock(import("#webui/hooks/chat/use-chat"), () => ({
+  useChat: vi.fn(),
 }));
 
 // Import mocked modules to access them in tests
-import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
+import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
-import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { App } from "./App";
@@ -87,8 +82,7 @@ describe("App", () => {
       mcpError: null,
       checkMcpConnection: vi.fn(),
     });
-    (useGeminiChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
-    (useOpenAIChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
   });
 
   describe("screen routing", () => {
@@ -138,67 +132,18 @@ describe("App", () => {
   });
 
   describe("provider routing", () => {
-    it("uses Gemini chat for gemini provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "gemini",
-      });
+    it("calls useChat twice (for gemini and openai adapters)", () => {
       render(<App />);
-      // Gemini chat hook should have been called
-      expect(useGeminiChat).toHaveBeenCalled();
+      // useChat is called twice - once with geminiAdapter, once with openaiAdapter
+      expect(useChat).toHaveBeenCalledTimes(2);
     });
 
-    it("uses OpenAI chat for openai provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "openai",
-      });
+    it("passes geminiAdapter for first call and openaiAdapter for second call", () => {
       render(<App />);
-      // OpenAI chat hook should have been called
-      expect(useOpenAIChat).toHaveBeenCalled();
-    });
+      const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
-    it("uses OpenAI chat for mistral provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "mistral",
-      });
-      render(<App />);
-      // OpenAI chat hook should have been called (mistral uses OpenAI-compatible API)
-      expect(useOpenAIChat).toHaveBeenCalled();
-    });
-
-    it("uses OpenAI chat for custom provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "custom",
-        baseUrl: "https://custom.api.com/v1",
-      });
-      render(<App />);
-      // OpenAI chat hook should have been called
-      expect(useOpenAIChat).toHaveBeenCalled();
-    });
-
-    it("uses OpenAI chat for lmstudio provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "lmstudio",
-        port: 1234,
-      });
-      render(<App />);
-      // OpenAI chat hook should have been called
-      expect(useOpenAIChat).toHaveBeenCalled();
-    });
-
-    it("uses OpenAI chat for ollama provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "ollama",
-        port: 11434,
-      });
-      render(<App />);
-      // OpenAI chat hook should have been called
-      expect(useOpenAIChat).toHaveBeenCalled();
+      expect(calls[0]![0].adapter).toHaveProperty("createClient");
+      expect(calls[1]![0].adapter).toHaveProperty("createClient");
     });
   });
 
@@ -220,13 +165,12 @@ describe("App", () => {
 
     it("passes settings to chat hooks", () => {
       render(<App />);
-      // At least one of the chat hooks should receive settings
-      const geminiCalls = (useGeminiChat as ReturnType<typeof vi.fn>).mock
-        .calls;
+      // useChat should receive settings
+      const chatCalls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
-      expect(geminiCalls.length).toBeGreaterThan(0);
-      expect(geminiCalls[0]![0]).toHaveProperty("apiKey");
-      expect(geminiCalls[0]![0]).toHaveProperty("model");
+      expect(chatCalls.length).toBeGreaterThan(0);
+      expect(chatCalls[0]![0]).toHaveProperty("apiKey");
+      expect(chatCalls[0]![0]).toHaveProperty("model");
     });
   });
 
@@ -368,6 +312,20 @@ describe("App", () => {
   });
 
   describe("baseUrl determination", () => {
+    // Helper to get the second useChat call (openai adapter) extraParams
+    const getOpenAIExtraParams = () => {
+      const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
+
+      return calls[1]![0].extraParams;
+    };
+
+    // Helper to get the second useChat call (openai adapter) apiKey
+    const getOpenAIApiKey = () => {
+      const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
+
+      return calls[1]![0].apiKey;
+    };
+
     it("uses custom baseUrl for custom provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
@@ -375,11 +333,7 @@ describe("App", () => {
         baseUrl: "https://custom.api.com/v1",
       });
       render(<App />);
-      // Verify OpenAI chat hook was called with custom baseUrl
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("https://custom.api.com/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("https://custom.api.com/v1");
     });
 
     it("uses localhost baseUrl for lmstudio provider", () => {
@@ -389,10 +343,7 @@ describe("App", () => {
         port: 1234,
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
     it("uses localhost baseUrl for ollama provider", () => {
@@ -402,10 +353,7 @@ describe("App", () => {
         port: 11434,
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");
     });
 
     it("uses default port 1234 for lmstudio when port not specified", () => {
@@ -415,10 +363,7 @@ describe("App", () => {
         port: undefined,
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
     it("uses default port 11434 for ollama when port not specified", () => {
@@ -428,10 +373,7 @@ describe("App", () => {
         port: undefined,
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");
     });
 
     it("uses 'not-needed' apiKey for lmstudio when apiKey is empty", () => {
@@ -441,10 +383,7 @@ describe("App", () => {
         apiKey: "",
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].apiKey).toBe("not-needed");
+      expect(getOpenAIApiKey()).toBe("not-needed");
     });
 
     it("uses provider-specific baseUrl for openai provider", () => {
@@ -453,10 +392,7 @@ describe("App", () => {
         provider: "openai",
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("https://api.openai.com/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("https://api.openai.com/v1");
     });
 
     it("uses provider-specific baseUrl for mistral provider", () => {
@@ -465,10 +401,7 @@ describe("App", () => {
         provider: "mistral",
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("https://api.mistral.ai/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe("https://api.mistral.ai/v1");
     });
 
     it("uses provider-specific baseUrl for openrouter provider", () => {
@@ -477,10 +410,9 @@ describe("App", () => {
         provider: "openrouter",
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBe("https://openrouter.ai/api/v1");
+      expect(getOpenAIExtraParams().baseUrl).toBe(
+        "https://openrouter.ai/api/v1",
+      );
     });
 
     it("uses undefined baseUrl for gemini provider", () => {
@@ -489,10 +421,7 @@ describe("App", () => {
         provider: "gemini",
       });
       render(<App />);
-      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
-        .calls;
-
-      expect(openAICalls[0]![0].baseUrl).toBeUndefined();
+      expect(getOpenAIExtraParams().baseUrl).toBeUndefined();
     });
   });
 });

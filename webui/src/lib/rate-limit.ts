@@ -148,7 +148,7 @@ function extractStatusCode(error: unknown): number | null {
   const statusMatch = /\b(429|503)\b/.exec(message);
 
   if (statusMatch?.[1]) {
-    return parseInt(statusMatch[1], 10);
+    return Number.parseInt(statusMatch[1]);
   }
 
   return null;
@@ -177,9 +177,9 @@ function extractRetryAfter(error: unknown): number | null {
   }
 
   if (typeof retryAfter === "string") {
-    const seconds = parseInt(retryAfter, 10);
+    const seconds = Number.parseInt(retryAfter);
 
-    if (!isNaN(seconds)) {
+    if (!Number.isNaN(seconds)) {
       return seconds * 1000;
     }
   }
