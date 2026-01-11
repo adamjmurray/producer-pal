@@ -2,6 +2,11 @@ import type { Chat } from "@google/genai/web";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
 import { GeminiClient } from "./gemini-client";
+import {
+  createMockGeminiMcpClient,
+  setupGeminiMocks,
+  collectGeminiHistory,
+} from "#webui/test-utils/gemini-client-test-utils";
 
 // Mock the Google GenAI SDK
 // @ts-expect-error vi.mock partial implementation
@@ -349,15 +354,7 @@ describe("GeminiClient", () => {
 
     it("stops loop when model stops calling tools", async () => {
       const client = new GeminiClient("test-api-key");
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({ tools: [] }),
-        callTool: vi.fn(),
-      };
-
-      // Mock the chat - responds with text only (no tool calls)
+      const mockMcpClient = createMockGeminiMcpClient();
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           yield {
@@ -373,23 +370,13 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Send message
-      const historyUpdates = [];
+      const historyUpdates = await collectGeminiHistory(client);
 
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
-
-      // Should only call once (no loop continuation)
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(1);
       expect(mockMcpClient.callTool).not.toHaveBeenCalled();
 
-      // Verify final history
       const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
