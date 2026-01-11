@@ -130,19 +130,3 @@ workflows.
 See [dev-docs/Releasing.md](dev-docs/Releasing.md) for the complete release
 process, including version bumping, building, creating GitHub releases, testing
 checklists, and publishing to npm.
-
-## Development Testing with Claude Code
-
-For the best development experience, add the MCP server directly to Claude Code:
-
-```sh
-claude mcp add --transport http producer-pal http://localhost:3350/mcp
-```
-
-**Requirements:**
-
-- Producer Pal Max for Live device must be running in Ableton Live before
-  starting a Claude Code session
-- Run `npm run dev` for auto-rebuild on changes
-
-This provides direct access to all producer-pal tools through Claude Code.
