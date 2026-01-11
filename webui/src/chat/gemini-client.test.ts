@@ -206,24 +206,9 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
-      client.ai = {
-        chats: {
-          create: vi.fn().mockReturnValue(mockChat),
-        },
-      } as unknown as typeof client.ai;
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
-
-      // Send message and collect history updates
-      const historyUpdates = [];
-
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
+      const historyUpdates = await collectGeminiHistory(client);
 
       // Verify the flow
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(2);
@@ -316,24 +301,9 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
-      client.ai = {
-        chats: {
-          create: vi.fn().mockReturnValue(mockChat),
-        },
-      } as unknown as typeof client.ai;
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
-
-      // Send message
-      const historyUpdates = [];
-
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
+      const historyUpdates = await collectGeminiHistory(client);
 
       // Verify three iterations
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(3);

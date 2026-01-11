@@ -45,6 +45,9 @@ export function setupGeminiMocks(
   mockMcpClient: unknown,
   mockChat: unknown,
 ): void {
+  client.ai = {
+    chats: { create: vi.fn().mockReturnValue(mockChat) },
+  } as unknown as typeof client.ai;
   client.mcpClient = mockMcpClient as Client;
   client.chat = mockChat as Chat;
   client.chatConfig = {};
