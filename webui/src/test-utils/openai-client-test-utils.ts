@@ -129,3 +129,67 @@ export async function collectHistoryUpdates(
 
   return updates;
 }
+
+/**
+ * Creates a tool call chunk for streaming responses.
+ * @param toolName - Name of the tool being called
+ * @param args - JSON string of tool arguments
+ * @param callId - Unique call identifier
+ * @returns StreamChunk with tool call
+ */
+export function createToolCallChunk(
+  toolName: string,
+  args: string,
+  callId: string = "call_1",
+): StreamChunk {
+  return {
+    delta: {
+      tool_calls: [
+        { index: 0, id: callId, function: { name: toolName, arguments: args } },
+      ],
+    },
+    finish_reason: "tool_calls",
+  };
+}
+
+/** Done response chunk for ending streaming */
+export const DONE_CHUNK: StreamChunk = {
+  delta: { content: "Done" },
+  finish_reason: "stop",
+};
+
+/**
+ * Creates a mock AI client structure for OpenAIClient.
+ * @param generatorFn - Generator function for streaming responses
+ * @returns Mock AI client object
+ */
+export function createMockAiClient(
+  generatorFn: () => AsyncGenerator<{ choices: [StreamChunk] }>,
+): { chat: { completions: { create: ReturnType<typeof vi.fn> } } } {
+  return {
+    chat: {
+      completions: {
+        create: vi.fn().mockImplementation(generatorFn),
+      },
+    },
+  };
+}
+
+/**
+ * Creates generator that yields tool call then done response.
+ * @param toolChunk - Tool call chunk to yield first
+ * @returns Generator function for mock AI client
+ */
+export function createToolThenDoneGenerator(
+  toolChunk: StreamChunk,
+): () => AsyncGenerator<{ choices: [StreamChunk] }> {
+  let callCount = 0;
+
+  return async function* () {
+    callCount++;
+
+    yield callCount === 1
+      ? { choices: [toolChunk] }
+      : { choices: [DONE_CHUNK] };
+  };
+}

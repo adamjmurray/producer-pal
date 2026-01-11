@@ -6,6 +6,10 @@ import {
   createTextStreamChunks,
   setupMockClients,
   collectHistoryUpdates,
+  createToolCallChunk,
+  createMockAiClient,
+  createToolThenDoneGenerator,
+  DONE_CHUNK,
   type StreamChunk,
 } from "#webui/test-utils/openai-client-test-utils";
 
@@ -232,7 +236,6 @@ describe("OpenAIClient.sendMessage", () => {
       model: "gpt-4",
       enabledTools: { "enabled-tool": true, "disabled-tool": false },
     });
-
     const mcpClient = createMockMcpClient({
       tools: [
         { name: "enabled-tool", description: "Enabled", inputSchema: {} },
@@ -240,23 +243,13 @@ describe("OpenAIClient.sendMessage", () => {
         { name: "default-tool", description: "Default", inputSchema: {} },
       ],
     });
-
-    client.mcpClient = mcpClient;
-
     let passedTools: unknown[] = [];
 
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* (options) {
-            passedTools = options.tools ?? [];
-            yield {
-              choices: [{ delta: { content: "Done" }, finish_reason: "stop" }],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* (options) {
+      passedTools = (options as { tools?: unknown[] }).tools ?? [];
+      yield { choices: [DONE_CHUNK] };
+    }) as typeof client.ai;
 
     for await (const _history of client.sendMessage("Test")) {
       // consume generator
@@ -276,41 +269,16 @@ describe("OpenAIClient.sendMessage", () => {
     const mcpClient = createMockMcpClient({
       tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
     });
-
-    client.mcpClient = mcpClient;
-
+    const toolChunk = createToolCallChunk("test-tool", "{}");
     const abortController = new AbortController();
     let callCount = 0;
 
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            callCount++;
-
-            if (callCount === 1) {
-              yield {
-                choices: [
-                  {
-                    delta: {
-                      tool_calls: [
-                        {
-                          index: 0,
-                          id: "call_1",
-                          function: { name: "test-tool", arguments: "{}" },
-                        },
-                      ],
-                    },
-                    finish_reason: "tool_calls",
-                  },
-                ],
-              };
-              abortController.abort();
-            }
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* () {
+      callCount++;
+      yield { choices: [toolChunk] };
+      abortController.abort();
+    }) as typeof client.ai;
 
     const historyUpdates: unknown[][] = [];
 
@@ -330,25 +298,14 @@ describe("OpenAIClient.sendMessage", () => {
       model: "gpt-4",
       temperature: 0.5,
     });
-
     const mcpClient = createMockMcpClient();
-
-    client.mcpClient = mcpClient;
-
     let createOptions: Record<string, unknown> = {};
 
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* (options) {
-            createOptions = options;
-            yield {
-              choices: [{ delta: { content: "Done" }, finish_reason: "stop" }],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* (options) {
+      createOptions = options as Record<string, unknown>;
+      yield { choices: [DONE_CHUNK] };
+    }) as typeof client.ai;
 
     for await (const _history of client.sendMessage("Test", undefined, {
       temperature: 0.9,
@@ -366,46 +323,12 @@ describe("OpenAIClient with non-function tool calls", () => {
     const mcpClient = createMockMcpClient({
       tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
     });
+    const toolChunk = createToolCallChunk("test-tool", "{}");
 
     client.mcpClient = mcpClient;
-
-    let callCount = 0;
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            callCount++;
-
-            if (callCount === 1) {
-              yield {
-                choices: [
-                  {
-                    delta: {
-                      tool_calls: [
-                        {
-                          index: 0,
-                          id: "call_1",
-                          type: "function",
-                          function: { name: "test-tool", arguments: "{}" },
-                        },
-                      ],
-                    },
-                    finish_reason: "tool_calls",
-                  },
-                ],
-              };
-            } else {
-              yield {
-                choices: [
-                  { delta: { content: "Done" }, finish_reason: "stop" },
-                ],
-              };
-            }
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
+    client.ai = createMockAiClient(
+      createToolThenDoneGenerator(toolChunk),
+    ) as typeof client.ai;
 
     for await (const _history of client.sendMessage("Test")) {
       // consume generator
