@@ -1,6 +1,7 @@
+import type { Chat } from "@google/genai/web";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { vi } from "vitest";
-import type { Chat, GeminiClient } from "#webui/chat/gemini-client";
+import type { GeminiClient } from "#webui/chat/gemini-client";
 
 /** Options for creating a mock MCP client */
 export interface MockGeminiMcpClientOptions {
@@ -53,6 +54,12 @@ export function setupGeminiMocks(
   client.chatConfig = {};
 }
 
+/** History entry with role property */
+export interface HistoryEntry {
+  role: string;
+  [key: string]: unknown;
+}
+
 /**
  * Collects all history updates from a Gemini sendMessage generator.
  * @param client - GeminiClient instance
@@ -62,11 +69,11 @@ export function setupGeminiMocks(
 export async function collectGeminiHistory(
   client: GeminiClient,
   message: string = "test",
-): Promise<unknown[][]> {
-  const historyUpdates: unknown[][] = [];
+): Promise<HistoryEntry[][]> {
+  const historyUpdates: HistoryEntry[][] = [];
 
   for await (const history of client.sendMessage(message)) {
-    historyUpdates.push([...(history as unknown[])]);
+    historyUpdates.push([...(history as HistoryEntry[])]);
   }
 
   return historyUpdates;
