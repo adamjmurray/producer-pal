@@ -1,6 +1,17 @@
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
 import { OpenAIClient } from "./openai-client";
+import {
+  createMockMcpClient,
+  createMockStreamingResponse,
+  createTextStreamChunks,
+  setupMockClients,
+  collectHistoryUpdates,
+  createToolCallChunk,
+  createMockAiClient,
+  createToolThenDoneGenerator,
+  DONE_CHUNK,
+  type StreamChunk,
+} from "#webui/test-utils/openai-client-test-utils";
 
 // Mock MCP SDK
 // @ts-expect-error vi.mock partial implementation
@@ -30,50 +41,19 @@ describe("OpenAIClient.sendMessage", () => {
 
   it("adds user message to history and yields it", async () => {
     const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient();
+    const streamChunks = createTextStreamChunks("Hello");
 
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({ tools: [] }),
-      callTool: vi.fn(),
-    };
+    setupMockClients(
+      client,
+      mcpClient,
+      createMockStreamingResponse(streamChunks),
+    );
 
-    client.mcpClient = mockMcpClient as unknown as Client;
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("test message"),
+    );
 
-    // Mock the OpenAI client
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            yield {
-              choices: [
-                {
-                  delta: { content: "Hello" },
-                  finish_reason: null,
-                },
-              ],
-            };
-            yield {
-              choices: [
-                {
-                  delta: {},
-                  finish_reason: "stop",
-                },
-              ],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message and collect history updates
-    const historyUpdates = [];
-
-    for await (const history of client.sendMessage("test message")) {
-      historyUpdates.push([...history]);
-    }
-
-    // First yield should have the user message
     expect(historyUpdates[0]).toHaveLength(1);
     expect(historyUpdates[0]?.[0]).toMatchObject({
       role: "user",
@@ -83,58 +63,19 @@ describe("OpenAIClient.sendMessage", () => {
 
   it("processes streaming response and updates history", async () => {
     const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient();
+    const streamChunks = createTextStreamChunks("Hello", " world");
 
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({ tools: [] }),
-      callTool: vi.fn(),
-    };
+    setupMockClients(
+      client,
+      mcpClient,
+      createMockStreamingResponse(streamChunks),
+    );
 
-    client.mcpClient = mockMcpClient as unknown as Client;
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Hi"),
+    );
 
-    // Mock the OpenAI client with streaming response
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            yield {
-              choices: [
-                {
-                  delta: { role: "assistant", content: "Hello" },
-                  finish_reason: null,
-                },
-              ],
-            };
-            yield {
-              choices: [
-                {
-                  delta: { content: " world" },
-                  finish_reason: null,
-                },
-              ],
-            };
-            yield {
-              choices: [
-                {
-                  delta: {},
-                  finish_reason: "stop",
-                },
-              ],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message and collect history updates
-    const historyUpdates = [];
-
-    for await (const history of client.sendMessage("Hi")) {
-      historyUpdates.push([...history]);
-    }
-
-    // Last update should have accumulated content
     const finalHistory = historyUpdates.at(-1);
 
     expect(finalHistory).toHaveLength(2);
@@ -146,23 +87,12 @@ describe("OpenAIClient.sendMessage", () => {
 
   it("executes tool calls and adds tool response to history", async () => {
     const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "test-tool", description: "Test tool", inputSchema: {} }],
+    });
 
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({
-        tools: [
-          { name: "test-tool", description: "Test tool", inputSchema: {} },
-        ],
-      }),
-      callTool: vi.fn().mockResolvedValue({
-        content: [{ type: "text", text: "Tool result" }],
-      }),
-    };
+    client.mcpClient = mcpClient;
 
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Mock the OpenAI client with tool call
     let callCount = 0;
 
     client.ai = {
@@ -172,7 +102,6 @@ describe("OpenAIClient.sendMessage", () => {
             callCount++;
 
             if (callCount === 1) {
-              // First call: model responds with tool call
               yield {
                 choices: [
                   {
@@ -202,332 +131,7 @@ describe("OpenAIClient.sendMessage", () => {
                   {
                     delta: {
                       tool_calls: [
-                        {
-                          index: 0,
-                          function: { arguments: '"b"}' },
-                        },
-                      ],
-                    },
-                    finish_reason: "tool_calls",
-                  },
-                ],
-              };
-            } else {
-              // Second call: model responds with text after tool execution
-              yield {
-                choices: [
-                  {
-                    delta: { content: "Done" },
-                    finish_reason: "stop",
-                  },
-                ],
-              };
-            }
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message and collect history updates
-    const historyUpdates = [];
-
-    for await (const history of client.sendMessage("Run tool")) {
-      historyUpdates.push([...history]);
-    }
-
-    // Verify tool was called
-    expect(mockMcpClient.callTool).toHaveBeenCalledTimes(1);
-    expect(mockMcpClient.callTool).toHaveBeenCalledWith({
-      name: "test-tool",
-      arguments: { a: "b" },
-    });
-
-    // Verify final history includes tool message
-    const finalHistory = historyUpdates.at(-1);
-
-    expect(finalHistory?.some((msg) => msg.role === "tool")).toBe(true);
-  });
-
-  it("handles tool execution errors gracefully", async () => {
-    const client = new OpenAIClient("test-key", { model: "gpt-4" });
-
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({
-        tools: [{ name: "error-tool", description: "Tool", inputSchema: {} }],
-      }),
-      callTool: vi.fn().mockRejectedValue(new Error("Tool failed")),
-    };
-
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Mock the OpenAI client with tool call
-    let callCount = 0;
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            callCount++;
-
-            if (callCount === 1) {
-              yield {
-                choices: [
-                  {
-                    delta: {
-                      tool_calls: [
-                        {
-                          index: 0,
-                          id: "call_err",
-                          function: { name: "error-tool", arguments: "{}" },
-                        },
-                      ],
-                    },
-                    finish_reason: "tool_calls",
-                  },
-                ],
-              };
-            } else {
-              yield {
-                choices: [
-                  {
-                    delta: { content: "Error handled" },
-                    finish_reason: "stop",
-                  },
-                ],
-              };
-            }
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message and collect history updates
-    const historyUpdates = [];
-
-    for await (const history of client.sendMessage("Run error tool")) {
-      historyUpdates.push([...history]);
-    }
-
-    // Verify error was added to history as tool message
-    const finalHistory = historyUpdates.at(-1);
-    const toolMessage = finalHistory?.find((msg) => msg.role === "tool");
-
-    expect(toolMessage).toBeDefined();
-    const content = JSON.parse(toolMessage?.content as string);
-
-    expect(content.error).toBe("Tool failed");
-    expect(content.isError).toBe(true);
-  });
-
-  it("filters tools based on enabledTools config", async () => {
-    const client = new OpenAIClient("test-key", {
-      model: "gpt-4",
-      enabledTools: { "enabled-tool": true, "disabled-tool": false },
-    });
-
-    // Mock the MCP client with multiple tools
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({
-        tools: [
-          { name: "enabled-tool", description: "Enabled", inputSchema: {} },
-          { name: "disabled-tool", description: "Disabled", inputSchema: {} },
-          { name: "default-tool", description: "Default", inputSchema: {} },
-        ],
-      }),
-      callTool: vi.fn(),
-    };
-
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Track what tools are passed to create
-    let passedTools: unknown[] = [];
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* (options) {
-            passedTools = options.tools ?? [];
-            yield {
-              choices: [
-                {
-                  delta: { content: "Done" },
-                  finish_reason: "stop",
-                },
-              ],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message
-    for await (const _history of client.sendMessage("Test")) {
-      // consume generator
-    }
-
-    // Verify only enabled and default tools were passed
-    const toolNames = passedTools.map(
-      (t) => (t as { function: { name: string } }).function.name,
-    );
-
-    expect(toolNames).toContain("enabled-tool");
-    expect(toolNames).toContain("default-tool");
-    expect(toolNames).not.toContain("disabled-tool");
-  });
-
-  it("stops loop when abort signal is triggered", async () => {
-    const client = new OpenAIClient("test-key", { model: "gpt-4" });
-
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({
-        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-      }),
-      callTool: vi.fn().mockResolvedValue({ content: "result" }),
-    };
-
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Create abort controller
-    const abortController = new AbortController();
-
-    // Mock the OpenAI client
-    let callCount = 0;
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            callCount++;
-
-            if (callCount === 1) {
-              yield {
-                choices: [
-                  {
-                    delta: {
-                      tool_calls: [
-                        {
-                          index: 0,
-                          id: "call_1",
-                          function: { name: "test-tool", arguments: "{}" },
-                        },
-                      ],
-                    },
-                    finish_reason: "tool_calls",
-                  },
-                ],
-              };
-              // Abort after first tool call
-              abortController.abort();
-            }
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message with abort signal
-    const historyUpdates = [];
-
-    for await (const history of client.sendMessage(
-      "Test",
-      abortController.signal,
-    )) {
-      historyUpdates.push([...history]);
-    }
-
-    // Should only call once (aborted before second iteration)
-    expect(callCount).toBe(1);
-    expect(mockMcpClient.callTool).toHaveBeenCalledTimes(1);
-  });
-
-  it("applies temperature and reasoning overrides", async () => {
-    const client = new OpenAIClient("test-key", {
-      model: "gpt-4",
-      temperature: 0.5,
-    });
-
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({ tools: [] }),
-      callTool: vi.fn(),
-    };
-
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Track options passed to create
-    let createOptions: Record<string, unknown> = {};
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* (options) {
-            createOptions = options;
-            yield {
-              choices: [
-                {
-                  delta: { content: "Done" },
-                  finish_reason: "stop",
-                },
-              ],
-            };
-          }),
-        },
-      },
-    } as unknown as typeof client.ai;
-
-    // Send message with temperature override
-    for await (const _history of client.sendMessage("Test", undefined, {
-      temperature: 0.9,
-    })) {
-      // consume generator
-    }
-
-    // Verify temperature override was applied
-    expect(createOptions.temperature).toBe(0.9);
-  });
-});
-
-describe("OpenAIClient with non-function tool calls", () => {
-  it("skips non-function tool calls during execution", async () => {
-    const client = new OpenAIClient("test-key", { model: "gpt-4" });
-
-    // Mock the MCP client
-    const mockMcpClient = {
-      connect: vi.fn(),
-      listTools: vi.fn().mockResolvedValue({
-        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-      }),
-      callTool: vi.fn().mockResolvedValue({ content: "result" }),
-    };
-
-    client.mcpClient = mockMcpClient as unknown as Client;
-
-    // Mock the OpenAI client with mixed tool call types
-    let callCount = 0;
-
-    client.ai = {
-      chat: {
-        completions: {
-          create: vi.fn().mockImplementation(async function* () {
-            callCount++;
-
-            if (callCount === 1) {
-              yield {
-                choices: [
-                  {
-                    delta: {
-                      tool_calls: [
-                        {
-                          index: 0,
-                          id: "call_1",
-                          type: "function",
-                          function: { name: "test-tool", arguments: "{}" },
-                        },
+                        { index: 0, function: { arguments: '"b"}' } },
                       ],
                     },
                     finish_reason: "tool_calls",
@@ -546,12 +150,190 @@ describe("OpenAIClient with non-function tool calls", () => {
       },
     } as unknown as typeof client.ai;
 
-    // Send message
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Run tool"),
+    );
+
+    expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
+    expect(mcpClient.callTool).toHaveBeenCalledWith({
+      name: "test-tool",
+      arguments: { a: "b" },
+    });
+
+    const finalHistory = historyUpdates.at(-1);
+
+    expect(
+      finalHistory?.some((msg) => (msg as { role: string }).role === "tool"),
+    ).toBe(true);
+  });
+
+  it("handles tool execution errors gracefully", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "error-tool", description: "Tool", inputSchema: {} }],
+      callToolError: new Error("Tool failed"),
+    });
+
+    client.mcpClient = mcpClient;
+
+    let callCount = 0;
+    const toolCallChunks: StreamChunk[] = [
+      {
+        delta: {
+          tool_calls: [
+            {
+              index: 0,
+              id: "call_err",
+              function: { name: "error-tool", arguments: "{}" },
+            },
+          ],
+        },
+        finish_reason: "tool_calls",
+      },
+    ];
+    const responseChunks: StreamChunk[] = [
+      { delta: { content: "Error handled" }, finish_reason: "stop" },
+    ];
+
+    client.ai = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async function* () {
+            callCount++;
+
+            if (callCount === 1) {
+              for (const chunk of toolCallChunks) {
+                yield { choices: [chunk] };
+              }
+            } else {
+              for (const chunk of responseChunks) {
+                yield { choices: [chunk] };
+              }
+            }
+          }),
+        },
+      },
+    } as unknown as typeof client.ai;
+
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Run error tool"),
+    );
+
+    const finalHistory = historyUpdates.at(-1);
+    const toolMessage = finalHistory?.find(
+      (msg) => (msg as { role: string }).role === "tool",
+    );
+
+    expect(toolMessage).toBeDefined();
+    const content = JSON.parse((toolMessage as { content: string }).content);
+
+    expect(content.error).toBe("Tool failed");
+    expect(content.isError).toBe(true);
+  });
+
+  it("filters tools based on enabledTools config", async () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      enabledTools: { "enabled-tool": true, "disabled-tool": false },
+    });
+    const mcpClient = createMockMcpClient({
+      tools: [
+        { name: "enabled-tool", description: "Enabled", inputSchema: {} },
+        { name: "disabled-tool", description: "Disabled", inputSchema: {} },
+        { name: "default-tool", description: "Default", inputSchema: {} },
+      ],
+    });
+    let passedTools: unknown[] = [];
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* (options) {
+      passedTools = (options as { tools?: unknown[] }).tools ?? [];
+      yield { choices: [DONE_CHUNK] };
+    }) as typeof client.ai;
+
     for await (const _history of client.sendMessage("Test")) {
       // consume generator
     }
 
-    // Should only call the function-type tool
-    expect(mockMcpClient.callTool).toHaveBeenCalledTimes(1);
+    const toolNames = passedTools.map(
+      (t) => (t as { function: { name: string } }).function.name,
+    );
+
+    expect(toolNames).toContain("enabled-tool");
+    expect(toolNames).toContain("default-tool");
+    expect(toolNames).not.toContain("disabled-tool");
+  });
+
+  it("stops loop when abort signal is triggered", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+    });
+    const toolChunk = createToolCallChunk("test-tool", "{}");
+    const abortController = new AbortController();
+    let callCount = 0;
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* () {
+      callCount++;
+      yield { choices: [toolChunk] };
+      abortController.abort();
+    }) as typeof client.ai;
+
+    const historyUpdates: unknown[][] = [];
+
+    for await (const history of client.sendMessage(
+      "Test",
+      abortController.signal,
+    )) {
+      historyUpdates.push([...history]);
+    }
+
+    expect(callCount).toBe(1);
+    expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies temperature and reasoning overrides", async () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      temperature: 0.5,
+    });
+    const mcpClient = createMockMcpClient();
+    let createOptions: Record<string, unknown> = {};
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* (options) {
+      createOptions = options as Record<string, unknown>;
+      yield { choices: [DONE_CHUNK] };
+    }) as typeof client.ai;
+
+    for await (const _history of client.sendMessage("Test", undefined, {
+      temperature: 0.9,
+    })) {
+      // consume generator
+    }
+
+    expect(createOptions.temperature).toBe(0.9);
+  });
+});
+
+describe("OpenAIClient with non-function tool calls", () => {
+  it("skips non-function tool calls during execution", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+    });
+    const toolChunk = createToolCallChunk("test-tool", "{}");
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(
+      createToolThenDoneGenerator(toolChunk),
+    ) as typeof client.ai;
+
+    for await (const _history of client.sendMessage("Test")) {
+      // consume generator
+    }
+
+    expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
   });
 });

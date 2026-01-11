@@ -128,6 +128,42 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
   ),
 };
 
+/**
+ * Creates an adapter that throws rate limit error on first call then succeeds.
+ * @param onMessage - Optional callback for each message received
+ * @returns Adapter with rate limit behavior and call tracking
+ */
+function createRateLimitAdapter(onMessage?: (msg: string) => void) {
+  let callCount = 0;
+
+  return {
+    adapter: {
+      ...mockAdapter,
+      createClient: vi.fn(() => {
+        const client = new MockChatClient();
+        const originalSendMessage = client.sendMessage.bind(client);
+
+        client.sendMessage = async function* (
+          message: string,
+          signal: AbortSignal,
+        ) {
+          onMessage?.(message);
+          callCount++;
+
+          if (callCount === 1) {
+            throw new Error("Resource has been exhausted");
+          }
+
+          yield* originalSendMessage(message, signal);
+        };
+
+        return client;
+      }),
+    },
+    getCallCount: () => callCount,
+  };
+}
+
 describe("useChat", () => {
   const defaultProps = {
     provider: "gemini" as const,
@@ -529,34 +565,10 @@ describe("useChat", () => {
 
   describe("rate limit handling", () => {
     it("sets rateLimitState when rate limit error occurs", async () => {
-      let callCount = 0;
-      const rateLimitAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-          const originalSendMessage = client.sendMessage.bind(client);
-
-          client.sendMessage = async function* (
-            message: string,
-            signal: AbortSignal,
-          ) {
-            callCount++;
-
-            if (callCount === 1) {
-              // First call throws rate limit error
-              throw new Error("Resource has been exhausted");
-            }
-
-            // Subsequent calls succeed
-            yield* originalSendMessage(message, signal);
-          };
-
-          return client;
-        }),
-      };
+      const { adapter } = createRateLimitAdapter();
 
       const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+        useChat({ ...defaultProps, adapter }),
       );
 
       // Start send - it will hit rate limit, retry, and succeed
@@ -600,35 +612,12 @@ describe("useChat", () => {
 
     it("sends original message on retry when no content was received", async () => {
       const receivedMessages: string[] = [];
-      let callCount = 0;
-
-      const rateLimitAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-          const originalSendMessage = client.sendMessage.bind(client);
-
-          client.sendMessage = async function* (
-            message: string,
-            signal: AbortSignal,
-          ) {
-            receivedMessages.push(message);
-            callCount++;
-
-            if (callCount === 1) {
-              // First call throws rate limit error immediately (no content)
-              throw new Error("Resource has been exhausted");
-            }
-
-            yield* originalSendMessage(message, signal);
-          };
-
-          return client;
-        }),
-      };
+      const { adapter } = createRateLimitAdapter((msg) =>
+        receivedMessages.push(msg),
+      );
 
       const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+        useChat({ ...defaultProps, adapter }),
       );
 
       await act(async () => {

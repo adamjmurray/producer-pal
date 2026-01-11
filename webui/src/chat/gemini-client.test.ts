@@ -2,6 +2,11 @@ import type { Chat } from "@google/genai/web";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
 import { GeminiClient } from "./gemini-client";
+import {
+  createMockGeminiMcpClient,
+  setupGeminiMocks,
+  collectGeminiHistory,
+} from "#webui/test-utils/gemini-client-test-utils";
 
 // Mock the Google GenAI SDK
 // @ts-expect-error vi.mock partial implementation
@@ -201,24 +206,9 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
-      client.ai = {
-        chats: {
-          create: vi.fn().mockReturnValue(mockChat),
-        },
-      } as unknown as typeof client.ai;
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
-
-      // Send message and collect history updates
-      const historyUpdates = [];
-
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
+      const historyUpdates = await collectGeminiHistory(client);
 
       // Verify the flow
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(2);
@@ -311,24 +301,9 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
-      client.ai = {
-        chats: {
-          create: vi.fn().mockReturnValue(mockChat),
-        },
-      } as unknown as typeof client.ai;
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
-
-      // Send message
-      const historyUpdates = [];
-
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
+      const historyUpdates = await collectGeminiHistory(client);
 
       // Verify three iterations
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(3);
@@ -349,15 +324,7 @@ describe("GeminiClient", () => {
 
     it("stops loop when model stops calling tools", async () => {
       const client = new GeminiClient("test-api-key");
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({ tools: [] }),
-        callTool: vi.fn(),
-      };
-
-      // Mock the chat - responds with text only (no tool calls)
+      const mockMcpClient = createMockGeminiMcpClient();
       const mockChat = {
         sendMessageStream: vi.fn().mockImplementation(async function* () {
           yield {
@@ -373,23 +340,13 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Set up mocks
-      client.mcpClient = mockMcpClient as unknown as Client;
-      client.chat = mockChat as unknown as Chat;
-      client.chatConfig = {};
+      setupGeminiMocks(client, mockMcpClient, mockChat);
 
-      // Send message
-      const historyUpdates = [];
+      const historyUpdates = await collectGeminiHistory(client);
 
-      for await (const history of client.sendMessage("test")) {
-        historyUpdates.push(history);
-      }
-
-      // Should only call once (no loop continuation)
       expect(mockChat.sendMessageStream).toHaveBeenCalledTimes(1);
       expect(mockMcpClient.callTool).not.toHaveBeenCalled();
 
-      // Verify final history
       const finalHistory = historyUpdates.at(-1);
 
       expect(finalHistory).toBeDefined();
@@ -464,17 +421,10 @@ describe("GeminiClient", () => {
 
     it("stops loop when abort signal is triggered", async () => {
       const client = new GeminiClient("test-api-key");
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-        }),
-        callTool: vi.fn().mockResolvedValue({ result: "result" }),
-      };
-
-      // Create abort controller
+      const mockMcpClient = createMockGeminiMcpClient({
+        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+        callToolResults: [{ result: "result" }],
+      });
       const abortController = new AbortController();
 
       // Mock the chat
@@ -536,15 +486,10 @@ describe("GeminiClient", () => {
       const consoleWarnSpy = vi
         .spyOn(console, "warn")
         .mockImplementation(() => {});
-
-      // Mock the MCP client
-      const mockMcpClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
-        }),
-        callTool: vi.fn().mockResolvedValue({ result: "result" }),
-      };
+      const mockMcpClient = createMockGeminiMcpClient({
+        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+        callToolResults: [{ result: "result" }],
+      });
 
       // Mock the chat to always return tool calls (never stops)
       const mockChat = {
@@ -562,7 +507,6 @@ describe("GeminiClient", () => {
         }),
       };
 
-      // Mock AI with chats.create that returns our mockChat
       client.ai = {
         chats: {
           create: vi.fn().mockReturnValue(mockChat),
