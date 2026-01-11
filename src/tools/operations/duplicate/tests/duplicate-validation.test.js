@@ -6,37 +6,26 @@ import {
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// [duplicate-validation] updateClip mock for validation tests
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn((config) => [{ id: config.ids }]),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// [duplicate-validation] arrangement-tiling mocks
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi
-    .fn()
-    .mockImplementation(() => ({ holdingClipId: "holding_clip_id" })),
-  moveClipFromHolding: vi.fn((_holdClipId, trk, startBeat) => {
-    const arrangementPath = `${trk.path} arrangement_clips 0`;
+  return { updateClip: updateClipMock };
+});
+
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
     return {
-      id: arrangementPath,
-      path: arrangementPath,
-      set: vi.fn(),
-      getProperty: vi.fn((key) => {
-        if (key === "is_arrangement_clip") return 1;
-        if (key === "start_time") return startBeat;
-
-        return null;
-      }),
-      get trackIndex() {
-        const found = arrangementPath.match(/tracks (\d+)/);
-
-        return found ? Number.parseInt(found[1]) : null;
-      },
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
     };
-  }),
-}));
+  },
+);
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", () => {

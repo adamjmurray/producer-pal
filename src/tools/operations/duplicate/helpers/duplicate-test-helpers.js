@@ -168,21 +168,3 @@ export function setupRouteToSourceMock(opts = {}) {
     },
   };
 }
-
-// Setup mocks for vi.mock calls
-/**
- *
- */
-export function setupMocks() {
-  vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-    updateClip: updateClipMock,
-  }));
-
-  vi.mock(
-    import("#src/tools/shared/arrangement/arrangement-tiling.js"),
-    () => ({
-      createShortenedClipInHolding: createShortenedClipInHoldingMock,
-      moveClipFromHolding: moveClipFromHoldingMock,
-    }),
-  );
-}
