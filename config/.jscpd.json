@@ -1,5 +1,5 @@
 {
-  "threshold": 0.75,
+  "threshold": 0.7,
   "reporters": ["console"],
   "ignore": [
     "**/node_modules/**",
