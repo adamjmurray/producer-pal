@@ -6,7 +6,7 @@ import {
   liveApiType,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { readClip } from "./read-clip.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
 
 // Default test notes: C3, D3, E3 at beats 0, 1, 2
 const defaultTestNotes = [

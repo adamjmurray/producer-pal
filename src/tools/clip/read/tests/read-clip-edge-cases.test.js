@@ -4,7 +4,7 @@ import {
   liveApiCall,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
-import { readClip } from "./read-clip.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
 
 describe("readClip", () => {
   // E2E test with real bar|beat notation
