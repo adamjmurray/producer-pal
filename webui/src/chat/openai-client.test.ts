@@ -5,6 +5,7 @@ import {
   type ReasoningDetail,
 } from "./openai-client";
 import type { OpenAIToolCall } from "#webui/types/messages";
+import { createToolCallsMap } from "#webui/test-utils/openai-client-test-utils";
 
 // Mock MCP SDK
 // @ts-expect-error vi.mock partial implementation
@@ -125,23 +126,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       content: "Thinking...",
     };
 
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "incomplete',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "incomplete');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       null, // finish_reason is null during streaming
     );
@@ -157,24 +146,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "Here's the answer",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "test"}',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "test"}');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       "stop",
     );
@@ -190,24 +166,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_123",
-          type: "function",
-          function: {
-            name: "search",
-            arguments: '{"query": "test"}',
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("search", '{"query": "test"}');
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       new Map<string, ReasoningDetail>(),
       "tool_calls", // finish_reason indicates tool calls are complete
     );
@@ -354,21 +317,11 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_xyz",
-          type: "function",
-          function: {
-            name: "analyze",
-            arguments: '{"data": "test"}',
-          },
-        },
-      ],
-    ]);
-
+    const toolCallsMap = createToolCallsMap(
+      "analyze",
+      '{"data": "test"}',
+      "call_xyz",
+    );
     const reasoningDetailsMap = new Map<string, ReasoningDetail>([
       [
         "reasoning.text-0",
@@ -382,7 +335,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
 
     const result = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       reasoningDetailsMap,
       "tool_calls",
     );
@@ -413,20 +366,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
       role: "assistant",
       content: "I'll help you.",
     };
-
-    const toolCallsMap = new Map<number, OpenAIToolCall>([
-      [
-        0,
-        {
-          id: "call_abc",
-          type: "function",
-          function: {
-            name: "ppal-connect",
-            arguments: "{}",
-          },
-        },
-      ],
-    ]);
+    const toolCallsMap = createToolCallsMap("ppal-connect", "{}", "call_abc");
 
     const emptyReasoningMap = new Map<string, ReasoningDetail>();
 
@@ -434,7 +374,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // Chunk 1-2: Tool calls accumulating, finish_reason: null
     const streamingResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       null, // Still streaming
     );
@@ -444,7 +384,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // Chunk 3: finish_reason: "tool_calls" - tool_calls should be included
     const finalizedResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       "tool_calls", // Finalized
     );
@@ -457,7 +397,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     // so it would pass "tool_calls" here instead of null
     const preservedResult = client.buildStreamMessage(
       currentMessage,
-      toolCallsMap,
+      toolCallsMap as Map<number, OpenAIToolCall>,
       emptyReasoningMap,
       "tool_calls", // Streaming loop passes "tool_calls" (not null) after finalization
     );

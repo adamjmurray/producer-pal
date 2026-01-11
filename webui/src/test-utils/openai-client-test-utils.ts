@@ -164,8 +164,10 @@ export const DONE_CHUNK: StreamChunk = {
  * @returns Mock AI client object
  */
 export function createMockAiClient(
-  generatorFn: () => AsyncGenerator<{ choices: [StreamChunk] }>,
-): { chat: { completions: { create: ReturnType<typeof vi.fn> } } } {
+  generatorFn: (
+    options?: unknown,
+  ) => AsyncGenerator<{ choices: [StreamChunk] }, void, unknown>,
+): unknown {
   return {
     chat: {
       completions: {
@@ -192,4 +194,28 @@ export function createToolThenDoneGenerator(
       ? { choices: [toolChunk] }
       : { choices: [DONE_CHUNK] };
   };
+}
+
+/** OpenAI tool call type for buildStreamMessage tests */
+export interface TestToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+/**
+ * Creates a tool calls map for buildStreamMessage tests.
+ * @param name - Tool function name
+ * @param args - JSON string of arguments
+ * @param id - Tool call ID
+ * @returns Map with single tool call entry
+ */
+export function createToolCallsMap(
+  name: string,
+  args: string,
+  id: string = "call_123",
+): Map<number, TestToolCall> {
+  return new Map([
+    [0, { id, type: "function", function: { name, arguments: args } }],
+  ]);
 }
