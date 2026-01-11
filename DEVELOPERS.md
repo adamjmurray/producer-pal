@@ -82,134 +82,53 @@ npm run format:check
 
 ## Web UI Development
 
-The chat interface is a Preact web application built with Vite. It's served from
-the MCP server at `http://localhost:3350/chat` and opened in your system's
-default browser. It connects to both the Gemini API and the local MCP server.
+The chat interface is a Preact web application built with Vite.
 
-### Development Server
+Quick commands:
 
-```bash
-npm run ui:dev
-```
+- `npm run ui:dev` - Dev server at localhost:5173 with hot reload
+- `npm run ui:build` - Production build to `max-for-live-device/chat-ui.html`
 
-This starts a dev server at http://localhost:5173 with hot reload. Changes to
-webui source files will update automatically in the browser. Occasionally a page
-refresh may be needed if things stop working.
-
-**Note:** The dev server runs on a different port (5173) than the production
-server (3350). Both connect to the MCP server at http://localhost:3350/mcp. For
-full integration testing, use the production build served from port 3350.
-
-### Production Build
-
-```bash
-npm run ui:build
-```
-
-Builds a single self-contained `max-for-live-device/chat-ui.html` file. This is
-automatically included in `npm run build`.
-
-### Linting
-
-```bash
-npm run lint
-```
-
-Runs ESLint on the UI code (`webui/src/**`). Enforces code quality rules
-including strict TypeScript typing (no `any` types) and React best practices
-(like avoiding JSX in try/catch blocks). All code changes should pass linting
-before committing.
-
-Use `npm run lint:fix` to automatically fix issues where possible.
-
-### Type Checking
-
-```bash
-npm run typecheck
-```
-
-Runs TypeScript type checking on the UI code (JavaScript files with JSDoc
-annotations). Currently only checks production code, not tests. All UI changes
-should pass type checking before committing.
-
-### Development Workflows
-
-**Working on MCP server/tools only** (UI doesn't need changes):
-
-- Build UI once: `npm run build` (or just `npm run ui:build`)
-- Run: `npm run dev` (watches MCP server, V8, Portal)
-- Access UI at http://localhost:3350/chat
-
-**Working on web UI only** (MCP server doesn't need changes):
-
-- Build MCP server once: `npm run build`
-- Run: `npm run ui:dev` (watches UI with hot reload)
-- Access UI at http://localhost:5173
-
-**Working on everything** (full-stack development):
-
-- Terminal 1: `npm run dev` (watches MCP server, V8, Portal)
-- Terminal 2: `npm run ui:dev` (watches UI with hot reload)
-- Access UI at http://localhost:5173
-
-**Tip:** The Max for Live device has a button to open http://localhost:3350/chat
-in your browser.
-
-### Architecture
-
-See `dev-docs/Chat-UI.md` for detailed information about:
+See [dev-docs/Chat-UI.md](dev-docs/Chat-UI.md) for architecture, component
+structure, and detailed development workflows.
 
 ## Documentation Site
 
 The project documentation is built with VitePress and deployed to
-https://producer-pal.org. The source files are in the `docs/` directory.
+https://producer-pal.org.
 
-Development commands:
+Quick commands:
 
-```bash
-npm run docs:dev     # Development server with hot reload
-npm run docs:build   # Build static site
-npm run docs:preview # Preview production build
-```
+- `npm run docs:dev` - Development server with hot reload
+- `npm run docs:build` - Build static site
+- `npm run docs:preview` - Preview production build
 
-The site automatically deploys to https://producer-pal.org when changes are
-pushed to the main branch.
+**Clean URLs**: Use `/installation/chat-ui` not `/installation/chat-ui.html`.
 
-**Clean URLs**: The site uses VitePress clean URLs (`cleanUrls: true`). When
-linking to pages within the docs, use clean URL format without trailing slashes
-(e.g., `/installation/chat-ui` instead of `/installation/chat-ui.html`). Page
-files are named after their folder (e.g., `docs/installation.md` instead of
-`docs/installation/index.md`), except for the top-level `docs/index.md`.
-
-See `dev-docs/Documentation-Site.md` for deployment details, configuration, and
-content guidelines.
+See [dev-docs/Documentation-Site.md](dev-docs/Documentation-Site.md) for
+deployment, configuration, and content guidelines.
 
 ## Testing and Debugging
 
-To test/debug, you can use:
+Quick commands:
 
-```
-DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
-```
+- `node scripts/cli.mjs tools/list` - List available tools
+- `node scripts/cli.mjs tools/call ppal-read-live-set '{}'` - Call a tool
+- `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
-and then open
-http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
+**Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
+must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
+cached tool definitions.
 
-Note: you can omit `DANGEROUSLY_OMIT_AUTH=true` but then you need to connect via
-proxy in the MCP inspector's settings, and the proxy session token needs to be
-set per the command line's output (it's randomly generated). Running
-`npx @modelcontextprotocol/inspector` will open a popup window with that so
-already configured, so you can use that window and then manually configure the
-streamable HTTP transport and URL.
+See [dev-docs/Development-Tools.md](dev-docs/Development-Tools.md) for the CLI
+tool, Raw Live API tool, MCP Inspector setup, debugging tips, and testing
+workflows.
 
-## Manual Testing Notes
+## Releasing
 
-**Important**: After changing tool descriptions in the Producer Pal code (like
-in `src/tools/**/*.def.js`), you must toggle the Producer Pal extension off/on
-in Claude Desktop to refresh the cached tool definitions. Simply rebuilding the
-code or restarting Claude Desktop is not sufficient - the extension must be
-disabled and re-enabled in Claude Desktop → Settings → Extensions to see updated
-tool descriptions.
+See [dev-docs/Releasing.md](dev-docs/Releasing.md) for the complete release
+process, including version bumping, building, creating GitHub releases, testing
+checklists, and publishing to npm.
 
 ## Coding Agents and AI Assistance
 
@@ -242,13 +161,9 @@ When using a chat project, copy `dev-docs/AI-Chat-Project-Instructions.md` into
 the project instructions for the AI chat app of choice. This file provides
 useful information similar to `AGENTS.md` but adapted for standalone chat apps.
 
-## Development Testing
+## Development Testing with Claude Code
 
-For development testing, there are two main approaches:
-
-### Direct MCP Connection (Preferred)
-
-Add the MCP server directly to Claude Code for the best development experience:
+For the best development experience, add the MCP server directly to Claude Code:
 
 ```sh
 claude mcp add --transport http producer-pal http://localhost:3350/mcp
@@ -259,74 +174,5 @@ claude mcp add --transport http producer-pal http://localhost:3350/mcp
 - Producer Pal Max for Live device must be running in Ableton Live before
   starting a Claude Code session
 - Run `npm run dev` for auto-rebuild on changes
-- Provides direct access to all producer-pal tools through Claude Code
 
-This approach is preferred for development testing as it provides seamless
-integration with Claude Code's MCP capabilities.
-
-### CLI Tool (Fallback)
-
-For situations where the direct MCP connection isn't available or working, use
-the CLI tool at `scripts/cli.mjs` to directly connect to the MCP server:
-
-```sh
-# Show server info (default)
-node scripts/cli.mjs
-
-# List available tools
-node scripts/cli.mjs tools/list
-
-# Call a tool with JSON arguments
-node scripts/cli.mjs tools/call ppal-read-live-set '{}'
-node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStart": "5|1"}'
-
-# Use a different server URL
-node scripts/cli.mjs http://localhost:6274/mcp tools/list
-
-# Show help
-node scripts/cli.mjs --help
-```
-
-This CLI tool connects directly to your running Ableton Live session and can
-help debug real-world issues by exercising the full MCP stack with actual Live
-data.
-
-## Development Tools
-
-### Raw Live API Access
-
-For development and debugging, a `ppal-raw-live-api` tool is available when
-building with `npm run dev` or `npm run build:all` (but NOT with the regular
-`npm run build`). This tool provides direct access to the Live API for research
-and advanced debugging:
-
-```sh
-# Example: Get tempo using multiple operation types
-node scripts/cli.mjs tools/call ppal-raw-live-api '{
-  "path": "live_set",
-  "operations": [
-    {"type": "get", "property": "tempo"},
-    {"type": "getProperty", "property": "tempo"}
-  ]
-}'
-
-# Example: Navigate to a track and check if it exists
-node scripts/cli.mjs tools/call ppal-raw-live-api '{
-  "operations": [
-    {"type": "goto", "value": "live_set tracks 0"},
-    {"type": "exists"},
-    {"type": "getProperty", "property": "name"}
-  ]
-}'
-```
-
-The `ppal-raw-live-api` tool supports 13 operation types including core
-operations (`get_property`, `set_property`, `call_method`), convenience
-shortcuts (`get`, `set`, `call`, `goto`, `info`), and extension methods
-(`getProperty`, `getChildIds`, `exists`, `getColor`, `setColor`).
-
-## Releasing
-
-See [dev-docs/Releasing.md](dev-docs/Releasing.md) for the complete release
-process, including version bumping, building, creating GitHub releases, testing
-checklists, and publishing to npm.
+This provides direct access to all producer-pal tools through Claude Code.
