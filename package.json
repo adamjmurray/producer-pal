@@ -112,7 +112,7 @@
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^62.0.0",
     "happy-dom": "^20.1.0",
-    "jscpd": "^4.0.5",
+    "jscpd": "^4.0.7",
     "peggy": "^5.0.6",
     "prettier": "^3.7.4",
     "rollup": "^4.55.1",
