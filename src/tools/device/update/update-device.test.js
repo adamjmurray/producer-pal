@@ -415,6 +415,7 @@ describe("updateDevice", () => {
     });
   });
 
+  // Division params tests are in update-device-division-params.test.js
   // macroVariation tests are in update-device-macro-variation.test.js
   // Chain and DrumPad tests are in update-device-chains.test.js
 

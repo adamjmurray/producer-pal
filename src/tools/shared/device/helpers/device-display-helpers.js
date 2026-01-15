@@ -104,6 +104,44 @@ export function isPanLabel(label) {
 }
 
 /**
+ * Check if a label is a division fraction format (e.g., "1/8", "1/16").
+ * @param {string} label - Display label
+ * @returns {boolean} True if label is a division fraction
+ */
+export function isDivisionLabel(label) {
+  return typeof label === "string" && /^1\/\d+$/.test(label);
+}
+
+/**
+ * Build result for division-type parameters with enum-like options.
+ * @param {object} paramApi - LiveAPI parameter object
+ * @param {string} name - Formatted parameter name
+ * @param {string|number} valueLabel - Current value label
+ * @param {number} rawMin - Raw minimum value
+ * @param {number} rawMax - Raw maximum value
+ * @returns {object} Parameter result with value and options
+ */
+function buildDivisionParamResult(paramApi, name, valueLabel, rawMin, rawMax) {
+  // Enumerate all integer values as options
+  const minInt = Math.ceil(Math.min(rawMin, rawMax));
+  const maxInt = Math.floor(Math.max(rawMin, rawMax));
+  const options = [];
+
+  for (let i = minInt; i <= maxInt; i++) {
+    const label = paramApi.call("str_for_value", i);
+
+    options.push(typeof label === "number" ? String(label) : label);
+  }
+
+  return {
+    id: paramApi.id,
+    name,
+    value: typeof valueLabel === "number" ? String(valueLabel) : valueLabel,
+    options,
+  };
+}
+
+/**
  * Normalize pan value to -1 to 1 range.
  * @param {string} label - Pan label (e.g., "50L", "C", "50R")
  * @param {number} maxPanValue - Maximum pan value (e.g., 50)
@@ -186,6 +224,22 @@ export function readParameter(paramApi) {
   const valueLabel = paramApi.call("str_for_value", rawValue);
   const minLabel = paramApi.call("str_for_value", rawMin);
   const maxLabel = paramApi.call("str_for_value", rawMax);
+
+  // Check for division-type params (fraction format like "1/8")
+  if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {
+    const result = buildDivisionParamResult(
+      paramApi,
+      name,
+      valueLabel,
+      rawMin,
+      rawMax,
+    );
+
+    addStateFlags(result, paramApi, state, automationState);
+
+    return result;
+  }
+
   const valueParsed = parseLabel(valueLabel);
   const minParsed = parseLabel(minLabel);
   const maxParsed = parseLabel(maxLabel);

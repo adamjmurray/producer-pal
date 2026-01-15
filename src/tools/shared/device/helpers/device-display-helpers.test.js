@@ -4,6 +4,7 @@ import {
   AUTOMATION_STATE_MAP,
   PARAM_STATE_MAP,
   extractMaxPanValue,
+  isDivisionLabel,
   isPanLabel,
   normalizePan,
   parseLabel,
@@ -168,6 +169,26 @@ describe("device-display-helpers", () => {
       expect(isPanLabel("Center")).toBe(false);
       expect(isPanLabel(null)).toBe(false);
       expect(isPanLabel()).toBe(false);
+    });
+  });
+
+  describe("isDivisionLabel", () => {
+    it("returns true for division fraction labels", () => {
+      expect(isDivisionLabel("1/8")).toBe(true);
+      expect(isDivisionLabel("1/16")).toBe(true);
+      expect(isDivisionLabel("1/64")).toBe(true);
+      expect(isDivisionLabel("1/4")).toBe(true);
+      expect(isDivisionLabel("1/2")).toBe(true);
+    });
+
+    it("returns false for non-division labels", () => {
+      expect(isDivisionLabel("2/4")).toBe(false); // must start with 1/
+      expect(isDivisionLabel("1")).toBe(false);
+      expect(isDivisionLabel("1/")).toBe(false);
+      expect(isDivisionLabel("50 Hz")).toBe(false);
+      expect(isDivisionLabel(null)).toBe(false);
+      expect(isDivisionLabel(undefined)).toBe(false);
+      expect(isDivisionLabel(123)).toBe(false);
     });
   });
 
@@ -475,6 +496,106 @@ describe("device-display-helpers", () => {
       const result = readParameter(mockParamApi);
 
       expect(result.enabled).toBe(false);
+    });
+
+    it("reads division parameter with enum-like value and options", () => {
+      // Division params like Echo's L Division have raw values -6 to 0
+      // that map to "1/64" through "1"
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["L Division"];
+        if (prop === "original_name") return ["L Division"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [-3]; // corresponds to "1/8"
+        if (prop === "min") return [-6];
+        if (prop === "max") return [0];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      // Map raw values to division strings
+      const divisionMap = {
+        "-6": "1/64",
+        "-5": "1/32",
+        "-4": "1/16",
+        "-3": "1/8",
+        "-2": "1/4",
+        "-1": "1/2",
+        0: 1, // Note: returns number, not string
+      };
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          return divisionMap[String(value)] || "";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_9",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_9",
+        name: "L Division",
+        value: "1/8",
+        options: ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"],
+      });
+    });
+
+    it("handles division param detected via minLabel", () => {
+      // Edge case: current value is "1" (not a fraction) but min is "1/64"
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Division"];
+        if (prop === "original_name") return ["Division"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0]; // corresponds to "1"
+        if (prop === "min") return [-2];
+        if (prop === "max") return [0];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      const divisionMap = {
+        "-2": "1/4",
+        "-1": "1/2",
+        0: 1,
+      };
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          return divisionMap[String(value)] || "";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_10",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_10",
+        name: "Division",
+        value: "1",
+        options: ["1/4", "1/2", "1"],
+      });
     });
   });
 });

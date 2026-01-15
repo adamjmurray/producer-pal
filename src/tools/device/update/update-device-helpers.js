@@ -1,6 +1,9 @@
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { isPanLabel } from "#src/tools/shared/device/helpers/device-display-helpers.js";
+import {
+  isDivisionLabel,
+  isPanLabel,
+} from "#src/tools/shared/device/helpers/device-display-helpers.js";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 // ============================================================================
@@ -187,8 +190,51 @@ function setParamValue(param, inputValue) {
     return;
   }
 
-  // 4. All other numeric - set display_value directly
+  // 4. Division params - string input matching fraction format (e.g., "1/8")
+  const minLabel = param.call("str_for_value", param.getProperty("min"));
+
+  if (isDivisionLabel(currentLabel) || isDivisionLabel(minLabel)) {
+    const rawValue = findDivisionRawValue(param, inputValue);
+
+    if (rawValue != null) {
+      param.set("value", rawValue);
+    } else {
+      console.error(
+        `updateDevice: "${inputValue}" is not a valid division option`,
+      );
+    }
+
+    return;
+  }
+
+  // 5. All other numeric - set display_value directly
   param.set("display_value", inputValue);
+}
+
+/**
+ * Find the raw value for a division parameter by matching input to str_for_value
+ * @param {object} param - LiveAPI parameter object
+ * @param {string|number} inputValue - Target value (e.g., "1/8" or "1")
+ * @returns {number|null} Raw value or null if not found
+ */
+function findDivisionRawValue(param, inputValue) {
+  const min = param.getProperty("min");
+  const max = param.getProperty("max");
+  const minInt = Math.ceil(Math.min(min, max));
+  const maxInt = Math.floor(Math.max(min, max));
+  const targetLabel =
+    typeof inputValue === "number" ? String(inputValue) : inputValue;
+
+  for (let i = minInt; i <= maxInt; i++) {
+    const label = param.call("str_for_value", i);
+    const labelStr = typeof label === "number" ? String(label) : label;
+
+    if (labelStr === targetLabel) {
+      return i;
+    }
+  }
+
+  return null;
 }
 
 // ============================================================================
