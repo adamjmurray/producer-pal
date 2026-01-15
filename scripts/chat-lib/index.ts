@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { DEFAULT_MODEL as GEMINI_DEFAULT } from "./gemini/config.ts";
 import { runGemini } from "./gemini.ts";
+import { DEFAULT_MODEL as OPENAI_DEFAULT } from "./openai/config.ts";
 import { runOpenAI } from "./openai/index.ts";
+import { DEFAULT_MODEL as OPENROUTER_DEFAULT } from "./openrouter/config.ts";
 import { runOpenRouter } from "./openrouter/index.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
+const providerHelp = `AI provider:
+  gemini     (default: ${GEMINI_DEFAULT})
+  openai     (default: ${OPENAI_DEFAULT})
+  openrouter (default: ${OPENROUTER_DEFAULT})`;
+
 program
   .name("chat")
   .description("Chat with AI providers")
   .showHelpAfterError(true)
-  .requiredOption(
-    "--provider <provider>",
-    "AI provider (gemini, openai, openrouter)",
-  )
+  .requiredOption("--provider <provider>", providerHelp)
   .option(
     "--api <api>",
     "API style (chat, responses) - defaults: openai=responses, openrouter=chat",

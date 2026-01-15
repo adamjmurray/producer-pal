@@ -27,6 +27,7 @@ import type {
   OpenRouterResponse,
   OpenRouterStreamChunk,
 } from "../shared/types.ts";
+import { DEFAULT_MODEL } from "./config.ts";
 
 // OpenRouter extends OpenAI's API with additional fields like `reasoning`
 type OpenRouterNonStreamingParams = ChatCompletionCreateParamsNonStreaming & {
@@ -38,7 +39,6 @@ type OpenRouterStreamingParams = ChatCompletionCreateParamsStreaming & {
 };
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 const HTTP_REFERER_HEADER = "HTTP-Referer";
 const REFERER_URL = "https://producer-pal.org";
 const X_TITLE_HEADER = "X-Title";

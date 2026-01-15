@@ -25,6 +25,7 @@ import type {
   OpenRouterResponse,
   OpenRouterStreamChunk,
 } from "../shared/types.ts";
+import { DEFAULT_MODEL } from "./config.ts";
 
 // OpenAI Chat API with reasoning_effort extension
 type OpenAINonStreamingParams = ChatCompletionCreateParamsNonStreaming & {
@@ -34,8 +35,6 @@ type OpenAINonStreamingParams = ChatCompletionCreateParamsNonStreaming & {
 type OpenAIStreamingParams = ChatCompletionCreateParamsStreaming & {
   reasoning_effort?: "none" | "low" | "medium" | "high" | "xhigh";
 };
-
-const DEFAULT_MODEL = "gpt-5.2-2025-12-11";
 
 interface SessionContext {
   client: OpenAI;

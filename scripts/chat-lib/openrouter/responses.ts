@@ -26,9 +26,9 @@ import type {
   ResponsesStreamEvent,
   ResponsesStreamState,
 } from "../shared/types.ts";
+import { DEFAULT_MODEL } from "./config.ts";
 
 const OPENROUTER_RESPONSES_URL = "https://openrouter.ai/api/v1/responses";
-const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 const OPENROUTER_HEADERS = {
   "Content-Type": "application/json",
   "HTTP-Referer": "https://producer-pal.org",

@@ -4,6 +4,7 @@ import {
   mcpToTool,
   type GenerateContentConfig,
 } from "@google/genai";
+import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
   startThought,
   continueThought,
@@ -20,9 +21,6 @@ import {
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
 import type { ChatOptions } from "./shared/types.ts";
-
-// Default model for Gemini
-const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
 interface ResponsePart {
   text?: string;

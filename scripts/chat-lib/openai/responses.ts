@@ -28,12 +28,11 @@ import type {
   OpenAIThinkingLevel,
   OpenAIStreamState,
 } from "../shared/types.ts";
+import { DEFAULT_MODEL } from "./config.ts";
 import {
   extractReasoningText,
   processStreamEvent,
 } from "./responses-streaming.ts";
-
-const DEFAULT_MODEL = "gpt-5.2-2025-12-11";
 
 type SessionContext = {
   client: OpenAI;
