@@ -641,6 +641,7 @@ export default [
       "src/**/*.js",
       "scripts/**/*.js",
       "scripts/**/*.mjs",
+      "scripts/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],

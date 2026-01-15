@@ -2,8 +2,8 @@
 
 import { Command } from "commander";
 import { runGemini } from "./gemini.ts";
-import { runOpenAI } from "./openai.ts";
-import { runOpenRouter } from "./openrouter.ts";
+import { runOpenAI } from "./openai/index.ts";
+import { runOpenRouter } from "./openrouter/index.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
@@ -16,7 +16,10 @@ program
     "--provider <provider>",
     "AI provider (gemini, openai, openrouter)",
   )
-  .option("--api <api>", "API style for OpenRouter (chat, responses)", "chat")
+  .option(
+    "--api <api>",
+    "API style (chat, responses) - defaults: openai=responses, openrouter=chat",
+  )
   .option("-m, --model <model>", "Model to use")
   .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all API responses)")
@@ -40,14 +43,10 @@ program
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");
 
-    // Warn if --api is used with non-OpenRouter providers
-    if (
-      options.api &&
-      options.api !== "chat" &&
-      options.provider !== "openrouter"
-    ) {
+    // Warn if --api is used with Gemini (only applies to openai/openrouter)
+    if (options.api && options.provider === "gemini") {
       console.warn(
-        `Warning: --api flag only applies to OpenRouter provider (ignored for ${options.provider})`,
+        `Warning: --api flag does not apply to Gemini provider (ignored)`,
       );
     }
 

@@ -204,3 +204,77 @@ export type ResponsesConversationItem =
       arguments: string;
     }
   | { type: "function_call_output"; call_id: string; output: string };
+
+export interface ResponsesRequestBody {
+  model: string;
+  input: ResponsesConversationItem[];
+  tools?: ChatTool[];
+  reasoning?: OpenRouterReasoningConfig;
+  max_output_tokens?: number;
+  temperature?: number;
+  instructions?: string;
+  stream?: boolean;
+}
+
+export interface ResponsesStreamState {
+  inThought: boolean;
+  currentContent: string;
+  currentReasoning: string;
+  functionCalls: Map<string, { name: string; arguments: string }>;
+}
+
+// OpenAI Responses API types (used by OpenAI SDK responses.create())
+export interface OpenAIConversationItem {
+  type: string;
+  role?: string;
+  content?: string | Array<{ type: string; text?: string }>;
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+  output?: string;
+  id?: string;
+  status?: string;
+}
+
+export interface OpenAIResponseOutput {
+  type: string;
+  id?: string;
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+  content?: Array<{ type: string; text?: string }>;
+  status?: string;
+  summary?: unknown;
+  text?: string;
+}
+
+export interface OpenAIResponsesResult {
+  id: string;
+  output: OpenAIResponseOutput[];
+}
+
+export interface OpenAIStreamState {
+  inThought: boolean;
+  displayedReasoning: boolean;
+  pendingFunctionCalls: Map<string, { name: string; call_id: string }>;
+  toolResults: Map<string, string>;
+  hasToolCalls: boolean;
+}
+
+export interface OpenAIStreamEvent {
+  type: string;
+  delta?: { text?: string } | string;
+  item_id?: string;
+  arguments?: string;
+  item?: { id: string; type: string; name?: string; call_id?: string };
+  response?: { output?: OpenAIResponseOutput[] };
+}
+
+export interface OpenAIResponsesSessionContext {
+  client: unknown; // OpenAI client
+  mcpClient: unknown; // MCP client from connectMcp
+  tools: unknown; // Tools from getMcpToolsForOpenAI
+  conversation: OpenAIConversationItem[];
+  model: string;
+  options: ChatOptions;
+}
