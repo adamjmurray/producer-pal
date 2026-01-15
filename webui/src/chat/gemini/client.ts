@@ -1,7 +1,7 @@
 import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai/web";
 import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { createConnectedMcpClient } from "#webui/chat/helpers/mcp-client-helpers";
 import type { GeminiMessage } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import {
@@ -61,13 +61,7 @@ export class GeminiClient {
    * Initializes the MCP connection and creates a Gemini chat session.
    */
   async initialize(): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
-
-    this.mcpClient = new Client({
-      name: "producer-pal-chat-ui",
-      version: "1.0.0",
-    });
-    await this.mcpClient.connect(transport);
+    this.mcpClient = await createConnectedMcpClient(this.mcpUrl);
 
     const toolsResult = await this.mcpClient.listTools();
     const enabledTools = this.config.enabledTools;

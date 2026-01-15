@@ -17,17 +17,19 @@ function createMockChat(name: string) {
 function renderConversationLock(initialProvider: Provider = "gemini") {
   const geminiChat = createMockChat("gemini");
   const openaiChat = createMockChat("openai");
+  const responsesChat = createMockChat("responses");
   const hook = renderHook(
     ({ provider }: { provider: Provider }) =>
       useConversationLock({
         settingsProvider: provider,
         geminiChat,
         openaiChat,
+        responsesChat,
       }),
     { initialProps: { provider: initialProvider } },
   );
 
-  return { ...hook, geminiChat, openaiChat };
+  return { ...hook, geminiChat, openaiChat, responsesChat };
 }
 
 describe("useConversationLock", () => {
@@ -55,7 +57,7 @@ describe("useConversationLock", () => {
     expect(result.current.chat.name).toBe("gemini");
 
     rerender({ provider: "openai" });
-    expect(result.current.chat.name).toBe("openai"); // Switches since no lock
+    expect(result.current.chat.name).toBe("responses"); // OpenAI uses Responses API
   });
 
   it("clears lock on clearConversation", async () => {
@@ -72,7 +74,7 @@ describe("useConversationLock", () => {
       result.current.wrappedClearConversation();
     });
     expect(geminiChat.clearConversation).toHaveBeenCalled();
-    expect(result.current.chat.name).toBe("openai"); // Now unlocked
+    expect(result.current.chat.name).toBe("responses"); // Now unlocked, OpenAI uses Responses
   });
 
   it("passes message options to handleSend", async () => {
@@ -85,10 +87,10 @@ describe("useConversationLock", () => {
     expect(geminiChat.handleSend).toHaveBeenCalledWith("Hello", options);
   });
 
-  it("routes to openai when settingsProvider is openai", () => {
+  it("routes to responses chat when settingsProvider is openai", () => {
     const { result } = renderConversationLock("openai");
 
-    expect(result.current.chat.name).toBe("openai");
+    expect(result.current.chat.name).toBe("responses");
   });
 
   it("routes non-gemini providers to openai chat", () => {

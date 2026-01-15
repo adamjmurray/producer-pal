@@ -1,3 +1,4 @@
+import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
 import type { ReasoningDetail } from "#webui/chat/openai/client";
 import type {
   OpenAIMessage,
@@ -178,22 +179,6 @@ function processMessageContent(
 
   // Add tool calls
   processToolCalls(msg, parts, history, rawIndex);
-}
-
-/**
- * Mark the last thought part as open if it exists
- * @param {UIMessage[]} messages - Array of UI messages
- */
-function markLastThoughtAsOpen(messages: UIMessage[]): void {
-  const lastMessage = messages.at(-1);
-
-  if (!lastMessage) return;
-
-  const lastPart = lastMessage.parts.at(-1);
-
-  if (lastPart?.type === "thought") {
-    lastPart.isOpen = true;
-  }
 }
 
 /**

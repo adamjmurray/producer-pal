@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { OpenAIClient } from "./client";
+import { OpenAIClient } from "#webui/chat/openai/client";
 import {
   createMockMcpClient,
   createMockStreamingResponse,

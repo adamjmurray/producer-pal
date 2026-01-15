@@ -3,7 +3,7 @@ import {
   expectValidTimestamps,
   stripTimestamps,
 } from "#webui/test-utils/message-test-utils";
-import { formatOpenAIMessages } from "./formatter";
+import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { expected, history } from "./test-cases/formatter/basic-test-case";
 import {
   expectedWithEmptyToolCallArgs,

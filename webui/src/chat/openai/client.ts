@@ -1,6 +1,9 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import OpenAI from "openai";
+import {
+  createConnectedMcpClient,
+  filterEnabledTools,
+} from "#webui/chat/helpers/mcp-client-helpers";
 import type { ReasoningEffort } from "#webui/hooks/settings/config-builders";
 import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
@@ -105,13 +108,7 @@ export class OpenAIClient {
    * @throws If MCP connection fails
    */
   async initialize(): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
-
-    this.mcpClient = new Client({
-      name: "producer-pal-chat-ui",
-      version: "1.0.0",
-    });
-    await this.mcpClient.connect(transport);
+    this.mcpClient = await createConnectedMcpClient(this.mcpUrl);
   }
 
   /**
@@ -191,10 +188,10 @@ export class OpenAIClient {
       throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
 
-    const enabledTools = this.config.enabledTools;
-    const filteredTools = enabledTools
-      ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
-      : toolsResult.tools;
+    const filteredTools = filterEnabledTools(
+      toolsResult.tools,
+      this.config.enabledTools,
+    );
 
     return filteredTools.map((tool) => ({
       type: "function",

@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
+import type { ResponsesConversationItem } from "#webui/types/responses-api";
 import {
   handleMessageStream,
   createGeminiErrorMessage,
   createOpenAIErrorMessage,
+  createResponsesErrorMessage,
   validateMcpConnection,
 } from "./streaming-helpers";
 
@@ -101,6 +103,47 @@ describe("streaming-helpers", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
+    });
+  });
+
+  describe("createResponsesErrorMessage", () => {
+    it("should create error message", () => {
+      const conversation: ResponsesConversationItem[] = [];
+      const result = createResponsesErrorMessage(conversation, "Test error");
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.role).toBe("model");
+      const firstPart = result[0]?.parts[0];
+
+      expect(firstPart?.type).toBe("error");
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
+        "Error: Test error",
+      );
+    });
+
+    it("should preserve existing conversation in formatted output", () => {
+      const conversation: ResponsesConversationItem[] = [
+        { type: "message", role: "user", content: "Hello" },
+      ];
+      const result = createResponsesErrorMessage(conversation, "Test error");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.role).toBe("user");
+      expect(result[1]?.role).toBe("model");
+    });
+
+    it("should handle Error objects", () => {
+      const conversation: ResponsesConversationItem[] = [];
+      const result = createResponsesErrorMessage(
+        conversation,
+        new Error("Something failed"),
+      );
+
+      const firstPart = result[0]?.parts[0];
+
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
+        "Error: Something failed",
+      );
     });
   });
 

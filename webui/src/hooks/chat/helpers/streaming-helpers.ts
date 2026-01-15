@@ -1,11 +1,13 @@
 import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
+import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import type {
   GeminiMessage,
   OpenAIMessage,
   UIMessage,
 } from "#webui/types/messages";
+import type { ResponsesConversationItem } from "#webui/types/responses-api";
 
 /**
  * Generic streaming handler for chat messages.
@@ -103,4 +105,33 @@ export async function validateMcpConnection(
     await checkMcpConnection();
     throw new Error(`MCP connection failed: ${mcpError}`);
   }
+}
+
+/**
+ * Creates a Responses API error message from an exception and conversation
+ * @param conversation - Current conversation history
+ * @param error - Error object or message
+ * @returns Formatted messages with error appended
+ */
+export function createResponsesErrorMessage(
+  conversation: ResponsesConversationItem[],
+  error: unknown,
+): UIMessage[] {
+  const errorMessage = normalizeErrorMessage(error);
+  const formattedHistory = formatResponsesMessages(conversation);
+
+  const errorMessage_ui: UIMessage = {
+    role: "model",
+    parts: [
+      {
+        type: "error",
+        content: errorMessage,
+        isError: true,
+      },
+    ],
+    rawHistoryIndex: conversation.length,
+    timestamp: Date.now(),
+  };
+
+  return [...formattedHistory, errorMessage_ui];
 }

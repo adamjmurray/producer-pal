@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateEffectiveSettings } from "./message-overrides";
+import { calculateEffectiveSettings } from "#webui/chat/openai/message-overrides";
 
 describe("calculateEffectiveSettings", () => {
   // gpt-5.2 supports full reasoning_effort options including none and xhigh

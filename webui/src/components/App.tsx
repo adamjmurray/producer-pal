@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "preact/hooks";
 import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { openaiAdapter } from "#webui/hooks/chat/openai-adapter";
+import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
+import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
@@ -81,7 +82,7 @@ export function App() {
     extraParams: { showThoughts: settings.showThoughts },
   });
 
-  // Use OpenAI chat for OpenAI-compatible providers
+  // Use OpenAI Chat Completions API for OpenAI-compatible providers (OpenRouter, Mistral, etc.)
   const openaiChat = useChat({
     provider: settings.provider,
     apiKey:
@@ -95,8 +96,23 @@ export function App() {
     mcpStatus,
     mcpError,
     checkMcpConnection,
-    adapter: openaiAdapter,
+    adapter: openaiChatAdapter,
     extraParams: { baseUrl, showThoughts: settings.showThoughts },
+  });
+
+  // Use OpenAI Responses API for official OpenAI provider (supports Codex models)
+  const responsesChat = useChat({
+    provider: settings.provider,
+    apiKey: settings.apiKey,
+    model: settings.model,
+    thinking: settings.thinking,
+    temperature: settings.temperature,
+    enabledTools: settings.enabledTools,
+    mcpStatus,
+    mcpError,
+    checkMcpConnection,
+    adapter: responsesAdapter,
+    extraParams: { showThoughts: settings.showThoughts },
   });
 
   // Lock conversation to the provider used when chat started
@@ -105,6 +121,7 @@ export function App() {
       settingsProvider: settings.provider,
       geminiChat,
       openaiChat,
+      responsesChat,
     });
 
   // Calculate tools counts for header display

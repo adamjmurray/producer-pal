@@ -9,9 +9,10 @@ import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 import type { ChatAdapter } from "./use-chat";
 
 /**
- * OpenAI provider adapter for use with the generic useChat hook
+ * OpenAI Chat Completions API adapter for use with the generic useChat hook.
+ * Used for OpenRouter, Mistral, LM Studio, Ollama, and other OpenAI-compatible providers.
  */
-export const openaiAdapter: ChatAdapter<
+export const openaiChatAdapter: ChatAdapter<
   OpenAIClient,
   OpenAIMessage,
   OpenAIClientConfig
