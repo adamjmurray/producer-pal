@@ -90,14 +90,15 @@ jobs:
         with:
           node-version: "22.x"
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build parser
         run: npm run parser:build
 
       - name: Run tests with coverage
         id: tests
-        run: FORCE_COLOR=3 npm run test:coverage
+        run: FORCE_COLOR=3 npm run test:coverage:verbose
 
       - name: Report Coverage
         id: summary
