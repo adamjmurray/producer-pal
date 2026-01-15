@@ -45,22 +45,27 @@ export interface ChatLoopCallbacks<TSession> {
   ) => Promise<void>;
 }
 
+export interface ChatLoopConfig {
+  initialText: string;
+  singleResponse?: boolean;
+}
+
 /**
  * Run an interactive chat loop
  *
  * @param session - Chat session context
  * @param rl - Readline interface
- * @param initialText - Initial text to send
+ * @param config - Loop configuration
  * @param callbacks - Callback functions for the loop
  */
 export async function runChatLoop<TSession>(
   session: TSession,
   rl: Interface,
-  initialText: string,
+  config: ChatLoopConfig,
   callbacks: ChatLoopCallbacks<TSession>,
 ): Promise<void> {
   let turnCount = 0;
-  let currentInput = initialText;
+  let currentInput = config.initialText;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
@@ -77,6 +82,8 @@ export async function runChatLoop<TSession>(
     console.log(`\n[Turn ${turnCount}] User: ${currentInput}`);
 
     await callbacks.sendMessage(session, currentInput, turnCount);
+
+    if (config.singleResponse) break;
 
     currentInput = await question(rl, "\n> ");
   }

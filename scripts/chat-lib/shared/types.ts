@@ -29,6 +29,7 @@ export interface ChatOptions {
   randomness?: number;
   outputTokens?: number;
   systemPrompt?: string;
+  singleResponse?: boolean;
 }
 
 export interface ChatContext {

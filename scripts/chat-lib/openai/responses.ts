@@ -80,7 +80,7 @@ export async function runOpenAIResponses(
     await runChatLoop(
       { client, mcpClient, tools, conversation: [], model, options },
       rl,
-      initialText,
+      { initialText, singleResponse: options.singleResponse },
       { sendMessage },
     );
   } catch (error) {

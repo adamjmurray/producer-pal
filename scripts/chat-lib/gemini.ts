@@ -105,7 +105,12 @@ export async function runGemini(
   };
 
   try {
-    await runChatLoop({ chatSession, options }, rl, initialText, callbacks);
+    await runChatLoop(
+      { chatSession, options },
+      rl,
+      { initialText, singleResponse: options.singleResponse },
+      callbacks,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 

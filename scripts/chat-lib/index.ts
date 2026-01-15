@@ -39,6 +39,7 @@ program
   )
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
   .option("-p, --system-prompt <text>", "System instructions")
+  .option("--single-response", "Exit after generating one response")
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");

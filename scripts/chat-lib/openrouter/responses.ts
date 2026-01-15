@@ -93,7 +93,7 @@ export async function runOpenRouterResponses(
     await runChatLoop(
       { mcpClient, tools, conversation, model, options },
       rl,
-      initialText,
+      { initialText, singleResponse: options.singleResponse },
       { sendMessage: sendMessageResponses },
     );
   } catch (error) {
