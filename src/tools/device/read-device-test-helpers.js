@@ -1,4 +1,9 @@
-import { liveApiGet, liveApiId, liveApiType } from "#src/test/mock-live-api.js";
+import {
+  liveApiCall,
+  liveApiGet,
+  liveApiId,
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 
 // Helper functions for mock property lookup
 const getPadProperty = (id, prop, padProperties) => {
@@ -96,4 +101,81 @@ export function setupDrumPadMocks(config) {
 
     return [];
   });
+}
+
+// Mock path constants for param tests
+const DEVICE_PATH = "id device-123";
+const PARAM_PATH = "id param-1";
+
+// Default device properties for Operator instrument
+const DEFAULT_DEVICE_PROPS = {
+  name: "Operator",
+  class_display_name: "Operator",
+  type: 1,
+  can_have_chains: 0,
+  can_have_drum_pads: 0,
+  is_active: 1,
+};
+
+// Default parameter properties for numeric params
+const DEFAULT_PARAM_PROPS = {
+  name: "Volume",
+  original_name: "Volume",
+  value: 0.5,
+  state: 0,
+  is_enabled: 1,
+  automation_state: 0,
+  min: 0,
+  max: 1,
+  is_quantized: 0,
+  default_value: 0.7,
+  display_value: -6,
+};
+
+/**
+ * Setup mocks for device parameter tests.
+ * @param {object} config - Configuration for the mocks
+ * @param {object} [config.device] - Device properties (merged with defaults)
+ * @param {object} [config.param] - Param properties (merged with defaults)
+ * @param {function} [config.strForValue] - Custom str_for_value handler
+ */
+export function setupDeviceParamMocks(config = {}) {
+  const { device = {}, param = {}, strForValue } = config;
+  const deviceProps = { ...DEFAULT_DEVICE_PROPS, ...device };
+  const paramProps = { ...DEFAULT_PARAM_PROPS, ...param };
+
+  liveApiId.mockImplementation(function () {
+    if (this._path === DEVICE_PATH) return "device-123";
+    if (this._path === PARAM_PATH) return "param-1";
+
+    return "0";
+  });
+
+  liveApiGet.mockImplementation(function (prop) {
+    if (this._path === DEVICE_PATH) {
+      if (prop === "parameters") return ["id", "param-1"];
+
+      return deviceProps[prop] != null ? [deviceProps[prop]] : [];
+    }
+
+    if (this._path === PARAM_PATH) {
+      if (prop === "value_items" && paramProps.value_items) {
+        return paramProps.value_items;
+      }
+
+      return paramProps[prop] != null ? [paramProps[prop]] : [];
+    }
+
+    return [];
+  });
+
+  if (strForValue) {
+    liveApiCall.mockImplementation(function (method, value) {
+      if (this._path === PARAM_PATH && method === "str_for_value") {
+        return strForValue(value);
+      }
+
+      return [];
+    });
+  }
 }
