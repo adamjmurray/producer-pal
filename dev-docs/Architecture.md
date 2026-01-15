@@ -5,23 +5,25 @@
 Producer Pal integrates with Ableton Live through a Max for Live device using
 the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
-## Architecture Diagram
+## Architecture Diagrams
 
-This shows how things work end-to-end with Claude Desktop. Other LLMs can use
-Producer Pal by running the Producer Pal Portal (stdio MCP server) or connecting
-directly to the MCP server inside Ableton Live via http. It's possible to run
-LLMs locally with no online dependencies.
+### MCP Host with stdio Transport
+
+This shows how MCP hosts like Claude Desktop or LM Studio connect via the
+Producer Pal Portal (stdio-to-HTTP adapter). It's also possible to run LLMs
+locally with no online dependencies.
 
 ```
-     +-----------------+
-     | Anthropic Cloud |
-     +-----------------+
+  +-----------------------+
+  | LLM Cloud / Local LLM |
+  +-----------------------+
              ↑
-             | Anthropic API
+             | LLM API (streaming)
              ↓
-     +---------------+
-     | Claude Desktop |
-     +---------------+
+     +----------------+
+     | MCP Host (e.g. |
+     | Claude Desktop)|
+     +----------------+
              ↑
              | MCP stdio transport (via Claude Desktop extension)
              ↓
@@ -49,6 +51,45 @@ LLMs locally with no online dependencies.
 |  |  +---------------+    |  |
 |  +-----------------------+  |
 +-----------------------------+
+```
+
+### Built-in Chat UI
+
+This shows how things work with the built-in chat UI. The browser loads the chat
+UI from the MCP server's Express app and connects directly to the LLM API.
+
+```
+ +-----------------------+
+ | LLM Cloud / Local LLM |
+ +-----------------------+
+             ↑
+             | LLM API (streaming)
+             ↓
+     +---------------+
+     |    Browser    |
+     |   (Chat UI)   |
+     +---------------+
+         ↑       ↑
+         |       | MCP streamable HTTP transport
+         |       ↓
+         |   +-----------------------------+
+   serves|   |        Ableton Live         |
+   HTML  |   |  +-----------------------+  |
+         |   |  |  Max for Live Device  |  |
+         |   |  |  +---------------+    |  |
+         +---|--|--| Node for Max  |    |  |
+             |  |  | (MCP Server + |    |  |
+             |  |  |  Express app) |    |  |
+             |  |  +---------------+    |  |
+             |  |         ↑             |  |
+             |  |         | Max message |  |
+             |  |         ↓             |  |
+             |  |  +---------------+    |  |
+             |  |  |      v8       |    |  |
+             |  |  |  (Live API)   |    |  |
+             |  |  +---------------+    |  |
+             |  +-----------------------+  |
+             +-----------------------------+
 ```
 
 ## Language Choices
