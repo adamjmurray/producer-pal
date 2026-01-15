@@ -95,7 +95,7 @@
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.6",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^25.0.6",
+    "@types/node": "^25.0.8",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
     "@vitest/coverage-v8": "^4.0.17",
@@ -111,16 +111,16 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^62.0.0",
-    "happy-dom": "^20.1.0",
+    "happy-dom": "^20.3.0",
     "jscpd": "^4.0.7",
     "peggy": "^5.0.6",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.0",
     "rollup": "^4.55.1",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-singlefile": "^2.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   }
 }
