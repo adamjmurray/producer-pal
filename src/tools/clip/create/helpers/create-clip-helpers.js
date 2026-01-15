@@ -252,7 +252,6 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         sampleFile,
-        clipLength,
       );
 
       clip = result.clip;

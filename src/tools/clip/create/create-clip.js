@@ -207,7 +207,7 @@ function createClips(
   const createdClips = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
   const count = positions.length;
-  let clipLength = initialClipLength;
+  const clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
     const clipName = buildClipName(name, count, i);
@@ -252,13 +252,6 @@ function createClips(
       );
 
       createdClips.push(clipResult);
-
-      // For audio clips, get actual length from first successful clip
-      if (sampleFile && createdClips.length === 1) {
-        const firstClip = LiveAPI.from(clipResult.id);
-
-        clipLength = firstClip.getProperty("length");
-      }
     } catch (error) {
       // Emit warning with position info
       const position =
@@ -314,8 +307,7 @@ function prepareClipData(
   let clipLength;
 
   if (sampleFile) {
-    // For audio clips, we'll get the length from the first created clip
-    // Use 1 as a placeholder for now
+    // Audio clips get length from the sample file, not this value
     clipLength = 1;
   } else {
     // MIDI clips: calculate based on notes and parameters

@@ -62,14 +62,12 @@ export function createAudioSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @param {number} _clipLength - Unused (kept for signature consistency)
  * @returns {object} - Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
   arrangementStartBeats,
   sampleFile,
-  _clipLength,
 ) {
   // Live API limit check
   if (arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS) {
