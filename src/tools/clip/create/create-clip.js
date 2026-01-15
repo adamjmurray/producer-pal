@@ -255,7 +255,7 @@ function createClips(
 
       // For audio clips, get actual length from first successful clip
       if (sampleFile && createdClips.length === 1) {
-        const firstClip = new LiveAPI(clipResult.id);
+        const firstClip = LiveAPI.from(clipResult.id);
 
         clipLength = firstClip.getProperty("length");
       }
