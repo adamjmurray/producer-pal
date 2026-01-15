@@ -151,27 +151,12 @@ function processItem(
 }
 
 /**
- * Check if we should start a new message instead of merging
- * @param conversation - Full conversation
- * @param index - Current index
- * @returns True if previous item was function_call_output (response boundary)
- */
-function isPreviousItemToolOutput(
-  conversation: ResponsesConversationItem[],
-  index: number,
-): boolean {
-  const prevItem = conversation[index - 1];
-
-  return prevItem?.type === "function_call_output";
-}
-
-/**
  * Formats Responses API conversation items into a UI-friendly structure.
  *
  * Transformations applied:
  * 1. Filters system messages (internal configuration)
  * 2. Skips function_call_output items (merged into assistant tool parts)
- * 3. Merges consecutive assistant items into single messages (within same API response)
+ * 3. Merges consecutive assistant items into single messages
  * 4. Integrates tool results by matching call_id
  * 5. Converts items into typed parts for the UI
  * 6. Marks the last thought part with isOpen: true for activity indicators
@@ -195,11 +180,8 @@ export function formatResponsesMessages(
     const lastMessage = messages.at(-1);
     const isAssistant = isAssistantItem(item);
 
-    // Start new message if: not assistant, no previous, or crossed API response boundary
-    const shouldMerge =
-      lastMessage?.role === "model" &&
-      isAssistant &&
-      !isPreviousItemToolOutput(conversation, index);
+    // Merge consecutive assistant items into the same message
+    const shouldMerge = lastMessage?.role === "model" && isAssistant;
 
     const currentMessage = shouldMerge
       ? lastMessage

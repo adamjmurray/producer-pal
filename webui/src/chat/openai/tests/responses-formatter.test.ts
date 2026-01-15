@@ -139,7 +139,7 @@ describe("formatResponsesMessages", () => {
     ]);
   });
 
-  it("does NOT merge across API response boundaries", () => {
+  it("merges all assistant items in a conversation turn", () => {
     const conversation: ResponsesConversationItem[] = [
       { type: "message", role: "assistant", content: "First response" },
       {
@@ -155,11 +155,17 @@ describe("formatResponsesMessages", () => {
 
     const result = formatResponsesMessages(conversation);
 
-    expect(result).toHaveLength(2);
-    expect(result[0]!.parts).toHaveLength(2); // text + tool
-    expect(result[1]!.parts).toStrictEqual([
-      { type: "text", content: "Second response" },
-    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.parts).toHaveLength(3); // text + tool + text
+    expect(result[0]!.parts[0]).toMatchObject({
+      type: "text",
+      content: "First response",
+    });
+    expect(result[0]!.parts[1]).toMatchObject({ type: "tool", name: "tool" });
+    expect(result[0]!.parts[2]).toMatchObject({
+      type: "text",
+      content: "Second response",
+    });
   });
 
   it("marks last thought as open", () => {
