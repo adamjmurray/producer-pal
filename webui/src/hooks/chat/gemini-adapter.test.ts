@@ -3,14 +3,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
-import { GeminiClient } from "#webui/chat/gemini-client";
+import { GeminiClient } from "#webui/chat/gemini/client";
 import type { GeminiMessage } from "#webui/types/messages";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
-import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
+import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
-vi.mock(import("#webui/chat/gemini-client"), () => ({
+vi.mock(import("#webui/chat/gemini/client"), () => ({
   GeminiClient: vi.fn(),
 }));
 
@@ -39,7 +39,7 @@ const mockTransformMessage = (msg: GeminiMessage, idx: number) => ({
 });
 
 // Mock formatters and helpers
-vi.mock(import("#webui/chat/gemini-formatter"), () => ({
+vi.mock(import("#webui/chat/gemini/formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 

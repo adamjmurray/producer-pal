@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet, liveApiId } from "#src/test/mock-live-api.js";
+import { liveApiCall } from "#src/test/mock-live-api.js";
+import { setupDeviceParamMocks } from "./read-device-test-helpers.js";
 import { readDevice } from "./read-device.js";
 
 describe("readDevice param-values include option", () => {
@@ -8,77 +9,13 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should include full parameters when param-values is requested", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Volume"];
-          case "original_name":
-            return ["Volume"];
-          case "value":
-            return [0.5];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [0.7];
-          case "display_value":
-            return [-6];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method, value) {
-      if (this._path === "id param-1" && method === "str_for_value") {
-        // min=0, max=1 return same label format
+    setupDeviceParamMocks({
+      strForValue: (value) => {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
 
         return "-6 dB";
-      }
-
-      return [];
+      },
     });
 
     const result = readDevice({
@@ -103,63 +40,14 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should handle quantized parameters with options array", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Device On"];
-          case "original_name":
-            return ["Device On"];
-          case "value":
-            return [1];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [1];
-          case "value_items":
-            return ["Off", "On"];
-          default:
-            return [];
-        }
-      }
-
-      return [];
+    setupDeviceParamMocks({
+      param: {
+        name: "Device On",
+        original_name: "Device On",
+        value: 1,
+        is_quantized: 1,
+        value_items: ["Off", "On"],
+      },
     });
 
     const result = readDevice({
@@ -177,71 +65,9 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should include state when not 'active'", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Volume"];
-          case "original_name":
-            return ["Volume"];
-          case "value":
-            return [0.5];
-          case "state":
-            return [1]; // inactive
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [0.7];
-          case "display_value":
-            return [50];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "str_for_value") return "50";
-
-      return [];
+    setupDeviceParamMocks({
+      param: { state: 1, display_value: 50 },
+      strForValue: () => "50",
     });
 
     const result = readDevice({
@@ -253,74 +79,17 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should always include min and max for numeric parameters", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Coarse"];
-          case "original_name":
-            return ["Coarse"];
-          case "value":
-            return [12];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [48];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [1];
-          case "display_value":
-            return [12];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method, value) {
-      if (method === "str_for_value") {
-        // Unitless numeric labels
-        return String(value);
-      }
-
-      return [];
+    setupDeviceParamMocks({
+      param: {
+        name: "Coarse",
+        original_name: "Coarse",
+        value: 12,
+        min: 0,
+        max: 48,
+        default_value: 1,
+        display_value: 12,
+      },
+      strForValue: (value) => String(value),
     });
 
     const result = readDevice({
@@ -335,63 +104,16 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should not include min and max for quantized parameters", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Algorithm"];
-          case "original_name":
-            return ["Algorithm"];
-          case "value":
-            return [0];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [10];
-          case "is_quantized":
-            return [1];
-          case "value_items":
-            return ["Alg 1", "Alg 2", "Alg 3"];
-          default:
-            return [];
-        }
-      }
-
-      return [];
+    setupDeviceParamMocks({
+      param: {
+        name: "Algorithm",
+        original_name: "Algorithm",
+        value: 0,
+        min: 0,
+        max: 10,
+        is_quantized: 1,
+        value_items: ["Alg 1", "Alg 2", "Alg 3"],
+      },
     });
 
     const result = readDevice({
@@ -407,76 +129,23 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should parse frequency labels and include unit", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Filter"];
-          case "class_display_name":
-            return ["Auto Filter"];
-          case "type":
-            return [2];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Frequency"];
-          case "original_name":
-            return ["Frequency"];
-          case "value":
-            return [0.5];
-          case "state":
-            return [0];
-          case "is_enabled":
-            return [1];
-          case "automation_state":
-            return [0];
-          case "min":
-            return [0];
-          case "max":
-            return [1];
-          case "is_quantized":
-            return [0];
-          case "default_value":
-            return [0.5];
-          case "display_value":
-            return [1000];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method, value) {
-      if (method === "str_for_value") {
+    setupDeviceParamMocks({
+      device: {
+        name: "Filter",
+        class_display_name: "Auto Filter",
+        type: 2,
+      },
+      param: {
+        name: "Frequency",
+        original_name: "Frequency",
+        display_value: 1000,
+      },
+      strForValue: (value) => {
         if (value === 0) return "20 Hz";
         if (value === 1) return "20.0 kHz";
 
         return "1.00 kHz";
-      }
-
-      return [];
+      },
     });
 
     const result = readDevice({
@@ -499,58 +168,14 @@ describe("readDevice param-values include option", () => {
    * @param {number} automationState - The automation state value
    */
   function setupAutomationMocks(automationState) {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
-
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        const deviceProps = {
-          name: ["Operator"],
-          class_display_name: ["Operator"],
-          type: [1],
-          can_have_chains: [0],
-          can_have_drum_pads: [0],
-          is_active: [1],
-          parameters: ["id", "param-1"],
-        };
-
-        return deviceProps[prop] ?? [];
-      }
-
-      if (this._path === "id param-1") {
-        const paramProps = {
-          name: ["Volume"],
-          original_name: ["Volume"],
-          value: [0.5],
-          state: [0],
-          is_enabled: [1],
-          automation_state: [automationState],
-          min: [0],
-          max: [1],
-          is_quantized: [0],
-          default_value: [0.7],
-          display_value: [-6],
-        };
-
-        return paramProps[prop] ?? [];
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (method, value) {
-      if (this._path === "id param-1" && method === "str_for_value") {
+    setupDeviceParamMocks({
+      param: { automation_state: automationState },
+      strForValue: (value) => {
         if (value === 0) return "-inf dB";
         if (value === 1) return "0 dB";
 
         return "-6 dB";
-      }
-
-      return [];
+      },
     });
   }
 
@@ -581,48 +206,10 @@ describe("readDevice params include option (lightweight)", () => {
   });
 
   it("should return only id and name for params include", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id device-123") return "device-123";
-      if (this._path === "id param-1") return "param-1";
+    setupDeviceParamMocks();
 
-      return "0";
-    });
-
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "id device-123") {
-        switch (prop) {
-          case "name":
-            return ["Operator"];
-          case "class_display_name":
-            return ["Operator"];
-          case "type":
-            return [1];
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          case "parameters":
-            return ["id", "param-1"];
-          default:
-            return [];
-        }
-      }
-
-      if (this._path === "id param-1") {
-        switch (prop) {
-          case "name":
-            return ["Volume"];
-          case "original_name":
-            return ["Volume"];
-          default:
-            return [];
-        }
-      }
-
-      return [];
-    });
+    // Need to set up liveApiCall to not interfere since we're not requesting param-values
+    liveApiCall.mockReturnValue([]);
 
     const result = readDevice({
       deviceId: "device-123",

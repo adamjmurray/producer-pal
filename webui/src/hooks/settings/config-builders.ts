@@ -1,5 +1,5 @@
-import type { GeminiClientConfig } from "#webui/chat/gemini-client";
-import type { OpenAIClientConfig } from "#webui/chat/openai-client";
+import type { GeminiClientConfig } from "#webui/chat/gemini/client";
+import type { OpenAIClientConfig } from "#webui/chat/openai/client";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";

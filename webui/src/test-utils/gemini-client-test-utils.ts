@@ -1,7 +1,7 @@
 import type { Chat } from "@google/genai/web";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { vi } from "vitest";
-import type { GeminiClient } from "#webui/chat/gemini-client";
+import type { GeminiClient } from "#webui/chat/gemini/client";
 
 /** Options for creating a mock MCP client */
 export interface MockGeminiMcpClientOptions {

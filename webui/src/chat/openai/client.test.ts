@@ -3,7 +3,7 @@ import {
   OpenAIClient,
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
-} from "./openai-client";
+} from "./client";
 import type { OpenAIToolCall } from "#webui/types/messages";
 import { createToolCallsMap } from "#webui/test-utils/openai-client-test-utils";
 

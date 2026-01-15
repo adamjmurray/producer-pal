@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyGeminiOverrides } from "./gemini-message-overrides";
+import { applyGeminiOverrides } from "./message-overrides";
 
 describe("applyGeminiOverrides", () => {
   describe("temperature overrides", () => {

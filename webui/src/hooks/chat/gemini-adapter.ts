@@ -1,8 +1,8 @@
 import {
   GeminiClient,
   type GeminiClientConfig,
-} from "#webui/chat/gemini-client";
-import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
+} from "#webui/chat/gemini/client";
+import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
 import type { GeminiMessage } from "#webui/types/messages";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";

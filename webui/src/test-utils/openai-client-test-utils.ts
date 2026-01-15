@@ -1,6 +1,6 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { vi } from "vitest";
-import type { OpenAIClient } from "#webui/chat/openai-client";
+import type { OpenAIClient } from "#webui/chat/openai/client";
 
 /** Tool definition for mock MCP client */
 export interface MockTool {

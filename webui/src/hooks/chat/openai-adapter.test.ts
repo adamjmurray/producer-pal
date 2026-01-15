@@ -3,14 +3,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { openaiAdapter } from "./openai-adapter";
-import { OpenAIClient } from "#webui/chat/openai-client";
+import { OpenAIClient } from "#webui/chat/openai/client";
 import type { OpenAIMessage } from "#webui/types/messages";
 import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
-import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
-vi.mock(import("#webui/chat/openai-client"), () => ({
+vi.mock(import("#webui/chat/openai/client"), () => ({
   OpenAIClient: vi.fn(),
 }));
 
@@ -45,7 +45,7 @@ const mockTransformMessage = (msg: OpenAIMessage, idx: number) => ({
 });
 
 // Mock formatters and helpers
-vi.mock(import("#webui/chat/openai-formatter"), () => ({
+vi.mock(import("#webui/chat/openai/formatter"), () => ({
   formatOpenAIMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 
