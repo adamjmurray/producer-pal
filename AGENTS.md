@@ -140,11 +140,16 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - After ALL code changes: Run `npm run check` (runs lint, typecheck, format
   check, and tests)
-- End-to-end validation and investigation (upon request):
+- Direct tool invocation (upon request):
   ```
   node scripts/cli.mjs tools/list
   node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
   ```
+- **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
+  (verifies the AI can use tools correctly, not just that tools work):
+  - Run `scripts/chat --help` to see available options
+  - Always use `-1` (or `--once`) to exit after one response
+  - Example: `scripts/chat -p gemini -1 "list tracks in the set"`
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.js"`

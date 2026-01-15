@@ -106,7 +106,7 @@ export async function runGemini(
     await runChatLoop(
       { chatSession, options },
       rl,
-      { initialText, singleResponse: options.singleResponse },
+      { initialText, once: options.once },
       callbacks,
     );
   } catch (error) {
@@ -151,8 +151,8 @@ function buildConfig(options: ChatOptions): GenerateContentConfig {
     };
   }
 
-  if (options.systemPrompt != null) {
-    config.systemInstruction = options.systemPrompt;
+  if (options.instructions != null) {
+    config.systemInstruction = options.instructions;
   }
 
   return config;

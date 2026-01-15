@@ -47,7 +47,7 @@ export interface ChatLoopCallbacks<TSession> {
 
 export interface ChatLoopConfig {
   initialText: string;
-  singleResponse?: boolean;
+  once?: boolean;
 }
 
 /**
@@ -83,7 +83,7 @@ export async function runChatLoop<TSession>(
 
     await callbacks.sendMessage(session, currentInput, turnCount);
 
-    if (config.singleResponse) break;
+    if (config.once) break;
 
     currentInput = await question(rl, "\n> ");
   }

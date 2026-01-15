@@ -88,7 +88,7 @@ export async function runOpenAIChat(
     await runChatLoop(
       { client, mcpClient, tools, messages, model, options },
       rl,
-      { initialText, singleResponse: options.singleResponse },
+      { initialText, once: options.once },
       { sendMessage: sendMessageChat },
     );
   } catch (error) {
@@ -151,13 +151,13 @@ function buildRequestBody(ctx: SessionContext): RequestBody {
     body.temperature = options.randomness;
   }
 
-  if (options.systemPrompt != null) {
+  if (options.instructions != null) {
     const hasSystem = messages.some((m) => m.role === "system");
 
     if (!hasSystem) {
       messages.unshift({
         role: "system",
-        content: options.systemPrompt,
+        content: options.instructions,
       });
     }
   }

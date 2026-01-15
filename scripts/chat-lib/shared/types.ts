@@ -28,8 +28,8 @@ export interface ChatOptions {
   thinkingSummary?: ReasoningSummary;
   randomness?: number;
   outputTokens?: number;
-  systemPrompt?: string;
-  singleResponse?: boolean;
+  instructions?: string;
+  once?: boolean;
 }
 
 export interface ChatContext {

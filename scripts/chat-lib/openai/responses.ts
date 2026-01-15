@@ -79,7 +79,7 @@ export async function runOpenAIResponses(
     await runChatLoop(
       { client, mcpClient, tools, conversation: [], model, options },
       rl,
-      { initialText, singleResponse: options.singleResponse },
+      { initialText, once: options.once },
       { sendMessage },
     );
   } catch (error) {
@@ -136,7 +136,7 @@ function buildRequestBody(
   if (options.outputTokens != null)
     body.max_output_tokens = options.outputTokens;
   if (options.randomness != null) body.temperature = options.randomness;
-  if (options.systemPrompt != null) body.instructions = options.systemPrompt;
+  if (options.instructions != null) body.instructions = options.instructions;
 
   return body;
 }

@@ -1,31 +1,25 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { DEFAULT_MODEL as GEMINI_DEFAULT } from "./gemini/config.ts";
 import { runGemini } from "./gemini.ts";
-import { DEFAULT_MODEL as OPENAI_DEFAULT } from "./openai/config.ts";
 import { runOpenAI } from "./openai/index.ts";
-import { DEFAULT_MODEL as OPENROUTER_DEFAULT } from "./openrouter/config.ts";
 import { runOpenRouter } from "./openrouter/index.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
-const providerHelp = `AI provider:
-  gemini     (default: ${GEMINI_DEFAULT})
-  openai     (default: ${OPENAI_DEFAULT})
-  openrouter (default: ${OPENROUTER_DEFAULT})`;
+const providerHelp = `AI provider (gemini, openai, openrouter)`;
 
 program
   .name("chat")
   .description("Chat with AI providers")
   .showHelpAfterError(true)
-  .requiredOption("--provider <provider>", providerHelp)
+  .requiredOption("-p, --provider <provider>", providerHelp)
   .option(
-    "--api <api>",
+    "-a, --api <api>",
     "API style (chat, responses) - defaults: openai=responses, openrouter=chat",
   )
-  .option("-m, --model <model>", "Model to use")
+  .option("-m, --model <model>", "Model (provider default if not specified)")
   .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
@@ -33,7 +27,7 @@ program
     "Thinking/reasoning level (provider-specific)",
   )
   .option(
-    "--thinking-summary <level>",
+    "-T, --thinking-summary <level>",
     "Reasoning summary detail (auto, concise, detailed) - provider-specific",
     "auto",
   )
@@ -43,8 +37,8 @@ program
     Number.parseFloat,
   )
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
-  .option("-p, --system-prompt <text>", "System instructions")
-  .option("--single-response", "Exit after generating one response")
+  .option("-i, --instructions <text>", "System instructions")
+  .option("-1, --once", "Exit after generating one response")
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");

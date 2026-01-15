@@ -93,7 +93,7 @@ export async function runOpenRouterResponses(
     await runChatLoop(
       { mcpClient, tools, conversation, model, options },
       rl,
-      { initialText, singleResponse: options.singleResponse },
+      { initialText, once: options.once },
       { sendMessage: sendMessageResponses },
     );
   } catch (error) {
@@ -136,7 +136,7 @@ function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   if (options.outputTokens != null)
     body.max_output_tokens = options.outputTokens;
   if (options.randomness != null) body.temperature = options.randomness;
-  if (options.systemPrompt != null) body.instructions = options.systemPrompt;
+  if (options.instructions != null) body.instructions = options.instructions;
 
   return body;
 }
