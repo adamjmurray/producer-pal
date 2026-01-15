@@ -20,6 +20,7 @@ describe("createStreamState", () => {
     expect(state.toolResults.size).toBe(0);
     expect(state.hasToolCalls).toBe(false);
     expect(state.outputItems).toStrictEqual([]);
+    expect(state.streamingItemIndex).toBeNull();
   });
 });
 
@@ -78,60 +79,81 @@ describe("processStreamEvent", () => {
     callTool: vi.fn().mockResolvedValue({ content: { result: "ok" } }),
   });
 
-  it("handles reasoning delta", async () => {
+  it("handles reasoning delta and updates conversation", async () => {
     const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
     const event: ResponsesStreamEvent = {
       type: "response.reasoning.delta",
       delta: { text: "thinking..." },
     };
 
-    await processStreamEvent(event, state, createMockMcpClient(), []);
+    await processStreamEvent(event, state, createMockMcpClient(), conversation);
 
     expect(state.currentReasoning).toBe("thinking...");
+    expect(conversation).toHaveLength(1);
+    expect(conversation[0]).toMatchObject({
+      type: "message",
+      role: "assistant",
+      content: "thinking...",
+    });
+    expect(state.streamingItemIndex).toBe(0);
   });
 
   it("handles reasoning delta with string delta", async () => {
     const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
     const event: ResponsesStreamEvent = {
       type: "response.reasoning.delta",
       delta: "direct string",
     };
 
-    await processStreamEvent(event, state, createMockMcpClient(), []);
+    await processStreamEvent(event, state, createMockMcpClient(), conversation);
 
     expect(state.currentReasoning).toBe("direct string");
+    expect(conversation[0]).toMatchObject({ content: "direct string" });
   });
 
-  it("handles output text delta", async () => {
+  it("handles output text delta and updates conversation", async () => {
     const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
     const event: ResponsesStreamEvent = {
       type: "response.output_text.delta",
       delta: { text: "Hello" },
     };
 
-    await processStreamEvent(event, state, createMockMcpClient(), []);
+    await processStreamEvent(event, state, createMockMcpClient(), conversation);
 
     expect(state.currentContent).toBe("Hello");
+    expect(conversation).toHaveLength(1);
+    expect(conversation[0]).toMatchObject({
+      type: "message",
+      role: "assistant",
+      content: "Hello",
+    });
   });
 
-  it("accumulates multiple text deltas", async () => {
+  it("accumulates multiple text deltas in same streaming message", async () => {
     const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
     const mcpClient = createMockMcpClient();
 
     await processStreamEvent(
       { type: "response.output_text.delta", delta: { text: "Hello " } },
       state,
       mcpClient,
-      [],
+      conversation,
     );
     await processStreamEvent(
       { type: "response.output_text.delta", delta: { text: "world" } },
       state,
       mcpClient,
-      [],
+      conversation,
     );
 
     expect(state.currentContent).toBe("Hello world");
+    // Should still be one message, not two
+    expect(conversation).toHaveLength(1);
+    expect(conversation[0]).toMatchObject({ content: "Hello world" });
   });
 
   it("handles output item added for function_call", async () => {
@@ -261,6 +283,43 @@ describe("processStreamEvent", () => {
     await processStreamEvent(event, state, createMockMcpClient(), conversation);
 
     expect(conversation).toHaveLength(0);
+  });
+
+  it("removes streaming placeholder on response completed", async () => {
+    const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
+    const mcpClient = createMockMcpClient();
+
+    // First, simulate text streaming which creates a streaming message
+    await processStreamEvent(
+      { type: "response.output_text.delta", delta: { text: "Streaming..." } },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    expect(conversation).toHaveLength(1);
+    expect(state.streamingItemIndex).toBe(0);
+
+    // Then response completes - streaming placeholder should be removed
+    await processStreamEvent(
+      {
+        type: "response.completed",
+        response: {
+          output: [
+            { type: "message", id: "msg_1", role: "assistant", content: [] },
+          ],
+        },
+      },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    // Streaming placeholder removed, final output added
+    expect(conversation).toHaveLength(1);
+    expect(conversation[0]).toMatchObject({ type: "message", id: "msg_1" });
+    expect(state.streamingItemIndex).toBeNull();
   });
 
   it("ignores unknown event types", async () => {

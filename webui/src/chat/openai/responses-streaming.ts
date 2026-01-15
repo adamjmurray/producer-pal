@@ -28,6 +28,7 @@ export function createStreamState(): ResponsesStreamState {
     toolResults: new Map(),
     hasToolCalls: false,
     outputItems: [],
+    streamingItemIndex: null,
   };
 }
 
@@ -42,35 +43,83 @@ function getDeltaText(
   return typeof delta === "string" ? delta : delta?.text;
 }
 
+/** Streaming message item type */
+interface StreamingMessageItem {
+  type: "message";
+  role: "assistant";
+  content: string;
+}
+
 /**
- * Handle reasoning delta event
+ * Get or create a streaming placeholder message in the conversation.
+ * This allows the UI to show incremental text updates during streaming.
+ * @param state - Stream state
+ * @param conversation - Conversation array
+ * @returns The streaming message item
+ */
+function getOrCreateStreamingMessage(
+  state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
+): StreamingMessageItem {
+  if (state.streamingItemIndex != null) {
+    return conversation[state.streamingItemIndex] as StreamingMessageItem;
+  }
+
+  const streamingItem: StreamingMessageItem = {
+    type: "message",
+    role: "assistant",
+    content: "",
+  };
+
+  state.streamingItemIndex = conversation.length;
+  conversation.push(streamingItem);
+
+  return streamingItem;
+}
+
+/**
+ * Handle reasoning delta event - updates state and conversation for streaming display
  * @param event - Stream event
  * @param state - Stream state to update
+ * @param conversation - Conversation array to update
  */
 function handleReasoningDelta(
   event: ResponsesStreamEvent,
   state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
 ): void {
   const text = getDeltaText(event.delta);
 
   if (text) {
     state.currentReasoning += text;
+
+    // Update streaming message for incremental UI updates
+    const msg = getOrCreateStreamingMessage(state, conversation);
+
+    msg.content = state.currentReasoning;
   }
 }
 
 /**
- * Handle output text delta event
+ * Handle output text delta event - updates state and conversation for streaming display
  * @param event - Stream event
  * @param state - Stream state to update
+ * @param conversation - Conversation array to update
  */
 function handleTextDelta(
   event: ResponsesStreamEvent,
   state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
 ): void {
   const text = getDeltaText(event.delta);
 
   if (text) {
     state.currentContent += text;
+
+    // Update streaming message for incremental UI updates
+    const msg = getOrCreateStreamingMessage(state, conversation);
+
+    msg.content = state.currentContent;
   }
 }
 
@@ -122,7 +171,7 @@ async function handleFunctionCallDone(
 }
 
 /**
- * Handle response completion - add all outputs to conversation
+ * Handle response completion - replace streaming placeholder with final outputs
  * @param event - Stream event
  * @param state - Stream state to update
  * @param conversation - Conversation array to append to
@@ -132,6 +181,12 @@ function handleResponseCompleted(
   state: ResponsesStreamState,
   conversation: ResponsesConversationItem[],
 ): void {
+  // Remove streaming placeholder if present (will be replaced by final output)
+  if (state.streamingItemIndex != null) {
+    conversation.splice(state.streamingItemIndex, 1);
+    state.streamingItemIndex = null;
+  }
+
   if (event.response?.output) {
     state.outputItems = event.response.output;
     conversation.push(
@@ -187,10 +242,10 @@ export async function processStreamEvent(
 ): Promise<void> {
   switch (event.type) {
     case "response.reasoning.delta":
-      handleReasoningDelta(event, state);
+      handleReasoningDelta(event, state, conversation);
       break;
     case "response.output_text.delta":
-      handleTextDelta(event, state);
+      handleTextDelta(event, state, conversation);
       break;
     case "response.output_item.added":
       handleOutputItemAdded(event, state);
