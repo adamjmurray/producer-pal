@@ -38,7 +38,7 @@ export function createAudioSessionClip(
     }
   }
 
-  const clipSlot = new LiveAPI(
+  const clipSlot = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
 
@@ -52,7 +52,7 @@ export function createAudioSessionClip(
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
-    clip: new LiveAPI(`${clipSlot.path} clip`),
+    clip: LiveAPI.from(`${clipSlot.path} clip`),
     sceneIndex,
   };
 }
@@ -76,7 +76,7 @@ export function createAudioArrangementClip(
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create audio clip at position
   const newClipResult = track.call(

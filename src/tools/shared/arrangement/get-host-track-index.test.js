@@ -23,13 +23,15 @@ describe("getHostTrackIndex", () => {
     expect(result).toBe(null);
   });
 
-  it("should return null when LiveAPI constructor throws an error", () => {
-    // Mock the global LiveAPI constructor to throw an error
+  it("should return null when LiveAPI.from throws an error", () => {
+    // Mock the global LiveAPI.from to throw an error
     const originalLiveAPI = global.LiveAPI;
 
-    global.LiveAPI = vi.fn(() => {
-      throw new Error("LiveAPI not available");
-    });
+    global.LiveAPI = {
+      from: vi.fn(() => {
+        throw new Error("LiveAPI not available");
+      }),
+    };
 
     const result = getHostTrackIndex();
 

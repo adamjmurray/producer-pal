@@ -14,8 +14,8 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
  * @returns {object} Connection status and basic Live Set info
  */
 export function connect(_params = {}, context = {}) {
-  const liveSet = new LiveAPI("live_set");
-  const liveApp = new LiveAPI("live_app");
+  const liveSet = LiveAPI.from("live_set");
+  const liveApp = LiveAPI.from("live_app");
 
   // Get basic info - minimal data for safety
   const trackIds = liveSet.getChildIds("tracks");

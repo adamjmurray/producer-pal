@@ -192,7 +192,7 @@ export function readDevice(device, options = {}) {
     deviceInfo.deactivated = true;
   }
 
-  const deviceView = new LiveAPI(`${device.path} view`);
+  const deviceView = LiveAPI.from(`${device.path} view`);
 
   if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
     deviceInfo.collapsed = true;

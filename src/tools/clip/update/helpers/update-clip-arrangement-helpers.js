@@ -32,7 +32,7 @@ export function handleArrangementStartOperation({
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Track clips being moved to same track
   const moveCount = (tracksWithMovedClips.get(trackIndex) || 0) + 1;

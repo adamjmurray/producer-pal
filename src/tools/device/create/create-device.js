@@ -66,7 +66,7 @@ function createDeviceAtPath(deviceName, path) {
       : container.call("insert_device", deviceName);
 
   const deviceId = result[1];
-  const device = deviceId ? new LiveAPI(`id ${deviceId}`) : null;
+  const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;
 
   if (!device || !device.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";

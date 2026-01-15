@@ -87,7 +87,7 @@ export function readDevice({
  * @returns {object} Device information
  */
 function readDeviceById(deviceId, options) {
-  const device = new LiveAPI(`id ${deviceId}`);
+  const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
     throw new Error(`Device with ID ${deviceId} not found`);
@@ -105,7 +105,7 @@ function readDeviceById(deviceId, options) {
  * @returns {object} Device information
  */
 function readDeviceByLiveApiPath(liveApiPath, options) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
     throw new Error(`Device not found at path: ${liveApiPath}`);
@@ -124,7 +124,7 @@ function readDeviceByLiveApiPath(liveApiPath, options) {
  * @returns {object} Chain information
  */
 function readChain(liveApiPath, path, options) {
-  const chain = new LiveAPI(liveApiPath);
+  const chain = LiveAPI.from(liveApiPath);
 
   if (!chain.exists()) {
     throw new Error(`Chain not found at path: ${path}`);
@@ -155,7 +155,7 @@ function readDrumPadByPath(
   fullPath,
   options,
 ) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
     throw new Error(`Device not found at path: ${liveApiPath}`);

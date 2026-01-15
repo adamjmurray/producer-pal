@@ -169,7 +169,7 @@ export function createTrack(
 
   validateTrackCreation(count, type, trackIndex, effectiveTrackIndex);
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);
   const createdTracks = [];
   let currentIndex = effectiveTrackIndex;
@@ -179,7 +179,7 @@ export function createTrack(
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
-    const track = new LiveAPI(`id ${trackId}`);
+    const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
       name: buildTrackName(name, count, i, parsedNames),

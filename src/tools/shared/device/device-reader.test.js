@@ -387,10 +387,13 @@ describe("device-reader", () => {
       };
 
       // Mock LiveAPI for device view
-      global.LiveAPI = vi.fn().mockImplementation(() => ({
+      const MockLiveAPI = vi.fn().mockImplementation(() => ({
         exists: vi.fn().mockReturnValue(false),
         getProperty: vi.fn().mockReturnValue(0),
       }));
+
+      MockLiveAPI.from = vi.fn((path) => MockLiveAPI(path));
+      global.LiveAPI = MockLiveAPI;
 
       // Call with depth > maxDepth
       const result = readDevice(device, { depth: 5, maxDepth: 4 });
@@ -420,10 +423,13 @@ describe("device-reader", () => {
       };
 
       // Mock LiveAPI for device view
-      global.LiveAPI = vi.fn(function () {
+      const MockLiveAPI = vi.fn(function () {
         this.exists = vi.fn().mockReturnValue(false);
         this.getProperty = vi.fn().mockReturnValue(0);
       });
+
+      MockLiveAPI.from = vi.fn((path) => new MockLiveAPI(path));
+      global.LiveAPI = MockLiveAPI;
 
       const result = readDevice(device, { includeChains: false });
 

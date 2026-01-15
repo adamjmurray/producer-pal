@@ -262,7 +262,7 @@ function resolvePathToTarget(path) {
  * @returns {object|null} LiveAPI object or null if not found
  */
 function resolveDeviceTarget(liveApiPath) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   return device.exists() ? device : null;
 }
@@ -273,7 +273,7 @@ function resolveDeviceTarget(liveApiPath) {
  * @returns {object|null} LiveAPI object or null if not found
  */
 function resolveChainTarget(liveApiPath) {
-  const chain = new LiveAPI(liveApiPath);
+  const chain = LiveAPI.from(liveApiPath);
 
   return chain.exists() ? chain : null;
 }

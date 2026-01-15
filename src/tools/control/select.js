@@ -79,8 +79,8 @@ export function select(
     clipSlot,
   });
 
-  const appView = new LiveAPI("live_app view");
-  const songView = new LiveAPI("live_set view");
+  const appView = LiveAPI.from("live_app view");
+  const songView = LiveAPI.from("live_set view");
 
   // Update main view (Session/Arrangement)
   if (view != null) {
@@ -226,7 +226,7 @@ function validateParameters({
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
-      const trackAPI = new LiveAPI(trackPath);
+      const trackAPI = LiveAPI.from(trackPath);
 
       if (trackAPI.exists() && trackAPI.id !== trackId) {
         throw new Error("trackId and trackIndex refer to different tracks");
@@ -236,7 +236,7 @@ function validateParameters({
 
   // Cross-validation for scene ID vs index
   if (sceneId != null && sceneIndex != null) {
-    const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
     if (sceneAPI.exists() && sceneAPI.id !== sceneId) {
       throw new Error("sceneId and sceneIndex refer to different scenes");
@@ -280,7 +280,7 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
-      trackAPI = new LiveAPI(trackPath);
+      trackAPI = LiveAPI.from(trackPath);
 
       if (trackAPI.exists()) {
         finalTrackId = trackAPI.id;
@@ -322,7 +322,7 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
     }
   } else if (sceneIndex != null) {
     // Select by index
-    const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
     if (sceneAPI.exists()) {
       const finalSceneId = sceneAPI.id;
@@ -348,7 +348,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
     const _deviceAPI = validateIdType(deviceId, "device", "select");
-    const songView = new LiveAPI("live_set view");
+    const songView = LiveAPI.from("live_set view");
     // Ensure proper "id X" format for select_device call
     const deviceIdStr = deviceId.toString();
     const deviceIdForApi = deviceIdStr.startsWith("id ")
@@ -365,7 +365,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
 
     if (!trackPath) {
       // Use currently selected track
-      const selectedTrackAPI = new LiveAPI("live_set view selected_track");
+      const selectedTrackAPI = LiveAPI.from("live_set view selected_track");
 
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
@@ -380,7 +380,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
 
     if (trackPath) {
       // Use the track view's select_instrument function
-      const trackView = new LiveAPI(`${trackPath} view`);
+      const trackView = LiveAPI.from(`${trackPath} view`);
 
       if (trackView.exists()) {
         trackView.call("select_instrument");
@@ -400,7 +400,7 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {
     // Set by indices
     const { trackIndex, sceneIndex } = clipSlot;
-    const clipSlotAPI = new LiveAPI(
+    const clipSlotAPI = LiveAPI.from(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
 
@@ -426,11 +426,11 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
  * @returns {object} Current view state with all selection information
  */
 function readViewState() {
-  const appView = new LiveAPI("live_app view");
-  const selectedTrack = new LiveAPI("live_set view selected_track");
-  const selectedScene = new LiveAPI("live_set view selected_scene");
-  const detailClip = new LiveAPI("live_set view detail_clip");
-  const highlightedClipSlotAPI = new LiveAPI(
+  const appView = LiveAPI.from("live_app view");
+  const selectedTrack = LiveAPI.from("live_set view selected_track");
+  const selectedScene = LiveAPI.from("live_set view selected_scene");
+  const detailClip = LiveAPI.from("live_set view detail_clip");
+  const highlightedClipSlotAPI = LiveAPI.from(
     "live_set view highlighted_clip_slot",
   );
 
@@ -447,7 +447,7 @@ function readViewState() {
   let selectedDeviceId = null;
 
   if (selectedTrack.exists()) {
-    const trackView = new LiveAPI(`${selectedTrack.path} view`);
+    const trackView = LiveAPI.from(`${selectedTrack.path} view`);
 
     if (trackView.exists()) {
       selectedDeviceId =

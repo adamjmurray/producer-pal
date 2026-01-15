@@ -104,7 +104,7 @@ function deleteTrackObject(id, object) {
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("delete_track", trackIndex);
 }
@@ -123,7 +123,7 @@ function deleteSceneObject(id, object) {
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("delete_scene", sceneIndex);
 }
@@ -142,7 +142,7 @@ function deleteClipObject(id, object) {
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   track.call("delete_clip", `id ${object.id}`);
 }
@@ -175,7 +175,7 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const parent = new LiveAPI(parentPath);
+  const parent = LiveAPI.from(parentPath);
 
   parent.call("delete_device", deviceIndex);
 }
@@ -186,7 +186,7 @@ function deleteDeviceObject(id, object) {
  * @param {object} object - The object to delete
  */
 function deleteDrumPadObject(id, object) {
-  const drumPad = new LiveAPI(`id ${object.id}`);
+  const drumPad = LiveAPI.from(`id ${object.id}`);
 
   drumPad.call("delete_all_chains");
 }
@@ -274,7 +274,7 @@ function resolvePathToId(resolved, targetPath, type) {
   if (type === "device") {
     // Direct device path (not through drum pad)
     if (resolved.targetType === "device") {
-      const target = new LiveAPI(resolved.liveApiPath);
+      const target = LiveAPI.from(resolved.liveApiPath);
 
       if (!target.exists()) {
         console.error(`delete: device at path "${targetPath}" does not exist`);

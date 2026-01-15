@@ -102,17 +102,37 @@ export function setupSelectMocks() {
       },
     });
 
+    // Add type getter that executes the mock function
+    Object.defineProperty(this, "type", {
+      get: function () {
+        return liveApiType.apply(this);
+      },
+    });
+
     return this;
   });
 
-  // Mock static methods
-  global.LiveAPI.from = vi.fn((id) => ({
-    exists: vi.fn().mockReturnValue(true),
-    id: id.toString().startsWith("id ") ? id : `id ${id}`,
-    get type() {
-      return liveApiType.apply(this);
-    },
-  }));
+  // Mock static methods - from() should behave like the constructor
+  global.LiveAPI.from = vi.fn((idOrPath) => {
+    // Normalize ID format like the real LiveAPI.from does
+    let path = idOrPath;
+
+    if (
+      typeof idOrPath === "number" ||
+      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
+    ) {
+      path = `id ${idOrPath}`;
+    }
+
+    const instance = new global.LiveAPI(path);
+
+    // For ID-based lookups, ensure the ID is preserved correctly
+    if (typeof path === "string" && path.startsWith("id ")) {
+      instance._id = path;
+    }
+
+    return instance;
+  });
 
   return { mockAppView, mockSongView, mockTrackAPI };
 }

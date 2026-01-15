@@ -65,7 +65,7 @@ export function duplicateClipWithPositions(
     }
   } else {
     // Arrangement destination
-    const liveSet = new LiveAPI("live_set");
+    const liveSet = LiveAPI.from("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 

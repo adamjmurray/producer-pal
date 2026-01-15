@@ -76,13 +76,13 @@ export function createClip(
   );
 
   // Validate track exists (fatal - affects all clips)
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
     throw new Error(`createClip failed: track ${trackIndex} does not exist`);
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for arrangementStart conversion
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
@@ -424,7 +424,7 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
     case "play-scene": {
       // Launch the first scene for synchronization
       const firstSceneIndex = sceneIndices[0];
-      const scene = new LiveAPI(`live_set scenes ${firstSceneIndex}`);
+      const scene = LiveAPI.from(`live_set scenes ${firstSceneIndex}`);
 
       if (!scene.exists()) {
         throw new Error(
@@ -439,7 +439,7 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
     case "play-clip":
       // Fire individual clips at each scene index
       for (const sceneIndex of sceneIndices) {
-        const clipSlot = new LiveAPI(
+        const clipSlot = LiveAPI.from(
           `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
 

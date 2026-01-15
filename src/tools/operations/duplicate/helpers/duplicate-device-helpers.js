@@ -35,14 +35,14 @@ export function duplicateDevice(device, toPath, name, count = 1) {
   const devicePathWithinTrack = extractDevicePathWithinTrack(device.path);
 
   // 3. Duplicate the track
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_track", trackIndex);
   const tempTrackIndex = trackIndex + 1;
 
   // 4. Find the corresponding device on the temp track
   const tempDevicePath = `live_set tracks ${tempTrackIndex} ${devicePathWithinTrack}`;
-  const tempDevice = new LiveAPI(tempDevicePath);
+  const tempDevice = LiveAPI.from(tempDevicePath);
 
   if (!tempDevice.exists()) {
     // Clean up temp track and throw

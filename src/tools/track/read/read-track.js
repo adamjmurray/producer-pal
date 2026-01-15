@@ -66,7 +66,7 @@ export function readTrack(args = {}, _context = {}) {
       );
     }
 
-    track = new LiveAPI(trackPath);
+    track = LiveAPI.from(trackPath);
   }
 
   return readTrackGeneric({

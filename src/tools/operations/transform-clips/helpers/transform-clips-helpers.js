@@ -91,7 +91,7 @@ export function getClipIds(
   }
 
   const trackIndices = parseCommaSeparatedIndices(arrangementTrackIndex);
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
@@ -123,7 +123,7 @@ export function getClipIds(
   const result = [];
 
   for (const trackIndex of trackIndices) {
-    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
     if (!track.exists()) {
       throw new Error(`transformClips failed: track ${trackIndex} not found`);
@@ -132,7 +132,7 @@ export function getClipIds(
     const trackClipIds = track.getChildIds("arrangement_clips");
 
     for (const clipId of trackClipIds) {
-      const clip = new LiveAPI(clipId);
+      const clip = LiveAPI.from(clipId);
       const clipStartTime = clip.getProperty("start_time");
 
       if (

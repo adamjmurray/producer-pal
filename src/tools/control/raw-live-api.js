@@ -158,7 +158,7 @@ export function rawLiveApi({ path, operations } = {}, _context = {}) {
     );
   }
 
-  const api = new LiveAPI(path);
+  const api = LiveAPI.from(path);
   const results = [];
 
   for (const operation of operations) {

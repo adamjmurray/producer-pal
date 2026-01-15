@@ -284,6 +284,12 @@ describe("view", () => {
         },
       });
 
+      Object.defineProperty(mockDeviceWithPath, "type", {
+        get: function () {
+          return liveApiType.apply(this);
+        },
+      });
+
       // Mock track view
       const mockTrackView = {
         set: liveApiSet,

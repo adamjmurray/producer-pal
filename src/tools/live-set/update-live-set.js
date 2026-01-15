@@ -45,7 +45,7 @@ export async function updateLiveSet(
   } = {},
   context = {},
 ) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   // optimistic result object that only include properties that are actually set
   const result = {

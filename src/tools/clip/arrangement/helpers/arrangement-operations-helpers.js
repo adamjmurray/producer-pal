@@ -48,7 +48,7 @@ export function handleArrangementLengthening({
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
@@ -282,7 +282,7 @@ export function handleArrangementShortening({
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create temporary clip to truncate
   if (isAudioClip) {

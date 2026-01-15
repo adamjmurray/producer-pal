@@ -595,6 +595,27 @@ export default [
     },
   },
 
+  // Enforce LiveAPI.from() over new LiveAPI() for safer ID handling
+  // LiveAPI.from() properly handles raw IDs (prefixes with "id ") while
+  // new LiveAPI() requires already-prefixed IDs or full paths
+  {
+    files: ["src/**/*.js"],
+    ignores: [
+      "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
+      "src/test/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "NewExpression[callee.name='LiveAPI']",
+          message:
+            "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],

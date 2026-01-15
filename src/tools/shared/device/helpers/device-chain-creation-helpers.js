@@ -14,7 +14,7 @@ const MAX_AUTO_CREATE_CHAINS = 16;
 export function resolveContainerWithAutoCreate(segments, path) {
   // Start with track
   let currentPath = resolveTrackPath(segments[0]);
-  let current = new LiveAPI(currentPath);
+  let current = LiveAPI.from(currentPath);
 
   if (!current.exists()) {
     throw new Error(`Track in path "${path}" does not exist`);
@@ -70,7 +70,7 @@ function resolveTrackPath(segment) {
  */
 function navigateToDevice(currentPath, segment, fullPath) {
   const devicePath = `${currentPath} devices ${segment}`;
-  const device = new LiveAPI(devicePath);
+  const device = LiveAPI.from(devicePath);
 
   if (!device.exists()) {
     throw new Error(`Device in path "${fullPath}" does not exist`);
@@ -92,7 +92,7 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
   if (segment.startsWith("rc")) {
     const returnIndex = Number.parseInt(segment.slice(2));
     const chainPath = `${currentPath} return_chains ${returnIndex}`;
-    const chain = new LiveAPI(chainPath);
+    const chain = LiveAPI.from(chainPath);
 
     if (!chain.exists()) {
       throw new Error(`Return chain in path "${fullPath}" does not exist`);
@@ -111,7 +111,7 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
 
   const chainPath = `${currentPath} chains ${chainIndex}`;
 
-  return new LiveAPI(chainPath);
+  return LiveAPI.from(chainPath);
 }
 
 /**

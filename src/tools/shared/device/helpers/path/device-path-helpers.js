@@ -27,19 +27,19 @@ export { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
  */
 function resolveTrack(segment) {
   if (segment === "mt") {
-    return new LiveAPI("live_set master_track");
+    return LiveAPI.from("live_set master_track");
   }
 
   if (segment.startsWith("rt")) {
     const returnIndex = Number.parseInt(segment.slice(2));
 
-    return new LiveAPI(`live_set return_tracks ${returnIndex}`);
+    return LiveAPI.from(`live_set return_tracks ${returnIndex}`);
   }
 
   if (segment.startsWith("t")) {
     const trackIndex = Number.parseInt(segment.slice(1));
 
-    return new LiveAPI(`live_set tracks ${trackIndex}`);
+    return LiveAPI.from(`live_set tracks ${trackIndex}`);
   }
 
   throw new Error(`Invalid track segment: ${segment}`);
@@ -54,7 +54,7 @@ function resolveDrumPadContainer(path) {
   const resolved = resolvePathToLiveApi(path);
 
   if (resolved.targetType !== "drum-pad") {
-    return new LiveAPI(resolved.liveApiPath);
+    return LiveAPI.from(resolved.liveApiPath);
   }
 
   // Try to resolve the drum pad chain
@@ -71,7 +71,7 @@ function resolveDrumPadContainer(path) {
 
   // If not found and we're looking for a chain, try auto-creation
   if (result.targetType === "chain") {
-    const device = new LiveAPI(resolved.liveApiPath);
+    const device = LiveAPI.from(resolved.liveApiPath);
 
     if (!device.exists()) {
       return null;

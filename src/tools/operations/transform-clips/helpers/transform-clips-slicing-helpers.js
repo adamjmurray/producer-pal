@@ -121,7 +121,7 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
     return null;
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
   const sliceBeats = barBeatDurationToAbletonBeats(
@@ -192,7 +192,7 @@ export function performSlicing(
       );
     }
 
-    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
     // Store position info before slicing (for re-scanning after deletion)
     const originalClipId = clip.id;
 
@@ -262,7 +262,7 @@ export function performSlicing(
 
   // Re-scan tracks to replace stale clip objects with fresh ones
   for (const [oldClipId, range] of slicedClipRanges) {
-    const track = new LiveAPI(`live_set tracks ${range.trackIndex}`);
+    const track = LiveAPI.from(`live_set tracks ${range.trackIndex}`);
     const trackClipIds = track.getChildIds("arrangement_clips");
     // Find all clips in the original clip's position range (with small epsilon for floating-point)
     const EPSILON = 0.001;

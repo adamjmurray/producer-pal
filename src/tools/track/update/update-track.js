@@ -99,7 +99,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   }
 
   // Get mixer and sends
-  const mixer = new LiveAPI(track.path + " mixer_device");
+  const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
     throw new Error(
@@ -115,13 +115,13 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 
   // Find matching send by return track name
   // Match exact name OR letter prefix (e.g., "A" matches "A-Reverb")
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
 
   let sendIndex = -1;
 
   for (let i = 0; i < returnTrackIds.length; i++) {
-    const rt = new LiveAPI(`live_set return_tracks ${i}`);
+    const rt = LiveAPI.from(`live_set return_tracks ${i}`);
     const name = rt.getProperty("name");
 
     // Match exact name or single-letter prefix
@@ -156,7 +156,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
  */
 function applyStereoPan(mixer, pan, leftPan, rightPan) {
   if (pan != null) {
-    const panning = new LiveAPI(mixer.path + " panning");
+    const panning = LiveAPI.from(mixer.path + " panning");
 
     if (panning.exists()) {
       panning.set("value", pan);
@@ -180,7 +180,7 @@ function applyStereoPan(mixer, pan, leftPan, rightPan) {
  */
 function applySplitPan(mixer, pan, leftPan, rightPan) {
   if (leftPan != null) {
-    const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
+    const leftSplit = LiveAPI.from(mixer.path + " left_split_stereo");
 
     if (leftSplit.exists()) {
       leftSplit.set("value", leftPan);
@@ -188,7 +188,7 @@ function applySplitPan(mixer, pan, leftPan, rightPan) {
   }
 
   if (rightPan != null) {
-    const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+    const rightSplit = LiveAPI.from(mixer.path + " right_split_stereo");
 
     if (rightSplit.exists()) {
       rightSplit.set("value", rightPan);
@@ -217,7 +217,7 @@ function applyMixerProperties(
   track,
   { gainDb, pan, panningMode, leftPan, rightPan },
 ) {
-  const mixer = new LiveAPI(track.path + " mixer_device");
+  const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
     return;
@@ -225,7 +225,7 @@ function applyMixerProperties(
 
   // Handle gain (independent of panning mode)
   if (gainDb != null) {
-    const volume = new LiveAPI(mixer.path + " volume");
+    const volume = LiveAPI.from(mixer.path + " volume");
 
     if (volume.exists()) {
       volume.set("display_value", gainDb);

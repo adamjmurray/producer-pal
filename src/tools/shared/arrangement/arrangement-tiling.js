@@ -14,7 +14,7 @@
  * @returns {{clip: object, slot: object}} The created clip and slot in session view
  */
 export function createAudioClipInSession(track, targetLength, audioFilePath) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   let sceneIds = liveSet.getChildIds("scenes");
   const lastSceneId = sceneIds.at(-1);
   const lastScene = LiveAPI.from(lastSceneId);
@@ -39,7 +39,7 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
   // Create clip in session slot with audio file
-  const slot = new LiveAPI(
+  const slot = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
 
@@ -47,7 +47,7 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
   slot.call("create_audio_clip", audioFilePath);
 
   // Get the created clip by reconstructing the path
-  const clip = new LiveAPI(
+  const clip = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
   );
 
@@ -341,7 +341,7 @@ export function tileClipToRange(
 
   for (let i = 0; i < fullTiles; i++) {
     // Create fresh track object for each iteration to avoid staleness issues
-    const freshTrack = new LiveAPI(`live_set tracks ${trackIndex}`);
+    const freshTrack = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
     const result = freshTrack.call(
@@ -354,7 +354,7 @@ export function tileClipToRange(
     const clipId = tileClip.id;
 
     // Recreate LiveAPI object with fresh reference
-    const freshClip = new LiveAPI(`id ${clipId}`);
+    const freshClip = LiveAPI.from(`id ${clipId}`);
 
     // Set start_marker to show correct portion of clip content
     let tileStartMarker = clipLoopStart + (currentContentOffset % clipLength);

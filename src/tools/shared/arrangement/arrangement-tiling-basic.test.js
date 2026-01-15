@@ -21,9 +21,9 @@ beforeEach(() => {
 
 describe("createShortenedClipInHolding", () => {
   it("duplicates clip to holding area and shortens to target length", () => {
-    const sourceClip = new LiveAPI("id 100");
+    const sourceClip = LiveAPI.from("id 100");
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     // Mock track.call for duplicate_clip_to_arrangement
     liveApiCall.mockReturnValueOnce(["id", "200"]); // Returns holding clip
@@ -69,9 +69,9 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("calculates temp clip length correctly for different target lengths", () => {
-    const sourceClip = new LiveAPI("id 100");
+    const sourceClip = LiveAPI.from("id 100");
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     liveApiCall.mockReturnValueOnce(["id", "200"]); // Holding clip
 
@@ -95,8 +95,8 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("creates audio clip in session for audio clip shortening", () => {
-    const sourceClip = new LiveAPI("id 100");
-    const track = new LiveAPI("live_set tracks 0");
+    const sourceClip = LiveAPI.from("id 100");
+    const track = LiveAPI.from("live_set tracks 0");
 
     // Mock duplicate_clip_to_arrangement (holding clip)
     liveApiCall.mockReturnValueOnce(["id", "200"]);
@@ -156,7 +156,7 @@ describe("createShortenedClipInHolding", () => {
     );
 
     // Verify session clip was set up with warping and looping
-    const sessionClip = new LiveAPI("id 400");
+    const sessionClip = LiveAPI.from("id 400");
 
     expect(sessionClip.set).toHaveBeenCalledWith("warping", 1);
     expect(sessionClip.set).toHaveBeenCalledWith("looping", 1);
@@ -182,7 +182,7 @@ describe("createShortenedClipInHolding", () => {
 
 describe("moveClipFromHolding", () => {
   it("duplicates holding clip to target position and cleans up", () => {
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     // Mock track.call for duplicate_clip_to_arrangement
     liveApiCall.mockReturnValueOnce(["id", "400"]); // Returns moved clip
@@ -206,7 +206,7 @@ describe("moveClipFromHolding", () => {
   });
 
   it("works with different holding clip IDs and positions", () => {
-    const track = new LiveAPI("live_set tracks 2");
+    const track = LiveAPI.from("live_set tracks 2");
 
     liveApiCall.mockReturnValueOnce(["id", "999"]);
 
@@ -224,7 +224,7 @@ describe("moveClipFromHolding", () => {
 
 describe("adjustClipPreRoll", () => {
   it("does nothing when clip has no pre-roll (start_marker >= loop_start)", () => {
-    const clip = new LiveAPI("id 100");
+    const clip = LiveAPI.from("id 100");
 
     mockLiveApiGet({
       "id 100": {
@@ -233,7 +233,7 @@ describe("adjustClipPreRoll", () => {
       },
     });
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     adjustClipPreRoll(clip, track, true);
 
@@ -242,7 +242,7 @@ describe("adjustClipPreRoll", () => {
   });
 
   it("does nothing when start_marker > loop_start", () => {
-    const clip = new LiveAPI("id 100");
+    const clip = LiveAPI.from("id 100");
 
     mockLiveApiGet({
       "id 100": {
@@ -251,7 +251,7 @@ describe("adjustClipPreRoll", () => {
       },
     });
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     adjustClipPreRoll(clip, track, true);
 
@@ -259,7 +259,7 @@ describe("adjustClipPreRoll", () => {
   });
 
   it("adjusts start_marker and shortens clip when pre-roll exists", () => {
-    const clip = new LiveAPI("id 100");
+    const clip = LiveAPI.from("id 100");
 
     mockLiveApiGet({
       "id 100": {
@@ -269,7 +269,7 @@ describe("adjustClipPreRoll", () => {
       },
     });
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     liveApiCall.mockReturnValueOnce(["id", "300"]); // Temp clip
 
@@ -288,7 +288,7 @@ describe("adjustClipPreRoll", () => {
   });
 
   it("handles different pre-roll amounts correctly", () => {
-    const clip = new LiveAPI("id 100");
+    const clip = LiveAPI.from("id 100");
 
     mockLiveApiGet({
       "id 100": {
@@ -298,7 +298,7 @@ describe("adjustClipPreRoll", () => {
       },
     });
 
-    const track = new LiveAPI("live_set tracks 1");
+    const track = LiveAPI.from("live_set tracks 1");
 
     liveApiCall.mockReturnValueOnce(["id", "400"]);
 
@@ -311,7 +311,7 @@ describe("adjustClipPreRoll", () => {
   });
 
   it("adjusts audio clip with pre-roll using session view workflow", () => {
-    const clip = new LiveAPI("id 100");
+    const clip = LiveAPI.from("id 100");
 
     mockLiveApiGet({
       "id 100": {
@@ -329,7 +329,7 @@ describe("adjustClipPreRoll", () => {
       "live_set tracks 0 clip_slots 0 clip": {},
     });
 
-    const track = new LiveAPI("live_set tracks 0");
+    const track = LiveAPI.from("live_set tracks 0");
 
     // Mock return values in sequence:
     // 1. create_audio_clip (return value not used)

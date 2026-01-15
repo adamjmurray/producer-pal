@@ -145,7 +145,7 @@ function createSessionClip(
     }
   }
 
-  const clipSlot = new LiveAPI(
+  const clipSlot = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
 
@@ -158,7 +158,7 @@ function createSessionClip(
   clipSlot.call("create_clip", clipLength);
 
   return {
-    clip: new LiveAPI(`${clipSlot.path} clip`),
+    clip: LiveAPI.from(`${clipSlot.path} clip`),
     sceneIndex,
   };
 }
@@ -171,7 +171,7 @@ function createSessionClip(
  * @returns {object} - Object with clip and arrangementStartBeats
  */
 function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
   const newClipResult = track.call(
     "create_midi_clip",
     arrangementStartBeats,

@@ -6,7 +6,7 @@ describe("LiveAPI extensions - basic methods", () => {
   let api;
 
   beforeEach(() => {
-    api = new LiveAPI("live_set");
+    api = LiveAPI.from("live_set");
     vi.resetAllMocks();
   });
 

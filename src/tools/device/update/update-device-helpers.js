@@ -35,7 +35,7 @@ export function moveDeviceToPath(device, toPath) {
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
   const containerId = container.id.startsWith("id ")
     ? container.id
@@ -66,7 +66,7 @@ export function moveDrumChainToPath(chain, toPath, moveEntirePad) {
   if (moveEntirePad) {
     const sourceInNote = chain.getProperty("in_note");
     const drumRackPath = chain.path.replace(/ chains \d+$/, "");
-    const drumRack = new LiveAPI(drumRackPath);
+    const drumRack = LiveAPI.from(drumRackPath);
     const allChains = drumRack.getChildren("chains");
 
     for (const c of allChains) {
@@ -89,7 +89,7 @@ export function moveDrumChainToPath(chain, toPath, moveEntirePad) {
  * @param {boolean} collapsed - Whether to collapse the device view
  */
 export function updateCollapsedState(device, collapsed) {
-  const deviceView = new LiveAPI(`${device.path} view`);
+  const deviceView = LiveAPI.from(`${device.path} view`);
 
   if (deviceView.exists()) {
     deviceView.set("is_collapsed", collapsed ? 1 : 0);
@@ -132,7 +132,7 @@ function resolveParamForDevice(device, paramId) {
   const match = paramId.match(/parameters (\d+)$/);
 
   if (match) {
-    return new LiveAPI(`${device.path} parameters ${match[1]}`);
+    return LiveAPI.from(`${device.path} parameters ${match[1]}`);
   }
 
   // Default: use absolute ID resolution (backward compatible for single-device updates)

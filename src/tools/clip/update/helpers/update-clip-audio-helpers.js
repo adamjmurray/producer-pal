@@ -37,7 +37,7 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
 //         );
 //         return 0;
 //       }
-//       const liveSet = new LiveAPI("live_set");
+//       const liveSet = LiveAPI.from("live_set");
 //       const tempo = liveSet.getProperty("tempo");
 
 //       if (!tempo) {

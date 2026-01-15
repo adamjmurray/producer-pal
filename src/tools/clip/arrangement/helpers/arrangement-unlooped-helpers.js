@@ -116,7 +116,7 @@ export function handleUnloopedLengthening({
   if (isWarped) {
     clipStartMarkerBeats = clipStartMarker;
   } else {
-    const liveSet = new LiveAPI("live_set");
+    const liveSet = LiveAPI.from("live_set");
     const tempo = liveSet.getProperty("tempo");
 
     clipStartMarkerBeats = clipStartMarker * (tempo / 60);

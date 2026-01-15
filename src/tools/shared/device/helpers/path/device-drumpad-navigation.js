@@ -83,7 +83,7 @@ export function resolveDrumPadFromPath(
   drumPadNote,
   remainingSegments,
 ) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
     return { target: null, targetType: "chain" };

@@ -4,7 +4,7 @@
  */
 export function getHostTrackIndex() {
   try {
-    const device = new LiveAPI("this_device");
+    const device = LiveAPI.from("this_device");
 
     return device.trackIndex;
   } catch {

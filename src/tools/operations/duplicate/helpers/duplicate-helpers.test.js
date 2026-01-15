@@ -17,13 +17,17 @@ import {
  * @returns {class} - Mock LiveAPI class
  */
 function createMockLiveAPI(trackIds, trackNameMapping) {
-  return class {
+  class MockLiveAPI {
     constructor(path) {
       this.path = path;
 
       if (path === "live_set") {
         this._isLiveSet = true;
       }
+    }
+
+    static from(idOrPath) {
+      return new MockLiveAPI(idOrPath);
     }
 
     getChildIds(property) {
@@ -45,7 +49,9 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
     get id() {
       return this.path;
     }
-  };
+  }
+
+  return MockLiveAPI;
 }
 
 describe("duplicate-helpers", () => {
