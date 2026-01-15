@@ -1,5 +1,22 @@
 import type { Interface } from "node:readline";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { ReasoningEffort } from "openai/resources/shared";
+
+export type ReasoningSummary = "auto" | "concise" | "detailed";
+
+// Provider-specific thinking types
+export type { ReasoningEffort as OpenAIThinkingLevel };
+export type GeminiThinkingLevel =
+  | "off"
+  | "low"
+  | "medium"
+  | "high"
+  | "ultra"
+  | "auto"
+  | (string & {}); // allows numeric strings like "2048"
+
+// Union type for CLI - accepts values from any provider
+export type ThinkingLevel = ReasoningEffort | GeminiThinkingLevel;
 
 export interface ChatOptions {
   provider: string;
@@ -7,8 +24,8 @@ export interface ChatOptions {
   model?: string;
   stream: boolean;
   debug: boolean;
-  thinking?: string;
-  thinkingSummary?: string;
+  thinking?: ThinkingLevel;
+  thinkingSummary?: ReasoningSummary;
   randomness?: number;
   outputTokens?: number;
   systemPrompt?: string;

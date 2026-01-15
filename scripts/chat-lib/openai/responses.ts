@@ -1,4 +1,9 @@
 import OpenAI from "openai";
+import type {
+  ResponseCreateParamsBase,
+  ResponseInput,
+  Tool,
+} from "openai/resources/responses/responses";
 import {
   formatThought,
   formatToolCall,
@@ -11,6 +16,7 @@ import {
   connectMcp,
   extractToolResultText,
   getMcpToolsForOpenAI,
+  type ResponsesTool,
 } from "../shared/mcp.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import type {
@@ -19,6 +25,7 @@ import type {
   OpenAIResponseOutput,
   OpenAIResponsesResult,
   OpenAIStreamEvent,
+  OpenAIThinkingLevel,
   OpenAIStreamState,
 } from "../shared/types.ts";
 import {
@@ -36,7 +43,7 @@ type SessionContext = {
       arguments: Record<string, unknown>;
     }) => Promise<unknown>;
   };
-  tools: unknown;
+  tools: ResponsesTool[];
   conversation: OpenAIConversationItem[];
   model: string;
   options: ChatOptions;
@@ -115,16 +122,16 @@ function buildRequestBody(
   ctx: SessionContext,
   model: string,
   options: ChatOptions,
-): Record<string, unknown> {
-  const body: Record<string, unknown> = {
+): ResponseCreateParamsBase {
+  const body: ResponseCreateParamsBase = {
     model,
-    input: ctx.conversation,
-    tools: ctx.tools,
+    input: ctx.conversation as ResponseInput,
+    tools: ctx.tools as Tool[],
   };
 
   if (options.thinking)
     body.reasoning = {
-      effort: options.thinking,
+      effort: options.thinking as OpenAIThinkingLevel,
       summary: options.thinkingSummary ?? "auto",
     };
   if (options.outputTokens != null)
@@ -137,14 +144,13 @@ function buildRequestBody(
 
 async function handleNonStreaming(
   ctx: SessionContext,
-  requestBody: Record<string, unknown>,
+  requestBody: ResponseCreateParamsBase,
 ): Promise<void> {
   const { client, conversation, model, options } = ctx;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = (await (client as any).responses.create(
+    const response = (await client.responses.create(
       requestBody,
     )) as OpenAIResponsesResult;
 
@@ -172,14 +178,13 @@ async function handleNonStreaming(
 
 async function handleStreaming(
   ctx: SessionContext,
-  requestBody: Record<string, unknown>,
+  requestBody: ResponseCreateParamsBase,
 ): Promise<void> {
   const { client, conversation, model, options, mcpClient } = ctx;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stream = await (client as any).responses.create({
+    const stream = await client.responses.create({
       ...requestBody,
       stream: true,
     });

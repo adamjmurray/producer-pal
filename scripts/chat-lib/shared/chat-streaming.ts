@@ -186,8 +186,7 @@ export async function executeToolCall(
 
   try {
     const result = await mcpClient.callTool({ name, arguments: args });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultText = extractToolResultText(result as any);
+    const resultText = extractToolResultText(result);
 
     console.log(formatToolResult(resultText));
     messages.push({
