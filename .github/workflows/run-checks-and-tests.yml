@@ -5,10 +5,13 @@ name: "Run Test Suite"
 # test:coverage) instead of `npm run check` so each step appears separately in the
 # GitHub Actions UI, making it easier to identify which check failed.
 
-on: push
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
