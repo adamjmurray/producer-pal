@@ -14,7 +14,7 @@ export const GEMINI_MODELS = [
 
 export const OPENAI_MODELS = [
   { value: "gpt-5.2-2025-12-11", label: "GPT-5.2" },
-  { value: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
+  { value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
   { value: "gpt-5-2025-08-07", label: "GPT-5" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini" },
   { value: "gpt-4o-2024-08-06", label: "GPT-4o" },
@@ -59,8 +59,8 @@ export const OPENROUTER_MODELS = [
   },
   { value: "openai/gpt-5.2", label: "[Paid] OpenAI GPT-5.2" },
   {
-    value: "openai/gpt-5.1-codex-max",
-    label: "[Paid] OpenAI GPT-5.1 Codex Max",
+    value: "openai/gpt-5.2-codex",
+    label: "[Paid] OpenAI GPT-5.2 Codex",
   },
   { value: "x-ai/grok-4.1-fast", label: "[Paid] xAI Grok 4.1 Fast" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
