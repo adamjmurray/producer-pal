@@ -31,6 +31,15 @@ slicing a clip, work fine. If you need clips at the same position, consider:
 
 **Status:** Crash reported to Ableton. Awaiting a fix.
 
+### Slicing Unwarped Audio Clips
+
+Due to limitations in reading unwarped audio clip details from the Live API, the
+`ppal-transform-clips` tool's `slice` operation does not work correctly with
+unwarped audio clips. The first slice may be correct, but subsequent slices show
+offset audio content.
+
+**Workaround:** Before slicing, enable warping on the audio clip
+
 ---
 
 If you encounter additional issues, please report them on the
