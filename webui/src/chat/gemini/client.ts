@@ -8,14 +8,14 @@ import {
   addOrMergePartToTurn,
   executeToolCalls,
   hasUnexecutedFunctionCalls,
-} from "./helpers/gemini-client-helpers";
+} from "./client-helpers";
 import {
   applyGeminiOverrides,
   type GeminiMessageOverrides,
-} from "./helpers/gemini-message-overrides";
+} from "./message-overrides";
 
 // Re-export for external consumers
-export type { GeminiMessageOverrides } from "./helpers/gemini-message-overrides";
+export type { GeminiMessageOverrides } from "./message-overrides";
 
 /** Configuration for GeminiClient */
 export interface GeminiClientConfig {

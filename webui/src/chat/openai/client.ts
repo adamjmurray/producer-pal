@@ -8,23 +8,23 @@ import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 import {
   calculateEffectiveSettings,
   type OpenAIMessageOverrides,
-} from "./helpers/openai-message-overrides";
+} from "./message-overrides";
 import {
   processReasoningDelta,
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
-} from "./helpers/openai-reasoning-helpers";
+} from "./reasoning-helpers";
 
 // Re-export for external consumers
 export {
   extractReasoningFromDelta,
   processReasoningDelta,
-} from "./helpers/openai-reasoning-helpers";
+} from "./reasoning-helpers";
 export type {
   OpenAIAssistantMessageWithReasoning,
   ReasoningDetail,
-} from "./helpers/openai-reasoning-helpers";
-export type { OpenAIMessageOverrides } from "./helpers/openai-message-overrides";
+} from "./reasoning-helpers";
+export type { OpenAIMessageOverrides } from "./message-overrides";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";

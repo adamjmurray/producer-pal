@@ -1,4 +1,4 @@
-import type { ReasoningDetail } from "#webui/chat/openai-client";
+import type { ReasoningDetail } from "#webui/chat/openai/client";
 import type {
   OpenAIMessage,
   OpenAIToolCall,

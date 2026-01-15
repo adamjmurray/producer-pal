@@ -1,6 +1,6 @@
 import type OpenAI from "openai";
 import { describe, expect, it } from "vitest";
-import { processReasoningDelta, type ReasoningDetail } from "./openai-client";
+import { processReasoningDelta, type ReasoningDetail } from "./client";
 
 describe("processReasoningDelta", () => {
   it("should merge fields from later chunks (e.g., thought_signature)", () => {

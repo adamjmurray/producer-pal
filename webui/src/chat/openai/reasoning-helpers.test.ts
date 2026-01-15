@@ -4,7 +4,7 @@ import {
   extractReasoningFromDelta,
   processReasoningDelta,
   type ReasoningDetail,
-} from "./openai-reasoning-helpers";
+} from "./reasoning-helpers";
 
 describe("extractReasoningFromDelta", () => {
   it("should return empty string for regular content (not reasoning)", () => {
