@@ -191,8 +191,13 @@ export interface ResponsesStreamEvent {
   arguments?: string;
 }
 
-// Alias for backward compatibility
-export type ResponsesTool = ChatTool;
+// Tool format for Responses API (flat structure, not nested under "function")
+export interface ResponsesTool {
+  type: "function";
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
 
 export type ResponsesConversationItem =
   | { type: "message"; role: string; content: string }
@@ -208,7 +213,7 @@ export type ResponsesConversationItem =
 export interface ResponsesRequestBody {
   model: string;
   input: ResponsesConversationItem[];
-  tools?: ChatTool[];
+  tools?: ResponsesTool[];
   reasoning?: OpenRouterReasoningConfig;
   max_output_tokens?: number;
   temperature?: number;

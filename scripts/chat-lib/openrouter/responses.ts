@@ -13,11 +13,11 @@ import {
   connectMcp,
   extractToolResultText,
   getMcpToolsForResponses,
+  type ResponsesTool,
 } from "../shared/mcp.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import type {
   ChatOptions,
-  ChatTool,
   OpenRouterReasoningConfig,
   ResponsesAPIResponse,
   ResponsesConversationItem,
@@ -37,7 +37,7 @@ const OPENROUTER_HEADERS = {
 
 interface SessionContext {
   mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
-  tools: ChatTool[];
+  tools: ResponsesTool[];
   conversation: ResponsesConversationItem[];
   model: string;
   options: ChatOptions;

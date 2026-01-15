@@ -1,5 +1,9 @@
 import { inspect } from "node:util";
-import { GoogleGenAI, mcpToTool } from "@google/genai";
+import {
+  GoogleGenAI,
+  mcpToTool,
+  type GenerateContentConfig,
+} from "@google/genai";
 import {
   startThought,
   continueThought,
@@ -19,18 +23,6 @@ import type { ChatOptions } from "./shared/types.ts";
 
 // Default model for Gemini
 const DEFAULT_MODEL = "gemini-2.5-flash-lite";
-
-interface GeminiConfig {
-  maxOutputTokens?: number;
-  temperature?: number;
-  thinkingConfig?: {
-    includeThoughts?: boolean;
-    thinkingBudget?: number;
-  };
-  systemInstruction?: string;
-  tools?: unknown[];
-  automaticFunctionCalling?: Record<string, unknown>;
-}
 
 interface ResponsePart {
   text?: string;
@@ -134,8 +126,8 @@ const GEMINI_THINKING_MAP: Record<string, number> = {
   auto: -1,
 };
 
-function buildConfig(options: ChatOptions): GeminiConfig {
-  const config: GeminiConfig = {};
+function buildConfig(options: ChatOptions): GenerateContentConfig {
+  const config: GenerateContentConfig = {};
 
   if (options.outputTokens != null) {
     config.maxOutputTokens = options.outputTokens;
@@ -177,7 +169,7 @@ async function sendMessage(
     const responseStream = await chatSession.sendMessageStream(message);
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
-    await printStream(responseStream, debug);
+    await printStream(responseStream as AsyncIterable<GeminiResponse>, debug);
   } else {
     if (debug) debugCall("chat.sendMessage", message);
     const response = (await chatSession.sendMessage(message)) as GeminiResponse;

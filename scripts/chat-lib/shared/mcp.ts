@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { ChatTool } from "./types.ts";
+import type { ChatTool, ResponsesTool } from "./types.ts";
 
 const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 
@@ -18,7 +18,7 @@ export interface McpConnection {
 export async function connectMcp(
   url: string = DEFAULT_MCP_URL,
 ): Promise<McpConnection> {
-  const transport = new StreamableHTTPClientTransport(url);
+  const transport = new StreamableHTTPClientTransport(new URL(url));
   const client = new Client({
     name: "producer-pal-chat",
     version: "1.0.0",
@@ -57,13 +57,8 @@ export async function getMcpToolsForChat(client: Client): Promise<ChatTool[]> {
 // Aliases for different API styles
 export const getMcpToolsForOpenRouter = getMcpToolsForChat;
 
-// Tool format for OpenAI Responses API (name/description/parameters at top level)
-export interface ResponsesTool {
-  type: "function";
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
-}
+// Re-export ResponsesTool for convenience
+export type { ResponsesTool };
 
 /**
  * Convert MCP tools to OpenAI Responses API function format
@@ -96,10 +91,8 @@ export const getMcpToolsForResponses = getMcpToolsForOpenAI;
  * @param result - The result from an MCP callTool invocation
  * @returns The text content from the first content item, or empty string
  */
-export function extractToolResultText(
-  result: Awaited<ReturnType<Client["callTool"]>>,
-): string {
-  const content = result.content as Array<{ text?: string }> | undefined;
+export function extractToolResultText(result: unknown): string {
+  const typed = result as { content?: Array<{ text?: string }> } | null;
 
-  return content?.[0]?.text ?? "";
+  return typed?.content?.[0]?.text ?? "";
 }

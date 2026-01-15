@@ -152,11 +152,13 @@ interface McpClient {
   }) => Promise<unknown>;
 }
 
-interface ChatMessage {
+interface ToolMessage {
   role: "tool";
   content: string;
   tool_call_id: string;
 }
+
+type MessageArray = { push: (msg: ToolMessage) => void };
 
 /**
  * Execute a tool call and add result to messages
@@ -167,7 +169,7 @@ interface ChatMessage {
  */
 export async function executeToolCall(
   mcpClient: McpClient,
-  messages: ChatMessage[],
+  messages: MessageArray,
   toolCall: OpenRouterToolCall,
 ): Promise<void> {
   const { name, arguments: argsJson } = toolCall.function;
