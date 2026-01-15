@@ -10,7 +10,7 @@ import {
   hasUnexecutedFunctionCalls,
   shouldMergeWithLastPart,
   addOrMergePartToTurn,
-} from "./gemini-client-helpers";
+} from "./client-helpers";
 
 describe("gemini-client-helpers", () => {
   describe("isToolCall", () => {

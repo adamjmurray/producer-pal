@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { OpenAIClient } from "./openai-client";
+import { OpenAIClient } from "./client";
 import {
   createMockMcpClient,
   createMockStreamingResponse,

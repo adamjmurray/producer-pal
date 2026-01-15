@@ -3,33 +3,30 @@ import {
   expectValidTimestamps,
   stripTimestamps,
 } from "#webui/test-utils/message-test-utils";
-import { formatGeminiMessages } from "./gemini-formatter";
-import {
-  expected,
-  history,
-} from "./test-cases/gemini-formatter/basic-test-case";
+import { formatGeminiMessages } from "./formatter";
+import { expected, history } from "./test-cases/formatter/basic-test-case";
 import {
   expectedWithError,
   expectedWithErrorNoModel,
   historyWithError,
   historyWithErrorNoModel,
-} from "./test-cases/gemini-formatter/error-test-cases";
+} from "./test-cases/formatter/error-test-cases";
 import {
   expectedEndingInThought,
   historyEndingInThought,
-} from "./test-cases/gemini-formatter/history-ending-in-thought-test-case";
+} from "./test-cases/formatter/history-ending-in-thought-test-case";
 import {
   expected as expectedParallelToolCalls,
   parallelToolCallHistory,
-} from "./test-cases/gemini-formatter/parallel-tool-calls-test-case";
+} from "./test-cases/formatter/parallel-tool-calls-test-case";
 import {
   expectedNonThoughtTextWithSignature,
   historyNonThoughtTextWithSignature,
-} from "./test-cases/gemini-formatter/thought-signatures-test-case";
+} from "./test-cases/formatter/thought-signatures-test-case";
 import {
   expectedWithToolError,
   historyWithToolError,
-} from "./test-cases/gemini-formatter/tool-call-error-test-case";
+} from "./test-cases/formatter/tool-call-error-test-case";
 
 describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls", () => {

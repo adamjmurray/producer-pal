@@ -1,8 +1,8 @@
 import {
   OpenAIClient,
   type OpenAIClientConfig,
-} from "#webui/chat/openai-client";
-import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+} from "#webui/chat/openai/client";
+import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
 import type { OpenAIMessage } from "#webui/types/messages";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";

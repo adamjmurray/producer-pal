@@ -1,5 +1,5 @@
-import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
-import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
+import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import type {
   GeminiMessage,

@@ -3,15 +3,12 @@ import {
   expectValidTimestamps,
   stripTimestamps,
 } from "#webui/test-utils/message-test-utils";
-import { formatOpenAIMessages } from "./openai-formatter";
-import {
-  expected,
-  history,
-} from "./test-cases/openai-formatter/basic-test-case";
+import { formatOpenAIMessages } from "./formatter";
+import { expected, history } from "./test-cases/formatter/basic-test-case";
 import {
   expectedWithEmptyToolCallArgs,
   historyWithEmptyToolCallArgs,
-} from "./test-cases/openai-formatter/empty-tool-call-args";
+} from "./test-cases/formatter/empty-tool-call-args";
 
 describe("formatOpenAIMessages", () => {
   it("handles the initial 'Connect to Ableton' flow", () => {
