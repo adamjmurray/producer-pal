@@ -5,7 +5,7 @@ Run Producer Pal completely offline with local models.
 ## What You Need
 
 - [Ollama](https://ollama.com/) installed
-- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+- [Ableton Live 12.3+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
 
 ## 1. Install Ollama

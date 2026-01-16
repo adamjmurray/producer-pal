@@ -8,7 +8,7 @@ Choose your preferred AI platform to get started with Producer Pal:
 [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 (the Producer Pal Max for Live device)
 
-**Requires:** [Ableton Live 12.2+](https://www.ableton.com/live/) with
+**Requires:** [Ableton Live 12.3+](https://www.ableton.com/live/) with
 [Max for Live](https://www.ableton.com/live/max-for-live/)
 
 :::

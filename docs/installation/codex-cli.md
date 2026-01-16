@@ -10,7 +10,7 @@ OpenAI's API.
 
 ## Requirements
 
-- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+- [Ableton Live 12.3+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
 - [Node.js 22+](https://nodejs.org/en/download)
 - [OpenAI Codex](https://github.com/openai/codex#quickstart) (requires OpenAI

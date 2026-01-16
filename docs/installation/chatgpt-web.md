@@ -4,7 +4,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
 ## Requirements
 
-- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+- [Ableton Live 12.3+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
 - [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
   subscription is required to access the advanced settings needed for this to
