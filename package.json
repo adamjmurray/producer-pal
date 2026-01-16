@@ -15,7 +15,7 @@
   "author": "Adam Murray",
   "license": "MIT License",
   "engines": {
-    "node": "^24.0.0"
+    "node": ">=24"
   },
   "keywords": [
     "music",
