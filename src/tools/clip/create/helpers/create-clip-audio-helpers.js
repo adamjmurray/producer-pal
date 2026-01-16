@@ -38,7 +38,7 @@ export function createAudioSessionClip(
     }
   }
 
-  const clipSlot = new LiveAPI(
+  const clipSlot = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
 
@@ -52,7 +52,7 @@ export function createAudioSessionClip(
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
-    clip: new LiveAPI(`${clipSlot.path} clip`),
+    clip: LiveAPI.from(`${clipSlot.path} clip`),
     sceneIndex,
   };
 }
@@ -62,14 +62,12 @@ export function createAudioSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @param {number} _clipLength - Unused (kept for signature consistency)
  * @returns {object} - Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
   arrangementStartBeats,
   sampleFile,
-  _clipLength,
 ) {
   // Live API limit check
   if (arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS) {
@@ -78,7 +76,7 @@ export function createAudioArrangementClip(
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create audio clip at position
   const newClipResult = track.call(

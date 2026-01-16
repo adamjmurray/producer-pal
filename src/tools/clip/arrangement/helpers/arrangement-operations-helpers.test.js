@@ -166,8 +166,6 @@ describe("arrangement-operations-helpers", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
-
-        return undefined;
       });
 
       const mockClip = {
@@ -250,11 +248,9 @@ describe("arrangement-operations-helpers", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
-
-        return undefined;
       });
 
-      liveApiSet.mockImplementation(() => undefined);
+      liveApiSet.mockImplementation(() => {});
 
       const mockClip = {
         id: "789",
@@ -300,8 +296,6 @@ describe("arrangement-operations-helpers", () => {
         if (method === "create_midi_clip") {
           return "id temp-midi";
         }
-
-        return undefined;
       });
 
       const mockClip = {

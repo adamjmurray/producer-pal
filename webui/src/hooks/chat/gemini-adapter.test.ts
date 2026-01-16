@@ -3,15 +3,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
-import { GeminiClient } from "#webui/chat/gemini-client";
+import { GeminiClient } from "#webui/chat/gemini/client";
 import type { GeminiMessage } from "#webui/types/messages";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
-import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
+import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
-// @ts-expect-error vi.mock partial implementation
-vi.mock(import("#webui/chat/gemini-client"), () => ({
+vi.mock(import("#webui/chat/gemini/client"), () => ({
   GeminiClient: vi.fn(),
 }));
 
@@ -29,39 +28,27 @@ vi.mock(import("#webui/hooks/settings/config-builders"), () => ({
   ),
 }));
 
+// Helper for mock message transform
+const mockTransformMessage = (msg: GeminiMessage, idx: number) => ({
+  role: msg.role === "user" ? "user" : "model",
+  parts: (msg.parts ?? []).map((part) => ({
+    type: "text",
+    content: part.text ?? "",
+  })),
+  rawHistoryIndex: idx,
+});
+
 // Mock formatters and helpers
-vi.mock(import("#webui/chat/gemini-formatter"), () => ({
-  formatGeminiMessages: vi.fn((messages) =>
-    messages.map((msg: GeminiMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: (msg.parts ?? []).map((part) => ({
-        type: "text",
-        content: part.text ?? "",
-      })),
-      rawHistoryIndex: idx,
-    })),
-  ),
+vi.mock(import("#webui/chat/gemini/formatter"), () => ({
+  formatGeminiMessages: vi.fn((messages) => messages.map(mockTransformMessage)),
 }));
 
 vi.mock(import("./helpers/streaming-helpers"), () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
-    ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: (msg.parts ?? []).map((part) => ({
-        type: "text",
-        content: part.text ?? "",
-      })),
-      rawHistoryIndex: idx,
-    })),
+    ...chatHistory.map(mockTransformMessage),
     {
       role: "model",
-      parts: [
-        {
-          type: "error",
-          content: `${error}`,
-          isError: true,
-        },
-      ],
+      parts: [{ type: "error", content: `${error}`, isError: true }],
       rawHistoryIndex: chatHistory.length,
     },
   ]),
@@ -85,26 +72,6 @@ describe("gemini-adapter", () => {
   });
 
   describe("buildConfig", () => {
-    it("calls buildGeminiConfig with correct parameters", () => {
-      geminiAdapter.buildConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Default",
-        {},
-        undefined,
-        { showThoughts: true },
-      );
-
-      expect(buildGeminiConfig).toHaveBeenCalledWith(
-        "gemini-2.5-flash",
-        1.0,
-        "Default",
-        true,
-        {},
-        undefined,
-      );
-    });
-
     it("extracts showThoughts as true from extraParams", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
@@ -235,7 +202,7 @@ describe("gemini-adapter", () => {
       const result = geminiAdapter.createErrorMessage(error, chatHistory);
 
       expect(createGeminiErrorMessage).toHaveBeenCalledWith(error, chatHistory);
-      expect(result[result.length - 1]?.parts[0]?.type).toBe("error");
+      expect(result.at(-1)?.parts[0]?.type).toBe("error");
     });
 
     it("handles string errors", () => {
@@ -244,7 +211,7 @@ describe("gemini-adapter", () => {
 
       const result = geminiAdapter.createErrorMessage(error, chatHistory);
 
-      const lastPart = result[result.length - 1]?.parts[0];
+      const lastPart = result.at(-1)?.parts[0];
 
       expect(lastPart).toBeDefined();
       expect(lastPart).toHaveProperty("content");

@@ -70,8 +70,6 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return `id 1000`;
       }
-
-      return undefined;
     });
 
     const result = updateClip({
@@ -157,8 +155,6 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
         return `id ${id}`;
       }
-
-      return undefined;
     });
 
     const result = updateClip({
@@ -289,8 +285,6 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
         return `id ${id}`;
       }
-
-      return undefined;
     });
 
     // Track set() calls on created clips
@@ -304,8 +298,6 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       }
 
       setCallsByClip[clipId][prop] = value;
-
-      return undefined;
     });
 
     const result = updateClip({
@@ -428,8 +420,6 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
           return `id 1001`; // Second full tile (4 beats)
         }
       }
-
-      return undefined;
     });
 
     const consoleErrorSpy = vi

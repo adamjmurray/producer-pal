@@ -4,6 +4,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
   parseSceneIndexList as parseSceneIndexListBase,
   parseArrangementStartList,
@@ -41,19 +42,7 @@ export function parseSceneIndexList(input) {
  * @returns {string|undefined} - Generated clip name
  */
 export function buildClipName(name, count, i) {
-  if (name == null) {
-    return undefined;
-  }
-
-  if (count === 1) {
-    return name;
-  }
-
-  if (i === 0) {
-    return name;
-  }
-
-  return `${name} ${i + 1}`;
+  return buildIndexedName(name, count, i);
 }
 
 /**
@@ -156,7 +145,7 @@ function createSessionClip(
     }
   }
 
-  const clipSlot = new LiveAPI(
+  const clipSlot = LiveAPI.from(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
 
@@ -169,7 +158,7 @@ function createSessionClip(
   clipSlot.call("create_clip", clipLength);
 
   return {
-    clip: new LiveAPI(`${clipSlot.path} clip`),
+    clip: LiveAPI.from(`${clipSlot.path} clip`),
     sceneIndex,
   };
 }
@@ -182,7 +171,7 @@ function createSessionClip(
  * @returns {object} - Object with clip and arrangementStartBeats
  */
 function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
   const newClipResult = track.call(
     "create_midi_clip",
     arrangementStartBeats,
@@ -263,7 +252,6 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         sampleFile,
-        clipLength,
       );
 
       clip = result.clip;
@@ -322,7 +310,7 @@ export function processClipIteration(
     }
   }
 
-  const clipResult = buildClipResult(
+  return buildClipResult(
     clip,
     trackIndex,
     view,
@@ -335,6 +323,4 @@ export function processClipIteration(
     timeSigDenominator,
     sampleFile,
   );
-
-  return clipResult;
 }

@@ -60,7 +60,7 @@ export interface UIMessage {
 // Transforms provider-specific message formats into our unified UI format
 
 export interface MessageFormatter<TRawMessage> {
-  format(history: TRawMessage[]): UIMessage[];
+  format: (history: TRawMessage[]) => UIMessage[];
 }
 
 // Chat Client Interface
@@ -68,8 +68,10 @@ export interface MessageFormatter<TRawMessage> {
 
 export interface ChatClient<TRawMessage> {
   chatHistory: TRawMessage[];
-  initialize(): Promise<void>;
-  sendMessage(message: string): AsyncGenerator<TRawMessage[], void, unknown>;
+  initialize: () => Promise<void>;
+  sendMessage: (
+    message: string,
+  ) => AsyncGenerator<TRawMessage[], void, unknown>;
 }
 
 // Concrete Types for Provider Implementations

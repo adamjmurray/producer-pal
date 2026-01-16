@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -359,6 +359,27 @@ describe("createDevice", () => {
             deviceName: "Compressor",
           }),
         ).toThrow('Track in path "t99/d0/c0" does not exist');
+      });
+
+      it("should throw error when container exists() returns false", () => {
+        // Mock track to return valid id but chain container to not exist
+        const originalExists = global.LiveAPI.prototype.exists;
+
+        global.LiveAPI.prototype.exists = vi.fn(function () {
+          // Chains container doesn't exist
+          return !this._path?.includes("chains");
+        });
+
+        expect(() =>
+          createDevice({
+            path: "t0/d0/c0",
+            deviceName: "Compressor",
+          }),
+        ).toThrow(
+          'createDevice failed: container at path "t0/d0/c0" does not exist',
+        );
+
+        global.LiveAPI.prototype.exists = originalExists;
       });
 
       it("should throw error when insert_device fails", () => {

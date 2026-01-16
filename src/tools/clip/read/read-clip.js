@@ -50,7 +50,7 @@ export function readClip(args = {}, _context = {}) {
     // Validate the clip ID is actually a clip
     clip = validateIdType(clipId, "clip", "readClip");
   } else {
-    clip = new LiveAPI(
+    clip = LiveAPI.from(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
     );
 
@@ -167,7 +167,7 @@ function processWarpMarkers(clip) {
     const warpMarkersJson = clip.getProperty("warp_markers");
 
     if (!warpMarkersJson || warpMarkersJson === "") {
-      return undefined;
+      return;
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
@@ -187,15 +187,11 @@ function processWarpMarkers(clip) {
     ) {
       return warpMarkersData.warp_markers.map(mapMarker);
     }
-
-    return undefined;
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.error(
       `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
     );
-
-    return undefined;
   }
 }
 
@@ -323,7 +319,7 @@ function processAudioClip(result, clip, includeWarpMarkers) {
  */
 function addClipLocationProperties(result, clip, isArrangementClip) {
   if (isArrangementClip) {
-    const liveSet = new LiveAPI("live_set");
+    const liveSet = LiveAPI.from("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 

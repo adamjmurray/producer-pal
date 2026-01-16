@@ -7,47 +7,26 @@ import {
   mockLiveApiGet,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// Mock arrangement-tiling helpers
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  return { updateClip: updateClipMock };
+});
+
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
     return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
-
-        return null;
-      }),
-      // Add trackIndex getter for getMinimalClipInfo
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
-
-        return match ? parseInt(match[1]) : null;
-      },
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
     };
-  }),
-}));
+  },
+);
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {

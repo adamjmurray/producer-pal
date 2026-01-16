@@ -186,6 +186,75 @@ describe("readDevice with path parameter", () => {
     });
   });
 
+  it("should read chain with devices", () => {
+    liveApiId.mockImplementation(function () {
+      const id = this._id;
+
+      if (id === "device-in-chain") return "device-in-chain";
+
+      return "chain-with-devices";
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === "device-in-chain") return "Device";
+
+      return "Chain";
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      const id = this._id;
+
+      // Device properties
+      if (id === "device-in-chain") {
+        switch (prop) {
+          case "name":
+            return ["Simpler"];
+          case "class_display_name":
+            return ["Simpler"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          default:
+            return [];
+        }
+      }
+
+      // Chain properties
+      switch (prop) {
+        case "name":
+          return ["Chain With Devices"];
+        case "mute":
+          return [0];
+        case "solo":
+          return [0];
+        case "color":
+          return [];
+        case "devices":
+          return ["id", "device-in-chain"];
+        default:
+          return [];
+      }
+    });
+
+    const result = readDevice({ path: "t1/d0/c0" });
+
+    expect(result).toStrictEqual({
+      id: "chain-with-devices",
+      path: "t1/d0/c0",
+      type: "Chain",
+      name: "Chain With Devices",
+      devices: [
+        {
+          id: "device-in-chain",
+          type: "instrument: Simpler",
+        },
+      ],
+    });
+  });
+
   it("should omit chokeGroup for regular chains (not DrumChain type)", () => {
     liveApiId.mockImplementation(function () {
       return "chain-no-choke";
@@ -396,252 +465,5 @@ describe("readDevice with path parameter", () => {
     expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
       "Device not found at path: live_set tracks 1 devices 0",
     );
-  });
-
-  describe("drum pad paths", () => {
-    // Helper functions for mock property lookup
-    const getPadProperty = (id, prop, padProperties) => {
-      const padProps = padProperties[id] ?? {};
-      const propMap = {
-        note: [padProps.note ?? 36],
-        name: [padProps.name ?? "Kick"],
-        mute: [padProps.mute ?? 0],
-        solo: [padProps.solo ?? 0],
-        chains: (padProps.chainIds ?? []).flatMap((c) => ["id", c]),
-      };
-
-      return propMap[prop];
-    };
-
-    const getChainProperty = (id, prop, chainProperties) => {
-      const chainProps = chainProperties[id] ?? {};
-      const propMap = {
-        name: [chainProps.name ?? "Chain"],
-        mute: [chainProps.mute ?? 0],
-        solo: [chainProps.solo ?? 0],
-        muted_via_solo: [0],
-        choke_group: [chainProps.choke_group ?? 0],
-        out_note: [chainProps.out_note ?? 36],
-        color: chainProps.color ? [chainProps.color] : [],
-        devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
-      };
-
-      return propMap[prop];
-    };
-
-    const getDeviceProperty = (id, prop, deviceProperties) => {
-      const devProps = deviceProperties[id] ?? {};
-      const propMap = {
-        name: [devProps.name ?? "Device"],
-        class_display_name: [devProps.class_display_name ?? "Device"],
-        type: [devProps.type ?? 1],
-        can_have_chains: [0],
-        can_have_drum_pads: [0],
-        is_active: [1],
-        devices: [],
-      };
-
-      return propMap[prop];
-    };
-
-    // Helper to set up drum pad mocks using the LiveAPI ID-based pattern
-    const setupDrumPadMocks = (config) => {
-      const {
-        deviceId = "drum-rack-1",
-        padIds = ["pad-36"],
-        padProperties = {},
-        chainProperties = {},
-        deviceProperties = {},
-      } = config;
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 1 devices 0") return deviceId;
-
-        return this._id ?? "0";
-      });
-
-      // Mock chain type - chains in drum pads are DrumChain type
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-")) {
-          return chainProperties[id]?.type ?? "DrumChain";
-        }
-
-        return undefined; // Let default mock handle other types
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "can_have_drum_pads") return [1];
-          if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
-        }
-
-        if (id?.startsWith("pad-"))
-          return getPadProperty(id, prop, padProperties);
-        if (id?.startsWith("chain-"))
-          return getChainProperty(id, prop, chainProperties);
-        if (id?.startsWith("device-"))
-          return getDeviceProperty(id, prop, deviceProperties);
-
-        return [];
-      });
-    };
-
-    it("should read drum pad by path", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick" } },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1", include: [] });
-
-      expect(result).toStrictEqual({
-        id: "pad-36",
-        path: "t1/d0/pC1",
-        name: "Kick",
-        note: 36,
-        pitch: "C1",
-      });
-    });
-
-    it("should read muted drum pad", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick", mute: 1 } },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1", include: [] });
-
-      expect(result.state).toBe("muted");
-    });
-
-    it("should read soloed drum pad", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick", solo: 1 } },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1", include: [] });
-
-      expect(result.state).toBe("soloed");
-    });
-
-    it("should read drum pad with chains when includeChains is requested", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: {
-          "chain-1": {
-            name: "Layer 1",
-            color: 0xff0000,
-            choke_group: 2,
-            out_note: 48,
-          },
-        },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
-
-      expect(result.chains).toHaveLength(1);
-      expect(result.chains[0]).toStrictEqual({
-        id: "chain-1",
-        path: "t1/d0/pC1/c0",
-        type: "DrumChain",
-        name: "Layer 1",
-        color: "#FF0000",
-        mappedPitch: "C2",
-        chokeGroup: 2,
-        devices: [],
-      });
-    });
-
-    it("should read drum pad chain by path", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: {
-          "chain-1": { name: "Layer 1", color: 0x00ff00, out_note: 60 },
-        },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1/c0" });
-
-      expect(result).toStrictEqual({
-        id: "chain-1",
-        path: "t1/d0/pC1/c0",
-        type: "DrumChain",
-        name: "Layer 1",
-        color: "#00FF00",
-        mappedPitch: "C3",
-        devices: [],
-      });
-    });
-
-    it("should throw error when drum pad not found", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
-      });
-
-      expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
-        "Drum pad C3 not found",
-      );
-    });
-
-    it("should throw error for invalid chain index in drum pad", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: { "pad-36": { note: 36, name: "Kick", chainIds: [] } },
-      });
-
-      expect(() => readDevice({ path: "t1/d0/pC1/c5" })).toThrow(
-        "Invalid chain index in path: t1/d0/pC1/c5",
-      );
-    });
-
-    it("should read device inside drum pad chain", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: {
-          "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
-        },
-        deviceProperties: {
-          "device-1": {
-            name: "Simpler",
-            class_display_name: "Simpler",
-            type: 1,
-          },
-        },
-      });
-
-      const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
-
-      expect(result.id).toBe("device-1");
-      expect(result.type).toBe("instrument: Simpler");
-    });
-
-    it("should throw error for invalid device index in drum pad chain", () => {
-      setupDrumPadMocks({
-        padIds: ["pad-36"],
-        padProperties: {
-          "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-        },
-        chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
-      });
-
-      expect(() => readDevice({ path: "t1/d0/pC1/c0/d5" })).toThrow(
-        "Invalid device index in path: t1/d0/pC1/c0/d5",
-      );
-    });
   });
 });

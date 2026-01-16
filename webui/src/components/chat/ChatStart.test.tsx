@@ -1,8 +1,11 @@
 /**
  * @vitest-environment happy-dom
  */
+import type { RenderResult } from "@testing-library/preact";
 import { render, screen, fireEvent } from "@testing-library/preact";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
+import type { ChatStartProps } from "./ChatStart";
 import { ChatStart } from "./ChatStart";
 
 const defaultOverrides = {
@@ -11,72 +14,54 @@ const defaultOverrides = {
   showThoughts: true,
 };
 
+type RenderProps = Partial<ChatStartProps> & {
+  checkMcpConnection?: Mock;
+  handleSend?: Mock;
+};
+
+function renderChatStart(
+  props: RenderProps = {},
+): RenderResult & { checkMcpConnection: Mock; handleSend: Mock } {
+  const checkMcpConnection = props.checkMcpConnection ?? vi.fn();
+  const handleSend = props.handleSend ?? vi.fn();
+  const result = render(
+    <ChatStart
+      mcpStatus={props.mcpStatus ?? "connected"}
+      mcpError={props.mcpError ?? ""}
+      checkMcpConnection={checkMcpConnection}
+      handleSend={handleSend}
+      overrides={props.overrides ?? defaultOverrides}
+    />,
+  );
+
+  return { ...result, checkMcpConnection, handleSend };
+}
+
 describe("ChatStart", () => {
   describe("when mcpStatus is connected", () => {
     it("shows start conversation message", () => {
-      const mcpError = "";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="connected"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart();
       expect(
         screen.getByText("Start a conversation with Producer Pal"),
       ).toBeDefined();
     });
 
     it("shows Quick Connect button", () => {
-      const mcpError = "";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="connected"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart();
       expect(
         screen.getByRole("button", { name: "Quick Connect" }),
       ).toBeDefined();
     });
 
     it("calls handleSend with Connect to Ableton and overrides when Quick Connect is clicked", () => {
-      const mcpError = "";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
       const overrides = {
         thinking: "High",
         temperature: 0.5,
         showThoughts: false,
       };
+      const { handleSend } = renderChatStart({ overrides });
 
-      render(
-        <ChatStart
-          mcpStatus="connected"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={overrides}
-        />,
-      );
-
-      const button = screen.getByRole("button", { name: "Quick Connect" });
-
-      fireEvent.click(button);
-
+      fireEvent.click(screen.getByRole("button", { name: "Quick Connect" }));
       expect(handleSend).toHaveBeenCalledExactlyOnceWith(
         "Connect to Ableton.",
         overrides,
@@ -84,117 +69,44 @@ describe("ChatStart", () => {
     });
 
     it("does not show error message", () => {
-      const mcpError = "Some error";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="connected"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart({ mcpError: "Some error" });
       expect(screen.queryByText("Producer Pal Not Found")).toBeNull();
       expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     });
   });
 
   describe("when mcpStatus is error", () => {
+    const errorProps = {
+      mcpStatus: "error" as const,
+      mcpError: "Connection failed",
+    };
+
     it("shows error heading", () => {
-      const mcpError = "Connection failed";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="error"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart(errorProps);
       expect(screen.getByText("Producer Pal Not Found")).toBeDefined();
     });
 
     it("shows error message from mcpError prop", () => {
       const mcpError = "Connection failed due to network issue";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
 
-      render(
-        <ChatStart
-          mcpStatus="error"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart({ mcpStatus: "error", mcpError });
       expect(screen.getByText(mcpError)).toBeDefined();
     });
 
     it("shows Retry button", () => {
-      const mcpError = "Connection failed";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="error"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart(errorProps);
       expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
     });
 
     it("calls checkMcpConnection when Retry is clicked", () => {
-      const mcpError = "Connection failed";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
+      const { checkMcpConnection } = renderChatStart(errorProps);
 
-      render(
-        <ChatStart
-          mcpStatus="error"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
-      const button = screen.getByRole("button", { name: "Retry" });
-
-      fireEvent.click(button);
-
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
       expect(checkMcpConnection).toHaveBeenCalledOnce();
     });
 
     it("does not show Quick Connect button", () => {
-      const mcpError = "Connection failed";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="error"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart(errorProps);
       expect(
         screen.queryByRole("button", { name: "Quick Connect" }),
       ).toBeNull();
@@ -203,20 +115,7 @@ describe("ChatStart", () => {
 
   describe("when mcpStatus is connecting", () => {
     it("shows no content", () => {
-      const mcpError = "";
-      const checkMcpConnection = vi.fn();
-      const handleSend = vi.fn();
-
-      render(
-        <ChatStart
-          mcpStatus="connecting"
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          handleSend={handleSend}
-          overrides={defaultOverrides}
-        />,
-      );
-
+      renderChatStart({ mcpStatus: "connecting" });
       expect(
         screen.queryByText("Start a conversation with Producer Pal"),
       ).toBeNull();

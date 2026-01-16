@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import {
   findAllFiles,
   copyFile,
@@ -26,7 +26,7 @@ export async function processFlatMode(config, excludeGroups) {
       } else if (stat.isFile()) {
         await processFileFlat(config, item, sourcePath, excludeGroups);
       }
-    } catch (_error) {
+    } catch {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }
@@ -54,7 +54,7 @@ export async function processConcatMode(config, excludeGroups) {
       } else if (stat.isFile()) {
         await processFileConcat(config, item, sourcePath, fileGroups);
       }
-    } catch (_error) {
+    } catch {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }

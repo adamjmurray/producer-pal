@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "preact/hooks";
+import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
-import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
+import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
+import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
+import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
@@ -66,21 +68,22 @@ export function App() {
   );
 
   // Use Gemini chat for Gemini provider
-  const geminiChat = useGeminiChat({
+  const geminiChat = useChat({
     provider: settings.provider,
     apiKey: settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
-    showThoughts: settings.showThoughts,
     enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    adapter: geminiAdapter,
+    extraParams: { showThoughts: settings.showThoughts },
   });
 
-  // Use OpenAI chat for OpenAI-compatible providers
-  const openaiChat = useOpenAIChat({
+  // Use OpenAI Chat Completions API for OpenAI-compatible providers (OpenRouter, Mistral, etc.)
+  const openaiChat = useChat({
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
@@ -89,12 +92,27 @@ export function App() {
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
-    baseUrl,
-    showThoughts: settings.showThoughts,
     enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    adapter: openaiChatAdapter,
+    extraParams: { baseUrl, showThoughts: settings.showThoughts },
+  });
+
+  // Use OpenAI Responses API for official OpenAI provider (supports Codex models)
+  const responsesChat = useChat({
+    provider: settings.provider,
+    apiKey: settings.apiKey,
+    model: settings.model,
+    thinking: settings.thinking,
+    temperature: settings.temperature,
+    enabledTools: settings.enabledTools,
+    mcpStatus,
+    mcpError,
+    checkMcpConnection,
+    adapter: responsesAdapter,
+    extraParams: { showThoughts: settings.showThoughts },
   });
 
   // Lock conversation to the provider used when chat started
@@ -103,6 +121,7 @@ export function App() {
       settingsProvider: settings.provider,
       geminiChat,
       openaiChat,
+      responsesChat,
     });
 
   // Calculate tools counts for header display

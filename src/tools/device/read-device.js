@@ -4,8 +4,9 @@ import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.js";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)
@@ -26,14 +27,7 @@ export function readDevice({
   include = ["chains"],
   paramSearch,
 }) {
-  // Validate: exactly one of deviceId or path required
-  if (!deviceId && !path) {
-    throw new Error("Either deviceId or path must be provided");
-  }
-
-  if (deviceId && path) {
-    throw new Error("Provide either deviceId or path, not both");
-  }
+  validateExclusiveParams(deviceId, path, "deviceId", "path");
 
   const includeChains = include.includes("*") || include.includes("chains");
   const includeReturnChains =
@@ -93,7 +87,7 @@ export function readDevice({
  * @returns {object} Device information
  */
 function readDeviceById(deviceId, options) {
-  const device = new LiveAPI(`id ${deviceId}`);
+  const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
     throw new Error(`Device with ID ${deviceId} not found`);
@@ -111,7 +105,7 @@ function readDeviceById(deviceId, options) {
  * @returns {object} Device information
  */
 function readDeviceByLiveApiPath(liveApiPath, options) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
     throw new Error(`Device not found at path: ${liveApiPath}`);
@@ -130,7 +124,7 @@ function readDeviceByLiveApiPath(liveApiPath, options) {
  * @returns {object} Chain information
  */
 function readChain(liveApiPath, path, options) {
-  const chain = new LiveAPI(liveApiPath);
+  const chain = LiveAPI.from(liveApiPath);
 
   if (!chain.exists()) {
     throw new Error(`Chain not found at path: ${path}`);
@@ -161,7 +155,7 @@ function readDrumPadByPath(
   fullPath,
   options,
 ) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
     throw new Error(`Device not found at path: ${liveApiPath}`);
@@ -202,9 +196,13 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
   // Parse chain index from prefixed segment (e.g., "c0" -> 0)
   const chainSegment = remainingSegments[0];
-  const chainIndex = parseInt(chainSegment.slice(1), 10);
+  const chainIndex = Number.parseInt(chainSegment.slice(1));
 
-  if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
+  if (
+    Number.isNaN(chainIndex) ||
+    chainIndex < 0 ||
+    chainIndex >= chains.length
+  ) {
     throw new Error(`Invalid chain index in path: ${fullPath}`);
   }
 
@@ -218,10 +216,14 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   // Navigate to device within chain
   // Parse device index from prefixed segment (e.g., "d0" -> 0)
   const deviceSegment = remainingSegments[1];
-  const deviceIndex = parseInt(deviceSegment.slice(1), 10);
+  const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 
-  if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
+  if (
+    Number.isNaN(deviceIndex) ||
+    deviceIndex < 0 ||
+    deviceIndex >= devices.length
+  ) {
     throw new Error(`Invalid device index in path: ${fullPath}`);
   }
 

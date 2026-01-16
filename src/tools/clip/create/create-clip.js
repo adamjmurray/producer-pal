@@ -6,7 +6,10 @@ import {
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
+import {
+  parseTimeSignature,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
@@ -73,13 +76,13 @@ export function createClip(
   );
 
   // Validate track exists (fatal - affects all clips)
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
     throw new Error(`createClip failed: track ${trackIndex} does not exist`);
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for arrangementStart conversion
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
@@ -152,8 +155,7 @@ export function createClip(
     select({ view });
   }
 
-  // Return single object if one position, array if multiple
-  return createdClips.length === 1 ? createdClips[0] : createdClips;
+  return unwrapSingleResult(createdClips);
 }
 
 /**
@@ -205,7 +207,7 @@ function createClips(
   const createdClips = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
   const count = positions.length;
-  let clipLength = initialClipLength;
+  const clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
     const clipName = buildClipName(name, count, i);
@@ -250,13 +252,6 @@ function createClips(
       );
 
       createdClips.push(clipResult);
-
-      // For audio clips, get actual length from first successful clip
-      if (sampleFile && createdClips.length === 1) {
-        const firstClip = new LiveAPI(clipResult.id);
-
-        clipLength = firstClip.getProperty("length");
-      }
     } catch (error) {
       // Emit warning with position info
       const position =
@@ -312,8 +307,7 @@ function prepareClipData(
   let clipLength;
 
   if (sampleFile) {
-    // For audio clips, we'll get the length from the first created clip
-    // Use 1 as a placeholder for now
+    // Audio clips get length from the sample file, not this value
     clipLength = 1;
   } else {
     // MIDI clips: calculate based on notes and parameters
@@ -411,12 +405,7 @@ function calculateClipLength(
   }
 
   // Empty clip, use 1 bar minimum
-  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  return abletonBeatsPerBar;
+  return timeSigToAbletonBeatsPerBar(timeSigNumerator, timeSigDenominator);
 }
 
 /**
@@ -435,7 +424,7 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
     case "play-scene": {
       // Launch the first scene for synchronization
       const firstSceneIndex = sceneIndices[0];
-      const scene = new LiveAPI(`live_set scenes ${firstSceneIndex}`);
+      const scene = LiveAPI.from(`live_set scenes ${firstSceneIndex}`);
 
       if (!scene.exists()) {
         throw new Error(
@@ -450,7 +439,7 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
     case "play-clip":
       // Fire individual clips at each scene index
       for (const sceneIndex of sceneIndices) {
-        const clipSlot = new LiveAPI(
+        const clipSlot = LiveAPI.from(
           `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
 

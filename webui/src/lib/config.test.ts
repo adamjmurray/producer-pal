@@ -78,22 +78,24 @@ describe("config", () => {
     });
 
     it("contains expected tool mappings", () => {
-      expect(toolNames["ppal-connect"]).toBe("Connect to Ableton");
-      expect(toolNames["ppal-read-live-set"]).toBe("Read Live Set");
-      expect(toolNames["ppal-update-live-set"]).toBe("Update Live Set");
-      expect(toolNames["ppal-create-track"]).toBe("Create Track");
-      expect(toolNames["ppal-read-track"]).toBe("Read Track");
-      expect(toolNames["ppal-update-track"]).toBe("Update Track");
-      expect(toolNames["ppal-create-scene"]).toBe("Create Scene");
-      expect(toolNames["ppal-read-scene"]).toBe("Read Scene");
-      expect(toolNames["ppal-update-scene"]).toBe("Update Scene");
-      expect(toolNames["ppal-create-clip"]).toBe("Create Clip");
-      expect(toolNames["ppal-read-clip"]).toBe("Read Clip");
-      expect(toolNames["ppal-update-clip"]).toBe("Update Clip");
-      expect(toolNames["ppal-playback"]).toBe("Playback Controls");
-      expect(toolNames["ppal-delete"]).toBe("Delete Track/Scene/Clip");
-      expect(toolNames["ppal-duplicate"]).toBe("Duplicate Track/Scene/Clip");
-      expect(toolNames["ppal-memory"]).toBe("Project Notes");
+      expect(toolNames).toMatchObject({
+        "ppal-connect": "Connect to Ableton",
+        "ppal-read-live-set": "Read Live Set",
+        "ppal-update-live-set": "Update Live Set",
+        "ppal-create-track": "Create Track",
+        "ppal-read-track": "Read Track",
+        "ppal-update-track": "Update Track",
+        "ppal-create-scene": "Create Scene",
+        "ppal-read-scene": "Read Scene",
+        "ppal-update-scene": "Update Scene",
+        "ppal-create-clip": "Create Clip",
+        "ppal-read-clip": "Read Clip",
+        "ppal-update-clip": "Update Clip",
+        "ppal-playback": "Playback Controls",
+        "ppal-delete": "Delete Track/Scene/Clip",
+        "ppal-duplicate": "Duplicate Track/Scene/Clip",
+        "ppal-memory": "Project Notes",
+      });
     });
 
     it("has 16 tool mappings", () => {

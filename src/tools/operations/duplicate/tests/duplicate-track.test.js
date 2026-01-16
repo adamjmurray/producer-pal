@@ -7,59 +7,34 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupRouteToSourceMock,
+  setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Mock updateClip to avoid complex internal logic
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
-    // Return array format to simulate tiled clips
-    return [{ id: ids }];
-  }),
-}));
+// Shared mocks - see duplicate-test-helpers.js for implementations
+vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
+  const { updateClipMock } =
+    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
-// Mock arrangement-tiling helpers
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-  })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    // Return a mock LiveAPI object with necessary methods
-    const clipId = `${track.path} arrangement_clips 0`;
+  return { updateClip: updateClipMock };
+});
+
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
+  async () => {
+    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
+      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
 
     return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
-
-        if (prop === "start_time") {
-          return _startBeats;
-        }
-
-        return null;
-      }),
-      // Add trackIndex getter for getMinimalClipInfo
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
-
-        return match ? parseInt(match[1]) : null;
-      },
+      createShortenedClipInHolding: createShortenedClipInHoldingMock,
+      moveClipFromHolding: moveClipFromHoldingMock,
     };
-  }),
-}));
+  },
+);
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({ type: "track", id: "track1" });
 
@@ -77,13 +52,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate multiple tracks with auto-incrementing names", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     const result = duplicate({
       type: "track",
@@ -144,13 +113,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without clips when withoutClips is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     // Mock track with clips
     mockLiveApiGet({
@@ -213,13 +176,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without devices when withoutDevices is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupTrackPath("track1");
 
     // Mock track with devices
     mockLiveApiGet({
@@ -265,15 +222,8 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track with devices by default (withoutDevices not specified)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
+    setupTrackPath("track1");
 
-      return this._path;
-    });
-
-    // Mock track with devices
     mockLiveApiGet({
       "live_set tracks 1": {
         devices: children("device0", "device1"),
@@ -305,15 +255,8 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track with devices when withoutDevices is false", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
+    setupTrackPath("track1");
 
-      return this._path;
-    });
-
-    // Mock track with devices
     mockLiveApiGet({
       "live_set tracks 1": {
         devices: children("device0", "device1"),
@@ -449,32 +392,13 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should configure routing when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      // Mock track properties for routing configuration
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          current_monitoring_state: 1, // AUTO
-          input_routing_type: { display_name: "Audio In" },
-          available_input_routing_types: [
-            { display_name: "No Input", identifier: "no_input_id" },
-            { display_name: "Audio In", identifier: "audio_in_id" },
-          ],
-        },
-        "live_set tracks 1": {
-          available_output_routing_types: [
-            { display_name: "Master", identifier: "master_id" },
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      setupTrackPath("track1");
+      mockLiveApiGet(
+        setupRouteToSourceMock({
+          monitoringState: 1,
+          inputRoutingName: "Audio In",
+        }),
+      );
 
       const result = duplicate({
         type: "track",
@@ -493,27 +417,8 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not change source track monitoring if already set to In", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      // Mock track with monitoring already set to "In"
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          current_monitoring_state: 0, // IN
-          input_routing_type: { display_name: "No Input" },
-        },
-        "live_set tracks 1": {
-          available_output_routing_types: [
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      setupTrackPath("track1");
+      mockLiveApiGet(setupRouteToSourceMock());
 
       duplicate({
         type: "track",
@@ -529,27 +434,8 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not change source track input routing if already set to No Input", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      // Mock track with input already set to "No Input"
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          current_monitoring_state: 0, // IN
-          input_routing_type: { display_name: "No Input" },
-        },
-        "live_set tracks 1": {
-          available_output_routing_types: [
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      setupTrackPath("track1");
+      mockLiveApiGet(setupRouteToSourceMock());
 
       duplicate({
         type: "track",
@@ -566,13 +452,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should override withoutClips to true when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       const result = duplicate({
         type: "track",
@@ -589,13 +469,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should override withoutDevices to true when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
+      setupTrackPath("track1");
 
       const result = duplicate({
         type: "track",
@@ -612,31 +486,8 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should arm the source track when routeToSource is true", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      // Mock track properties for routing configuration
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          input_routing_type: { display_name: "Audio In" },
-          available_input_routing_types: [
-            { display_name: "No Input", identifier: "no_input_id" },
-            { display_name: "Audio In", identifier: "audio_in_id" },
-          ],
-        },
-        "live_set tracks 1": {
-          available_output_routing_types: [
-            { display_name: "Master", identifier: "master_id" },
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      setupTrackPath("track1");
+      mockLiveApiGet(setupRouteToSourceMock({ inputRoutingName: "Audio In" }));
 
       duplicate({
         type: "track",
@@ -653,32 +504,10 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should not emit arm warning when source track is already armed", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      // Mock track properties with track already armed
-      mockLiveApiGet({
-        "live_set tracks 0": {
-          name: "Source Track",
-          arm: 1, // Already armed
-          input_routing_type: { display_name: "Audio In" },
-          available_input_routing_types: [
-            { display_name: "No Input", identifier: "no_input_id" },
-            { display_name: "Audio In", identifier: "audio_in_id" },
-          ],
-        },
-        "live_set tracks 1": {
-          available_output_routing_types: [
-            { display_name: "Master", identifier: "master_id" },
-            { display_name: "Source Track", identifier: "source_track_id" },
-          ],
-        },
-      });
+      setupTrackPath("track1");
+      mockLiveApiGet(
+        setupRouteToSourceMock({ inputRoutingName: "Audio In", arm: 1 }),
+      );
 
       const consoleSpy = vi.spyOn(console, "error");
 

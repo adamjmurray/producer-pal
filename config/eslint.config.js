@@ -7,6 +7,7 @@ import importPlugin from "eslint-plugin-import";
 import jsdoc from "eslint-plugin-jsdoc";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
+import unicorn from "eslint-plugin-unicorn";
 import globals from "globals";
 
 // See .claude/skills/refactoring/SKILL.md for refactoring guidelines
@@ -107,6 +108,11 @@ const baseRules = {
     { blankLine: "always", prev: "*", next: "multiline-block-like" },
     { blankLine: "always", prev: "multiline-block-like", next: "*" },
   ],
+  "@stylistic/lines-between-class-members": [
+    "error",
+    "always",
+    { exceptAfterSingleLine: true },
+  ], // Blank lines between methods, not properties
 
   // Complexity rules
   "max-lines-per-function": [
@@ -175,6 +181,40 @@ const sonarCoreRules = {
   // Test quality
   "sonarjs/assertions-in-tests": "error", // tests need assertions
   "sonarjs/no-exclusive-tests": "error", // no .only() in commits
+
+  // Code simplification
+  "sonarjs/no-nested-template-literals": "error", // avoid `${`nested`}` templates
+  "sonarjs/no-redundant-boolean": "error", // no `x ? true : false`
+  "sonarjs/no-redundant-jump": "error", // no unnecessary return/continue/break
+  "sonarjs/prefer-immediate-return": "error", // return directly instead of temp var
+  "sonarjs/prefer-single-boolean-return": "error", // simplify `if (x) return true; return false`
+};
+
+const unicornRules = {
+  "unicorn/prefer-node-protocol": "error", // Use node: prefix for Node.js builtins
+  "unicorn/better-regex": "error", // Optimize regex patterns
+  "unicorn/prefer-string-replace-all": "error", // Use replaceAll() instead of replace(/g)
+  "unicorn/prefer-array-find": "error", // Use find() instead of filter()[0]
+  "unicorn/no-array-push-push": "error", // Combine multiple push() calls
+  "unicorn/prefer-optional-catch-binding": "error", // Omit unused catch binding
+  "unicorn/no-useless-spread": "error", // Remove unnecessary spread operators
+  "unicorn/no-array-for-each": "error", // Prefer for...of over Array.forEach
+  "unicorn/prefer-at": "error", // Use array.at(-1) instead of array[array.length - 1]
+  "unicorn/prefer-set-has": "error", // Use Set.has() instead of Array.includes() for repeated checks
+  "unicorn/no-lonely-if": "error", // Combine nested if with && (complements core no-lonely-if)
+  "unicorn/no-useless-undefined": ["error", { checkArguments: false }], // Omit unnecessary undefined in returns
+  "unicorn/prefer-number-properties": "error", // Use Number.isNaN() not isNaN(), Number.POSITIVE_INFINITY not Infinity
+  "unicorn/prefer-ternary": ["error", "only-single-line"], // Simple if-else to ternary
+  "unicorn/prefer-top-level-await": "error", // Use top-level await instead of async IIFE
+  "unicorn/no-invalid-fetch-options": "error", // Catch invalid fetch/Request options
+  "unicorn/no-thenable": "error", // Prevent accidental Promise-like objects
+  "unicorn/no-await-expression-member": "error", // Prevent (await foo).bar which can error
+  "unicorn/prefer-includes": "error", // Use .includes() instead of .indexOf() !== -1
+  "unicorn/prefer-array-flat": "error", // Use .flat() instead of [].concat(...arr)
+  "unicorn/prefer-array-flat-map": "error", // Use .flatMap() instead of .map().flat()
+  "unicorn/prefer-string-starts-ends-with": "error", // Use .startsWith()/.endsWith()
+  "unicorn/no-object-as-default-parameter": "error", // Prevent mutable default params
+  "unicorn/explicit-length-check": "error", // Require explicit .length > 0
 };
 
 const jsOnlyRules = {
@@ -224,6 +264,16 @@ const tsOnlyRules = {
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
   "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
+  "@typescript-eslint/method-signature-style": ["error", "property"], // func: () => T, not func(): T
+  "@typescript-eslint/return-await": ["error", "always"], // Consistent async returns
+
+  // Strict type-checked rules
+  "@typescript-eslint/no-unnecessary-type-assertion": "error", // Remove redundant `as X` casts
+  "@typescript-eslint/restrict-plus-operands": "error", // Only add numbers or strings
+  "@typescript-eslint/restrict-template-expressions": "error", // Only strings in templates
+  "@typescript-eslint/unified-signatures": "error", // Merge overloads when possible
+  "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
+  "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
@@ -264,6 +314,7 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     settings: {
       "import/resolver": {
@@ -281,6 +332,7 @@ export default [
       ...js.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsOnlyRules,
       ...jsdocRules,
     },
@@ -310,12 +362,14 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },
@@ -349,12 +403,14 @@ export default [
       import: importPlugin,
       sonarjs,
       jsdoc,
+      unicorn,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...sonarCoreRules,
+      ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },
@@ -539,6 +595,27 @@ export default [
     },
   },
 
+  // Enforce LiveAPI.from() over new LiveAPI() for safer ID handling
+  // LiveAPI.from() properly handles raw IDs (prefixes with "id ") while
+  // new LiveAPI() requires already-prefixed IDs or full paths
+  {
+    files: ["src/**/*.js"],
+    ignores: [
+      "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
+      "src/test/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "NewExpression[callee.name='LiveAPI']",
+          message:
+            "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],
@@ -564,12 +641,18 @@ export default [
       "vitest/prefer-to-have-length": "error",
       "vitest/prefer-comparison-matcher": "error",
       "vitest/prefer-strict-equal": "error",
+      "vitest/no-conditional-tests": "error", // No if/switch in test blocks
+      "vitest/no-standalone-expect": "error", // expect() must be inside it()
+      "vitest/max-expects": ["error", { max: 14 }], // Focused tests (TODO: ratchet down)
+      "vitest/expect-expect": ["error", { assertFunctionNames: ["expect*"] }],
     },
   },
   {
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "sonarjs/cognitive-complexity": ["error", 40],
+      // Allow DOM element narrowing casts (e.g., `as HTMLSelectElement`) in tests
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
 
@@ -579,6 +662,7 @@ export default [
       "src/**/*.js",
       "scripts/**/*.js",
       "scripts/**/*.mjs",
+      "scripts/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],

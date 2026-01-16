@@ -3,10 +3,77 @@ import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import { STATE } from "#src/tools/constants.js";
 import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.js";
+import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.js";
 import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.js";
+
+/**
+ * Read all session clips from a track
+ * @param {LiveAPI} track - Track object
+ * @param {number} trackIndex - Track index
+ * @param {Array<string>} [include] - Include array for nested reads
+ * @returns {Array<object>} Array of clip objects (only clips that exist)
+ */
+export function readSessionClips(track, trackIndex, include = null) {
+  return track
+    .getChildIds("clip_slots")
+    .map((_clipSlotId, sceneIndex) =>
+      readClip({
+        trackIndex,
+        sceneIndex,
+        ...(include && { include }),
+      }),
+    )
+    .filter((clip) => clip.id != null);
+}
+
+/**
+ * Count session clips in a track (faster than reading full clip details)
+ * @param {LiveAPI} track - Track object
+ * @param {number} trackIndex - Track index
+ * @returns {number} Number of clips
+ */
+export function countSessionClips(track, trackIndex) {
+  return track
+    .getChildIds("clip_slots")
+    .map((_clipSlotId, sceneIndex) => {
+      const clip = LiveAPI.from(
+        `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+      );
+
+      return clip.exists() ? clip : null;
+    })
+    .filter(Boolean).length;
+}
+
+/**
+ * Read all arrangement clips from a track
+ * @param {LiveAPI} track - Track object
+ * @param {Array<string>} [include] - Include array for nested reads
+ * @returns {Array<object>} Array of clip objects (only clips that exist)
+ */
+export function readArrangementClips(track, include = null) {
+  return track
+    .getChildIds("arrangement_clips")
+    .map((clipId) =>
+      readClip({
+        clipId,
+        ...(include && { include }),
+      }),
+    )
+    .filter((clip) => clip.id != null);
+}
+
+/**
+ * Count arrangement clips in a track
+ * @param {LiveAPI} track - Track object
+ * @returns {number} Number of clips
+ */
+export function countArrangementClips(track) {
+  return track.getChildIds("arrangement_clips").length;
+}
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
@@ -17,7 +84,7 @@ import {
  * @returns {object} Minimal track information
  */
 export function readTrackMinimal({ trackIndex, includeFlags }) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
     return {
@@ -37,26 +104,9 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
   // Session clips - only for regular tracks
   if (includeFlags.includeSessionClips || includeFlags.includeAllClips) {
-    result.sessionClips = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex,
-        }),
-      )
-      .filter((clip) => clip.id != null);
+    result.sessionClips = readSessionClips(track, trackIndex);
   } else {
-    result.sessionClipCount = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) => {
-        const clip = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-        );
-
-        return clip.exists() ? clip : null;
-      })
-      .filter(Boolean).length;
+    result.sessionClipCount = countSessionClips(track, trackIndex);
   }
 
   // Arrangement clips - exclude group tracks which have no arrangement clips
@@ -72,14 +122,9 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
     includeFlags.includeArrangementClips ||
     includeFlags.includeAllClips
   ) {
-    result.arrangementClips = track
-      .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId }))
-      .filter((clip) => clip.id != null);
+    result.arrangementClips = readArrangementClips(track);
   } else {
-    const clipIds = track.getChildIds("arrangement_clips");
-
-    result.arrangementClipCount = clipIds.length;
+    result.arrangementClipCount = countArrangementClips(track);
   }
 
   return result;
@@ -206,41 +251,6 @@ export function addStateIfNotDefault(result, track, category) {
 }
 
 /**
- * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @param {string} category - Track category (regular, return, or master)
- * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
- */
-function computeState(liveObject, category = "regular") {
-  // Master track doesn't have mute/solo/muted_via_solo properties
-  if (category === "master") {
-    return STATE.ACTIVE;
-  }
-
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
-
-  if (isSoloed) {
-    return STATE.SOLOED;
-  }
-
-  if (isMuted && isMutedViaSolo) {
-    return STATE.MUTED_ALSO_VIA_SOLO;
-  }
-
-  if (isMutedViaSolo) {
-    return STATE.MUTED_VIA_SOLO;
-  }
-
-  if (isMuted) {
-    return STATE.MUTED;
-  }
-
-  return STATE.ACTIVE;
-}
-
-/**
  * Add routing information if requested
  * @param {object} result - Result object to modify
  * @param {LiveAPI} track - Track object
@@ -290,7 +300,7 @@ export function addProducerPalHostInfo(result, isProducerPalHost) {
  * @returns {object} Object with gain, pan, and sends properties, or empty if mixer doesn't exist
  */
 export function readMixerProperties(track, returnTrackNames) {
-  const mixer = new LiveAPI(track.path + " mixer_device");
+  const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
     return {};
@@ -299,7 +309,7 @@ export function readMixerProperties(track, returnTrackNames) {
   const result = {};
 
   // Read gain
-  const volume = new LiveAPI(mixer.path + " volume");
+  const volume = LiveAPI.from(mixer.path + " volume");
 
   if (volume.exists()) {
     result.gainDb = volume.getProperty("display_value");
@@ -313,8 +323,8 @@ export function readMixerProperties(track, returnTrackNames) {
 
   // Read panning based on mode
   if (isSplitMode) {
-    const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
-    const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+    const leftSplit = LiveAPI.from(mixer.path + " left_split_stereo");
+    const rightSplit = LiveAPI.from(mixer.path + " right_split_stereo");
 
     if (leftSplit.exists()) {
       result.leftPan = leftSplit.getProperty("value");
@@ -324,7 +334,7 @@ export function readMixerProperties(track, returnTrackNames) {
       result.rightPan = rightSplit.getProperty("value");
     }
   } else {
-    const panning = new LiveAPI(mixer.path + " panning");
+    const panning = LiveAPI.from(mixer.path + " panning");
 
     if (panning.exists()) {
       result.pan = panning.getProperty("value");
@@ -339,11 +349,11 @@ export function readMixerProperties(track, returnTrackNames) {
     let names = returnTrackNames;
 
     if (!names) {
-      const liveSet = new LiveAPI("live_set");
+      const liveSet = LiveAPI.from("live_set");
       const returnTrackIds = liveSet.getChildIds("return_tracks");
 
       names = returnTrackIds.map((_, idx) => {
-        const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+        const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
 
         return rt.getProperty("name");
       });

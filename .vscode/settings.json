@@ -1,4 +1,22 @@
 {
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "editor.codeActionsOnSave": {
     "source.organizeImports": "never",
     "source.fixAll.eslint": "always"
@@ -13,10 +31,13 @@
     "ableton",
     "amxd",
     "barbeat",
+    "cloc",
     "Devstral",
+    "EOFMARKER",
     "genai",
     "Groq",
     "lmstudio",
+    "mcpb",
     "microtonal",
     "ministral",
     "mischeck",
@@ -35,6 +56,9 @@
     "streamable",
     "unquotedpath",
     "unthrown",
+    "Unwarped",
+    "vite",
+    "vitest",
     "wavetable",
     "webui"
   ],

@@ -1,5 +1,5 @@
-import { readdirSync, statSync } from "fs";
-import { join, basename, extname } from "path";
+import { readdirSync, statSync } from "node:fs";
+import { join, basename, extname } from "node:path";
 import { describe, it, expect } from "vitest";
 
 /**
@@ -39,7 +39,7 @@ function isKebabCase(name) {
     .replace(/\.d$/, "");
 
   // Check if it follows kebab-case (lowercase, hyphens, no dots)
-  return /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(withoutSuffix);
+  return /^[a-z][\da-z]*(-[\da-z]+)*$/.test(withoutSuffix);
 }
 
 /**

@@ -71,7 +71,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     const arrangementStartBeats = clip.getProperty("start_time");
 
     // Convert to bar|beat format using song time signature
-    const liveSet = new LiveAPI("live_set");
+    const liveSet = LiveAPI.from("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
     const arrangementStart = abletonBeatsToBarBeat(
@@ -227,7 +227,7 @@ export function createClipsForLength(
         // Get fresh LiveAPI object for each clip by finding it in the track's arrangement clips
         const arrangementClipIds = track.getChildIds("arrangement_clips");
         const clipLiveAPI = arrangementClipIds
-          .map((id) => new LiveAPI(id))
+          .map((id) => LiveAPI.from(id))
           .find((c) => c.id === clipObj.id);
 
         if (clipLiveAPI) {
@@ -270,13 +270,13 @@ export function findRoutingOptionForDuplicateNames(
   }
 
   // Multiple matches - need to find the correct one
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const allTrackIds = liveSet.getChildIds("tracks");
 
   // Find all tracks with the same name and their info
   const tracksWithSameName = allTrackIds
     .map((trackId, index) => {
-      const track = new LiveAPI(trackId);
+      const track = LiveAPI.from(trackId);
 
       return {
         index,
@@ -288,8 +288,8 @@ export function findRoutingOptionForDuplicateNames(
 
   // Sort by ID (creation order) - IDs are numeric strings
   tracksWithSameName.sort((a, b) => {
-    const idA = parseInt(a.id);
-    const idB = parseInt(b.id);
+    const idA = Number.parseInt(a.id);
+    const idB = Number.parseInt(b.id);
 
     return idA - idB;
   });
@@ -304,7 +304,7 @@ export function findRoutingOptionForDuplicateNames(
       `Warning: Could not find source track in duplicate name list for "${sourceTrackName}"`,
     );
 
-    return undefined;
+    return;
   }
 
   // Return the routing option at the same position
@@ -328,7 +328,7 @@ export function duplicateClipSlot(
   name,
 ) {
   // Get source clip slot
-  const sourceClipSlot = new LiveAPI(
+  const sourceClipSlot = LiveAPI.from(
     `live_set tracks ${sourceTrackIndex} clip_slots ${sourceSceneIndex}`,
   );
 
@@ -345,7 +345,7 @@ export function duplicateClipSlot(
   }
 
   // Get destination clip slot
-  const destClipSlot = new LiveAPI(
+  const destClipSlot = LiveAPI.from(
     `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex}`,
   );
 
@@ -359,7 +359,7 @@ export function duplicateClipSlot(
   sourceClipSlot.call("duplicate_clip_to", `id ${destClipSlot.id}`);
 
   // Get the newly created clip
-  const newClip = new LiveAPI(
+  const newClip = LiveAPI.from(
     `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex} clip`,
   );
 
@@ -406,7 +406,7 @@ export function duplicateClipToArrangement(
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
   const duplicatedClips = [];
 
   if (arrangementLength != null) {

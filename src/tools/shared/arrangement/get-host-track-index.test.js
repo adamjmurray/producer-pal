@@ -23,13 +23,15 @@ describe("getHostTrackIndex", () => {
     expect(result).toBe(null);
   });
 
-  it("should return null when LiveAPI constructor throws an error", () => {
-    // Mock the global LiveAPI constructor to throw an error
+  it("should return null when LiveAPI.from throws an error", () => {
+    // Mock the global LiveAPI.from to throw an error
     const originalLiveAPI = global.LiveAPI;
 
-    global.LiveAPI = vi.fn(() => {
-      throw new Error("LiveAPI not available");
-    });
+    global.LiveAPI = {
+      from: vi.fn(() => {
+        throw new Error("LiveAPI not available");
+      }),
+    };
 
     const result = getHostTrackIndex();
 
@@ -46,12 +48,12 @@ describe("getHostTrackIndex", () => {
       { path: "live_set tracks 99 devices 1", expected: 99 },
     ];
 
-    testCases.forEach(({ path, expected }) => {
+    for (const { path, expected } of testCases) {
       liveApiPath.mockReturnValue(path);
 
       const result = getHostTrackIndex();
 
       expect(result).toBe(expected);
-    });
+    }
   });
 });

@@ -50,6 +50,11 @@ Initial public release with Claude Desktop support.
 
 ## Planned Features
 
+### 1.3.5 - MIDI Clip quantization
+
+- Quantize MIDI clips
+- Read and update quantization amount
+
 ### 1.4 - Modulation
 
 Enhance `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips` tool
@@ -83,7 +88,6 @@ with more flexible modulation features:
 
 ### 1.x - Misc
 
-- Clip quantization
 - Take lane support
 - Groove support
 - Speak to Producer Pal instead of typing with:

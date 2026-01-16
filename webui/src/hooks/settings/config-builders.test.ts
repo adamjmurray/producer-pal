@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildGeminiConfig,
   buildOpenAIConfig,
+  buildResponsesConfig,
   extractGptVersion,
 } from "./config-builders";
 
@@ -547,6 +548,86 @@ describe("config-builders", () => {
       );
 
       expect(config.chatHistory).toStrictEqual(history);
+    });
+  });
+
+  describe("buildResponsesConfig", () => {
+    it("should build basic config", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
+
+      expect(config.model).toBe("gpt-5.2");
+      expect(config.temperature).toBe(1.0);
+      expect(config.reasoningEffort).toBeUndefined();
+    });
+
+    it("should not set reasoningEffort for Off", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
+
+      expect(config.reasoningEffort).toBeUndefined();
+    });
+
+    it("should map Minimal to low", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Minimal", {});
+
+      expect(config.reasoningEffort).toBe("low");
+    });
+
+    it("should map Low to low", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Low", {});
+
+      expect(config.reasoningEffort).toBe("low");
+    });
+
+    it("should map Medium to medium", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Medium", {});
+
+      expect(config.reasoningEffort).toBe("medium");
+    });
+
+    it("should map High to high", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "High", {});
+
+      expect(config.reasoningEffort).toBe("high");
+    });
+
+    it("should map Ultra to high", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Ultra", {});
+
+      expect(config.reasoningEffort).toBe("high");
+    });
+
+    it("should return undefined for Default", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Default", {});
+
+      expect(config.reasoningEffort).toBeUndefined();
+    });
+
+    it("should include conversation when provided", () => {
+      const conversation = [
+        { type: "message" as const, role: "user" as const, content: "hi" },
+      ];
+      const config = buildResponsesConfig(
+        "gpt-5.2",
+        1.0,
+        "Off",
+        {},
+        conversation,
+      );
+
+      expect(config.conversation).toStrictEqual(conversation);
+    });
+
+    it("should include enabledTools", () => {
+      const enabledTools = { tool1: true, tool2: false };
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", enabledTools);
+
+      expect(config.enabledTools).toStrictEqual(enabledTools);
+    });
+
+    it("should include systemInstruction", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
+
+      expect(config.systemInstruction).toBeDefined();
     });
   });
 });

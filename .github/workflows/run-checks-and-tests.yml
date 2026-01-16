@@ -1,21 +1,141 @@
 # .github/workflows/run-tests.yml
 name: "Run Test Suite"
 
-on: push
+# NOTE: We run individual check steps (lint, typecheck, format:check, duplication,
+# test:coverage) instead of `npm run check` so each step appears separately in the
+# GitHub Actions UI, making it easier to identify which check failed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  checks-and-unit-tests:
+  build-verification:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to checkout and write comments on commits
-      contents: write
-      # Required to put a comment into the pull-request
-      pull-requests: write
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all production artifacts
+        run: npm run build
+
+      - name: Build documentation site
+        run: npm run docs:build
+
+      - name: Verify all build artifacts exist
+        id: summary
+        run: |
+          # Verify Max for Live device artifacts
+          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
+          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
+          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
+
+          # Verify npm artifacts
+          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
+
+          # Verify Claude Desktop extension
+          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
+
+          # Verify release artifacts
+          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
+
+          # Verify documentation site
+          test -f docs/.vitepress/dist/index.html || { echo "Missing: docs/.vitepress/dist/index.html"; exit 1; }
+
+          # Write build summary
+          cat > /tmp/summary.md << 'EOF'
+          ## Build Artifacts
+
+          - ✅ Max for Live device
+          - ✅ Built-in chat UI
+          - ✅ npm package
+          - ✅ Claude Desktop extension
+          - ✅ Release artifacts
+          - ✅ Documentation site
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
+
+  tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build parser
+        run: npm run parser:build
+
+      - name: Run tests with coverage
+        id: tests
+        run: FORCE_COLOR=3 npm run test:coverage:verbose
+
+      - name: Report Coverage
+        id: summary
+        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
+        run: |
+          # Extract coverage percentages from JSON
+          LINES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
+          STATEMENTS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.statements.pct)")
+          FUNCTIONS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.functions.pct)")
+          BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
+
+          cat > /tmp/summary.md << EOF
+          ## Unit Test Coverage
+
+          | Category | Coverage |
+          |----------|----------|
+          | Statements | ${STATEMENTS}% |
+          | Branches | ${BRANCHES}% |
+          | Functions | ${FUNCTIONS}% |
+          | Lines | ${LINES}% |
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
+
+  quality-checks:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
 
     steps:
       - uses: actions/checkout@v6
@@ -54,60 +174,34 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Run tests with coverage
-        id: tests
-        if: success()
-        run: FORCE_COLOR=3 npm run test:coverage
-
-      - name: "Report Coverage"
-        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
-        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          vite-config-path: "./config/vite.config.mjs"
-          file-coverage-mode: "all"
-
-  build-verification:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22.x"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build all production artifacts
-        run: npm run build
-
-      - name: Verify all build artifacts exist
+      - name: Check code duplication
+        id: summary
         run: |
-          # Verify Max for Live device artifacts
-          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
-          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
-          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
+          npm run duplication 2>&1 | tee duplication-output.txt
 
-          # Verify portal artifacts
-          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
-          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
-          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
+          # Format duplication report as markdown table
+          cat > /tmp/summary.md << 'EOF'
+          ## Code Duplication Report
 
-          # Verify Claude Desktop extension
-          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+          | Code Group | Line Dupe % | Files with Dupes | Exact Clones |
+          |------------|-------------|------------------|--------------|
+          EOF
+          grep "^Source " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> /tmp/summary.md
+          grep "^Tests " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> /tmp/summary.md
+          grep "^Scripts " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \2% | \3 | \1 |/' >> /tmp/summary.md
 
-          echo "All build artifacts verified successfully!"
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   playwright-tests:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
 
     steps:
       - uses: actions/checkout@v6
@@ -141,11 +235,24 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Build documentation site
-        run: npm run docs:build
-
       - name: Test documentation site with Playwright
-        run: npx playwright test -c config/playwright.docs.config.mjs
+        id: summary
+        run: |
+          npm run docs:test 2>&1 | tee playwright-output.txt
+
+          # Extract result summary for job summary
+          RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
+          cat > /tmp/summary.md << EOF
+          ## End-to-End Tests
+
+          | Suite | Result |
+          |-------|--------|
+          | Docs | ${RESULT} |
+          EOF
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
@@ -154,3 +261,135 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  repo-stats:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cloc
+        run: sudo apt-get install -y cloc
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate lines of code report
+        id: summary
+        run: |
+          echo "## Lines of Code" > /tmp/summary.md
+          echo "" >> /tmp/summary.md
+          echo '```' >> /tmp/summary.md
+          npm run loc --silent >> /tmp/summary.md
+          echo '```' >> /tmp/summary.md
+
+          # Write to step summary and output (base64 encoded for multiline)
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+          echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
+
+  post-summary:
+    needs:
+      [quality-checks, tests, build-verification, playwright-tests, repo-stats]
+    if: always()
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post summary comment on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            // Find PR associated with this push (if any)
+            const { data: prs } = await github.rest.pulls.list({
+              ...context.repo,
+              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+              state: 'open'
+            });
+
+            if (prs.length === 0) {
+              console.log('No open PR found for this branch, skipping comment');
+              return;
+            }
+
+            const prNumber = prs[0].number;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+
+            // Check job statuses
+            const jobs = {
+              'Quality Checks': '${{ needs.quality-checks.result }}',
+              'Tests': '${{ needs.tests.result }}',
+              'Build': '${{ needs.build-verification.result }}',
+              'Playwright': '${{ needs.playwright-tests.result }}',
+              'Repo Stats': '${{ needs.repo-stats.result }}'
+            };
+            const allPassed = Object.values(jobs).every(s => s === 'success');
+
+            const statusEmoji = allPassed ? '✅' : '❌';
+            const statusText = allPassed ? 'All checks passed' : 'Some checks failed';
+            const icon = s => s === 'success' ? '✅' : '❌';
+
+            // Decode base64 job summaries
+            const decode = (b64) => b64 ? Buffer.from(b64, 'base64').toString('utf-8') : '';
+            const summaries = [
+              decode(`${{ needs.build-verification.outputs.summary }}`),
+              decode(`${{ needs.tests.outputs.summary }}`),
+              decode(`${{ needs.quality-checks.outputs.summary }}`),
+              decode(`${{ needs.playwright-tests.outputs.summary }}`),
+              decode(`${{ needs.repo-stats.outputs.summary }}`)
+            ].filter(s => s && s.trim()).join('\n\n');
+
+            const marker = '<!-- ci-summary-bot -->';
+            const tableRows = [
+              '| Job | Status |',
+              '|-----|--------|',
+              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,              
+              `| Unit Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |`,
+              `| Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |`,              
+              `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
+              `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
+            ].join('\n');
+            const body = [
+              marker,
+              `## ${statusEmoji} CI Results: ${statusText}`,
+              '',
+              tableRows,
+              '',
+              `[View full summary](${runUrl})`,
+              '',
+              '---',
+              '',
+              summaries
+            ].join('\n');
+
+            // Find existing comment from this bot
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: prNumber
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: prNumber,
+                body
+              });
+            }

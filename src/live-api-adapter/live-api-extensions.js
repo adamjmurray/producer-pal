@@ -46,7 +46,7 @@ if (typeof LiveAPI !== "undefined") {
           try {
             const parsed = JSON.parse(rawValue[0]);
             return parsed[property];
-          } catch (_e) {
+          } catch {
             return null;
           }
         }
@@ -227,12 +227,14 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
-  // Device index extension
+  // Device index extension - matches LAST "devices X" for nested rack support
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
     Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
       get: function () {
-        const match = this.path.match(/devices (\d+)/);
-        return match ? Number(match[1]) : null;
+        const matches = this.path.match(/devices (\d+)/g);
+        if (!matches) return null;
+        const lastMatch = matches.at(-1).match(/devices (\d+)/);
+        return lastMatch ? Number(lastMatch[1]) : null;
       },
     });
   }

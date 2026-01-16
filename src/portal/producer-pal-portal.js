@@ -24,7 +24,9 @@ process.on("SIGTERM", async () => {
 });
 
 // Start the bridge - this should always succeed
-bridge.start().catch((error) => {
+try {
+  await bridge.start();
+} catch (error) {
   logger.error(`Failed to start enhanced bridge: ${error.message}`);
   process.exit(1);
-});
+}

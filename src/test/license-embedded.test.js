@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("License embedding", () => {
@@ -18,9 +18,9 @@ describe("License embedding", () => {
 
     // Convert license text to JSON-escaped format (like what we see in the .amxd)
     const escapedLicense = licenseText
-      .replace(/\\/g, "\\\\") // Escape backslashes
-      .replace(/"/g, '\\"') // Escape quotes
-      .replace(/\n/g, "\\n"); // Convert newlines to \n
+      .replaceAll("\\", "\\\\") // Escape backslashes
+      .replaceAll('"', '\\"') // Escape quotes
+      .replaceAll("\n", "\\n"); // Convert newlines to \n
 
     // Check if the escaped license text is in the device
     expect(

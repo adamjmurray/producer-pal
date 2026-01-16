@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.js";
+import "#src/live-api-adapter/live-api-extensions.js";
+import { LiveAPI } from "#src/test/mock-live-api.js";
 import {
+  DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -9,7 +13,10 @@ import {
   cleanupInternalDrumPads,
   getDrumMap,
   getDeviceType,
+  readDevice,
 } from "./device-reader.js";
+
+vi.mocked(LiveAPI);
 
 describe("device-reader", () => {
   describe("getDeviceType", () => {
@@ -169,7 +176,7 @@ describe("device-reader", () => {
   describe("cleanupInternalDrumPads", () => {
     it("returns primitive values unchanged", () => {
       expect(cleanupInternalDrumPads(null)).toBe(null);
-      expect(cleanupInternalDrumPads(undefined)).toBe(undefined);
+      expect(cleanupInternalDrumPads()).toBe(undefined);
       expect(cleanupInternalDrumPads(42)).toBe(42);
       expect(cleanupInternalDrumPads("test")).toBe("test");
     });
@@ -221,6 +228,29 @@ describe("device-reader", () => {
           {
             name: "Chain 1",
             devices: [{ type: "device1" }, { type: "device2" }],
+          },
+        ],
+      });
+    });
+
+    it("returns chain unchanged when it has no devices property", () => {
+      const obj = {
+        type: "audio-effect-rack",
+        chains: [
+          {
+            name: "Chain without devices",
+            volume: 0.8,
+          },
+        ],
+      };
+      const result = cleanupInternalDrumPads(obj);
+
+      expect(result).toStrictEqual({
+        type: "audio-effect-rack",
+        chains: [
+          {
+            name: "Chain without devices",
+            volume: 0.8,
           },
         ],
       });
@@ -330,6 +360,81 @@ describe("device-reader", () => {
       expect(getDrumMap(devices)).toStrictEqual({
         C3: "First Kick",
       });
+    });
+  });
+
+  describe("readDevice", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("returns empty object when max recursion depth exceeded", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      const device = {
+        id: "device_1",
+        path: "live_set tracks 0 devices 0",
+        getProperty: (prop) => {
+          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          if (prop === "can_have_chains") return false;
+          if (prop === "can_have_drum_pads") return false;
+          if (prop === "class_display_name") return "Operator";
+          if (prop === "name") return "Operator";
+          if (prop === "is_active") return 1;
+
+          return null;
+        },
+        getChildren: () => [],
+      };
+
+      // Mock LiveAPI for device view
+      const MockLiveAPI = vi.fn().mockImplementation(() => ({
+        exists: vi.fn().mockReturnValue(false),
+        getProperty: vi.fn().mockReturnValue(0),
+      }));
+
+      MockLiveAPI.from = vi.fn((path) => MockLiveAPI(path));
+      global.LiveAPI = MockLiveAPI;
+
+      // Call with depth > maxDepth
+      const result = readDevice(device, { depth: 5, maxDepth: 4 });
+
+      expect(result).toStrictEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Maximum recursion depth (4) exceeded",
+      );
+    });
+
+    it("returns multisample flag for Simpler in multisample mode", () => {
+      const device = {
+        id: "simpler_1",
+        path: "live_set tracks 0 devices 0",
+        getProperty: (prop) => {
+          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          if (prop === "can_have_chains") return false;
+          if (prop === "can_have_drum_pads") return false;
+          if (prop === "class_display_name") return DEVICE_CLASS.SIMPLER;
+          if (prop === "name") return DEVICE_CLASS.SIMPLER;
+          if (prop === "is_active") return 1;
+          if (prop === "multi_sample_mode") return 1;
+
+          return null;
+        },
+        getChildren: () => [],
+      };
+
+      // Mock LiveAPI for device view
+      const MockLiveAPI = vi.fn(function () {
+        this.exists = vi.fn().mockReturnValue(false);
+        this.getProperty = vi.fn().mockReturnValue(0);
+      });
+
+      MockLiveAPI.from = vi.fn((path) => new MockLiveAPI(path));
+      global.LiveAPI = MockLiveAPI;
+
+      const result = readDevice(device, { includeChains: false });
+
+      expect(result.multisample).toBe(true);
+      expect(result.sample).toBeUndefined();
     });
   });
 });

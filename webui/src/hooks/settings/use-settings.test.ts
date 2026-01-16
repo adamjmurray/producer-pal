@@ -14,12 +14,14 @@ describe("useSettings", () => {
   it("loads default values when localStorage is empty", () => {
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.apiKey).toBe("");
-    expect(result.current.model).toBe("gemini-2.5-flash");
-    expect(result.current.thinking).toBe("Default");
-    expect(result.current.temperature).toBe(1.0);
-    expect(result.current.showThoughts).toBe(true);
-    expect(result.current.hasApiKey).toBe(false);
+    expect(result.current).toMatchObject({
+      apiKey: "",
+      model: "gemini-2.5-flash",
+      thinking: "Default",
+      temperature: 1.0,
+      showThoughts: true,
+      hasApiKey: false,
+    });
   });
 
   it("migrates Gemini settings from old localStorage format", () => {
@@ -31,12 +33,14 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.apiKey).toBe("test-key");
-    expect(result.current.model).toBe("gemini-2.5-pro");
-    expect(result.current.thinking).toBe("High");
-    expect(result.current.temperature).toBe(0.7);
-    expect(result.current.showThoughts).toBe(false);
-    expect(result.current.hasApiKey).toBe(true);
+    expect(result.current).toMatchObject({
+      apiKey: "test-key",
+      model: "gemini-2.5-pro",
+      thinking: "High",
+      temperature: 0.7,
+      showThoughts: false,
+      hasApiKey: true,
+    });
   });
 
   it("loads from new JSON blob format", () => {
@@ -53,12 +57,14 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.apiKey).toBe("new-key");
-    expect(result.current.model).toBe("gemini-2.5-flash-lite");
-    expect(result.current.thinking).toBe("Low");
-    expect(result.current.temperature).toBe(1.5);
-    expect(result.current.showThoughts).toBe(false);
-    expect(result.current.hasApiKey).toBe(true);
+    expect(result.current).toMatchObject({
+      apiKey: "new-key",
+      model: "gemini-2.5-flash-lite",
+      thinking: "Low",
+      temperature: 1.5,
+      showThoughts: false,
+      hasApiKey: true,
+    });
   });
 
   it("prefers new format over old format", () => {
@@ -152,15 +158,15 @@ describe("useSettings", () => {
       "gemini",
     );
 
-    const savedGeminiSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
-    );
-
-    expect(savedGeminiSettings.apiKey).toBe("new-key");
-    expect(savedGeminiSettings.model).toBe("gemini-2.5-flash-lite");
-    expect(savedGeminiSettings.thinking).toBe("Medium");
-    expect(savedGeminiSettings.temperature).toBe(0.8);
-    expect(savedGeminiSettings.showThoughts).toBe(false);
+    expect(
+      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
+    ).toMatchObject({
+      apiKey: "new-key",
+      model: "gemini-2.5-flash-lite",
+      thinking: "Medium",
+      temperature: 0.8,
+      showThoughts: false,
+    });
   });
 
   it("reverts to saved settings on cancel", async () => {
@@ -220,21 +226,25 @@ describe("useSettings", () => {
       result.current.setShowThoughts(false);
     });
 
-    expect(result.current.model).toBe("gemini-2.5-pro");
-    expect(result.current.thinking).toBe("High");
-    expect(result.current.temperature).toBe(0.5);
-    expect(result.current.showThoughts).toBe(false);
+    expect(result.current).toMatchObject({
+      model: "gemini-2.5-pro",
+      thinking: "High",
+      temperature: 0.5,
+      showThoughts: false,
+    });
 
     // Switch to OpenAI - should use defaults
     await act(() => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current.model).toBe("gpt-5.2-2025-12-11");
-    expect(result.current.thinking).toBe("Default");
-    expect(result.current.temperature).toBe(1.0);
-    expect(result.current.showThoughts).toBe(true);
-    expect(result.current.apiKey).toBe("");
+    expect(result.current).toMatchObject({
+      apiKey: "",
+      model: "gpt-5.2-2025-12-11",
+      thinking: "Default",
+      temperature: 1.0,
+      showThoughts: true,
+    });
 
     // Configure OpenAI with different settings
     await act(() => {
@@ -250,22 +260,26 @@ describe("useSettings", () => {
       result.current.setProvider("gemini");
     });
 
-    expect(result.current.apiKey).toBe("gemini-key");
-    expect(result.current.model).toBe("gemini-2.5-pro");
-    expect(result.current.thinking).toBe("High");
-    expect(result.current.temperature).toBe(0.5);
-    expect(result.current.showThoughts).toBe(false);
+    expect(result.current).toMatchObject({
+      apiKey: "gemini-key",
+      model: "gemini-2.5-pro",
+      thinking: "High",
+      temperature: 0.5,
+      showThoughts: false,
+    });
 
     // Switch back to OpenAI - should restore OpenAI settings
     await act(() => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current.apiKey).toBe("openai-key");
-    expect(result.current.model).toBe("gpt-5-mini-2025-08-07");
-    expect(result.current.thinking).toBe("Low");
-    expect(result.current.temperature).toBe(1.5);
-    expect(result.current.showThoughts).toBe(false);
+    expect(result.current).toMatchObject({
+      apiKey: "openai-key",
+      model: "gpt-5-mini-2025-08-07",
+      thinking: "Low",
+      temperature: 1.5,
+      showThoughts: false,
+    });
   });
 
   it("saves and loads all provider settings separately", async () => {
@@ -316,72 +330,82 @@ describe("useSettings", () => {
     });
 
     // Verify each provider's settings are saved separately as JSON
-    const geminiSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
-    );
+    expect(
+      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
+    ).toMatchObject({
+      apiKey: "gemini-key",
+      model: "gemini-2.5-pro",
+      thinking: "High",
+      temperature: 0.5,
+    });
 
-    expect(geminiSettings.apiKey).toBe("gemini-key");
-    expect(geminiSettings.model).toBe("gemini-2.5-pro");
-    expect(geminiSettings.thinking).toBe("High");
-    expect(geminiSettings.temperature).toBe(0.5);
+    expect(
+      JSON.parse(localStorage.getItem("producer_pal_provider_openai") ?? "{}"),
+    ).toMatchObject({
+      apiKey: "openai-key",
+      model: "gpt-5-mini-2025-08-07",
+      thinking: "Low",
+      temperature: 1.5,
+    });
 
-    const openaiSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_openai") ?? "{}",
-    );
+    expect(
+      JSON.parse(
+        localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
+      ),
+    ).toMatchObject({
+      apiKey: "openrouter-key",
+      model: "minimax/minimax-m2:free",
+      temperature: 0.8,
+    });
 
-    expect(openaiSettings.apiKey).toBe("openai-key");
-    expect(openaiSettings.model).toBe("gpt-5-mini-2025-08-07");
-    expect(openaiSettings.thinking).toBe("Low");
-    expect(openaiSettings.temperature).toBe(1.5);
-
-    const openrouterSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
-    );
-
-    expect(openrouterSettings.apiKey).toBe("openrouter-key");
-    expect(openrouterSettings.model).toBe("minimax/minimax-m2:free");
-    expect(openrouterSettings.temperature).toBe(0.8);
-
-    const mistralSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_mistral") ?? "{}",
-    );
-
-    expect(mistralSettings.apiKey).toBe("mistral-key");
-    expect(mistralSettings.model).toBe("mistral-small-latest");
-    expect(mistralSettings.temperature).toBe(1.2);
+    expect(
+      JSON.parse(localStorage.getItem("producer_pal_provider_mistral") ?? "{}"),
+    ).toMatchObject({
+      apiKey: "mistral-key",
+      model: "mistral-small-latest",
+      temperature: 1.2,
+    });
 
     // Clear and reload
     const { result: result2 } = renderHook(() => useSettings());
 
     // Verify last selected provider (mistral) is loaded
-    expect(result2.current.provider).toBe("mistral");
-    expect(result2.current.apiKey).toBe("mistral-key");
-    expect(result2.current.model).toBe("mistral-small-latest");
-    expect(result2.current.temperature).toBe(1.2);
+    expect(result2.current).toMatchObject({
+      provider: "mistral",
+      apiKey: "mistral-key",
+      model: "mistral-small-latest",
+      temperature: 1.2,
+    });
 
     // Switch providers and verify each loads correctly
     await act(() => {
       result2.current.setProvider("gemini");
     });
-    expect(result2.current.apiKey).toBe("gemini-key");
-    expect(result2.current.model).toBe("gemini-2.5-pro");
-    expect(result2.current.thinking).toBe("High");
-    expect(result2.current.temperature).toBe(0.5);
+    expect(result2.current).toMatchObject({
+      apiKey: "gemini-key",
+      model: "gemini-2.5-pro",
+      thinking: "High",
+      temperature: 0.5,
+    });
 
     await act(() => {
       result2.current.setProvider("openai");
     });
-    expect(result2.current.apiKey).toBe("openai-key");
-    expect(result2.current.model).toBe("gpt-5-mini-2025-08-07");
-    expect(result2.current.thinking).toBe("Low");
-    expect(result2.current.temperature).toBe(1.5);
+    expect(result2.current).toMatchObject({
+      apiKey: "openai-key",
+      model: "gpt-5-mini-2025-08-07",
+      thinking: "Low",
+      temperature: 1.5,
+    });
 
     await act(() => {
       result2.current.setProvider("openrouter");
     });
-    expect(result2.current.apiKey).toBe("openrouter-key");
-    expect(result2.current.model).toBe("minimax/minimax-m2:free");
-    expect(result2.current.temperature).toBe(0.8);
+    expect(result2.current).toMatchObject({
+      apiKey: "openrouter-key",
+      model: "minimax/minimax-m2:free",
+      temperature: 0.8,
+    });
   });
 
   it("settingsConfigured is false by default", () => {
@@ -422,18 +446,22 @@ describe("useSettings", () => {
       result.current.setShowThoughts(false);
     });
 
-    expect(result.current.temperature).toBe(0.5);
-    expect(result.current.thinking).toBe("Low");
-    expect(result.current.showThoughts).toBe(false);
+    expect(result.current).toMatchObject({
+      temperature: 0.5,
+      thinking: "Low",
+      showThoughts: false,
+    });
 
     // Reset to defaults
     await act(() => {
       result.current.resetBehaviorToDefaults();
     });
 
-    expect(result.current.temperature).toBe(1.0);
-    expect(result.current.thinking).toBe("Default"); // Default for gemini
-    expect(result.current.showThoughts).toBe(true);
+    expect(result.current).toMatchObject({
+      temperature: 1.0,
+      thinking: "Default", // Default for gemini
+      showThoughts: true,
+    });
   });
 
   it("isToolEnabled returns true for enabled tools", () => {
@@ -528,41 +556,16 @@ describe("useSettings", () => {
     expect(result.current.showThoughts).toBe(false);
   });
 
-  it("setShowThoughts works for lmstudio provider", async () => {
-    const { result } = renderHook(() => useSettings());
+  it.each(["lmstudio", "ollama", "custom"] as const)(
+    "setShowThoughts works for %s provider",
+    async (provider) => {
+      const { result } = renderHook(() => useSettings());
 
-    await act(() => {
-      result.current.setProvider("lmstudio");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for ollama provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("ollama");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for custom provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("custom");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
+      await act(() => result.current.setProvider(provider));
+      await act(() => result.current.setShowThoughts(false));
+      expect(result.current.showThoughts).toBe(false);
+    },
+  );
 
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
@@ -592,5 +595,50 @@ describe("useSettings", () => {
     expect(result.current.hasApiKey).toBe(false);
     // Cleanup
     localStorage.removeItem("producer_pal_provider_gemini");
+  });
+
+  it("setBaseUrl updates baseUrl for custom provider", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.setProvider("custom");
+    });
+    await act(() => {
+      result.current.setBaseUrl!("http://localhost:8080");
+    });
+
+    expect(result.current.baseUrl).toBe("http://localhost:8080");
+  });
+
+  it.each([
+    ["ollama", 11434],
+    ["lmstudio", 1234],
+  ] as const)(
+    "setPort updates port for %s provider",
+    async (provider, port) => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => result.current.setProvider(provider));
+      await act(() => result.current.setPort!(port));
+      expect(result.current.port).toBe(port);
+    },
+  );
+
+  it("setPort is undefined for non-ollama/lmstudio providers", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // gemini is the default provider - setPort should be undefined
+    expect(result.current.setPort).toBeUndefined();
+    expect(result.current.port).toBeUndefined();
+  });
+
+  it("handles invalid JSON in enabled tools localStorage gracefully", () => {
+    localStorage.setItem("producer_pal_enabled_tools", "invalid json{");
+    const { result } = renderHook(() => useSettings());
+
+    // Should fallback to defaults, all tools enabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    // Cleanup
+    localStorage.removeItem("producer_pal_enabled_tools");
   });
 });

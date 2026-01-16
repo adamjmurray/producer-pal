@@ -1,157 +1,109 @@
 /**
  * @vitest-environment happy-dom
  */
+import type { RenderResult } from "@testing-library/preact";
 import { render, screen, fireEvent } from "@testing-library/preact";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
+import type { ThinkingSettingsProps } from "./ThinkingSettings";
 import { ThinkingSettings } from "./ThinkingSettings";
+
+type RenderProps = Partial<ThinkingSettingsProps> & {
+  setThinking?: Mock;
+  setShowThoughts?: Mock;
+};
+
+function renderThinkingSettings(
+  props: RenderProps = {},
+): RenderResult & { setThinking: Mock; setShowThoughts: Mock } {
+  const setThinking = props.setThinking ?? vi.fn();
+  const setShowThoughts = props.setShowThoughts ?? vi.fn();
+  const result = render(
+    <ThinkingSettings
+      provider={props.provider ?? "gemini"}
+      model={props.model ?? "gemini-2.5-flash"}
+      thinking={props.thinking ?? "Default"}
+      setThinking={setThinking}
+      showThoughts={props.showThoughts ?? true}
+      setShowThoughts={setShowThoughts}
+    />,
+  );
+
+  return { ...result, setThinking, setShowThoughts };
+}
+
+function expectAllThinkingOptions(): void {
+  expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "High" })).toBeDefined();
+  expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
+}
+
+function expectCheckboxVisible(): void {
+  expect(screen.getByRole("checkbox")).toBeDefined();
+  expect(screen.getByText("Show thinking process")).toBeDefined();
+}
+
+function expectCheckboxHidden(): void {
+  expect(screen.queryByRole("checkbox")).toBeNull();
+  expect(screen.queryByText("Show thinking process")).toBeNull();
+}
 
 describe("ThinkingSettings", () => {
   describe("Gemini provider", () => {
     it("renders with correct selected thinking value", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
+      renderThinkingSettings();
+      expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+        "Default",
       );
-
-      const select = screen.getByRole("combobox") as HTMLSelectElement;
-
-      expect(select.value).toBe("Default");
     });
 
     it("displays all thinking options", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
+      renderThinkingSettings();
+      expectAllThinkingOptions();
     });
 
     it("shows checkbox when thinking is not Off", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      const checkbox = screen.getByRole("checkbox");
-
-      expect(checkbox).toBeDefined();
-      expect(screen.getByText("Show thinking process")).toBeDefined();
+      renderThinkingSettings();
+      expectCheckboxVisible();
     });
 
     it("hides checkbox when thinking is Off", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Off"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      expect(screen.queryByRole("checkbox")).toBeNull();
-      expect(screen.queryByText("Show thinking process")).toBeNull();
+      renderThinkingSettings({ thinking: "Off" });
+      expectCheckboxHidden();
     });
   });
 
   describe("OpenAI provider", () => {
     it("renders all thinking options (unified with other providers)", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="openai"
-          model="gpt-5-2025-08-07"
-          thinking="Low"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      // All providers now have the same unified options
-      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
+      renderThinkingSettings({
+        provider: "openai",
+        model: "gpt-5-2025-08-07",
+        thinking: "Low",
+      });
+      expectAllThinkingOptions();
     });
 
     it("does not show checkbox for OpenAI provider", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="openai"
-          model="gpt-5-2025-08-07"
-          thinking="Low"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      expect(screen.queryByRole("checkbox")).toBeNull();
-      expect(screen.queryByText("Show thinking process")).toBeNull();
+      renderThinkingSettings({
+        provider: "openai",
+        model: "gpt-5-2025-08-07",
+        thinking: "Low",
+      });
+      expectCheckboxHidden();
     });
   });
 
   describe("non-supported providers", () => {
     it("renders nothing for mistral provider", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-      const { container } = render(
-        <ThinkingSettings
-          provider="mistral"
-          model="mistral-large-latest"
-          thinking="Low"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
+      const { container } = renderThinkingSettings({
+        provider: "mistral",
+        model: "mistral-large-latest",
+        thinking: "Low",
+      });
 
       expect(container.textContent).toBe("");
       expect(screen.queryByRole("combobox")).toBeNull();
@@ -160,175 +112,72 @@ describe("ThinkingSettings", () => {
 
   describe("OpenRouter provider", () => {
     it("renders all unified thinking options", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="openrouter"
-          model="anthropic/claude-sonnet"
-          thinking="Low"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      // All providers now have the same unified options
-      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
+      renderThinkingSettings({
+        provider: "openrouter",
+        model: "anthropic/claude-sonnet",
+        thinking: "Low",
+      });
+      expectAllThinkingOptions();
     });
 
     it("shows checkbox when thinking is not Off", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="openrouter"
-          model="anthropic/claude-sonnet"
-          thinking="Low"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      const checkbox = screen.getByRole("checkbox");
-
-      expect(checkbox).toBeDefined();
-      expect(screen.getByText("Show thinking process")).toBeDefined();
+      renderThinkingSettings({
+        provider: "openrouter",
+        model: "anthropic/claude-sonnet",
+        thinking: "Low",
+      });
+      expectCheckboxVisible();
     });
 
     it("hides checkbox when thinking is Off", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="openrouter"
-          model="anthropic/claude-sonnet"
-          thinking="Off"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      expect(screen.queryByRole("checkbox")).toBeNull();
-      expect(screen.queryByText("Show thinking process")).toBeNull();
+      renderThinkingSettings({
+        provider: "openrouter",
+        model: "anthropic/claude-sonnet",
+        thinking: "Off",
+      });
+      expectCheckboxHidden();
     });
   });
 
   describe("common behavior", () => {
     it("triggers setThinking callback on select change", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
+      const { setThinking } = renderThinkingSettings();
 
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      const select = screen.getByRole("combobox");
-
-      fireEvent.change(select, { target: { value: "High" } });
-
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "High" },
+      });
       expect(setThinking).toHaveBeenCalledExactlyOnceWith("High");
     });
 
     it("checkbox reflects showThoughts prop", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={false}
-          setShowThoughts={setShowThoughts}
-        />,
+      renderThinkingSettings({ showThoughts: false });
+      expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
+        false,
       );
-
-      const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-
-      expect(checkbox.checked).toBe(false);
     });
 
     it("checkbox is checked when showThoughts is true", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
-
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
+      renderThinkingSettings({ showThoughts: true });
+      expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
+        true,
       );
-
-      const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-
-      expect(checkbox.checked).toBe(true);
     });
 
     it("triggers setShowThoughts callback on checkbox change", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
+      const { setShowThoughts } = renderThinkingSettings({
+        showThoughts: false,
+      });
 
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={false}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      const checkbox = screen.getByRole("checkbox");
-
-      fireEvent.click(checkbox);
-
+      fireEvent.click(screen.getByRole("checkbox"));
       expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(true);
     });
 
     it("calls setShowThoughts with false when unchecking", () => {
-      const setThinking = vi.fn();
-      const setShowThoughts = vi.fn();
+      const { setShowThoughts } = renderThinkingSettings({
+        showThoughts: true,
+      });
 
-      render(
-        <ThinkingSettings
-          provider="gemini"
-          model="gemini-2.5-flash"
-          thinking="Default"
-          setThinking={setThinking}
-          showThoughts={true}
-          setShowThoughts={setShowThoughts}
-        />,
-      );
-
-      const checkbox = screen.getByRole("checkbox");
-
-      fireEvent.click(checkbox);
-
+      fireEvent.click(screen.getByRole("checkbox"));
       expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(false);
     });
   });

@@ -3,8 +3,12 @@ import * as console from "#src/shared/v8-max-console.js";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
@@ -87,14 +91,7 @@ export function updateDevice({
   mappedPitch,
   wrapInRack,
 }) {
-  // Validate: exactly one of ids or path required
-  if (!ids && !path) {
-    throw new Error("Either ids or path must be provided");
-  }
-
-  if (ids && path) {
-    throw new Error("Provide either ids or path, not both");
-  }
+  validateExclusiveParams(ids, path, "ids", "path");
 
   // Handle wrapInRack separately (creates rack and moves devices into it)
   if (wrapInRack) {
@@ -171,11 +168,7 @@ function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
     }
   }
 
-  if (results.length === 0) {
-    return [];
-  }
-
-  return results.length === 1 ? results[0] : results;
+  return unwrapSingleResult(results);
 }
 
 /**
@@ -269,7 +262,7 @@ function resolvePathToTarget(path) {
  * @returns {object|null} LiveAPI object or null if not found
  */
 function resolveDeviceTarget(liveApiPath) {
-  const device = new LiveAPI(liveApiPath);
+  const device = LiveAPI.from(liveApiPath);
 
   return device.exists() ? device : null;
 }
@@ -280,7 +273,7 @@ function resolveDeviceTarget(liveApiPath) {
  * @returns {object|null} LiveAPI object or null if not found
  */
 function resolveChainTarget(liveApiPath) {
-  const chain = new LiveAPI(liveApiPath);
+  const chain = LiveAPI.from(liveApiPath);
 
   return chain.exists() ? chain : null;
 }

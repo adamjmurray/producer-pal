@@ -1,7 +1,9 @@
-import type { GeminiClientConfig } from "#webui/chat/gemini-client";
-import type { OpenAIClientConfig } from "#webui/chat/openai-client";
+import type { GeminiClientConfig } from "#webui/chat/gemini/client";
+import type { OpenAIClientConfig } from "#webui/chat/openai/client";
+import type { ResponsesClientConfig } from "#webui/chat/openai/responses-client";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
+import type { ResponsesConversationItem } from "#webui/types/responses-api";
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 /**
@@ -104,7 +106,7 @@ export function extractGptVersion(model: string): number | null {
   // Match gpt-X.Y where X.Y is a decimal version (e.g., gpt-5.1, gpt-5.2)
   const match = model.match(/^gpt-(\d+\.\d+)/);
 
-  return match?.[1] ? parseFloat(match[1]) : null;
+  return match?.[1] ? Number.parseFloat(match[1]) : null;
 }
 
 /**
@@ -242,6 +244,69 @@ export function buildOpenAIConfig(
     if (effort) {
       config.reasoningEffort = effort;
     }
+  }
+
+  return config;
+}
+
+/**
+ * Maps thinking UI setting to Responses API reasoning effort.
+ * Responses API supports: low, medium, high (no "none" or "xhigh").
+ * Returns undefined for "Off" to disable reasoning entirely.
+ * @param thinking - Thinking mode setting from UI
+ * @returns Reasoning effort level or undefined (undefined = no reasoning)
+ */
+function mapThinkingToResponsesEffort(
+  thinking: string,
+): "low" | "medium" | "high" | undefined {
+  switch (thinking) {
+    case "Off":
+      return undefined;
+    case "Minimal":
+    case "Low":
+      return "low";
+    case "Medium":
+      return "medium";
+    case "High":
+    case "Ultra":
+      return "high";
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Builds Responses API client configuration from settings.
+ * Used for OpenAI's newer Responses API (supports Codex models).
+ * @param model - Model identifier
+ * @param temperature - Temperature value (0-2)
+ * @param thinking - Thinking mode setting
+ * @param enabledTools - Tool enabled states
+ * @param conversation - Optional existing conversation
+ * @returns Responses client configuration
+ */
+export function buildResponsesConfig(
+  model: string,
+  temperature: number,
+  thinking: string,
+  enabledTools: Record<string, boolean>,
+  conversation?: ResponsesConversationItem[],
+): ResponsesClientConfig {
+  const config: ResponsesClientConfig = {
+    model,
+    temperature,
+    systemInstruction: SYSTEM_INSTRUCTION,
+    enabledTools,
+  };
+
+  if (conversation) {
+    config.conversation = conversation;
+  }
+
+  const effort = mapThinkingToResponsesEffort(thinking);
+
+  if (effort) {
+    config.reasoningEffort = effort;
   }
 
   return config;

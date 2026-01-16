@@ -26,7 +26,7 @@ export function readScene(args = {}, _context = {}) {
     args.include,
     READ_SCENE_DEFAULTS,
   );
-  const liveSet = new LiveAPI(`live_set`);
+  const liveSet = LiveAPI.from(`live_set`);
 
   let scene;
   let resolvedSceneIndex = sceneIndex;
@@ -38,7 +38,7 @@ export function readScene(args = {}, _context = {}) {
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
-    scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
   }
 
   if (!scene.exists()) {

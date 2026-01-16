@@ -60,17 +60,23 @@ describe("updateDevice - drum chain moving", () => {
       }
 
       // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
-      if (this._path?.includes("chains 0") || this._path === "id chain-0") {
-        if (prop === "in_note") return [36]; // C1
-      }
+      if (
+        (this._path?.includes("chains 0") || this._path === "id chain-0") &&
+        prop === "in_note"
+      )
+        return [36]; // C1
 
-      if (this._path?.includes("chains 1") || this._path === "id chain-1") {
-        if (prop === "in_note") return [36]; // C1 (layered)
-      }
+      if (
+        (this._path?.includes("chains 1") || this._path === "id chain-1") &&
+        prop === "in_note"
+      )
+        return [36]; // C1 (layered)
 
-      if (this._path?.includes("chains 2") || this._path === "id chain-2") {
-        if (prop === "in_note") return [38]; // D1
-      }
+      if (
+        (this._path?.includes("chains 2") || this._path === "id chain-2") &&
+        prop === "in_note"
+      )
+        return [38]; // D1
 
       return [0];
     });

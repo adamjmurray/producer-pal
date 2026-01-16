@@ -96,9 +96,9 @@ describe("isValidMidi", () => {
 
   it("returns false for non-numbers", () => {
     expect(isValidMidi(null)).toBe(false);
-    expect(isValidMidi(undefined)).toBe(false);
+    expect(isValidMidi()).toBe(false);
     expect(isValidMidi("60")).toBe(false);
-    expect(isValidMidi(NaN)).toBe(false);
+    expect(isValidMidi(Number.NaN)).toBe(false);
   });
 });
 
@@ -168,7 +168,7 @@ describe("isValidNoteName", () => {
   it("returns false for non-strings", () => {
     expect(isValidNoteName(60)).toBe(false);
     expect(isValidNoteName(null)).toBe(false);
-    expect(isValidNoteName(undefined)).toBe(false);
+    expect(isValidNoteName()).toBe(false);
   });
 
   it("returns false for empty string", () => {
@@ -253,7 +253,7 @@ describe("pitchClassToNumber", () => {
 
   it("returns null for non-string inputs", () => {
     expect(pitchClassToNumber(null)).toBe(null);
-    expect(pitchClassToNumber(undefined)).toBe(null);
+    expect(pitchClassToNumber()).toBe(null);
     expect(pitchClassToNumber(60)).toBe(null);
   });
 });
@@ -287,7 +287,7 @@ describe("numberToPitchClass", () => {
 
   it("returns null for non-numbers", () => {
     expect(numberToPitchClass(null)).toBe(null);
-    expect(numberToPitchClass(undefined)).toBe(null);
+    expect(numberToPitchClass()).toBe(null);
     expect(numberToPitchClass("0")).toBe(null);
   });
 });
@@ -328,7 +328,7 @@ describe("midiToNoteName", () => {
     expect(midiToNoteName(-1)).toBe(null);
     expect(midiToNoteName(128)).toBe(null);
     expect(midiToNoteName(null)).toBe(null);
-    expect(midiToNoteName(undefined)).toBe(null);
+    expect(midiToNoteName()).toBe(null);
     expect(midiToNoteName("60")).toBe(null);
     expect(midiToNoteName(60.5)).toBe(null);
   });
@@ -403,7 +403,7 @@ describe("noteNameToMidi", () => {
 
   it("returns null for non-strings", () => {
     expect(noteNameToMidi(null)).toBe(null);
-    expect(noteNameToMidi(undefined)).toBe(null);
+    expect(noteNameToMidi()).toBe(null);
     expect(noteNameToMidi(60)).toBe(null);
   });
 

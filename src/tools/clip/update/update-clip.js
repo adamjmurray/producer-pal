@@ -7,6 +7,7 @@ import {
 import {
   parseCommaSeparatedIds,
   parseTimeSignature,
+  unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
@@ -120,10 +121,5 @@ export function updateClip(
   // Emit warning if multiple clips from same track were moved to same position
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (updatedClips.length === 0) {
-    return [];
-  }
-
-  return updatedClips.length === 1 ? updatedClips[0] : updatedClips;
+  return unwrapSingleResult(updatedClips);
 }

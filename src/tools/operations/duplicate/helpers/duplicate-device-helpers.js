@@ -1,6 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.js";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 /**
  * Duplicate a device using the track duplication workaround.
@@ -35,14 +35,14 @@ export function duplicateDevice(device, toPath, name, count = 1) {
   const devicePathWithinTrack = extractDevicePathWithinTrack(device.path);
 
   // 3. Duplicate the track
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_track", trackIndex);
   const tempTrackIndex = trackIndex + 1;
 
   // 4. Find the corresponding device on the temp track
   const tempDevicePath = `live_set tracks ${tempTrackIndex} ${devicePathWithinTrack}`;
-  const tempDevice = new LiveAPI(tempDevicePath);
+  const tempDevice = LiveAPI.from(tempDevicePath);
 
   if (!tempDevice.exists()) {
     // Clean up temp track and throw
@@ -93,7 +93,7 @@ export function duplicateDevice(device, toPath, name, count = 1) {
 function extractRegularTrackIndex(devicePath) {
   const match = devicePath.match(/^live_set tracks (\d+)/);
 
-  return match ? parseInt(match[1], 10) : null;
+  return match ? Number.parseInt(match[1]) : null;
 }
 
 /**
@@ -132,10 +132,10 @@ function calculateDefaultDestination(devicePath, trackIndex) {
 
   // Parse the path to increment the last device index
   const segments = simplifiedPath.split("/");
-  const lastSegment = segments[segments.length - 1];
+  const lastSegment = segments.at(-1);
 
   if (lastSegment.startsWith("d")) {
-    const deviceIndex = parseInt(lastSegment.slice(1), 10);
+    const deviceIndex = Number.parseInt(lastSegment.slice(1));
 
     segments[segments.length - 1] = `d${deviceIndex + 1}`;
 
@@ -161,7 +161,7 @@ function adjustTrackIndicesForTempTrack(toPath, sourceTrackIndex) {
     return toPath; // Not a regular track path (return/master), no adjustment needed
   }
 
-  const destTrackIndex = parseInt(match[1], 10);
+  const destTrackIndex = Number.parseInt(match[1]);
 
   // If destination is after the source track, increment by 1
   // (because the temp track was inserted at sourceTrackIndex + 1)

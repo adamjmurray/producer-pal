@@ -1,9 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiCall, liveApiGet } from "#src/test/mock-live-api.js";
 import {
-  parseLabel,
+  AUTOMATION_STATE_MAP,
+  PARAM_STATE_MAP,
+  extractMaxPanValue,
+  isDivisionLabel,
   isPanLabel,
   normalizePan,
-  extractMaxPanValue,
+  parseLabel,
+  readParameter,
+  readParameterBasic,
 } from "./device-display-helpers.js";
 
 describe("device-display-helpers", () => {
@@ -141,7 +147,7 @@ describe("device-display-helpers", () => {
 
       it("handles null/undefined/non-string input", () => {
         expect(parseLabel(null)).toStrictEqual({ value: null, unit: null });
-        expect(parseLabel(undefined)).toStrictEqual({
+        expect(parseLabel()).toStrictEqual({
           value: null,
           unit: null,
         });
@@ -162,7 +168,27 @@ describe("device-display-helpers", () => {
       expect(isPanLabel("50 Hz")).toBe(false);
       expect(isPanLabel("Center")).toBe(false);
       expect(isPanLabel(null)).toBe(false);
-      expect(isPanLabel(undefined)).toBe(false);
+      expect(isPanLabel()).toBe(false);
+    });
+  });
+
+  describe("isDivisionLabel", () => {
+    it("returns true for division fraction labels", () => {
+      expect(isDivisionLabel("1/8")).toBe(true);
+      expect(isDivisionLabel("1/16")).toBe(true);
+      expect(isDivisionLabel("1/64")).toBe(true);
+      expect(isDivisionLabel("1/4")).toBe(true);
+      expect(isDivisionLabel("1/2")).toBe(true);
+    });
+
+    it("returns false for non-division labels", () => {
+      expect(isDivisionLabel("2/4")).toBe(false); // must start with 1/
+      expect(isDivisionLabel("1")).toBe(false);
+      expect(isDivisionLabel("1/")).toBe(false);
+      expect(isDivisionLabel("50 Hz")).toBe(false);
+      expect(isDivisionLabel(null)).toBe(false);
+      expect(isDivisionLabel(undefined)).toBe(false);
+      expect(isDivisionLabel(123)).toBe(false);
     });
   });
 
@@ -192,6 +218,384 @@ describe("device-display-helpers", () => {
     it("returns default 50 for non-matching labels", () => {
       expect(extractMaxPanValue("C")).toBe(50);
       expect(extractMaxPanValue("invalid")).toBe(50);
+    });
+  });
+
+  describe("state maps", () => {
+    it("PARAM_STATE_MAP maps state codes to labels", () => {
+      expect(PARAM_STATE_MAP[0]).toBe("active");
+      expect(PARAM_STATE_MAP[1]).toBe("inactive");
+      expect(PARAM_STATE_MAP[2]).toBe("disabled");
+    });
+
+    it("AUTOMATION_STATE_MAP maps automation codes to labels", () => {
+      expect(AUTOMATION_STATE_MAP[0]).toBe("none");
+      expect(AUTOMATION_STATE_MAP[1]).toBe("active");
+      expect(AUTOMATION_STATE_MAP[2]).toBe("overridden");
+    });
+  });
+
+  describe("readParameterBasic", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("returns id and name for a parameter", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Volume"];
+        if (prop === "original_name") return ["Volume"];
+
+        return [0];
+      });
+
+      const mockParamApi = {
+        id: "param_1",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+      };
+
+      const result = readParameterBasic(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_1",
+        name: "Volume",
+      });
+    });
+
+    it("formats name with original_name for rack macros", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Reverb"];
+        if (prop === "original_name") return ["Macro 1"];
+
+        return [0];
+      });
+
+      const mockParamApi = {
+        id: "param_2",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+      };
+
+      const result = readParameterBasic(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_2",
+        name: "Reverb (Macro 1)",
+      });
+    });
+  });
+
+  describe("readParameter", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("reads quantized parameter with value_items", () => {
+      const valueItems = ["Off", "On", "Auto"];
+
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Mode"];
+        if (prop === "original_name") return ["Mode"];
+        if (prop === "state") return [0]; // active
+        if (prop === "automation_state") return [0]; // none
+        if (prop === "is_quantized") return [1];
+        if (prop === "value") return [1]; // "On"
+        if (prop === "value_items") return valueItems;
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      const mockParamApi = {
+        id: "param_3",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_3",
+        name: "Mode",
+        value: "On",
+        options: valueItems,
+      });
+    });
+
+    it("reads continuous parameter with dB unit", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Volume"];
+        if (prop === "original_name") return ["Volume"];
+        if (prop === "state") return [0]; // active
+        if (prop === "automation_state") return [0]; // none
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.85];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          if (value === 0.85) return "0 dB";
+          if (value === 0) return "-inf dB";
+          if (value === 1) return "6 dB";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_4",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_4",
+        name: "Volume",
+        value: 0,
+        min: -70,
+        max: 6,
+        unit: "dB",
+      });
+    });
+
+    it("reads pan parameter and normalizes to -1 to 1", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Pan"];
+        if (prop === "original_name") return ["Pan"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.25];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          if (value === 0.25) return "25L";
+          if (value === 0) return "50L";
+          if (value === 1) return "50R";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_5",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_5",
+        name: "Pan",
+        value: -0.5,
+        min: -1,
+        max: 1,
+        unit: "pan",
+      });
+    });
+
+    it("includes state flag when not active", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Cutoff"];
+        if (prop === "original_name") return ["Cutoff"];
+        if (prop === "state") return [1]; // inactive
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.5];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      liveApiCall.mockReturnValue("0.5");
+
+      const mockParamApi = {
+        id: "param_6",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result.state).toBe("inactive");
+    });
+
+    it("includes automation flag when active", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Filter"];
+        if (prop === "original_name") return ["Filter"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [1]; // active automation
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.5];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      liveApiCall.mockReturnValue("0.5");
+
+      const mockParamApi = {
+        id: "param_7",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result.automation).toBe("active");
+    });
+
+    it("includes enabled=false when parameter is disabled", () => {
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Param"];
+        if (prop === "original_name") return ["Param"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.5];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [0]; // disabled
+
+        return [0];
+      });
+
+      liveApiCall.mockReturnValue("0.5");
+
+      const mockParamApi = {
+        id: "param_8",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result.enabled).toBe(false);
+    });
+
+    it("reads division parameter with enum-like value and options", () => {
+      // Division params like Echo's L Division have raw values -6 to 0
+      // that map to "1/64" through "1"
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["L Division"];
+        if (prop === "original_name") return ["L Division"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [-3]; // corresponds to "1/8"
+        if (prop === "min") return [-6];
+        if (prop === "max") return [0];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      // Map raw values to division strings
+      const divisionMap = {
+        "-6": "1/64",
+        "-5": "1/32",
+        "-4": "1/16",
+        "-3": "1/8",
+        "-2": "1/4",
+        "-1": "1/2",
+        0: 1, // Note: returns number, not string
+      };
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          return divisionMap[String(value)] || "";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_9",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_9",
+        name: "L Division",
+        value: "1/8",
+        options: ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"],
+      });
+    });
+
+    it("handles division param detected via minLabel", () => {
+      // Edge case: current value is "1" (not a fraction) but min is "1/64"
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return ["Division"];
+        if (prop === "original_name") return ["Division"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0]; // corresponds to "1"
+        if (prop === "min") return [-2];
+        if (prop === "max") return [0];
+        if (prop === "is_enabled") return [1];
+
+        return [0];
+      });
+
+      const divisionMap = {
+        "-2": "1/4",
+        "-1": "1/2",
+        0: 1,
+      };
+
+      liveApiCall.mockImplementation((method, value) => {
+        if (method === "str_for_value") {
+          return divisionMap[String(value)] || "";
+        }
+
+        return "";
+      });
+
+      const mockParamApi = {
+        id: "param_10",
+        get: liveApiGet,
+        getProperty: (prop) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      };
+
+      const result = readParameter(mockParamApi);
+
+      expect(result).toStrictEqual({
+        id: "param_10",
+        name: "Division",
+        value: "1",
+        options: ["1/4", "1/2", "1"],
+      });
     });
   });
 });

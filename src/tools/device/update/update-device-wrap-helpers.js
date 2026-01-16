@@ -4,7 +4,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
@@ -56,7 +56,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     rack.set("name", name);
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   for (let i = 0; i < devices.length; i++) {
     const device = devices[i];
@@ -79,7 +79,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     }
 
     const chainPath = `${rack.path} chains ${i}`;
-    const chainContainer = new LiveAPI(chainPath);
+    const chainContainer = LiveAPI.from(chainPath);
     const deviceId = device.id.startsWith("id ")
       ? device.id
       : `id ${device.id}`;
@@ -125,7 +125,7 @@ function resolveDeviceFromPath(path) {
   if (resolved.position != null) {
     const devicePath = `${resolved.container.path} devices ${resolved.position}`;
 
-    return new LiveAPI(devicePath);
+    return LiveAPI.from(devicePath);
   }
 
   return resolved.container;
@@ -166,9 +166,9 @@ function determineRackType(devices) {
 
 function getDeviceInsertionPoint(device) {
   const parentPath = device.path.replace(/ devices \d+$/, "");
-  const container = new LiveAPI(parentPath);
+  const container = LiveAPI.from(parentPath);
   const match = device.path.match(/ devices (\d+)$/);
-  const position = match ? parseInt(match[1], 10) : 0;
+  const position = match ? Number.parseInt(match[1]) : 0;
 
   return { container, position };
 }
@@ -182,7 +182,7 @@ function getDeviceInsertionPoint(device) {
  * @returns {object} Info about the created rack
  */
 function wrapInstrumentsInRack(devices, toPath, name) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const firstDevice = devices[0];
 
   // 1. Get source track from first instrument
@@ -225,10 +225,10 @@ function wrapInstrumentsInRack(devices, toPath, name) {
       // Create chain
       rack.call("insert_chain");
       const chainIndex = rack.getChildren("chains").length - 1;
-      const chain = new LiveAPI(`${rack.path} chains ${chainIndex}`);
+      const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
 
       // Get device at position 0 (always 0 since we move from front)
-      const tempDevice = new LiveAPI(`${tempTrack.path} devices 0`);
+      const tempDevice = LiveAPI.from(`${tempTrack.path} devices 0`);
 
       liveSet.call(
         "move_device",

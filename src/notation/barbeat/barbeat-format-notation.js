@@ -1,11 +1,11 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
 import {
-  DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
 } from "./barbeat-config.js";
+import { parseBeatsPerBar } from "./time/barbeat-time.js";
 
 /**
  * Format a number to remove trailing zeros
@@ -201,25 +201,8 @@ export function formatNotation(clipNotes, options = {}) {
     return "";
   }
 
-  const {
-    beatsPerBar: beatsPerBarOption,
-    timeSigNumerator,
-    timeSigDenominator,
-  } = options;
-
-  if (
-    (timeSigNumerator != null && timeSigDenominator == null) ||
-    (timeSigDenominator != null && timeSigNumerator == null)
-  ) {
-    throw new Error(
-      "Time signature must be specified with both numerator and denominator",
-    );
-  }
-
-  const beatsPerBar =
-    timeSigNumerator != null
-      ? timeSigNumerator
-      : (beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR);
+  const { timeSigDenominator } = options;
+  const beatsPerBar = parseBeatsPerBar(options);
 
   // Sort notes by start time, then by pitch for consistent output
   const sortedNotes = [...clipNotes].sort((a, b) => {

@@ -48,9 +48,7 @@ describe("updateDevice - macroVariation", () => {
       }
 
       // Non-rack device (id 456)
-      if (this._path === "id 456") {
-        if (prop === "can_have_chains") return [0];
-      }
+      if (this._path === "id 456" && prop === "can_have_chains") return [0];
 
       return [0];
     });

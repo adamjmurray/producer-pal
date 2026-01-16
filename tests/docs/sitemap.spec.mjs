@@ -1,5 +1,5 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 
 // Known external domains that are allowed
@@ -44,9 +44,8 @@ function parseSitemap() {
 
   // Extract all <loc> URLs from sitemap
   const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
-  const urls = Array.from(urlMatches, (match) => match[1]);
 
-  return urls;
+  return Array.from(urlMatches, (match) => match[1]);
 }
 
 /**

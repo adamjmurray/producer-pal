@@ -33,10 +33,12 @@ export function withoutNulls(obj) {
 
 /**
  * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
- * @param {string} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
+ * @param {string|null|undefined} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
  * @returns {Array<string>} Array of trimmed ID strings
  */
 export function parseCommaSeparatedIds(ids) {
+  if (ids == null) return [];
+
   return ids
     .split(",")
     .map((id) => id.trim())
@@ -45,24 +47,67 @@ export function parseCommaSeparatedIds(ids) {
 
 /**
  * Parses a comma-separated string of indices into an array of integers
- * @param {string} indices - Comma-separated string of indices (e.g., "0, 1, 2")
+ * @param {string|null|undefined} indices - Comma-separated string of indices (e.g., "0, 1, 2")
  * @returns {Array<number>} Array of integer indices
  * @throws {Error} If any index is not a valid integer
  */
 export function parseCommaSeparatedIndices(indices) {
+  if (indices == null) return [];
+
   return indices
     .split(",")
     .map((index) => index.trim())
     .filter((index) => index.length > 0)
     .map((index) => {
-      const parsed = parseInt(index, 10);
+      const parsed = Number.parseInt(index);
 
-      if (isNaN(parsed)) {
+      if (Number.isNaN(parsed)) {
         throw new Error(`Invalid index "${index}" - must be a valid integer`);
       }
 
       return parsed;
     });
+}
+
+/**
+ * Parses a comma-separated string of values into an array of floats, filtering invalid values
+ * @param {string|null|undefined} values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
+ * @returns {Array<number>} Array of valid float values (NaN values are filtered out)
+ */
+export function parseCommaSeparatedFloats(values) {
+  if (values == null) return [];
+
+  return values
+    .split(",")
+    .map((v) => Number.parseFloat(v.trim()))
+    .filter((v) => !Number.isNaN(v));
+}
+
+/**
+ * Builds an indexed name for batch-created items (clips, tracks, etc.)
+ * First item keeps base name, subsequent items get numbered suffix.
+ * @param {string|null|undefined} baseName - Base name for the item
+ * @param {number} count - Total number of items being created
+ * @param {number} index - Current item index (0-based)
+ * @returns {string|undefined} - Generated name or undefined if baseName is null
+ */
+export function buildIndexedName(baseName, count, index) {
+  if (baseName == null) return;
+  if (count === 1) return baseName;
+  if (index === 0) return baseName;
+
+  return `${baseName} ${index + 1}`;
+}
+
+/**
+ * Unwraps a single-element array to its element, otherwise returns the array
+ * Used for tool results that should return a single object when one item,
+ * or an array when multiple items.
+ * @param {Array} array - Array of results
+ * @returns {*} Single element if array has one item, otherwise the full array
+ */
+export function unwrapSingleResult(array) {
+  return array.length === 1 ? array[0] : array;
 }
 
 /**
@@ -79,8 +124,8 @@ export function parseTimeSignature(timeSignature) {
   }
 
   return {
-    numerator: parseInt(match[1], 10),
-    denominator: parseInt(match[2], 10),
+    numerator: Number.parseInt(match[1]),
+    denominator: Number.parseInt(match[2]),
   };
 }
 

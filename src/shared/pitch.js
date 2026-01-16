@@ -100,7 +100,7 @@ export function isValidMidi(midi) {
 export function isValidNoteName(name) {
   if (typeof name !== "string") return false;
 
-  const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
+  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
 
   if (!match) return false;
 
@@ -184,7 +184,7 @@ export function noteNameToMidi(name) {
     return null;
   }
 
-  const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
+  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
 
   if (!match) {
     return null;
@@ -194,7 +194,7 @@ export function noteNameToMidi(name) {
   // Note: pitchClassToNumber won't return null here because the regex
   // already validates that pitchClassName is a valid pitch class (A-G with optional #/b)
   const pitchClass = /** @type {number} */ (pitchClassToNumber(pitchClassName));
-  const octave = parseInt(octaveStr, 10);
+  const octave = Number.parseInt(octaveStr);
 
   // MIDI note = (octave + 2) * 12 + pitchClass
   // C3 = (3 + 2) * 12 + 0 = 60

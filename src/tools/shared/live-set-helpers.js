@@ -3,7 +3,7 @@
  * @returns {{numerator: number, denominator: number}} Time signature components
  */
 export function parseSongTimeSignature() {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   return {
     numerator: liveSet.getProperty("signature_numerator"),

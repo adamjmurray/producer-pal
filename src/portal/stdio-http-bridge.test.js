@@ -87,6 +87,20 @@ vi.mock(import("./file-logger.js"), () => ({
 import { logger } from "./file-logger.js";
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
+/**
+ * Get a registered handler from mockServer.setRequestHandler calls
+ * @param {string} schema - Schema name to find (e.g., "CallToolRequestSchema")
+ * @param {"first" | "last"} [which="first"] - Which matching call to return
+ * @returns {Function} The handler function
+ */
+function getHandler(schema, which = "first") {
+  const calls = mockServer.setRequestHandler.mock.calls.filter(
+    (c) => c[0] === schema,
+  );
+
+  return which === "last" ? calls.at(-1)[1] : calls[0][1];
+}
+
 describe("StdioHttpBridge", () => {
   let bridge;
   let consoleErrorSpy;
@@ -298,13 +312,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      // Get the handler that was registered
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const listToolsCall = calls.find(
-        (call) => call[0] === "ListToolsRequestSchema",
-      );
-      const listToolsHandler = listToolsCall[1];
-
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
       const httpTools = { tools: [{ name: "test-tool" }] };
 
       mockClient.connect.mockResolvedValue();
@@ -322,11 +330,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const listToolsCall = calls.find(
-        (call) => call[0] === "ListToolsRequestSchema",
-      );
-      const listToolsHandler = listToolsCall[1];
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
@@ -343,12 +347,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
-
+      const callToolHandler = getHandler("CallToolRequestSchema");
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
       mockClient.connect.mockResolvedValue();
@@ -377,11 +376,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
+      const callToolHandler = getHandler("CallToolRequestSchema");
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
@@ -405,12 +400,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
-
+      const callToolHandler = getHandler("CallToolRequestSchema");
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
       mockClient.connect.mockResolvedValue();
@@ -436,11 +426,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
+      const callToolHandler = getHandler("CallToolRequestSchema");
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
@@ -462,11 +448,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
+      const callToolHandler = getHandler("CallToolRequestSchema");
 
       // Simulate MCP protocol error (has numeric code)
       const mcpError = new Error("Invalid tool parameters");
@@ -498,11 +480,7 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await bridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      const callToolCall = calls.find(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCall[1];
+      const callToolHandler = getHandler("CallToolRequestSchema");
 
       // Error with redundant prefix
       const mcpError = new Error("MCP error -32602: Invalid parameters");
@@ -531,12 +509,8 @@ describe("StdioHttpBridge", () => {
       mockServer.connect.mockResolvedValue();
       await invalidBridge.start();
 
-      const calls = mockServer.setRequestHandler.mock.calls;
-      // Get the most recent call for CallToolRequestSchema (from invalidBridge)
-      const callToolCalls = calls.filter(
-        (call) => call[0] === "CallToolRequestSchema",
-      );
-      const callToolHandler = callToolCalls[callToolCalls.length - 1][1];
+      // Get the most recent handler (from invalidBridge, not the beforeEach bridge)
+      const callToolHandler = getHandler("CallToolRequestSchema", "last");
 
       const request = {
         params: {

@@ -1,5 +1,10 @@
 import { inspect } from "node:util";
-import { GoogleGenAI, mcpToTool } from "@google/genai";
+import {
+  GoogleGenAI,
+  mcpToTool,
+  type GenerateContentConfig,
+} from "@google/genai";
+import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
   startThought,
   continueThought,
@@ -16,21 +21,6 @@ import {
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
 import type { ChatOptions } from "./shared/types.ts";
-
-// Default model for Gemini
-const DEFAULT_MODEL = "gemini-2.5-flash-lite";
-
-interface GeminiConfig {
-  maxOutputTokens?: number;
-  temperature?: number;
-  thinkingConfig?: {
-    includeThoughts?: boolean;
-    thinkingBudget?: number;
-  };
-  systemInstruction?: string;
-  tools?: unknown[];
-  automaticFunctionCalling?: Record<string, unknown>;
-}
 
 interface ResponsePart {
   text?: string;
@@ -113,7 +103,12 @@ export async function runGemini(
   };
 
   try {
-    await runChatLoop({ chatSession, options }, rl, initialText, callbacks);
+    await runChatLoop(
+      { chatSession, options },
+      rl,
+      { initialText, once: options.once },
+      callbacks,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -134,8 +129,8 @@ const GEMINI_THINKING_MAP: Record<string, number> = {
   auto: -1,
 };
 
-function buildConfig(options: ChatOptions): GeminiConfig {
-  const config: GeminiConfig = {};
+function buildConfig(options: ChatOptions): GenerateContentConfig {
+  const config: GenerateContentConfig = {};
 
   if (options.outputTokens != null) {
     config.maxOutputTokens = options.outputTokens;
@@ -147,7 +142,8 @@ function buildConfig(options: ChatOptions): GeminiConfig {
 
   if (options.thinking) {
     const budget =
-      GEMINI_THINKING_MAP[options.thinking] ?? parseInt(options.thinking, 10);
+      GEMINI_THINKING_MAP[options.thinking] ??
+      Number.parseInt(options.thinking, 10);
 
     config.thinkingConfig = {
       includeThoughts: budget !== 0,
@@ -155,8 +151,8 @@ function buildConfig(options: ChatOptions): GeminiConfig {
     };
   }
 
-  if (options.systemPrompt != null) {
-    config.systemInstruction = options.systemPrompt;
+  if (options.instructions != null) {
+    config.systemInstruction = options.instructions;
   }
 
   return config;
@@ -176,7 +172,7 @@ async function sendMessage(
     const responseStream = await chatSession.sendMessageStream(message);
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
-    await printStream(responseStream, debug);
+    await printStream(responseStream as AsyncIterable<GeminiResponse>, debug);
   } else {
     if (debug) debugCall("chat.sendMessage", message);
     const response = (await chatSession.sendMessage(message)) as GeminiResponse;

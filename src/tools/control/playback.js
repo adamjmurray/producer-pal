@@ -77,7 +77,7 @@ export function playback(
     "loopEnd",
   );
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
@@ -283,7 +283,7 @@ function handlePlayScene(sceneIndex, state) {
     );
   }
 
-  const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
   if (!scene.exists()) {
     throw new Error(
@@ -331,7 +331,7 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
       );
     }
 
-    const clipSlot = new LiveAPI(
+    const clipSlot = LiveAPI.from(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
 
@@ -393,7 +393,7 @@ function handleStopSessionClips(clipIds, state) {
   }
 
   for (const trackPath of tracksToStop) {
-    const track = new LiveAPI(trackPath);
+    const track = LiveAPI.from(trackPath);
 
     if (!track.exists()) {
       throw new Error(

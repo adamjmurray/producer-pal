@@ -2,6 +2,7 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import {
   parseCommaSeparatedIds,
   parseTimeSignature,
+  unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
@@ -70,10 +71,5 @@ export function updateScene(
     });
   }
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (updatedScenes.length === 0) {
-    return [];
-  }
-
-  return updatedScenes.length === 1 ? updatedScenes[0] : updatedScenes;
+  return unwrapSingleResult(updatedScenes);
 }

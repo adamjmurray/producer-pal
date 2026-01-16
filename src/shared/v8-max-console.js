@@ -15,8 +15,13 @@ const str = (any) => {
         .map(([k, v]) => `${str(k)}: ${str(v)}`)
         .join(", ")}}`;
 
-    case Map.prototype:
-      return `Map(${[...any.entries()].map(([k, v]) => `${str(k)} → ${str(v)}`).join(", ")})`;
+    case Map.prototype: {
+      const entries = [...any.entries()]
+        .map(([k, v]) => `${str(k)} → ${str(v)}`)
+        .join(", ");
+
+      return `Map(${entries})`;
+    }
 
     case typeof Dict !== "undefined" ? Dict.prototype : null:
       return `Dict("${any.name}") ${any.stringify().replaceAll("\n", " ")}`;

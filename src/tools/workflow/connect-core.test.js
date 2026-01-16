@@ -19,61 +19,59 @@ vi.mock(
   }),
 );
 
+function setupBasicMocks(version = "12.2", idMap = {}) {
+  liveApiId.mockImplementation(function () {
+    return idMap[this._path] ?? this._id;
+  });
+  liveApiPath.mockImplementation(function () {
+    return this._path;
+  });
+  liveApiCall.mockImplementation(function (method) {
+    return method === "get_version_string" ? version : null;
+  });
+}
+
+function createLiveSetConfig(overrides = {}) {
+  return {
+    LiveSet: {
+      name: overrides.name ?? "Test Project",
+      tempo: overrides.tempo ?? 120,
+      signature_numerator: overrides.signature_numerator ?? 4,
+      signature_denominator: overrides.signature_denominator ?? 4,
+      is_playing: overrides.is_playing ?? 0,
+      tracks: overrides.tracks ?? [],
+      scenes: overrides.scenes ?? [],
+      ...overrides.liveSetExtra,
+    },
+    AppView: {
+      focused_document_view: overrides.view ?? "Session",
+    },
+    ...overrides.extra,
+  };
+}
+
 describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track0";
-        case "live_set tracks 1":
-          return "track1";
-        case "live_set tracks 2":
-          return "track2";
-        default:
-          return this._id;
-      }
+    setupBasicMocks("12.3", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
+      "live_set tracks 1": "track1",
+      "live_set tracks 2": "track2",
     });
 
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.3";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "Test Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
         is_playing: 1,
         tracks: children("track0", "track1", "track2"),
         scenes: children("scene0", "scene1"),
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        devices: [],
-      },
-      "live_set tracks 1": {
-        has_midi_input: 1,
-        devices: [],
-      },
-      "live_set tracks 2": {
-        has_midi_input: 0,
-        devices: [],
-      },
-    });
+        extra: {
+          "live_set tracks 0": { has_midi_input: 1, devices: [] },
+          "live_set tracks 1": { has_midi_input: 1, devices: [] },
+          "live_set tracks 2": { has_midi_input: 0, devices: [] },
+        },
+      }),
+    );
 
     const result = connect();
 
@@ -110,110 +108,49 @@ describe("connect", () => {
   });
 
   it("handles arrangement view correctly", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    setupBasicMocks();
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "Arrangement Project",
         tempo: 140,
         signature_numerator: 3,
-        signature_denominator: 4,
-        is_playing: 0,
+        view: "Arranger",
         tracks: children("track0"),
         scenes: children("scene0"),
-      },
-      AppView: {
-        focused_document_view: "Arranger",
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        devices: [],
-      },
-    });
-
+        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
+      }),
+    );
     getHostTrackIndex.mockReturnValue(0);
 
     const result = connect();
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        liveSet: expect.objectContaining({
-          tempo: 140,
-          timeSignature: "3/4",
-        }),
+        liveSet: expect.objectContaining({ tempo: 140, timeSignature: "3/4" }),
       }),
     );
   });
 
   it("detects instruments on non-host tracks and provides appropriate suggestion", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track0";
-        case "live_set tracks 1":
-          return "track1";
-        case "live_set tracks 0 devices 0":
-          return "synth_device";
-        default:
-          return this._id;
-      }
+    setupBasicMocks("12.2", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
+      "live_set tracks 1": "track1",
+      "live_set tracks 0 devices 0": "synth_device",
     });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "Synth Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
         tracks: children("track0", "track1"),
         scenes: children("scene0"),
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-      track0: {
-        has_midi_input: 1,
-        devices: children("synth_device"),
-      },
-      track1: {
-        has_midi_input: 1,
-        devices: [],
-      },
-      synth_device: {
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      },
-    });
-
-    getHostTrackIndex.mockReturnValue(1); // Host track is track 1, synth is on track 0
+        extra: {
+          track0: { has_midi_input: 1, devices: children("synth_device") },
+          track1: { has_midi_input: 1, devices: [] },
+          synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+        },
+      }),
+    );
+    getHostTrackIndex.mockReturnValue(1);
 
     const result = connect();
 
@@ -224,54 +161,22 @@ describe("connect", () => {
   });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track0";
-        case "live_set tracks 1":
-          return "track1";
-        default:
-          return this._id;
-      }
+    setupBasicMocks("12.2", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
+      "live_set tracks 1": "track1",
     });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "Empty Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
         tracks: children("track0", "track1"),
         scenes: children("scene0"),
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        devices: [],
-      },
-      "live_set tracks 1": {
-        has_midi_input: 1,
-        devices: [],
-      },
-    });
-
+        extra: {
+          "live_set tracks 0": { has_midi_input: 1, devices: [] },
+          "live_set tracks 1": { has_midi_input: 1, devices: [] },
+        },
+      }),
+    );
     getHostTrackIndex.mockReturnValue(1);
 
     const result = connect();
@@ -282,101 +187,18 @@ describe("connect", () => {
   });
 
   it("handles null host track index gracefully", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track0";
-        default:
-          return this._id;
-      }
+    setupBasicMocks("12.2", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
     });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "No Host Index Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
         tracks: children("track0"),
         scenes: children("scene0"),
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        devices: [],
-      },
-    });
-
-    getHostTrackIndex.mockReturnValue(null); // Host track index not found
-
-    const result = connect();
-
-    // Should still work - just won't find instruments on host track
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        connected: true,
-        liveSet: expect.objectContaining({
-          trackCount: 1,
-          sceneCount: 1,
-        }),
+        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
       }),
     );
-  });
-
-  it("handles empty Live Set correctly", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set":
-          return "live_set_id";
-        default:
-          return this._id;
-      }
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Empty Live Set",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
     getHostTrackIndex.mockReturnValue(null);
 
     const result = connect();
@@ -384,131 +206,56 @@ describe("connect", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
-        liveSet: expect.objectContaining({
-          trackCount: 0,
-          sceneCount: 0,
-        }),
+        liveSet: expect.objectContaining({ trackCount: 1, sceneCount: 1 }),
+      }),
+    );
+  });
+
+  it("handles empty Live Set correctly", () => {
+    setupBasicMocks("12.2", { live_set: "live_set_id" });
+    mockLiveApiGet(createLiveSetConfig({ name: "Empty Live Set" }));
+    getHostTrackIndex.mockReturnValue(null);
+
+    const result = connect();
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        connected: true,
+        liveSet: expect.objectContaining({ trackCount: 0, sceneCount: 0 }),
         messagesForUser: expect.stringContaining("* No instruments found"),
       }),
     );
   });
 
   it("includes scale property when scale is enabled", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    setupBasicMocks();
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "Scale Test Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-        scale_mode: 1, // Scale enabled
-        scale_name: "Minor",
-        root_note: 3, // D#
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+        liveSetExtra: { scale_mode: 1, scale_name: "Minor", root_note: 3 },
+      }),
+    );
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = connect();
-
-    expect(result.liveSet.scale).toBe("Eb Minor");
+    expect(connect().liveSet.scale).toBe("Eb Minor");
   });
 
   it("excludes scale property when scale is disabled", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
+    setupBasicMocks();
+    mockLiveApiGet(
+      createLiveSetConfig({
         name: "No Scale Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-        scale_mode: 0, // Scale disabled
-        scale_name: "Major",
-        root_note: 0,
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+        liveSetExtra: { scale_mode: 0, scale_name: "Major", root_note: 0 },
+      }),
+    );
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = connect();
-
-    expect(result.liveSet.scale).toBeUndefined();
+    expect(connect().liveSet.scale).toBeUndefined();
   });
 
   it("omits name property when Live Set name is empty string", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "", // Empty name
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupBasicMocks();
+    mockLiveApiGet(createLiveSetConfig({ name: "" }));
     getHostTrackIndex.mockReturnValue(0);
 
     const result = connect();

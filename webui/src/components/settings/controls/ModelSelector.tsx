@@ -8,7 +8,7 @@ import {
 } from "#webui/lib/constants/models";
 import type { Provider } from "#webui/types/settings";
 
-interface ModelSelectorProps {
+export interface ModelSelectorProps {
   provider: Provider;
   model: string;
   setModel: (model: string) => void;

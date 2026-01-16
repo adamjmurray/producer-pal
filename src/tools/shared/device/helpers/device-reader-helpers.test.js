@@ -9,6 +9,7 @@ import {
   updateDrumPadSoloStates,
   readMacroVariations,
   readABCompare,
+  processDeviceChains,
 } from "./device-reader-helpers.js";
 
 describe("device-reader-helpers", () => {
@@ -349,7 +350,7 @@ describe("device-reader-helpers", () => {
   describe("hasInstrumentInDevices", () => {
     it("returns false for empty or null devices", () => {
       expect(hasInstrumentInDevices(null)).toBe(false);
-      expect(hasInstrumentInDevices(undefined)).toBe(false);
+      expect(hasInstrumentInDevices()).toBe(false);
       expect(hasInstrumentInDevices([])).toBe(false);
     });
 
@@ -414,47 +415,38 @@ describe("device-reader-helpers", () => {
   });
 
   describe("updateDrumPadSoloStates", () => {
+    // Helper to create drum pad chain objects
+    const drumPad = (pitch, name, state) =>
+      state !== undefined ? { pitch, name, state } : { pitch, name };
+
     it("does nothing when no drum chain is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick" },
-        { pitch: "D3", name: "Snare" },
-      ];
+      const chains = [drumPad("C3", "Kick"), drumPad("D3", "Snare")];
 
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBeUndefined();
       expect(chains[1].state).toBeUndefined();
     });
 
-    it("keeps soloed state unchanged", () => {
+    it("keeps soloed state unchanged and sets others to MUTED_VIA_SOLO", () => {
       const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare" },
-      ];
-
-      updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-    });
-
-    it("sets muted chains to MUTED_ALSO_VIA_SOLO when another is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare", state: STATE.MUTED },
-      ];
-
-      updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-      expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
-    });
-
-    it("sets unset chains to MUTED_VIA_SOLO when another is soloed", () => {
-      const chains = [
-        { pitch: "C3", name: "Kick", state: STATE.SOLOED },
-        { pitch: "D3", name: "Snare" },
+        drumPad("C3", "Kick", STATE.SOLOED),
+        drumPad("D3", "Snare"),
       ];
 
       updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
+    });
+
+    it("sets muted chains to MUTED_ALSO_VIA_SOLO when another is soloed", () => {
+      const chains = [
+        drumPad("C3", "Kick", STATE.SOLOED),
+        drumPad("D3", "Snare", STATE.MUTED),
+      ];
+
+      updateDrumPadSoloStates(chains);
+      expect(chains[0].state).toBe(STATE.SOLOED);
+      expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
     });
   });
 
@@ -603,6 +595,99 @@ describe("device-reader-helpers", () => {
       };
 
       expect(readABCompare(device)).toStrictEqual({ abCompare: "b" });
+    });
+  });
+
+  describe("processDeviceChains", () => {
+    const createMockChain = (name, overrides = {}) => ({
+      id: `chain-${name}`,
+      type: "Chain",
+      getProperty: (prop) => {
+        if (prop === "name") return name;
+        if (prop === "mute") return 0;
+        if (prop === "solo") return 0;
+        if (prop === "muted_via_solo") return 0;
+
+        return 0;
+      },
+      getColor: () => null,
+      getChildren: (child) => {
+        if (child === "devices") return overrides.devices || [];
+
+        return [];
+      },
+    });
+
+    it("processes return chains when includeReturnChains is true", () => {
+      const mockDevice = {
+        getChildren: (child) => {
+          if (child === "chains") return [];
+
+          if (child === "return_chains") {
+            return [createMockChain("Return A"), createMockChain("Return B")];
+          }
+
+          return [];
+        },
+      };
+
+      const deviceInfo = {};
+      const mockReadDevice = (d) => ({ id: d.id, type: "effect" });
+
+      processDeviceChains(
+        mockDevice,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn: mockReadDevice,
+          devicePath: "0",
+        },
+      );
+
+      expect(deviceInfo.returnChains).toHaveLength(2);
+      expect(deviceInfo.returnChains[0]).toMatchObject({
+        id: "chain-Return A",
+        name: "Return A",
+      });
+      expect(deviceInfo.returnChains[1]).toMatchObject({
+        id: "chain-Return B",
+        name: "Return B",
+      });
+    });
+
+    it("skips return chains when device has none", () => {
+      const mockDevice = {
+        getChildren: (child) => {
+          if (child === "chains") return [];
+          if (child === "return_chains") return [];
+
+          return [];
+        },
+      };
+
+      const deviceInfo = {};
+
+      processDeviceChains(
+        mockDevice,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn: () => ({}),
+          devicePath: null,
+        },
+      );
+
+      expect(deviceInfo.returnChains).toBeUndefined();
     });
   });
 });

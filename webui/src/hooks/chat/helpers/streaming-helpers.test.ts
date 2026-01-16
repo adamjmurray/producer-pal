@@ -1,11 +1,31 @@
 import { describe, it, expect, vi } from "vitest";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
+import type { ResponsesConversationItem } from "#webui/types/responses-api";
 import {
   handleMessageStream,
   createGeminiErrorMessage,
   createOpenAIErrorMessage,
+  createResponsesErrorMessage,
   validateMcpConnection,
 } from "./streaming-helpers";
+
+function createMockFormatter() {
+  return vi.fn(() => [
+    {
+      role: "user" as const,
+      parts: [],
+      rawHistoryIndex: 0,
+      timestamp: Date.now(),
+    },
+  ]);
+}
+
+async function* createThrowingStream(
+  error: Error,
+): AsyncGenerator<GeminiMessage[], void, unknown> {
+  yield [];
+  throw error;
+}
 
 describe("streaming-helpers", () => {
   describe("handleMessageStream", () => {
@@ -16,80 +36,35 @@ describe("streaming-helpers", () => {
       const mockStream = (async function* () {
         for (const h of mockHistory) yield h;
       })();
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
       const onUpdate = vi.fn();
 
-      const result = await handleMessageStream(mockStream, formatter, onUpdate);
+      const result = await handleMessageStream(
+        mockStream,
+        createMockFormatter(),
+        onUpdate,
+      );
 
       expect(result).toBe(true);
       expect(onUpdate).toHaveBeenCalled();
     });
 
     it("should handle AbortError", async () => {
-      /**
-       *
-       * @returns {any} - Hook return value
-       */
-      async function* throwingStream(): AsyncGenerator<
-        GeminiMessage[],
-        void,
-        unknown
-      > {
-        yield []; // Required by ESLint even though we throw immediately
-        throw new DOMException("Aborted", "AbortError");
-      }
-
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
-      const onUpdate = vi.fn();
-
       const result = await handleMessageStream(
-        throwingStream(),
-        formatter,
-        onUpdate,
+        createThrowingStream(new DOMException("Aborted", "AbortError")),
+        createMockFormatter(),
+        vi.fn(),
       );
 
       expect(result).toBe(false);
     });
 
     it("should re-throw non-AbortError", async () => {
-      /**
-       * @returns {any} - Hook return value
-       */
-      async function* throwingStream(): AsyncGenerator<
-        GeminiMessage[],
-        void,
-        unknown
-      > {
-        yield [];
-        throw new Error("Network failure");
-      }
-
-      const formatter = vi.fn(() => [
-        {
-          role: "user" as const,
-          parts: [],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
-      const onUpdate = vi.fn();
-
       await expect(
-        handleMessageStream(throwingStream(), formatter, onUpdate),
+        handleMessageStream(
+          createThrowingStream(new Error("Network failure")),
+          createMockFormatter(),
+          vi.fn(),
+        ),
       ).rejects.toThrow("Network failure");
     });
   });
@@ -128,6 +103,47 @@ describe("streaming-helpers", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
+    });
+  });
+
+  describe("createResponsesErrorMessage", () => {
+    it("should create error message", () => {
+      const conversation: ResponsesConversationItem[] = [];
+      const result = createResponsesErrorMessage(conversation, "Test error");
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.role).toBe("model");
+      const firstPart = result[0]?.parts[0];
+
+      expect(firstPart?.type).toBe("error");
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
+        "Error: Test error",
+      );
+    });
+
+    it("should preserve existing conversation in formatted output", () => {
+      const conversation: ResponsesConversationItem[] = [
+        { type: "message", role: "user", content: "Hello" },
+      ];
+      const result = createResponsesErrorMessage(conversation, "Test error");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.role).toBe("user");
+      expect(result[1]?.role).toBe("model");
+    });
+
+    it("should handle Error objects", () => {
+      const conversation: ResponsesConversationItem[] = [];
+      const result = createResponsesErrorMessage(
+        conversation,
+        new Error("Something failed"),
+      );
+
+      const firstPart = result[0]?.parts[0];
+
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
+        "Error: Something failed",
+      );
     });
   });
 

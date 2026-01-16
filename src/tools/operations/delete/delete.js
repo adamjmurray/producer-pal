@@ -3,11 +3,14 @@ import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
-const PATH_SUPPORTED_TYPES = ["device", "drum-pad"];
+const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 
 /**
  * Deletes objects by ids and/or paths
@@ -30,7 +33,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   }
 
   // Handle path parameter - only valid for devices and drum-pads
-  if (path && !PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && !PATH_SUPPORTED_TYPES.has(type)) {
     console.error(
       `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
     );
@@ -40,7 +43,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
 
   // Resolve paths to IDs for device or drum-pad types
-  if (path && PATH_SUPPORTED_TYPES.includes(type)) {
+  if (path && PATH_SUPPORTED_TYPES.has(type)) {
     const paths = parseCommaSeparatedIds(path);
     const pathIds = resolvePathsToIds(paths, type);
 
@@ -62,8 +65,11 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
+      // For tracks, handle both regular and return tracks
       const pathRegex =
-        type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
+        type === "track"
+          ? /live_set (?:return_)?tracks (\d+)/
+          : /live_set scenes (\d+)/;
       const indexA = Number(a.object.path.match(pathRegex)?.[1]);
       const indexB = Number(b.object.path.match(pathRegex)?.[1]);
 
@@ -76,12 +82,7 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (deletedObjects.length === 0) {
-    return [];
-  }
-
-  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
+  return unwrapSingleResult(deletedObjects);
 }
 
 /**
@@ -90,6 +91,19 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
  * @param {object} object - The object to delete
  */
 function deleteTrackObject(id, object) {
+  // Check for return track first
+  const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
+
+  if (returnMatch) {
+    const returnTrackIndex = Number(returnMatch[1]);
+    const liveSet = LiveAPI.from("live_set");
+
+    liveSet.call("delete_return_track", returnTrackIndex);
+
+    return;
+  }
+
+  // Regular track
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 
   if (Number.isNaN(trackIndex)) {
@@ -106,7 +120,7 @@ function deleteTrackObject(id, object) {
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("delete_track", trackIndex);
 }
@@ -125,7 +139,7 @@ function deleteSceneObject(id, object) {
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("delete_scene", sceneIndex);
 }
@@ -144,7 +158,7 @@ function deleteClipObject(id, object) {
     );
   }
 
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   track.call("delete_clip", `id ${object.id}`);
 }
@@ -165,7 +179,7 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const lastMatch = deviceMatches[deviceMatches.length - 1];
+  const lastMatch = deviceMatches.at(-1);
   const deviceIndex = Number(lastMatch[1]);
 
   // Parent path is everything before the last "devices X"
@@ -177,7 +191,7 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const parent = new LiveAPI(parentPath);
+  const parent = LiveAPI.from(parentPath);
 
   parent.call("delete_device", deviceIndex);
 }
@@ -188,7 +202,7 @@ function deleteDeviceObject(id, object) {
  * @param {object} object - The object to delete
  */
 function deleteDrumPadObject(id, object) {
-  const drumPad = new LiveAPI(`id ${object.id}`);
+  const drumPad = LiveAPI.from(`id ${object.id}`);
 
   drumPad.call("delete_all_chains");
 }
@@ -276,7 +290,7 @@ function resolvePathToId(resolved, targetPath, type) {
   if (type === "device") {
     // Direct device path (not through drum pad)
     if (resolved.targetType === "device") {
-      const target = new LiveAPI(resolved.liveApiPath);
+      const target = LiveAPI.from(resolved.liveApiPath);
 
       if (!target.exists()) {
         console.error(`delete: device at path "${targetPath}" does not exist`);

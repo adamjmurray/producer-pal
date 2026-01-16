@@ -19,21 +19,21 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
 
   if (trackIndex === hostTrackIndex && withoutDevices !== true) {
     try {
-      const thisDevice = new LiveAPI("this_device");
+      const thisDevice = LiveAPI.from("this_device");
       const thisDevicePath = thisDevice.path;
 
       // Extract device index from path like "live_set tracks 1 devices 0"
       const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
 
       if (deviceIndexMatch) {
-        const deviceIndex = parseInt(deviceIndexMatch[1]);
+        const deviceIndex = Number.parseInt(deviceIndexMatch[1]);
 
         newTrack.call("delete_device", deviceIndex);
         console.error(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
-    } catch (_error) {
+    } catch {
       // If we can't access this_device, just continue without removing anything
       console.error(
         "Warning: Could not check for Producer Pal device in duplicated track",
@@ -84,7 +84,7 @@ function deleteSessionClips(newTrack) {
   const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
 
   for (const clipSlotId of sessionClipSlotIds) {
-    const clipSlot = new LiveAPI(clipSlotId);
+    const clipSlot = LiveAPI.from(clipSlotId);
 
     if (clipSlot.getProperty("has_clip")) {
       clipSlot.call("delete_clip");
@@ -113,10 +113,10 @@ function collectSessionClips(newTrack, duplicatedClips) {
   const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
 
   for (const clipSlotId of sessionClipSlotIds) {
-    const clipSlot = new LiveAPI(clipSlotId);
+    const clipSlot = LiveAPI.from(clipSlotId);
 
     if (clipSlot.getProperty("has_clip")) {
-      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      const clip = LiveAPI.from(`${clipSlot.path} clip`);
 
       duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
     }
@@ -132,7 +132,7 @@ function collectArrangementClips(newTrack, duplicatedClips) {
   const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
 
   for (const clipId of arrangementClipIds) {
-    const clip = new LiveAPI(clipId);
+    const clip = LiveAPI.from(clipId);
 
     if (clip.exists()) {
       duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
@@ -261,7 +261,7 @@ function applyOutputRouting(
  * @param {number} sourceTrackIndex - Source track index
  */
 function configureRouting(newTrack, sourceTrackIndex) {
-  const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
+  const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
   const sourceTrackName = sourceTrack.getProperty("name");
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);
@@ -289,12 +289,12 @@ export function duplicateTrack(
   routeToSource,
   sourceTrackIndex,
 ) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_track", trackIndex);
 
   const newTrackIndex = trackIndex + 1;
-  const newTrack = new LiveAPI(`live_set tracks ${newTrackIndex}`);
+  const newTrack = LiveAPI.from(`live_set tracks ${newTrackIndex}`);
 
   if (name != null) {
     newTrack.set("name", name);
@@ -327,12 +327,12 @@ export function duplicateTrack(
  * @returns {object} Scene info object with id, sceneIndex, and clips array
  */
 export function duplicateScene(sceneIndex, name, withoutClips) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_scene", sceneIndex);
 
   const newSceneIndex = sceneIndex + 1;
-  const newScene = new LiveAPI(`live_set scenes ${newSceneIndex}`);
+  const newScene = LiveAPI.from(`live_set scenes ${newSceneIndex}`);
 
   if (name != null) {
     newScene.set("name", name);
@@ -345,7 +345,7 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   if (withoutClips === true) {
     // Delete all clips in the duplicated scene
     for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = new LiveAPI(
+      const clipSlot = LiveAPI.from(
         `live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`,
       );
 
@@ -356,12 +356,12 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   } else {
     // Default behavior: collect info about duplicated clips
     for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = new LiveAPI(
+      const clipSlot = LiveAPI.from(
         `live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`,
       );
 
       if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-        const clip = new LiveAPI(`${clipSlot.path} clip`);
+        const clip = LiveAPI.from(`${clipSlot.path} clip`);
 
         if (clip.exists()) {
           duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
@@ -371,13 +371,11 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   }
 
   // Return optimistic metadata
-  const result = {
+  return {
     id: newScene.id,
     sceneIndex: newSceneIndex,
     clips: duplicatedClips,
   };
-
-  return result;
 }
 
 /**
@@ -386,18 +384,18 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
  * @returns {number} Length in Ableton beats
  */
 export function calculateSceneLength(sceneIndex) {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const trackIds = liveSet.getChildIds("tracks");
 
   let maxLength = 4; // Default minimum scene length
 
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = new LiveAPI(
+    const clipSlot = LiveAPI.from(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      const clip = LiveAPI.from(`${clipSlot.path} clip`);
       const clipLength = clip.getProperty("length");
 
       maxLength = Math.max(maxLength, clipLength);
@@ -456,7 +454,7 @@ export function duplicateSceneToArrangement(
     );
   }
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const trackIds = liveSet.getChildIds("tracks");
 
   const duplicatedClips = [];
@@ -479,13 +477,13 @@ export function duplicateSceneToArrangement(
     // Only duplicate clips if withoutClips is not explicitly true
     // Find all clips in this scene and duplicate them to arrangement
     for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = new LiveAPI(
+      const clipSlot = LiveAPI.from(
         `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
       );
 
       if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-        const clip = new LiveAPI(`${clipSlot.path} clip`);
-        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+        const clip = LiveAPI.from(`${clipSlot.path} clip`);
+        const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
         // Use the new length-aware clip creation logic
         // Omit arrangementStart since all clips share the same start time

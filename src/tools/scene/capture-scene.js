@@ -6,16 +6,16 @@
  * @returns {object} Result object with information about the captured scene
  */
 export function captureScene({ sceneIndex, name } = {}) {
-  const liveSet = new LiveAPI("live_set");
-  const appView = new LiveAPI("live_set view");
+  const liveSet = LiveAPI.from("live_set");
+  const appView = LiveAPI.from("live_set view");
 
   if (sceneIndex != null) {
-    const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
     appView.set("selected_scene", `id ${scene.id}`);
   }
 
-  const selectedScene = new LiveAPI("live_set view selected_scene");
+  const selectedScene = LiveAPI.from("live_set view selected_scene");
   const selectedSceneIndex = Number.parseInt(
     selectedScene.path.match(/live_set scenes (\d+)/)?.[1],
   );
@@ -29,7 +29,7 @@ export function captureScene({ sceneIndex, name } = {}) {
   liveSet.call("capture_and_insert_scene");
 
   const newSceneIndex = selectedSceneIndex + 1;
-  const newScene = new LiveAPI(`live_set scenes ${newSceneIndex}`);
+  const newScene = LiveAPI.from(`live_set scenes ${newSceneIndex}`);
 
   if (name != null) {
     newScene.set("name", name);
@@ -40,7 +40,7 @@ export function captureScene({ sceneIndex, name } = {}) {
   const trackIds = liveSet.getChildIds("tracks");
 
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clip = new LiveAPI(
+    const clip = LiveAPI.from(
       `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
     );
 

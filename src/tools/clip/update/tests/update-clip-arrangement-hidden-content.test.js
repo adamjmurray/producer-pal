@@ -77,8 +77,6 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       if (method === "create_midi_clip") {
         return `id 1500`; // Temp clip for shortening in holding area
       }
-
-      return undefined;
     });
 
     const consoleErrorSpy = vi

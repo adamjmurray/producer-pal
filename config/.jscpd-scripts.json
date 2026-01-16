@@ -1,0 +1,6 @@
+{
+  "threshold": 7.5,
+  "reporters": ["console"],
+  "ignore": [],
+  "path": ["../scripts"]
+}

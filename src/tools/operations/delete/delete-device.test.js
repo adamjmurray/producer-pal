@@ -430,7 +430,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should return empty array when all paths are invalid", () => {
-      liveApiType.mockReturnValue(undefined);
+      liveApiType.mockReturnValue();
 
       const result = deleteObject({ path: "t99/d99", type: "device" });
 

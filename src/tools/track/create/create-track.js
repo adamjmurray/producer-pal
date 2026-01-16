@@ -1,5 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
+import { buildIndexedName } from "#src/tools/shared/utils.js";
 
 /**
  * Create a single track via Live API
@@ -31,7 +32,7 @@ function createSingleTrack(liveSet, type, currentIndex) {
  * @returns {string|undefined} Track name
  */
 function buildTrackName(baseName, count, index, parsedNames = null) {
-  if (baseName == null) return undefined;
+  if (baseName == null) return;
 
   // If we have parsed names from comma-separated input
   if (parsedNames != null) {
@@ -40,17 +41,13 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
     }
 
     // Fall back to numbering from the last name (starting from 2)
-    const lastName = parsedNames[parsedNames.length - 1];
+    const lastName = parsedNames.at(-1);
     const fallbackIndex = index - parsedNames.length + 2;
 
     return `${lastName} ${fallbackIndex}`;
   }
 
-  // Original behavior when no comma-separated names
-  if (count === 1) return baseName;
-  if (index === 0) return baseName;
-
-  return `${baseName} ${index + 1}`;
+  return buildIndexedName(baseName, count, index);
 }
 
 /**
@@ -61,7 +58,7 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
  * @returns {string|undefined} Color for this track
  */
 function getColorForIndex(color, index, parsedColors) {
-  if (color == null) return undefined;
+  if (color == null) return;
   if (parsedColors == null) return color;
 
   return parsedColors[index % parsedColors.length];
@@ -172,7 +169,7 @@ export function createTrack(
 
   validateTrackCreation(count, type, trackIndex, effectiveTrackIndex);
 
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);
   const createdTracks = [];
   let currentIndex = effectiveTrackIndex;
@@ -182,7 +179,7 @@ export function createTrack(
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
-    const track = new LiveAPI(`id ${trackId}`);
+    const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
       name: buildTrackName(name, count, i, parsedNames),

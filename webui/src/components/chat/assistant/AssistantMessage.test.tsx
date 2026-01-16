@@ -71,7 +71,7 @@ describe("AssistantMessage", () => {
       expect(details!.open).toBe(true);
     });
 
-    it("passes isResponding prop to AssistantThought", () => {
+    it("shows animate-pulse when responding", () => {
       const parts: UIPart[] = [
         { type: "thought", content: "Thinking...", isOpen: true },
       ];
@@ -82,7 +82,7 @@ describe("AssistantMessage", () => {
       expect(details!.className).toContain("animate-pulse");
     });
 
-    it("does not pass isResponding when false", () => {
+    it("hides animate-pulse when not responding", () => {
       const parts: UIPart[] = [
         { type: "thought", content: "Thinking...", isOpen: true },
       ];

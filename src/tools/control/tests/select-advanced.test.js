@@ -9,6 +9,7 @@ import {
 } from "#src/test/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
 import { select } from "#src/tools/control/select.js";
+import { setupSelectMocks, expectViewState } from "./select-test-helpers.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);
@@ -35,47 +36,20 @@ vi.mock(import("#src/tools/shared/utils.js"), () => ({
 describe("view", () => {
   let mockAppView;
   let mockSongView;
-  let mockTrackAPI;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const mocks = setupSelectMocks();
 
-    // Set up reusable mock objects
-    mockAppView = {
-      call: liveApiCall,
-      _id: "app_view_id",
-      _path: "live_app view",
-    };
+    mockAppView = mocks.mockAppView;
+    mockSongView = mocks.mockSongView;
+  });
 
-    mockSongView = {
-      set: liveApiSet,
-      call: liveApiCall,
-      _id: "song_view_id",
-      _path: "live_set view",
-    };
-
-    mockTrackAPI = {
-      exists: vi.fn().mockReturnValue(true),
-      category: "regular",
-      trackIndex: 1,
-      _id: "id track_id_123",
-      _path: "live_set view selected_track",
-    };
-
-    // Set up mock implementations
-    liveApiId.mockImplementation(function () {
-      return this._id || "id default";
-    });
-
-    // Set up liveApiGet for devices
-    liveApiGet.mockReturnValue(["id", "device_123", "id", "device_456"]);
-
-    // Default LiveAPI constructor mock
-    global.LiveAPI.mockImplementation(function (path) {
+  // Helper to create a customized LiveAPI mock implementation
+  function createLiveAPIMock(overrides = {}) {
+    return function (path) {
       this.path = path;
       this._path = path;
-
-      // Basic methods that all instances need
       this.exists = vi.fn().mockReturnValue(true);
       this.set = liveApiSet;
       this.call = liveApiCall;
@@ -83,48 +57,31 @@ describe("view", () => {
       this.getProperty = vi.fn();
       this.setProperty = vi.fn((property, value) => this.set(property, value));
 
-      // Mock some specific properties based on path
       if (path === "live_app view") {
         Object.assign(this, mockAppView);
-        this.getProperty.mockReturnValue(1); // Default to session view
-        this.call.mockReturnValue(0); // Default to no special views visible
+        this.getProperty.mockReturnValue(1);
+        this.call.mockReturnValue(0);
       } else if (path === "live_set view") {
         Object.assign(this, mockSongView);
       } else if (path === "live_set view selected_track") {
-        Object.assign(this, mockTrackAPI);
-        this.exists.mockReturnValue(false); // Default to no track selected
-        this.trackIndex = null;
-        this.returnTrackIndex = null;
-        this.category = null;
-        this.id = null;
-        this.path = null;
+        const trackOverrides = overrides.selectedTrack || {};
+
+        this.exists.mockReturnValue(trackOverrides.exists ?? true);
+        this.category = trackOverrides.category ?? "regular";
+        this.trackIndex = trackOverrides.trackIndex ?? 3;
+        this.returnTrackIndex = trackOverrides.returnTrackIndex ?? null;
+        this.id = trackOverrides.id ?? "id selected_track_123";
+        this.path = trackOverrides.path ?? "live_set tracks 3";
       } else if (path === "live_set view selected_scene") {
         this.exists.mockReturnValue(false);
-        this.sceneIndex = null;
-        this.id = null;
       } else if (path === "live_set view detail_clip") {
         this.exists.mockReturnValue(false);
-        this.id = null;
       } else if (path === "live_set view highlighted_clip_slot") {
         this.exists.mockReturnValue(false);
-        this.trackIndex = null;
-        this.sceneIndex = null;
-      } else if (path.includes("clip_slots")) {
-        this._id = "id clipslot_id_789";
-      } else if (
-        path.startsWith("live_set tracks") ||
-        path.startsWith("live_set return_tracks") ||
-        path.startsWith("live_set master_track")
-      ) {
-        this._id = "id track_id_123";
-      } else if (path.startsWith("live_set scenes")) {
-        this._id = "id scene_id_456";
-      } else if (path.includes(" view") && path.includes("tracks")) {
-        // Track view paths for device selection
-        this.get.mockReturnValue(null);
+      } else if (overrides.trackViewPath && path === overrides.trackViewPath) {
+        this.exists.mockReturnValue(true);
       }
 
-      // Add id getter that executes the mock function
       Object.defineProperty(this, "id", {
         get: function () {
           return liveApiId.apply(this);
@@ -132,41 +89,8 @@ describe("view", () => {
       });
 
       return this;
-    });
-
-    // Mock static methods
-    global.LiveAPI.from = vi.fn((id) => ({
-      exists: vi.fn().mockReturnValue(true),
-      id: id.toString().startsWith("id ") ? id : `id ${id}`,
-      get type() {
-        return liveApiType.apply(this);
-      },
-    }));
-  });
-
-  // Helper function to get expected default view state
-  const getDefaultViewState = () => ({
-    view: "session",
-    detailView: null,
-    showBrowser: false,
-    selectedTrack: {
-      trackId: null,
-      category: null,
-    },
-    selectedClipId: null,
-    selectedDeviceId: null,
-    selectedScene: {
-      sceneId: null,
-      sceneIndex: null,
-    },
-    selectedClipSlot: null,
-  });
-
-  // Helper function to merge expected changes with default view state
-  const expectViewState = (changes = {}) => ({
-    ...getDefaultViewState(),
-    ...changes,
-  });
+    };
+  }
 
   describe("detail view", () => {
     it("shows clip detail view", () => {
@@ -331,51 +255,9 @@ describe("view", () => {
     });
 
     it("handles instrument selection using currently selected track when no category/index provided", () => {
-      // Set up selected track to return a valid track
-      global.LiveAPI.mockImplementation(function (path) {
-        this.path = path;
-        this._path = path;
-        this.exists = vi.fn().mockReturnValue(true);
-        this.set = liveApiSet;
-        this.call = liveApiCall;
-        this.get = liveApiGet;
-        this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) =>
-          this.set(property, value),
-        );
-
-        if (path === "live_app view") {
-          Object.assign(this, mockAppView);
-          this.getProperty.mockReturnValue(1);
-          this.call.mockReturnValue(0);
-        } else if (path === "live_set view") {
-          Object.assign(this, mockSongView);
-        } else if (path === "live_set view selected_track") {
-          this.exists.mockReturnValue(true);
-          this.category = "regular";
-          this.trackIndex = 3;
-          this.returnTrackIndex = null;
-          this.id = "id selected_track_123";
-          this.path = "live_set tracks 3";
-        } else if (path === "live_set view selected_scene") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view detail_clip") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view highlighted_clip_slot") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set tracks 3 view") {
-          // Track view for select_instrument
-          this.exists.mockReturnValue(true);
-        }
-
-        Object.defineProperty(this, "id", {
-          get: function () {
-            return liveApiId.apply(this);
-          },
-        });
-
-        return this;
-      });
+      global.LiveAPI.mockImplementation(
+        createLiveAPIMock({ trackViewPath: "live_set tracks 3 view" }),
+      );
 
       // Call select with only instrument: true - no category/trackIndex
       const result = select({ instrument: true });
@@ -390,49 +272,18 @@ describe("view", () => {
     });
 
     it("handles instrument selection on return track using currently selected track", () => {
-      global.LiveAPI.mockImplementation(function (path) {
-        this.path = path;
-        this._path = path;
-        this.exists = vi.fn().mockReturnValue(true);
-        this.set = liveApiSet;
-        this.call = liveApiCall;
-        this.get = liveApiGet;
-        this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) =>
-          this.set(property, value),
-        );
-
-        if (path === "live_app view") {
-          Object.assign(this, mockAppView);
-          this.getProperty.mockReturnValue(1);
-          this.call.mockReturnValue(0);
-        } else if (path === "live_set view") {
-          Object.assign(this, mockSongView);
-        } else if (path === "live_set view selected_track") {
-          this.exists.mockReturnValue(true);
-          this.category = "return";
-          this.trackIndex = null;
-          this.returnTrackIndex = 1;
-          this.id = "id return_track_123";
-          this.path = "live_set return_tracks 1";
-        } else if (path === "live_set view selected_scene") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view detail_clip") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set view highlighted_clip_slot") {
-          this.exists.mockReturnValue(false);
-        } else if (path === "live_set return_tracks 1 view") {
-          this.exists.mockReturnValue(true);
-        }
-
-        Object.defineProperty(this, "id", {
-          get: function () {
-            return liveApiId.apply(this);
+      global.LiveAPI.mockImplementation(
+        createLiveAPIMock({
+          selectedTrack: {
+            category: "return",
+            trackIndex: null,
+            returnTrackIndex: 1,
+            id: "id return_track_123",
+            path: "live_set return_tracks 1",
           },
-        });
-
-        return this;
-      });
+          trackViewPath: "live_set return_tracks 1 view",
+        }),
+      );
 
       // Call select with only instrument: true on a return track
       const result = select({ instrument: true });
@@ -499,7 +350,7 @@ describe("view", () => {
 
       // Mock LiveAPI constructor to return appropriate instances
       global.LiveAPI.mockImplementation(function (path) {
-        const instance = (() => {
+        return (() => {
           if (path === "live_app view") {
             return readAppView;
           }
@@ -544,8 +395,6 @@ describe("view", () => {
 
           return {};
         })();
-
-        return instance;
       });
     });
 

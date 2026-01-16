@@ -577,5 +577,91 @@ describe("deleteObject", () => {
     );
   });
 
+  it("should delete a single return track", () => {
+    const id = "return_1";
+    const returnTrackIndex = 1;
+    const path = `live_set return_tracks ${returnTrackIndex}`;
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === path) {
+        return id;
+      }
+
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === id) {
+        return path;
+      }
+
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === id) {
+        return "Track";
+      }
+    });
+
+    const result = deleteObject({ ids: id, type: "track" });
+
+    expect(result).toStrictEqual({ id, type: "track", deleted: true });
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_return_track",
+      returnTrackIndex,
+    );
+  });
+
+  it("should delete multiple return tracks in descending index order", () => {
+    const ids = "return_0,return_2";
+
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set return_tracks 0":
+          return "return_0";
+        case "live_set return_tracks 2":
+          return "return_2";
+        default:
+          return this._id;
+      }
+    });
+    liveApiPath.mockImplementation(function () {
+      switch (this._id) {
+        case "return_0":
+          return "live_set return_tracks 0";
+        case "return_2":
+          return "live_set return_tracks 2";
+        default:
+          return this._path;
+      }
+    });
+    liveApiType.mockImplementation(function () {
+      if (["return_0", "return_2"].includes(this._id)) {
+        return "Track";
+      }
+    });
+
+    const result = deleteObject({ ids, type: "track" });
+
+    // Should delete in descending order (2, 0) to maintain indices
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(
+      1,
+      expect.objectContaining({ path: "live_set" }),
+      "delete_return_track",
+      2,
+    );
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(
+      2,
+      expect.objectContaining({ path: "live_set" }),
+      "delete_return_track",
+      0,
+    );
+
+    expect(result).toStrictEqual([
+      { id: "return_2", type: "track", deleted: true },
+      { id: "return_0", type: "track", deleted: true },
+    ]);
+  });
+
   // Device deletion tests are in delete-device.test.js
 });

@@ -45,7 +45,7 @@ describe("rawLiveApi", () => {
 
     global.LiveAPI.prototype.goto = vi.fn(function (path) {
       this._path = path;
-      this._id = path.replace(/\s+/g, "/");
+      this._id = path.replaceAll(/\s+/g, "/");
 
       return 1;
     });
@@ -411,6 +411,16 @@ describe("rawLiveApi", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("error handling", () => {
+    it("should throw error for unknown operation type", () => {
+      expect(() =>
+        rawLiveApi({
+          operations: [{ type: "unknown_operation" }],
+        }),
+      ).toThrow("Unknown operation type: unknown_operation");
     });
   });
 });

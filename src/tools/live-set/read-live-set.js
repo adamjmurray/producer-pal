@@ -25,14 +25,14 @@ import {
 export function readLiveSet(args = {}, _context = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
   // Compute return track names once for efficiency (used for sends in mixer data)
   const returnTrackNames = returnTrackIds.map((_, idx) => {
-    const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+    const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
 
     return rt.getProperty("name");
   });
@@ -87,7 +87,7 @@ export function readLiveSet(args = {}, _context = {}) {
   if (includeFlags.includeReturnTracks) {
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
-        const returnTrack = new LiveAPI(
+        const returnTrack = LiveAPI.from(
           `live_set return_tracks ${returnTrackIndex}`,
         );
 
@@ -103,7 +103,7 @@ export function readLiveSet(args = {}, _context = {}) {
   }
 
   if (includeFlags.includeMasterTrack) {
-    const masterTrack = new LiveAPI("live_set master_track");
+    const masterTrack = LiveAPI.from("live_set master_track");
 
     result.masterTrack = readTrackGeneric({
       track: masterTrack,

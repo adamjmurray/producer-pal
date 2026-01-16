@@ -1,5 +1,5 @@
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 /**
  * Validate device name and throw error with valid options if invalid
@@ -66,7 +66,7 @@ function createDeviceAtPath(deviceName, path) {
       : container.call("insert_device", deviceName);
 
   const deviceId = result[1];
-  const device = deviceId ? new LiveAPI(`id ${deviceId}`) : null;
+  const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;
 
   if (!device || !device.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";

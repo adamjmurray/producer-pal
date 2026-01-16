@@ -6,7 +6,7 @@ describe("LiveAPI extensions - basic methods", () => {
   let api;
 
   beforeEach(() => {
-    api = new LiveAPI("live_set");
+    api = LiveAPI.from("live_set");
     vi.resetAllMocks();
   });
 
@@ -35,7 +35,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("returns undefined when get() returns undefined", () => {
-      api.get = vi.fn().mockReturnValue(undefined);
+      api.get = vi.fn().mockReturnValue();
       expect(api.getProperty("missing")).toBeUndefined();
     });
 
@@ -186,7 +186,7 @@ describe("LiveAPI extensions - basic methods", () => {
       });
 
       it("returns null when routing property returns undefined", () => {
-        api.get = vi.fn().mockReturnValue(undefined);
+        api.get = vi.fn().mockReturnValue();
         expect(api.getProperty("output_routing_channel")).toBeNull();
       });
 
@@ -214,7 +214,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("returns empty array when get() returns non-array", () => {
-      api.get = vi.fn().mockReturnValue(undefined);
+      api.get = vi.fn().mockReturnValue();
       expect(api.getChildIds("tracks")).toStrictEqual([]);
     });
 

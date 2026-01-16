@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import type { Provider } from "#webui/types/settings";
 
-interface MessageSettingsToolbarProps {
+export interface MessageSettingsToolbarProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
@@ -85,7 +85,7 @@ function ExpandedPanel({
             value={temperature}
             onInput={(e) =>
               onTemperatureChange(
-                parseFloat((e.target as HTMLInputElement).value),
+                Number.parseFloat((e.target as HTMLInputElement).value),
               )
             }
             className="w-full"

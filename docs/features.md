@@ -8,23 +8,22 @@ create.
 
 ### Connect (`ppal-connect`)
 
-- Guides AI to call this when you say things like "connect to ableton"
-- Connects to Ableton Live and verifies everything is working
-- Shows Live Set name, tempo, and basic info
-- Provides project notes if enabled
-- Provides the AI a Producer Pal skill set suitable to the language model's size
-  (a "small model mode" exists with a simplified interface for local models)
+- Establish the connection with Ableton Live
+- Summarizes the state of the current Live Set
+- Provides project notes (see `ppal-memory`)
+- Provides the AI with a Producer Pal skill set that adapts to different AI
+  model capabilities
 
 ### Built-in Chat UI
 
 - Control Producer Pal with its built-in text-based interface
-- Compatible with Google Gemini and OpenAI-compatible online services (Mistral,
-  OpenRouter, etc)
-- Compatible with local SLMs (LM Studio, Ollama)
+- Compatible with Google Gemini, OpenAI, and OpenAI-compatible online services
+  (Mistral, OpenRouter, etc)
+- Compatible with local SLMs (Ollama, LM Studio)
 
 ### Network Control
 
-- Control Ableton Live on another computer on your network for collaborative
+- Control Ableton Live with another computer on your network for collaborative
   production and remote control workflows
 
 ## Transport & Playback
@@ -51,9 +50,7 @@ create.
 
 ### Update Live Set (`ppal-update-live-set`)
 
-- Change tempo
-- Set time signature
-- Set scale
+- Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
 
 ## Scene Operations
@@ -73,10 +70,8 @@ create.
 
 ### Update Scene (`ppal-update-scene`)
 
-- Rename scenes and change colors
-- Modify scene tempo and time signature
-- Bulk update multiple scenes at once
-- Enable/disable scene-specific tempo
+- Change scene name, color, tempo, and time signature
+- Update multiple scenes at once
 
 ## Track Management
 
@@ -96,14 +91,10 @@ create.
 
 ### Update Track (`ppal-update-track`)
 
-- Rename tracks and change colors
-- Control mute/solo/arm states
-- Configure input/output routing
-- Set monitoring modes
-- Adjust track gain (volume) and panning
-- Configure stereo or split panning mode
-- Set send levels to return tracks
-- Bulk update multiple tracks
+- Change track gain (volume), panning, and send levels
+- Change mute, solo, arm, I/O routings, and monitoring state
+- Change track name and color
+- Update multiple tracks at once
 
 ## Device Management
 
@@ -117,30 +108,21 @@ create.
 
 ### Read Device (`ppal-read-device`)
 
-- Get detailed information about a device by ID or path
-- View device chains, return chains, and drum pad chains
-- List parameter names or full parameter details with values
-- Search parameters by name substring
-- View macro variation info for rack devices (count and selected index)
-- View macro count and mapping status for rack devices
-- View A/B Compare state for supported devices
+- Get detailed info about any device, including inside rack chains and drum pad
+  chains
+- List device parameter names and values (the state of knobs, dials, etc)
 
 ### Update Device (`ppal-update-device`)
 
-- Change device display names
-- Collapse or expand device view in Live's UI
-- Modify device parameters by value or display string
-- Bulk update multiple devices at once
-- Move devices between tracks or into rack chains
-- Wrap effect devices in a new rack (auto-detects rack type)
-- Rack macro variations: store, recall, delete, or randomize macro settings
-- Select macro variation by index for recall or delete operations
-- Set visible macro count on rack devices (adds/removes macros)
-- A/B Compare: switch between presets or save current state to other slot
-- Chain properties: mute, solo, color
-- Drum pad properties: mute, solo
-- Drum chain settings: choke group (0-16), mapped pitch (output MIDI note)
-- Move drum chains between pads
+- Change device name
+- Change device parameter values (control knobs, dials, etc)
+- Update multiple devices at once
+- Move devices anywhere else in the Live Set, including into racks / wrapping in
+  a new rack
+- Create, load, delete, and randomize rack macros variations
+- A/B Compare with supported devices
+- Control chain and drum pad mute and solo state
+- Change the choke group and output MIDI note of drum chains
 
 ## Clip Creation & Editing
 
@@ -153,42 +135,17 @@ create.
 
 ### Read Clip (`ppal-read-clip`)
 
-- View clip properties and MIDI notes
-- See notes in musical notation (C3, D#4, etc.)
-- Check loop settings and time signatures
-- Works with Session and Arrangement clips
-- Audio clip properties: gain, pitch shift, sample info (rate, length,
-  sampleFile)
-- Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
-  enabled/disabled state, warp marker positions
+- Get detailed info about any clip in Session or Arrangement
+- Read MIDI notes in musical notation (C3, D#4, etc.)
+- Get audio clip gain, pitch, warp settings, sample info
 
 ### Update Clip (`ppal-update-clip`)
 
-- Edit MIDI notes and timing
-- Modify velocities and probability
-- Change clip names and colors
-- Adjust loop settings
-- Update or merge note patterns
-- Bulk edit multiple clips
-- Audio clip modifications: gain (-70 to +24 dB), pitch shift (-48 to +48
-  semitones, supports decimals), warping on/off, warp mode
-- Warp marker operations: add markers at specific beat/sample positions, move
-  markers by beat distance, remove markers
-- Arrangement clip positioning: move clips to different bar|beat positions in
-  the timeline
-- Arrangement clip length: shorten clips, extend to reveal hidden content, or
-  tile/loop clips to fill longer durations
-- Slicing technique: reduce then extend clip length to create separate segments
-
-## Sample Browser
-
-### Read Samples (`ppal-read-samples`)
-
-- List audio files from configured sample folder
-- Supports WAV, AIFF, FLAC, OGG, MP3, and M4A formats
-- Search by filename or path substring
-- Returns paths for use in audio clip creation
-- Requires sample folder to be configured in the Producer Pal device Setup tab
+- Change clip name, color, and loop settings
+- Add/remove MIDI notes and change note pitch, timing, velocity, and probability
+- Change audio clip gain, pitch shift, warp settings, and warp markers
+- Move clips and change their length in the Arrangement
+- Update multiple clips at once
 
 ### Custom Music Notation
 
@@ -204,39 +161,43 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
   1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
   bars 3-10)
-- **Comments**: Include commentary using // for single lines, # for inline, or
-  /\* \*/ for blocks
+
+## Sample Browser
+
+### Read Samples (`ppal-read-samples`)
+
+- List audio files from configured sample folder (in the Producer Pal device
+  Setup tab), so the AI knows what's available for creating audio clips
+- Search by filename or path substring
 
 ## Object Management
 
 ### Duplicate (`ppal-duplicate`)
 
-- Copy tracks, scenes, or clips
-- Duplicate to Session or Arrangement
-- Duplicate session clips to specific clip slots (any track, any scene)
-- Duplicate to Arrangement at specific bar|beat positions
-- Duplicate to Arrangement at locator positions by ID or name (e.g., "copy that
-  scene to the second chorus")
-- Set arrangement length when duplicating: extend and tile/loop clips to fill
-  longer durations automatically
-- Create multiple copies at once (placed sequentially)
-- Track routing options allow layering multiple MIDI clips on a single
-  instrument
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
 
 ### Delete (`ppal-delete`)
 
-- Remove tracks, scenes, clips, or devices
+- Remove tracks, return tracks, scenes, clips, or devices
 - Bulk delete multiple objects
 
 ### Transform Clips (`ppal-transform-clips`)
 
-- Slice clips into repeating segments at specified intervals
-- Shuffle arrangement clip positions randomly
-- Randomize audio clip gain offsets
+- Slice up arrangement clips
+- Shuffle arrangement clip slice order
+- Randomize audio clip gain
 - Randomize transpose for audio and MIDI clips
-- Randomize MIDI note velocity and duration
-- Adjust velocity range and probability offsets
-- Use seed values for reproducible randomization
+- Randomize MIDI note velocity, duration, and probability
 
 ## Selection State and View Control
 
@@ -255,7 +216,6 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 ### Memory (`ppal-memory`)
 
-- Store project-specific notes and context
-- Help Producer Pal understand your project goals
+- Store project notes to help Producer Pal understand your goals
 - AI can read and update notes (when enabled)
-- Notes are saved with your Live project and persist across AI conversations
+- Notes persist with your Live project across AI conversations

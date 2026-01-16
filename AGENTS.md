@@ -72,6 +72,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   prefix is required by Node.js for unbundled execution (build scripts, CLI
   tools). Never use relative paths like `../../` when a path alias is available.
 
+- **No barrel files**: Do not create index.js or other files that only re-export
+  from other modules. Import directly from the source file instead.
+
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
@@ -117,6 +120,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
     `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
   - Test helpers use `{feature}-test-helpers.js` for shared test utilities
+  - **Test file location**: Use colocated tests (same directory as source) for
+    1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
+    a feature to keep the main directory focused on source code
 
 ## TypeScript (WebUI Only)
 
@@ -134,11 +140,16 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - After ALL code changes: Run `npm run check` (runs lint, typecheck, format
   check, and tests)
-- End-to-end validation and investigation (upon request):
+- Direct tool invocation (upon request):
   ```
   node scripts/cli.mjs tools/list
   node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
   ```
+- **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
+  (verifies the AI can use tools correctly, not just that tools work):
+  - Run `scripts/chat --help` to see available options
+  - Always use `-1` (or `--once`) to exit after one response
+  - Example: `scripts/chat -p gemini -1 "list tracks in the set"`
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.js"`

@@ -1,41 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createNote } from "#src/test/test-data-builders.js";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - core functionality", () => {
   it("returns empty array for empty input", () => {
     expect(interpretNotation("")).toStrictEqual([]);
     expect(interpretNotation(null)).toStrictEqual([]);
-    expect(interpretNotation(undefined)).toStrictEqual([]);
+    expect(interpretNotation()).toStrictEqual([]);
   });
 
   it("parses simple notes with defaults", () => {
     const result = interpretNotation("C3 D3 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62 }),
+      createNote({ pitch: 64 }),
     ]);
   });
 
@@ -43,30 +23,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("C3 1|1 D3 1|2 E3 2|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // bar 1, beat 1
-      {
-        pitch: 62,
-        start_time: 1,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // bar 1, beat 2
-      {
-        pitch: 64,
-        start_time: 4,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // bar 2, beat 1 (4 beats per bar)
+      createNote(), // bar 1, beat 1
+      createNote({ pitch: 62, start_time: 1 }), // bar 1, beat 2
+      createNote({ pitch: 64, start_time: 4 }), // bar 2, beat 1 (4 beats per bar)
     ]);
   });
 
@@ -74,30 +33,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v80 C3 v120 D3 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 120,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 120,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ velocity: 80 }),
+      createNote({ pitch: 62, velocity: 120 }),
+      createNote({ pitch: 64, velocity: 120 }),
     ]);
   });
 
@@ -105,30 +43,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v80-120 C3 v60-100 D3 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 60,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 60,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
+      createNote({ velocity: 80, velocity_deviation: 40 }),
+      createNote({ pitch: 62, velocity: 60, velocity_deviation: 40 }),
+      createNote({ pitch: 64, velocity: 60, velocity_deviation: 40 }),
     ]);
   });
 
@@ -136,30 +53,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v100 C3 v80-120 D3 v90 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 90,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, velocity: 80, velocity_deviation: 40 }),
+      createNote({ pitch: 64, velocity: 90 }),
     ]);
   });
 
@@ -167,30 +63,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("p0.8 C3 p0.5 D3 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.8,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.5,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.5,
-        velocity_deviation: 0,
-      },
+      createNote({ probability: 0.8 }),
+      createNote({ pitch: 62, probability: 0.5 }),
+      createNote({ pitch: 64, probability: 0.5 }),
     ]);
   });
 
@@ -198,30 +73,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("t0.5 C3 t2.0 D3 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.5,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 2.0,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 2.0,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ duration: 0.5 }),
+      createNote({ pitch: 62, duration: 2.0 }),
+      createNote({ pitch: 64, duration: 2.0 }),
     ]);
   });
 
@@ -231,16 +85,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 9.5, // 2 bars (8 beats) + 1.5 beats = 9.5 Ableton beats in 4/4
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 2 bars (8 beats) + 1.5 beats = 9.5 Ableton beats in 4/4
+    expect(result).toStrictEqual([createNote({ duration: 9.5 })]);
   });
 
   it("handles bar:beat duration with fractions (NEW)", () => {
@@ -249,16 +95,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 4.75, // 1 bar (4 beats) + 0.75 beats = 4.75 Ableton beats
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 1 bar (4 beats) + 0.75 beats = 4.75 Ableton beats
+    expect(result).toStrictEqual([createNote({ duration: 4.75 })]);
   });
 
   it("handles beat-only decimal duration (NEW)", () => {
@@ -267,16 +105,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 2.5, // 2.5 beats in 4/4 = 2.5 Ableton beats
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 2.5 beats in 4/4 = 2.5 Ableton beats
+    expect(result).toStrictEqual([createNote({ duration: 2.5 })]);
   });
 
   it("handles beat-only fractional duration (NEW)", () => {
@@ -285,16 +115,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.75, // 3/4 beats in 4/4 = 0.75 Ableton beats
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 3/4 beats in 4/4 = 0.75 Ableton beats
+    expect(result).toStrictEqual([createNote({ duration: 0.75 })]);
   });
 
   it("handles bar:beat duration in 6/8 time (NEW)", () => {
@@ -303,16 +125,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 8,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 4.0, // 1 bar (6 eighth notes) + 2 eighth notes = 8 eighth notes = 4 quarter notes
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 1 bar (6 eighth notes) + 2 eighth notes = 8 eighth notes = 4 quarter notes
+    expect(result).toStrictEqual([createNote({ duration: 4.0 })]);
   });
 
   it("handles duration with + operator in bar:beat format (NEW)", () => {
@@ -336,16 +150,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 2.75, // 2+3/4 beats in 4/4 = 2.75 Ableton beats
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    // 2+3/4 beats in 4/4 = 2.75 Ableton beats
+    expect(result).toStrictEqual([createNote({ duration: 2.75 })]);
   });
 
   it("handles beat positions with + operator (NEW)", () => {
@@ -388,22 +194,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("C3 1|1.5 D3 |2.25");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0.5,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // beat 1.5 = 0.5 beats from start
-      {
-        pitch: 62,
-        start_time: 1.25,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // beat 2.25 = 1.25 beats from start
+      createNote({ start_time: 0.5 }), // beat 1.5 = 0.5 beats from start
+      createNote({ pitch: 62, start_time: 1.25 }), // beat 2.25 = 1.25 beats from start
     ]);
   });
 
@@ -413,38 +205,22 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     );
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.25,
-        velocity: 100,
-        probability: 0.9,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 0.25,
-        velocity: 100,
-        probability: 0.9,
-        velocity_deviation: 0,
-      },
-      {
+      createNote({ duration: 0.25, probability: 0.9 }),
+      createNote({ pitch: 62, duration: 0.25, probability: 0.9 }),
+      createNote({
         pitch: 64,
         start_time: 1,
-        duration: 1.0,
         velocity: 80,
         probability: 0.7,
         velocity_deviation: 40,
-      },
-      {
+      }),
+      createNote({
         pitch: 65,
         start_time: 1,
-        duration: 1.0,
         velocity: 80,
         probability: 0.7,
         velocity_deviation: 40,
-      },
+      }),
     ]);
   });
 
@@ -456,76 +232,50 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     `);
 
     expect(result).toStrictEqual([
-      {
-        pitch: 36,
-        start_time: 0,
-        duration: 0.25,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // C1 (kick)
-      {
+      createNote({ pitch: 36, duration: 0.25 }), // C1 (kick)
+      createNote({
         pitch: 42,
-        start_time: 0,
         duration: 0.25,
         velocity: 80,
         probability: 0.8,
         velocity_deviation: 20,
-      }, // Gb1 (hihat)
-      {
+      }), // Gb1 (hihat)
+      createNote({
         pitch: 42,
         start_time: 0.5,
         duration: 0.25,
         velocity: 80,
         probability: 0.6,
         velocity_deviation: 20,
-      }, // Gb1 (hihat)
-      {
-        pitch: 38,
-        start_time: 1,
-        duration: 0.25,
-        velocity: 90,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // D1 (snare)
-      {
+      }), // Gb1 (hihat)
+      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }), // D1 (snare)
+      createNote({
         pitch: 42,
         start_time: 1,
         duration: 0.25,
-        velocity: 100,
         probability: 0.9,
-        velocity_deviation: 0,
-      }, // Gb1 (hihat)
+      }), // Gb1 (hihat)
     ]);
   });
   it("maintains state across multiple bar boundaries", () => {
     const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 D3 3|2 E3 5|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.5,
-        velocity: 80,
-        probability: 0.8,
-        velocity_deviation: 0,
-      }, // bar 1, beat 1
-      {
+      createNote({ duration: 0.5, velocity: 80, probability: 0.8 }), // bar 1, beat 1
+      createNote({
         pitch: 62,
         start_time: 9,
         duration: 0.5,
         velocity: 80,
         probability: 0.8,
-        velocity_deviation: 0,
-      }, // bar 3, beat 2 = (3-1)*4 + (2-1) = 9
-      {
+      }), // bar 3, beat 2
+      createNote({
         pitch: 64,
         start_time: 16,
         duration: 0.5,
         velocity: 80,
         probability: 0.8,
-        velocity_deviation: 0,
-      }, // bar 5, beat 1 = (5-1)*4 + (1-1) = 16
+      }), // bar 5, beat 1
     ]);
   });
 
@@ -559,22 +309,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     );
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.5,
-        velocity: 80,
-        probability: 0.7,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 4,
-        duration: 1.0,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ duration: 0.5, velocity: 80, probability: 0.7 }),
+      createNote({ pitch: 62, start_time: 4 }),
     ]);
   });
 
@@ -582,38 +318,10 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("C#3 Db3 F#3 Gb3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 61,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // C#3
-      {
-        pitch: 61,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // Db3 (same as C#3)
-      {
-        pitch: 66,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // F#3
-      {
-        pitch: 66,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // Gb3 (same as F#3)
+      createNote({ pitch: 61 }), // C#3
+      createNote({ pitch: 61 }), // Db3 (same as C#3)
+      createNote({ pitch: 66 }), // F#3
+      createNote({ pitch: 66 }), // Gb3 (same as F#3)
     ]);
   });
 
@@ -621,22 +329,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v100 C3 v0 D3 v80 E3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 64, velocity: 80 }),
     ]);
   });
 
@@ -645,14 +339,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v0-50 C3 v50-100 D3 1|1");
 
     expect(result).toStrictEqual([
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 50,
-        probability: 1.0,
-        velocity_deviation: 50,
-      },
+      createNote({ pitch: 62, velocity: 50, velocity_deviation: 50 }),
     ]);
   });
 

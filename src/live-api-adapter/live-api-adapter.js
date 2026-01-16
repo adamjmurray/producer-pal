@@ -52,7 +52,7 @@ const context = {
  * avoiding permanent song_length bloat from hardcoded positions.
  */
 function initHoldingArea() {
-  const liveSet = new LiveAPI("live_set");
+  const liveSet = LiveAPI.from("live_set");
 
   context.holdingAreaStartBeats = liveSet.get("song_length")[0];
 }

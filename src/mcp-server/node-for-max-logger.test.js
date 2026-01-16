@@ -13,7 +13,7 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] test message$/,
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}] test message$/,
         ),
       );
     });
@@ -25,7 +25,7 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] test warning$/,
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}] test warning$/,
         ),
         Max.POST_LEVELS.WARN,
       );
@@ -38,7 +38,7 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] test error$/,
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}] test error$/,
         ),
         Max.POST_LEVELS.ERROR,
       );
@@ -64,7 +64,7 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] verbose info message$/,
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}] verbose info message$/,
         ),
       );
     });
@@ -77,7 +77,7 @@ describe("Node for Max Logger", () => {
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] verbose string true message$/,
+          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}] verbose string true message$/,
         ),
       );
     });

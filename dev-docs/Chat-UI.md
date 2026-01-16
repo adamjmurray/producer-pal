@@ -188,4 +188,4 @@ npm run build     # Includes UI build
 
 - React components: PascalCase (`ChatHeader.tsx`)
 - Everything else: kebab-case (`use-gemini-chat.ts`)
-- Always include `.js` extensions in imports (TypeScript compiled to JS)
+- Never include file extensions in relative imports (bundled by Vite)

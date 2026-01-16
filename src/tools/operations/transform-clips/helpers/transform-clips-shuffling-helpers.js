@@ -66,7 +66,7 @@ export function performShuffling(
 
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
-    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
     const holdingPos = context.holdingAreaStartBeats + index * 100;
     const result = track.call(
       "duplicate_clip_to_arrangement",
@@ -93,7 +93,7 @@ export function performShuffling(
 
   // After shuffling, the clips in the array are stale (they were deleted and recreated)
   // Re-scan to get fresh clip objects
-  const track = new LiveAPI(`live_set tracks ${trackIndexForShuffle}`);
+  const track = LiveAPI.from(`live_set tracks ${trackIndexForShuffle}`);
   const freshClipIds = track.getChildIds("arrangement_clips");
   const freshClips = freshClipIds.map((id) => LiveAPI.from(id));
 

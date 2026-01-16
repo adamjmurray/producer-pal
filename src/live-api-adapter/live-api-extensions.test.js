@@ -9,7 +9,7 @@ describe("LiveAPI extensions", () => {
 
   describe("getProperty", () => {
     it("should handle available_warp_modes property", () => {
-      const clip = new LiveAPI("live_set tracks 0 clip_slots 0 clip");
+      const clip = LiveAPI.from("live_set tracks 0 clip_slots 0 clip");
 
       liveApiGet.mockReturnValue(["Classic", "Beats", "Complex"]);
 
@@ -19,7 +19,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should handle scale_intervals property", () => {
-      const clip = new LiveAPI("live_set tracks 0 clip_slots 0 clip");
+      const clip = LiveAPI.from("live_set tracks 0 clip_slots 0 clip");
 
       liveApiGet.mockReturnValue([0, 2, 4, 5, 7, 9, 11]);
 
@@ -31,7 +31,7 @@ describe("LiveAPI extensions", () => {
 
   describe("setAll", () => {
     it("should set multiple properties at once", () => {
-      const track = new LiveAPI("live_set tracks 0");
+      const track = LiveAPI.from("live_set tracks 0");
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -46,7 +46,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should skip null values", () => {
-      const track = new LiveAPI("live_set tracks 0");
+      const track = LiveAPI.from("live_set tracks 0");
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -61,7 +61,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should handle color property with setColor", () => {
-      const track = new LiveAPI("live_set tracks 0");
+      const track = LiveAPI.from("live_set tracks 0");
       const setColorSpy = vi.spyOn(track, "setColor");
       const setSpy = vi.spyOn(track, "set");
 
@@ -77,19 +77,19 @@ describe("LiveAPI extensions", () => {
 
   describe("clipSlotIndex property", () => {
     it("should extract clip slot index from clip_slots path", () => {
-      const clipSlot = new LiveAPI("live_set tracks 2 clip_slots 5");
+      const clipSlot = LiveAPI.from("live_set tracks 2 clip_slots 5");
 
       expect(clipSlot.clipSlotIndex).toBe(5);
     });
 
     it("should extract clip slot index from scenes path", () => {
-      const scene = new LiveAPI("live_set scenes 3");
+      const scene = LiveAPI.from("live_set scenes 3");
 
       expect(scene.clipSlotIndex).toBe(3);
     });
 
     it("should return null for non-clip-slot paths", () => {
-      const track = new LiveAPI("live_set tracks 0");
+      const track = LiveAPI.from("live_set tracks 0");
 
       expect(track.clipSlotIndex).toBeNull();
     });
