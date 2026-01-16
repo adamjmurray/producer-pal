@@ -211,17 +211,17 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 ### Duplicate (`ppal-duplicate`)
 
-- Copy tracks, scenes, or clips
-- Duplicate to Session or Arrangement
-- Duplicate session clips to specific clip slots (any track, any scene)
-- Duplicate to Arrangement at specific bar|beat positions
-- Duplicate to Arrangement at locator positions by ID or name (e.g., "copy that
-  scene to the second chorus")
-- Set arrangement length when duplicating: extend and tile/loop clips to fill
-  longer durations automatically
-- Create multiple copies at once (placed sequentially)
-- Track routing options allow layering multiple MIDI clips on a single
-  instrument
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
 
 ### Delete (`ppal-delete`)
 

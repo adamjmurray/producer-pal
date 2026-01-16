@@ -11,13 +11,6 @@ same track will crash Live. This is a bug in the Live API's
 **Workaround:** Avoid moving clips on top of existing clips. Delete the
 conflicting clip first, or use slightly offset positions.
 
-## Return Track Duplication Not Supported
-
-Return tracks and devices on return tracks cannot be duplicated. The Live API
-has no `duplicate_return_track` function.
-
-**Workaround:** Duplicate return tracks manually.
-
 ## Slicing Unwarped Audio Clips
 
 Slicing unwarped audio clips produces incorrect results. The first slice may be
