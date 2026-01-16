@@ -17,7 +17,7 @@ communicate with the Producer Pal Max for Live device running in Ableton Live.
 
 ## Prerequisites
 
-- **Ableton Live 12.2+** with Max for Live (e.g., Ableton Live Suite)
+- **Ableton Live 12.3+** with Max for Live (e.g., Ableton Live Suite)
 - **Producer Pal Max for Live device** - Download
   [`Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
   and add it to a MIDI track in Ableton Live
