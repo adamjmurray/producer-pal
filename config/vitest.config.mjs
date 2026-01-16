@@ -5,6 +5,12 @@ import { defineConfig } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Node 25+ enables webstorage by default, which conflicts with happy-dom's mock.
+// Disable it for tests. The flag doesn't exist in Node 24, so only add it for 25+.
+// See: https://github.com/vitest-dev/vitest/issues/8757
+const nodeMajorVersion = parseInt(process.versions.node.split(".")[0], 10);
+const execArgv = nodeMajorVersion >= 25 ? ["--no-webstorage"] : [];
+
 export default defineConfig({
   plugins: [preact()],
   resolve: {
@@ -24,6 +30,7 @@ export default defineConfig({
     setupFiles: ["src/test/test-setup.js"],
     clearMocks: true,
     restoreMocks: true,
+    execArgv,
     coverage: {
       provider: "v8",
       ignoreEmptyLines: true,
