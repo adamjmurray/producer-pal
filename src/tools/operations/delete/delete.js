@@ -65,8 +65,11 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
+      // For tracks, handle both regular and return tracks
       const pathRegex =
-        type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
+        type === "track"
+          ? /live_set (?:return_)?tracks (\d+)/
+          : /live_set scenes (\d+)/;
       const indexA = Number(a.object.path.match(pathRegex)?.[1]);
       const indexB = Number(b.object.path.match(pathRegex)?.[1]);
 
@@ -88,6 +91,19 @@ export function deleteObject({ ids, path, type } = {}, _context = {}) {
  * @param {object} object - The object to delete
  */
 function deleteTrackObject(id, object) {
+  // Check for return track first
+  const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
+
+  if (returnMatch) {
+    const returnTrackIndex = Number(returnMatch[1]);
+    const liveSet = LiveAPI.from("live_set");
+
+    liveSet.call("delete_return_track", returnTrackIndex);
+
+    return;
+  }
+
+  // Regular track
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 
   if (Number.isNaN(trackIndex)) {
