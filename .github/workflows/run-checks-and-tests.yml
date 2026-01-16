@@ -14,6 +14,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: "24.x"
+
 jobs:
   build-verification:
     runs-on: ubuntu-latest
@@ -29,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -91,7 +94,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -142,7 +145,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - run: npm ci
 
@@ -208,7 +211,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -279,7 +282,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -366,6 +369,8 @@ jobs:
             const body = [
               marker,
               `## ${statusEmoji} CI Results: ${statusText}`,
+              '',
+              `**Node.js version:** ${process.env.NODE_VERSION}`,
               '',
               tableRows,
               '',
