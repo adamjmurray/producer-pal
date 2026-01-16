@@ -18,6 +18,13 @@ correct, but subsequent slices have offset audio content.
 
 **Workaround:** Enable warping on the audio clip before slicing.
 
+## Lengthening Arrangement Clips
+
+Arrangement clips cannot be directly lengthened. Instead, looped clips are
+duplicated and tiled, creating additional clips.
+
+No workaround needed, but it can create a lot of clips.
+
 ---
 
 If you encounter additional issues, please report them on the
