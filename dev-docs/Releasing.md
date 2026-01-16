@@ -111,7 +111,7 @@ test steps. If issues are found, see
    ```json
    "producer-pal": {
      "command": "npx",
-     "args": ["-y", "producer-pal"]
+     "args": ["-y", "producer-pal@latest"]
    }
    ```
 
@@ -164,6 +164,8 @@ npm run ui:test
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
 models. See `tests/webui/README.md` for details.
+
+Note: These tests require an `.env` file with API keys.
 
 ### Built-in Chat UI - Manual Checks
 
