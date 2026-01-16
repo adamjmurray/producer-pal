@@ -311,19 +311,22 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            // Find PR associated with this push (if any)
-            const { data: prs } = await github.rest.pulls.list({
-              ...context.repo,
-              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
-              state: 'open'
-            });
-
-            if (prs.length === 0) {
-              console.log('No open PR found for this branch, skipping comment');
-              return;
+            // Find PR number - handle both push and pull_request events
+            let prNumber;
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else {
+              const { data: prs } = await github.rest.pulls.list({
+                ...context.repo,
+                head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+                state: 'open'
+              });
+              if (prs.length === 0) {
+                console.log('No open PR found for this branch, skipping comment');
+                return;
+              }
+              prNumber = prs[0].number;
             }
-
-            const prNumber = prs[0].number;
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
             // Check job statuses
