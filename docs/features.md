@@ -117,7 +117,8 @@ create.
 - Change device name
 - Change device parameter values (control knobs, dials, etc)
 - Update multiple devices at once
-- Move devices anywhere else in the Live Set, including into racks
+- Move devices anywhere else in the Live Set, including into racks / wrapping in
+  a new rack
 - Create, load, delete, and randomize rack macros variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state

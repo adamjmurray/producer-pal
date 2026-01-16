@@ -79,8 +79,6 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     wrapInRack: z
       .boolean()
       .optional()
-      .describe(
-        "Wrap device(s) in a new rack (auto-detects type from device). Effects only.",
-      ),
+      .describe("Wrap device(s) in a new rack (auto-detects type from device)"),
   },
 });
