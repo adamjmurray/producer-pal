@@ -80,11 +80,10 @@ export async function runChatSession(
   options: ChatOptions,
   config: ChatProviderConfig,
 ): Promise<void> {
-  const envVarName = config.apiKeyEnvVar;
-  const apiKey = process.env[envVarName];
+  const apiKey = process.env[config.apiKeyEnvVar];
 
   if (!apiKey) {
-    console.error(`Error: ${envVarName} environment variable is required`);
+    console.error(`Error: API key for ${config.providerName} is not set`);
     process.exit(1);
   }
 
