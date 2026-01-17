@@ -435,6 +435,51 @@ describe("duplicate-track-scene-helpers", () => {
         "delete_clip",
       );
     });
+
+    it("should collect arrangement clips when withoutClips is false", () => {
+      const arrClipId = "arr_clip_456";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === arrClipId || this._path?.includes(arrClipId)) {
+          return "live_set tracks 1 arrangement_clips 0";
+        }
+
+        return this._path;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (
+          this._path === "live_set tracks 1 arrangement_clips 0" ||
+          this._id === arrClipId
+        ) {
+          return arrClipId;
+        }
+
+        return `id_${this._path || Math.random()}`;
+      });
+
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: [],
+          clip_slots: [], // No session clips to simplify test
+          arrangement_clips: children(arrClipId),
+        },
+        [arrClipId]: {
+          is_arrangement_clip: 1,
+          start_time: 8,
+        },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const result = duplicateTrack(0, null, false); // withoutClips=false (default)
+
+      // Should collect arrangement clips
+      expect(result.clips.length).toBeGreaterThan(0);
+      expect(result.clips[0].id).toBe(arrClipId);
+    });
   });
 
   describe("duplicateScene", () => {

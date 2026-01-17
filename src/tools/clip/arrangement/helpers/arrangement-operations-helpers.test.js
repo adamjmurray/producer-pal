@@ -200,6 +200,155 @@ describe("arrangement-operations-helpers", () => {
       mockCreateAudioClip.mockRestore();
       mockTileClipToRange.mockRestore();
     });
+
+    it("should expose hidden content when arrangementLengthBeats < clipLength for looped clips", () => {
+      const trackIndex = 0;
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+
+        if (this._path?.startsWith("live_set tracks")) {
+          return this._path;
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          looping: 1,
+          loop_start: 0,
+          loop_end: 16, // clipLength = 16 (loop_end - loop_start)
+          start_marker: 0,
+          end_marker: 16,
+        },
+      });
+
+      // Mock tileClipToRange
+      const mockTileClipToRange = vi
+        .spyOn(arrangementTiling, "tileClipToRange")
+        .mockReturnValue([{ id: "tile1" }]);
+
+      const mockClip = {
+        id: "789",
+        getProperty: vi.fn((prop) => {
+          const props = {
+            looping: 1,
+            loop_start: 0,
+            loop_end: 16,
+            start_marker: 0,
+            end_marker: 16,
+          };
+
+          return props[prop];
+        }),
+        trackIndex,
+      };
+
+      // arrangementLengthBeats (12) < clipLength (16) triggers hidden content exposure
+      const result = handleArrangementLengthening({
+        clip: mockClip,
+        isAudioClip: false,
+        arrangementLengthBeats: 12, // Less than clipLength (16)
+        currentArrangementLength: 4,
+        currentStartTime: 0,
+        currentEndTime: 4,
+        context: { holdingAreaStartBeats: 40000 },
+      });
+
+      // Should tile to expose hidden content with adjustPreRoll: false
+      expect(mockTileClipToRange).toHaveBeenCalledWith(
+        mockClip,
+        expect.anything(),
+        4, // currentEndTime
+        8, // remainingLength = 12 - 4
+        40000,
+        expect.anything(),
+        expect.objectContaining({
+          adjustPreRoll: false,
+          startOffset: 4, // currentOffset (0) + currentArrangementLength (4)
+          tileLength: 4, // currentArrangementLength
+        }),
+      );
+      expect(result).toContainEqual({ id: "789" });
+      expect(result).toContainEqual({ id: "tile1" });
+
+      mockTileClipToRange.mockRestore();
+    });
+
+    it("should tile looped clip when currentArrangementLength < totalContentLength", () => {
+      const trackIndex = 0;
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          looping: 1,
+          loop_start: 0,
+          loop_end: 8, // clipLength = 8
+          start_marker: 2, // totalContentLength = loop_end - start_marker = 8 - 2 = 6
+          end_marker: 8,
+        },
+      });
+
+      const mockTileClipToRange = vi
+        .spyOn(arrangementTiling, "tileClipToRange")
+        .mockReturnValue([{ id: "tile1" }]);
+
+      const mockClip = {
+        id: "789",
+        getProperty: vi.fn((prop) => {
+          const props = {
+            looping: 1,
+            loop_start: 0,
+            loop_end: 8,
+            start_marker: 2,
+            end_marker: 8,
+          };
+
+          return props[prop];
+        }),
+        trackIndex,
+      };
+
+      // arrangementLengthBeats (16) > clipLength (8)
+      // currentArrangementLength (4) < totalContentLength (6)
+      const result = handleArrangementLengthening({
+        clip: mockClip,
+        isAudioClip: false,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 4, // < totalContentLength (6)
+        currentStartTime: 0,
+        currentEndTime: 4,
+        context: { holdingAreaStartBeats: 40000 },
+      });
+
+      // Should call tileClipToRange with adjustPreRoll: true
+      expect(mockTileClipToRange).toHaveBeenCalledWith(
+        mockClip,
+        expect.anything(),
+        4, // currentEndTime
+        12, // remainingLength = 16 - 4
+        40000,
+        expect.anything(),
+        expect.objectContaining({
+          adjustPreRoll: true,
+          startOffset: 6, // currentOffset (2) + currentArrangementLength (4)
+          tileLength: 4, // currentArrangementLength
+        }),
+      );
+      expect(result).toContainEqual({ id: "789" });
+
+      mockTileClipToRange.mockRestore();
+    });
   });
 
   describe("handleArrangementShortening", () => {
