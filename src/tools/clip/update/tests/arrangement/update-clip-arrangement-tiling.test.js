@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiId,
-  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 import {
   mockContext,
+  setupArrangementClipPath,
   setupMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
@@ -20,21 +20,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should tile clip with exact multiples (no remainder) - extends existing", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789" || this._id === 1000) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === 1000);
 
     mockLiveApiGet({
       789: {
@@ -101,21 +87,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should handle insufficient content by tiling what exists", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789" || this._id === 1000) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === 1000);
 
     mockLiveApiGet({
       789: {
@@ -175,21 +147,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should work with no remainder (single tile)", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, ["789"]);
 
     mockLiveApiGet({
       789: {
@@ -230,26 +188,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (
-        this._id === "789" ||
-        this._id === "1000" ||
-        this._id === "1001" ||
-        this._id === "1002"
-      ) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, ["789", "1000", "1001", "1002"]);
 
     mockLiveApiGet({
       789: {
@@ -358,27 +297,15 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       return this._id;
     });
 
-    liveApiPath.mockImplementation(function () {
-      if (
-        this._id === "789" ||
-        this._id === "1000" ||
-        this._id === 1000 ||
-        this._id === "1001" ||
-        this._id === 1001
-      ) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(
+      trackIndex,
+      (id) =>
+        id === "789" ||
+        id === "1000" ||
+        id === 1000 ||
+        id === "1001" ||
+        id === 1001,
+    );
 
     mockLiveApiGet({
       789: {

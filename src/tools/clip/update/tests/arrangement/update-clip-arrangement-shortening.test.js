@@ -6,7 +6,10 @@ import {
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+import {
+  setupArrangementClipPath,
+  setupMocks,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - arrangementLength (shortening only)", () => {
@@ -17,21 +20,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   it("should shorten arrangement clip to 50% of original length", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, ["789"]);
 
     mockLiveApiGet({
       789: {
@@ -43,23 +32,6 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         signature_denominator: 4,
         trackIndex,
       },
-    });
-
-    // Mock live_set for song time signature
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
     });
 
     const result = updateClip({
@@ -83,21 +55,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   it("should shorten arrangement clip to single beat", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(trackIndex, ["789"]);
 
     mockLiveApiGet({
       789: {

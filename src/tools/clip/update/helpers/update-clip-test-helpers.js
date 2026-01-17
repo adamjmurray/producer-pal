@@ -69,11 +69,15 @@ export function setupMocks() {
 /**
  * Setup liveApiPath mock for arrangement clip tests.
  * @param {number} trackIndex - Track index
- * @param {string[]} clipIds - Array of clip IDs that should return the track's arrangement_clips path
+ * @param {string[]|function} clipIds - Array of clip IDs that should return the track's arrangement_clips path, or predicate function
  */
 export function setupArrangementClipPath(trackIndex, clipIds) {
+  const matchesClipId = Array.isArray(clipIds)
+    ? (id) => clipIds.includes(id) || clipIds.includes(String(id))
+    : clipIds;
+
   liveApiPath.mockImplementation(function () {
-    if (clipIds.includes(this._id)) {
+    if (matchesClipId(this._id)) {
       return `live_set tracks ${trackIndex} arrangement_clips 0`;
     }
 
