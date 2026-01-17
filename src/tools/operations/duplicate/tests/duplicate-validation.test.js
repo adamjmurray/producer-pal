@@ -3,6 +3,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiId,
   liveApiPath,
+  liveApiType,
   setupSessionClipPath,
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
@@ -151,5 +152,78 @@ describe("duplicate - return format", () => {
       expect.objectContaining({ trackIndex: expect.any(Number) }),
       expect.objectContaining({ trackIndex: expect.any(Number) }),
     ]);
+  });
+});
+
+describe("duplicate - track/scene index validation", () => {
+  it("should throw when track index cannot be determined", () => {
+    // Set up a path that doesn't match "tracks N" pattern but returns Track type
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "track1") {
+        return "live_set some_other_path";
+      }
+
+      return this._path;
+    });
+
+    // Mock the type to return Track to pass type validation
+    liveApiType.mockImplementation(function () {
+      if (this._id === "track1") {
+        return "Track";
+      }
+    });
+
+    expect(() => duplicate({ type: "track", id: "track1" })).toThrow(
+      'duplicate failed: no track index for id "track1"',
+    );
+  });
+
+  it("should throw when scene index cannot be determined for session duplication", () => {
+    // Set up a path that doesn't match "scenes N" pattern but returns Scene type
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "scene1") {
+        return "live_set some_other_path";
+      }
+
+      return this._path;
+    });
+
+    // Mock the type to return Scene to pass type validation
+    liveApiType.mockImplementation(function () {
+      if (this._id === "scene1") {
+        return "Scene";
+      }
+    });
+
+    expect(() => duplicate({ type: "scene", id: "scene1" })).toThrow(
+      'duplicate failed: no scene index for id "scene1"',
+    );
+  });
+
+  it("should throw when scene index cannot be determined for arrangement duplication", () => {
+    // Set up a path that doesn't match "scenes N" pattern but returns Scene type
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "scene1") {
+        return "live_set some_other_path";
+      }
+
+      return this._path;
+    });
+
+    // Mock the type to return Scene to pass type validation
+    liveApiType.mockImplementation(function () {
+      if (this._id === "scene1") {
+        return "Scene";
+      }
+    });
+
+    expect(() =>
+      duplicate({
+        type: "scene",
+        id: "scene1",
+        destination: "arrangement",
+        arrangementStart: "1|1",
+      }),
+    ).toThrow('duplicate failed: no scene index for id "scene1"');
   });
 });
