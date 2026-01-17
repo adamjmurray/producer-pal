@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "../..");
 
-const MAX_ESLINT_DISABLE_PER_TREE = 12;
+const MAX_ESLINT_DISABLE_PER_TREE = 10;
 const MAX_TS_EXPECT_ERROR_PER_TREE = 12;
 
 const SOURCE_TREES = ["src", "scripts", "webui"];

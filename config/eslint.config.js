@@ -275,7 +275,10 @@ const tsOnlyRules = {
   "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
   "@typescript-eslint/prefer-nullish-coalescing": "error", // Use ?? instead of || for null/undefined
   "@typescript-eslint/prefer-optional-chain": "error", // Use a?.b instead of a && a.b
-  "@typescript-eslint/no-unnecessary-condition": "error", // Remove conditions that are always true/false
+  "@typescript-eslint/no-unnecessary-condition": [
+    "error",
+    { allowConstantLoopConditions: "only-allowed-literals" }, // Allow while(true) but catch while(alwaysTrueVar)
+  ], // Remove conditions that are always true/false
   "@typescript-eslint/no-floating-promises": "error", // Must await or .catch() promises
   "@typescript-eslint/await-thenable": "error", // Only await actual promises
   "@typescript-eslint/no-misused-promises": "error", // Don't use promises in conditionals/spreads

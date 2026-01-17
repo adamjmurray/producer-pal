@@ -67,7 +67,6 @@ export async function runChatLoop<TSession>(
   let turnCount = 0;
   let currentInput = config.initialText;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional REPL loop with break, exits on user command
   while (true) {
     if (currentInput.trim() === "") {
       currentInput = await question(rl, "> ");

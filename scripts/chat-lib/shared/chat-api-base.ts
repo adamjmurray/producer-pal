@@ -136,7 +136,6 @@ async function sendMessageChat(
 
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break, common pattern for tool call continuation
   while (true) {
     const shouldContinue = options.stream
       ? await handleStreamingResponse(ctx)
