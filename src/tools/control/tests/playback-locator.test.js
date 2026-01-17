@@ -1,13 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiSet,
-} from "#src/test/mock-live-api.js";
+import { liveApiCall, liveApiId, liveApiSet } from "#src/test/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.js";
+import { setupCuePointMocks } from "./playback-test-helpers.js";
 
 describe("playback - locator support", () => {
   beforeEach(() => {
@@ -23,28 +18,11 @@ describe("playback - locator support", () => {
 
   describe("startLocatorId", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (this._path === "live_set") {
-          if (prop === "signature_numerator") return [4];
-          if (prop === "signature_denominator") return [4];
-          if (prop === "loop") return [0];
-          if (prop === "loop_start") return [0];
-          if (prop === "loop_length") return [4];
-          if (prop === "cue_points") return children("cue1", "cue2");
-          if (prop === "tracks") return [];
-        }
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [16]; // Beat 16 = 5|1 in 4/4
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [32]; // Beat 32 = 9|1 in 4/4
-          if (prop === "name") return ["Chorus"];
-        }
-
-        return [0];
+      setupCuePointMocks({
+        cuePoints: [
+          { id: "cue1", time: 16, name: "Verse" }, // Beat 16 = 5|1 in 4/4
+          { id: "cue2", time: 32, name: "Chorus" }, // Beat 32 = 9|1 in 4/4
+        ],
       });
     });
 
@@ -91,28 +69,11 @@ describe("playback - locator support", () => {
 
   describe("startLocatorName", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (this._path === "live_set") {
-          if (prop === "signature_numerator") return [4];
-          if (prop === "signature_denominator") return [4];
-          if (prop === "loop") return [0];
-          if (prop === "loop_start") return [0];
-          if (prop === "loop_length") return [4];
-          if (prop === "cue_points") return children("cue1", "cue2");
-          if (prop === "tracks") return [];
-        }
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [32];
-          if (prop === "name") return ["Chorus"];
-        }
-
-        return [0];
+      setupCuePointMocks({
+        cuePoints: [
+          { id: "cue1", time: 16, name: "Verse" },
+          { id: "cue2", time: 32, name: "Chorus" },
+        ],
       });
     });
 
@@ -157,28 +118,12 @@ describe("playback - locator support", () => {
 
   describe("loopStartLocatorId and loopEndLocatorId", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (this._path === "live_set") {
-          if (prop === "signature_numerator") return [4];
-          if (prop === "signature_denominator") return [4];
-          if (prop === "loop") return [0];
-          if (prop === "loop_start") return [16];
-          if (prop === "loop_length") return [16];
-          if (prop === "cue_points") return children("cue1", "cue2");
-          if (prop === "tracks") return [];
-        }
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [32];
-          if (prop === "name") return ["Chorus"];
-        }
-
-        return [0];
+      setupCuePointMocks({
+        cuePoints: [
+          { id: "cue1", time: 16, name: "Verse" },
+          { id: "cue2", time: 32, name: "Chorus" },
+        ],
+        liveSet: { loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -231,28 +176,12 @@ describe("playback - locator support", () => {
 
   describe("loopStartLocatorName and loopEndLocatorName", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (this._path === "live_set") {
-          if (prop === "signature_numerator") return [4];
-          if (prop === "signature_denominator") return [4];
-          if (prop === "loop") return [0];
-          if (prop === "loop_start") return [16];
-          if (prop === "loop_length") return [16];
-          if (prop === "cue_points") return children("cue1", "cue2");
-          if (prop === "tracks") return [];
-        }
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [32];
-          if (prop === "name") return ["Chorus"];
-        }
-
-        return [0];
+      setupCuePointMocks({
+        cuePoints: [
+          { id: "cue1", time: 16, name: "Verse" },
+          { id: "cue2", time: 32, name: "Chorus" },
+        ],
+        liveSet: { loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -319,33 +248,13 @@ describe("playback - locator support", () => {
 
   describe("combined locator start and loop", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (this._path === "live_set") {
-          if (prop === "signature_numerator") return [4];
-          if (prop === "signature_denominator") return [4];
-          if (prop === "loop") return [0];
-          if (prop === "loop_start") return [16];
-          if (prop === "loop_length") return [16];
-          if (prop === "cue_points") return children("cue1", "cue2", "cue3");
-          if (prop === "tracks") return [];
-        }
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [0];
-          if (prop === "name") return ["Intro"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue3") {
-          if (prop === "time") return [32];
-          if (prop === "name") return ["Chorus"];
-        }
-
-        return [0];
+      setupCuePointMocks({
+        cuePoints: [
+          { id: "cue1", time: 0, name: "Intro" },
+          { id: "cue2", time: 16, name: "Verse" },
+          { id: "cue3", time: 32, name: "Chorus" },
+        ],
+        liveSet: { loopStart: 16, loopLength: 16 },
       });
     });
 

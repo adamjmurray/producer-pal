@@ -7,6 +7,7 @@ import {
   liveApiSet,
 } from "#src/test/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
+import { setupLocatorMocks } from "./update-live-set-test-helpers.js";
 
 describe("updateLiveSet - locator operations", () => {
   beforeEach(() => {
@@ -185,23 +186,11 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("delete locator", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2");
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [0];
-          if (prop === "name") return ["Intro"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        return [0];
+      setupLocatorMocks({
+        cuePoints: [
+          { id: "cue1", time: 0, name: "Intro" },
+          { id: "cue2", time: 16, name: "Verse" },
+        ],
       });
     });
 
@@ -335,17 +324,11 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("rename locator", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2");
-
-        if (this._path === "id cue1" && prop === "time") return [0];
-
-        if (this._path === "id cue2" && prop === "time") return [16];
-
-        return [0];
+      setupLocatorMocks({
+        cuePoints: [
+          { id: "cue1", time: 0 },
+          { id: "cue2", time: 16 },
+        ],
       });
     });
 

@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 // Import for use in helper functions below
-import { liveApiGet, liveApiPath } from "#src/test/mock-live-api.js";
+import {
+  liveApiGet,
+  liveApiPath,
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {
@@ -10,6 +14,7 @@ export {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 
@@ -167,4 +172,46 @@ export function setupRouteToSourceMock(opts = {}) {
       ],
     },
   };
+}
+
+/**
+ * Setup liveApiPath mock for session clip validation tests.
+ * @param {string} clipId - Clip ID (e.g., "clip1")
+ * @param {string} [clipPath] - Clip path (default: "live_set tracks 0 clip_slots 0 clip")
+ */
+export function setupSessionClipPath(
+  clipId,
+  clipPath = "live_set tracks 0 clip_slots 0 clip",
+) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clipId) return clipPath;
+
+    return this._path;
+  });
+}
+
+/**
+ * Setup mocks for device duplication tests.
+ * @param {string} deviceId - Device ID
+ * @param {string} devicePath - Device path
+ * @param {string} [deviceType="PluginDevice"] - Device type
+ */
+export function setupDeviceDuplicationMocks(
+  deviceId,
+  devicePath,
+  deviceType = "PluginDevice",
+) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === deviceId) {
+      return devicePath;
+    }
+
+    return this._path;
+  });
+
+  liveApiType.mockImplementation(function () {
+    if (this._id === deviceId) {
+      return deviceType;
+    }
+  });
 }

@@ -3,10 +3,9 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiCall,
   liveApiId,
-  liveApiPath,
   liveApiSet,
-  liveApiType,
-} from "#src/test/mock-live-api.js";
+  setupDeviceDuplicationMocks,
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Mock moveDeviceToPath to track calls
 vi.mock(import("#src/tools/device/update/update-device-helpers.js"), () => ({
@@ -30,19 +29,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device to position after original (no toPath)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 2";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 2");
 
     const result = duplicate({ type: "device", id: "device1" });
 
@@ -74,19 +61,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device with toPath to different track", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 1";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 1");
 
     const result = duplicate({
       type: "device",
@@ -108,19 +83,10 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device in a rack chain", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "rack_device1") {
-        return "live_set tracks 1 devices 0 chains 0 devices 1";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "rack_device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks(
+      "rack_device1",
+      "live_set tracks 1 devices 0 chains 0 devices 1",
+    );
 
     const result = duplicate({ type: "device", id: "rack_device1" });
 
@@ -152,19 +118,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should emit warning when count > 1", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
 
     duplicate({ type: "device", id: "device1", count: 3 });
 
@@ -174,19 +128,10 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw error for device on return track", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "return_device1") {
-        return "live_set return_tracks 0 devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "return_device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks(
+      "return_device1",
+      "live_set return_tracks 0 devices 0",
+    );
 
     expect(() => duplicate({ type: "device", id: "return_device1" })).toThrow(
       "cannot duplicate devices on return/master tracks",
@@ -194,19 +139,10 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw error for device on master track", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "master_device1") {
-        return "live_set master_track devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "master_device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks(
+      "master_device1",
+      "live_set master_track devices 0",
+    );
 
     expect(() => duplicate({ type: "device", id: "master_device1" })).toThrow(
       "cannot duplicate devices on return/master tracks",
@@ -214,19 +150,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should set custom name on duplicated device", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
 
     duplicate({ type: "device", id: "device1", name: "My Effect" });
 
@@ -239,19 +163,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should not adjust destination for tracks before source", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 5 devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 5 devices 0");
 
     duplicate({ type: "device", id: "device1", toPath: "t2/d0" });
 
@@ -263,13 +175,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw and cleanup if device not found in duplicated track", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 0";
-      }
-
-      return this._path;
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
 
     // Mock id to return "0" for the temp device path (makes exists() return false)
     liveApiId.mockImplementation(function () {
@@ -278,12 +184,6 @@ describe("duplicate - device duplication", () => {
       }
 
       return this._id;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
     });
 
     expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
@@ -299,19 +199,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should not adjust non-track destination path (return/master)", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "live_set tracks 0 devices 0";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "device1") {
-        return "PluginDevice";
-      }
-    });
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
 
     // Using a path that doesn't start with "t" should not be adjusted
     duplicate({ type: "device", id: "device1", toPath: "r0/d0" });

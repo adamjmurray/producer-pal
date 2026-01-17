@@ -1,36 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
+import { liveApiCall, mockLiveApiGet } from "#src/test/mock-live-api.js";
 import {
-  liveApiCall,
-  liveApiPath,
-  mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
-import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+  mockContext,
+  setupArrangementClipPath,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", () => {
     const trackIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
-      if (
-        this._id === "789" ||
-        this._id === 1000 ||
-        this._id === 2000 ||
-        this._id === 3000
-      ) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
-    });
+    setupArrangementClipPath(
+      trackIndex,
+      (id) => id === "789" || id === 1000 || id === 2000 || id === 3000,
+    );
 
     mockLiveApiGet({
       789: {

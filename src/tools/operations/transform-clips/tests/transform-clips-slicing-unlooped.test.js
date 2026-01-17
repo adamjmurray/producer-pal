@@ -10,8 +10,10 @@ import {
 } from "#src/test/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 import {
-  setupUnloopedClipSlicingMocks,
+  filterLoopingCalls,
+  filterMarkerCalls,
   setupSlicingClipBaseMocks,
+  setupUnloopedClipSlicingMocks,
 } from "./transform-clips-slicing-test-helpers.js";
 
 describe("transformClips - slicing unlooped clips", () => {
@@ -40,22 +42,16 @@ describe("transformClips - slicing unlooped clips", () => {
     expect(callState.duplicateCalls[2].args[1]).toBe(4);
 
     // Should use looping workaround: set looping=1, then set markers, then looping=0
-    const loopingEnableCalls = setCalls.filter(
-      (c) => c.prop === "looping" && c.value === 1,
-    );
-    const loopingDisableCalls = setCalls.filter(
-      (c) => c.prop === "looping" && c.value === 0,
-    );
+    const loopingCalls = filterLoopingCalls(setCalls);
 
-    expect(loopingEnableCalls.length).toBeGreaterThanOrEqual(1);
-    expect(loopingDisableCalls.length).toBeGreaterThanOrEqual(1);
+    expect(loopingCalls.enable.length).toBeGreaterThanOrEqual(1);
+    expect(loopingCalls.disable.length).toBeGreaterThanOrEqual(1);
 
     // Should set start_marker and end_marker for the revealed slice
-    const startMarkerCalls = setCalls.filter((c) => c.prop === "start_marker");
-    const endMarkerCalls = setCalls.filter((c) => c.prop === "end_marker");
+    const markerCalls = filterMarkerCalls(setCalls);
 
-    expect(startMarkerCalls.length).toBeGreaterThanOrEqual(1);
-    expect(endMarkerCalls.length).toBeGreaterThanOrEqual(1);
+    expect(markerCalls.startMarker.length).toBeGreaterThanOrEqual(1);
+    expect(markerCalls.endMarker.length).toBeGreaterThanOrEqual(1);
   });
 
   it("should slice unlooped warped audio clips and reveal hidden content", () => {
@@ -138,22 +134,16 @@ describe("transformClips - slicing unlooped clips", () => {
     expect(duplicateCalls[4].position).toBe(12);
 
     // Should use looping workaround: set looping=1, then set markers, then looping=0
-    const loopingEnableCalls = setCalls.filter(
-      (c) => c.prop === "looping" && c.value === 1,
-    );
-    const loopingDisableCalls = setCalls.filter(
-      (c) => c.prop === "looping" && c.value === 0,
-    );
+    const loopingCalls = filterLoopingCalls(setCalls);
 
-    expect(loopingEnableCalls.length).toBeGreaterThanOrEqual(3);
-    expect(loopingDisableCalls.length).toBeGreaterThanOrEqual(3);
+    expect(loopingCalls.enable.length).toBeGreaterThanOrEqual(3);
+    expect(loopingCalls.disable.length).toBeGreaterThanOrEqual(3);
 
     // Should set start_marker and end_marker for the revealed slices
-    const startMarkerCalls = setCalls.filter((c) => c.prop === "start_marker");
-    const endMarkerCalls = setCalls.filter((c) => c.prop === "end_marker");
+    const markerCalls = filterMarkerCalls(setCalls);
 
-    expect(startMarkerCalls.length).toBeGreaterThanOrEqual(3);
-    expect(endMarkerCalls.length).toBeGreaterThanOrEqual(3);
+    expect(markerCalls.startMarker.length).toBeGreaterThanOrEqual(3);
+    expect(markerCalls.endMarker.length).toBeGreaterThanOrEqual(3);
   });
 
   it("should not place shortener clips beyond original clip boundary (unwarped audio)", () => {
