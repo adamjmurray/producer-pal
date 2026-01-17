@@ -572,6 +572,13 @@ describe("coerceArgsToSchema", () => {
     expect(coerceArgsToSchema({ mute: 0 }, schema)).toStrictEqual({
       mute: false,
     });
+    // Negative and float numbers also coerce (any non-zero = true)
+    expect(coerceArgsToSchema({ mute: -1 }, schema)).toStrictEqual({
+      mute: true,
+    });
+    expect(coerceArgsToSchema({ mute: 0.5 }, schema)).toStrictEqual({
+      mute: true,
+    });
   });
 
   it("should not modify values that are already correct type", () => {
