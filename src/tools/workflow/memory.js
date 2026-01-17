@@ -1,11 +1,8 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Manages user-defined project context stored in the Max device.
- * @param {object} args - The parameters
- * @param {string} args.action - Action to perform: "read" or "write"
- * @param {string} [args.content] - Content to write (required when action is "write")
- * @param {object} context - The context object from main.js
- * @returns {object} Project context information
+ * @param {{ action?: string, content?: string }} args - The parameters
+ * @param {Partial<ToolContext>} [context] - The context object from main.js
+ * @returns {{ enabled: boolean, writable?: boolean, content?: string }} Project context information
  */
 export function memory({ action, content } = {}, context = {}) {
   if (!action) {

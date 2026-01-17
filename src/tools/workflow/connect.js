@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 import { VERSION } from "#src/shared/version.js";
 import {
@@ -10,8 +9,8 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety
- * @param {object} _params - No parameters used
- * @param {object} context - The userContext from main.js
+ * @param {object} [_params] - No parameters used
+ * @param {Partial<ToolContext>} [context] - The userContext from main.js
  * @returns {object} Connection status and basic Live Set info
  */
 export function connect(_params = {}, context = {}) {
@@ -26,24 +25,31 @@ export function connect(_params = {}, context = {}) {
 
   // Basic Live info
   const liveSetName = liveSet.getProperty("name");
+
+  /** @type {{ name?: unknown, trackCount: number, sceneCount: number, tempo: unknown, timeSignature: string | null, scale?: string }} */
+  const liveSetInfo = {
+    ...(liveSetName && { name: liveSetName }),
+    trackCount: trackIds.length,
+    sceneCount: sceneIds.length,
+    tempo: liveSet.getProperty("tempo"),
+    timeSignature: liveSet.timeSignature,
+  };
+
   const result = {
     connected: true,
     producerPalVersion: VERSION,
     abletonLiveVersion,
-    liveSet: {
-      ...(liveSetName && { name: liveSetName }),
-      trackCount: trackIds.length,
-      sceneCount: sceneIds.length,
-      tempo: liveSet.getProperty("tempo"),
-      timeSignature: liveSet.timeSignature,
-    },
+    liveSet: liveSetInfo,
   };
 
-  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
+  /** @type {number} */
+  const scaleMode = /** @type {number} */ (liveSet.getProperty("scale_mode"));
+  const scaleEnabled = scaleMode > 0;
 
   if (scaleEnabled) {
     const scaleName = liveSet.getProperty("scale_name");
-    const rootNote = liveSet.getProperty("root_note");
+    /** @type {number} */
+    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
 
     result.liveSet.scale = `${scaleRoot} ${scaleName}`;
@@ -61,7 +67,7 @@ export function connect(_params = {}, context = {}) {
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
 
-    if (track.getProperty("has_midi_input") > 0) {
+    if (/** @type {number} */ (track.getProperty("has_midi_input")) > 0) {
       for (const device of track.getChildren("devices")) {
         const deviceType = device.getProperty("type");
 
