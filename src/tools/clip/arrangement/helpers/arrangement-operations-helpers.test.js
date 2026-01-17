@@ -68,10 +68,6 @@ describe("arrangement-operations-helpers", () => {
           return "live_set tracks 0 arrangement_clips 0";
         }
 
-        if (this._path?.startsWith("live_set tracks")) {
-          return this._path;
-        }
-
         return this._path;
       });
 
@@ -207,10 +203,6 @@ describe("arrangement-operations-helpers", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "789") {
           return "live_set tracks 0 arrangement_clips 0";
-        }
-
-        if (this._path?.startsWith("live_set tracks")) {
-          return this._path;
         }
 
         return this._path;
