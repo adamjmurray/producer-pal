@@ -1,3 +1,5 @@
+import * as console from "#src/shared/v8-max-console.js";
+
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
  */
@@ -29,14 +31,22 @@ export function handleQuantization(
     return;
   }
 
-  // Validate MIDI clip
+  // Warn and skip for audio clips
   if (clip.getProperty("is_midi_clip") <= 0) {
-    throw new Error("Quantization only available on MIDI clips");
+    console.error(
+      `Warning: quantize parameter ignored for audio clip (id ${clip.id})`,
+    );
+
+    return;
   }
 
-  // Validate required grid
+  // Warn and skip if grid not provided
   if (quantizeGrid == null) {
-    throw new Error("quantizeGrid required when quantize is provided");
+    console.error(
+      "Warning: quantize parameter ignored - quantizeGrid is required",
+    );
+
+    return;
   }
 
   const gridValue = QUANTIZE_GRID[quantizeGrid];

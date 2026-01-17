@@ -86,6 +86,15 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
+- **Update tool error handling**: Update tools (update-clip, update-track,
+  update-device, etc.) should NOT throw errors for invalid parameter
+  combinations or incompatible operations. Instead:
+  - Emit a warning via `console.error()` with prefix "Warning:" or tool name
+  - Skip the operation and continue processing
+  - This allows partial successes when updating multiple items
+  - Example:
+    `console.error("Warning: quantize parameter ignored for audio clip")`
+
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/workflow/connect.js`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its

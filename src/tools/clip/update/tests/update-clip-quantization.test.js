@@ -81,20 +81,34 @@ describe("handleQuantization", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should throw error when clip is not a MIDI clip", () => {
+  it("should warn and skip for audio clips", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    expect(() =>
-      handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" }),
-    ).toThrow("Quantization only available on MIDI clips");
+    handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("quantize parameter ignored for audio clip"),
+    );
+    expect(mockClip.call).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
-  it("should throw error when quantizeGrid is not provided", () => {
+  it("should warn and skip when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    expect(() => handleQuantization(mockClip, { quantize: 1 })).toThrow(
-      "quantizeGrid required when quantize is provided",
+    handleQuantization(mockClip, { quantize: 1 });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("quantizeGrid is required"),
     );
+    expect(mockClip.call).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("should call quantize with correct grid value and amount", () => {
