@@ -180,6 +180,22 @@ See `dev-docs/Architecture.md` for detailed system design and
   stdio-to-http "portal"
 - Dependencies bundled for distribution
 
+## Protected Files (Require User Approval)
+
+The following files contain code quality thresholds that should only be relaxed
+with explicit user approval. **Do not modify these values without asking
+first:**
+
+- `src/test/lint-suppression-limits.test.js` - Per-tree limits for
+  eslint-disable and @ts-expect-error comments. Increasing these limits weakens
+  code quality enforcement.
+
+- `config/vitest.config.mjs` (thresholds section) - Test coverage thresholds.
+  Lowering these allows coverage to drop.
+
+If a change requires relaxing these limits, ask the user for approval before
+making the modification.
+
 ## Refactoring & Code Quality
 
 See `.claude/skills/refactoring/SKILL.md` for comprehensive refactoring
