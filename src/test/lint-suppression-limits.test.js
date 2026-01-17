@@ -7,10 +7,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "../..");
 
-const MAX_ESLINT_DISABLE_PER_TREE = 10;
-const MAX_TS_EXPECT_ERROR_PER_TREE = 12;
+// Per-tree limits for lint suppressions (ratcheted to current counts)
+const ESLINT_DISABLE_LIMITS = {
+  src: 8,
+  scripts: 0,
+  webui: 5,
+};
 
-const SOURCE_TREES = ["src", "scripts", "webui"];
+const TS_EXPECT_ERROR_LIMITS = {
+  src: 0,
+  scripts: 0,
+  webui: 5,
+};
+
+const SOURCE_TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".ts", ".tsx"]);
 
 // Exclude test files from eslint-disable count since they have relaxed rules per ESLint config
@@ -97,19 +107,21 @@ describe("Lint suppression limits", () => {
 
   describe("eslint-disable comments (excluding test files)", () => {
     for (const tree of SOURCE_TREES) {
-      it(`should have at most ${MAX_ESLINT_DISABLE_PER_TREE} eslint-disable comments in ${tree}/`, () => {
+      const limit = ESLINT_DISABLE_LIMITS[tree];
+
+      it(`should have at most ${limit} eslint-disable comments in ${tree}/`, () => {
         const treePath = path.join(projectRoot, tree);
         const files = findSourceFiles(treePath, true); // excludeTests=true
         const matches = countPatternOccurrences(files, /eslint-disable/);
 
-        if (matches.length > MAX_ESLINT_DISABLE_PER_TREE) {
+        if (matches.length > limit) {
           const details = matches
             .map((m) => `  - ${m.file}:${m.line}`)
             .join("\n");
 
           // eslint-disable-next-line vitest/no-conditional-expect -- conditional provides detailed failure message
           expect.fail(
-            `Found ${matches.length} eslint-disable comments in ${tree}/ (max: ${MAX_ESLINT_DISABLE_PER_TREE}):\n${details}\n\n` +
+            `Found ${matches.length} eslint-disable comments in ${tree}/ (max: ${limit}):\n${details}\n\n` +
               `Consider fixing the underlying issues instead of suppressing lint rules.`,
           );
         }
@@ -119,19 +131,21 @@ describe("Lint suppression limits", () => {
 
   describe("@ts-expect-error comments (excluding test files)", () => {
     for (const tree of SOURCE_TREES) {
-      it(`should have at most ${MAX_TS_EXPECT_ERROR_PER_TREE} @ts-expect-error comments in ${tree}/`, () => {
+      const limit = TS_EXPECT_ERROR_LIMITS[tree];
+
+      it(`should have at most ${limit} @ts-expect-error comments in ${tree}/`, () => {
         const treePath = path.join(projectRoot, tree);
         const files = findSourceFiles(treePath, true); // excludeTests=true
         const matches = countPatternOccurrences(files, /@ts-expect-error/);
 
-        if (matches.length > MAX_TS_EXPECT_ERROR_PER_TREE) {
+        if (matches.length > limit) {
           const details = matches
             .map((m) => `  - ${m.file}:${m.line}`)
             .join("\n");
 
           // eslint-disable-next-line vitest/no-conditional-expect -- conditional provides detailed failure message
           expect.fail(
-            `Found ${matches.length} @ts-expect-error comments in ${tree}/ (max: ${MAX_TS_EXPECT_ERROR_PER_TREE}):\n${details}\n\n` +
+            `Found ${matches.length} @ts-expect-error comments in ${tree}/ (max: ${limit}):\n${details}\n\n` +
               `Consider fixing the type issues or improving type definitions.`,
           );
         }
