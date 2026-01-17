@@ -9,7 +9,11 @@ import {
   liveApiPath,
   liveApiType,
 } from "#src/test/mock-live-api.js";
-import { setupDeviceMocks } from "./delete-test-helpers.js";
+import {
+  setupDeviceMocks,
+  setupDrumChainMocks,
+  setupDrumPadMocks,
+} from "./delete-test-helpers.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject device deletion", () => {
@@ -163,34 +167,12 @@ describe("deleteObject device deletion", () => {
 
   describe("path-based deletion", () => {
     it("should delete a device by path", () => {
-      const deviceId = "device_by_path";
-      const devicePath = "live_set tracks 0 devices 1";
-
-      liveApiId.mockImplementation(function () {
-        // When looking up by path, return the device ID
-        if (this._path === devicePath) {
-          return deviceId;
-        }
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === deviceId || this._path === devicePath) {
-          return devicePath;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === deviceId || this._path === devicePath) {
-          return "Device";
-        }
-      });
+      setupDeviceMocks("device_by_path", "live_set tracks 0 devices 1");
 
       const result = deleteObject({ path: "t0/d1", type: "device" });
 
       expect(result).toStrictEqual({
-        id: deviceId,
+        id: "device_by_path",
         type: "device",
         deleted: true,
       });
@@ -202,21 +184,9 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete multiple devices by path", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0 devices 0") return "dev_0_0";
-        if (this._path === "live_set tracks 1 devices 1") return "dev_1_1";
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "dev_0_0") return "live_set tracks 0 devices 0";
-        if (this._id === "dev_1_1") return "live_set tracks 1 devices 1";
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (["dev_0_0", "dev_1_1"].includes(this._id)) return "Device";
-        if (this._path?.includes("devices")) return "Device";
+      setupDeviceMocks(["dev_0_0", "dev_1_1"], {
+        dev_0_0: "live_set tracks 0 devices 0",
+        dev_1_1: "live_set tracks 1 devices 1",
       });
 
       const result = deleteObject({ path: "t0/d0, t1/d1", type: "device" });
@@ -228,20 +198,9 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete devices from both ids and path", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0 devices 0") return "dev_by_path";
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "dev_by_id") return "live_set tracks 1 devices 1";
-        if (this._id === "dev_by_path") return "live_set tracks 0 devices 0";
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (["dev_by_id", "dev_by_path"].includes(this._id)) return "Device";
-        if (this._path?.includes("devices")) return "Device";
+      setupDeviceMocks(["dev_by_id", "dev_by_path"], {
+        dev_by_id: "live_set tracks 1 devices 1",
+        dev_by_path: "live_set tracks 0 devices 0",
       });
 
       const result = deleteObject({
@@ -257,25 +216,10 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete nested device by path", () => {
-      const devicePath = "live_set tracks 1 devices 0 chains 2 devices 1";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === devicePath) return "nested_dev";
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "nested_dev" || this._path === devicePath) {
-          return devicePath;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === "nested_dev" || this._path === devicePath) {
-          return "Device";
-        }
-      });
+      setupDeviceMocks(
+        "nested_dev",
+        "live_set tracks 1 devices 0 chains 2 devices 1",
+      );
 
       const result = deleteObject({ path: "t1/d0/c2/d1", type: "device" });
 
@@ -294,20 +238,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should skip invalid paths and continue with valid ones", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0 devices 0") return "valid_dev";
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "valid_dev") return "live_set tracks 0 devices 0";
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === "valid_dev") return "Device";
-        if (this._path === "live_set tracks 0 devices 0") return "Device";
-      });
+      setupDeviceMocks("valid_dev", "live_set tracks 0 devices 0");
 
       const result = deleteObject({ path: "t0/d0, t99/d99", type: "device" });
 
@@ -414,21 +345,7 @@ describe("deleteObject device deletion", () => {
     it("should delete a drum pad by id", () => {
       const id = "drum_pad_1";
 
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return "live_set tracks 0 devices 0 drum_pads 36";
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "DrumPad";
-        }
-      });
+      setupDrumPadMocks(id, "live_set tracks 0 devices 0 drum_pads 36");
 
       const result = deleteObject({ ids: id, type: "drum-pad" });
 
@@ -437,24 +354,9 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete multiple drum pads by id", () => {
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "pad_1") {
-          return "live_set tracks 0 devices 0 drum_pads 36";
-        }
-
-        if (this._id === "pad_2") {
-          return "live_set tracks 0 devices 0 drum_pads 37";
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (["pad_1", "pad_2"].includes(this._id)) {
-          return "DrumPad";
-        }
+      setupDrumPadMocks(["pad_1", "pad_2"], {
+        pad_1: "live_set tracks 0 devices 0 drum_pads 36",
+        pad_2: "live_set tracks 0 devices 0 drum_pads 37",
       });
 
       const result = deleteObject({ ids: "pad_1, pad_2", type: "drum-pad" });
@@ -466,53 +368,13 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete a drum chain by path", () => {
-      const devicePath = "live_set tracks 0 devices 0";
-      const chainPath = "live_set tracks 0 devices 0 chains 0";
-      const drumRackId = "drum-rack-1";
       const chainId = "chain-36";
 
-      liveApiId.mockImplementation(function () {
-        if (this._path === devicePath) return drumRackId;
-        if (this._path === `id ${chainId}`) return chainId;
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === chainId) return chainPath;
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-")) return "DrumChain";
-        if (id === drumRackId || this._path === devicePath)
-          return "DrumGroupDevice";
-      });
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (
-          (id === drumRackId || this._path === devicePath) &&
-          prop === "chains"
-        ) {
-          return children(chainId);
-        }
-
-        if (
-          (id === drumRackId || this._path === devicePath) &&
-          prop === "can_have_drum_pads"
-        ) {
-          return [1];
-        }
-
-        if (id?.startsWith("chain-") && prop === "in_note") {
-          return [36]; // C1 = MIDI note 36
-        }
-
-        return [0];
+      setupDrumChainMocks({
+        devicePath: "live_set tracks 0 devices 0",
+        chainPath: "live_set tracks 0 devices 0 chains 0",
+        drumRackId: "drum-rack-1",
+        chainId,
       });
 
       const result = deleteObject({ path: "t0/d0/pC1", type: "drum-pad" });
@@ -526,60 +388,14 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete drum pads from both ids and path", () => {
-      const devicePath = "live_set tracks 0 devices 0";
-      const chainPath = "live_set tracks 0 devices 0 chains 0";
-      const drumRackId = "drum-rack-1";
       const chainId = "chain-36";
 
-      liveApiId.mockImplementation(function () {
-        if (this._path === devicePath) return drumRackId;
-        if (this._path === `id ${chainId}`) return chainId;
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === "pad_by_id") {
-          return "live_set tracks 0 devices 0 drum_pads 37";
-        }
-
-        if (id === chainId) {
-          return chainPath;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === "pad_by_id") return "DrumPad";
-        if (id?.startsWith("chain-")) return "DrumChain";
-        if (id === drumRackId || this._path === devicePath)
-          return "DrumGroupDevice";
-      });
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (
-          (id === drumRackId || this._path === devicePath) &&
-          prop === "chains"
-        ) {
-          return children(chainId);
-        }
-
-        if (
-          (id === drumRackId || this._path === devicePath) &&
-          prop === "can_have_drum_pads"
-        ) {
-          return [1];
-        }
-
-        if (id?.startsWith("chain-") && prop === "in_note") {
-          return [36]; // C1 = MIDI note 36
-        }
-
-        return [0];
+      setupDrumChainMocks({
+        devicePath: "live_set tracks 0 devices 0",
+        chainPath: "live_set tracks 0 devices 0 chains 0",
+        drumRackId: "drum-rack-1",
+        chainId,
+        extraPadPath: { pad_by_id: "live_set tracks 0 devices 0 drum_pads 37" },
       });
 
       const result = deleteObject({
@@ -595,53 +411,13 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should skip invalid drum chain paths and continue with valid ones", () => {
-      const validDevicePath = "live_set tracks 0 devices 0";
-      const validPath = "live_set tracks 0 devices 0 chains 0";
-      const drumRackId = "drum-rack-1";
       const chainId = "chain-36";
 
-      liveApiId.mockImplementation(function () {
-        if (this._path === validDevicePath) return drumRackId;
-        if (this._path === `id ${chainId}`) return chainId;
-
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === chainId) return validPath;
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id?.startsWith("chain-")) return "DrumChain";
-        if (id === drumRackId || this._path === validDevicePath)
-          return "DrumGroupDevice";
-      });
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (
-          (id === drumRackId || this._path === validDevicePath) &&
-          prop === "chains"
-        ) {
-          return children(chainId);
-        }
-
-        if (
-          (id === drumRackId || this._path === validDevicePath) &&
-          prop === "can_have_drum_pads"
-        ) {
-          return [1];
-        }
-
-        if (id?.startsWith("chain-") && prop === "in_note") {
-          return [36]; // C1 = MIDI note 36
-        }
-
-        return [0];
+      setupDrumChainMocks({
+        devicePath: "live_set tracks 0 devices 0",
+        chainPath: "live_set tracks 0 devices 0 chains 0",
+        drumRackId: "drum-rack-1",
+        chainId,
       });
 
       const result = deleteObject({

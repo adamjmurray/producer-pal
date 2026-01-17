@@ -1,4 +1,6 @@
 import {
+  children,
+  liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiType,
@@ -41,7 +43,10 @@ export function setupDeviceMocks(deviceIds, pathOrMap, type = "Device") {
       return type;
     }
 
-    if (this._path?.includes("devices")) {
+    // Only return type for known paths in the map
+    const knownPaths = Object.values(pathMap);
+
+    if (this._path && knownPaths.includes(this._path)) {
       return type;
     }
   });
@@ -54,4 +59,69 @@ export function setupDeviceMocks(deviceIds, pathOrMap, type = "Device") {
  */
 export function setupDrumPadMocks(padIds, pathOrMap) {
   setupDeviceMocks(padIds, pathOrMap, "DrumPad");
+}
+
+/**
+ * Setup mocks for drum chain deletion tests (path-based drum pad deletion)
+ * @param {object} config - Configuration object
+ * @param {string} config.devicePath - Path to the drum rack device
+ * @param {string} config.chainPath - Path to the chain
+ * @param {string} config.drumRackId - ID for the drum rack
+ * @param {string} config.chainId - ID for the chain
+ * @param {number} [config.inNote=36] - MIDI note for the chain (default C1=36)
+ * @param {object} [config.extraPadPath] - Optional extra pad path mapping {padId: path}
+ */
+export function setupDrumChainMocks({
+  devicePath,
+  chainPath,
+  drumRackId,
+  chainId,
+  inNote = 36,
+  extraPadPath = null,
+}) {
+  liveApiId.mockImplementation(function () {
+    if (this._path === devicePath) return drumRackId;
+    if (this._path === `id ${chainId}`) return chainId;
+
+    return this._id;
+  });
+
+  liveApiPath.mockImplementation(function () {
+    const id = this._id ?? this.id;
+
+    if (id === chainId) return chainPath;
+    if (extraPadPath && extraPadPath[id]) return extraPadPath[id];
+
+    return this._path;
+  });
+
+  liveApiType.mockImplementation(function () {
+    const id = this._id ?? this.id;
+
+    if (extraPadPath && extraPadPath[id]) return "DrumPad";
+    if (id?.startsWith("chain-")) return "DrumChain";
+    if (id === drumRackId || this._path === devicePath)
+      return "DrumGroupDevice";
+  });
+
+  liveApiGet.mockImplementation(function (prop) {
+    const id = this._id ?? this.id;
+
+    if ((id === drumRackId || this._path === devicePath) && prop === "chains") {
+      return children(chainId);
+    }
+
+    if (
+      (id === drumRackId || this._path === devicePath) &&
+      prop === "can_have_drum_pads"
+    ) {
+      return [1];
+    }
+
+    if (id?.startsWith("chain-") && prop === "in_note") {
+      return [inNote];
+    }
+
+    return [0];
+  });
 }
