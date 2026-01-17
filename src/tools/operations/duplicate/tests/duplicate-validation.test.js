@@ -3,6 +3,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiId,
   liveApiPath,
+  setupSessionClipPath,
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
@@ -88,11 +89,7 @@ describe("duplicate - input validation", () => {
 
 describe("duplicate - clip session validation", () => {
   it("should throw an error when toTrackIndex is missing for session destination", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
-
-      return this._path;
-    });
+    setupSessionClipPath("clip1");
 
     expect(() =>
       duplicate({
@@ -105,11 +102,7 @@ describe("duplicate - clip session validation", () => {
   });
 
   it("should throw an error when toSceneIndex is missing for session destination", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
-
-      return this._path;
-    });
+    setupSessionClipPath("clip1");
 
     expect(() =>
       duplicate({
@@ -122,11 +115,7 @@ describe("duplicate - clip session validation", () => {
   });
 
   it("should throw an error when toSceneIndex is empty for session destination", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
-
-      return this._path;
-    });
+    setupSessionClipPath("clip1");
 
     expect(() =>
       duplicate({

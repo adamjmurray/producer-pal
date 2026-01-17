@@ -20,6 +20,20 @@ if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1];
 }
 
+/**
+ * Helper to set up a pending request and get its ID.
+ * @param {string} [tool="test-tool"] - Tool name
+ * @param {object} [args={}] - Tool arguments
+ * @returns {{ promise: Promise, requestId: string }} Promise and request ID
+ */
+function setupPendingRequest(tool = "test-tool", args = {}) {
+  Max.outlet = vi.fn();
+  const promise = callLiveApi(tool, args);
+  const requestId = Max.outlet.mock.calls[0][1];
+
+  return { promise, requestId };
+}
+
 describe("Max API Adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -220,17 +234,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should add maxErrors to result content", async () => {
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
-
-      // Start a request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get request ID
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
-
-      // Simulate response with errors
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
       handleLiveApiResult(
@@ -259,10 +263,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should strip v8: prefix from error messages", async () => {
-      Max.outlet = vi.fn();
-      const promise = callLiveApi("test-tool", {});
-      const requestId = Max.outlet.mock.calls[0][1];
-
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
       handleLiveApiResult(
@@ -282,10 +283,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should filter out empty v8: messages", async () => {
-      Max.outlet = vi.fn();
-      const promise = callLiveApi("test-tool", {});
-      const requestId = Max.outlet.mock.calls[0][1];
-
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
       handleLiveApiResult(
@@ -309,10 +307,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle error messages without v8: prefix", async () => {
-      Max.outlet = vi.fn();
-      const promise = callLiveApi("test-tool", {});
-      const requestId = Max.outlet.mock.calls[0][1];
-
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
       handleLiveApiResult(
@@ -346,15 +341,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle malformed JSON response", async () => {
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
-
-      // Start a request to create a pending request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get the request ID from the outlet call
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
+      const { promise, requestId } = setupPendingRequest();
 
       // Call with malformed JSON - this should resolve with an error response
       handleLiveApiResult(requestId, "{ malformed json", MAX_ERROR_DELIMITER);
@@ -370,18 +357,7 @@ describe("Max API Adapter", () => {
 
     it("should clear timeout when response is received", async () => {
       const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
-
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
-
-      // Start a request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get request ID
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
-
-      // Simulate response
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
       handleLiveApiResult(
@@ -399,17 +375,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle chunked responses", async () => {
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
-
-      // Start a request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get request ID
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
-
-      // Simulate chunked response
+      const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
       const jsonString = JSON.stringify(mockResult);
       const chunk1 = jsonString.slice(0, 10);
@@ -437,15 +403,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle missing delimiter error", async () => {
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
-
-      // Start a request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get request ID
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
+      const { promise, requestId } = setupPendingRequest();
 
       // Simulate response without delimiter (should cause error)
       handleLiveApiResult(requestId, "chunk1", "chunk2");

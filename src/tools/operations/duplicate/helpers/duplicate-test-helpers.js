@@ -175,6 +175,22 @@ export function setupRouteToSourceMock(opts = {}) {
 }
 
 /**
+ * Setup liveApiPath mock for session clip validation tests.
+ * @param {string} clipId - Clip ID (e.g., "clip1")
+ * @param {string} [clipPath] - Clip path (default: "live_set tracks 0 clip_slots 0 clip")
+ */
+export function setupSessionClipPath(
+  clipId,
+  clipPath = "live_set tracks 0 clip_slots 0 clip",
+) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clipId) return clipPath;
+
+    return this._path;
+  });
+}
+
+/**
  * Setup mocks for device duplication tests.
  * @param {string} deviceId - Device ID
  * @param {string} devicePath - Device path
