@@ -435,6 +435,20 @@ describe("device-path-helpers", () => {
       );
     });
 
+    it("throws on invalid track segment for single-segment paths", () => {
+      // Single segment paths that don't match mt/rt*/t* prefixes
+      // Note: "track0" starts with "t" so it's handled by the t* branch
+      expect(() => resolveInsertionPath("xyz")).toThrow(
+        "Invalid track segment: xyz",
+      );
+      expect(() => resolveInsertionPath("abc")).toThrow(
+        "Invalid track segment: abc",
+      );
+      expect(() => resolveInsertionPath("scene0")).toThrow(
+        "Invalid track segment: scene0",
+      );
+    });
+
     describe("chain auto-creation", () => {
       /**
        * Sets up mocks for chain auto-creation tests.

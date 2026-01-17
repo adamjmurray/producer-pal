@@ -94,4 +94,37 @@ describe("deleteObject device path error cases", () => {
       'delete: path "t0/d0/c0" resolves to chain, not device',
     );
   });
+
+  it("should warn and skip when path resolution throws an error", () => {
+    const consoleSpy = vi.spyOn(console, "error");
+
+    // Path with invalid format that causes resolvePathToLiveApi to throw
+    // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
+    expect(() => deleteObject({ path: "t0/d0/p", type: "device" })).toThrow(
+      "delete failed: ids or path is required",
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "delete: Invalid drum pad note in path: t0/d0/p",
+    );
+  });
+
+  it("should warn when direct device path does not exist", () => {
+    const consoleSpy = vi.spyOn(console, "error");
+
+    // Mock liveApiId to return "0" for non-existent device (exists() checks id !== "0")
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 devices 0") return "0";
+
+      return this._id;
+    });
+
+    expect(() => deleteObject({ path: "t0/d0", type: "device" })).toThrow(
+      "delete failed: ids or path is required",
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'delete: device at path "t0/d0" does not exist',
+    );
+  });
 });
