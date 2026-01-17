@@ -51,11 +51,13 @@ async function setupMockAndSendMessage(
   message = "Test",
   options?: Parameters<typeof client.sendMessage>[2],
 ) {
-  const mockCreate = vi.fn().mockResolvedValue(
-    createMockStream([
-      { type: "response.completed", response: { output: [] } },
-    ]),
-  );
+  const mockCreate = vi
+    .fn()
+    .mockResolvedValue(
+      createMockStream([
+        { type: "response.completed", response: { output: [] } },
+      ]),
+    );
 
   client.ai.responses.create = mockCreate;
 
