@@ -30,3 +30,6 @@ docs/.vitepress/cache
 
 # Playwright Test Results
 test-results
+
+# jscpd duplication reports
+report
