@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, LiveAPI } from "#src/test/mock-live-api.js";
+import { liveApiCall, LiveAPI } from "#src/test/mocks/mock-live-api.js";
 import {
   handleQuantization,
   QUANTIZE_GRID,

@@ -1,5 +1,6 @@
 import vitestPlugin from "@vitest/eslint-plugin";
 import js from "@eslint/js";
+import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
@@ -50,6 +51,14 @@ const baseRules = {
 
   // Debug & Development
   "no-debugger": "error", // No debugger statements in production
+
+  // ESLint directive comments - require explanation for any rule disabling
+  "@eslint-community/eslint-comments/require-description": [
+    "error",
+    { ignore: [] }, // Require description for all directives
+  ],
+  "@eslint-community/eslint-comments/no-unlimited-disable": "error", // Must specify rules to disable
+  "@eslint-community/eslint-comments/no-unused-disable": "error", // Clean up stale disables
 
   // Type Coercion
   "no-implicit-coercion": "error", // Force explicit conversions like Number() not !!x
@@ -251,6 +260,16 @@ const tsOnlyRules = {
       caughtErrorsIgnorePattern: "^_",
     },
   ],
+  "@typescript-eslint/ban-ts-comment": [
+    "error",
+    {
+      "ts-expect-error": "allow-with-description", // Require explanation
+      "ts-ignore": true, // Ban completely - use ts-expect-error instead
+      "ts-nocheck": true, // Ban - too broad
+      "ts-check": false, // Allow - enables stricter checking
+      minimumDescriptionLength: 10, // Require meaningful descriptions
+    },
+  ],
   "@typescript-eslint/no-explicit-any": "error", // Force proper typing instead of any
   "@typescript-eslint/no-non-null-assertion": "error", // No ! operator - use proper null checks
   "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
@@ -311,6 +330,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       import: importPlugin,
       sonarjs,
       jsdoc,
@@ -358,6 +378,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -399,6 +420,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -438,6 +460,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       import: importPlugin,
       sonarjs,
     },
@@ -475,6 +498,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -602,7 +626,7 @@ export default [
     files: ["src/**/*.js"],
     ignores: [
       "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
-      "src/test/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
+      "src/test/mocks/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
     ],
     rules: {
       "no-restricted-syntax": [

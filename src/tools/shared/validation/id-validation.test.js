@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId, liveApiType } from "#src/test/mock-live-api.js";
+import { liveApiId, liveApiType } from "#src/test/mocks/mock-live-api.js";
 import { validateIdType, validateIdTypes } from "./id-validation.js";
 
 describe("validateIdType", () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mock-live-api.js";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.js";
 import {
   setupAudioClipMock,
   setupMidiClipMock,

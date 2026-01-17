@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mock-live-api.js";
+import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.js";
 import {
   AUTOMATION_STATE_MAP,
   PARAM_STATE_MAP,

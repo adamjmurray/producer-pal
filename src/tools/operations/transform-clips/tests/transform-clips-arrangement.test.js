@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { setupArrangementClipMocks } from "./transform-clips-arrangement-test-helpers.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 

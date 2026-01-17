@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 /**
  * Shared mock context for update-clip tests

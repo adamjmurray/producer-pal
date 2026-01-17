@@ -1,6 +1,6 @@
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions.js";
-import { Folder, clearMockFolderStructure } from "./mock-folder.js";
+import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.js";
 import {
   LiveAPI,
   liveApiCall,
@@ -8,8 +8,8 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "./mock-live-api.js";
-import { Task } from "./mock-task.js";
+} from "./mocks/mock-live-api.js";
+import { Task } from "./mocks/mock-task.js";
 
 globalThis.LiveAPI = LiveAPI;
 globalThis.Folder = Folder;

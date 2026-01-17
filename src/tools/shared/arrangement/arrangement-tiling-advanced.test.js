@@ -3,7 +3,7 @@ import {
   LiveAPI,
   liveApiCall,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { createPartialTile, tileClipToRange } from "./arrangement-tiling.js";
 
 // Mock context for tests

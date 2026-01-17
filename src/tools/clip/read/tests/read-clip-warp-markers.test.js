@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mockLiveApiGet } from "#src/test/mock-live-api.js";
+import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 
 describe("readClip - warp markers", () => {

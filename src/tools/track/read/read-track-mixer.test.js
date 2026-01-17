@@ -4,7 +4,7 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import {
   createMixerPathIdMap,
   setupMixerIdMock,

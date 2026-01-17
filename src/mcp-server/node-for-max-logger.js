@@ -8,8 +8,7 @@ let verbose = false;
 
 Max.addHandler(
   "verbose",
-  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
-  // eslint-disable-next-line eqeqeq
+  // eslint-disable-next-line eqeqeq -- intentional loose equality to handle Max's polymorphic input types: "1", true, [1], etc
   (input) => (verbose = input == 1 || input === "true"),
 );
 

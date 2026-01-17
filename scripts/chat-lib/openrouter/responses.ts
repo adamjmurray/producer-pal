@@ -115,7 +115,7 @@ async function sendMessageResponses(
   ctx.conversation.push({ type: "message", role: "user", content: input });
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break, common pattern for tool call continuation
   while (true) {
     const shouldContinue = ctx.options.stream
       ? await handleResponsesStreaming(ctx)
@@ -213,7 +213,7 @@ async function readSseStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break, common pattern for streaming SSE reads
   while (true) {
     const { done, value } = await reader.read();
 

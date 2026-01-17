@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { MONITORING_STATE } from "#src/tools/constants.js";
 import { updateTrack } from "./update-track.js";
 import "#src/live-api-adapter/live-api-extensions.js";

@@ -1,7 +1,7 @@
 /**
  * Test helper functions for read-track tests
  */
-import { children, liveApiId } from "#src/test/mock-live-api.js";
+import { children, liveApiId } from "#src/test/mocks/mock-live-api.js";
 
 /**
  * Creates a mock track object with default properties

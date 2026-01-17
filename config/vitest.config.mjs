@@ -78,7 +78,7 @@ export default defineConfig({
         "src/portal/file-logger.js",
 
         // ignore test mocks:
-        "src/test/mock-*.js",
+        "src/test/mocks/**",
       ],
       reportOnFailure: true,
 
