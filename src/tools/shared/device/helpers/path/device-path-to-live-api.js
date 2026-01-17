@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * @typedef {object} ResolvedPath
  * @property {string} liveApiPath - Live API canonical path

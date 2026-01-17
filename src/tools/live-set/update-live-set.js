@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";

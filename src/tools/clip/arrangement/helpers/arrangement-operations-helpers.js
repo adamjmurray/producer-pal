@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   createAudioClipInSession,
   tileClipToRange,

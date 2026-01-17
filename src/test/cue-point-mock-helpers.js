@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { children, liveApiGet } from "#src/test/mocks/mock-live-api.js";
 
 /**

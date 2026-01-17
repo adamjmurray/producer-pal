@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import {
   createShortenedClipInHolding,

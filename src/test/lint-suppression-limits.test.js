@@ -16,7 +16,7 @@ const ESLINT_DISABLE_LIMITS = {
 
 const TS_EXPECT_ERROR_LIMITS = {
   src: 0,
-  scripts: 0,
+  scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
   webui: 5,
 };
 

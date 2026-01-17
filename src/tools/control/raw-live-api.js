@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 const MAX_OPERATIONS = 50;
 
 const OPERATION_REQUIREMENTS = {

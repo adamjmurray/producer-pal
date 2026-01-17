@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_MONITORING_STATE_AUTO,

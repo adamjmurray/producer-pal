@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Parse song time signature from live_set
  * @returns {{numerator: number, denominator: number}} Time signature components

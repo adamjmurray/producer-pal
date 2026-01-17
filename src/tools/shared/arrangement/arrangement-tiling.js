@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Shared helpers for arrangement clip tiling operations.
  * These functions handle the complex logic of shortening, moving, and tiling

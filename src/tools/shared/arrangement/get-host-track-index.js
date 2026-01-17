@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Get the track index of the host device
  * @returns {number|null} - Track index or null if not found

@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
   barBeatToAbletonBeats,

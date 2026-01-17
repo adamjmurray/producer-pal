@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**

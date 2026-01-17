@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";

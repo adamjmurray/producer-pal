@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   VALID_PITCH_CLASS_NAMES,
   pitchClassToNumber,

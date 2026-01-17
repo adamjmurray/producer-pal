@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 import { VERSION } from "#src/shared/version.js";
 import {

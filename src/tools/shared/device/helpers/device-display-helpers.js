@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 

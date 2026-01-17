@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Manages user-defined project context stored in the Max device.
  * @param {object} args - The parameters

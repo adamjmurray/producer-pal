@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,

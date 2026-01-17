@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";

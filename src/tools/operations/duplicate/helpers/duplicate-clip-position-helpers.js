@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";

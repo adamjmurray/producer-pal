@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
 import {

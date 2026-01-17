@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {

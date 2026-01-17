@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
 import {
   abletonBeatsToBarBeat,

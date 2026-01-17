@@ -186,8 +186,11 @@ async function main() {
     // Always show server info
     console.log("\nServer Info:");
 
+    // @ts-expect-error - accessing private _serverVersion to display server info
     if (client._serverVersion) {
+      // @ts-expect-error - accessing private _serverVersion.name
       console.log(`  Name: ${client._serverVersion.name}`);
+      // @ts-expect-error - accessing private _serverVersion.version
       console.log(`  Version: ${client._serverVersion.version}`);
     } else {
       console.log("  Server info not available");

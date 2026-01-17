@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import {
   parseIncludeArray,

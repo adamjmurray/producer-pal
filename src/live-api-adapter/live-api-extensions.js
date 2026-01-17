@@ -1,3 +1,4 @@
+// @ts-nocheck -- This file extends LiveAPI.prototype at runtime; TypeScript can't check this pattern
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 if (typeof LiveAPI !== "undefined") {
   /**

@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import {
   parseCommaSeparatedIds,

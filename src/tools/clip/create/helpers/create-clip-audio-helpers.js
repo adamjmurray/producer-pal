@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 

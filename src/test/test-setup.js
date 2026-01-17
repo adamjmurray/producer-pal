@@ -1,3 +1,4 @@
+// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions.js";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.js";
