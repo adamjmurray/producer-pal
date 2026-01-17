@@ -30,10 +30,16 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   const devices = resolveDevices(items, isIdBased);
 
   if (devices.length === 0) {
-    throw new Error("wrapInRack: no devices found");
+    console.error("Warning: wrapInRack: no devices found");
+
+    return null;
   }
 
   const rackType = determineRackType(devices);
+
+  if (rackType == null) {
+    return null;
+  }
 
   // Instruments require temp-track workaround
   if (rackType === RACK_TYPE_INSTRUMENT) {
@@ -45,7 +51,9 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     : getDeviceInsertionPoint(devices[0]);
 
   if (!container || !container.exists()) {
-    throw new Error(`wrapInRack: target container does not exist`);
+    console.error("Warning: wrapInRack: target container does not exist");
+
+    return null;
   }
 
   const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
@@ -71,8 +79,8 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
         const result = rack.call("insert_chain");
 
         if (!Array.isArray(result) || result[0] !== "id") {
-          throw new Error(
-            `wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
+          console.error(
+            `Warning: wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
           );
         }
       }
@@ -148,9 +156,11 @@ function determineRackType(devices) {
     types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) &&
     types.has(LIVE_API_DEVICE_TYPE_MIDI_EFFECT)
   ) {
-    throw new Error(
-      "wrapInRack: cannot mix MIDI and Audio effects in one rack",
+    console.error(
+      "Warning: wrapInRack: cannot mix MIDI and Audio effects in one rack",
     );
+
+    return null;
   }
 
   if (types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT)) {
@@ -161,7 +171,9 @@ function determineRackType(devices) {
     return "midi-effect-rack";
   }
 
-  throw new Error("wrapInRack: no valid effect devices found");
+  console.error("Warning: wrapInRack: no valid effect devices found");
+
+  return null;
 }
 
 function getDeviceInsertionPoint(device) {

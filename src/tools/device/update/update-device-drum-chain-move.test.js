@@ -123,24 +123,26 @@ describe("updateDevice - drum chain moving", () => {
     expect(result).toStrictEqual({ id: "chain-0" });
   });
 
-  it("should throw error when toPath is not a drum pad path", () => {
-    expect(() =>
-      updateDevice({
-        path: "t0/d0/pC1/c0",
-        toPath: "t1",
-      }),
-    ).toThrow('toPath "t1" is not a drum pad path');
+  it("should warn and skip when toPath is not a drum pad path", () => {
+    // Should not throw, just warn and skip the move
+    const result = updateDevice({
+      path: "t0/d0/pC1/c0",
+      toPath: "t1",
+    });
+
+    expect(result).toStrictEqual({ id: "chain-0" });
   });
 
-  it("should throw error when trying to move a regular Chain to a drum pad", () => {
+  it("should warn and skip when trying to move a regular Chain to a drum pad", () => {
     liveApiType.mockReturnValue("Chain");
     liveApiId.mockReturnValue("123");
 
-    expect(() =>
-      updateDevice({
-        ids: "123",
-        toPath: "t0/d0/pD1",
-      }),
-    ).toThrow("cannot move Chain");
+    // Should not throw, just warn and skip the move
+    const result = updateDevice({
+      ids: "123",
+      toPath: "t0/d0/pD1",
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 });

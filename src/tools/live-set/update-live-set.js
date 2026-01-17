@@ -1,8 +1,5 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import {
-  intervalsToPitchClasses,
-  pitchClassToNumber,
-} from "#src/shared/pitch.js";
+import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { waitUntil } from "#src/shared/v8-sleep.js";
 import {
@@ -12,9 +9,10 @@ import {
 } from "#src/tools/shared/locator/locator-helpers.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
+  applyScale,
+  applyTempo,
   cleanupTempClip,
   extendSongIfNeeded,
-  parseScale,
 } from "./helpers/update-live-set-helpers.js";
 
 /**
@@ -53,13 +51,7 @@ export async function updateLiveSet(
   };
 
   if (tempo != null) {
-    if (tempo < 20 || tempo > 999) {
-      throw new Error("Tempo must be between 20.0 and 999.0 BPM");
-    }
-
-    liveSet.set("tempo", tempo);
-
-    result.tempo = tempo;
+    applyTempo(liveSet, tempo, result);
   }
 
   if (timeSignature != null) {
@@ -67,31 +59,11 @@ export async function updateLiveSet(
 
     liveSet.set("signature_numerator", parsed.numerator);
     liveSet.set("signature_denominator", parsed.denominator);
-
     result.timeSignature = `${parsed.numerator}/${parsed.denominator}`;
   }
 
   if (scale != null) {
-    if (scale === "") {
-      // Empty string disables the scale
-      liveSet.set("scale_mode", 0);
-
-      result.scale = "";
-    } else {
-      // Non-empty string sets the scale and enables it
-      const { scaleRoot, scaleName } = parseScale(scale);
-      const scaleRootNumber = pitchClassToNumber(scaleRoot);
-
-      if (scaleRootNumber == null) {
-        throw new Error(`Invalid scale root: ${scaleRoot}`);
-      }
-
-      liveSet.set("root_note", scaleRootNumber);
-      liveSet.set("scale_name", scaleName);
-      liveSet.set("scale_mode", 1);
-
-      result.scale = `${scaleRoot} ${scaleName}`;
-    }
+    applyScale(liveSet, scale, result);
 
     if (!result.$meta) {
       result.$meta = [];
@@ -241,7 +213,12 @@ async function createLocator(
   context,
 ) {
   if (locatorTime == null) {
-    throw new Error("locatorTime is required for create operation");
+    console.error("Warning: locatorTime is required for create operation");
+
+    return {
+      operation: "skipped",
+      reason: "missing_locatorTime",
+    };
   }
 
   const targetBeats = barBeatToAbletonBeats(
@@ -313,7 +290,14 @@ async function deleteLocator(
 ) {
   // Validate that at least one identifier is provided
   if (locatorId == null && locatorTime == null && locatorName == null) {
-    throw new Error("delete requires locatorId, locatorTime, or locatorName");
+    console.error(
+      "Warning: delete requires locatorId, locatorTime, or locatorName",
+    );
+
+    return {
+      operation: "skipped",
+      reason: "missing_identifier",
+    };
   }
 
   // Delete by name (can match multiple locators)
@@ -417,11 +401,21 @@ function renameLocator(
   { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
 ) {
   if (locatorName == null) {
-    throw new Error("locatorName is required for rename operation");
+    console.error("Warning: locatorName is required for rename operation");
+
+    return {
+      operation: "skipped",
+      reason: "missing_locatorName",
+    };
   }
 
   if (locatorId == null && locatorTime == null) {
-    throw new Error("rename requires locatorId or locatorTime");
+    console.error("Warning: rename requires locatorId or locatorTime");
+
+    return {
+      operation: "skipped",
+      reason: "missing_identifier",
+    };
   }
 
   let found;
@@ -430,7 +424,13 @@ function renameLocator(
     found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`Locator not found: ${locatorId}`);
+      console.error(`Warning: locator not found: ${locatorId}`);
+
+      return {
+        operation: "skipped",
+        reason: "locator_not_found",
+        id: locatorId,
+      };
     }
   } else {
     const timeInBeats = barBeatToAbletonBeats(
@@ -442,7 +442,13 @@ function renameLocator(
     found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      throw new Error(`No locator found at position: ${locatorTime}`);
+      console.error(`Warning: no locator found at position: ${locatorTime}`);
+
+      return {
+        operation: "skipped",
+        reason: "locator_not_found",
+        time: locatorTime,
+      };
     }
   }
 

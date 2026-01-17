@@ -1,4 +1,8 @@
-import { VALID_PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
+import {
+  VALID_PITCH_CLASS_NAMES,
+  pitchClassToNumber,
+} from "#src/shared/pitch.js";
+import * as console from "#src/shared/v8-max-console.js";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.js";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
@@ -152,4 +156,50 @@ export function parseScale(scaleString) {
     scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex],
     scaleName: VALID_SCALE_NAMES[scaleNameIndex],
   };
+}
+
+/**
+ * Apply tempo to live set, with validation
+ * @param {LiveAPI} liveSet - The live_set object
+ * @param {number} tempo - Tempo in BPM
+ * @param {object} result - Result object to update
+ */
+export function applyTempo(liveSet, tempo, result) {
+  if (tempo < 20 || tempo > 999) {
+    console.error("Warning: tempo must be between 20.0 and 999.0 BPM");
+
+    return;
+  }
+
+  liveSet.set("tempo", tempo);
+  result.tempo = tempo;
+}
+
+/**
+ * Apply scale to live set, with validation
+ * @param {LiveAPI} liveSet - The live_set object
+ * @param {string} scale - Scale string (e.g., "C Major") or empty string to disable
+ * @param {object} result - Result object to update
+ */
+export function applyScale(liveSet, scale, result) {
+  if (scale === "") {
+    liveSet.set("scale_mode", 0);
+    result.scale = "";
+
+    return;
+  }
+
+  const { scaleRoot, scaleName } = parseScale(scale);
+  const scaleRootNumber = pitchClassToNumber(scaleRoot);
+
+  if (scaleRootNumber == null) {
+    console.error(`Warning: invalid scale root: ${scaleRoot}`);
+
+    return;
+  }
+
+  liveSet.set("root_note", scaleRootNumber);
+  liveSet.set("scale_name", scaleName);
+  liveSet.set("scale_mode", 1);
+  result.scale = `${scaleRoot} ${scaleName}`;
 }

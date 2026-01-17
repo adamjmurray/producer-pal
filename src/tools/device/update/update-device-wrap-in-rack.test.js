@@ -412,13 +412,14 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should throw error when mixing MIDI and Audio effects", () => {
-    expect(() =>
-      updateDevice({
-        path: "t0/d0,t0/d2",
-        wrapInRack: true,
-      }),
-    ).toThrow("cannot mix MIDI and Audio effects");
+  it("should warn and return null when mixing MIDI and Audio effects", () => {
+    // Should not throw, just warn and return null
+    const result = updateDevice({
+      path: "t0/d0,t0/d2",
+      wrapInRack: true,
+    });
+
+    expect(result).toBeNull();
   });
 
   it("should place rack at toPath when provided", () => {
@@ -486,19 +487,20 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should throw error when no devices found", () => {
+  it("should warn and return null when no devices found", () => {
     // Mock non-existent device
     liveApiId.mockReturnValue("0");
 
-    expect(() =>
-      updateDevice({
-        ids: "nonexistent",
-        wrapInRack: true,
-      }),
-    ).toThrow("no devices found");
+    // Should not throw, just warn and return null
+    const result = updateDevice({
+      ids: "nonexistent",
+      wrapInRack: true,
+    });
+
+    expect(result).toBeNull();
   });
 
-  it("should throw error when toPath container does not exist", () => {
+  it("should warn and return null when toPath container does not exist", () => {
     // Mock device exists but target container doesn't
     liveApiType.mockImplementation(function () {
       if (this._path === "live_set tracks 0 devices 0")
@@ -521,16 +523,17 @@ describe("updateDevice - wrapInRack", () => {
       return "0";
     });
 
-    expect(() =>
-      updateDevice({
-        path: "t0/d0",
-        wrapInRack: true,
-        toPath: "t99",
-      }),
-    ).toThrow("target container does not exist");
+    // Should not throw, just warn and return null
+    const result = updateDevice({
+      path: "t0/d0",
+      wrapInRack: true,
+      toPath: "t99",
+    });
+
+    expect(result).toBeNull();
   });
 
-  it("should throw error when device type is unrecognized", () => {
+  it("should warn and return null when device type is unrecognized", () => {
     // Mock device with unknown type (not instrument=1, audio=2, or midi=4)
     liveApiType.mockImplementation(function () {
       if (
@@ -568,15 +571,16 @@ describe("updateDevice - wrapInRack", () => {
       return [0];
     });
 
-    expect(() =>
-      updateDevice({
-        path: "t0/d0",
-        wrapInRack: true,
-      }),
-    ).toThrow("no valid effect devices found");
+    // Should not throw, just warn and return null
+    const result = updateDevice({
+      path: "t0/d0",
+      wrapInRack: true,
+    });
+
+    expect(result).toBeNull();
   });
 
-  it("should throw error when insert_chain fails", () => {
+  it("should warn but continue when insert_chain fails", () => {
     // Mock rack with no pre-existing chains
     liveApiGet.mockImplementation(function (prop) {
       if (
@@ -609,11 +613,16 @@ describe("updateDevice - wrapInRack", () => {
       return null;
     });
 
-    expect(() =>
-      updateDevice({
-        path: "t0/d0",
-        wrapInRack: true,
-      }),
-    ).toThrow("wrapInRack: failed to create chain 1/1");
+    // Should not throw, operation continues (rack created but chain failed)
+    const result = updateDevice({
+      path: "t0/d0",
+      wrapInRack: true,
+    });
+
+    // Result contains rack info even if chain creation failed
+    expect(result).toMatchObject({
+      id: "new-rack",
+      type: "audio-effect-rack",
+    });
   });
 });

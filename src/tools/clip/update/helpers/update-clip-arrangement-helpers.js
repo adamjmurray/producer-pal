@@ -27,9 +27,11 @@ export function handleArrangementStartOperation({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
+    console.error(
+      `Warning: could not determine trackIndex for clip ${clip.id}`,
     );
+
+    return clip.id;
   }
 
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);

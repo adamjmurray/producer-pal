@@ -300,15 +300,14 @@ describe("updateTrack", () => {
       );
     });
 
-    it("should throw error for invalid monitoring state", () => {
-      expect(() =>
-        updateTrack({
-          ids: "123",
-          monitoringState: "invalid",
-        }),
-      ).toThrow(
-        'updateTrack failed: invalid monitoring state "invalid". Must be one of: in, auto, off',
-      );
+    it("should warn and skip for invalid monitoring state", () => {
+      // Should not throw, just warn and skip the monitoring state update
+      const result = updateTrack({
+        ids: "123",
+        monitoringState: "invalid",
+      });
+
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should handle mixed routing and basic properties", () => {

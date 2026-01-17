@@ -141,35 +141,38 @@ describe("updateTrack - send properties", () => {
     );
   });
 
-  it("should throw error when only sendGainDb is provided", () => {
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendGainDb: -12,
-      }),
-    ).toThrow("sendGainDb and sendReturn must both be specified");
+  it("should warn and skip when only sendGainDb is provided", () => {
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when only sendReturn is provided", () => {
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendReturn: "A",
-      }),
-    ).toThrow("sendGainDb and sendReturn must both be specified");
+  it("should warn and skip when only sendReturn is provided", () => {
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendReturn: "A",
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when return track not found", () => {
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendGainDb: -12,
-        sendReturn: "C",
-      }),
-    ).toThrow('no return track found matching "C"');
+  it("should warn and skip when return track not found", () => {
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+      sendReturn: "C",
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when track has no sends", () => {
+  it("should warn and skip when track has no sends", () => {
     mockLiveApiGet({
       mixer_1: {
         sends: [], // No sends
@@ -182,13 +185,14 @@ describe("updateTrack - send properties", () => {
       },
     });
 
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendGainDb: -12,
-        sendReturn: "A",
-      }),
-    ).toThrow("track 123 has no sends");
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+      sendReturn: "A",
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set sends on multiple tracks", () => {
@@ -240,7 +244,7 @@ describe("updateTrack - send properties", () => {
     expect(liveApiSet).not.toHaveBeenCalledWith("display_value", -12);
   });
 
-  it("should throw error when mixer device does not exist", () => {
+  it("should warn and skip when mixer device does not exist", () => {
     // Override liveApiId to return "0" for mixer path
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set tracks 0 mixer_device") {
@@ -259,16 +263,17 @@ describe("updateTrack - send properties", () => {
       }
     });
 
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendGainDb: -12,
-        sendReturn: "A",
-      }),
-    ).toThrow("track 123 has no mixer device");
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+      sendReturn: "A",
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when send index exceeds available sends", () => {
+  it("should warn and skip when send index exceeds available sends", () => {
     // Setup: 3 return tracks but only 2 sends
     mockLiveApiGet({
       mixer_1: {
@@ -311,12 +316,13 @@ describe("updateTrack - send properties", () => {
       }
     });
 
-    expect(() =>
-      updateTrack({
-        ids: "123",
-        sendGainDb: -12,
-        sendReturn: "C", // Matches return track at index 2
-      }),
-    ).toThrow("send 2 doesn't exist on track 123");
+    // Should not throw, just warn and skip the send update
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+      sendReturn: "C", // Matches return track at index 2
+    });
+
+    expect(result).toStrictEqual({ id: "123" });
   });
 });

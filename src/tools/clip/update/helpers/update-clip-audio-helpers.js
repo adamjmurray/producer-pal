@@ -268,14 +268,18 @@ export function handleWarpMarkerOperation(
   const hasAudioFile = clip.getProperty("file_path") != null;
 
   if (!hasAudioFile) {
-    throw new Error(
-      `Warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+    console.error(
+      `Warning: warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
     );
+
+    return;
   }
 
   // Validate required parameters per operation
   if (warpBeatTime == null) {
-    throw new Error(`warpBeatTime required for ${warpOp} operation`);
+    console.error(`Warning: warpBeatTime required for ${warpOp} operation`);
+
+    return;
   }
 
   switch (warpOp) {
@@ -292,7 +296,9 @@ export function handleWarpMarkerOperation(
 
     case "move": {
       if (warpDistance == null) {
-        throw new Error("warpDistance required for move operation");
+        console.error("Warning: warpDistance required for move operation");
+
+        return;
       }
 
       clip.call("move_warp_marker", warpBeatTime, warpDistance);

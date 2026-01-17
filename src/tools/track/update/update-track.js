@@ -72,9 +72,11 @@ function applyMonitoringState(track, monitoringState) {
   }[monitoringState];
 
   if (monitoringValue === undefined) {
-    throw new Error(
-      `updateTrack failed: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+    console.error(
+      `Warning: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
     );
+
+    return;
   }
 
   track.set("current_monitoring_state", monitoringValue);
@@ -89,9 +91,9 @@ function applyMonitoringState(track, monitoringState) {
 function applySendProperties(track, sendGainDb, sendReturn) {
   // Validate both params provided together
   if ((sendGainDb != null) !== (sendReturn != null)) {
-    throw new Error(
-      "updateTrack failed: sendGainDb and sendReturn must both be specified",
-    );
+    console.error("Warning: sendGainDb and sendReturn must both be specified");
+
+    return;
   }
 
   if (sendGainDb == null) {
@@ -102,15 +104,17 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
-    throw new Error(
-      `updateTrack failed: track ${track.id} has no mixer device`,
-    );
+    console.error(`Warning: track ${track.id} has no mixer device`);
+
+    return;
   }
 
   const sends = mixer.getChildren("sends");
 
   if (sends.length === 0) {
-    throw new Error(`updateTrack failed: track ${track.id} has no sends`);
+    console.error(`Warning: track ${track.id} has no sends`);
+
+    return;
   }
 
   // Find matching send by return track name
@@ -132,15 +136,17 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   }
 
   if (sendIndex === -1) {
-    throw new Error(
-      `updateTrack failed: no return track found matching "${sendReturn}"`,
-    );
+    console.error(`Warning: no return track found matching "${sendReturn}"`);
+
+    return;
   }
 
   if (sendIndex >= sends.length) {
-    throw new Error(
-      `updateTrack failed: send ${sendIndex} doesn't exist on track ${track.id}`,
+    console.error(
+      `Warning: send ${sendIndex} doesn't exist on track ${track.id}`,
     );
+
+    return;
   }
 
   // Set the send gain

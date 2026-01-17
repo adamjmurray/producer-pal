@@ -287,7 +287,9 @@ function updateTarget(target, options) {
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    throw new Error(`updateDevice: cannot update ${type} objects`);
+    console.error(`Warning: cannot update ${type} objects`);
+
+    return null;
   }
 
   // Handle move operation first (before other updates)
@@ -297,7 +299,7 @@ function updateTarget(target, options) {
     } else if (type === "DrumChain") {
       moveDrumChainToPath(target, options.toPath, options.isDrumPadPath);
     } else {
-      throw new Error(`updateDevice: cannot move ${type}`);
+      console.error(`Warning: cannot move ${type}`);
     }
   }
 

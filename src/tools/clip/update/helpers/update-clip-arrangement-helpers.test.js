@@ -40,7 +40,7 @@ describe("update-clip-arrangement-helpers", () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it("should throw error when trackIndex is null for arrangement clips", () => {
+    it("should warn and return original clip id when trackIndex is null for arrangement clips", () => {
       liveApiPath.mockReturnValue("live_set"); // Path without tracks pattern
 
       const mockClip = {
@@ -57,15 +57,14 @@ describe("update-clip-arrangement-helpers", () => {
 
       const tracksWithMovedClips = new Map();
 
-      expect(() =>
-        handleArrangementStartOperation({
-          clip: mockClip,
-          arrangementStartBeats: 16,
-          tracksWithMovedClips,
-        }),
-      ).toThrow(
-        "updateClip failed: could not determine trackIndex for clip 456",
-      );
+      // Should not throw, just warn and return original clip id
+      const result = handleArrangementStartOperation({
+        clip: mockClip,
+        arrangementStartBeats: 16,
+        tracksWithMovedClips,
+      });
+
+      expect(result).toBe("456");
     });
 
     it("should duplicate clip to new position and delete original", () => {

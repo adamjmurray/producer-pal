@@ -669,35 +669,38 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123" });
     });
 
-    it("should throw error when trying to move a Chain", () => {
+    it("should warn and skip when trying to move a Chain", () => {
       liveApiType.mockReturnValue("Chain");
 
-      expect(() =>
-        updateDevice({
-          ids: "123",
-          toPath: "t1",
-        }),
-      ).toThrow("cannot move Chain");
+      // Should not throw, just warn and continue with other updates
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+      });
+
+      expect(result).toStrictEqual({ id: "123" });
     });
 
-    it("should throw error when trying to move a DrumPad", () => {
+    it("should warn and skip when trying to move a DrumPad", () => {
       liveApiType.mockReturnValue("DrumPad");
 
-      expect(() =>
-        updateDevice({
-          ids: "123",
-          toPath: "t1",
-        }),
-      ).toThrow("cannot move DrumPad");
+      // Should not throw, just warn and continue with other updates
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t1",
+      });
+
+      expect(result).toStrictEqual({ id: "123" });
     });
 
-    it("should throw error when target path does not exist", () => {
-      expect(() =>
-        updateDevice({
-          ids: "123",
-          toPath: "t99",
-        }),
-      ).toThrow('move target at path "t99" does not exist');
+    it("should warn and skip when target path does not exist", () => {
+      // Should not throw, just warn and continue with other updates
+      const result = updateDevice({
+        ids: "123",
+        toPath: "t99",
+      });
+
+      expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should allow combining move with other updates", () => {

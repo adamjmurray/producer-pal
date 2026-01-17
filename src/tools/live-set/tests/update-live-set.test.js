@@ -55,13 +55,14 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should throw error for invalid tempo", async () => {
-    await expect(updateLiveSet({ tempo: 10 })).rejects.toThrow(
-      "Tempo must be between",
-    );
-    await expect(updateLiveSet({ tempo: 1000 })).rejects.toThrow(
-      "Tempo must be between",
-    );
+  it("should warn and skip for invalid tempo", async () => {
+    // Should not throw, just warn and skip the tempo update
+    const result1 = await updateLiveSet({ tempo: 10 });
+    const result2 = await updateLiveSet({ tempo: 1000 });
+
+    // Tempo should not be in the result when skipped
+    expect(result1).toStrictEqual({ id: "live_set_id" });
+    expect(result2).toStrictEqual({ id: "live_set_id" });
   });
 
   it("should update time signature", async () => {

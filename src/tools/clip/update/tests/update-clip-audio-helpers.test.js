@@ -155,20 +155,22 @@ describe("handleWarpMarkerOperation", () => {
     liveApiCall.mockReturnValue(true);
   });
 
-  it("should throw error when clip is not an audio clip", () => {
+  it("should warn and skip when clip is not an audio clip", () => {
     mockClip.getProperty.mockReturnValue(null);
 
-    expect(() =>
-      handleWarpMarkerOperation(mockClip, "add", 1.0, 44100),
-    ).toThrow("Warp markers only available on audio clips");
+    // Should not throw, just warn and return early
+    handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
+
+    expect(liveApiCall).not.toHaveBeenCalled();
   });
 
-  it("should throw error when warpBeatTime is not provided", () => {
+  it("should warn and skip when warpBeatTime is not provided", () => {
     mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
 
-    expect(() =>
-      handleWarpMarkerOperation(mockClip, "add", null, 44100),
-    ).toThrow("warpBeatTime required for add operation");
+    // Should not throw, just warn and return early
+    handleWarpMarkerOperation(mockClip, "add", null, 44100);
+
+    expect(liveApiCall).not.toHaveBeenCalled();
   });
 
   describe("add operation", () => {
@@ -199,10 +201,11 @@ describe("handleWarpMarkerOperation", () => {
       mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
     });
 
-    it("should throw error when warpDistance is not provided", () => {
-      expect(() =>
-        handleWarpMarkerOperation(mockClip, "move", 4.0, null, null),
-      ).toThrow("warpDistance required for move operation");
+    it("should warn and skip when warpDistance is not provided", () => {
+      // Should not throw, just warn and return early
+      handleWarpMarkerOperation(mockClip, "move", 4.0, null, null);
+
+      expect(liveApiCall).not.toHaveBeenCalled();
     });
 
     it("should move warp marker by specified distance", () => {
