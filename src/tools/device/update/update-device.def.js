@@ -81,4 +81,19 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .optional()
       .describe("Wrap device(s) in a new rack (auto-detects type from device)"),
   },
+  smallModelModeConfig: {
+    excludeParams: [
+      "macroVariation",
+      "macroVariationIndex",
+      "macroCount",
+      "abCompare",
+      "chokeGroup",
+      "mappedPitch",
+      "wrapInRack",
+    ],
+    descriptionOverrides: {
+      path: "device path like 't0/d0' (track 0, device 0)",
+      toPath: "destination path to move device to",
+    },
+  },
 });

@@ -70,7 +70,7 @@ export function createMcpServer(callLiveApi, options = {}) {
   addTool(toolDefMemory);
   addTool(toolDefReadSamples);
 
-  if (process.env.ENABLE_RAW_LIVE_API === "true") {
+  if (process.env.ENABLE_RAW_LIVE_API === "true" && !smallModelMode) {
     addTool(toolDefRawLiveApi);
   }
 

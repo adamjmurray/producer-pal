@@ -78,4 +78,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "device destination: t=track, rt=return, mt=master, d=device index, c=chain (e.g., 't1/d0')",
       ),
   },
+  smallModelModeConfig: {
+    excludeParams: [
+      "arrangementLocatorId",
+      "arrangementLocatorName",
+      "withoutClips",
+      "withoutDevices",
+      "routeToSource",
+    ],
+  },
 });

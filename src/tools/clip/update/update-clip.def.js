@@ -141,6 +141,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe("beats to shift (+forward, -backward) for move operation"),
   },
   smallModelModeConfig: {
+    toolDescription: "Update clip(s) and MIDI notes",
     excludeParams: [
       "warpOp",
       "warpBeatTime",
@@ -148,6 +149,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "warpDistance",
       "quantizeSwing",
       "quantizePitch",
+      "firstStart",
     ],
+    descriptionOverrides: {
+      arrangementLength:
+        "bar:beat duration in timeline (arrangement clips only)",
+    },
   },
 });
