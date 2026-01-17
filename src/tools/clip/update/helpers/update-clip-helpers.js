@@ -6,8 +6,11 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
+import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
 import {
   setAudioParameters,
@@ -276,9 +279,6 @@ export function handleNoteUpdates(
  * @param {object} params.context - Context object
  * @param {Array} params.updatedClips - Array to collect updated clips
  * @param {Map} params.tracksWithMovedClips - Map of tracks with moved clips
- * @param {Function} params.parseTimeSignature - Function to parse time signature
- * @param {Function} params.handleArrangementLengthOperation - Function to handle arrangement length
- * @param {Function} params.buildClipResultObject - Function to build result object
  */
 export function processSingleClipUpdate(params) {
   const {
@@ -310,9 +310,6 @@ export function processSingleClipUpdate(params) {
     context,
     updatedClips,
     tracksWithMovedClips,
-    parseTimeSignature,
-    handleArrangementLengthOperation,
-    buildClipResultObject,
   } = params;
 
   // Parse time signature if provided
@@ -421,8 +418,6 @@ export function processSingleClipUpdate(params) {
     context,
     updatedClips,
     finalNoteCount,
-    handleArrangementLengthOperation,
-    buildClipResultObject,
   });
 }
 
@@ -437,8 +432,6 @@ export function processSingleClipUpdate(params) {
  * @param {object} args.context - Tool execution context
  * @param {Array} args.updatedClips - Array to collect updated clips
  * @param {number} args.finalNoteCount - Final note count for result
- * @param {Function} args.handleArrangementLengthOperation - Length handler
- * @param {Function} args.buildClipResultObject - Result builder
  */
 function handleArrangementOperations({
   clip,
@@ -449,8 +442,6 @@ function handleArrangementOperations({
   context,
   updatedClips,
   finalNoteCount,
-  handleArrangementLengthOperation,
-  buildClipResultObject,
 }) {
   // Move FIRST so lengthening uses the new position
   let finalClipId = clip.id;
