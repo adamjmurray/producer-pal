@@ -3,6 +3,7 @@ import {
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
 /**
@@ -90,4 +91,49 @@ export function emitArrangementWarnings(
       );
     }
   }
+}
+
+/**
+ * Prepare a session clip slot, auto-creating scenes if needed
+ * @param {number} trackIndex - Track index (0-based)
+ * @param {number} sceneIndex - Target scene index (0-based)
+ * @param {LiveAPI} liveSet - LiveAPI liveSet object
+ * @param {number} maxAutoCreatedScenes - Maximum number of scenes allowed
+ * @returns {LiveAPI} The clip slot ready for clip creation
+ */
+export function prepareSessionClipSlot(
+  trackIndex,
+  sceneIndex,
+  liveSet,
+  maxAutoCreatedScenes,
+) {
+  if (sceneIndex >= maxAutoCreatedScenes) {
+    throw new Error(
+      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
+        MAX_AUTO_CREATED_SCENES - 1
+      }`,
+    );
+  }
+
+  const currentSceneCount = liveSet.getChildIds("scenes").length;
+
+  if (sceneIndex >= currentSceneCount) {
+    const scenesToCreate = sceneIndex - currentSceneCount + 1;
+
+    for (let j = 0; j < scenesToCreate; j++) {
+      liveSet.call("create_scene", -1);
+    }
+  }
+
+  const clipSlot = LiveAPI.from(
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+  );
+
+  if (clipSlot.getProperty("has_clip")) {
+    throw new Error(
+      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
+    );
+  }
+
+  return clipSlot;
 }

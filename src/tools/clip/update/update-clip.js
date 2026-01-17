@@ -1,12 +1,9 @@
-import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
 import {
   validateAndParseArrangementParams,
-  buildClipResultObject,
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import {
   parseCommaSeparatedIds,
-  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
@@ -124,9 +121,6 @@ export function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
-      parseTimeSignature,
-      handleArrangementLengthOperation,
-      buildClipResultObject,
     });
   }
 

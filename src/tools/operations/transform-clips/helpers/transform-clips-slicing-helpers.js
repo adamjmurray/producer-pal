@@ -9,6 +9,40 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 /**
+ * Iterate through slice positions and call handler for each
+ * @param {LiveAPI} sourceClip - The source clip to slice
+ * @param {number} sliceBeats - Slice duration in beats
+ * @param {number} currentStartTime - Start time of the original clip
+ * @param {number} currentEndTime - End time of the original clip
+ * @param {Function} sliceHandler - Handler called for each slice position
+ */
+function iterateSlicePositions(
+  sourceClip,
+  sliceBeats,
+  currentStartTime,
+  currentEndTime,
+  sliceHandler,
+) {
+  const clipStartMarker = sourceClip.getProperty("start_marker");
+  let currentSlicePosition = currentStartTime + sliceBeats;
+  let currentContentOffset = sliceBeats;
+
+  while (currentSlicePosition < currentEndTime - 0.001) {
+    const sliceLengthNeeded = Math.min(
+      sliceBeats,
+      currentEndTime - currentSlicePosition,
+    );
+    const sliceContentStart = clipStartMarker + currentContentOffset;
+    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
+
+    sliceHandler(sliceContentStart, sliceContentEnd, currentSlicePosition);
+
+    currentSlicePosition += sliceBeats;
+    currentContentOffset += sliceBeats;
+  }
+}
+
+/**
  * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
  * Any slices beyond actual note content will simply be empty.
  * @param {LiveAPI} sourceClip - The source clip to duplicate from
@@ -24,36 +58,26 @@ function sliceUnloopedMidiContent(
   currentStartTime,
   currentEndTime,
 ) {
-  const clipStartMarker = sourceClip.getProperty("start_marker");
+  iterateSlicePositions(
+    sourceClip,
+    sliceBeats,
+    currentStartTime,
+    currentEndTime,
+    (sliceContentStart, sliceContentEnd, slicePosition) => {
+      const duplicateResult = track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sourceClip.id}`,
+        slicePosition,
+      );
+      const sliceClip = LiveAPI.from(duplicateResult);
 
-  let currentSlicePosition = currentStartTime + sliceBeats;
-  let currentContentOffset = sliceBeats;
-
-  while (currentSlicePosition < currentEndTime - 0.001) {
-    const sliceLengthNeeded = Math.min(
-      sliceBeats,
-      currentEndTime - currentSlicePosition,
-    );
-    const sliceContentStart = clipStartMarker + currentContentOffset;
-    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
-
-    // Duplicate the clip and set markers using looping workaround
-    const duplicateResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
-      currentSlicePosition,
-    );
-    const sliceClip = LiveAPI.from(duplicateResult);
-
-    sliceClip.set("looping", 1);
-    sliceClip.set("end_marker", sliceContentEnd);
-    sliceClip.set("start_marker", sliceContentStart);
-    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-    sliceClip.set("looping", 0);
-
-    currentSlicePosition += sliceBeats;
-    currentContentOffset += sliceBeats;
-  }
+      sliceClip.set("looping", 1);
+      sliceClip.set("end_marker", sliceContentEnd);
+      sliceClip.set("start_marker", sliceContentStart);
+      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround
+      sliceClip.set("looping", 0);
+    },
+  );
 }
 
 /**
@@ -73,31 +97,22 @@ function sliceUnloopedAudioContent(
   currentEndTime,
   _context,
 ) {
-  const clipStartMarker = sourceClip.getProperty("start_marker");
-
-  let currentSlicePosition = currentStartTime + sliceBeats;
-  let currentContentOffset = sliceBeats;
-
-  while (currentSlicePosition < currentEndTime - 0.001) {
-    const sliceLengthNeeded = Math.min(
-      sliceBeats,
-      currentEndTime - currentSlicePosition,
-    );
-    const sliceContentStart = clipStartMarker + currentContentOffset;
-    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
-
-    revealAudioContentAtPosition(
-      sourceClip,
-      track,
-      sliceContentStart,
-      sliceContentEnd,
-      currentSlicePosition,
-      _context,
-    );
-
-    currentSlicePosition += sliceBeats;
-    currentContentOffset += sliceBeats;
-  }
+  iterateSlicePositions(
+    sourceClip,
+    sliceBeats,
+    currentStartTime,
+    currentEndTime,
+    (sliceContentStart, sliceContentEnd, slicePosition) => {
+      revealAudioContentAtPosition(
+        sourceClip,
+        track,
+        sliceContentStart,
+        sliceContentEnd,
+        slicePosition,
+        _context,
+      );
+    },
+  );
 }
 
 /**

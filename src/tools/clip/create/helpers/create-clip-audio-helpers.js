@@ -1,7 +1,5 @@
-import {
-  MAX_ARRANGEMENT_POSITION_BEATS,
-  MAX_AUTO_CREATED_SCENES,
-} from "#src/tools/constants.js";
+import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 
 /**
  * Creates an audio clip in a session clip slot
@@ -19,36 +17,13 @@ export function createAudioSessionClip(
   liveSet,
   maxAutoCreatedScenes,
 ) {
-  // Auto-create scenes if needed (same logic as MIDI)
-  if (sceneIndex >= maxAutoCreatedScenes) {
-    throw new Error(
-      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
-        MAX_AUTO_CREATED_SCENES - 1
-      }`,
-    );
-  }
-
-  const currentSceneCount = liveSet.getChildIds("scenes").length;
-
-  if (sceneIndex >= currentSceneCount) {
-    const scenesToCreate = sceneIndex - currentSceneCount + 1;
-
-    for (let j = 0; j < scenesToCreate; j++) {
-      liveSet.call("create_scene", -1); // -1 means append at the end
-    }
-  }
-
-  const clipSlot = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+  const clipSlot = prepareSessionClipSlot(
+    trackIndex,
+    sceneIndex,
+    liveSet,
+    maxAutoCreatedScenes,
   );
 
-  if (clipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
-    );
-  }
-
-  // Create audio clip with file path
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
