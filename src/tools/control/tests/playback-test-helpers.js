@@ -1,4 +1,4 @@
-import { children, liveApiGet } from "#src/test/mocks/mock-live-api.js";
+import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
 
 /**
  * Setup mocks for playback tests with cue points
@@ -16,37 +16,15 @@ export function setupCuePointMocks({ cuePoints, liveSet = {} }) {
     tracks = [],
   } = liveSet;
 
-  const cueIds = cuePoints.map((c) => c.id);
-
-  // Build property maps for faster lookup
-  const cueTimeMap = Object.fromEntries(cuePoints.map((c) => [c.id, c.time]));
-  const cueNameMap = Object.fromEntries(cuePoints.map((c) => [c.id, c.name]));
-
-  // Pre-build live_set property map
-  const liveSetProps = {
-    signature_numerator: [numerator],
-    signature_denominator: [denominator],
-    loop: [loop],
-    loop_start: [loopStart],
-    loop_length: [loopLength],
-    cue_points: children(...cueIds),
-    tracks,
-  };
-
-  liveApiGet.mockImplementation(function (prop) {
-    if (this._path === "live_set" && prop in liveSetProps) {
-      return liveSetProps[prop];
-    }
-
-    const idMatch = this._path?.match(/^id (\w+)$/);
-
-    if (idMatch) {
-      const cueId = idMatch[1];
-
-      if (prop === "time" && cueId in cueTimeMap) return [cueTimeMap[cueId]];
-      if (prop === "name" && cueId in cueNameMap) return [cueNameMap[cueId]];
-    }
-
-    return [0];
+  setupCuePointMocksBase({
+    cuePoints,
+    liveSetProps: {
+      signature_numerator: numerator,
+      signature_denominator: denominator,
+      loop,
+      loop_start: loopStart,
+      loop_length: loopLength,
+      tracks,
+    },
   });
 }
