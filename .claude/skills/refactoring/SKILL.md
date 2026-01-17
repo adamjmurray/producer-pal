@@ -75,9 +75,9 @@ function processClip(clipId) {
 
 ### File Size & Organization
 
-**Max lines per file:**
-- Source files: 600 lines
-- Test files: 800 lines
+**Max lines per file (ignoring blanks/comments):**
+- Source files: 325 lines
+- Test files (`*.test.*`, `*-test-case.ts`): 650 lines
 
 **When to split:**
 - Multiple unrelated responsibilities

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "#webui/types/messages";
-import { expectValidTimestamps, stripTimestamps } from "./message-test-utils";
+import { expectValidTimestamps, stripTimestamps } from "./message-test-helpers";
 
 describe("stripTimestamps", () => {
   it("removes timestamp from a single message", () => {

@@ -7,8 +7,12 @@
     "**/*.test.js",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "**/*-test-helpers.js",
+    "**/*-test-helpers.ts",
+    "**/*-test-case.ts",
     "**/test-cases/**",
-    "**/test-utils/**"
+    "**/test-utils/**",
+    "**/tests/**"
   ],
   "path": ["../src", "../webui/src"]
 }

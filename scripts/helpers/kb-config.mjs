@@ -22,7 +22,12 @@ function createItemsArray() {
       src: "src",
       isDir: true,
       group: ({ relativePath }) => {
-        if (relativePath.match(/\.test\.\w+$/)) {
+        const isTestFile =
+          relativePath.match(/\.test\.\w+$/) ||
+          relativePath.match(/-test-helpers\.\w+$/) ||
+          relativePath.includes("/tests/");
+
+        if (isTestFile) {
           if (relativePath.startsWith("src/tools/")) {
             return "src--tools--tests";
           }
@@ -50,13 +55,14 @@ function createItemsArray() {
       isDir: true,
       exclude: ["node_modules", "dist"],
       group: ({ relativePath }) => {
-        // Test case files (data fixtures for tests)
-        if (relativePath.includes("/test-cases/")) {
-          return "webui--test.ts";
-        }
+        const isTestFile =
+          relativePath.match(/\.test\.\w+$/) ||
+          relativePath.match(/-test-helpers\.\w+$/) ||
+          relativePath.match(/-test-case\.ts$/) ||
+          relativePath.includes("/test-cases/") ||
+          relativePath.includes("/test-utils/");
 
-        // Test files
-        if (relativePath.match(/\.test\.\w+$/)) {
+        if (isTestFile) {
           return "webui--test.ts";
         }
 

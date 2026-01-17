@@ -695,10 +695,8 @@ export default [
     ],
     ignores: [
       "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
@@ -715,10 +713,9 @@ export default [
   {
     files: [
       "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures (these could be given a separate longer max file length, if needed, or ignore on a per-file basis)
+      "**/*-test-case.ts", // Test data fixtures
     ],
     rules: {
       "max-lines": [

@@ -114,13 +114,14 @@ See `dev-docs/Architecture.md` for detailed system design and
   in the same directory).
 
 - **File organization and size limits**:
-  - Max 600 lines per file for source files (enforced by ESLint)
-  - Max 800 lines per file for test files (enforced by ESLint)
+  - Max 325 lines per file for source files (ESLint, ignoring blanks/comments)
+  - Max 650 lines for `*.test.*` and `*-test-case.ts` (ESLint, ignoring
+    blanks/comments)
   - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
     in the same directory (e.g., `update-clip-helpers.js`)
   - Helper files group related utility functions by feature/domain (e.g., audio
     operations, content analysis, clip duplication)
-  - If a helper file exceeds 600 lines, split by feature group:
+  - If a helper file exceeds 325 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
   - When a directory accumulates multiple helper files (2+), move them to a
@@ -132,6 +133,25 @@ See `dev-docs/Architecture.md` for detailed system design and
   - **Test file location**: Use colocated tests (same directory as source) for
     1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
     a feature to keep the main directory focused on source code
+
+## Test File Classification
+
+A file is classified as a **test file** if it matches any of these patterns:
+
+- `*.test.{js,ts,tsx}` - Unit/integration tests
+- `*-test-helpers.{js,ts}` - Shared test utilities
+- `*-test-case.ts` - Test data fixtures (webui)
+- Files in `tests/` directories
+- Files in `test-cases/` directories
+- Files in `test-utils/` directories
+
+**Implications of test file classification:**
+
+- **Knowledge base**: Excluded from `kb:small` (smaller context for LLMs)
+- **Duplication limits**: Higher threshold (5.9%) vs source code (0.4%)
+- **Line limits**: Only `*.test.*` and `*-test-case.ts` files get 650 lines max
+  (ignoring blanks/comments); test helpers use the standard 325 line limit
+- **Coverage**: Test helpers excluded from coverage requirements
 
 ## TypeScript (WebUI Only)
 
@@ -208,9 +228,9 @@ Key ESLint limits to respect:
     excluded from this rule via
     `eslint-disable-next-line max-lines-per-function` comments (do not disable
     for the whole file)
-- `max-lines` per file:
-  - 325 for non-test files (ignoring blank/comment lines)
-  - 750 for test files (total lines including blank/comment)
+- `max-lines` per file (ignoring blank/comment lines):
+  - 325 for source files
+  - 650 for `*.test.*` and `*-test-case.ts` files
 - `max-depth`: 4
 - `complexity`: 20
 
