@@ -3,11 +3,12 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   children,
   liveApiCall,
-  liveApiGet,
-  liveApiPath,
+  createStandardMidiClipMock,
   mockLiveApiGet,
   setupArrangementClipMocks,
+  setupArrangementDuplicationMock,
   setupScenePath,
+  setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Shared mocks - see duplicate-test-helpers.js for implementations
@@ -108,33 +109,12 @@ describe("duplicate - locator-based arrangement positioning", () => {
           cue_points: children("cue0", "cue1"),
         },
         "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
-          name: "Scene Clip",
-          color: 4047616,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          looping: 0,
-          loop_start: 0,
-          loop_end: 8,
-          is_midi_clip: 1,
-        },
+        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock(),
         cue0: { time: 0, name: "Intro" },
         cue1: { time: 16, name: "Verse" },
       });
 
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        if (method === "get_notes_extended") {
-          return JSON.stringify({ notes: [] });
-        }
-
-        return null;
-      });
-
+      setupArrangementDuplicationMock();
       setupArrangementClipMocks();
 
       const result = duplicate({
@@ -165,34 +145,13 @@ describe("duplicate - locator-based arrangement positioning", () => {
           cue_points: children("cue0", "cue1", "cue2"),
         },
         "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
-          name: "Scene Clip",
-          color: 4047616,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          looping: 0,
-          loop_start: 0,
-          loop_end: 8,
-          is_midi_clip: 1,
-        },
+        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock(),
         cue0: { time: 0, name: "Intro" },
         cue1: { time: 16, name: "Verse" },
         cue2: { time: 32, name: "Chorus" },
       });
 
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        if (method === "get_notes_extended") {
-          return JSON.stringify({ notes: [] });
-        }
-
-        return null;
-      });
-
+      setupArrangementDuplicationMock();
       setupArrangementClipMocks({ getStartTime: () => 32 });
 
       const result = duplicate({
@@ -217,72 +176,23 @@ describe("duplicate - locator-based arrangement positioning", () => {
   describe("clip duplication with locator", () => {
     // Helper to set up mocks for locator-based clip duplication tests
     function setupLocatorDuplicationMocks() {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
-
-        return this._path;
-      });
+      setupSessionClipPath("clip1");
 
       mockLiveApiGet({
         LiveSet: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1"),
         },
-        "live_set tracks 0 clip_slots 0 clip": {
+        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock({
           length: 4,
           name: "Test Clip",
-          color: 4047616,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          looping: 0,
-          loop_start: 0,
-          loop_end: 4,
-          is_midi_clip: 1,
-        },
+        }),
         cue0: { time: 0, name: "Start" },
         cue1: { time: 8, name: "Drop" },
       });
 
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        if (method === "get_notes_extended") {
-          return JSON.stringify({ notes: [] });
-        }
-
-        return null;
-      });
-
-      const originalGet = liveApiGet.getMockImplementation();
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3);
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (this._path.includes("arrangement_clips") && prop === "start_time") {
-          return [8];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
-      });
+      setupArrangementDuplicationMock();
+      setupArrangementClipMocks({ getStartTime: () => 8 });
     }
 
     it("should duplicate a clip to arrangement at locator ID position", () => {

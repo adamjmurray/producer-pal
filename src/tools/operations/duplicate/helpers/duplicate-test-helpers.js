@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 // Import for use in helper functions below
 import {
+  liveApiCall,
   liveApiGet,
   liveApiPath,
   liveApiType,
@@ -188,6 +189,55 @@ export function setupSessionClipPath(
 
     return this._path;
   });
+}
+
+/**
+ * Setup liveApiCall mock for arrangement clip duplication.
+ * Handles duplicate_clip_to_arrangement and get_notes_extended methods.
+ * @param {object} [opts] - Options
+ * @param {string} [opts.returnClipId] - ID of the created arrangement clip
+ * @param {boolean} [opts.includeNotes] - Whether to mock get_notes_extended (default: true)
+ */
+export function setupArrangementDuplicationMock(opts = {}) {
+  const {
+    returnClipId = "live_set tracks 0 arrangement_clips 0",
+    includeNotes = true,
+  } = opts;
+
+  liveApiCall.mockImplementation(function (method) {
+    if (method === "duplicate_clip_to_arrangement") {
+      return ["id", returnClipId];
+    }
+
+    if (includeNotes && method === "get_notes_extended") {
+      return JSON.stringify({ notes: [] });
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Returns mock data for a standard MIDI clip used in scene duplication tests.
+ * @param {object} [opts] - Options
+ * @param {number} [opts.length] - Clip length in beats (default: 8)
+ * @param {string} [opts.name] - Clip name (default: "Scene Clip")
+ * @returns {object} Mock data object for the clip
+ */
+export function createStandardMidiClipMock(opts = {}) {
+  const { length = 8, name = "Scene Clip" } = opts;
+
+  return {
+    length,
+    name,
+    color: 4047616,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    looping: 0,
+    loop_start: 0,
+    loop_end: length,
+    is_midi_clip: 1,
+  };
 }
 
 /**
