@@ -4,7 +4,7 @@ import {
   liveApiGet,
   liveApiPath,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {
@@ -16,7 +16,7 @@ export {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 /**
  * Setup liveApiPath mock for track duplication tests.

@@ -3,7 +3,7 @@ import {
   children,
   liveApiCall,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 
 describe("readClip", () => {

@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { children, liveApiCall, liveApiGet } from "#src/test/mock-live-api.js";
+import {
+  children,
+  liveApiCall,
+  liveApiGet,
+} from "#src/test/mocks/mock-live-api.js";
 import {
   shuffleArray,
   calculateShufflePositions,

@@ -6,7 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
 // [transform-clips-modifications] Setup mocks for clip tests

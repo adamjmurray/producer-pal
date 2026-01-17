@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import {
   setupArrangementClipPath,

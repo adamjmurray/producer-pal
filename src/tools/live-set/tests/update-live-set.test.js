@@ -4,7 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
 
 const scaleChangeNote =

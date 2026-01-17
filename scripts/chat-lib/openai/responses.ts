@@ -147,7 +147,7 @@ async function handleNonStreaming(
 ): Promise<void> {
   const { client, conversation, model, options } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break, common pattern for tool call continuation
   while (true) {
     const response = (await client.responses.create(
       requestBody,
@@ -181,7 +181,7 @@ async function handleStreaming(
 ): Promise<void> {
   const { client, conversation, model, options, mcpClient } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break, common pattern for streaming tool call continuation
   while (true) {
     const stream = await client.responses.create({
       ...requestBody,

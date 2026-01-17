@@ -19,7 +19,7 @@ export default defineConfig({
       "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
-        "../src/test/mock-chat-ui-html.js",
+        "../src/test/mocks/mock-chat-ui-html.js",
       ),
     },
   },
@@ -78,7 +78,7 @@ export default defineConfig({
         "src/portal/file-logger.js",
 
         // ignore test mocks:
-        "src/test/mock-*.js",
+        "src/test/mocks/**",
       ],
       reportOnFailure: true,
 

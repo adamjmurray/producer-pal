@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
 import "#src/live-api-adapter/live-api-extensions.js";
-import { LiveAPI } from "#src/test/mock-live-api.js";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.js";
 import {
   DEVICE_CLASS,
   DEVICE_TYPE,

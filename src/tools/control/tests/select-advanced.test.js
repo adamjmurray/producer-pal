@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
 import { select } from "#src/tools/control/select.js";
 import { setupSelectMocks, expectViewState } from "./select-test-helpers.js";

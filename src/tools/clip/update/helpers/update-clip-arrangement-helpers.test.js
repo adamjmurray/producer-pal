@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiPath } from "#src/test/mock-live-api.js";
+import { liveApiCall, liveApiPath } from "#src/test/mocks/mock-live-api.js";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
 
 describe("update-clip-arrangement-helpers", () => {

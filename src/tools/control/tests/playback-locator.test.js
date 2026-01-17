@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet } from "#src/test/mock-live-api.js";
+import {
+  liveApiCall,
+  liveApiId,
+  liveApiSet,
+} from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.js";
 import { setupCuePointMocks } from "./playback-test-helpers.js";

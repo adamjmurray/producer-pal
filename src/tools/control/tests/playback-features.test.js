@@ -6,7 +6,7 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 
 describe("transport", () => {

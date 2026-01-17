@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockFolderStructure } from "#src/test/mock-folder.js";
+import { mockFolderStructure } from "#src/test/mocks/mock-folder.js";
 import { readSamples } from "./read-samples.js";
 
 describe("readSamples", () => {
