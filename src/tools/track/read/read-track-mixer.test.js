@@ -5,6 +5,10 @@ import {
   liveApiId,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
+import {
+  createMixerPathIdMap,
+  setupMixerIdMock,
+} from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack - mixer properties", () => {
@@ -27,20 +31,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes mixer properties when requested", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -69,20 +60,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes non-zero gain and panning values", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -107,20 +85,12 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes mixer properties for return tracks", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set return_tracks 0":
-          return "return1";
-        case "live_set return_tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set return_tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set return_tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(
+      createMixerPathIdMap({
+        trackPath: "live_set return_tracks 0",
+        trackId: "return1",
+      }),
+    );
     mockLiveApiGet({
       Track: {
         has_midi_input: 0,
@@ -152,20 +122,12 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes mixer properties for master track", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set master_track":
-          return "master";
-        case "live_set master_track mixer_device":
-          return "mixer_1";
-        case "live_set master_track mixer_device volume":
-          return "volume_param_1";
-        case "live_set master_track mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(
+      createMixerPathIdMap({
+        trackPath: "live_set master_track",
+        trackId: "master",
+      }),
+    );
     mockLiveApiGet({
       Track: {
         has_midi_input: 0,
@@ -190,15 +152,9 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("handles missing mixer device gracefully", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "id 0"; // Non-existent mixer
-        default:
-          return "id 0";
-      }
+    setupMixerIdMock({
+      "live_set tracks 0": "track1",
+      "live_set tracks 0 mixer_device": "id 0", // Non-existent mixer
     });
     mockLiveApiGet({
       Track: {
@@ -216,19 +172,9 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("handles missing volume parameter gracefully", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "id 0"; // Non-existent volume
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
+    setupMixerIdMock({
+      ...createMixerPathIdMap(),
+      "live_set tracks 0 mixer_device volume": "id 0", // Non-existent volume
     });
     mockLiveApiGet({
       Track: {
@@ -253,19 +199,9 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("handles missing panning parameter gracefully", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "id 0"; // Non-existent panning
-        default:
-          return "id 0";
-      }
+    setupMixerIdMock({
+      ...createMixerPathIdMap(),
+      "live_set tracks 0 mixer_device panning": "id 0", // Non-existent panning
     });
     mockLiveApiGet({
       Track: {
@@ -290,20 +226,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes mixer with wildcard include", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -331,22 +254,12 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("returns split panning mode with leftPan and rightPan", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device left_split_stereo":
-          return "left_split_param_1";
-        case "live_set tracks 0 mixer_device right_split_stereo":
-          return "right_split_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(
+      createMixerPathIdMap({
+        leftSplitId: "left_split_param_1",
+        rightSplitId: "right_split_param_1",
+      }),
+    );
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -382,22 +295,12 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("returns split panning mode with non-default values", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device left_split_stereo":
-          return "left_split_param_1";
-        case "live_set tracks 0 mixer_device right_split_stereo":
-          return "right_split_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(
+      createMixerPathIdMap({
+        leftSplitId: "left_split_param_1",
+        rightSplitId: "right_split_param_1",
+      }),
+    );
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -433,25 +336,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("includes sends with return track names when requested", () => {
-    liveApiId.mockImplementation(function () {
-      // For ID-based paths (from getChildren), return the ID portion
-      if (this.path?.startsWith("id ")) {
-        return this.path.slice(3);
-      }
-
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -493,24 +378,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("does not include sends property when track has no sends", () => {
-    liveApiId.mockImplementation(function () {
-      if (this.path?.startsWith("id ")) {
-        return this.path.slice(3);
-      }
-
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -543,27 +411,10 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("fetches return track names if not provided", () => {
-    liveApiId.mockImplementation(function () {
-      if (this.path?.startsWith("id ")) {
-        return this.path.slice(3);
-      }
-
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        case "live_set":
-          return "liveSet";
-        case "live_set return_tracks 0":
-          return "return1";
-        default:
-          return "id 0";
-      }
+    setupMixerIdMock({
+      ...createMixerPathIdMap(),
+      live_set: "liveSet",
+      "live_set return_tracks 0": "return1",
     });
     mockLiveApiGet({
       Track: {
@@ -613,24 +464,7 @@ describe("readTrack - mixer properties", () => {
   it("warns when send count doesn't match return track count", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    liveApiId.mockImplementation(function () {
-      if (this.path?.startsWith("id ")) {
-        return this.path.slice(3);
-      }
-
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        default:
-          return "id 0";
-      }
-    });
+    setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,

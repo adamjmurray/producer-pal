@@ -9,6 +9,7 @@ import {
   liveApiPath,
   liveApiType,
 } from "#src/test/mock-live-api.js";
+import { setupDeviceMocks } from "./delete-test-helpers.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject device deletion", () => {
@@ -20,21 +21,7 @@ describe("deleteObject device deletion", () => {
     const id = "device_1";
     const path = "live_set tracks 0 devices 1";
 
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === id) {
-        return path;
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Device";
-      }
-    });
+    setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
@@ -50,21 +37,7 @@ describe("deleteObject device deletion", () => {
     const id = "device_2";
     const path = "live_set return_tracks 0 devices 1";
 
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === id) {
-        return path;
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Device";
-      }
-    });
+    setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
@@ -80,21 +53,7 @@ describe("deleteObject device deletion", () => {
     const id = "device_3";
     const path = "live_set master_track devices 0";
 
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === id) {
-        return path;
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Device";
-      }
-    });
+    setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
@@ -109,23 +68,9 @@ describe("deleteObject device deletion", () => {
   it("should delete multiple devices", () => {
     const ids = "device_1,device_2";
 
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case "device_1":
-          return "live_set tracks 0 devices 0";
-        case "device_2":
-          return "live_set tracks 1 devices 1";
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (["device_1", "device_2"].includes(this._id)) {
-        return "Device";
-      }
+    setupDeviceMocks(["device_1", "device_2"], {
+      device_1: "live_set tracks 0 devices 0",
+      device_2: "live_set tracks 1 devices 1",
     });
 
     const result = deleteObject({ ids, type: "device" });
@@ -149,21 +94,7 @@ describe("deleteObject device deletion", () => {
   it("should throw error when device path is malformed", () => {
     const id = "device_0";
 
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === id) {
-        return "invalid_path_without_devices";
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Device";
-      }
-    });
+    setupDeviceMocks(id, "invalid_path_without_devices");
 
     expect(() => deleteObject({ ids: id, type: "device" })).toThrow(
       'delete failed: could not find device index in path "invalid_path_without_devices"',
@@ -175,21 +106,7 @@ describe("deleteObject device deletion", () => {
       const id = "nested_device";
       const path = "live_set tracks 1 devices 0 chains 2 devices 1";
 
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
+      setupDeviceMocks(id, path);
 
       const result = deleteObject({ ids: id, type: "device" });
 
@@ -208,21 +125,7 @@ describe("deleteObject device deletion", () => {
       const id = "return_chain_device";
       const path = "live_set tracks 0 devices 0 return_chains 1 devices 0";
 
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
+      setupDeviceMocks(id, path);
 
       const result = deleteObject({ ids: id, type: "device" });
 
@@ -242,21 +145,7 @@ describe("deleteObject device deletion", () => {
       const path =
         "live_set tracks 0 devices 0 chains 0 devices 1 chains 0 devices 2";
 
-      liveApiId.mockImplementation(function () {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function () {
-        if (this._id === id) {
-          return path;
-        }
-
-        return this._path;
-      });
-      liveApiType.mockImplementation(function () {
-        if (this._id === id) {
-          return "Device";
-        }
-      });
+      setupDeviceMocks(id, path);
 
       const result = deleteObject({ ids: id, type: "device" });
 

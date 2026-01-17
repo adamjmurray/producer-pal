@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 // Import for use in helper functions below
-import { liveApiGet, liveApiPath } from "#src/test/mock-live-api.js";
+import {
+  liveApiGet,
+  liveApiPath,
+  liveApiType,
+} from "#src/test/mock-live-api.js";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {
@@ -10,6 +14,7 @@ export {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
   mockLiveApiGet,
 } from "#src/test/mock-live-api.js";
 
@@ -167,4 +172,30 @@ export function setupRouteToSourceMock(opts = {}) {
       ],
     },
   };
+}
+
+/**
+ * Setup mocks for device duplication tests.
+ * @param {string} deviceId - Device ID
+ * @param {string} devicePath - Device path
+ * @param {string} [deviceType="PluginDevice"] - Device type
+ */
+export function setupDeviceDuplicationMocks(
+  deviceId,
+  devicePath,
+  deviceType = "PluginDevice",
+) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === deviceId) {
+      return devicePath;
+    }
+
+    return this._path;
+  });
+
+  liveApiType.mockImplementation(function () {
+    if (this._id === deviceId) {
+      return deviceType;
+    }
+  });
 }
