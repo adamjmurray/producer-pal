@@ -495,22 +495,7 @@ describe("device-path-helpers", () => {
     });
 
     it("throws when too many chains would be auto-created", () => {
-      const deviceId = "drum-rack-1";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockReturnValue("DrumGroupDevice");
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "chains") return []; // No chains exist
-
-        return [];
-      });
+      setupAutoCreationMocks({ includeCreationMocks: false });
 
       // Request chain index 20 would require creating 21 chains
       expect(() => resolveInsertionPath("t0/d0/pC1/c20")).toThrow(
@@ -533,22 +518,7 @@ describe("device-path-helpers", () => {
     });
 
     it("returns null for invalid note name during auto-creation", () => {
-      const deviceId = "drum-rack-1";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockReturnValue("DrumGroupDevice");
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "chains") return []; // No chains
-
-        return [];
-      });
+      setupAutoCreationMocks({ includeCreationMocks: false });
 
       // Invalid note name (not a valid MIDI note)
       const result = resolveInsertionPath("t0/d0/pInvalidNote");
@@ -558,22 +528,7 @@ describe("device-path-helpers", () => {
     });
 
     it("returns null for negative chain index during auto-creation", () => {
-      const deviceId = "drum-rack-1";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockReturnValue("DrumGroupDevice");
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "chains") return [];
-
-        return [];
-      });
+      setupAutoCreationMocks({ includeCreationMocks: false });
 
       // Negative chain index is invalid
       const result = resolveInsertionPath("t0/d0/pC1/c-1");
