@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
@@ -19,12 +18,13 @@ export function getLocatorId(locatorIndex) {
  */
 export function readLocators(liveSet, timeSigNumerator, timeSigDenominator) {
   const locatorIds = liveSet.getChildIds("cue_points");
+  /** @type {Array<{id: string, name: string, time: string}>} */
   const locators = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = LiveAPI.from(locatorIds[i]);
-    const name = locator.getProperty("name");
-    const timeInBeats = locator.getProperty("time");
+    const name = /** @type {string} */ (locator.getProperty("name"));
+    const timeInBeats = /** @type {number} */ (locator.getProperty("time"));
     const timeFormatted = abletonBeatsToBarBeat(
       timeInBeats,
       timeSigNumerator,
@@ -60,7 +60,7 @@ export function findLocator(liveSet, { locatorId, timeInBeats }) {
     }
 
     if (timeInBeats != null) {
-      const locatorTime = locator.getProperty("time");
+      const locatorTime = /** @type {number} */ (locator.getProperty("time"));
 
       if (Math.abs(locatorTime - timeInBeats) < 0.001) {
         return { locator, index: i };
@@ -79,6 +79,7 @@ export function findLocator(liveSet, { locatorId, timeInBeats }) {
  */
 export function findLocatorsByName(liveSet, locatorName) {
   const locatorIds = liveSet.getChildIds("cue_points");
+  /** @type {Array<{locator: LiveAPI, index: number, time: number}>} */
   const matches = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
@@ -86,7 +87,7 @@ export function findLocatorsByName(liveSet, locatorName) {
     const name = locator.getProperty("name");
 
     if (name === locatorName) {
-      const time = locator.getProperty("time");
+      const time = /** @type {number} */ (locator.getProperty("time"));
 
       matches.push({ locator, index: i, time });
     }
@@ -117,7 +118,7 @@ export function resolveLocatorToBeats(
       throw new Error(`${toolName} failed: locator not found: ${locatorId}`);
     }
 
-    return found.locator.getProperty("time");
+    return /** @type {number} */ (found.locator.getProperty("time"));
   }
 
   if (locatorName != null) {
