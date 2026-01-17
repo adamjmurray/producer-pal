@@ -287,6 +287,60 @@ describe("defineTool", () => {
     expect(registeredConfig.inputSchema.keepAll.description).toBe("short");
   });
 
+  it("should apply toolDescription override when smallModelMode is enabled", () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    const toolOptions = {
+      title: "Test Tool",
+      description: "Original verbose tool description with many details",
+      inputSchema: {
+        param: z.string(),
+      },
+      smallModelModeConfig: {
+        toolDescription: "Short description",
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
+
+    const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
+    expect(registeredConfig.description).toBe("Short description");
+  });
+
+  it("should use original description when smallModelMode is disabled", () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    const toolOptions = {
+      title: "Test Tool",
+      description: "Original verbose tool description",
+      inputSchema: {
+        param: z.string(),
+      },
+      smallModelModeConfig: {
+        toolDescription: "Short description",
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
+
+    const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
+    expect(registeredConfig.description).toBe(
+      "Original verbose tool description",
+    );
+  });
+
   it("should format validation errors without path for root-level errors", async () => {
     const mockServer = {
       registerTool: vi.fn(),

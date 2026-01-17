@@ -23,10 +23,17 @@ export function defineTool(name, options) {
           )
         : inputSchema;
 
+    // Apply tool description override for small model mode if configured
+    const finalDescription =
+      smallModelMode && smallModelModeConfig?.toolDescription
+        ? smallModelModeConfig.toolDescription
+        : toolConfig.description;
+
     server.registerTool(
       name,
       {
         ...toolConfig,
+        description: finalDescription,
         inputSchema: finalInputSchema,
       },
       async (args) => {
