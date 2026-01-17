@@ -36,6 +36,10 @@ import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
  * @param {number} [args.warpBeatTime] - Beat time for warp marker operation
  * @param {number} [args.warpSampleTime] - Sample time for warp marker operation
  * @param {number} [args.warpDistance] - Distance parameter for move operations
+ * @param {number} [args.quantize] - Quantization strength 0-1 (MIDI clips only)
+ * @param {string} [args.quantizeGrid] - Note grid for quantization
+ * @param {number} [args.quantizeSwing] - Swing amount 0-1 (default: 0)
+ * @param {number} [args.quantizePitch] - Limit quantization to specific pitch
  * @param {object} context - Tool execution context with holding area settings
  * @returns {object | Array<object>} Single clip object or array of clip objects
  */
@@ -62,6 +66,10 @@ export function updateClip(
     warpBeatTime,
     warpSampleTime,
     warpDistance,
+    quantize,
+    quantizeGrid,
+    quantizeSwing,
+    quantizePitch,
   } = {},
   context = {},
 ) {
@@ -107,6 +115,10 @@ export function updateClip(
       warpBeatTime,
       warpSampleTime,
       warpDistance,
+      quantize,
+      quantizeGrid,
+      quantizeSwing,
+      quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
       context,

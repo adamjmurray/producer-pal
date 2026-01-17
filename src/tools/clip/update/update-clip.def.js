@@ -85,6 +85,38 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),
+    quantize: z
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe("quantization strength 0-1 (MIDI clips only)"),
+    quantizeGrid: z
+      .enum([
+        "1/4",
+        "1/8",
+        "1/8T",
+        "1/8+1/8T",
+        "1/16",
+        "1/16T",
+        "1/16+1/16T",
+        "1/32",
+      ])
+      .optional()
+      .describe("note grid (required with quantize)"),
+    quantizeSwing: z
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe("swing amount 0-1 (default: 0)"),
+    quantizePitch: z
+      .number()
+      .int()
+      .min(0)
+      .max(127)
+      .optional()
+      .describe("limit quantization to specific pitch"),
     warpOp: z
       .enum(["add", "move", "remove"])
       .optional()
@@ -109,6 +141,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe("beats to shift (+forward, -backward) for move operation"),
   },
   smallModelModeConfig: {
-    excludeParams: ["warpOp", "warpBeatTime", "warpSampleTime", "warpDistance"],
+    excludeParams: [
+      "warpOp",
+      "warpBeatTime",
+      "warpSampleTime",
+      "warpDistance",
+      "quantizeSwing",
+      "quantizePitch",
+    ],
   },
 });

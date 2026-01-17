@@ -13,6 +13,7 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.js";
+import { handleQuantization } from "./update-clip-quantization-helpers.js";
 
 /**
  * Calculate beat positions from bar|beat notation
@@ -266,6 +267,10 @@ export function handleNoteUpdates(
  * @param {number} params.warpBeatTime - Warp beat time
  * @param {number} params.warpSampleTime - Warp sample time
  * @param {number} params.warpDistance - Warp distance
+ * @param {number} params.quantize - Quantization strength 0-1
+ * @param {string} params.quantizeGrid - Note grid for quantization
+ * @param {number} params.quantizeSwing - Swing amount 0-1
+ * @param {number} params.quantizePitch - Limit quantization to specific pitch
  * @param {number} params.arrangementLengthBeats - Arrangement length in beats
  * @param {number} params.arrangementStartBeats - Arrangement start in beats
  * @param {object} params.context - Context object
@@ -296,6 +301,10 @@ export function processSingleClipUpdate(params) {
     warpBeatTime,
     warpSampleTime,
     warpDistance,
+    quantize,
+    quantizeGrid,
+    quantizeSwing,
+    quantizePitch,
     arrangementLengthBeats,
     arrangementStartBeats,
     context,
@@ -382,6 +391,14 @@ export function processSingleClipUpdate(params) {
     timeSigNumerator,
     timeSigDenominator,
   );
+
+  // Handle quantization (after notes so newly merged notes get quantized)
+  handleQuantization(clip, {
+    quantize,
+    quantizeGrid,
+    quantizeSwing,
+    quantizePitch,
+  });
 
   // Handle warp marker operations
   if (warpOp != null) {
