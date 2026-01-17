@@ -218,6 +218,75 @@ describe("defineTool", () => {
     expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
   });
 
+  it("should apply description overrides when smallModelMode is enabled", () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    const toolOptions = {
+      title: "Test Tool",
+      inputSchema: {
+        param1: z.string().describe("original description"),
+        param2: z.number().optional().describe("original number"),
+      },
+      smallModelModeConfig: {
+        descriptionOverrides: {
+          param1: "simplified",
+        },
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
+
+    const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
+    // param1 should have overridden description
+    expect(registeredConfig.inputSchema.param1.description).toBe("simplified");
+
+    // param2 should keep original description
+    expect(registeredConfig.inputSchema.param2.description).toBe(
+      "original number",
+    );
+  });
+
+  it("should work with only descriptionOverrides (no excludeParams)", () => {
+    const mockServer = {
+      registerTool: vi.fn(),
+    };
+    const mockCallLiveApi = vi.fn();
+
+    const toolOptions = {
+      title: "Test Tool",
+      inputSchema: {
+        keepAll: z.string().describe("verbose description"),
+        alsoKeep: z.number().optional(),
+      },
+      smallModelModeConfig: {
+        descriptionOverrides: {
+          keepAll: "short",
+        },
+      },
+    };
+
+    const toolRegistrar = defineTool("test-tool", toolOptions);
+
+    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
+
+    const registeredConfig = mockServer.registerTool.mock.calls[0][1];
+
+    // Both params should be present
+    expect(Object.keys(registeredConfig.inputSchema)).toStrictEqual([
+      "keepAll",
+      "alsoKeep",
+    ]);
+
+    // keepAll should have overridden description
+    expect(registeredConfig.inputSchema.keepAll.description).toBe("short");
+  });
+
   it("should format validation errors without path for root-level errors", async () => {
     const mockServer = {
       registerTool: vi.fn(),

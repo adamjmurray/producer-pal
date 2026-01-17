@@ -15,10 +15,11 @@ export function defineTool(name, options) {
 
     // Apply schema filtering for small model mode if configured
     const finalInputSchema =
-      smallModelMode && smallModelModeConfig?.excludeParams
+      smallModelMode && smallModelModeConfig
         ? filterSchemaForSmallModel(
             inputSchema,
             smallModelModeConfig.excludeParams,
+            smallModelModeConfig.descriptionOverrides,
           )
         : inputSchema;
 
