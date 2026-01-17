@@ -33,8 +33,8 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
     liveApiCall.mockImplementation(() => {});
 
     const result = updateClip({
-      id: "789",
-      arrangementLength: 6.5, // extend to reveal 2.5 beats of hidden content
+      ids: "789",
+      arrangementLength: "1:2.5", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });
 
     // Should tile the content (note: updateClip doesn't actually do this yet, this tests the intent)
