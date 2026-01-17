@@ -290,6 +290,13 @@ describe("device-display-helpers", () => {
       vi.clearAllMocks();
     });
 
+    const createMockParamApi = (id) => ({
+      id,
+      get: liveApiGet,
+      getProperty: (prop) => liveApiGet(prop)?.[0],
+      call: liveApiCall,
+    });
+
     it("reads quantized parameter with value_items", () => {
       const valueItems = ["Off", "On", "Auto"];
 
@@ -306,14 +313,7 @@ describe("device-display-helpers", () => {
         return [0];
       });
 
-      const mockParamApi = {
-        id: "param_3",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_3"));
 
       expect(result).toStrictEqual({
         id: "param_3",
@@ -348,14 +348,7 @@ describe("device-display-helpers", () => {
         return "";
       });
 
-      const mockParamApi = {
-        id: "param_4",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_4"));
 
       expect(result).toStrictEqual({
         id: "param_4",
@@ -392,14 +385,7 @@ describe("device-display-helpers", () => {
         return "";
       });
 
-      const mockParamApi = {
-        id: "param_5",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_5"));
 
       expect(result).toStrictEqual({
         id: "param_5",
@@ -428,14 +414,7 @@ describe("device-display-helpers", () => {
 
       liveApiCall.mockReturnValue("0.5");
 
-      const mockParamApi = {
-        id: "param_6",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_6"));
 
       expect(result.state).toBe("inactive");
     });
@@ -457,14 +436,7 @@ describe("device-display-helpers", () => {
 
       liveApiCall.mockReturnValue("0.5");
 
-      const mockParamApi = {
-        id: "param_7",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_7"));
 
       expect(result.automation).toBe("active");
     });
@@ -486,14 +458,7 @@ describe("device-display-helpers", () => {
 
       liveApiCall.mockReturnValue("0.5");
 
-      const mockParamApi = {
-        id: "param_8",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_8"));
 
       expect(result.enabled).toBe(false);
     });
@@ -534,14 +499,7 @@ describe("device-display-helpers", () => {
         return "";
       });
 
-      const mockParamApi = {
-        id: "param_9",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_9"));
 
       expect(result).toStrictEqual({
         id: "param_9",
@@ -581,14 +539,7 @@ describe("device-display-helpers", () => {
         return "";
       });
 
-      const mockParamApi = {
-        id: "param_10",
-        get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
-      };
-
-      const result = readParameter(mockParamApi);
+      const result = readParameter(createMockParamApi("param_10"));
 
       expect(result).toStrictEqual({
         id: "param_10",
