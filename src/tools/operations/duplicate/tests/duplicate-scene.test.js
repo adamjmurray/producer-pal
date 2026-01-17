@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   children,
+  createStandardMidiClipMock,
   liveApiCall,
   liveApiSet,
   mockLiveApiGet,
@@ -213,17 +214,10 @@ describe("duplicate - scene duplication", () => {
         "live_set tracks 0 clip_slots 0": { has_clip: 1 },
         "live_set tracks 1 clip_slots 0": { has_clip: 0 },
         "live_set tracks 2 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
+        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock({
           length: 4,
           name: "Clip 1",
-          color: 4047616,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          looping: 0,
-          loop_start: 0,
-          loop_end: 4,
-          is_midi_clip: 1,
-        },
+        }),
         "live_set tracks 2 clip_slots 0 clip": {
           length: 8,
           name: "Clip 2",
@@ -299,17 +293,7 @@ describe("duplicate - scene duplication", () => {
           tracks: children("track0"),
         },
         "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
-          name: "Scene Clip",
-          color: 4047616,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          looping: 0,
-          loop_start: 0,
-          loop_end: 8,
-          is_midi_clip: 1,
-        },
+        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock(),
       });
 
       let clipCounter = 0;
