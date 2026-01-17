@@ -33,25 +33,11 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        "live_set tracks 2": {
+        "live_set tracks 2": mockTrackProperties({
           name: "Track by ID",
-          has_midi_input: 1,
           color: 16711680, // Red
-          mute: 0,
-          solo: 0,
           arm: 1,
-          can_be_armed: 1,
-          is_foldable: 0,
-          is_grouped: 0,
-          group_track: ["id", 0],
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          back_to_arranger: 0,
-          playing_slot_index: -1,
-          fired_slot_index: -1,
-          muted_via_solo: 0,
-        },
+        }),
       });
 
       const result = readTrack({ trackId: "123" });
@@ -87,25 +73,12 @@ describe("readTrack", () => {
       liveApiType.mockReturnValue("Track");
 
       mockLiveApiGet({
-        "live_set return_tracks 1": {
+        "live_set return_tracks 1": mockTrackProperties({
           name: "Return by ID",
           has_midi_input: 0,
           color: 65280, // Green
-          mute: 0,
-          solo: 0,
-          arm: 0,
           can_be_armed: 0,
-          is_foldable: 0,
-          is_grouped: 0,
-          group_track: ["id", 0],
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          back_to_arranger: 0,
-          playing_slot_index: -1,
-          fired_slot_index: -1,
-          muted_via_solo: 0,
-        },
+        }),
       });
 
       const result = readTrack({ trackId: "456" });
@@ -140,25 +113,12 @@ describe("readTrack", () => {
       liveApiType.mockReturnValue("Track");
 
       mockLiveApiGet({
-        "live_set master_track": {
+        "live_set master_track": mockTrackProperties({
           name: "Master by ID",
           has_midi_input: 0,
           color: 16777215, // White
-          mute: 0,
-          solo: 0,
-          arm: 0,
           can_be_armed: 0,
-          is_foldable: 0,
-          is_grouped: 0,
-          group_track: ["id", 0],
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          back_to_arranger: 0,
-          playing_slot_index: -1,
-          fired_slot_index: -1,
-          muted_via_solo: 0,
-        },
+        }),
       });
 
       const result = readTrack({ trackId: "789" });
@@ -205,25 +165,9 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        "live_set tracks 0": {
+        "live_set tracks 0": mockTrackProperties({
           name: "Track ignores type",
-          has_midi_input: 1,
-          color: 0,
-          mute: 0,
-          solo: 0,
-          arm: 0,
-          can_be_armed: 1,
-          is_foldable: 0,
-          is_grouped: 0,
-          group_track: ["id", 0],
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-          back_to_arranger: 0,
-          playing_slot_index: -1,
-          fired_slot_index: -1,
-          muted_via_solo: 0,
-        },
+        }),
       });
 
       // category should be ignored when trackId is provided

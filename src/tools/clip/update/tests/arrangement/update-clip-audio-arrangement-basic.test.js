@@ -14,99 +14,47 @@ import {
 // with silence if the audio runs out. This simplifies the logic and hopefully works more reliably.
 
 describe("Unlooped audio clips - arrangementLength extension", () => {
-  it("should extend even when audio appears fully visible (clip 661 scenario: start_marker=0)", () => {
-    const clipId = "661";
-    const revealedClipId = "662";
+  // Test cases: [clipId, revealedClipId, sourceEndTime, name, description]
+  const testCases = [
+    ["661", "662", 8.0, "Audio No Hidden start==firstStart", "fully visible"],
+    [
+      "672",
+      "673",
+      5.0,
+      "Audio Hidden start==firstStart",
+      "extending beyond visible",
+    ],
+    ["683", "684", 8.0, "Audio No Hidden start<firstStart", "fully visible"],
+    [
+      "694",
+      "695",
+      5.0,
+      "Audio Hidden start<firstStart",
+      "extending beyond visible",
+    ],
+  ];
 
-    setupAudioArrangementTest({
-      trackIndex: 0,
-      clipId,
-      revealedClipId,
-      sourceEndTime: 8.0,
-      targetLength: 14.0,
-      name: "Audio No Hidden start==firstStart",
-    });
+  it.each(testCases)(
+    "should extend to target length (clip %s: %s)",
+    (clipId, revealedClipId, sourceEndTime, name) => {
+      setupAudioArrangementTest({
+        trackIndex: 0,
+        clipId,
+        revealedClipId,
+        sourceEndTime,
+        targetLength: 14.0,
+        name,
+      });
 
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
-      mockContext,
-    );
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
 
-    assertSourceClipEndMarker(clipId, 14.0);
-    assertDuplicateClipCalled(clipId, 8.0);
-    assertRevealedClipMarkers(revealedClipId, 8.0, 14.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
-  });
-
-  it("should extend to target length (clip 672 scenario: start_marker=0, extending beyond visible)", () => {
-    const clipId = "672";
-    const revealedClipId = "673";
-
-    setupAudioArrangementTest({
-      trackIndex: 0,
-      clipId,
-      revealedClipId,
-      sourceEndTime: 5.0,
-      targetLength: 14.0,
-      name: "Audio Hidden start==firstStart",
-    });
-
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
-      mockContext,
-    );
-
-    assertSourceClipEndMarker(clipId, 14.0);
-    assertDuplicateClipCalled(clipId, 5.0);
-    assertRevealedClipMarkers(revealedClipId, 5.0, 14.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
-  });
-
-  it("should extend even when audio appears fully visible (clip 683 scenario: start_marker=0)", () => {
-    const clipId = "683";
-    const revealedClipId = "684";
-
-    setupAudioArrangementTest({
-      trackIndex: 0,
-      clipId,
-      revealedClipId,
-      sourceEndTime: 8.0,
-      targetLength: 14.0,
-      name: "Audio No Hidden start<firstStart",
-    });
-
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
-      mockContext,
-    );
-
-    assertSourceClipEndMarker(clipId, 14.0);
-    assertDuplicateClipCalled(clipId, 8.0);
-    assertRevealedClipMarkers(revealedClipId, 8.0, 14.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
-  });
-
-  it("should extend to target length (clip 694 scenario: start_marker=0, extending beyond visible)", () => {
-    const clipId = "694";
-    const revealedClipId = "695";
-
-    setupAudioArrangementTest({
-      trackIndex: 0,
-      clipId,
-      revealedClipId,
-      sourceEndTime: 5.0,
-      targetLength: 14.0,
-      name: "Audio Hidden start<firstStart",
-    });
-
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
-      mockContext,
-    );
-
-    assertSourceClipEndMarker(clipId, 14.0);
-    assertDuplicateClipCalled(clipId, 5.0);
-    assertRevealedClipMarkers(revealedClipId, 5.0, 14.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
-  });
+      assertSourceClipEndMarker(clipId, 14.0);
+      assertDuplicateClipCalled(clipId, sourceEndTime);
+      assertRevealedClipMarkers(revealedClipId, sourceEndTime, 14.0);
+      expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+    },
+  );
 });
