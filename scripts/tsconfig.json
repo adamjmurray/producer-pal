@@ -6,10 +6,11 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true
   },
-  "include": ["**/*.mjs"],
+  "include": ["**/*.mjs", "**/*.ts"],
   "exclude": ["chat-lib/**"]
 }

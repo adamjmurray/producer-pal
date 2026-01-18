@@ -157,8 +157,8 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Scope:** All source code is type-checked via `npm run typecheck`:
 
-- `src/` and `scripts/` use JSDoc annotations with TypeScript's `checkJs`
-- `webui/` uses TypeScript (`.ts`/`.tsx` files)
+- `src/` uses JSDoc annotations with TypeScript's `checkJs`
+- `scripts/` and `webui/` use TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
@@ -167,6 +167,11 @@ A file is classified as a **test file** if it matches any of these patterns:
 - Use JSDoc `@param`, `@returns`, and `@type` annotations for type safety in JS
 - Cast `getProperty()` returns: `/** @type {number} */ (obj.getProperty("x"))`
 - Prefer explicit return types on exported functions
+
+**Scripts JSDoc convention:** ESLint only enforces JSDoc on exported function
+declarations. For scripts, also add JSDoc with `@param` and `@returns`
+descriptions (without types) to helper functions for clarity. This is enforced
+by code review, not linting.
 
 **Before committing:** `npm run check` must pass with zero errors
 
@@ -200,7 +205,7 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 ## Project Constraints
 
-- JavaScript with JSDoc types for `src/` and `scripts/`, TypeScript for `webui/`
+- JavaScript with JSDoc types for `src/`, TypeScript for `scripts/` and `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
