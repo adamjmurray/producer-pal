@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   findLocator,
@@ -26,7 +25,7 @@ export function resolveLocatorToBeats(
       throw new Error(`playback failed: locator not found: ${locatorId}`);
     }
 
-    return found.locator.getProperty("time");
+    return /** @type {number} */ (found.locator.getProperty("time"));
   }
 
   if (locatorName != null) {
@@ -192,7 +191,8 @@ export function resolveLoopEnd(
 
   if (loopEndBeats != null) {
     const actualLoopStartBeats =
-      loopStartBeats ?? liveSet.getProperty("loop_start");
+      loopStartBeats ??
+      /** @type {number} */ (liveSet.getProperty("loop_start"));
     const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
 
     liveSet.set("loop_length", loopLengthBeats);

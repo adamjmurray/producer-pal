@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import {
   parseIncludeArray,
@@ -50,11 +49,13 @@ export function readScene(args = {}, _context = {}) {
     };
   }
 
-  const isTempoEnabled = scene.getProperty("tempo_enabled") > 0;
+  const isTempoEnabled =
+    /** @type {number} */ (scene.getProperty("tempo_enabled")) > 0;
   const isTimeSignatureEnabled =
-    scene.getProperty("time_signature_enabled") > 0;
+    /** @type {number} */ (scene.getProperty("time_signature_enabled")) > 0;
 
   const sceneName = scene.getProperty("name");
+  /** @type {{ id: string, name: string, sceneIndex: number | null, color?: string | null, tempo?: unknown, timeSignature?: string | null, triggered?: boolean, clips?: object[], clipCount?: number }} */
   const result = {
     id: scene.id,
     name: sceneName
@@ -74,7 +75,8 @@ export function readScene(args = {}, _context = {}) {
   }
 
   // Only include triggered when scene is triggered
-  const isTriggered = scene.getProperty("is_triggered") > 0;
+  const isTriggered =
+    /** @type {number} */ (scene.getProperty("is_triggered")) > 0;
 
   if (isTriggered) {
     result.triggered = true;

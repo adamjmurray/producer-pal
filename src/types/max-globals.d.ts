@@ -4,6 +4,21 @@
  */
 
 /**
+ * Context object passed to tool functions.
+ * Contains runtime state managed by the live-api-adapter.
+ */
+interface ToolContext {
+  projectNotes: {
+    enabled: boolean;
+    writable: boolean;
+    content: string;
+  };
+  smallModelMode: boolean;
+  sampleFolder: string | null;
+  holdingAreaStartBeats?: number;
+}
+
+/**
  * Max Dict object for storing and retrieving named dictionaries.
  */
 declare class Dict {
@@ -23,6 +38,13 @@ declare function post(...args: unknown[]): void;
  * Max V8 global function to post error messages to the Max console.
  */
 declare function error(...args: unknown[]): void;
+
+/**
+ * Max V8 global function to send messages to outlets.
+ * @param outletNumber - The outlet index (0-based)
+ * @param args - The message selector and arguments
+ */
+declare function outlet(outletNumber: number, ...args: unknown[]): void;
 
 /**
  * Max V8 Task object for scheduling callbacks.
