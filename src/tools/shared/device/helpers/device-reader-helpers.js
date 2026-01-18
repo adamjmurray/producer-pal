@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
 import {
@@ -106,7 +105,7 @@ export function processRegularChains(
 
 /**
  * Process all chain types for rack devices
- * @param {object} device - Device object
+ * @param {LiveAPI} device - Device object
  * @param {object} deviceInfo - Device info to update
  * @param {string} deviceType - Device type
  * @param {object} options - Processing options
@@ -116,6 +115,7 @@ export function processRegularChains(
  * @param {number} options.depth - Current depth
  * @param {number} options.maxDepth - Max depth
  * @param {Function} options.readDeviceFn - readDevice function
+ * @param {string} [options.devicePath] - Device path for building nested paths
  */
 export function processDeviceChains(device, deviceInfo, deviceType, options) {
   const {
@@ -268,10 +268,10 @@ export function readABCompare(device) {
 
 /**
  * Read all parameters for a device
- * @param {object} device - LiveAPI device object
- * @param {object} options - Reading options
- * @param {boolean} options.includeValues - Include full values/metadata
- * @param {string} options.search - Filter by name substring (case-insensitive)
+ * @param {LiveAPI} device - LiveAPI device object
+ * @param {object} [options] - Reading options
+ * @param {boolean} [options.includeValues] - Include full values/metadata
+ * @param {string} [options.search] - Filter by name substring (case-insensitive)
  * @returns {Array} Array of parameter info objects
  */
 export function readDeviceParameters(device, options = {}) {
@@ -283,9 +283,11 @@ export function readDeviceParameters(device, options = {}) {
   if (search) {
     const searchLower = search.toLowerCase().trim();
 
-    parameters = parameters.filter((p) =>
-      p.getProperty("name").toLowerCase().includes(searchLower),
-    );
+    parameters = parameters.filter((p) => {
+      const name = /** @type {string} */ (p.getProperty("name"));
+
+      return name.toLowerCase().includes(searchLower);
+    });
   }
 
   return parameters.map(includeValues ? readParameter : readParameterBasic);
