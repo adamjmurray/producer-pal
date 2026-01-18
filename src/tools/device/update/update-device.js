@@ -71,26 +71,30 @@ function warnIfSet(paramName, value, type) {
  * @param {number} [args.chokeGroup] - Choke group 0-16 (drum chains only)
  * @param {string} [args.mappedPitch] - Output MIDI note (drum chains only)
  * @param {boolean} [args.wrapInRack] - Wrap device(s) in a new rack
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
  * @returns {object|Array} Updated object info(s)
  */
-export function updateDevice({
-  ids,
-  path,
-  toPath,
-  name,
-  collapsed,
-  params,
-  macroVariation,
-  macroVariationIndex,
-  macroCount,
-  abCompare,
-  mute,
-  solo,
-  color,
-  chokeGroup,
-  mappedPitch,
-  wrapInRack,
-}) {
+export function updateDevice(
+  {
+    ids,
+    path,
+    toPath,
+    name,
+    collapsed,
+    params,
+    macroVariation,
+    macroVariationIndex,
+    macroCount,
+    abCompare,
+    mute,
+    solo,
+    color,
+    chokeGroup,
+    mappedPitch,
+    wrapInRack,
+  },
+  _context = {},
+) {
   validateExclusiveParams(ids, path, "ids", "path");
 
   // Handle wrapInRack separately (creates rack and moves devices into it)

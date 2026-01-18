@@ -19,14 +19,13 @@ import { validateExclusiveParams } from "#src/tools/shared/validation/id-validat
  * @param {string} [args.path] - Device/chain/drum-pad path
  * @param {Array} args.include - Array of data to include in the response
  * @param {string} [args.paramSearch] - Filter parameters by substring match on name
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
  * @returns {object} Device, chain, or drum pad information
  */
-export function readDevice({
-  deviceId,
-  path,
-  include = ["chains"],
-  paramSearch,
-}) {
+export function readDevice(
+  { deviceId, path, include = ["chains"], paramSearch },
+  _context = {},
+) {
   validateExclusiveParams(deviceId, path, "deviceId", "path");
 
   const includeChains = include.includes("*") || include.includes("chains");
