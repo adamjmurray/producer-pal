@@ -482,6 +482,47 @@ describe("createClip - audio clips", () => {
         }),
       ).toThrow("createClip failed: track 99 does not exist");
     });
+
+    it("should emit warning and return empty array when audio clip creation fails", () => {
+      // Make track exist but clip creation fails (clip.exists() returns false)
+      liveApiCall.mockImplementation((method, ..._args) => {
+        if (method === "create_audio_clip") {
+          // Return an invalid clip reference that doesn't exist
+          return ["id", "0"];
+        }
+
+        return null;
+      });
+
+      liveApiId.mockImplementation(function () {
+        // Track exists
+        if (this._path === "live_set tracks 0") {
+          return "track_0_id";
+        }
+
+        // Created clip doesn't exist - return "0" to make exists() return false
+        if (this._path === "id 0") {
+          return "0";
+        }
+
+        return this._id;
+      });
+
+      mockLiveApiGet({
+        Track: { exists: () => true },
+        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = createClip({
+        view: "arrangement",
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        sampleFile: "/path/to/invalid.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toStrictEqual([]);
+    });
   });
 
   describe("audio clip length handling", () => {

@@ -10,21 +10,31 @@ import {
 } from "#src/tools/track/helpers/track-routing-helpers.js";
 
 /**
+ * @typedef {object} ClipResult
+ * @property {string | null} id - Clip ID
+ * @property {string} [name] - Clip name
+ * @property {string} [type] - Clip type
+ */
+
+/**
  * Read all session clips from a track
  * @param {LiveAPI} track - Track object
  * @param {number | null} trackIndex - Track index
  * @param {Array<string>} [include] - Include array for nested reads
- * @returns {Array<object>} Array of clip objects (only clips that exist)
+ * @returns {Array<ClipResult>} Array of clip objects (only clips that exist)
  */
 export function readSessionClips(track, trackIndex, include) {
   return track
     .getChildIds("clip_slots")
-    .map((_clipSlotId, sceneIndex) =>
-      readClip({
-        trackIndex,
-        sceneIndex,
-        ...(include && { include }),
-      }),
+    .map(
+      (_clipSlotId, sceneIndex) =>
+        /** @type {ClipResult} */ (
+          readClip({
+            trackIndex,
+            sceneIndex,
+            ...(include && { include }),
+          })
+        ),
     )
     .filter((clip) => clip.id != null);
 }
@@ -52,16 +62,19 @@ export function countSessionClips(track, trackIndex) {
  * Read all arrangement clips from a track
  * @param {LiveAPI} track - Track object
  * @param {Array<string>} [include] - Include array for nested reads
- * @returns {Array<object>} Array of clip objects (only clips that exist)
+ * @returns {Array<ClipResult>} Array of clip objects (only clips that exist)
  */
 export function readArrangementClips(track, include) {
   return track
     .getChildIds("arrangement_clips")
-    .map((clipId) =>
-      readClip({
-        clipId,
-        ...(include && { include }),
-      }),
+    .map(
+      (clipId) =>
+        /** @type {ClipResult} */ (
+          readClip({
+            clipId,
+            ...(include && { include }),
+          })
+        ),
     )
     .filter((clip) => clip.id != null);
 }
@@ -76,12 +89,30 @@ export function countArrangementClips(track) {
 }
 
 /**
+ * @typedef {object} MinimalTrackIncludeFlags
+ * @property {boolean} includeSessionClips - Whether to include session clips
+ * @property {boolean} includeArrangementClips - Whether to include arrangement clips
+ * @property {boolean} [includeAllClips] - Whether to include all clips (optional, for internal use)
+ */
+
+/**
+ * @typedef {object} MinimalTrackResult
+ * @property {string | null} id - Track ID
+ * @property {string | null} type - Track type (midi or audio)
+ * @property {number} trackIndex - Track index
+ * @property {ClipResult[]} [sessionClips] - Session clips (if included)
+ * @property {number} [sessionClipCount] - Session clip count (if not including full clips)
+ * @property {ClipResult[]} [arrangementClips] - Arrangement clips (if included)
+ * @property {number} [arrangementClipCount] - Arrangement clip count (if not including full clips)
+ */
+
+/**
  * Read minimal track information for auto-inclusion when clips are requested.
  * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
  * @param {object} args - The parameters
  * @param {number} args.trackIndex - Track index
- * @param {object} args.includeFlags - Parsed include flags
- * @returns {object} Minimal track information
+ * @param {MinimalTrackIncludeFlags} args.includeFlags - Parsed include flags
+ * @returns {MinimalTrackResult} Minimal track information
  */
 export function readTrackMinimal({ trackIndex, includeFlags }) {
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
@@ -97,6 +128,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
   const isMidiTrack =
     /** @type {number} */ (track.getProperty("has_midi_input")) > 0;
 
+  /** @type {MinimalTrackResult} */
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
@@ -132,12 +164,22 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 }
 
 /**
+ * @typedef {object} NonExistentTrackResult
+ * @property {null} id - Track ID (null for non-existent)
+ * @property {null} type - Track type (null for non-existent)
+ * @property {null} name - Track name (null for non-existent)
+ * @property {number | null} [trackIndex] - Track index (for regular/master)
+ * @property {number | null} [returnTrackIndex] - Return track index (for return)
+ */
+
+/**
  * Handle track that doesn't exist
  * @param {string} category - Track category (regular, return, or master)
  * @param {number | null} trackIndex - Track index
- * @returns {object} - Result object for non-existent track
+ * @returns {NonExistentTrackResult} - Result object for non-existent track
  */
 export function handleNonExistentTrack(category, trackIndex) {
+  /** @type {NonExistentTrackResult} */
   const result = {
     id: null,
     type: null,
@@ -157,7 +199,7 @@ export function handleNonExistentTrack(category, trackIndex) {
 
 /**
  * Add optional boolean properties to track result
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {LiveAPI} track - Track object
  * @param {boolean} canBeArmed - Whether the track can be armed
  */
@@ -186,7 +228,7 @@ export function addOptionalBooleanProperties(result, track, canBeArmed) {
 
 /**
  * Add track index property based on category
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {string} category - Track category (regular, return, or master)
  * @param {number | null} trackIndex - Track index
  */
@@ -199,26 +241,39 @@ export function addCategoryIndex(result, category, trackIndex) {
 }
 
 /**
+ * @typedef {object} DeviceResult
+ * @property {object[]} [midiEffects] - MIDI effect devices
+ * @property {object | null} [instrument] - Instrument device
+ * @property {object[]} [audioEffects] - Audio effect devices
+ */
+
+/**
  * Clean up device chains from result
- * @param {object} result - Result object containing device chains
+ * @param {Record<string, unknown> & DeviceResult} result - Result object containing device chains
  */
 export function cleanupDeviceChains(result) {
   if (result.midiEffects) {
-    result.midiEffects = cleanupInternalDrumPads(result.midiEffects);
+    result.midiEffects = /** @type {object[]} */ (
+      cleanupInternalDrumPads(result.midiEffects)
+    );
   }
 
   if (result.instrument) {
-    result.instrument = cleanupInternalDrumPads(result.instrument);
+    result.instrument = /** @type {object | null} */ (
+      cleanupInternalDrumPads(result.instrument)
+    );
   }
 
   if (result.audioEffects) {
-    result.audioEffects = cleanupInternalDrumPads(result.audioEffects);
+    result.audioEffects = /** @type {object[]} */ (
+      cleanupInternalDrumPads(result.audioEffects)
+    );
   }
 }
 
 /**
  * Add slot index properties for regular tracks
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {LiveAPI} track - Track object
  * @param {string} category - Track category (regular, return, or master)
  */
@@ -246,7 +301,7 @@ export function addSlotIndices(result, track, category) {
 
 /**
  * Add state property if not default active state
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {LiveAPI} track - Track object
  * @param {string} category - Track category (regular, return, or master)
  */
@@ -260,7 +315,7 @@ export function addStateIfNotDefault(result, track, category) {
 
 /**
  * Add routing information if requested
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {LiveAPI} track - Track object
  * @param {string} category - Track category (regular, return, or master)
  * @param {boolean} isGroup - Whether the track is a group
@@ -291,7 +346,7 @@ export function addRoutingInfo(
 
 /**
  * Add producer pal host information if applicable
- * @param {object} result - Result object to modify
+ * @param {Record<string, unknown>} result - Result object to modify
  * @param {boolean} isProducerPalHost - Whether this is the Producer Pal host track
  */
 export function addProducerPalHostInfo(result, isProducerPalHost) {

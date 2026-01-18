@@ -27,9 +27,18 @@ import {
 } from "./helpers/read-track-helpers.js";
 
 /**
+ * @typedef {object} ReadTrackArgs
+ * @property {number} [trackIndex] - Track index (0-based)
+ * @property {string} [trackId] - Track ID
+ * @property {string} [category] - Track category: "regular", "return", or "master"
+ * @property {string[]} [returnTrackNames] - Array of return track names for sends
+ * @property {string[]} [include] - Array of data to include in the response
+ */
+
+/**
  * Read comprehensive information about a track
- * @param {object} args - The parameters
- * @param {object} _context - Internal context object (unused)
+ * @param {ReadTrackArgs} args - The parameters
+ * @param {Partial<ToolContext>} _context - Internal context object (unused)
  * @returns {object} Track information
  */
 export function readTrack(args = {}, _context = {}) {
@@ -41,6 +50,7 @@ export function readTrack(args = {}, _context = {}) {
   }
 
   let track;
+  /** @type {number | null | undefined} */
   let resolvedTrackIndex = trackIndex;
   let resolvedCategory = category;
 
@@ -48,7 +58,7 @@ export function readTrack(args = {}, _context = {}) {
     // Use trackId to access track directly and validate it's a track
     track = validateIdType(trackId, "track", "readTrack");
     // Determine track category and index from the track's path
-    resolvedCategory = track.category;
+    resolvedCategory = /** @type {string} */ (track.category ?? "regular");
     resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
   } else {
     // Construct the appropriate Live API path based on track category
@@ -71,9 +81,12 @@ export function readTrack(args = {}, _context = {}) {
 
   return readTrackGeneric({
     track,
-    trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
+    trackIndex:
+      resolvedCategory === "master"
+        ? null
+        : /** @type {number | null} */ (resolvedTrackIndex ?? null),
     category: resolvedCategory,
-    include: args.include,
+    include: /** @type {string[] | undefined} */ (args.include),
     returnTrackNames,
   });
 }
@@ -135,9 +148,30 @@ function processArrangementClips(
 }
 
 /**
+ * @typedef {import('#src/tools/shared/device/device-reader.js').DeviceWithDrumPads} DeviceWithDrumPads
+ */
+
+/**
+ * @typedef {object} CategorizedDevices
+ * @property {DeviceWithDrumPads[]} midiEffects - MIDI effect devices
+ * @property {DeviceWithDrumPads | null} instrument - Instrument device (or null if none)
+ * @property {DeviceWithDrumPads[]} audioEffects - Audio effect devices
+ */
+
+/**
+ * @typedef {object} DeviceProcessingConfig
+ * @property {boolean} includeMidiEffects - Whether to include MIDI effects
+ * @property {boolean} includeInstruments - Whether to include instruments
+ * @property {boolean} includeAudioEffects - Whether to include audio effects
+ * @property {boolean} includeDrumMaps - Whether to include drum maps
+ * @property {boolean} includeRackChains - Whether to include rack chains
+ * @property {boolean} isProducerPalHost - Whether this is the Producer Pal host track
+ */
+
+/**
  * Process and categorize track devices
- * @param {object} categorizedDevices - Object containing categorized device arrays
- * @param {object} config - Configuration object with device processing flags
+ * @param {CategorizedDevices} categorizedDevices - Object containing categorized device arrays
+ * @param {DeviceProcessingConfig} config - Configuration object with device processing flags
  * @returns {object} Object with processed device arrays and optional drum map
  */
 function processDevices(categorizedDevices, config) {
@@ -328,11 +362,11 @@ export function readTrackGeneric({
 
 /**
  * Categorize devices into MIDI effects, instruments, and audio effects
- * @param {Array} devices - Array of Live API device objects
+ * @param {LiveAPI[]} devices - Array of Live API device objects
  * @param {boolean} includeDrumPads - Whether to include drum pad chains
  * @param {boolean} includeRackChains - Whether to include chains in rack devices
  * @param {boolean} includeReturnChains - Whether to include return chains in rack devices
- * @returns {object} Object with midiEffects, instrument, and audioEffects arrays
+ * @returns {CategorizedDevices} Object with midiEffects, instrument, and audioEffects arrays
  */
 function categorizeDevices(
   devices,
@@ -340,19 +374,24 @@ function categorizeDevices(
   includeRackChains = true,
   includeReturnChains = false,
 ) {
+  /** @type {DeviceWithDrumPads[]} */
   const midiEffects = [];
+  /** @type {DeviceWithDrumPads[]} */
   const instruments = [];
+  /** @type {DeviceWithDrumPads[]} */
   const audioEffects = [];
 
   for (const device of devices) {
-    const processedDevice = readDevice(device, {
-      includeChains: includeRackChains,
-      includeReturnChains,
-      includeDrumPads,
-    });
+    const processedDevice = /** @type {DeviceWithDrumPads} */ (
+      readDevice(device, {
+        includeChains: includeRackChains,
+        includeReturnChains,
+        includeDrumPads,
+      })
+    );
 
     // Use processed device type for proper rack categorization
-    const deviceType = /** @type {string} */ (processedDevice.type);
+    const deviceType = processedDevice.type;
 
     if (
       deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
@@ -390,7 +429,7 @@ function categorizeDevices(
 // Helper function to strip chains from device objects
 /**
  * Removes chains property from a device object
- * @param {object} device - Device object to strip chains from
+ * @param {object & { chains?: unknown }} device - Device object to strip chains from
  * @returns {object} Device object without chains property
  */
 function stripChains(device) {

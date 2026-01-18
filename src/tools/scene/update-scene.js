@@ -7,10 +7,15 @@ import {
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 /**
+ * @typedef {object} UpdateSceneResult
+ * @property {string} id - The scene ID
+ */
+
+/**
  * Updates properties of existing scenes
  * @param {{ ids?: string, name?: string, color?: string, tempo?: number | null, timeSignature?: string | null }} [args] - The scene parameters
  * @param {object} [_context] - Internal context object (unused)
- * @returns {object | Array<object>} Single scene object or array of scene objects
+ * @returns {UpdateSceneResult | UpdateSceneResult[]} Single scene object or array of scene objects
  */
 export function updateScene(
   { ids, name, color, tempo, timeSignature } = {},
@@ -66,5 +71,7 @@ export function updateScene(
     });
   }
 
-  return unwrapSingleResult(updatedScenes);
+  return /** @type {UpdateSceneResult | UpdateSceneResult[]} */ (
+    unwrapSingleResult(updatedScenes)
+  );
 }
