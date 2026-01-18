@@ -114,7 +114,8 @@ function handleLiveApiResult(...args) {
       const result = JSON.parse(resultJSON);
 
       const resultLength = result.content.reduce(
-        (sum, { text }) => sum + text.length,
+        (/** @type {number} */ sum, /** @type {{ text: string }} */ { text }) =>
+          sum + text.length,
         0,
       );
       let errorMessageLength = 0;
