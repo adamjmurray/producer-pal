@@ -103,12 +103,11 @@ export function getClipIds(
   let arrangementEndBeats = Infinity;
 
   if (arrangementStart != null) {
-    arrangementStartBeats =
-      barBeatToAbletonBeats(
-        arrangementStart,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      ) ?? 0;
+    arrangementStartBeats = barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
   }
 
   if (arrangementLength != null) {

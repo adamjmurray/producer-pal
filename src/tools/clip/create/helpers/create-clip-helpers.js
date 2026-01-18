@@ -73,21 +73,22 @@ export function convertTimingParameters(
   songTimeSigDenominator,
 ) {
   // Convert bar|beat timing parameters to Ableton beats
-  const arrangementStartBeats = barBeatToAbletonBeats(
-    arrangementStart,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-  const startBeats = barBeatToAbletonBeats(
-    start,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const firstStartBeats = barBeatToAbletonBeats(
-    firstStart,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  const arrangementStartBeats =
+    arrangementStart != null
+      ? barBeatToAbletonBeats(
+          arrangementStart,
+          songTimeSigNumerator,
+          songTimeSigDenominator,
+        )
+      : null;
+  const startBeats =
+    start != null
+      ? barBeatToAbletonBeats(start, timeSigNumerator, timeSigDenominator)
+      : null;
+  const firstStartBeats =
+    firstStart != null
+      ? barBeatToAbletonBeats(firstStart, timeSigNumerator, timeSigDenominator)
+      : null;
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && looping === false) {

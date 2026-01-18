@@ -307,18 +307,6 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToAbletonBeats("1|2.5", 6, 8)).toBe(0.75);
     });
 
-    it("returns null when barBeat is null", () => {
-      expect(barBeatToAbletonBeats(null, 4, 4)).toBeNull();
-      expect(barBeatToAbletonBeats(null, 3, 4)).toBeNull();
-      expect(barBeatToAbletonBeats(null, 6, 8)).toBeNull();
-    });
-
-    it("returns null when barBeat is undefined", () => {
-      expect(barBeatToAbletonBeats(undefined, 4, 4)).toBeNull();
-      expect(barBeatToAbletonBeats(undefined, 3, 4)).toBeNull();
-      expect(barBeatToAbletonBeats(undefined, 6, 8)).toBeNull();
-    });
-
     it("converts fractional bar|beat notation to Ableton beats", () => {
       // Triplets in 4/4 (1 Ableton beat = 1 musical beat)
       expect(barBeatToAbletonBeats("1|4/3", 4, 4)).toBeCloseTo(1 / 3, 10);
