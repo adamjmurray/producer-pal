@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   createAudioClipInSession,
   tileClipToRange,
@@ -58,7 +57,7 @@ export function handleArrangementLengthening({
       isAudioClip,
       arrangementLengthBeats,
       currentArrangementLength,
-      currentStartTime,
+      _currentStartTime: currentStartTime,
       currentEndTime,
       clipStartMarker,
       track,
@@ -98,9 +97,9 @@ export function handleArrangementLengthening({
       currentArrangementLength,
       currentStartTime,
       currentEndTime,
-      clipLoopStart,
-      clipLoopEnd,
-      clipStartMarker,
+      _clipLoopStart: clipLoopStart,
+      _clipLoopEnd: clipLoopEnd,
+      _clipStartMarker: clipStartMarker,
       totalContentLength,
       currentOffset,
       track,
@@ -292,10 +291,12 @@ export function handleArrangementShortening({
       tempClipLength,
       context.silenceWavPath,
     );
-    const tempResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
-      newEndTime,
+    const tempResult = /** @type {string} */ (
+      track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sessionClip.id}`,
+        newEndTime,
+      )
     );
     const tempClip = LiveAPI.from(tempResult);
 
@@ -306,10 +307,8 @@ export function handleArrangementShortening({
     slot.call("delete_clip");
     track.call("delete_clip", `id ${tempClip.id}`);
   } else {
-    const tempClipResult = track.call(
-      "create_midi_clip",
-      newEndTime,
-      tempClipLength,
+    const tempClipResult = /** @type {string} */ (
+      track.call("create_midi_clip", newEndTime, tempClipLength)
     );
     const tempClip = LiveAPI.from(tempClipResult);
 

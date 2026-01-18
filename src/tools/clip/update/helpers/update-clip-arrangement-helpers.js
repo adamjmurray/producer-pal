@@ -1,4 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
+import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
+import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.js";
 
 /**
  * Handle moving arrangement clips to a new position
@@ -56,4 +58,61 @@ export function handleArrangementStartOperation({
 
   // Return the new clip ID
   return newClip.id;
+}
+
+/**
+ * Handle arrangement start and length operations in correct order
+ * @param {object} args - Operation arguments
+ * @param {LiveAPI} args.clip - The clip to operate on
+ * @param {boolean} args.isAudioClip - Whether the clip is audio
+ * @param {number} args.arrangementStartBeats - Target start position in beats
+ * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {Map<number, number>} args.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {Partial<ToolContext>} args.context - Tool execution context
+ * @param {Array<object>} args.updatedClips - Array to collect updated clips
+ * @param {number | null} args.finalNoteCount - Final note count for result
+ */
+export function handleArrangementOperations({
+  clip,
+  isAudioClip,
+  arrangementStartBeats,
+  arrangementLengthBeats,
+  tracksWithMovedClips,
+  context,
+  updatedClips,
+  finalNoteCount,
+}) {
+  // Move FIRST so lengthening uses the new position
+  let finalClipId = clip.id;
+  let currentClip = clip;
+
+  if (arrangementStartBeats != null) {
+    finalClipId = handleArrangementStartOperation({
+      clip,
+      arrangementStartBeats,
+      tracksWithMovedClips,
+    });
+    currentClip = LiveAPI.from(`id ${finalClipId}`);
+  }
+
+  // Handle arrangementLength SECOND
+  let hasArrangementLengthResults = false;
+
+  if (arrangementLengthBeats != null) {
+    const results = handleArrangementLengthOperation({
+      clip: currentClip,
+      isAudioClip,
+      arrangementLengthBeats,
+      context,
+    });
+
+    if (results.length > 0) {
+      updatedClips.push(...results);
+      hasArrangementLengthResults = true;
+    }
+  }
+
+  if (!hasArrangementLengthResults) {
+    updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
+  }
 }

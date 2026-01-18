@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_WARP_MODE_BEATS,
@@ -120,7 +119,9 @@ function revealUnwarpedAudioContent(
   revealedClip.set("looping", 0);
 
   // Shorten the clip to only show the revealed portion (if needed)
-  const revealedClipEndTime = revealedClip.getProperty("end_time");
+  const revealedClipEndTime = /** @type {number} */ (
+    revealedClip.getProperty("end_time")
+  );
   const targetLengthBeats = newEndMarker - newStartMarker;
   const expectedEndTime = targetPosition + targetLengthBeats;
   const EPSILON = 0.001;
@@ -206,10 +207,11 @@ export function revealAudioContentAtPosition(
 /**
  * Sets audio-specific parameters on a clip
  * @param {LiveAPI} clip - The audio clip
- * @param {number} [gainDb] - Audio clip gain in decibels (-70 to 24)
- * @param {number} [pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
- * @param {string} [warpMode] - Audio clip warp mode
- * @param {boolean} [warping] - Audio clip warping on/off
+ * @param {object} params - Audio parameters
+ * @param {number} [params.gainDb] - Audio clip gain in decibels (-70 to 24)
+ * @param {number} [params.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @param {string} [params.warpMode] - Audio clip warp mode
+ * @param {boolean} [params.warping] - Audio clip warping on/off
  */
 export function setAudioParameters(
   clip,
