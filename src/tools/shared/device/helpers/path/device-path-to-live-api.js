@@ -37,13 +37,21 @@ function parseTrackSegment(trackSegment, path) {
 }
 
 /**
+ * @typedef {object} ChainSegmentResult
+ * @property {ResolvedPath} [earlyReturn] - Early return for drum pad paths
+ * @property {string} [liveApiPath] - Updated Live API path
+ * @property {'device'|'chain'|'drum-pad'|'return-chain'} [targetType] - Target type
+ * @property {string[]} [remainingSegments] - Remaining path segments
+ */
+
+/**
  * Parse a chain segment (c-prefixed chain, rc-prefixed return chain, or p-prefixed drum pad)
  * @param {string} segment - Chain segment to parse (e.g., "c0", "rc0", "pC1")
  * @param {string} path - Full path for error messages
  * @param {string} liveApiPath - Current Live API path
  * @param {string[]} segments - All path segments
  * @param {number} index - Current segment index
- * @returns {object} Result with liveApiPath, targetType, and optional early return
+ * @returns {ChainSegmentResult} Result with liveApiPath, targetType, and optional early return
  */
 function parseChainSegment(segment, path, liveApiPath, segments, index) {
   // Drum pad - return partial resolution for Live API lookup
@@ -146,8 +154,11 @@ export function resolvePathToLiveApi(path) {
         return result.earlyReturn;
       }
 
-      liveApiPath = result.liveApiPath;
-      targetType = result.targetType;
+      // After earlyReturn check, liveApiPath and targetType are guaranteed
+      liveApiPath = /** @type {string} */ (result.liveApiPath);
+      targetType = /** @type {'device'|'chain'|'drum-pad'|'return-chain'} */ (
+        result.targetType
+      );
     }
   }
 

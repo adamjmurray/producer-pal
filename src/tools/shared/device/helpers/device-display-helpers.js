@@ -2,6 +2,7 @@
 // Import from there directly instead of through this file
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
+/** @type {Record<number, string>} */
 export const PARAM_STATE_MAP = {
   0: "active",
   1: "inactive",
@@ -9,6 +10,7 @@ export const PARAM_STATE_MAP = {
 };
 
 // Automation state mapping (0=none, 1=active, 2=overridden)
+/** @type {Record<number, string>} */
 export const AUTOMATION_STATE_MAP = {
   0: "none",
   1: "active",
@@ -35,12 +37,14 @@ const LABEL_PATTERNS = [
 
 /**
  * Format parameter name, appending original_name if different (e.g. for rack macros).
- * @param {object} paramApi - LiveAPI parameter object
+ * @param {LiveAPI} paramApi - LiveAPI parameter object
  * @returns {string} Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
 function formatParamName(paramApi) {
-  const name = paramApi.getProperty("name");
-  const originalName = paramApi.getProperty("original_name");
+  const name = /** @type {string} */ (paramApi.getProperty("name"));
+  const originalName = /** @type {string} */ (
+    paramApi.getProperty("original_name")
+  );
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }
@@ -114,12 +118,12 @@ export function isDivisionLabel(label) {
 
 /**
  * Build result for division-type parameters with enum-like options.
- * @param {object} paramApi - LiveAPI parameter object
+ * @param {LiveAPI} paramApi - LiveAPI parameter object
  * @param {string} name - Formatted parameter name
  * @param {string|number} valueLabel - Current value label
  * @param {number} rawMin - Raw minimum value
  * @param {number} rawMax - Raw maximum value
- * @returns {object} Parameter result with value and options
+ * @returns {Record<string, unknown>} Parameter result with value and options
  */
 function buildDivisionParamResult(paramApi, name, valueLabel, rawMin, rawMax) {
   // Enumerate all integer values as options
@@ -171,8 +175,15 @@ export function extractMaxPanValue(label) {
   return match ? Number.parseInt(match[1]) : 50;
 }
 
+/**
+ * @param {Record<string, unknown>} result - Result object to add flags to
+ * @param {LiveAPI} paramApi - LiveAPI parameter object
+ * @param {string | undefined} state - Parameter state
+ * @param {string | undefined} automationState - Automation state
+ */
 function addStateFlags(result, paramApi, state, automationState) {
-  const isEnabled = paramApi.getProperty("is_enabled") > 0;
+  const isEnabled =
+    /** @type {number} */ (paramApi.getProperty("is_enabled")) > 0;
 
   if (!isEnabled) result.enabled = false;
   if (state && state !== "active") result.state = state;
@@ -184,8 +195,8 @@ function addStateFlags(result, paramApi, state, automationState) {
 
 /**
  * Read basic parameter info (id and name only)
- * @param {object} paramApi - LiveAPI parameter object
- * @returns {object} Parameter info with id and name
+ * @param {LiveAPI} paramApi - LiveAPI parameter object
+ * @returns {{id: string, name: string}} Parameter info with id and name
  */
 export function readParameterBasic(paramApi) {
   const name = formatParamName(paramApi);
@@ -195,21 +206,26 @@ export function readParameterBasic(paramApi) {
 
 /**
  * Read a single device parameter with full details.
- * @param {object} paramApi - LiveAPI parameter object
- * @returns {object} Parameter info object
+ * @param {LiveAPI} paramApi - LiveAPI parameter object
+ * @returns {Record<string, unknown>} Parameter info object
  */
 export function readParameter(paramApi) {
   const name = formatParamName(paramApi);
-  const state = PARAM_STATE_MAP[paramApi.getProperty("state")];
-  const automationState =
-    AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")];
+  const stateIdx = /** @type {number} */ (paramApi.getProperty("state"));
+  const automationIdx = /** @type {number} */ (
+    paramApi.getProperty("automation_state")
+  );
+  const state = PARAM_STATE_MAP[stateIdx];
+  const automationState = AUTOMATION_STATE_MAP[automationIdx];
 
-  if (paramApi.getProperty("is_quantized") > 0) {
-    const valueItems = paramApi.get("value_items");
+  if (/** @type {number} */ (paramApi.getProperty("is_quantized")) > 0) {
+    const valueItems = /** @type {string[]} */ (paramApi.get("value_items"));
+    const valueIdx = /** @type {number} */ (paramApi.getProperty("value"));
+    /** @type {Record<string, unknown>} */
     const result = {
       id: paramApi.id,
       name,
-      value: valueItems[paramApi.getProperty("value")],
+      value: valueItems[valueIdx],
       options: valueItems,
     };
 
@@ -218,12 +234,18 @@ export function readParameter(paramApi) {
     return result;
   }
 
-  const rawValue = paramApi.getProperty("value");
-  const rawMin = paramApi.getProperty("min");
-  const rawMax = paramApi.getProperty("max");
-  const valueLabel = paramApi.call("str_for_value", rawValue);
-  const minLabel = paramApi.call("str_for_value", rawMin);
-  const maxLabel = paramApi.call("str_for_value", rawMax);
+  const rawValue = /** @type {number} */ (paramApi.getProperty("value"));
+  const rawMin = /** @type {number} */ (paramApi.getProperty("min"));
+  const rawMax = /** @type {number} */ (paramApi.getProperty("max"));
+  const valueLabel = /** @type {string} */ (
+    paramApi.call("str_for_value", rawValue)
+  );
+  const minLabel = /** @type {string} */ (
+    paramApi.call("str_for_value", rawMin)
+  );
+  const maxLabel = /** @type {string} */ (
+    paramApi.call("str_for_value", rawMax)
+  );
 
   // Check for division-type params (fraction format like "1/8")
   if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {
@@ -248,6 +270,7 @@ export function readParameter(paramApi) {
   if (unit === "pan") {
     const maxPanValue =
       extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
+    /** @type {Record<string, unknown>} */
     const result = {
       id: paramApi.id,
       name,
@@ -262,6 +285,7 @@ export function readParameter(paramApi) {
     return result;
   }
 
+  /** @type {Record<string, unknown>} */
   const result = {
     id: paramApi.id,
     name,

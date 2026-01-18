@@ -5,13 +5,18 @@
  */
 
 /**
+ * @typedef {object} TilingContext
+ * @property {string} silenceWavPath - Path to silence WAV file for audio clip operations
+ */
+
+/**
  * Creates an audio clip in session view with controlled length.
  * Uses session view because create_audio_clip in arrangement doesn't support length control.
  *
- * @param {object} track - LiveAPI track instance
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
  * @param {string} audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
- * @returns {{clip: object, slot: object}} The created clip and slot in session view
+ * @returns {{clip: LiveAPI, slot: LiveAPI}} The created clip and slot in session view
  */
 export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const liveSet = LiveAPI.from("live_set");
@@ -66,12 +71,12 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
  *
- * @param {object} sourceClip - LiveAPI clip instance to duplicate
- * @param {object} track - LiveAPI track instance
+ * @param {LiveAPI} sourceClip - LiveAPI clip instance to duplicate
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {object} context - Context object with silenceWavPath for audio clips
+ * @param {TilingContext} context - Context object with silenceWavPath for audio clips
  * @returns {{holdingClipId: string, holdingClip: LiveAPI}} Holding clip ID and instance
  */
 export function createShortenedClipInHolding(
@@ -87,10 +92,12 @@ export function createShortenedClipInHolding(
   const sourceClipId = sourceClip.id;
 
   // Duplicate source clip to holding area
-  const holdingResult = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${sourceClipId}`,
-    holdingAreaStart,
+  const holdingResult = /** @type {[string, string | number]} */ (
+    track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClipId}`,
+      holdingAreaStart,
+    )
   );
   const holdingClip = LiveAPI.from(holdingResult);
 
@@ -109,10 +116,8 @@ export function createShortenedClipInHolding(
     // For audio clips, create in session then duplicate to arrangement
     // For MIDI clips, create directly in arrangement
     if (isMidiClip) {
-      const tempResult = track.call(
-        "create_midi_clip",
-        newHoldingEnd,
-        tempLength,
+      const tempResult = /** @type {[string, string | number]} */ (
+        track.call("create_midi_clip", newHoldingEnd, tempLength)
       );
       const tempClip = LiveAPI.from(tempResult);
 
@@ -126,10 +131,12 @@ export function createShortenedClipInHolding(
       );
 
       // Duplicate to arrangement at the truncation position
-      const tempResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        newHoldingEnd,
+      const tempResult = /** @type {[string, string | number]} */ (
+        track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${sessionClip.id}`,
+          newHoldingEnd,
+        )
       );
       const tempClip = LiveAPI.from(tempResult);
 
@@ -175,14 +182,14 @@ export function moveClipFromHolding(holdingClipId, track, targetPosition) {
  * Adjusts a clip's pre-roll by setting start_marker to loop_start and shortening.
  * Only performs adjustment if the clip has pre-roll (start_marker < loop_start).
  *
- * @param {object} clip - LiveAPI clip instance
- * @param {object} track - LiveAPI track instance
+ * @param {LiveAPI} clip - LiveAPI clip instance
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {object} context - Context object with silenceWavPath for audio clips
+ * @param {TilingContext} context - Context object with silenceWavPath for audio clips
  */
 export function adjustClipPreRoll(clip, track, isMidiClip, context) {
-  const startMarker = clip.getProperty("start_marker");
-  const loopStart = clip.getProperty("loop_start");
+  const startMarker = /** @type {number} */ (clip.getProperty("start_marker"));
+  const loopStart = /** @type {number} */ (clip.getProperty("loop_start"));
 
   // Only adjust if clip has pre-roll
   if (startMarker < loopStart) {
@@ -191,17 +198,15 @@ export function adjustClipPreRoll(clip, track, isMidiClip, context) {
 
     // Shorten clip by the pre-roll amount
     const preRollLength = loopStart - startMarker;
-    const clipEnd = clip.getProperty("end_time");
+    const clipEnd = /** @type {number} */ (clip.getProperty("end_time"));
     const newClipEnd = clipEnd - preRollLength;
     const tempClipLength = clipEnd - newClipEnd;
 
     // For audio clips, create in session then duplicate to arrangement
     // For MIDI clips, create directly in arrangement
     if (isMidiClip) {
-      const tempClipPath = track.call(
-        "create_midi_clip",
-        newClipEnd,
-        tempClipLength,
+      const tempClipPath = /** @type {[string, string | number]} */ (
+        track.call("create_midi_clip", newClipEnd, tempClipLength)
       );
       const tempClip = LiveAPI.from(tempClipPath);
 
@@ -215,10 +220,12 @@ export function adjustClipPreRoll(clip, track, isMidiClip, context) {
       );
 
       // Duplicate to arrangement at the truncation position
-      const tempResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        newClipEnd,
+      const tempResult = /** @type {[string, string | number]} */ (
+        track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${sessionClip.id}`,
+          newClipEnd,
+        )
       );
       const tempClip = LiveAPI.from(tempResult);
 
@@ -233,16 +240,16 @@ export function adjustClipPreRoll(clip, track, isMidiClip, context) {
  * Creates a partial tile of a clip at a target position.
  * Combines: create shortened clip in holding → move to target → optionally adjust pre-roll.
  *
- * @param {object} sourceClip - LiveAPI clip instance to tile
- * @param {object} track - LiveAPI track instance
+ * @param {LiveAPI} sourceClip - LiveAPI clip instance to tile
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {number} targetPosition - Target position in beats
  * @param {number} partialLength - Length of partial tile in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {object} context - Context object with silenceWavPath for audio clips
+ * @param {TilingContext} context - Context object with silenceWavPath for audio clips
  * @param {boolean} [adjustPreRoll=true] - Whether to adjust pre-roll on the created tile
  * @param {number} [contentOffset=0] - Content offset in beats for start_marker
- * @returns {object} The created partial tile clip (LiveAPI instance)
+ * @returns {LiveAPI} The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
   sourceClip,
@@ -269,8 +276,12 @@ export function createPartialTile(
   const partialTile = moveClipFromHolding(holdingClipId, track, targetPosition);
 
   // Set start_marker to show correct portion of clip content
-  const clipLoopStart = sourceClip.getProperty("loop_start");
-  const clipLoopEnd = sourceClip.getProperty("loop_end");
+  const clipLoopStart = /** @type {number} */ (
+    sourceClip.getProperty("loop_start")
+  );
+  const clipLoopEnd = /** @type {number} */ (
+    sourceClip.getProperty("loop_end")
+  );
   const clipLength = clipLoopEnd - clipLoopStart;
   const tileStartMarker = clipLoopStart + (contentOffset % clipLength);
 
@@ -288,17 +299,17 @@ export function createPartialTile(
  * Tiles a clip across a range by creating full tiles and a partial final tile.
  * High-level orchestrator that handles the complete tiling operation.
  *
- * @param {object} sourceClip - LiveAPI clip instance to tile
- * @param {object} track - LiveAPI track instance
+ * @param {LiveAPI} sourceClip - LiveAPI clip instance to tile
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {number} startPosition - Start position for tiling in beats
  * @param {number} totalLength - Total length to fill with tiles in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
- * @param {object} context - Context object with silenceWavPath for audio clips
+ * @param {TilingContext} context - Context object with silenceWavPath for audio clips
  * @param {object} options - Configuration options
  * @param {boolean} [options.adjustPreRoll=true] - Whether to adjust pre-roll on subsequent tiles
  * @param {number} [options.startOffset=0] - Content offset in beats to start tiling from
  * @param {number | null} [options.tileLength=null] - Arrangement length per tile (defaults to clip content length)
- * @returns {Array<object>} Array of created clip objects with {id} property
+ * @returns {Array<{id: string}>} Array of created clip objects with {id} property
  */
 export function tileClipToRange(
   sourceClip,
@@ -319,14 +330,20 @@ export function tileClipToRange(
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
 
   // Get clip loop length for tiling
-  const clipLoopStart = sourceClip.getProperty("loop_start");
-  const clipLoopEnd = sourceClip.getProperty("loop_end");
+  const clipLoopStart = /** @type {number} */ (
+    sourceClip.getProperty("loop_start")
+  );
+  const clipLoopEnd = /** @type {number} */ (
+    sourceClip.getProperty("loop_end")
+  );
   const clipLength = clipLoopEnd - clipLoopStart;
 
   // Safety mechanism: Ensure end_marker is set to loop_end before tiling
   // This prevents "invalid syntax" errors when setting start_marker on duplicates
   // (start_marker cannot exceed end_marker)
-  const currentEndMarker = sourceClip.getProperty("end_marker");
+  const currentEndMarker = /** @type {number} */ (
+    sourceClip.getProperty("end_marker")
+  );
 
   if (currentEndMarker !== clipLoopEnd) {
     sourceClip.set("end_marker", clipLoopEnd);
@@ -350,7 +367,7 @@ export function tileClipToRange(
     const freshTrack = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
-    const result = /** @type {string} */ (
+    const result = /** @type {[string, string | number]} */ (
       freshTrack.call(
         "duplicate_clip_to_arrangement",
         `id ${sourceClipId}`,

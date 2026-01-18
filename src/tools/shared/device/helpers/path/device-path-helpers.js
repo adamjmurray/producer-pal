@@ -16,14 +16,14 @@ export { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
 
 /**
  * @typedef {object} InsertionPathResolution
- * @property {object} container - LiveAPI object (Track or Chain) to insert into
+ * @property {LiveAPI | null} container - LiveAPI object (Track or Chain) to insert into, or null if not found
  * @property {number|null} position - Device index to insert at, or null to append
  */
 
 /**
  * Resolve a track segment to a LiveAPI track object
  * @param {string} segment - Track segment (e.g., "t0", "rt0", "mt")
- * @returns {object} LiveAPI track object
+ * @returns {LiveAPI} LiveAPI track object
  */
 function resolveTrack(segment) {
   if (segment === "mt") {
@@ -48,7 +48,7 @@ function resolveTrack(segment) {
 /**
  * Resolve a drum pad container path with auto-creation of missing chains
  * @param {string} path - Path containing drum pad notation
- * @returns {object} LiveAPI object (Chain)
+ * @returns {LiveAPI | null} LiveAPI object (Chain)
  */
 function resolveDrumPadContainer(path) {
   const resolved = resolvePathToLiveApi(path);
@@ -137,7 +137,7 @@ function resolveDrumPadContainer(path) {
  * Resolve a container path (track or chain) to a LiveAPI object.
  * Auto-creates missing chains for regular racks. Throws for Drum Racks.
  * @param {string} path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
- * @returns {object} LiveAPI object (Track or Chain)
+ * @returns {LiveAPI | null} LiveAPI object (Track or Chain)
  */
 function resolveContainer(path) {
   const segments = path.split("/");

@@ -60,10 +60,11 @@ function createDeviceAtPath(deviceName, path) {
     );
   }
 
-  const result =
+  const result = /** @type {[string, string | number]} */ (
     position != null
       ? container.call("insert_device", deviceName, position)
-      : container.call("insert_device", deviceName);
+      : container.call("insert_device", deviceName)
+  );
 
   const deviceId = result[1];
   const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;

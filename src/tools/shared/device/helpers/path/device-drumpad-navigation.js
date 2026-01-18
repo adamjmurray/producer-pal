@@ -2,15 +2,15 @@ import { noteNameToMidi } from "#src/shared/pitch.js";
 
 /**
  * @typedef {object} DrumPadResolution
- * @property {object|null} target - The resolved LiveAPI object (Chain or Device)
+ * @property {LiveAPI|null} target - The resolved LiveAPI object (Chain or Device)
  * @property {'chain'|'device'} targetType - Type of the resolved target
  */
 
 /**
- * @param {object} parent - Parent LiveAPI object
+ * @param {LiveAPI} parent - Parent LiveAPI object
  * @param {string} childType - Type of children ("devices", "chains", etc.)
  * @param {number} index - Child index
- * @returns {object|null} Child object or null if invalid
+ * @returns {LiveAPI|null} Child object or null if invalid
  */
 function getChildAtIndex(parent, childType, index) {
   if (Number.isNaN(index)) return null;
@@ -21,7 +21,7 @@ function getChildAtIndex(parent, childType, index) {
 
 /**
  * Navigate through remaining path segments after reaching a device.
- * @param {object} startDevice - Starting device
+ * @param {LiveAPI} startDevice - Starting device
  * @param {string[]} segments - Remaining path segments with prefixes (c, d, rc, p)
  * @returns {DrumPadResolution} The resolved target and its type
  */
