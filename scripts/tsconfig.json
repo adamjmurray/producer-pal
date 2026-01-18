@@ -1,16 +1,16 @@
 {
   "compilerOptions": {
-    "checkJs": true,
+    "checkJs": false,
     "noEmit": true,
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowJs": true,
+    "allowJs": false,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true
   },
-  "include": ["**/*.mjs", "**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["chat-lib/**"]
 }

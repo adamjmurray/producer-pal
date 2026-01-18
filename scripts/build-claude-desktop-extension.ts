@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
+// @ts-expect-error - importing JS module without type declarations
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
@@ -33,7 +34,6 @@ interface RegisteredTool {
   annotations?: { title?: string };
 }
 
-// @ts-expect-error - accessing private property to enumerate registered tools
 const registeredTools = server._registeredTools as Record<
   string,
   RegisteredTool

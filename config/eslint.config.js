@@ -326,7 +326,7 @@ export default [
 
   // All JavaScript files (any directory)
   {
-    files: ["{src,scripts,webui,tests}/**/*.{js,mjs}"],
+    files: ["{src,webui,tests}/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -449,7 +449,7 @@ export default [
 
   // Node.js code
   {
-    files: ["{src,scripts}/**/*.{js,mjs,ts}"],
+    files: ["src/**/*.{js,mjs}", "scripts/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -586,9 +586,9 @@ export default [
     },
   },
 
-  // Require extensions for src and scripts (unbundled Node.js execution)
+  // Require extensions for src (unbundled Node.js execution)
   {
-    files: ["{src,scripts}/**/*.{js,mjs}"],
+    files: ["src/**/*.{js,mjs}"],
     rules: {
       // Node.js ESM requires explicit file extensions for relative imports.
       // See: https://nodejs.org/api/esm.html#import-specifiers
@@ -716,8 +716,6 @@ export default [
   {
     files: [
       "src/**/*.js",
-      "scripts/**/*.js",
-      "scripts/**/*.mjs",
       "scripts/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
