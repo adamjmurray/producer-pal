@@ -181,8 +181,8 @@ by code review, not linting.
   check, and tests)
 - Direct tool invocation (upon request):
   ```
-  node scripts/cli.mjs tools/list
-  node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
+  node scripts/cli.ts tools/list
+  node scripts/cli.ts tools/call tool-name '{"arg": "value"}'
   ```
 - **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
   (verifies the AI can use tools correctly, not just that tools work):

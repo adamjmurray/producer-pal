@@ -2,34 +2,36 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-/**
- * @typedef {object} McpTool
- * @property {string} name
- * @property {string} [description]
- * @property {object} [inputSchema]
- */
+interface McpTool {
+  name: string;
+  description?: string;
+  inputSchema?: object;
+}
 
-/**
- * @typedef {object} McpResource
- * @property {string} uri
- * @property {string} [text]
- */
+interface McpResource {
+  uri: string;
+  text?: string;
+}
 
-/**
- * @typedef {object} McpContent
- * @property {string} type
- * @property {string} [text]
- * @property {McpResource} [resource]
- */
+interface McpContent {
+  type: string;
+  text?: string;
+  resource?: McpResource;
+}
 
-// Helper function to print large text without truncation
+interface ParsedArgs {
+  url: string;
+  command: string | null;
+  toolName: string | null;
+  toolArgs: Record<string, unknown> | null;
+}
+
 /**
  * Print text line by line to avoid truncation
- *
- * @param {string} text - Text to print
- * @param {string} prefix - Prefix to add to each line
+ * @param text - Text to print
+ * @param prefix - Prefix to add to each line
  */
-function printLargeText(text, prefix = "") {
+function printLargeText(text: string, prefix = ""): void {
   const lines = text.split("\n");
 
   for (const line of lines) {
@@ -39,11 +41,10 @@ function printLargeText(text, prefix = "") {
 
 /**
  * Print a single tool's details
- *
- * @param {McpTool} tool - Tool object with name, description, inputSchema
- * @param {number} index - Tool index for display
+ * @param tool - Tool object with name, description, inputSchema
+ * @param index - Tool index for display
  */
-function printTool(tool, index) {
+function printTool(tool: McpTool, index: number): void {
   console.log(`\n${index + 1}. ${tool.name}`);
 
   if (tool.description) {
@@ -60,11 +61,10 @@ function printTool(tool, index) {
 
 /**
  * Print a single content item from tool result
- *
- * @param {McpContent} content - Content object
- * @param {number} index - Content index for display
+ * @param content - Content object
+ * @param index - Content index for display
  */
-function printContentItem(content, index) {
+function printContentItem(content: McpContent, index: number): void {
   if (content.type === "text") {
     console.log(content.text);
   } else if (content.type === "resource" && content.resource) {
@@ -80,14 +80,13 @@ function printContentItem(content, index) {
 
 /**
  * Handle tools/list command
- *
- * @param {Client} client - MCP client
+ * @param client - MCP client
  */
-async function handleToolsList(client) {
+async function handleToolsList(client: Client): Promise<void> {
   console.log("\nAvailable Tools:");
   const { tools } = await client.listTools();
 
-  if (tools?.length > 0) {
+  if (tools.length > 0) {
     for (const [index, tool] of tools.entries()) {
       printTool(tool, index);
     }
@@ -98,12 +97,15 @@ async function handleToolsList(client) {
 
 /**
  * Handle tools/call command
- *
- * @param {Client} client - MCP client
- * @param {string} toolName - Name of the tool to call
- * @param {Record<string, unknown>} toolArgs - Arguments to pass to the tool
+ * @param client - MCP client
+ * @param toolName - Name of the tool to call
+ * @param toolArgs - Arguments to pass to the tool
  */
-async function handleToolsCall(client, toolName, toolArgs) {
+async function handleToolsCall(
+  client: Client,
+  toolName: string,
+  toolArgs: Record<string, unknown>,
+): Promise<void> {
   console.log(`\nCalling tool: ${toolName}`);
   console.log(`Arguments: ${JSON.stringify(toolArgs, null, 2)}`);
 
@@ -118,34 +120,29 @@ async function handleToolsCall(client, toolName, toolArgs) {
     console.log("ERROR:");
   }
 
-  const contentArray = /** @type {McpContent[]} */ (result.content);
+  const contentArray = result.content as McpContent[];
 
-  if (contentArray) {
-    for (const [index, content] of contentArray.entries()) {
-      printContentItem(content, index);
-    }
-  } else {
-    console.log(JSON.stringify(result, null, 2));
+  for (const [index, content] of contentArray.entries()) {
+    printContentItem(content, index);
   }
 }
 
 // Default URL for the MCP server running in Ableton Live
 const DEFAULT_URL = "http://localhost:3350/mcp";
 
-// Parse command line arguments
 /**
  * Parse command line arguments
- * @returns {{url: string, command: string|null, toolName: string|null, toolArgs: Record<string, unknown>|null}} - Parsed arguments
+ * @returns Parsed arguments
  */
-function parseArgs() {
+function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
   let url = DEFAULT_URL;
-  let command = null;
-  let toolName = null;
-  let toolArgs = null;
+  let command: string | null = null;
+  let toolName: string | null = null;
+  let toolArgs: Record<string, unknown> | null = null;
 
   // Check if first arg is a URL (contains ://)
-  if (args[0] && args[0].includes("://")) {
+  if (args[0]?.includes("://")) {
     url = args[0];
     args.shift();
   }
@@ -160,7 +157,7 @@ function parseArgs() {
           "Error: tools/call requires tool name and JSON arguments",
         );
         console.error(
-          "Usage: cli.mjs [url] tools/call <tool-name> '<json-args>'",
+          "Usage: cli.ts [url] tools/call <tool-name> '<json-args>'",
         );
         process.exit(1);
       }
@@ -168,9 +165,9 @@ function parseArgs() {
       toolName = args[1];
 
       try {
-        toolArgs = JSON.parse(args[2]);
+        toolArgs = JSON.parse(args[2]) as Record<string, unknown>;
       } catch (e) {
-        const error = /** @type {Error} */ (e);
+        const error = e as Error;
 
         console.error("Error: Invalid JSON arguments:", error.message);
         process.exit(1);
@@ -182,9 +179,9 @@ function parseArgs() {
 }
 
 /**
- *
+ * Main entry point
  */
-async function main() {
+async function main(): Promise<void> {
   const { url, command, toolName, toolArgs } = parseArgs();
 
   console.log(`Connecting to MCP server at: ${url}`);
@@ -235,7 +232,7 @@ async function main() {
     await client.close();
     console.log("\nConnection closed.");
   } catch (e) {
-    const error = /** @type {Error & {cause?: Error}} */ (e);
+    const error = e as Error & { cause?: Error };
 
     console.error("\nError:", error.message);
 
@@ -253,7 +250,7 @@ async function main() {
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log("Usage: cli.mjs [url] [command] [args...]");
+  console.log("Usage: cli.ts [url] [command] [args...]");
   console.log("");
   console.log("Commands:");
   console.log("  (none)                    Connect and show server info");
@@ -261,12 +258,12 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("  tools/call <name> <json>  Call a tool with JSON arguments");
   console.log("");
   console.log("Examples:");
-  console.log("  cli.mjs");
-  console.log("  cli.mjs tools/list");
-  console.log("  cli.mjs tools/call ppal-read-live-set '{}'");
-  console.log("  cli.mjs http://localhost:6274/mcp tools/list");
+  console.log("  cli.ts");
+  console.log("  cli.ts tools/list");
+  console.log("  cli.ts tools/call ppal-read-live-set '{}'");
+  console.log("  cli.ts http://localhost:6274/mcp tools/list");
   console.log(
-    '  cli.mjs tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',
+    '  cli.ts tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',
   );
   process.exit(0);
 }
