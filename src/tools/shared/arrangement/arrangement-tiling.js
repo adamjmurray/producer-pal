@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * Shared helpers for arrangement clip tiling operations.
  * These functions handle the complex logic of shortening, moving, and tiling
@@ -25,7 +24,9 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
   let workingSceneId = lastSceneId;
 
   if (!isEmpty) {
-    const newSceneResult = liveSet.call("create_scene", sceneIds.length);
+    const newSceneResult = /** @type {string[] | string} */ (
+      liveSet.call("create_scene", sceneIds.length)
+    );
 
     // LiveAPI.call returns an array like ["id", "833"], join it with space to match getChildIds format
     workingSceneId = Array.isArray(newSceneResult)
@@ -71,7 +72,7 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param {object} context - Context object with silenceWavPath for audio clips
- * @returns {{holdingClipId: number, holdingClip: object}} Holding clip ID and instance
+ * @returns {{holdingClipId: string, holdingClip: LiveAPI}} Holding clip ID and instance
  */
 export function createShortenedClipInHolding(
   sourceClip,
@@ -94,7 +95,9 @@ export function createShortenedClipInHolding(
   const holdingClip = LiveAPI.from(holdingResult);
 
   // Shorten holding clip to target length using temp clip technique
-  const holdingClipEnd = holdingClip.getProperty("end_time");
+  const holdingClipEnd = /** @type {number} */ (
+    holdingClip.getProperty("end_time")
+  );
   const newHoldingEnd = holdingAreaStart + targetLength;
   const tempLength = holdingClipEnd - newHoldingEnd;
 
@@ -146,17 +149,19 @@ export function createShortenedClipInHolding(
  * Moves a clip from the holding area to a target position.
  * Duplicates the holding clip to the target, then cleans up the holding clip.
  *
- * @param {number} holdingClipId - ID of clip in holding area
- * @param {object} track - LiveAPI track instance
+ * @param {string} holdingClipId - ID of clip in holding area
+ * @param {LiveAPI} track - LiveAPI track instance
  * @param {number} targetPosition - Target position in beats
- * @returns {object} The moved clip (LiveAPI instance)
+ * @returns {LiveAPI} The moved clip (LiveAPI instance)
  */
 export function moveClipFromHolding(holdingClipId, track, targetPosition) {
   // Duplicate holding clip to target position
-  const finalResult = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${holdingClipId}`,
-    targetPosition,
+  const finalResult = /** @type {string} */ (
+    track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${holdingClipId}`,
+      targetPosition,
+    )
   );
   const movedClip = LiveAPI.from(finalResult);
 
@@ -345,10 +350,12 @@ export function tileClipToRange(
     const freshTrack = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
-    const result = freshTrack.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sourceClipId}`,
-      currentPosition,
+    const result = /** @type {string} */ (
+      freshTrack.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sourceClipId}`,
+        currentPosition,
+      )
     );
 
     const tileClip = LiveAPI.from(result);
