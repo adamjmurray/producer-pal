@@ -100,9 +100,9 @@ function executeOperation(api, operation) {
       return api[property];
 
     case "set_property":
-      api[property] = operation.value;
+      api.set(property, operation.value);
 
-      return api[property];
+      return operation.value;
 
     case "call_method": {
       const args = operation.args || [];
