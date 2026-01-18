@@ -127,13 +127,13 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 120,
+      max: 115,
       skipBlankLines: true,
       skipComments: true,
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 19], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsdocRules = {
@@ -548,7 +548,7 @@ export default [
       "max-lines-per-function": [
         "error",
         {
-          max: 250,
+          max: 240,
           skipBlankLines: true,
           skipComments: true,
         },
@@ -668,8 +668,15 @@ export default [
     rules: {
       ...vitestPlugin.configs.recommended.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
-      "max-lines-per-function": "off",
-      complexity: ["error", 30],
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 630, // TODO: ratchet down
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+      complexity: ["error", 28],
       "sonarjs/no-duplicate-string": "off",
       "import/first": "off", // Test files need imports after vi.mock() calls
       "import/order": "off",
@@ -693,7 +700,7 @@ export default [
   {
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
-      "sonarjs/cognitive-complexity": ["error", 40],
+      "sonarjs/cognitive-complexity": ["error", 38],
       // Allow DOM element narrowing casts (e.g., `as HTMLSelectElement`) in tests
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
