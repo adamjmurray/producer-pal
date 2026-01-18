@@ -20,6 +20,12 @@ const TS_EXPECT_ERROR_LIMITS = {
   webui: 5,
 };
 
+const TS_NOCHECK_LIMITS = {
+  src: 38, // Ratcheted - remove @ts-nocheck by adding JSDoc type annotations
+  scripts: 0,
+  webui: 0,
+};
+
 const SOURCE_TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".ts", ".tsx"]);
 
@@ -147,6 +153,30 @@ describe("Lint suppression limits", () => {
           expect.fail(
             `Found ${matches.length} @ts-expect-error comments in ${tree}/ (max: ${limit}):\n${details}\n\n` +
               `Consider fixing the type issues or improving type definitions.`,
+          );
+        }
+      });
+    }
+  });
+
+  describe("@ts-nocheck comments (excluding test files)", () => {
+    for (const tree of SOURCE_TREES) {
+      const limit = TS_NOCHECK_LIMITS[tree];
+
+      it(`should have at most ${limit} @ts-nocheck comments in ${tree}/`, () => {
+        const treePath = path.join(projectRoot, tree);
+        const files = findSourceFiles(treePath, true); // excludeTests=true
+        const matches = countPatternOccurrences(files, /@ts-nocheck/);
+
+        if (matches.length > limit) {
+          const details = matches
+            .map((m) => `  - ${m.file}:${m.line}`)
+            .join("\n");
+
+          // eslint-disable-next-line vitest/no-conditional-expect -- conditional provides detailed failure message
+          expect.fail(
+            `Found ${matches.length} @ts-nocheck comments in ${tree}/ (max: ${limit}):\n${details}\n\n` +
+              `Add JSDoc type annotations and remove @ts-nocheck to enable type checking.`,
           );
         }
       });
