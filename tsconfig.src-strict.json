@@ -12,6 +12,9 @@
     "src/live-api-adapter/**/*.js",
     "src/notation/**/*.js",
     "src/tools/shared/**/*.js",
+    "src/tools/workflow/**/*.js",
+    "src/tools/live-set/**/*.js",
+    "src/tools/samples/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [

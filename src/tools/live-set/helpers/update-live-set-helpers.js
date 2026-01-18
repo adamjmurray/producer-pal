@@ -15,12 +15,20 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
 );
 
 /**
+ * @typedef {object} TempClipInfo
+ * @property {LiveAPI} track - The track containing the temp clip
+ * @property {string} clipId - The clip ID
+ * @property {boolean} isMidiTrack - Whether it's a MIDI track
+ * @property {LiveAPI} [slot] - The session slot (for audio tracks)
+ */
+
+/**
  * Extends the song length by creating a temporary clip if needed.
  * Required when creating locators past the current song_length.
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {number} targetBeats - Target position in beats
- * @param {object} context - Context object with silenceWavPath
- * @returns {object|null} Cleanup info or null if no extension needed
+ * @param {{ silenceWavPath?: string }} context - Context object with silenceWavPath
+ * @returns {TempClipInfo|null} Cleanup info or null if no extension needed
  */
 export function extendSongIfNeeded(liveSet, targetBeats, context) {
   const songLength = /** @type {number} */ (liveSet.get("song_length")[0]);
@@ -97,7 +105,7 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
 /**
  * Cleans up the temporary clip created by extendSongIfNeeded.
- * @param {object|null} tempClipInfo - Info from extendSongIfNeeded or null
+ * @param {TempClipInfo|null} tempClipInfo - Info from extendSongIfNeeded or null
  */
 export function cleanupTempClip(tempClipInfo) {
   if (!tempClipInfo) {
@@ -162,7 +170,7 @@ export function parseScale(scaleString) {
  * Apply tempo to live set, with validation
  * @param {LiveAPI} liveSet - The live_set object
  * @param {number} tempo - Tempo in BPM
- * @param {object} result - Result object to update
+ * @param {{ tempo?: number }} result - Result object to update
  */
 export function applyTempo(liveSet, tempo, result) {
   if (tempo < 20 || tempo > 999) {
@@ -179,7 +187,7 @@ export function applyTempo(liveSet, tempo, result) {
  * Apply scale to live set, with validation
  * @param {LiveAPI} liveSet - The live_set object
  * @param {string} scale - Scale string (e.g., "C Major") or empty string to disable
- * @param {object} result - Result object to update
+ * @param {{ scale?: string }} result - Result object to update
  */
 export function applyScale(liveSet, scale, result) {
   if (scale === "") {
