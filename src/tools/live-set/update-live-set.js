@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
@@ -17,19 +16,23 @@ import {
 } from "./helpers/update-live-set-helpers.js";
 
 /**
+ * @typedef {object} UpdateLiveSetArgs
+ * @property {number} [tempo] - Set tempo in BPM (20.0-999.0)
+ * @property {string} [timeSignature] - Time signature in format "4/4"
+ * @property {string} [scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
+ * @property {string} [locatorOperation] - Locator operation: "create", "delete", or "rename"
+ * @property {string} [locatorId] - Locator ID for delete/rename (e.g., "locator-0")
+ * @property {string} [locatorTime] - Bar|beat position for create/delete/rename
+ * @property {string} [locatorName] - Name for create/rename, or name filter for delete
+ * @property {boolean} [arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
+ */
+
+/**
  * Updates Live Set parameters like tempo, time signature, scale, and locators.
  * Note: Scale changes affect currently selected clips and set defaults for new clips.
- * @param {object} args - The parameters
- * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
- * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
- * @param {string} [args.locatorOperation] - Locator operation: "create", "delete", or "rename"
- * @param {string} [args.locatorId] - Locator ID for delete/rename (e.g., "locator-0")
- * @param {string} [args.locatorTime] - Bar|beat position for create/delete/rename
- * @param {string} [args.locatorName] - Name for create/rename, or name filter for delete
- * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
- * @param {object} context - Internal context object with silenceWavPath for audio clips
- * @returns {object} Updated Live Set information
+ * @param {UpdateLiveSetArgs} [args] - The parameters
+ * @param {Partial<ToolContext>} [context] - Internal context object with silenceWavPath for audio clips
+ * @returns {Promise<Record<string, unknown>>} Updated Live Set information
  */
 export async function updateLiveSet(
   {
@@ -47,6 +50,7 @@ export async function updateLiveSet(
   const liveSet = LiveAPI.from("live_set");
 
   // optimistic result object that only include properties that are actually set
+  /** @type {Record<string, unknown>} */
   const result = {
     id: liveSet.id,
   };
@@ -70,7 +74,7 @@ export async function updateLiveSet(
       result.$meta = [];
     }
 
-    result.$meta.push(
+    /** @type {string[]} */ (result.$meta).push(
       "Scale applied to selected clips and defaults for new clips.",
     );
   }
@@ -85,8 +89,10 @@ export async function updateLiveSet(
   const shouldIncludeScalePitches = scale != null && scale !== "";
 
   if (shouldIncludeScalePitches) {
-    const rootNote = liveSet.getProperty("root_note");
-    const scaleIntervals = liveSet.getProperty("scale_intervals");
+    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
+    const scaleIntervals = /** @type {number[]} */ (
+      liveSet.getProperty("scale_intervals")
+    );
 
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
@@ -116,7 +122,8 @@ export async function updateLiveSet(
  * @returns {boolean} True if playback was stopped
  */
 function stopPlaybackIfNeeded(liveSet) {
-  const isPlaying = liveSet.getProperty("is_playing") > 0;
+  const isPlaying =
+    /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
 
   if (isPlaying) {
     liveSet.call("stop_playing");
@@ -139,7 +146,10 @@ function stopPlaybackIfNeeded(liveSet) {
 async function waitForPlayheadPosition(liveSet, targetBeats) {
   const success = await waitUntil(
     () =>
-      Math.abs(liveSet.getProperty("current_song_time") - targetBeats) < 0.001,
+      Math.abs(
+        /** @type {number} */ (liveSet.getProperty("current_song_time")) -
+          targetBeats,
+      ) < 0.001,
     { pollingInterval: 10, maxRetries: 10 },
   );
 
@@ -166,8 +176,12 @@ async function handleLocatorOperation(
   { locatorOperation, locatorId, locatorTime, locatorName },
   context,
 ) {
-  const timeSigNumerator = liveSet.getProperty("signature_numerator");
-  const timeSigDenominator = liveSet.getProperty("signature_denominator");
+  const timeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const timeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   switch (locatorOperation) {
     case "create":
@@ -351,7 +365,7 @@ async function deleteLocator(
       };
     }
 
-    timeInBeats = found.locator.getProperty("time");
+    timeInBeats = /** @type {number} */ (found.locator.getProperty("time"));
   } else if (locatorTime != null) {
     timeInBeats = barBeatToAbletonBeats(
       locatorTime,
