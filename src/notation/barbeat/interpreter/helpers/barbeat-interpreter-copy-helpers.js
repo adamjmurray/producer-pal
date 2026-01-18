@@ -157,7 +157,7 @@ function determineSourceBarsForCopy(element) {
  * @param {number} destStart - Destination range start
  * @param {number} destEnd - Destination range end
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Notes by bar map
  * @param {Array} events - Events array to append to
  * @param {object} bufferState - Current buffer state for validation
@@ -258,7 +258,7 @@ function handleMultiBarSourceRangeCopy(
  * Handle bar copy with range destination (multiple destination bars from source bar(s))
  * @param {object} element - AST element
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Notes by bar map
  * @param {Array} events - Events array to append to
  * @param {object} bufferState - Current buffer state for validation
@@ -384,7 +384,7 @@ export function handleBarCopyRangeDestination(
  * Handle bar copy with single destination bar (can have multiple source bars)
  * @param {object} element - AST element
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Notes by bar map
  * @param {Array} events - Events array to append to
  * @param {object} bufferState - Current buffer state for validation

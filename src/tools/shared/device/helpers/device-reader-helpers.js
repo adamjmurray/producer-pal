@@ -60,7 +60,7 @@ export function isRedundantDeviceClassName(deviceType, className) {
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
- * @param {string} devicePath - Device path for building nested paths
+ * @param {string | undefined} devicePath - Device path for building nested paths
  */
 export function processRegularChains(
   device,

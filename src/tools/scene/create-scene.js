@@ -46,12 +46,15 @@ export function createScene(
   // Create mode
   validateCreateSceneArgs(sceneIndex, count);
 
+  // After validation, sceneIndex is guaranteed to be a number
+  const validatedSceneIndex = /** @type {number} */ (sceneIndex);
+
   const liveSet = LiveAPI.from("live_set");
 
-  ensureSceneCountForIndex(liveSet, sceneIndex);
+  ensureSceneCountForIndex(liveSet, validatedSceneIndex);
 
   const createdScenes = [];
-  let currentIndex = sceneIndex;
+  let currentIndex = validatedSceneIndex;
 
   for (let i = 0; i < count; i++) {
     const sceneResult = createSingleScene(
@@ -80,9 +83,9 @@ export function createScene(
  * Applies scene properties (color, tempo, timeSignature) to a scene
  * @param {object} scene - The LiveAPI scene object
  * @param {object} props - Properties to apply
- * @param {string} [props.color] - Color for the scene (CSS format: hex)
- * @param {number|null} [props.tempo] - Tempo in BPM
- * @param {string|null} [props.timeSignature] - Time signature in format "4/4"
+ * @param {string | undefined} [props.color] - Color for the scene (CSS format: hex)
+ * @param {number | null | undefined} [props.tempo] - Tempo in BPM
+ * @param {string | null | undefined} [props.timeSignature] - Time signature in format "4/4"
  */
 function applySceneProperties(scene, { color, tempo, timeSignature }) {
   if (color != null) {
@@ -96,7 +99,7 @@ function applySceneProperties(scene, { color, tempo, timeSignature }) {
 /**
  * Applies tempo property to a scene
  * @param {object} scene - The LiveAPI scene object
- * @param {number|null} tempo - Tempo in BPM. -1 disables, other values enable
+ * @param {number | null | undefined} tempo - Tempo in BPM. -1 disables, other values enable
  */
 function applyTempoProperty(scene, tempo) {
   if (tempo === -1) {
@@ -110,7 +113,7 @@ function applyTempoProperty(scene, tempo) {
 /**
  * Applies time signature property to a scene
  * @param {object} scene - The LiveAPI scene object
- * @param {string|null} timeSignature - Time signature. "disabled" disables, other values enable
+ * @param {string | null | undefined} timeSignature - Time signature. "disabled" disables, other values enable
  */
 function applyTimeSignatureProperty(scene, timeSignature) {
   if (timeSignature === "disabled") {
@@ -126,10 +129,10 @@ function applyTimeSignatureProperty(scene, timeSignature) {
 
 /**
  * Builds the scene name based on index and count
- * @param {string|null} name - Base name for the scene
+ * @param {string | null | undefined} name - Base name for the scene
  * @param {number} index - 0-based index of the scene being created
  * @param {number} count - Total count of scenes being created
- * @returns {string|undefined} The computed scene name
+ * @returns {string | undefined} The computed scene name
  */
 function buildSceneName(name, index, count) {
   if (name == null) {
@@ -145,7 +148,7 @@ function buildSceneName(name, index, count) {
 
 /**
  * Validates arguments for create scene mode
- * @param {number} sceneIndex - The scene index
+ * @param {number | undefined} sceneIndex - The scene index
  * @param {number} count - The number of scenes to create
  */
 function validateCreateSceneArgs(sceneIndex, count) {
@@ -202,10 +205,10 @@ function applyCaptureProperties(result, props) {
  * @param {number} sceneIndex - The scene index
  * @param {number} creationIndex - 0-based index in the creation sequence
  * @param {number} count - Total count of scenes being created
- * @param {string|null} name - Base name for the scene
- * @param {string|null} color - Color for the scene
- * @param {number|null} tempo - Tempo for the scene
- * @param {string|null} timeSignature - Time signature for the scene
+ * @param {string | undefined} name - Base name for the scene
+ * @param {string | undefined} color - Color for the scene
+ * @param {number | null | undefined} tempo - Tempo for the scene
+ * @param {string | null | undefined} timeSignature - Time signature for the scene
  * @returns {object} The created scene object
  */
 function createSingleScene(

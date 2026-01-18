@@ -41,7 +41,7 @@ export function readLiveSet(args = {}, _context = {}) {
   /** @type {Record<string, unknown>} */
   const result = {
     id: liveSet.id,
-    ...(liveSetName && { name: liveSetName }),
+    ...(liveSetName ? { name: liveSetName } : {}),
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
   };

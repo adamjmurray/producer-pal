@@ -39,9 +39,9 @@ export {
 
 /**
  * Parse transpose values from comma-separated string
- * @param {string} transposeValues - Comma-separated transpose values
- * @param {number} transposeMin - Minimum transpose value (warning if used with transposeValues)
- * @param {number} transposeMax - Maximum transpose value (warning if used with transposeValues)
+ * @param {string | undefined} transposeValues - Comma-separated transpose values
+ * @param {number | undefined} transposeMin - Minimum transpose value (warning if used with transposeValues)
+ * @param {number | undefined} transposeMax - Maximum transpose value (warning if used with transposeValues)
  * @returns {Array<number>|null} - Array of transpose values or null
  */
 export function parseTransposeValues(
@@ -68,10 +68,10 @@ export function parseTransposeValues(
 
 /**
  * Get clip IDs from direct list or arrangement track query
- * @param {string} clipIds - Comma-separated list of clip IDs
- * @param {string} arrangementTrackIndex - Track index(es) to query for arrangement clips, comma-separated for multiple
- * @param {string} arrangementStart - Start position in bar|beat format
- * @param {string} arrangementLength - Length in bar:beat format
+ * @param {string | undefined} clipIds - Comma-separated list of clip IDs
+ * @param {string | undefined} arrangementTrackIndex - Track index(es) to query for arrangement clips, comma-separated for multiple
+ * @param {string | undefined} arrangementStart - Start position in bar|beat format
+ * @param {string | undefined} arrangementLength - Length in bar:beat format
  * @returns {Array<string>} - Array of clip IDs
  */
 export function getClipIds(

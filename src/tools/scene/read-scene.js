@@ -29,6 +29,7 @@ export function readScene(args = {}, _context = {}) {
   const liveSet = LiveAPI.from(`live_set`);
 
   let scene;
+  /** @type {number | null | undefined} */
   let resolvedSceneIndex = sceneIndex;
 
   if (sceneId != null) {
@@ -55,12 +56,12 @@ export function readScene(args = {}, _context = {}) {
     /** @type {number} */ (scene.getProperty("time_signature_enabled")) > 0;
 
   const sceneName = scene.getProperty("name");
-  /** @type {{ id: string, name: string, sceneIndex: number | null, color?: string | null, tempo?: unknown, timeSignature?: string | null, triggered?: boolean, clips?: object[], clipCount?: number }} */
+  // resolvedSceneIndex is guaranteed to be a number at this point (either from sceneIndex param or scene.sceneIndex)
+  const sceneNum = /** @type {number} */ (resolvedSceneIndex);
+  /** @type {{ id: string, name: string, sceneIndex: number | null | undefined, color?: string | null, tempo?: unknown, timeSignature?: string | null, triggered?: boolean, clips?: object[], clipCount?: number }} */
   const result = {
     id: scene.id,
-    name: sceneName
-      ? `${sceneName} (${resolvedSceneIndex + 1})`
-      : `${resolvedSceneIndex + 1}`,
+    name: sceneName ? `${sceneName} (${sceneNum + 1})` : `${sceneNum + 1}`,
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };

@@ -64,20 +64,13 @@ function processVelocityRangeUpdate(element, state) {
  * Process a duration update
  * @param {object} element - AST element with duration property
  * @param {object} state - Interpreter state object
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigNumerator - Time signature numerator
  */
-function processDurationUpdate(
-  element,
-  state,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+function processDurationUpdate(element, state, timeSigNumerator) {
   if (typeof element.duration === "string") {
     state.currentDuration = barBeatDurationToMusicalBeats(
       element.duration,
       timeSigNumerator,
-      timeSigDenominator,
     );
   } else {
     state.currentDuration = element.duration;
@@ -151,7 +144,7 @@ function resetPitchBufferState(state) {
  * @param {object} element - AST element with bar/beat properties
  * @param {object} state - Interpreter state object
  * @param {number} beatsPerBar - Beats per bar
- * @param {number} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Array} events - Array of note events
  * @param {Map} notesByBar - Map of bar numbers to note metadata
  */
@@ -186,8 +179,8 @@ function processTimePosition(
  * @param {object} element - AST element to process
  * @param {object} state - Interpreter state object
  * @param {number} beatsPerBar - Beats per bar
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigNumerator - Time signature numerator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Map of bar numbers to note metadata
  * @param {Array} events - Array of note events
  */
@@ -247,7 +240,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigNumerator, timeSigDenominator);
+    processDurationUpdate(element, state, timeSigNumerator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }
@@ -314,8 +307,12 @@ export function interpretNotation(barBeatExpression, options = {}) {
     // Apply v0 deletions as final post-processing step
     return applyV0Deletions(events);
   } catch (error) {
-    if (error.name === "SyntaxError") {
-      const location = error.location || {};
+    if (error instanceof Error && error.name === "SyntaxError") {
+      const parserError =
+        /** @type {{ location?: { start?: { offset: number, line: number, column: number } } }} */ (
+          /** @type {unknown} */ (error)
+        );
+      const location = parserError.location || {};
       const position = location.start
         ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
         : "at unknown position";

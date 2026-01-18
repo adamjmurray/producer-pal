@@ -7,15 +7,24 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
 /**
+ * @typedef {object} ArrangementParams
+ * @property {number | null} songTimeSigNumerator
+ * @property {number | null} songTimeSigDenominator
+ * @property {number | null} arrangementStartBeats
+ * @property {number | null} arrangementLengthBeats
+ */
+
+/**
  * Validate and parse arrangement parameters
- * @param {string} arrangementStart - Bar|beat position for arrangement clip start
- * @param {string} arrangementLength - Bar:beat duration for arrangement span
- * @returns {object} Parsed parameters: songTimeSigNumerator, songTimeSigDenominator, arrangementStartBeats, arrangementLengthBeats
+ * @param {string} [arrangementStart] - Bar|beat position for arrangement clip start
+ * @param {string} [arrangementLength] - Bar:beat duration for arrangement span
+ * @returns {ArrangementParams} Parsed parameters
  */
 export function validateAndParseArrangementParams(
   arrangementStart,
   arrangementLength,
 ) {
+  /** @type {ArrangementParams} */
   const result = {
     songTimeSigNumerator: null,
     songTimeSigDenominator: null,
@@ -28,28 +37,31 @@ export function validateAndParseArrangementParams(
   }
 
   const songTimeSig = parseSongTimeSignature();
+  const { numerator, denominator } = songTimeSig;
 
-  result.songTimeSigNumerator = songTimeSig.numerator;
-  result.songTimeSigDenominator = songTimeSig.denominator;
+  result.songTimeSigNumerator = numerator;
+  result.songTimeSigDenominator = denominator;
 
   if (arrangementStart != null) {
     result.arrangementStartBeats = barBeatToAbletonBeats(
       arrangementStart,
-      result.songTimeSigNumerator,
-      result.songTimeSigDenominator,
+      numerator,
+      denominator,
     );
   }
 
   if (arrangementLength != null) {
-    result.arrangementLengthBeats = barBeatDurationToAbletonBeats(
+    const lengthBeats = barBeatDurationToAbletonBeats(
       arrangementLength,
-      result.songTimeSigNumerator,
-      result.songTimeSigDenominator,
+      numerator,
+      denominator,
     );
 
-    if (result.arrangementLengthBeats <= 0) {
+    if (lengthBeats <= 0) {
       throw new Error("arrangementLength must be greater than 0");
     }
+
+    result.arrangementLengthBeats = lengthBeats;
   }
 
   return result;

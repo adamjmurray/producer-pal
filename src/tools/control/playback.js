@@ -175,7 +175,7 @@ export function playback(
 /**
  * Handle view switching if requested
  * @param {string} action - The playback action
- * @param {boolean} switchView - Whether to switch view
+ * @param {boolean} [switchView] - Whether to switch view
  */
 function handleViewSwitch(action, switchView) {
   if (!switchView) return;

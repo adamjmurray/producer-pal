@@ -129,8 +129,10 @@ export function dbToLiveGain(dB) {
   const lower = LOOKUP_TABLE[lowerIndex];
   const upper = LOOKUP_TABLE[upperIndex];
 
-  // Linear interpolation
-  const t = (dB - lower.dB) / (upper.dB - lower.dB);
+  // Linear interpolation (dB values are guaranteed non-null for table entries)
+  const lowerDb = /** @type {number} */ (lower.dB);
+  const upperDb = /** @type {number} */ (upper.dB);
+  const t = (dB - lowerDb) / (upperDb - lowerDb);
   const gain = lower.gain + t * (upper.gain - lower.gain);
 
   return Math.max(0, Math.min(1, gain));

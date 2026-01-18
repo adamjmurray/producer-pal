@@ -1,4 +1,5 @@
 import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { evaluateFunction } from "./modulation-functions.js";
 
@@ -69,14 +70,14 @@ export function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
  * Process a single modulation assignment
  * @param {object} assignment - Assignment node from AST
  * @param {number} position - Note position in musical beats
- * @param {number} pitch - MIDI pitch
- * @param {number} bar - Current bar number
- * @param {number} beat - Current beat position
+ * @param {number | undefined} pitch - MIDI pitch
+ * @param {number | undefined} bar - Current bar number
+ * @param {number | undefined} beat - Current beat position
  * @param {number} numerator - Time signature numerator
  * @param {number} denominator - Time signature denominator
  * @param {object} clipTimeRange - Clip time range
  * @param {object} noteProperties - Note properties
- * @param {object} currentPitchRange - Current pitch range context
+ * @param {object | null} currentPitchRange - Current pitch range context
  * @returns {object} Result object with skip flag and optional value
  */
 function processAssignment(
@@ -136,7 +137,7 @@ function processAssignment(
     return { value, pitchRange };
   } catch (error) {
     console.error(
-      `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${error.message}`,
+      `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
     );
 
     return { skip: true };
@@ -146,8 +147,8 @@ function processAssignment(
 /**
  * Calculate active time range for an assignment
  * @param {object} assignment - Assignment node
- * @param {number} bar - Current bar number
- * @param {number} beat - Current beat position
+ * @param {number | undefined} bar - Current bar number
+ * @param {number | undefined} beat - Current beat position
  * @param {number} numerator - Time signature numerator
  * @param {number} denominator - Time signature denominator
  * @param {object} clipTimeRange - Clip time range

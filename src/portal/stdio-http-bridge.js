@@ -8,6 +8,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.js";
+import { errorMessage } from "#src/shared/error-utils.js";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
 import { logger } from "./file-logger.js";
 
@@ -94,7 +95,7 @@ The default URL value is http://localhost:3350`);
       try {
         await this.httpClient.close();
       } catch (error) {
-        logger.error(`Error closing old client: ${error.message}`);
+        logger.error(`Error closing old client: ${errorMessage(error)}`);
       }
 
       this.httpClient = null;
@@ -115,21 +116,23 @@ The default URL value is http://localhost:3350`);
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
     } catch (error) {
-      logger.error(`HTTP connection failed: ${error.message}`);
+      logger.error(`HTTP connection failed: ${errorMessage(error)}`);
       this.isConnected = false;
 
       if (this.httpClient) {
         try {
           this.httpClient.close();
         } catch (closeError) {
-          logger.error(`Error closing failed client: ${closeError.message}`);
+          logger.error(
+            `Error closing failed client: ${errorMessage(closeError)}`,
+          );
         }
 
         this.httpClient = null;
       }
 
       throw new Error(
-        `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${error.message}`,
+        `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${errorMessage(error)}`,
       );
     }
   }
@@ -158,14 +161,17 @@ The default URL value is http://localhost:3350`);
       // Always try to connect to HTTP server first
       try {
         await this._ensureHttpConnection();
-        const result = await this.httpClient.listTools();
+        // httpClient is guaranteed non-null after successful _ensureHttpConnection()
+        const result = await /** @type {Client} */ (
+          this.httpClient
+        ).listTools();
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
 
         return result;
       } catch (error) {
         logger.debug(
-          `[Bridge] HTTP tools/list failed, using fallback: ${error.message}`,
+          `[Bridge] HTTP tools/list failed, using fallback: ${errorMessage(error)}`,
         );
         this.isConnected = false;
       }
@@ -189,7 +195,10 @@ The default URL value is http://localhost:3350`);
           arguments: request.params.arguments || {},
         };
 
-        const result = await this.httpClient.callTool(toolRequest);
+        // httpClient is guaranteed non-null after successful _ensureHttpConnection()
+        const result = await /** @type {Client} */ (this.httpClient).callTool(
+          toolRequest,
+        );
 
         logger.debug(
           `[Bridge] Tool call successful for ${request.params.name}`,
@@ -198,31 +207,37 @@ The default URL value is http://localhost:3350`);
         return result;
       } catch (error) {
         logger.error(
-          `HTTP tool call failed for ${request.params.name}: ${error.message}`,
+          `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,
         );
+
+        // Check if error has code property (Node.js/MCP errors)
+        const errorCode =
+          error && typeof error === "object" && "code" in error
+            ? /** @type {{code: unknown}} */ (error).code
+            : undefined;
 
         // Check if this is an MCP protocol error (has numeric code) vs connectivity error
         // Any numeric code means we connected and got a structured JSON-RPC response
-        if (error.code && typeof error.code === "number") {
+        if (typeof errorCode === "number") {
           logger.debug(
-            `[Bridge] MCP protocol error detected (code ${error.code}), returning the error to the client`,
+            `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
           );
           // Extract the actual error message, removing any "MCP error {code}:" prefix
-          let errorMessage = error.message || `Unknown MCP error ${error.code}`;
+          let errMsg = errorMessage(error) || `Unknown MCP error ${errorCode}`;
           // Strip redundant "MCP error {code}:" prefix if present
-          const mcpErrorPrefix = `MCP error ${error.code}: `;
+          const mcpErrorPrefix = `MCP error ${errorCode}: `;
 
-          if (errorMessage.startsWith(mcpErrorPrefix)) {
-            errorMessage = errorMessage.slice(mcpErrorPrefix.length);
+          if (errMsg.startsWith(mcpErrorPrefix)) {
+            errMsg = errMsg.slice(mcpErrorPrefix.length);
           }
 
-          return formatErrorResponse(errorMessage);
+          return formatErrorResponse(errMsg);
         }
 
         // This is a real connectivity/network error
         this.isConnected = false;
 
-        if (error.code === "ERR_INVALID_URL") {
+        if (errorCode === "ERR_INVALID_URL") {
           logger.debug(
             `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
           );
@@ -253,7 +268,7 @@ The default URL value is http://localhost:3350`);
       try {
         this.httpClient.close();
       } catch (error) {
-        logger.error(`Error closing HTTP client: ${error.message}`);
+        logger.error(`Error closing HTTP client: ${errorMessage(error)}`);
       }
 
       this.httpClient = null;
@@ -263,7 +278,7 @@ The default URL value is http://localhost:3350`);
       try {
         this.mcpServer.close();
       } catch (error) {
-        logger.error(`Error closing MCP server: ${error.message}`);
+        logger.error(`Error closing MCP server: ${errorMessage(error)}`);
       }
 
       this.mcpServer = null;

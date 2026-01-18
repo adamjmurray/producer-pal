@@ -20,7 +20,7 @@ const AUDIO_EXTENSIONS = new Set([
  * @param {object} context - Context containing sampleFolder path
  * @returns {{ sampleFolder: string, samples: string[] }} Sample folder and relative paths
  */
-export function readSamples({ search = null } = {}, context = {}) {
+export function readSamples({ search } = {}, context = {}) {
   if (!context.sampleFolder) {
     throw new Error(
       "A sample folder must first be selected in the Setup tab of the Producer Pal Max for Live device",

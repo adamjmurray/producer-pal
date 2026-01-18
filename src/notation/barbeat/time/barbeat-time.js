@@ -129,20 +129,16 @@ export function abletonBeatsToBarBeat(
 
 /**
  * Convert bar|beat format to Ableton beats (quarter notes) using musical beats
- * @param {string|null} barBeat - bar|beat format (e.g., "2|3.5") or null
+ * @param {string} barBeat - bar|beat format (e.g., "2|3.5")
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number|null} Quarter note beats (0-based) or null if barBeat is null
+ * @returns {number} Quarter note beats (0-based)
  */
 export function barBeatToAbletonBeats(
   barBeat,
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  if (barBeat == null) {
-    return null;
-  }
-
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = barBeatToBeats(barBeat, musicalBeatsPerBar);
 
@@ -275,17 +271,21 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
  * Convert bar:beat or beat-only duration to musical beats
  *
  * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} _timeSigDenominator - Time signature denominator (unused)
+ * @param {number | undefined} timeSigNumerator - Time signature numerator (required for bar:beat format)
  * @returns {number} Musical beats (duration)
  */
 export function barBeatDurationToMusicalBeats(
   barBeatDuration,
   timeSigNumerator,
-  _timeSigDenominator,
 ) {
   // Check if it's bar:beat format or beat-only
   if (barBeatDuration.includes(":")) {
+    if (timeSigNumerator == null) {
+      throw new Error(
+        `Time signature numerator required for bar:beat duration format: "${barBeatDuration}"`,
+      );
+    }
+
     return parseBarBeatFormat(barBeatDuration, timeSigNumerator);
   }
 
@@ -320,7 +320,6 @@ export function barBeatDurationToAbletonBeats(
   const musicalBeats = barBeatDurationToMusicalBeats(
     barBeatDuration,
     timeSigNumerator,
-    timeSigDenominator,
   );
 
   return musicalBeats * (4 / timeSigDenominator);

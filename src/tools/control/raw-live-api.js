@@ -1,3 +1,5 @@
+import { errorMessage } from "#src/shared/error-utils.js";
+
 const MAX_OPERATIONS = 50;
 
 const OPERATION_REQUIREMENTS = {
@@ -89,31 +91,35 @@ function validateOperationParameters(operation) {
 function executeOperation(api, operation) {
   const { type } = operation;
 
+  // Property and method are validated by validateOperationParameters
+  const property = /** @type {string} */ (operation.property);
+  const method = /** @type {string} */ (operation.method);
+
   switch (type) {
     case "get_property":
-      return api[operation.property];
+      return api[property];
 
     case "set_property":
-      api[operation.property] = operation.value;
+      api.set(property, operation.value);
 
-      return api[operation.property];
+      return operation.value;
 
     case "call_method": {
       const args = operation.args || [];
 
-      return api[operation.method](...args);
+      return api[method](...args);
     }
 
     case "get":
-      return api.get(operation.property);
+      return api.get(property);
 
     case "set":
-      return api.set(operation.property, operation.value);
+      return api.set(property, operation.value);
 
     case "call": {
       const callArgs = operation.args || [];
 
-      return api.call(operation.method, ...callArgs);
+      return api.call(method, ...callArgs);
     }
 
     case "goto":
@@ -123,10 +129,10 @@ function executeOperation(api, operation) {
       return api.info;
 
     case "getProperty":
-      return api.getProperty(operation.property);
+      return api.getProperty(property);
 
     case "getChildIds":
-      return api.getChildIds(operation.property);
+      return api.getChildIds(property);
 
     case "exists":
       return api.exists();
@@ -146,7 +152,7 @@ function executeOperation(api, operation) {
  * Provides direct, low-level access to the Live API for research, development, and debugging
  * @param {{ path?: string, operations: RawApiOperation[] }} args - The parameters
  * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {{ path: string, id: string, results: Array<{ operation: RawApiOperation, result: * }> }} Result object with path, id, and operation results
+ * @returns {{ path?: string, id: string, results: Array<{ operation: RawApiOperation, result: * }> }} Result object with path, id, and operation results
  */
 export function rawLiveApi({ path, operations }, _context = {}) {
   if (!Array.isArray(operations)) {
@@ -159,7 +165,8 @@ export function rawLiveApi({ path, operations }, _context = {}) {
     );
   }
 
-  const api = LiveAPI.from(path);
+  const defaultPath = "live_set";
+  const api = LiveAPI.from(path ?? defaultPath);
   const results = [];
 
   for (const operation of operations) {
@@ -169,7 +176,7 @@ export function rawLiveApi({ path, operations }, _context = {}) {
       validateOperationParameters(operation);
       result = executeOperation(api, operation);
     } catch (error) {
-      throw new Error(`Operation failed: ${error.message}`);
+      throw new Error(`Operation failed: ${errorMessage(error)}`);
     }
 
     results.push({
@@ -178,8 +185,14 @@ export function rawLiveApi({ path, operations }, _context = {}) {
     });
   }
 
+  // Include path in result if:
+  // 1. Path was explicitly provided, OR
+  // 2. Path changed during operations (e.g., via goto)
+  const pathChanged = api.path !== defaultPath;
+  const includePath = path != null || pathChanged;
+
   return {
-    path: api.path,
+    ...(includePath ? { path: api.path } : {}),
     id: api.id,
     results,
   };

@@ -121,7 +121,7 @@ function sliceUnloopedAudioContent(
 
 /**
  * Prepare slice parameters by converting to Ableton beats
- * @param {string} slice - Slice duration in bar:beat format
+ * @param {string | undefined} slice - Slice duration in bar:beat format
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
  * @param {Set<string>} warnings - Set to track warnings already issued
  * @returns {number|null} - Slice duration in beats or null

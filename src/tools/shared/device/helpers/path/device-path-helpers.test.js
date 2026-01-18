@@ -181,6 +181,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("t1/d0")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "device",
+          remainingSegments: [],
         });
       });
 
@@ -188,6 +189,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("rt0/d0")).toStrictEqual({
           liveApiPath: "live_set return_tracks 0 devices 0",
           targetType: "device",
+          remainingSegments: [],
         });
       });
 
@@ -195,6 +197,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("mt/d0")).toStrictEqual({
           liveApiPath: "live_set master_track devices 0",
           targetType: "device",
+          remainingSegments: [],
         });
       });
 
@@ -202,6 +205,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("t1/d0/c0/d1")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 chains 0 devices 1",
           targetType: "device",
+          remainingSegments: [],
         });
       });
 
@@ -210,6 +214,7 @@ describe("device-path-helpers", () => {
           liveApiPath:
             "live_set tracks 2 devices 0 chains 1 devices 2 chains 3 devices 4",
           targetType: "device",
+          remainingSegments: [],
         });
       });
     });
@@ -219,6 +224,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("t1/d0/c0")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 chains 0",
           targetType: "chain",
+          remainingSegments: [],
         });
       });
 
@@ -227,6 +233,7 @@ describe("device-path-helpers", () => {
           liveApiPath:
             "live_set tracks 1 devices 0 chains 0 devices 1 chains 2",
           targetType: "chain",
+          remainingSegments: [],
         });
       });
 
@@ -234,6 +241,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("mt/d0/c0")).toStrictEqual({
           liveApiPath: "live_set master_track devices 0 chains 0",
           targetType: "chain",
+          remainingSegments: [],
         });
       });
     });
@@ -243,6 +251,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("t1/d0/rc0")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0",
           targetType: "return-chain",
+          remainingSegments: [],
         });
       });
 
@@ -250,6 +259,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("t1/d0/rc0/d1")).toStrictEqual({
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0 devices 1",
           targetType: "device",
+          remainingSegments: [],
         });
       });
 
@@ -257,6 +267,7 @@ describe("device-path-helpers", () => {
         expect(resolvePathToLiveApi("rt0/d0/rc1")).toStrictEqual({
           liveApiPath: "live_set return_tracks 0 devices 0 return_chains 1",
           targetType: "return-chain",
+          remainingSegments: [],
         });
       });
     });

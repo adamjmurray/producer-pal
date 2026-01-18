@@ -76,8 +76,8 @@ export function applyAudioParams(
 /**
  * Apply velocity offset to a note
  * @param {object} note - The note object to modify
- * @param {number} velocityMin - Minimum velocity offset
- * @param {number} velocityMax - Maximum velocity offset
+ * @param {number | undefined} velocityMin - Minimum velocity offset
+ * @param {number | undefined} velocityMax - Maximum velocity offset
  * @param {function(): number} rng - Random number generator function
  */
 function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
@@ -123,8 +123,8 @@ function applyTranspose(note, transposeParams, rng) {
 /**
  * Apply duration multiplier to a note
  * @param {object} note - The note object to modify
- * @param {number} durationMin - Minimum duration multiplier
- * @param {number} durationMax - Maximum duration multiplier
+ * @param {number | undefined} durationMin - Minimum duration multiplier
+ * @param {number | undefined} durationMax - Maximum duration multiplier
  * @param {function(): number} rng - Random number generator function
  */
 function applyDurationMultiplier(note, durationMin, durationMax, rng) {
@@ -140,7 +140,7 @@ function applyDurationMultiplier(note, durationMin, durationMax, rng) {
 /**
  * Apply velocity deviation offset to a note
  * @param {object} note - The note object to modify
- * @param {number} velocityRange - Velocity deviation range
+ * @param {number | undefined} velocityRange - Velocity deviation range
  */
 function applyVelocityDeviation(note, velocityRange) {
   if (velocityRange == null) {
@@ -158,7 +158,7 @@ function applyVelocityDeviation(note, velocityRange) {
 /**
  * Apply probability offset to a note
  * @param {object} note - The note object to modify
- * @param {number} probability - Probability offset value
+ * @param {number | undefined} probability - Probability offset value
  */
 function applyProbabilityOffset(note, probability) {
   if (probability == null) {

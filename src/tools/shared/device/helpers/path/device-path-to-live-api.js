@@ -3,7 +3,7 @@
  * @property {string} liveApiPath - Live API canonical path
  * @property {'device'|'chain'|'drum-pad'|'return-chain'} targetType - Type of target
  * @property {string} [drumPadNote] - Note name for drum pads
- * @property {string[]} [remainingSegments] - Segments after drum pad
+ * @property {string[]} remainingSegments - Segments after drum pad (empty for non-drum-pad)
  */
 
 /**
@@ -75,6 +75,7 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
     return {
       liveApiPath: `${liveApiPath} return_chains ${returnChainIndex}`,
       targetType: "return-chain",
+      remainingSegments: [],
     };
   }
 
@@ -89,6 +90,7 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
     return {
       liveApiPath: `${liveApiPath} chains ${chainIndex}`,
       targetType: "chain",
+      remainingSegments: [],
     };
   }
 
@@ -149,5 +151,5 @@ export function resolvePathToLiveApi(path) {
     }
   }
 
-  return { liveApiPath, targetType };
+  return { liveApiPath, targetType, remainingSegments: [] };
 }

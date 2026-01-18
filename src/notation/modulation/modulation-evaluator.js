@@ -1,4 +1,5 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { evaluateModulationAST } from "./modulation-evaluator-helpers.js";
 import * as parser from "./parser/modulation-parser.js";
@@ -6,7 +7,7 @@ import * as parser from "./parser/modulation-parser.js";
 /**
  * Apply modulations to a list of notes in-place
  * @param {Array<object>} notes - Array of note objects to modify
- * @param {string} modulationString - Multi-line modulation string
+ * @param {string | undefined} modulationString - Multi-line modulation string
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  */
@@ -27,7 +28,7 @@ export function applyModulations(
     ast = parser.parse(modulationString);
   } catch (error) {
     console.error(
-      `Warning: Failed to parse modulation string: ${error.message}`,
+      `Warning: Failed to parse modulation string: ${errorMessage(error)}`,
     );
 
     return; // Early return - no point processing notes if parsing failed
@@ -242,7 +243,7 @@ export function evaluateModulation(
     ast = parser.parse(modulationString);
   } catch (error) {
     console.error(
-      `Warning: Failed to parse modulation string: ${error.message}`,
+      `Warning: Failed to parse modulation string: ${errorMessage(error)}`,
     );
 
     return {};

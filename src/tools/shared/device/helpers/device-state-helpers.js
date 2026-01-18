@@ -5,7 +5,7 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
  * Build chain info object with standard properties
  * @param {object} chain - Chain Live API object
  * @param {object} options - Build options
- * @param {string} [options.path] - Optional simplified path
+ * @param {string | null} [options.path] - Optional simplified path
  * @param {Array} [options.devices] - Pre-processed devices array (skips device fetching)
  * @returns {object} Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
  */

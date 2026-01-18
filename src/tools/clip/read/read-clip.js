@@ -3,6 +3,8 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import { errorMessage } from "#src/shared/error-utils.js";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -23,9 +25,9 @@ import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 /**
  * Read a MIDI or audio clip from Ableton Live
  * @param {object} args - Arguments for the function
- * @param {number} [args.trackIndex] - Track index (0-based)
- * @param {number} [args.sceneIndex] - Clip slot index (0-based)
- * @param {string} [args.clipId] - Clip ID to directly access any clip
+ * @param {number | null} [args.trackIndex] - Track index (0-based)
+ * @param {number | null} [args.sceneIndex] - Clip slot index (0-based)
+ * @param {string | null} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @param {object} _context - Context object (unused)
@@ -77,7 +79,7 @@ export function readClip(args = {}, _context = {}) {
   const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
   const lengthBeats = /** @type {number} */ (clip.getProperty("length")); // Live API already gives us the effective length!
 
-  const clipName = clip.getProperty("name");
+  const clipName = /** @type {string} */ (clip.getProperty("name"));
 
   // Read boundary properties from Live
   const startMarkerBeats = /** @type {number} */ (
@@ -197,7 +199,7 @@ function processWarpMarkers(clip) {
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.error(
-      `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
+      `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
     );
   }
 }

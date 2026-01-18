@@ -16,7 +16,7 @@
 export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const liveSet = LiveAPI.from("live_set");
   let sceneIds = liveSet.getChildIds("scenes");
-  const lastSceneId = sceneIds.at(-1);
+  const lastSceneId = /** @type {string} */ (sceneIds.at(-1));
   const lastScene = LiveAPI.from(lastSceneId);
 
   // Check if last scene is empty, if not create a new one
@@ -37,7 +37,7 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
   }
 
   // Get track index to find corresponding clip slot
-  const trackIndex = track.trackIndex;
+  const trackIndex = /** @type {number} */ (track.trackIndex);
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
   // Create clip in session slot with audio file
@@ -297,7 +297,7 @@ export function createPartialTile(
  * @param {object} options - Configuration options
  * @param {boolean} [options.adjustPreRoll=true] - Whether to adjust pre-roll on subsequent tiles
  * @param {number} [options.startOffset=0] - Content offset in beats to start tiling from
- * @param {number} [options.tileLength=null] - Arrangement length per tile (defaults to clip content length)
+ * @param {number | null} [options.tileLength=null] - Arrangement length per tile (defaults to clip content length)
  * @returns {Array<object>} Array of created clip objects with {id} property
  */
 export function tileClipToRange(

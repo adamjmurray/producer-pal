@@ -24,7 +24,7 @@ function formatNumberWithoutTrailingZeros(value) {
  *
  * @param {number} startTime - Start time in beats
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator for adjustment
+ * @param {number | undefined} timeSigDenominator - Time signature denominator for adjustment
  * @returns {{bar: number, beat: number}} Bar and beat position
  */
 function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
@@ -54,15 +54,24 @@ function isSameTimePosition(bar1, beat1, bar2, beat2) {
 }
 
 /**
+ * @typedef {object} TimeGroup
+ * @property {number} bar - Bar number
+ * @property {number} beat - Beat number
+ * @property {Array<object>} notes - Notes at this time position
+ */
+
+/**
  * Group notes by their time position
  *
  * @param {Array} sortedNotes - Array of sorted note objects
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator
- * @returns {Array} Array of time groups with notes
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
+ * @returns {Array<TimeGroup>} Array of time groups with notes
  */
 function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
+  /** @type {Array<TimeGroup>} */
   const timeGroups = [];
+  /** @type {TimeGroup | null} */
   let currentGroup = null;
 
   for (const note of sortedNotes) {

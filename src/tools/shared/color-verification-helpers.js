@@ -1,3 +1,4 @@
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 
 /**
@@ -26,7 +27,7 @@ export function verifyColorQuantization(object, requestedColor) {
   } catch (error) {
     // If getColor fails, log warning but don't break the tool
     console.error(
-      `Warning: Could not verify color quantization: ${error.message}`,
+      `Warning: Could not verify color quantization: ${errorMessage(error)}`,
     );
   }
 }

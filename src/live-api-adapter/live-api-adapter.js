@@ -35,6 +35,14 @@ import { updateTrack } from "#src/tools/track/update/update-track.js";
 import { connect } from "#src/tools/workflow/connect.js";
 import { memory } from "#src/tools/workflow/memory.js";
 
+/**
+ * @type {{
+ *   projectNotes: { enabled: boolean; writable: boolean; content: string };
+ *   smallModelMode: boolean;
+ *   sampleFolder: string | null;
+ *   holdingAreaStartBeats?: number;
+ * }}
+ */
 const context = {
   projectNotes: {
     enabled: false,
@@ -54,7 +62,9 @@ const context = {
 function initHoldingArea() {
   const liveSet = LiveAPI.from("live_set");
 
-  context.holdingAreaStartBeats = liveSet.get("song_length")[0];
+  context.holdingAreaStartBeats = /** @type {number} */ (
+    liveSet.get("song_length")[0]
+  );
 }
 
 /*
@@ -240,9 +250,12 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
 
         Object.assign(context, incomingContext);
       } catch (contextError) {
-        console.error(
-          `Warning: Failed to parse contextJSON: ${contextError.message}`,
-        );
+        const message =
+          contextError instanceof Error
+            ? contextError.message
+            : String(contextError);
+
+        console.error(`Warning: Failed to parse contextJSON: ${message}`);
       }
     }
 
@@ -258,14 +271,17 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
       );
     } catch (toolError) {
+      const message =
+        toolError instanceof Error ? toolError.message : String(toolError);
+
       result = formatErrorResponse(
-        `Error executing tool '${tool}': ${toolError.message}`,
+        `Error executing tool '${tool}': ${message}`,
       );
     }
   } catch (error) {
-    result = formatErrorResponse(
-      `Error parsing tool call request: ${error.message}`,
-    );
+    const message = error instanceof Error ? error.message : String(error);
+
+    result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }
 
   // Send response back to Node for Max

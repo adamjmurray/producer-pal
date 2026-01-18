@@ -1,3 +1,4 @@
+import { errorMessage } from "#src/shared/error-utils.js";
 import { noteNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
@@ -205,7 +206,7 @@ function resolvePathToTargetSafe(path) {
   try {
     return resolvePathToTarget(path);
   } catch (e) {
-    console.error(`updateDevice: ${e.message}`);
+    console.error(`updateDevice: ${errorMessage(e)}`);
 
     return null;
   }
@@ -235,10 +236,13 @@ function resolvePathToTarget(path) {
   }
 
   if (resolved.targetType === "drum-pad") {
+    // drumPadNote is guaranteed for drum-pad targetType
+    const drumPadNote = /** @type {string} */ (resolved.drumPadNote);
+    const { remainingSegments } = resolved;
     const drumPadResult = resolveDrumPadFromPath(
       resolved.liveApiPath,
-      resolved.drumPadNote,
-      resolved.remainingSegments,
+      drumPadNote,
+      remainingSegments,
     );
 
     if (!drumPadResult.target) {
@@ -248,8 +252,7 @@ function resolvePathToTarget(path) {
     // Detect if this is a drum pad path (no explicit chain index) vs chain path
     // pC1 = pad path, pC1/c0 = chain path
     const hasExplicitChainIndex =
-      resolved.remainingSegments?.length > 0 &&
-      resolved.remainingSegments[0].startsWith("c");
+      remainingSegments.length > 0 && remainingSegments[0].startsWith("c");
 
     return {
       target: drumPadResult.target,

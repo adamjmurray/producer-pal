@@ -3,11 +3,11 @@ import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
 
 /**
  * Check if any audio transformation parameters are specified
- * @param {number} gainDbMin - Minimum gain in decibels
- * @param {number} gainDbMax - Maximum gain in decibels
- * @param {number} transposeMin - Minimum transpose amount
- * @param {number} transposeMax - Maximum transpose amount
- * @param {string} transposeValues - Comma-separated list of transpose values
+ * @param {number | undefined} gainDbMin - Minimum gain in decibels
+ * @param {number | undefined} gainDbMax - Maximum gain in decibels
+ * @param {number | undefined} transposeMin - Minimum transpose amount
+ * @param {number | undefined} transposeMax - Maximum transpose amount
+ * @param {string | undefined} transposeValues - Comma-separated list of transpose values
  * @returns {boolean} True if any audio params are specified
  */
 export function hasAudioTransformParams(
@@ -28,15 +28,15 @@ export function hasAudioTransformParams(
 
 /**
  * Check if any MIDI transformation parameters are specified
- * @param {number} velocityMin - Minimum velocity value
- * @param {number} velocityMax - Maximum velocity value
- * @param {number} transposeMin - Minimum transpose amount
- * @param {number} transposeMax - Maximum transpose amount
- * @param {string} transposeValues - Comma-separated list of transpose values
- * @param {number} durationMin - Minimum note duration
- * @param {number} durationMax - Maximum note duration
- * @param {number} velocityRange - Range for velocity variation
- * @param {number} probability - Probability for note generation
+ * @param {number | undefined} velocityMin - Minimum velocity value
+ * @param {number | undefined} velocityMax - Maximum velocity value
+ * @param {number | undefined} transposeMin - Minimum transpose amount
+ * @param {number | undefined} transposeMax - Maximum transpose amount
+ * @param {string | undefined} transposeValues - Comma-separated list of transpose values
+ * @param {number | undefined} durationMin - Minimum note duration
+ * @param {number | undefined} durationMax - Maximum note duration
+ * @param {number | undefined} velocityRange - Range for velocity variation
+ * @param {number | undefined} probability - Probability for note generation
  * @returns {boolean} True if any MIDI params are specified
  */
 export function hasMidiTransformParams(
@@ -111,18 +111,18 @@ export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
  * Apply parameter transformations to all clips
  * @param {Array<object>} clips - Array of Live API clip objects
  * @param {object} options - Transformation parameters object
- * @param {number} options.gainDbMin - Minimum gain in decibels
- * @param {number} options.gainDbMax - Maximum gain in decibels
- * @param {number} options.transposeMin - Minimum transpose amount
- * @param {number} options.transposeMax - Maximum transpose amount
- * @param {string} options.transposeValues - Comma-separated list of transpose values
- * @param {Array<number>} options.transposeValuesArray - Array of transpose values
- * @param {number} options.velocityMin - Minimum velocity value
- * @param {number} options.velocityMax - Maximum velocity value
- * @param {number} options.durationMin - Minimum note duration
- * @param {number} options.durationMax - Maximum note duration
- * @param {number} options.velocityRange - Range for velocity variation
- * @param {number} options.probability - Probability for note generation
+ * @param {number | undefined} options.gainDbMin - Minimum gain in decibels
+ * @param {number | undefined} options.gainDbMax - Maximum gain in decibels
+ * @param {number | undefined} options.transposeMin - Minimum transpose amount
+ * @param {number | undefined} options.transposeMax - Maximum transpose amount
+ * @param {string | undefined} options.transposeValues - Comma-separated list of transpose values
+ * @param {Array<number> | null} options.transposeValuesArray - Array of transpose values
+ * @param {number | undefined} options.velocityMin - Minimum velocity value
+ * @param {number | undefined} options.velocityMax - Maximum velocity value
+ * @param {number | undefined} options.durationMin - Minimum note duration
+ * @param {number | undefined} options.durationMax - Maximum note duration
+ * @param {number | undefined} options.velocityRange - Range for velocity variation
+ * @param {number | undefined} options.probability - Probability for note generation
  * @param {object} rng - Random number generator
  * @param {Set} warnings - Set to track emitted warnings
  */

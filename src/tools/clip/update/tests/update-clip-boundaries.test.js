@@ -42,6 +42,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
         signature_numerator: 4,
         signature_denominator: 4,
         looping: 1,
+        end_marker: 16, // content boundary - must be > firstStart
       },
     });
 
@@ -111,6 +112,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
         signature_numerator: 4,
         signature_denominator: 4,
         looping: 0,
+        end_marker: 16, // content boundary - must be > start_marker
       },
     });
 
@@ -143,6 +145,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
         signature_numerator: 4,
         signature_denominator: 4,
         looping: 1,
+        end_marker: 12, // content boundary - must be > start_marker
       },
     });
 
@@ -153,10 +156,12 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: true,
     });
 
+    // start_marker is auto-set to match loop_start for looping clips
+    // (set AFTER loop_end is expanded to avoid "Invalid syntax" errors)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "start_marker",
-      4, // start (2|1 = 4 beats) also sets start_marker
+      4, // 2|1 in 4/4 = 4 Ableton beats
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),

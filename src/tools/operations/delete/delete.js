@@ -1,3 +1,4 @@
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
@@ -242,7 +243,7 @@ function resolvePathsToIds(paths, type) {
         ids.push(resolvedId);
       }
     } catch (e) {
-      console.error(`delete: ${e.message}`);
+      console.error(`delete: ${errorMessage(e)}`);
     }
   }
 

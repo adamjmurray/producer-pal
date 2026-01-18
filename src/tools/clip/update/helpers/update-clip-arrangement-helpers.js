@@ -65,8 +65,8 @@ export function handleArrangementStartOperation({
  * @param {object} args - Operation arguments
  * @param {LiveAPI} args.clip - The clip to operate on
  * @param {boolean} args.isAudioClip - Whether the clip is audio
- * @param {number} args.arrangementStartBeats - Target start position in beats
- * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {number | null} [args.arrangementStartBeats] - Target start position in beats
+ * @param {number | null} [args.arrangementLengthBeats] - Target length in beats
  * @param {Map<number, number>} args.tracksWithMovedClips - Map of tracks with moved clips
  * @param {Partial<ToolContext>} args.context - Tool execution context
  * @param {Array<object>} args.updatedClips - Array to collect updated clips

@@ -1,4 +1,41 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
+
+/**
+ * Resolves arrangement position from bar|beat or locator
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {string | undefined} arrangementStart - Bar|beat position
+ * @param {string | undefined} arrangementLocatorId - Locator ID for position
+ * @param {string | undefined} arrangementLocatorName - Locator name for position
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Position in beats
+ */
+export function resolveArrangementPosition(
+  liveSet,
+  arrangementStart,
+  arrangementLocatorId,
+  arrangementLocatorName,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  if (arrangementLocatorId != null || arrangementLocatorName != null) {
+    return resolveLocatorToBeats(
+      liveSet,
+      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
+      "duplicate",
+    );
+  }
+
+  return /** @type {number} */ (
+    barBeatToAbletonBeats(
+      /** @type {string} */ (arrangementStart),
+      timeSigNumerator,
+      timeSigDenominator,
+    )
+  );
+}
 
 /**
  * Validates basic input parameters for duplication
@@ -31,9 +68,9 @@ export function validateBasicInputs(type, id, count) {
 /**
  * Validates and configures route to source parameters
  * @param {string} type - Type of object being duplicated
- * @param {boolean} routeToSource - Whether to route to source track
- * @param {boolean} withoutClips - Whether to exclude clips
- * @param {boolean} withoutDevices - Whether to exclude devices
+ * @param {boolean | undefined} routeToSource - Whether to route to source track
+ * @param {boolean | undefined} withoutClips - Whether to exclude clips
+ * @param {boolean | undefined} withoutDevices - Whether to exclude devices
  * @returns {object} Configured withoutClips and withoutDevices values
  */
 export function validateAndConfigureRouteToSource(
@@ -71,9 +108,9 @@ export function validateAndConfigureRouteToSource(
 /**
  * Validates clip-specific parameters
  * @param {string} type - Type of object being duplicated
- * @param {string} destination - Destination for clip duplication
- * @param {number} toTrackIndex - Destination track index
- * @param {string} toSceneIndex - Destination scene index(es), comma-separated
+ * @param {string | undefined} destination - Destination for clip duplication
+ * @param {number | undefined} toTrackIndex - Destination track index
+ * @param {string | undefined} toSceneIndex - Destination scene index(es), comma-separated
  */
 export function validateClipParameters(
   type,
@@ -116,7 +153,7 @@ export function validateClipParameters(
 /**
  * Validates destination parameter compatibility with object type
  * @param {string} type - Type of object being duplicated
- * @param {string} destination - Destination for duplication
+ * @param {string | undefined} destination - Destination for duplication
  */
 export function validateDestinationParameter(type, destination) {
   if (destination == null) {
@@ -132,10 +169,10 @@ export function validateDestinationParameter(type, destination) {
 
 /**
  * Validates arrangement-specific parameters
- * @param {string} destination - Destination for duplication
- * @param {string} arrangementStart - Start time in bar|beat format
- * @param {string} arrangementLocatorId - Locator ID for arrangement position
- * @param {string} arrangementLocatorName - Locator name for arrangement position
+ * @param {string | undefined} destination - Destination for duplication
+ * @param {string | undefined} arrangementStart - Start time in bar|beat format
+ * @param {string | undefined} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
  */
 export function validateArrangementParameters(
   destination,

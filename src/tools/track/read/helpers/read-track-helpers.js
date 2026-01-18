@@ -12,11 +12,11 @@ import {
 /**
  * Read all session clips from a track
  * @param {LiveAPI} track - Track object
- * @param {number} trackIndex - Track index
+ * @param {number | null} trackIndex - Track index
  * @param {Array<string>} [include] - Include array for nested reads
  * @returns {Array<object>} Array of clip objects (only clips that exist)
  */
-export function readSessionClips(track, trackIndex, include = null) {
+export function readSessionClips(track, trackIndex, include) {
   return track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) =>
@@ -32,7 +32,7 @@ export function readSessionClips(track, trackIndex, include = null) {
 /**
  * Count session clips in a track (faster than reading full clip details)
  * @param {LiveAPI} track - Track object
- * @param {number} trackIndex - Track index
+ * @param {number | null} trackIndex - Track index
  * @returns {number} Number of clips
  */
 export function countSessionClips(track, trackIndex) {
@@ -54,7 +54,7 @@ export function countSessionClips(track, trackIndex) {
  * @param {Array<string>} [include] - Include array for nested reads
  * @returns {Array<object>} Array of clip objects (only clips that exist)
  */
-export function readArrangementClips(track, include = null) {
+export function readArrangementClips(track, include) {
   return track
     .getChildIds("arrangement_clips")
     .map((clipId) =>
@@ -134,7 +134,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 /**
  * Handle track that doesn't exist
  * @param {string} category - Track category (regular, return, or master)
- * @param {number} trackIndex - Track index
+ * @param {number | null} trackIndex - Track index
  * @returns {object} - Result object for non-existent track
  */
 export function handleNonExistentTrack(category, trackIndex) {
@@ -188,7 +188,7 @@ export function addOptionalBooleanProperties(result, track, canBeArmed) {
  * Add track index property based on category
  * @param {object} result - Result object to modify
  * @param {string} category - Track category (regular, return, or master)
- * @param {number} trackIndex - Track index
+ * @param {number | null} trackIndex - Track index
  */
 export function addCategoryIndex(result, category, trackIndex) {
   if (category === "regular") {

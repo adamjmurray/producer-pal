@@ -1,6 +1,4 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { select } from "#src/tools/control/select.js";
-import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.js";
@@ -11,45 +9,13 @@ import {
   duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.js";
 import {
+  resolveArrangementPosition,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
   validateClipParameters,
   validateDestinationParameter,
   validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.js";
-
-/**
- * Resolves arrangement position from bar|beat or locator
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {string} arrangementStart - Bar|beat position
- * @param {string} arrangementLocatorId - Locator ID for position
- * @param {string} arrangementLocatorName - Locator name for position
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number} Position in beats
- */
-function resolveArrangementPosition(
-  liveSet,
-  arrangementStart,
-  arrangementLocatorId,
-  arrangementLocatorName,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
-  if (arrangementLocatorId != null || arrangementLocatorName != null) {
-    return resolveLocatorToBeats(
-      liveSet,
-      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
-      "duplicate",
-    );
-  }
-
-  return barBeatToAbletonBeats(
-    arrangementStart,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-}
 
 /**
  * @typedef {object} DuplicateArgs
@@ -182,7 +148,7 @@ export function duplicate(
 
 /**
  * Generates a name for a duplicated object
- * @param {string} baseName - Base name for the object
+ * @param {string | undefined} baseName - Base name for the object
  * @param {number} count - Total number of duplicates
  * @param {number} index - Current duplicate index
  * @returns {string | undefined} Generated name or undefined
@@ -206,11 +172,11 @@ function generateObjectName(baseName, count, index) {
 /**
  * Duplicates a track or scene using count-based iteration
  * @param {string} type - Type of object (track or scene)
- * @param {string} destination - Destination for duplication
+ * @param {string | undefined} destination - Destination for duplication
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} count - Number of duplicates to create
- * @param {string} name - Base name for duplicated objects
+ * @param {string | undefined} name - Base name for duplicated objects
  * @param {object} params - Additional parameters
  * @param {object} context - Context object with holdingAreaStartBeats
  * @returns {Array<object>} Array of result objects
@@ -268,7 +234,7 @@ function duplicateTrackOrSceneWithCount(
 
 /**
  * Determines the target view based on destination and type
- * @param {string} destination - Destination for duplication
+ * @param {string | undefined} destination - Destination for duplication
  * @param {string} type - Type of object being duplicated
  * @returns {string | null} Target view or null
  */
@@ -286,8 +252,8 @@ function determineTargetView(destination, type) {
 
 /**
  * Switches to the appropriate view if requested
- * @param {boolean} switchView - Whether to switch view
- * @param {string} destination - Destination for duplication
+ * @param {boolean | undefined} switchView - Whether to switch view
+ * @param {string | undefined} destination - Destination for duplication
  * @param {string} type - Type of object being duplicated
  */
 function switchViewIfRequested(switchView, destination, type) {
@@ -307,12 +273,12 @@ function switchViewIfRequested(switchView, destination, type) {
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
- * @param {string} objectName - Name for the duplicated object
- * @param {string} arrangementStart - Start time in bar|beat format
- * @param {string} arrangementLocatorId - Locator ID for arrangement position
- * @param {string} arrangementLocatorName - Locator name for arrangement position
- * @param {string} arrangementLength - Duration in bar|beat format
- * @param {boolean} withoutClips - Whether to exclude clips
+ * @param {string | undefined} objectName - Name for the duplicated object
+ * @param {string | undefined} arrangementStart - Start time in bar|beat format
+ * @param {string | undefined} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
+ * @param {string | undefined} arrangementLength - Duration in bar|beat format
+ * @param {boolean | undefined} withoutClips - Whether to exclude clips
  * @param {object} context - Context object with holdingAreaStartBeats
  * @returns {object} Metadata about the duplicated object
  */
@@ -378,11 +344,11 @@ function duplicateSceneToArrangementView(
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
- * @param {string} objectName - Name for the duplicated object
- * @param {boolean} withoutClips - Whether to exclude clips
- * @param {boolean} withoutDevices - Whether to exclude devices
- * @param {boolean} routeToSource - Whether to route to source track
- * @returns {object} Metadata about the duplicated object
+ * @param {string | undefined} objectName - Name for the duplicated object
+ * @param {boolean | undefined} withoutClips - Whether to exclude clips
+ * @param {boolean | undefined} withoutDevices - Whether to exclude devices
+ * @param {boolean | undefined} routeToSource - Whether to route to source track
+ * @returns {object | undefined} Metadata about the duplicated object
  */
 function duplicateTrackOrSceneToSession(
   type,
@@ -433,14 +399,14 @@ function duplicateTrackOrSceneToSession(
 /**
  * Performs the duplication operation for tracks or scenes
  * @param {string} type - Type of object being duplicated (track or scene)
- * @param {string} destination - Destination for duplication
+ * @param {string | undefined} destination - Destination for duplication
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
- * @param {string} objectName - Name for the duplicated object
+ * @param {string | undefined} objectName - Name for the duplicated object
  * @param {object} params - Additional parameters for duplication
  * @param {object} context - Context object with holdingAreaStartBeats
- * @returns {object} Metadata about the duplicated object
+ * @returns {object | undefined} Metadata about the duplicated object
  */
 function performDuplication(
   type,

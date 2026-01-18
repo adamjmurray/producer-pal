@@ -2,6 +2,7 @@
 
 import crypto from "node:crypto";
 import Max from "max-api";
+import { errorMessage } from "#src/shared/error-utils.js";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
@@ -55,7 +56,7 @@ function callLiveApi(tool, args) {
       // Always resolve (not reject) with the standard error format
       return resolve(
         formatErrorResponse(
-          error.message || `Error sending message to ${tool}: ${error}`,
+          errorMessage(error) || `Error sending message to ${tool}: ${error}`,
         ),
       );
     }
@@ -80,10 +81,11 @@ function callLiveApi(tool, args) {
 /**
  * Handle Live API result from Max
  *
- * @param {string} requestId - Request identifier
- * @param {...any} params - Response parameters (chunks and errors)
+ * @param {...any} args - Request ID followed by response parameters (chunks and errors)
  */
-function handleLiveApiResult(requestId, ...params) {
+function handleLiveApiResult(...args) {
+  const [requestId, ...params] = args;
+
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
   if (pendingRequests.has(requestId)) {

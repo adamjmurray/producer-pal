@@ -11,7 +11,7 @@ import {
 /**
  * Remove the Producer Pal device from a duplicated track if it was the host track
  * @param {number} trackIndex - Original track index
- * @param {boolean} withoutDevices - Whether devices were excluded
+ * @param {boolean | undefined} withoutDevices - Whether devices were excluded
  * @param {object} newTrack - The new track LiveAPI object
  */
 function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
@@ -59,7 +59,7 @@ function deleteAllDevices(newTrack) {
 /**
  * Collect or delete clips from a duplicated track
  * @param {object} newTrack - The new track LiveAPI object
- * @param {boolean} withoutClips - Whether to delete clips instead of collecting them
+ * @param {boolean | undefined} withoutClips - Whether to delete clips instead of collecting them
  * @returns {Array} Array of clip info objects
  */
 function processClipsForDuplication(newTrack, withoutClips) {
@@ -258,7 +258,7 @@ function applyOutputRouting(
 /**
  * Configure routing to source track
  * @param {object} newTrack - The new track LiveAPI object
- * @param {number} sourceTrackIndex - Source track index
+ * @param {number | undefined} sourceTrackIndex - Source track index
  */
 function configureRouting(newTrack, sourceTrackIndex) {
   const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
