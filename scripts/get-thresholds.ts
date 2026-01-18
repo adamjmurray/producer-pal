@@ -45,13 +45,15 @@ async function getCoverageThresholds(): Promise<CoverageThresholds> {
   const extractThreshold = (name: string): number => {
     const match = vitestConfig.match(new RegExp(`${name}:\\s*([\\d.]+)`));
 
-    if (!match) {
+    const value = match?.[1];
+
+    if (!value) {
       throw new Error(
         `Failed to extract ${name} threshold from vitest.config.mjs`,
       );
     }
 
-    return Number.parseFloat(match[1]);
+    return Number.parseFloat(value);
   };
 
   return {

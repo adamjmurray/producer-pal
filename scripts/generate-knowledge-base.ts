@@ -38,8 +38,7 @@ async function main(): Promise<void> {
     );
     const excludeGroups = excludeGroupsArg
       ? new Set(
-          excludeGroupsArg
-            .split("=")[1]
+          (excludeGroupsArg.split("=")[1] ?? "")
             .split(",")
             .map((g) => g.trim())
             .filter(Boolean),

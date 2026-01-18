@@ -40,7 +40,7 @@ const registeredTools = server._registeredTools as Record<
 >;
 
 for (const [name, toolInfo] of Object.entries(registeredTools)) {
-  const shortDescription = toolInfo.description.split("\n")[0];
+  const shortDescription = toolInfo.description.split("\n")[0] ?? "";
 
   tools.push({
     name: getDisplayName(toolInfo) || name,

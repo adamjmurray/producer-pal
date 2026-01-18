@@ -60,17 +60,19 @@ let httpUrl = DEFAULT_HTTP_URL;
 let toolName: string | null = null;
 let toolArgs: Record<string, unknown> = {};
 
-if (process.argv.length > 2) {
+const arg2 = process.argv[2];
+
+if (arg2) {
   // Check if first arg looks like a URL
-  if (process.argv[2].includes("://")) {
-    httpUrl = process.argv[2];
+  if (arg2.includes("://")) {
+    httpUrl = arg2;
     toolName = process.argv[3] ?? null;
     toolArgs = process.argv[4]
       ? (JSON.parse(process.argv[4]) as Record<string, unknown>)
       : {};
   } else {
     // First arg is tool name
-    toolName = process.argv[2];
+    toolName = arg2;
     toolArgs = process.argv[3]
       ? (JSON.parse(process.argv[3]) as Record<string, unknown>)
       : {};
