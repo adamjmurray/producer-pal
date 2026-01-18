@@ -24,6 +24,18 @@ describe("memory", () => {
         "Action must be 'read' or 'write'",
       );
     });
+
+    it("should return enabled: false when projectNotes is missing", () => {
+      const result = memory({ action: "read" }, {});
+
+      expect(result).toStrictEqual({ enabled: false });
+    });
+
+    it("should return enabled: false when context is empty", () => {
+      const result = memory({ action: "write", content: "test" }, {});
+
+      expect(result).toStrictEqual({ enabled: false });
+    });
   });
 
   describe("read action", () => {
