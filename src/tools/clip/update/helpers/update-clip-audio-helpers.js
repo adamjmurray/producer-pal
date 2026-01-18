@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_WARP_MODE_BEATS,
@@ -120,7 +119,9 @@ function revealUnwarpedAudioContent(
   revealedClip.set("looping", 0);
 
   // Shorten the clip to only show the revealed portion (if needed)
-  const revealedClipEndTime = revealedClip.getProperty("end_time");
+  const revealedClipEndTime = /** @type {number} */ (
+    revealedClip.getProperty("end_time")
+  );
   const targetLengthBeats = newEndMarker - newStartMarker;
   const expectedEndTime = targetPosition + targetLengthBeats;
   const EPSILON = 0.001;

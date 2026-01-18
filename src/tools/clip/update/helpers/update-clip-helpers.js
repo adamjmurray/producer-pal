@@ -256,6 +256,32 @@ export function handleNoteUpdates(
 }
 
 /**
+ * Get time signature values from parameter or clip
+ * @param {string | undefined} timeSignature - Time signature string from params
+ * @param {LiveAPI} clip - The clip to read defaults from
+ * @returns {{timeSigNumerator: number, timeSigDenominator: number}} Time signature values
+ */
+function getTimeSignature(timeSignature, clip) {
+  if (timeSignature != null) {
+    const parsed = parseTimeSignature(timeSignature);
+
+    return {
+      timeSigNumerator: parsed.numerator,
+      timeSigDenominator: parsed.denominator,
+    };
+  }
+
+  return {
+    timeSigNumerator: /** @type {number} */ (
+      clip.getProperty("signature_numerator")
+    ),
+    timeSigDenominator: /** @type {number} */ (
+      clip.getProperty("signature_denominator")
+    ),
+  };
+}
+
+/**
  * Process a single clip update
  * @param {object} params - Parameters object containing all update parameters
  * @param {LiveAPI} params.clip - The clip to update
@@ -319,24 +345,10 @@ export function processSingleClipUpdate(params) {
     tracksWithMovedClips,
   } = params;
 
-  // Parse time signature if provided
-  let timeSigNumerator, timeSigDenominator;
-
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    timeSigNumerator = parsed.numerator;
-    timeSigDenominator = parsed.denominator;
-  } else {
-    timeSigNumerator = /** @type {number} */ (
-      clip.getProperty("signature_numerator")
-    );
-    timeSigDenominator = /** @type {number} */ (
-      clip.getProperty("signature_denominator")
-    );
-  }
-
-  // Track final note count
+  const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
+    timeSignature,
+    clip,
+  );
   let finalNoteCount = null;
 
   // Determine looping state
