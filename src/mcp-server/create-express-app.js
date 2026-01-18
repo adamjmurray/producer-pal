@@ -32,6 +32,10 @@ const methodNotAllowed = {
   id: null,
 };
 
+/**
+ * @param {string} message - Error message
+ * @returns {object} JSON-RPC error response
+ */
 const internalError = (message) => ({
   jsonrpc: "2.0",
   error: {
@@ -43,71 +47,125 @@ const internalError = (message) => ({
 
 /**
  * Creates and configures an Express application for the MCP server
- * @returns {object} - Configured Express app
+ * @returns {import("express").Express} - Configured Express app
  */
 export function createExpressApp() {
   const app = express();
 
   // CORS middleware for MCP Inspector support
-  app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "*");
+  app.use(
+    /**
+     * @param {import("express").Request} req - Express request
+     * @param {import("express").Response} res - Express response
+     * @param {import("express").NextFunction} next - Next middleware
+     * @returns {void}
+     */
+    (req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, DELETE",
+      );
+      res.setHeader("Access-Control-Allow-Headers", "*");
 
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(200).end();
 
-    next();
-  });
+        return;
+      }
+
+      next();
+    },
+  );
 
   app.use(express.json());
 
-  app.post("/mcp", async (req, res) => {
-    try {
-      console.info("New MCP connection: " + JSON.stringify(req.body));
+  app.post(
+    "/mcp",
+    /**
+     * @param {import("express").Request} req - Express request
+     * @param {import("express").Response} res - Express response
+     */
+    async (req, res) => {
+      try {
+        console.info("New MCP connection: " + JSON.stringify(req.body));
 
-      const server = createMcpServer(callLiveApi, { smallModelMode });
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // Stateless mode
-      });
+        const server = createMcpServer(callLiveApi, { smallModelMode });
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined, // Stateless mode
+        });
 
-      res.on("close", () => {
-        transport.close();
-        server.close();
-      });
+        res.on("close", () => {
+          transport.close();
+          server.close();
+        });
 
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      console.error(`Error handling MCP request: ${error}`);
-      res.status(500).json(internalError(errorMessage(error)));
-    }
-  });
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+      } catch (error) {
+        console.error(`Error handling MCP request: ${error}`);
+        res.status(500).json(internalError(errorMessage(error)));
+      }
+    },
+  );
 
   // Stateless server doesn't support SSE streams, so GET is not allowed.
   // Returning 405 tells the MCP SDK not to attempt SSE reconnection.
-  app.get("/mcp", async (_req, res) => res.status(405).json(methodNotAllowed));
+  app.get(
+    "/mcp",
+    /**
+     * @param {import("express").Request} _req - Express request (unused)
+     * @param {import("express").Response} res - Express response
+     */
+    (_req, res) => {
+      res.status(405).json(methodNotAllowed);
+    },
+  );
 
   // Because we're using a stateless server, DELETE is not needed:
-  app.delete("/mcp", async (_req, res) =>
-    res.status(405).json(methodNotAllowed),
+  app.delete(
+    "/mcp",
+    /**
+     * @param {import("express").Request} _req - Express request (unused)
+     * @param {import("express").Response} res - Express response
+     */
+    (_req, res) => {
+      res.status(405).json(methodNotAllowed);
+    },
   );
 
   // Allow chat UI to be disabled for security
-  app.use("/chat", (req, res, next) => {
-    if (!chatUIEnabled) {
-      return res.status(403).send("Chat UI is disabled");
-    }
+  app.use(
+    "/chat",
+    /**
+     * @param {import("express").Request} req - Express request
+     * @param {import("express").Response} res - Express response
+     * @param {import("express").NextFunction} next - Next middleware
+     * @returns {void}
+     */
+    (req, res, next) => {
+      if (!chatUIEnabled) {
+        res.status(403).send("Chat UI is disabled");
 
-    next();
-  });
+        return;
+      }
+
+      next();
+    },
+  );
 
   // Serve the chat UI (inlined for frozen .amxd builds)
-  app.get("/chat", (_req, res) => {
-    res.type("html").send(chatUiHtml);
-  });
+  app.get(
+    "/chat",
+    /**
+     * @param {import("express").Request} _req - Express request (unused)
+     * @param {import("express").Response} res - Express response
+     */
+    (_req, res) => {
+      res.type("html").send(chatUiHtml);
+    },
+  );
 
   return app;
 }

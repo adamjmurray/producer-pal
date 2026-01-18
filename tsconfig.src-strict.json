@@ -5,6 +5,7 @@
   },
   "include": [
     "src/shared/**/*.js",
+    "src/mcp-server/**/*.js",
     "src/skills/**/*.js",
     "src/portal/**/*.js",
     "src/test/**/*.js",

@@ -4,7 +4,10 @@ import { VERSION } from "#src/shared/version.js";
 import { createExpressApp } from "./create-express-app.js";
 import * as console from "./node-for-max-logger.js";
 
-const args = process.argv;
+// Cast process to access Node.js argv (max-globals.d.ts has limited process type)
+const args = /** @type {{ argv: string[] }} */ (
+  /** @type {unknown} */ (process)
+).argv;
 
 let port = 3350;
 
@@ -37,7 +40,7 @@ appServer
     );
     Max.outlet("version", VERSION);
   })
-  .on("error", (error) => {
+  .on("error", (/** @type {{ code?: string }} */ error) => {
     throw new Error(
       error.code === "EADDRINUSE"
         ? `Producer Pal failed to start: Port ${port} is already in use.`
