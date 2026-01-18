@@ -1,10 +1,13 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "#src/tools/constants.js";
+
+/**
+ * @typedef {{ display_name: string, identifier: string | number }} RoutingInfo
+ */
 
 /**
  * Process current routing settings for a track
@@ -24,10 +27,13 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     };
   }
 
+  /** @type {Record<string, unknown>} */
   const result = {};
 
   if (!isGroup && category === "regular") {
-    const inputType = track.getProperty("input_routing_type");
+    const inputType = /** @type {RoutingInfo | null} */ (
+      track.getProperty("input_routing_type")
+    );
 
     result.inputRoutingType = inputType
       ? {
@@ -36,7 +42,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
         }
       : null;
 
-    const inputChannel = track.getProperty("input_routing_channel");
+    const inputChannel = /** @type {RoutingInfo | null} */ (
+      track.getProperty("input_routing_channel")
+    );
 
     result.inputRoutingChannel = inputChannel
       ? {
@@ -49,7 +57,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     result.inputRoutingChannel = null;
   }
 
-  const outputType = track.getProperty("output_routing_type");
+  const outputType = /** @type {RoutingInfo | null} */ (
+    track.getProperty("output_routing_type")
+  );
 
   result.outputRoutingType = outputType
     ? {
@@ -58,7 +68,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
       }
     : null;
 
-  const outputChannel = track.getProperty("output_routing_channel");
+  const outputChannel = /** @type {RoutingInfo | null} */ (
+    track.getProperty("output_routing_channel")
+  );
 
   result.outputRoutingChannel = outputChannel
     ? {
@@ -68,7 +80,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     : null;
 
   if (canBeArmed) {
-    const monitoringStateValue = track.getProperty("current_monitoring_state");
+    const monitoringStateValue = /** @type {number} */ (
+      track.getProperty("current_monitoring_state")
+    );
 
     result.monitoringState =
       {
@@ -98,19 +112,22 @@ export function processAvailableRouting(track, category, isGroup) {
     };
   }
 
+  /** @type {Record<string, unknown>} */
   const result = {};
 
   if (!isGroup && category === "regular") {
-    const availableInputTypes =
-      track.getProperty("available_input_routing_types") || [];
+    const availableInputTypes = /** @type {RoutingInfo[]} */ (
+      track.getProperty("available_input_routing_types") || []
+    );
 
     result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
       name: type.display_name,
       inputId: String(type.identifier),
     }));
 
-    const availableInputChannels =
-      track.getProperty("available_input_routing_channels") || [];
+    const availableInputChannels = /** @type {RoutingInfo[]} */ (
+      track.getProperty("available_input_routing_channels") || []
+    );
 
     result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
       name: ch.display_name,
@@ -121,16 +138,18 @@ export function processAvailableRouting(track, category, isGroup) {
     result.availableInputRoutingChannels = [];
   }
 
-  const availableOutputTypes =
-    track.getProperty("available_output_routing_types") || [];
+  const availableOutputTypes = /** @type {RoutingInfo[]} */ (
+    track.getProperty("available_output_routing_types") || []
+  );
 
   result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
     name: type.display_name,
     outputId: String(type.identifier),
   }));
 
-  const availableOutputChannels =
-    track.getProperty("available_output_routing_channels") || [];
+  const availableOutputChannels = /** @type {RoutingInfo[]} */ (
+    track.getProperty("available_output_routing_channels") || []
+  );
 
   result.availableOutputRoutingChannels = availableOutputChannels.map((ch) => ({
     name: ch.display_name,
