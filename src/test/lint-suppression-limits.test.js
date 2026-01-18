@@ -21,7 +21,7 @@ const TS_EXPECT_ERROR_LIMITS = {
 };
 
 const TS_NOCHECK_LIMITS = {
-  src: 38, // Ratcheted - remove @ts-nocheck by adding JSDoc type annotations
+  src: 28, // Ratcheted - remove @ts-nocheck by adding JSDoc type annotations
   scripts: 0,
   webui: 0,
 };
