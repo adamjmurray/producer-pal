@@ -4,13 +4,23 @@ import { VERSION } from "#src/shared/version.js";
 import { createExpressApp } from "./create-express-app.js";
 import * as console from "./node-for-max-logger.js";
 
-/** @type {number | string} */
-let port = 3350;
 const args = process.argv;
+
+let port = 3350;
 
 for (const [index, arg] of args.entries()) {
   if (arg === "port") {
-    port = args[index + 1] ?? port;
+    const portValueArg = args[index + 1];
+
+    if (portValueArg == null) {
+      throw new Error("Missing port value");
+    }
+
+    port = Number.parseInt(portValueArg);
+
+    if (Number.isNaN(port)) {
+      throw new Error(`Invalid port: ${portValueArg}`);
+    }
   }
 }
 
