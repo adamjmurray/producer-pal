@@ -4,14 +4,9 @@ import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbea
  * Parse a period parameter and convert to period in musical beats
  * @param {object} periodObj - Period object from parser: {type: "period", bars: number, beats: number}
  * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Period in musical beats
  */
-export function parseFrequency(
-  periodObj,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+export function parseFrequency(periodObj, timeSigNumerator) {
   if (periodObj.type !== "period") {
     throw new Error(
       `Invalid period object: expected type "period", got "${periodObj.type}"`,
@@ -23,7 +18,6 @@ export function parseFrequency(
   const periodInBeats = barBeatDurationToMusicalBeats(
     barBeatString,
     timeSigNumerator,
-    timeSigDenominator,
   );
 
   if (periodInBeats <= 0) {

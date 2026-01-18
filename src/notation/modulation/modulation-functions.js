@@ -246,7 +246,7 @@ function parsePeriod(
   let period;
 
   if (periodArg.type === "period") {
-    period = parseFrequency(periodArg, timeSigNumerator, timeSigDenominator);
+    period = parseFrequency(periodArg, timeSigNumerator);
   } else {
     // Evaluate as expression (e.g., variable or number) - treated as beats
     period = evaluateExpression(

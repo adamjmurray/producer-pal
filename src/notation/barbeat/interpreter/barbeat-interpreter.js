@@ -65,19 +65,12 @@ function processVelocityRangeUpdate(element, state) {
  * @param {object} element - AST element with duration property
  * @param {object} state - Interpreter state object
  * @param {number | undefined} timeSigNumerator - Time signature numerator
- * @param {number | undefined} timeSigDenominator - Time signature denominator
  */
-function processDurationUpdate(
-  element,
-  state,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+function processDurationUpdate(element, state, timeSigNumerator) {
   if (typeof element.duration === "string") {
     state.currentDuration = barBeatDurationToMusicalBeats(
       element.duration,
       timeSigNumerator,
-      timeSigDenominator,
     );
   } else {
     state.currentDuration = element.duration;
@@ -247,7 +240,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigNumerator, timeSigDenominator);
+    processDurationUpdate(element, state, timeSigNumerator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }
