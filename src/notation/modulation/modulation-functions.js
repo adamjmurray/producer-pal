@@ -2,15 +2,33 @@ import { parseFrequency } from "./modulation-frequency.js";
 import * as waveforms from "./modulation-waveforms.js";
 
 /**
- * Evaluate a function call
- * @param {string} name - Function name
- * @param {Array} args - Function arguments (AST nodes)
+ * @typedef {import('./modulation-evaluator-helpers.js').ExpressionNode} ExpressionNode
+ * @typedef {import('./modulation-evaluator-helpers.js').TimeRange} TimeRange
+ * @typedef {import('./modulation-evaluator-helpers.js').NoteProperties} NoteProperties
+ * @typedef {import('./modulation-frequency.js').PeriodObject} PeriodObject
+ */
+
+/**
+ * @callback EvaluateExpressionFn
+ * @param {ExpressionNode} node - Expression AST node
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {object} timeRange - Active time range for this expression
- * @param {object} noteProperties - Note properties accessible via note.* variables
- * @param {Function} evaluateExpression - Function to evaluate expressions
+ * @param {TimeRange} timeRange - Active time range for this expression
+ * @param {NoteProperties} [noteProperties] - Note properties accessible via note.* variables
+ * @returns {number} Evaluated value
+ */
+
+/**
+ * Evaluate a function call
+ * @param {string} name - Function name
+ * @param {Array<ExpressionNode>} args - Function arguments (AST nodes)
+ * @param {number} position - Note position in musical beats
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {TimeRange} timeRange - Active time range for this expression
+ * @param {NoteProperties} noteProperties - Note properties accessible via note.* variables
+ * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
  * @returns {number} Function result
  */
 export function evaluateFunction(
@@ -56,13 +74,13 @@ export function evaluateFunction(
 
 /**
  * Evaluate ramp function
- * @param {Array} args - Function arguments
+ * @param {Array<ExpressionNode>} args - Function arguments
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {object} timeRange - Active time range
- * @param {object} noteProperties - Note properties
- * @param {Function} evaluateExpression - Function to evaluate expressions
+ * @param {TimeRange} timeRange - Active time range
+ * @param {NoteProperties} noteProperties - Note properties
+ * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
  * @returns {number} Ramp value
  */
 function evaluateRamp(
@@ -132,13 +150,13 @@ function evaluateRamp(
 /**
  * Evaluate waveform function (cos, tri, saw, square)
  * @param {string} name - Function name
- * @param {Array} args - Function arguments
+ * @param {Array<ExpressionNode>} args - Function arguments
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {object} timeRange - Active time range
- * @param {object} noteProperties - Note properties
- * @param {Function} evaluateExpression - Function to evaluate expressions
+ * @param {TimeRange} timeRange - Active time range
+ * @param {NoteProperties} noteProperties - Note properties
+ * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
  * @returns {number} Waveform value
  */
 function evaluateWaveform(
@@ -223,13 +241,13 @@ function evaluateWaveform(
 
 /**
  * Parse period argument for waveform functions
- * @param {object} periodArg - Period argument node
+ * @param {ExpressionNode | PeriodObject} periodArg - Period argument node
  * @param {number} position - Note position
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {object} timeRange - Time range
- * @param {object} noteProperties - Note properties
- * @param {Function} evaluateExpression - Function to evaluate expressions
+ * @param {TimeRange} timeRange - Time range
+ * @param {NoteProperties} noteProperties - Note properties
+ * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
  * @param {string} name - Function name
  * @returns {number} Period in beats
  */
@@ -245,12 +263,21 @@ function parsePeriod(
 ) {
   let period;
 
-  if (periodArg.type === "period") {
-    period = parseFrequency(periodArg, timeSigNumerator);
+  // Check if it's a period object (has "period" type)
+  if (
+    typeof periodArg === "object" &&
+    periodArg !== null &&
+    "type" in periodArg &&
+    periodArg.type === "period"
+  ) {
+    period = parseFrequency(
+      /** @type {PeriodObject} */ (periodArg),
+      timeSigNumerator,
+    );
   } else {
     // Evaluate as expression (e.g., variable or number) - treated as beats
     period = evaluateExpression(
-      periodArg,
+      /** @type {ExpressionNode} */ (periodArg),
       position,
       timeSigNumerator,
       timeSigDenominator,

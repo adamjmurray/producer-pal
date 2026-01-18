@@ -1,4 +1,14 @@
 /**
+ * @typedef {object} NoteEvent
+ * @property {number} pitch - MIDI pitch
+ * @property {number} start_time - Start time in beats
+ * @property {number} duration - Duration in beats
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} [probability] - Probability (0.0-1.0)
+ * @property {number} [velocity_deviation] - Velocity deviation
+ */
+
+/**
  * Apply v0 (velocity 0) deletions to notes in serial order.
  * For each v0 note encountered, removes all previously-processed notes
  * that match its pitch and start_time, then removes the v0 note itself.
@@ -6,8 +16,8 @@
  * This is the central place where v0 notes are filtered out before sending
  * to the Live API (which cannot handle velocity 0).
  *
- * @param {Array} notes - Notes including v0 notes
- * @returns {Array} Notes with v0 deletions applied (v0 notes filtered out)
+ * @param {Array<NoteEvent>} notes - Notes including v0 notes
+ * @returns {Array<NoteEvent>} Notes with v0 deletions applied (v0 notes filtered out)
  */
 export function applyV0Deletions(notes) {
   return notes.reduce((result, note) => {
@@ -22,5 +32,5 @@ export function applyV0Deletions(notes) {
 
     // Regular note - add to results
     return [...result, note];
-  }, []);
+  }, /** @type {Array<NoteEvent>} */ ([]));
 }

@@ -29,41 +29,66 @@ import {
 } from "./helpers/barbeat-interpreter-pitch-helpers.js";
 
 /**
+ * @typedef {import('./helpers/barbeat-interpreter-buffer-helpers.js').InterpreterState} InterpreterState
+ * @typedef {import('./helpers/barbeat-interpreter-buffer-helpers.js').PitchState} PitchState
+ * @typedef {import('./helpers/barbeat-interpreter-copy-helpers.js').NoteEvent} NoteEvent
+ * @typedef {import('./helpers/barbeat-interpreter-copy-helpers.js').BarCopyNote} BarCopyNote
+ */
+
+/**
+ * @typedef {object} ASTElement
+ * @property {number} [velocity] - Velocity value
+ * @property {number} [velocityMin] - Velocity range minimum
+ * @property {number} [velocityMax] - Velocity range maximum
+ * @property {number | string} [duration] - Duration value or bar:beat string
+ * @property {number} [probability] - Probability value
+ * @property {number} [pitch] - MIDI pitch
+ * @property {number | null} [bar] - Bar number
+ * @property {number | object} [beat] - Beat number or repeat pattern
+ * @property {boolean} [clearBuffer] - Whether to clear buffer
+ * @property {{ bar?: number, range?: [number, number] }} [destination] - Bar copy destination
+ * @property {{ bar?: number, range?: [number, number] } | 'previous'} [source] - Bar copy source
+ */
+
+/**
  * Process a velocity update (single value)
- * @param {object} element - AST element with velocity property
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with velocity property
+ * @param {InterpreterState} state - Interpreter state object
  */
 function processVelocityUpdate(element, state) {
-  state.currentVelocity = element.velocity;
+  state.currentVelocity = element.velocity ?? null;
   state.currentVelocityMin = null;
   state.currentVelocityMax = null;
 
-  handlePropertyUpdate(state, (pitchState) => {
-    pitchState.velocity = element.velocity;
+  handlePropertyUpdate(state, (/** @type {PitchState} */ pitchState) => {
+    pitchState.velocity = /** @type {number} */ (element.velocity);
     pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
   });
 }
 
 /**
  * Process a velocity range update
- * @param {object} element - AST element with velocityMin/Max properties
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with velocityMin/Max properties
+ * @param {InterpreterState} state - Interpreter state object
  */
 function processVelocityRangeUpdate(element, state) {
-  state.currentVelocityMin = element.velocityMin;
-  state.currentVelocityMax = element.velocityMax;
+  state.currentVelocityMin = element.velocityMin ?? null;
+  state.currentVelocityMax = element.velocityMax ?? null;
   state.currentVelocity = null;
 
-  handlePropertyUpdate(state, (pitchState) => {
-    pitchState.velocity = element.velocityMin;
-    pitchState.velocityDeviation = element.velocityMax - element.velocityMin;
+  const velocityMin = element.velocityMin ?? 0;
+  const velocityMax = element.velocityMax ?? 0;
+
+  handlePropertyUpdate(state, (/** @type {PitchState} */ pitchState) => {
+    pitchState.velocity = velocityMin;
+    pitchState.velocityDeviation = velocityMax - velocityMin;
   });
 }
 
 /**
  * Process a duration update
- * @param {object} element - AST element with duration property
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with duration property
+ * @param {InterpreterState} state - Interpreter state object
  * @param {number | undefined} timeSigNumerator - Time signature numerator
  */
 function processDurationUpdate(element, state, timeSigNumerator) {
@@ -73,31 +98,31 @@ function processDurationUpdate(element, state, timeSigNumerator) {
       timeSigNumerator,
     );
   } else {
-    state.currentDuration = element.duration;
+    state.currentDuration = /** @type {number} */ (element.duration);
   }
 
-  handlePropertyUpdate(state, (pitchState) => {
+  handlePropertyUpdate(state, (/** @type {PitchState} */ pitchState) => {
     pitchState.duration = state.currentDuration;
   });
 }
 
 /**
  * Process a probability update
- * @param {object} element - AST element with probability property
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with probability property
+ * @param {InterpreterState} state - Interpreter state object
  */
 function processProbabilityUpdate(element, state) {
   state.currentProbability = element.probability;
 
-  handlePropertyUpdate(state, (pitchState) => {
+  handlePropertyUpdate(state, (/** @type {PitchState} */ pitchState) => {
     pitchState.probability = element.probability;
   });
 }
 
 /**
  * Process a pitch element
- * @param {object} element - AST element with pitch property
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with pitch property
+ * @param {InterpreterState} state - Interpreter state object
  */
 function processPitchElement(element, state) {
   if (!state.pitchGroupStarted) {
@@ -109,7 +134,7 @@ function processPitchElement(element, state) {
 
   let velocity, velocityDeviation;
 
-  if (state.currentVelocityMin !== null && state.currentVelocityMax !== null) {
+  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
     velocity = state.currentVelocityMin;
     velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
   } else {
@@ -118,7 +143,7 @@ function processPitchElement(element, state) {
   }
 
   state.currentPitches.push({
-    pitch: element.pitch,
+    pitch: /** @type {number} */ (element.pitch),
     velocity: velocity,
     velocityDeviation: velocityDeviation,
     duration: state.currentDuration,
@@ -129,7 +154,7 @@ function processPitchElement(element, state) {
 
 /**
  * Reset pitch buffer state
- * @param {object} state - Interpreter state object
+ * @param {InterpreterState} state - Interpreter state object
  */
 function resetPitchBufferState(state) {
   state.currentPitches = [];
@@ -141,12 +166,12 @@ function resetPitchBufferState(state) {
 
 /**
  * Process a time position element
- * @param {object} element - AST element with bar/beat properties
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element with bar/beat properties
+ * @param {InterpreterState} state - Interpreter state object
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array} events - Array of note events
- * @param {Map} notesByBar - Map of bar numbers to note metadata
+ * @param {Array<NoteEvent>} events - Array of note events
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Map of bar numbers to note metadata
  */
 function processTimePosition(
   element,
@@ -176,13 +201,13 @@ function processTimePosition(
 /**
  * Process a single element in the main AST loop
  * Dispatches to appropriate handler based on element type
- * @param {object} element - AST element to process
- * @param {object} state - Interpreter state object
+ * @param {ASTElement} element - AST element to process
+ * @param {InterpreterState} state - Interpreter state object
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigNumerator - Time signature numerator
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Map} notesByBar - Map of bar numbers to note metadata
- * @param {Array} events - Array of note events
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Map of bar numbers to note metadata
+ * @param {Array<NoteEvent>} events - Array of note events
  */
 function processElementInLoop(
   element,
@@ -195,7 +220,9 @@ function processElementInLoop(
 ) {
   if (element.destination?.range !== undefined) {
     const result = handleBarCopyRangeDestination(
-      element,
+      /** @type {import('./helpers/barbeat-interpreter-copy-helpers.js').BarCopyElement} */ (
+        element
+      ),
       beatsPerBar,
       timeSigDenominator,
       notesByBar,
@@ -207,7 +234,9 @@ function processElementInLoop(
     resetPitchBufferState(state);
   } else if (element.destination?.bar !== undefined) {
     const result = handleBarCopySingleDestination(
-      element,
+      /** @type {import('./helpers/barbeat-interpreter-copy-helpers.js').BarCopyElement} */ (
+        element
+      ),
       beatsPerBar,
       timeSigDenominator,
       notesByBar,
@@ -266,10 +295,13 @@ export function interpretNotation(barBeatExpression, options = {}) {
   try {
     const ast = parser.parse(barBeatExpression);
     // Bar copy tracking: Map bar number -> array of note metadata
+    /** @type {Map<number, Array<BarCopyNote>>} */
     const notesByBar = new Map();
+    /** @type {Array<NoteEvent>} */
     const events = [];
 
     // Create state object for easier passing to helper functions
+    /** @type {InterpreterState} */
     const state = {
       currentTime: DEFAULT_TIME,
       currentVelocity: DEFAULT_VELOCITY,

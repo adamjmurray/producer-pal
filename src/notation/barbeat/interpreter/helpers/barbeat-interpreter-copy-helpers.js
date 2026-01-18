@@ -2,12 +2,50 @@ import * as console from "#src/shared/v8-max-console.js";
 import { validateBufferedState } from "./barbeat-interpreter-buffer-helpers.js";
 
 /**
+ * @typedef {import('./barbeat-interpreter-buffer-helpers.js').BufferState} BufferState
+ */
+
+/**
+ * @typedef {object} NoteEvent
+ * @property {number} pitch - MIDI pitch
+ * @property {number} start_time - Start time in beats
+ * @property {number} duration - Duration in beats
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} [probability] - Probability (0.0-1.0)
+ * @property {number} [velocity_deviation] - Velocity deviation
+ */
+
+/**
+ * @typedef {object} BarCopyNote
+ * @property {number} pitch - MIDI pitch
+ * @property {number} start_time - Start time in beats
+ * @property {number} duration - Duration in beats
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} [probability] - Probability (0.0-1.0)
+ * @property {number} [velocity_deviation] - Velocity deviation
+ * @property {number} relativeTime - Relative time within bar
+ * @property {number} originalBar - Original bar number
+ */
+
+/**
+ * @typedef {object} BarCopyElement
+ * @property {{ bar?: number, range?: [number, number] }} destination - Destination bar(s)
+ * @property {{ bar?: number, range?: [number, number] } | 'previous'} source - Source bar(s)
+ */
+
+/**
+ * @typedef {object} BarCopyResult
+ * @property {{ bar: number, beat: number } | null} currentTime - New time position
+ * @property {boolean} hasExplicitBarNumber - Whether bar number was explicit
+ */
+
+/**
  * Copy a note to a destination bar
- * @param {object} sourceNote - Source note with pitch, relativeTime, duration, velocity, probability, velocity_deviation
+ * @param {BarCopyNote} sourceNote - Source note with pitch, relativeTime, duration, velocity, probability, velocity_deviation
  * @param {number} destBar - Destination bar number
  * @param {number} destinationBarStart - Destination bar start time in beats
- * @param {Array} events - Events array to push to
- * @param {Map} notesByBar - Map of bar numbers to arrays of notes
+ * @param {Array<NoteEvent>} events - Events array to push to
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Map of bar numbers to arrays of notes
  */
 export function copyNoteToDestination(
   sourceNote,
@@ -32,7 +70,7 @@ export function copyNoteToDestination(
     notesByBar.set(destBar, []);
   }
 
-  notesByBar.get(destBar).push({
+  /** @type {Array<BarCopyNote>} */ (notesByBar.get(destBar)).push({
     ...copiedNote,
     relativeTime: sourceNote.relativeTime,
     originalBar: destBar,
@@ -43,8 +81,8 @@ export function copyNoteToDestination(
  * Copy notes from one source bar to one destination bar
  * @param {number} sourceBar - Source bar number
  * @param {number} destinationBar - Destination bar number
- * @param {Map} notesByBar - Notes by bar map
- * @param {Array} events - Events array to append to
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
+ * @param {Array<NoteEvent>} events - Events array to append to
  * @param {number} barDuration - Duration of one bar in beats
  * @returns {boolean} True if copy succeeded, false otherwise
  */
@@ -90,11 +128,15 @@ function copyBarToBar(
 
 /**
  * Determine source bars for bar copy operation
- * @param {object} element - AST element with source specification
+ * @param {BarCopyElement} element - AST element with source specification
  * @returns {number[]|null} Array of source bar numbers, or null on error
  */
 function determineSourceBarsForCopy(element) {
   if (element.source === "previous") {
+    if (element.destination.bar === undefined) {
+      return null;
+    }
+
     const previousBar = element.destination.bar - 1;
 
     if (previousBar <= 0) {
@@ -153,15 +195,15 @@ function determineSourceBarsForCopy(element) {
 
 /**
  * Handle multi-bar source range tiling to multiple destination bars
- * @param {object} element - AST element with source.range
+ * @param {BarCopyElement} element - AST element with source.range
  * @param {number} destStart - Destination range start
  * @param {number} destEnd - Destination range end
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Map} notesByBar - Notes by bar map
- * @param {Array} events - Events array to append to
- * @param {object} bufferState - Current buffer state for validation
- * @returns {object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
+ * @param {Array<NoteEvent>} events - Events array to append to
+ * @param {BufferState} bufferState - Current buffer state for validation
+ * @returns {BarCopyResult} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
  */
 function handleMultiBarSourceRangeCopy(
   element,
@@ -173,7 +215,9 @@ function handleMultiBarSourceRangeCopy(
   events,
   bufferState,
 ) {
-  const [sourceStart, sourceEnd] = element.source.range;
+  // Source has range (validated by caller at line 347)
+  const source = /** @type {{ range: [number, number] }} */ (element.source);
+  const [sourceStart, sourceEnd] = source.range;
 
   // Validate source range
   if (sourceStart <= 0 || sourceEnd <= 0) {
@@ -256,13 +300,13 @@ function handleMultiBarSourceRangeCopy(
 
 /**
  * Handle bar copy with range destination (multiple destination bars from source bar(s))
- * @param {object} element - AST element
+ * @param {BarCopyElement} element - AST element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Map} notesByBar - Notes by bar map
- * @param {Array} events - Events array to append to
- * @param {object} bufferState - Current buffer state for validation
- * @returns {object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
+ * @param {Array<NoteEvent>} events - Events array to append to
+ * @param {BufferState} bufferState - Current buffer state for validation
+ * @returns {BarCopyResult} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
  */
 export function handleBarCopyRangeDestination(
   element,
@@ -272,7 +316,9 @@ export function handleBarCopyRangeDestination(
   events,
   bufferState,
 ) {
-  const [destStart, destEnd] = element.destination.range;
+  // Destination range is defined (validated by caller)
+  const destRange = /** @type {[number, number]} */ (element.destination.range);
+  const [destStart, destEnd] = destRange;
 
   // Validate destination range
   if (destStart <= 0 || destEnd <= 0) {
@@ -292,7 +338,7 @@ export function handleBarCopyRangeDestination(
   }
 
   // Handle multi-bar source range tiling
-  if (element.source.range !== undefined) {
+  if (element.source !== "previous" && element.source.range !== undefined) {
     return handleMultiBarSourceRangeCopy(
       element,
       destStart,
@@ -305,7 +351,8 @@ export function handleBarCopyRangeDestination(
     );
   }
 
-  // Determine single source bar
+  // Determine single source bar (must be "previous" or have bar property at this point)
+  /** @type {number} */
   let sourceBar;
 
   if (element.source === "previous") {
@@ -318,8 +365,9 @@ export function handleBarCopyRangeDestination(
 
       return { currentTime: null, hasExplicitBarNumber: false };
     }
-  } else if (element.source.bar !== undefined) {
-    sourceBar = element.source.bar;
+  } else {
+    // source.bar must be defined (source.range was handled above at line 341)
+    sourceBar = /** @type {number} */ (element.source.bar);
 
     if (sourceBar <= 0) {
       console.error(`Warning: Cannot copy from bar ${sourceBar} (no such bar)`);
@@ -382,13 +430,13 @@ export function handleBarCopyRangeDestination(
 
 /**
  * Handle bar copy with single destination bar (can have multiple source bars)
- * @param {object} element - AST element
+ * @param {BarCopyElement} element - AST element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Map} notesByBar - Notes by bar map
- * @param {Array} events - Events array to append to
- * @param {object} bufferState - Current buffer state for validation
- * @returns {object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
+ * @param {Array<NoteEvent>} events - Events array to append to
+ * @param {BufferState} bufferState - Current buffer state for validation
+ * @returns {BarCopyResult} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
  */
 export function handleBarCopySingleDestination(
   element,
@@ -407,13 +455,16 @@ export function handleBarCopySingleDestination(
 
   validateBufferedState(bufferState, "bar copy");
 
+  // Destination bar is defined (this function handles single destination, validated by caller)
+  const destBar = /** @type {number} */ (element.destination.bar);
+
   // Copy notes from source bar(s) to destination
   const barDuration =
     timeSigDenominator != null
       ? beatsPerBar * (4 / timeSigDenominator)
       : beatsPerBar;
 
-  let destinationBar = element.destination.bar;
+  let destinationBar = destBar;
   let copiedAny = false;
 
   for (const sourceBar of sourceBars) {
@@ -434,7 +485,7 @@ export function handleBarCopySingleDestination(
 
   if (copiedAny) {
     return {
-      currentTime: { bar: element.destination.bar, beat: 1 },
+      currentTime: { bar: destBar, beat: 1 },
       hasExplicitBarNumber: true,
     };
   }
@@ -444,7 +495,7 @@ export function handleBarCopySingleDestination(
 
 /**
  * Clear the copy buffer
- * @param {Map} notesByBar - Notes by bar map to clear
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map to clear
  */
 export function handleClearBuffer(notesByBar) {
   notesByBar.clear();
