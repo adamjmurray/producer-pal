@@ -192,7 +192,7 @@ npm run test:coverage
 npm run format:check
 
 # Manual testing
-node scripts/test-claude-desktop-extension.mjs
+node scripts/test-claude-desktop-extension.ts
 ```
 
 ## Debugging Tips
@@ -202,7 +202,7 @@ node scripts/test-claude-desktop-extension.mjs
 For desktop extension debugging:
 
 ```bash
-ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test-claude-desktop-extension.mjs
+ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test-claude-desktop-extension.ts
 ```
 
 ### Check Log Files

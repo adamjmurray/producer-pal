@@ -45,16 +45,16 @@ After changing tool descriptions:
 
 ```bash
 # Basic test
-node scripts/test-claude-desktop-extension.mjs
+node scripts/test-claude-desktop-extension.ts
 
 # Specific tool
-node scripts/test-claude-desktop-extension.mjs ppal-read-live-set
+node scripts/test-claude-desktop-extension.ts ppal-read-live-set
 
 # With arguments
-node scripts/test-claude-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
+node scripts/test-claude-desktop-extension.ts ppal-read-track '{"trackIndex": 0}'
 
 # Custom URL
-node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-read-live-set
+node scripts/test-claude-desktop-extension.ts http://localhost:3350/mcp ppal-read-live-set
 ```
 
 ## Logging
