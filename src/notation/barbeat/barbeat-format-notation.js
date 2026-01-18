@@ -8,6 +8,16 @@ import {
 import { parseBeatsPerBar } from "./time/barbeat-time.js";
 
 /**
+ * @typedef {object} ClipNote
+ * @property {number} pitch - MIDI pitch
+ * @property {number} start_time - Start time in beats
+ * @property {number} duration - Duration in beats
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} [probability] - Probability (0.0-1.0)
+ * @property {number} [velocity_deviation] - Velocity deviation
+ */
+
+/**
  * Format a number to remove trailing zeros
  *
  * @param {number} value - Number to format
@@ -57,13 +67,13 @@ function isSameTimePosition(bar1, beat1, bar2, beat2) {
  * @typedef {object} TimeGroup
  * @property {number} bar - Bar number
  * @property {number} beat - Beat number
- * @property {Array<object>} notes - Notes at this time position
+ * @property {Array<ClipNote>} notes - Notes at this time position
  */
 
 /**
  * Group notes by their time position
  *
- * @param {Array} sortedNotes - Array of sorted note objects
+ * @param {Array<ClipNote>} sortedNotes - Array of sorted note objects
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @returns {Array<TimeGroup>} Array of time groups with notes
@@ -102,7 +112,7 @@ function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
  * @param {number} noteVelocityDeviation - Note velocity deviation
  * @param {number} currentVelocity - Current velocity state
  * @param {number} currentVelocityDeviation - Current velocity deviation state
- * @param {Array} elements - Output elements array to append to
+ * @param {Array<string>} elements - Output elements array to append to
  * @returns {{velocity: number, velocityDeviation: number}} Updated velocity state
  */
 function handleVelocityChange(
@@ -146,7 +156,7 @@ function handleVelocityChange(
  *
  * @param {number} noteDuration - Note duration value
  * @param {number} currentDuration - Current duration state
- * @param {Array} elements - Output elements array to append to
+ * @param {Array<string>} elements - Output elements array to append to
  * @returns {number} Updated duration state
  */
 function handleDurationChange(noteDuration, currentDuration, elements) {
@@ -166,7 +176,7 @@ function handleDurationChange(noteDuration, currentDuration, elements) {
  *
  * @param {number} noteProbability - Note probability value
  * @param {number} currentProbability - Current probability state
- * @param {Array} elements - Output elements array to append to
+ * @param {Array<string>} elements - Output elements array to append to
  * @returns {number} Updated probability state
  */
 function handleProbabilityChange(
@@ -198,7 +208,7 @@ function formatBeat(beat) {
 
 /**
  * Convert Live clip notes to bar|beat string
- * @param {Array} clipNotes - Array of note objects from the Live API
+ * @param {Array<ClipNote>} clipNotes - Array of note objects from the Live API
  * @param {object} options - Formatting options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator

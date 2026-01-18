@@ -1,8 +1,54 @@
 import * as console from "#src/shared/v8-max-console.js";
 
 /**
+ * @typedef {object} PitchState
+ * @property {number} pitch - MIDI pitch
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} velocityDeviation - Velocity deviation
+ * @property {number} duration - Duration in beats
+ * @property {number} [probability] - Probability (0.0-1.0)
+ */
+
+/**
+ * @typedef {object} TimePosition
+ * @property {number} bar - Bar number
+ * @property {number} beat - Beat number
+ */
+
+/**
+ * @typedef {object} InterpreterState
+ * @property {TimePosition} currentTime - Current time position
+ * @property {number | null} currentVelocity - Current velocity
+ * @property {number} currentDuration - Current duration
+ * @property {number} [currentProbability] - Current probability
+ * @property {number | null} [currentVelocityMin] - Current velocity range minimum
+ * @property {number | null} [currentVelocityMax] - Current velocity range maximum
+ * @property {boolean} hasExplicitBarNumber - Whether bar number was explicit
+ * @property {Array<PitchState>} currentPitches - Buffered pitches
+ * @property {boolean} pitchGroupStarted - Whether a pitch group has started
+ * @property {boolean} pitchesEmitted - Whether pitches were emitted
+ * @property {boolean} stateChangedSinceLastPitch - State change tracking
+ * @property {boolean} stateChangedAfterEmission - State change tracking
+ */
+
+/**
+ * @typedef {object} BufferState
+ * @property {Array<PitchState>} currentPitches - Buffered pitches
+ * @property {boolean} pitchesEmitted - Whether pitches were emitted
+ * @property {boolean} stateChangedSinceLastPitch - State change tracking
+ * @property {boolean} pitchGroupStarted - Whether a pitch group has started
+ * @property {boolean} stateChangedAfterEmission - State change tracking
+ */
+
+/**
+ * @typedef {object} BarCopyResult
+ * @property {TimePosition | null} currentTime - New time position
+ * @property {boolean} hasExplicitBarNumber - Whether bar number was explicit
+ */
+
+/**
  * Clear pitch buffer and reset all pitch-related flags
- * @param {object} state - State object containing pitch buffer and flags
+ * @param {InterpreterState} state - State object containing pitch buffer and flags
  */
 export function clearPitchBuffer(state) {
   state.currentPitches = [];
@@ -14,7 +60,7 @@ export function clearPitchBuffer(state) {
 
 /**
  * Validate buffered state before an operation and warn if needed
- * @param {object} state - State object
+ * @param {BufferState} state - State object
  * @param {string} operationType - Type of operation (for warning message)
  */
 export function validateBufferedState(state, operationType) {
@@ -37,8 +83,8 @@ export function validateBufferedState(state, operationType) {
 
 /**
  * Track state changes and update buffered pitches
- * @param {object} state - State object
- * @param {Function} updateFn - Function that updates the state (receives state, returns void)
+ * @param {InterpreterState} state - State object
+ * @param {(state: InterpreterState) => void} updateFn - Function that updates the state
  */
 export function trackStateChange(state, updateFn) {
   // Apply the state update
@@ -57,8 +103,8 @@ export function trackStateChange(state, updateFn) {
 
 /**
  * Update buffered pitches with new state values
- * @param {object} state - State object
- * @param {Function} updateFn - Function that updates a single pitch state (receives pitchState, returns void)
+ * @param {InterpreterState} state - State object
+ * @param {(pitchState: PitchState) => void} updateFn - Function that updates a single pitch state
  */
 export function updateBufferedPitches(state, updateFn) {
   // Update buffered pitches if after time position
@@ -75,8 +121,8 @@ export function updateBufferedPitches(state, updateFn) {
 /**
  * Handle a property update (velocity, duration, probability, etc.)
  * Tracks state changes and updates buffered pitches if needed.
- * @param {object} state - State object
- * @param {Function} pitchUpdater - Function that updates a single pitch state (receives pitchState)
+ * @param {InterpreterState} state - State object
+ * @param {(pitchState: PitchState) => void} pitchUpdater - Function that updates a single pitch state
  */
 export function handlePropertyUpdate(state, pitchUpdater) {
   if (state.pitchGroupStarted && state.currentPitches.length > 0) {
@@ -98,8 +144,8 @@ export function handlePropertyUpdate(state, pitchUpdater) {
 
 /**
  * Extract buffer state snapshot for bar copy operations
- * @param {object} state - Interpreter state object
- * @returns {object} Snapshot of buffer-related state
+ * @param {InterpreterState} state - Interpreter state object
+ * @returns {BufferState} Snapshot of buffer-related state
  */
 export function extractBufferState(state) {
   return {
@@ -113,8 +159,8 @@ export function extractBufferState(state) {
 
 /**
  * Apply bar copy result to interpreter state
- * @param {object} state - Interpreter state object
- * @param {object} result - Result from bar copy handler
+ * @param {InterpreterState} state - Interpreter state object
+ * @param {BarCopyResult} result - Result from bar copy handler
  */
 export function applyBarCopyResult(state, result) {
   if (result.currentTime) {

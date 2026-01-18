@@ -5,8 +5,24 @@ import { evaluateModulationAST } from "./modulation-evaluator-helpers.js";
 import * as parser from "./parser/modulation-parser.js";
 
 /**
+ * @typedef {import('./modulation-evaluator-helpers.js').NoteContext} NoteContext
+ * @typedef {import('./modulation-evaluator-helpers.js').NoteProperties} NoteProperties
+ * @typedef {import('./modulation-evaluator-helpers.js').ModulationResult} ModulationResult
+ */
+
+/**
+ * @typedef {object} ModNote
+ * @property {number} pitch - MIDI pitch
+ * @property {number} start_time - Start time in beats
+ * @property {number} duration - Duration in beats
+ * @property {number} velocity - Velocity (0-127)
+ * @property {number} [probability] - Probability (0.0-1.0)
+ * @property {number} [velocity_deviation] - Velocity deviation
+ */
+
+/**
  * Apply modulations to a list of notes in-place
- * @param {Array<object>} notes - Array of note objects to modify
+ * @param {Array<ModNote>} notes - Array of note objects to modify
  * @param {string | undefined} modulationString - Multi-line modulation string
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -36,7 +52,7 @@ export function applyModulations(
 
   // Calculate the overall clip timeRange in musical beats
   const clipStartTime = notes[0].start_time * (timeSigDenominator / 4);
-  const lastNote = notes.at(-1);
+  const lastNote = /** @type {ModNote} */ (notes.at(-1));
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
@@ -64,12 +80,12 @@ export function applyModulations(
 
 /**
  * Build note context object
- * @param {object} note - Note object
+ * @param {ModNote} note - Note object
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @param {number} clipStartTime - Clip start time in musical beats
  * @param {number} clipEndTime - Clip end time in musical beats
- * @returns {object} Note context object
+ * @returns {NoteContext} Note context object
  */
 function buildNoteContext(
   note,
@@ -88,8 +104,8 @@ function buildNoteContext(
     timeSigDenominator,
   );
   const barBeatMatch = barBeatStr.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-  const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : null;
-  const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : null;
+  const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : undefined;
+  const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : undefined;
 
   return {
     position: musicalBeats,
@@ -109,9 +125,9 @@ function buildNoteContext(
 
 /**
  * Build note properties object
- * @param {object} note - Note object
+ * @param {ModNote} note - Note object
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {object} Note properties object
+ * @returns {NoteProperties} Note properties object
  */
 function buildNoteProperties(note, timeSigDenominator) {
   return {
@@ -126,8 +142,8 @@ function buildNoteProperties(note, timeSigDenominator) {
 
 /**
  * Apply velocity modulation to a note
- * @param {object} note - Note object to modify
- * @param {object} modulations - Modulation values
+ * @param {ModNote} note - Note object to modify
+ * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyVelocityModulation(note, modulations) {
   if (modulations.velocity == null) {
@@ -147,8 +163,8 @@ function applyVelocityModulation(note, modulations) {
 
 /**
  * Apply timing modulation to a note
- * @param {object} note - Note object to modify
- * @param {object} modulations - Modulation values
+ * @param {ModNote} note - Note object to modify
+ * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyTimingModulation(note, modulations) {
   if (modulations.timing == null) {
@@ -166,8 +182,8 @@ function applyTimingModulation(note, modulations) {
 
 /**
  * Apply duration modulation to a note
- * @param {object} note - Note object to modify
- * @param {object} modulations - Modulation values
+ * @param {ModNote} note - Note object to modify
+ * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyDurationModulation(note, modulations) {
   if (modulations.duration == null) {
@@ -183,8 +199,8 @@ function applyDurationModulation(note, modulations) {
 
 /**
  * Apply probability modulation to a note
- * @param {object} note - Note object to modify
- * @param {object} modulations - Modulation values
+ * @param {ModNote} note - Note object to modify
+ * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyProbabilityModulation(note, modulations) {
   if (modulations.probability == null) {
@@ -200,7 +216,7 @@ function applyProbabilityModulation(note, modulations) {
     // operator === "add"
     note.probability = Math.max(
       0.0,
-      Math.min(1.0, note.probability + modulations.probability.value),
+      Math.min(1.0, (note.probability ?? 1.0) + modulations.probability.value),
     );
   }
 }

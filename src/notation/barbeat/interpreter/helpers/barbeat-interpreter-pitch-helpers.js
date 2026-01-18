@@ -1,12 +1,38 @@
 import * as console from "#src/shared/v8-max-console.js";
 
 /**
+ * @typedef {import('./barbeat-interpreter-buffer-helpers.js').PitchState} PitchState
+ * @typedef {import('./barbeat-interpreter-buffer-helpers.js').InterpreterState} InterpreterState
+ * @typedef {import('./barbeat-interpreter-copy-helpers.js').NoteEvent} NoteEvent
+ * @typedef {import('./barbeat-interpreter-copy-helpers.js').BarCopyNote} BarCopyNote
+ */
+
+/**
+ * @typedef {object} TimePosition
+ * @property {number} bar - Bar number
+ * @property {number} beat - Beat number
+ */
+
+/**
+ * @typedef {object} RepeatPattern
+ * @property {number} start - Starting beat
+ * @property {number} times - Number of repetitions
+ * @property {number | null} [step] - Step size (defaults to duration)
+ */
+
+/**
+ * @typedef {object} TimeElement
+ * @property {number | null | undefined} [bar] - Bar number
+ * @property {number | RepeatPattern} [beat] - Beat number or repeat pattern
+ */
+
+/**
  * Expand a repeat pattern into multiple beat positions
- * @param {object} pattern - Repeat pattern { start, times, step }
+ * @param {RepeatPattern} pattern - Repeat pattern { start, times, step }
  * @param {number} currentBar - Current bar number (1-indexed)
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number} currentDuration - Current note duration (used when step is null)
- * @returns {Array<{bar: number, beat: number}>} Expanded positions
+ * @returns {Array<TimePosition>} Expanded positions
  */
 export function expandRepeatPattern(
   pattern,
@@ -41,12 +67,12 @@ export function expandRepeatPattern(
 
 /**
  * Emit a single pitch at a position, creating note event and tracking for bar copy
- * @param {object} pitchState - Pitch state with velocity, duration, etc.
- * @param {object} position - Position with bar and beat
+ * @param {PitchState} pitchState - Pitch state with velocity, duration, etc.
+ * @param {TimePosition} position - Position with bar and beat
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array} events - Events array to append to
- * @param {Map} notesByBar - Bar copy tracking map
+ * @param {Array<NoteEvent>} events - Events array to append to
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
  */
 export function emitPitchAtPosition(
   pitchState,
@@ -92,7 +118,7 @@ export function emitPitchAtPosition(
   }
 
   // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-  notesByBar.get(actualBar).push({
+  /** @type {Array<BarCopyNote>} */ (notesByBar.get(actualBar)).push({
     ...noteEvent,
     relativeTime: relativeAbletonBeats,
     originalBar: actualBar,
@@ -101,14 +127,14 @@ export function emitPitchAtPosition(
 
 /**
  * Emit all pitches at multiple positions
- * @param {Array} positions - Array of positions {bar, beat}
- * @param {Array} currentPitches - Array of pitch states to emit
- * @param {object} element - AST element (to check if bar is explicit)
+ * @param {Array<TimePosition>} positions - Array of positions {bar, beat}
+ * @param {Array<PitchState>} currentPitches - Array of pitch states to emit
+ * @param {TimeElement} element - AST element (to check if bar is explicit)
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array} events - Events array to append to
- * @param {Map} notesByBar - Bar copy tracking map
- * @returns {object} Updated currentTime and hasExplicitBarNumber flag
+ * @param {Array<NoteEvent>} events - Events array to append to
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
+ * @returns {{ currentTime: TimePosition | null, hasExplicitBarNumber: boolean }} Updated currentTime and hasExplicitBarNumber flag
  */
 export function emitPitchesAtPositions(
   positions,
@@ -146,15 +172,15 @@ export function emitPitchesAtPositions(
 
 /**
  * Calculate positions from time element
- * @param {object} element - Time position element with bar and beat
- * @param {object} state - Current interpreter state
+ * @param {TimeElement} element - Time position element with bar and beat
+ * @param {InterpreterState} state - Current interpreter state
  * @param {number} beatsPerBar - Beats per bar
- * @returns {Array} Array of position objects with bar and beat
+ * @returns {Array<TimePosition>} Array of position objects with bar and beat
  */
 export function calculatePositions(element, state, beatsPerBar) {
   if (typeof element.beat === "object" && element.beat.start !== undefined) {
     const currentBar =
-      element.bar === null
+      element.bar == null
         ? state.hasExplicitBarNumber
           ? state.currentTime.bar
           : 1
@@ -169,25 +195,25 @@ export function calculatePositions(element, state, beatsPerBar) {
   }
 
   const bar =
-    element.bar === null
+    element.bar == null
       ? state.hasExplicitBarNumber
         ? state.currentTime.bar
         : 1
       : element.bar;
-  const beat = element.beat;
+  const beat = /** @type {number} */ (element.beat);
 
   return [{ bar, beat }];
 }
 
 /**
  * Handle pitch emission or warn if no pitches
- * @param {Array} positions - Array of positions to emit pitches at
- * @param {object} state - Current interpreter state
- * @param {object} element - Time position element
+ * @param {Array<TimePosition>} positions - Array of positions to emit pitches at
+ * @param {InterpreterState} state - Current interpreter state
+ * @param {TimeElement} element - Time position element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array} events - Events array
- * @param {Map} notesByBar - Notes by bar map
+ * @param {Array<NoteEvent>} events - Events array
+ * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
  */
 export function handlePitchEmission(
   positions,
@@ -228,7 +254,9 @@ export function handlePitchEmission(
     notesByBar,
   );
 
-  state.currentTime = emitResult.currentTime;
+  if (emitResult.currentTime != null) {
+    state.currentTime = emitResult.currentTime;
+  }
 
   if (emitResult.hasExplicitBarNumber) {
     state.hasExplicitBarNumber = true;

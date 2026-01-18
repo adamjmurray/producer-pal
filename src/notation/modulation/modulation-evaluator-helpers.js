@@ -4,8 +4,82 @@ import * as console from "#src/shared/v8-max-console.js";
 import { evaluateFunction } from "./modulation-functions.js";
 
 /**
+ * @typedef {object} TimeRange
+ * @property {number} start - Start time in musical beats
+ * @property {number} end - End time in musical beats
+ */
+
+/**
+ * @typedef {object} TimeSig
+ * @property {number} numerator - Time signature numerator
+ * @property {number} denominator - Time signature denominator
+ */
+
+/**
+ * @typedef {object} NoteContext
+ * @property {number} position - Note position in musical beats (0-based)
+ * @property {number} [pitch] - MIDI pitch (0-127) for pitch filtering
+ * @property {number} [bar] - Current bar number (1-based) for time range filtering
+ * @property {number} [beat] - Current beat position within bar (1-based) for time range filtering
+ * @property {TimeSig} timeSig - Time signature
+ * @property {TimeRange} [clipTimeRange] - Overall clip time range
+ */
+
+/**
+ * @typedef {object} NoteProperties
+ * @property {number} [pitch] - MIDI pitch (0-127)
+ * @property {number} [start] - Start time in musical beats
+ * @property {number} [velocity] - Velocity (1-127)
+ * @property {number} [velocityDeviation] - Velocity deviation
+ * @property {number} [duration] - Duration in beats
+ * @property {number} [probability] - Probability (0.0-1.0)
+ */
+
+/**
+ * @typedef {object} PitchRange
+ * @property {number} startPitch - Start MIDI pitch
+ * @property {number} endPitch - End MIDI pitch
+ */
+
+/**
+ * @typedef {object} ModulationAssignment
+ * @property {string} parameter - Target parameter name
+ * @property {string} operator - Operator ('add' or 'set')
+ * @property {ExpressionNode} expression - Expression to evaluate
+ * @property {PitchRange} [pitchRange] - Optional pitch range filter
+ * @property {{ startBar: number, startBeat: number, endBar: number, endBeat: number }} [timeRange] - Optional time range filter
+ */
+
+/**
+ * Expression AST node can be:
+ * - number literal
+ * - variable node: {type: "variable", name: string}
+ * - binary op node: {type: "add"|"subtract"|"multiply"|"divide", left: ExpressionNode, right: ExpressionNode}
+ * - function node: {type: "function", name: string, args: Array<ExpressionNode>}
+ * @typedef {number | VariableNode | BinaryOpNode | FunctionNode} ExpressionNode
+ */
+
+/**
+ * @typedef {{ type: "variable", name: string }} VariableNode
+ */
+
+/**
+ * @typedef {{ type: "add" | "subtract" | "multiply" | "divide", left: ExpressionNode, right: ExpressionNode }} BinaryOpNode
+ */
+
+/**
+ * @typedef {{ type: "function", name: string, args: Array<ExpressionNode> }} FunctionNode
+ */
+
+/**
+ * @typedef {object} ModulationResult
+ * @property {string} operator - Operator ('add' or 'set')
+ * @property {number} value - Evaluated value
+ */
+
+/**
  * Evaluate a pre-parsed modulation AST for a specific note context
- * @param {Array} ast - Parsed modulation AST
+ * @param {Array<ModulationAssignment>} ast - Parsed modulation AST
  * @param {object} noteContext - Note context with position, pitch, and time signature
  * @param {number} noteContext.position - Note position in musical beats (0-based)
  * @param {number} [noteContext.pitch] - MIDI pitch (0-127) for pitch filtering
@@ -17,19 +91,14 @@ import { evaluateFunction } from "./modulation-functions.js";
  * @param {object} [noteContext.clipTimeRange] - Overall clip time range
  * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
  * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
- * @param {object} [noteProperties] - Note properties accessible via note.* variables
- * @param {number} [noteProperties.pitch] - MIDI pitch (0-127)
- * @param {number} [noteProperties.start] - Start time in musical beats
- * @param {number} [noteProperties.velocity] - Velocity (1-127)
- * @param {number} [noteProperties.velocityDeviation] - Velocity deviation
- * @param {number} [noteProperties.duration] - Duration in beats
- * @param {number} [noteProperties.probability] - Probability (0.0-1.0)
- * @returns {object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
+ * @param {NoteProperties} [noteProperties] - Note properties accessible via note.* variables
+ * @returns {Record<string, ModulationResult>} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
 export function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
   const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
   const { numerator, denominator } = timeSig;
 
+  /** @type {Record<string, ModulationResult>} */
   const result = {};
   let currentPitchRange = null; // Track persistent pitch range context
 
@@ -68,17 +137,17 @@ export function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
 
 /**
  * Process a single modulation assignment
- * @param {object} assignment - Assignment node from AST
+ * @param {ModulationAssignment} assignment - Assignment node from AST
  * @param {number} position - Note position in musical beats
  * @param {number | undefined} pitch - MIDI pitch
- * @param {number | undefined} bar - Current bar number
- * @param {number | undefined} beat - Current beat position
+ * @param {number | null | undefined} bar - Current bar number
+ * @param {number | null | undefined} beat - Current beat position
  * @param {number} numerator - Time signature numerator
  * @param {number} denominator - Time signature denominator
- * @param {object} clipTimeRange - Clip time range
- * @param {object} noteProperties - Note properties
- * @param {object | null} currentPitchRange - Current pitch range context
- * @returns {object} Result object with skip flag and optional value
+ * @param {TimeRange | undefined} clipTimeRange - Clip time range
+ * @param {NoteProperties} noteProperties - Note properties
+ * @param {PitchRange | null} currentPitchRange - Current pitch range context
+ * @returns {{ skip: true } | { skip?: false, value: number, pitchRange: PitchRange | null }} Result object with skip flag and optional value
  */
 function processAssignment(
   assignment,
@@ -146,14 +215,14 @@ function processAssignment(
 
 /**
  * Calculate active time range for an assignment
- * @param {object} assignment - Assignment node
- * @param {number | undefined} bar - Current bar number
- * @param {number | undefined} beat - Current beat position
+ * @param {ModulationAssignment} assignment - Assignment node
+ * @param {number | null | undefined} bar - Current bar number
+ * @param {number | null | undefined} beat - Current beat position
  * @param {number} numerator - Time signature numerator
  * @param {number} denominator - Time signature denominator
- * @param {object} clipTimeRange - Clip time range
+ * @param {TimeRange | undefined} clipTimeRange - Clip time range
  * @param {number} position - Note position
- * @returns {object} Result with timeRange or skip flag
+ * @returns {{ skip: true } | { skip?: false, timeRange: TimeRange }} Result with timeRange or skip flag
  */
 function calculateActiveTimeRange(
   assignment,
@@ -195,14 +264,12 @@ function calculateActiveTimeRange(
 
 /**
  * Evaluate an expression AST node
- * @param {*} node - Expression AST node
+ * @param {ExpressionNode} node - Expression AST node
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {object} timeRange - Active time range for this expression
- * @param {number} timeRange.start - Start time in musical beats
- * @param {number} timeRange.end - End time in musical beats
- * @param {object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {TimeRange} timeRange - Active time range for this expression
+ * @param {NoteProperties} [noteProperties] - Note properties accessible via note.* variables
  * @returns {number} Evaluated value
  */
 export function evaluateExpression(
