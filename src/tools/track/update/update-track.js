@@ -285,10 +285,15 @@ function applyMixerProperties(
  */
 
 /**
+ * @typedef {object} UpdateTrackResult
+ * @property {string} id - Track ID
+ */
+
+/**
  * Updates properties of existing tracks
  * @param {UpdateTrackArgs} args - The track parameters
  * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {object | Array<object>} Single track object or array of track objects
+ * @returns {UpdateTrackResult | UpdateTrackResult[]} Single track object or array of track objects
  */
 export function updateTrack(
   {
@@ -384,5 +389,7 @@ export function updateTrack(
     });
   }
 
-  return unwrapSingleResult(updatedTracks);
+  return /** @type {UpdateTrackResult | UpdateTrackResult[]} */ (
+    unwrapSingleResult(updatedTracks)
+  );
 }

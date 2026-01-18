@@ -12,6 +12,7 @@
     "src/live-api-adapter/**/*.js",
     "src/notation/**/*.js",
     "src/tools/shared/**/*.js",
+    "src/tools/track/**/*.js",
     "src/tools/scene/**/*.js",
     "src/tools/control/**/*.js",
     "src/tools/workflow/**/*.js",
