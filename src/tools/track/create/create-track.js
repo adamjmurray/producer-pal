@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
