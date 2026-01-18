@@ -17,7 +17,7 @@ const AUDIO_EXTENSIONS = new Set([
  * List audio files from configured sample folder
  * @param {object} args - The parameters
  * @param {string} [args.search] - Optional case-insensitive substring filter on relative paths
- * @param {object} context - Context containing sampleFolder path
+ * @param {{ sampleFolder?: string | null }} context - Context containing sampleFolder path
  * @returns {{ sampleFolder: string, samples: string[] }} Sample folder and relative paths
  */
 export function readSamples({ search } = {}, context = {}) {
@@ -33,6 +33,7 @@ export function readSamples({ search } = {}, context = {}) {
     sampleFolder = `${sampleFolder}/`;
   }
 
+  /** @type {string[]} */
   const samples = [];
   const limitReached = { value: false };
   const searchLower = search ? search.toLowerCase() : null;
@@ -48,7 +49,14 @@ export function readSamples({ search } = {}, context = {}) {
   return { sampleFolder, samples };
 }
 
-// dirPath must end with /
+/**
+ * Recursively scan a folder for audio files
+ * @param {string} dirPath - Directory path (must end with /)
+ * @param {string} baseFolder - Base folder path for relative path calculation
+ * @param {string[]} results - Array to append results to
+ * @param {{ value: boolean }} limitReached - Flag to track if file limit was reached
+ * @param {string|null} searchLower - Lowercase search filter or null
+ */
 function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
   const f = new Folder(dirPath);
 
