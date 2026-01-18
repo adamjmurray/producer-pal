@@ -1,23 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-
-/** @typedef {import("./kb-config.mjs").KbConfig} KbConfig */
+import type { KbConfig } from "./kb-config.ts";
 
 /**
  * Recursively finds all files in a directory, excluding specified paths
- * @param {KbConfig} config - Configuration object with ignorePatterns
- * @param {string} dir - Directory to search
- * @param {string[]} excludePaths - Array of relative paths to exclude
- * @param {string} baseDir - Base directory for computing relative paths (defaults to dir)
- * @returns {Promise<string[]>} - Array of file paths
+ * @param config - Configuration object with ignorePatterns
+ * @param dir - Directory to search
+ * @param excludePaths - Array of relative paths to exclude
+ * @param baseDir - Base directory for computing relative paths (defaults to dir)
+ * @returns Array of file paths
  */
 export async function findAllFiles(
-  config,
-  dir,
-  excludePaths = [],
-  baseDir = dir,
-) {
-  const files = [];
+  config: KbConfig,
+  dir: string,
+  excludePaths: string[] = [],
+  baseDir: string = dir,
+): Promise<string[]> {
+  const files: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -54,11 +53,15 @@ export async function findAllFiles(
 
 /**
  * Copies a file, prepending path comment for code files
- * @param {KbConfig} config - Configuration object with codeExts and projectRoot
- * @param {string} sourcePath - Source file path
- * @param {string} targetPath - Target file path
+ * @param config - Configuration object with codeExts and projectRoot
+ * @param sourcePath - Source file path
+ * @param targetPath - Target file path
  */
-export async function copyFile(config, sourcePath, targetPath) {
+export async function copyFile(
+  config: KbConfig,
+  sourcePath: string,
+  targetPath: string,
+): Promise<void> {
   const ext = path.extname(sourcePath);
 
   if (config.codeExts.includes(ext)) {
@@ -81,12 +84,16 @@ export async function copyFile(config, sourcePath, targetPath) {
 
 /**
  * Writes a concatenated file from multiple source files
- * @param {KbConfig} config - Configuration object with codeExts and projectRoot
- * @param {string} outputPath - Output file path
- * @param {string[]} sourceFiles - Array of source file paths
- * @returns {Promise<number>} - Number of files concatenated
+ * @param config - Configuration object with codeExts and projectRoot
+ * @param outputPath - Output file path
+ * @param sourceFiles - Array of source file paths
+ * @returns Number of files concatenated
  */
-export async function writeConcatenatedFile(config, outputPath, sourceFiles) {
+export async function writeConcatenatedFile(
+  config: KbConfig,
+  outputPath: string,
+  sourceFiles: string[],
+): Promise<number> {
   let concatenatedContent = "";
   let fileCount = 0;
 
@@ -113,12 +120,16 @@ export async function writeConcatenatedFile(config, outputPath, sourceFiles) {
 
 /**
  * Determines output filename with appropriate extension
- * @param {KbConfig} config - Configuration object with codeExts
- * @param {string} groupName - Group name
- * @param {string[]} sourceFiles - Source files in the group
- * @returns {string} - Output filename with extension
+ * @param config - Configuration object with codeExts
+ * @param groupName - Group name
+ * @param sourceFiles - Source files in the group
+ * @returns Output filename with extension
  */
-export function determineOutputFilename(config, groupName, sourceFiles) {
+export function determineOutputFilename(
+  config: KbConfig,
+  groupName: string,
+  sourceFiles: string[],
+): string {
   let outputFileName = groupName;
 
   if (!outputFileName.includes(".")) {
