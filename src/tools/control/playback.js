@@ -12,6 +12,22 @@ import {
 import { select } from "./select.js";
 
 /**
+ * @typedef {object} PlaybackState
+ * @property {boolean} isPlaying - Whether playback is active
+ * @property {number} currentTimeBeats - Current position in beats
+ */
+
+/**
+ * @typedef {object} PlaybackActionParams
+ * @property {string} [startTime] - Start time in bar|beat format
+ * @property {number | null} [startTimeBeats] - Start time in beats
+ * @property {boolean} useLocatorStart - Whether start came from locator
+ * @property {boolean} autoFollow - Whether tracks follow arrangement
+ * @property {number} [sceneIndex] - Scene index for session operations
+ * @property {string} [clipIds] - Clip IDs for session operations
+ */
+
+/**
  * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
@@ -124,6 +140,7 @@ export function playback(
     liveSet.getProperty("current_song_time")
   );
 
+  /** @type {PlaybackState} */
   const playbackState = handlePlaybackAction(
     action,
     liveSet,
@@ -212,6 +229,7 @@ function buildPlaybackResult({
   liveSet,
   arrangementFollowerTrackIds,
 }) {
+  /** @type {{ playing: boolean, currentTime: string, arrangementLoop?: { start: string, end: string }, arrangementFollowerTrackIds?: string }} */
   const result = {
     playing: isPlaying,
     currentTime,
@@ -235,13 +253,13 @@ function buildPlaybackResult({
 /**
  * Handle playing the arrangement view
  *
- * @param {object} liveSet - LiveAPI instance for live_set
- * @param {string} startTime - Start time in bar|beat format
- * @param {number} startTimeBeats - Start time in beats (from time or locator)
+ * @param {LiveAPI} liveSet - LiveAPI instance for live_set
+ * @param {string | undefined} startTime - Start time in bar|beat format
+ * @param {number | null | undefined} startTimeBeats - Start time in beats (from time or locator)
  * @param {boolean} useLocatorStart - Whether start position came from a locator
  * @param {boolean} autoFollow - Whether tracks should follow arrangement
- * @param {object} _state - Current playback state (unused)
- * @returns {object} Updated playback state
+ * @param {PlaybackState} _state - Current playback state (unused)
+ * @returns {PlaybackState} Updated playback state
  */
 function handlePlayArrangement(
   liveSet,
@@ -273,9 +291,9 @@ function handlePlayArrangement(
 /**
  * Handle playing a scene in session view
  *
- * @param {number} sceneIndex - Scene index to play
- * @param {object} state - Current playback state
- * @returns {object} Updated playback state
+ * @param {number | undefined} sceneIndex - Scene index to play
+ * @param {PlaybackState} state - Current playback state
+ * @returns {PlaybackState} Updated playback state
  */
 function handlePlayScene(sceneIndex, state) {
   if (sceneIndex == null) {
@@ -303,10 +321,10 @@ function handlePlayScene(sceneIndex, state) {
 /**
  * Handle playing specific session clips
  *
- * @param {object} liveSet - LiveAPI instance for live_set
- * @param {string} clipIds - Comma-separated clip IDs
- * @param {object} state - Current playback state
- * @returns {object} Updated playback state
+ * @param {LiveAPI} liveSet - LiveAPI instance for live_set
+ * @param {string | undefined} clipIds - Comma-separated clip IDs
+ * @param {PlaybackState} state - Current playback state
+ * @returns {PlaybackState} Updated playback state
  */
 function handlePlaySessionClips(liveSet, clipIds, state) {
   if (!clipIds) {
@@ -361,9 +379,9 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
 /**
  * Handle stopping specific session clips
  *
- * @param {string} clipIds - Comma-separated clip IDs
- * @param {object} state - Current playback state
- * @returns {object} Updated playback state
+ * @param {string | undefined} clipIds - Comma-separated clip IDs
+ * @param {PlaybackState} state - Current playback state
+ * @returns {PlaybackState} Updated playback state
  */
 function handleStopSessionClips(clipIds, state) {
   if (!clipIds) {
@@ -413,10 +431,10 @@ function handleStopSessionClips(clipIds, state) {
  * Route to appropriate handler based on playback action
  *
  * @param {string} action - Playback action to perform
- * @param {object} liveSet - LiveAPI instance for live_set
- * @param {object} params - Action parameters
- * @param {object} state - Current playback state
- * @returns {object} Updated playback state
+ * @param {LiveAPI} liveSet - LiveAPI instance for live_set
+ * @param {PlaybackActionParams} params - Action parameters
+ * @param {PlaybackState} state - Current playback state
+ * @returns {PlaybackState} Updated playback state
  */
 function handlePlaybackAction(action, liveSet, params, state) {
   const {

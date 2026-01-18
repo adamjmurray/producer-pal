@@ -81,7 +81,7 @@ export function createScene(
 
 /**
  * Applies scene properties (color, tempo, timeSignature) to a scene
- * @param {object} scene - The LiveAPI scene object
+ * @param {LiveAPI} scene - The LiveAPI scene object
  * @param {object} props - Properties to apply
  * @param {string | undefined} [props.color] - Color for the scene (CSS format: hex)
  * @param {number | null | undefined} [props.tempo] - Tempo in BPM
@@ -98,7 +98,7 @@ function applySceneProperties(scene, { color, tempo, timeSignature }) {
 
 /**
  * Applies tempo property to a scene
- * @param {object} scene - The LiveAPI scene object
+ * @param {LiveAPI} scene - The LiveAPI scene object
  * @param {number | null | undefined} tempo - Tempo in BPM. -1 disables, other values enable
  */
 function applyTempoProperty(scene, tempo) {
@@ -112,7 +112,7 @@ function applyTempoProperty(scene, tempo) {
 
 /**
  * Applies time signature property to a scene
- * @param {object} scene - The LiveAPI scene object
+ * @param {LiveAPI} scene - The LiveAPI scene object
  * @param {string | null | undefined} timeSignature - Time signature. "disabled" disables, other values enable
  */
 function applyTimeSignatureProperty(scene, timeSignature) {
@@ -169,7 +169,7 @@ function validateCreateSceneArgs(sceneIndex, count) {
 
 /**
  * Ensures enough scenes exist to insert at the specified index
- * @param {object} liveSet - The LiveAPI live_set object
+ * @param {LiveAPI} liveSet - The LiveAPI live_set object
  * @param {number} sceneIndex - The target scene index
  */
 function ensureSceneCountForIndex(liveSet, sceneIndex) {
@@ -186,8 +186,11 @@ function ensureSceneCountForIndex(liveSet, sceneIndex) {
 
 /**
  * Applies scene properties in capture mode
- * @param {object} result - The capture result object
+ * @param {{ sceneIndex: number }} result - The capture result object
  * @param {object} props - Properties to apply
+ * @param {string | undefined} [props.color] - Color for the scene
+ * @param {number | null | undefined} [props.tempo] - Tempo in BPM
+ * @param {string | null | undefined} [props.timeSignature] - Time signature
  */
 function applyCaptureProperties(result, props) {
   const { color, tempo, timeSignature } = props;
@@ -201,7 +204,7 @@ function applyCaptureProperties(result, props) {
 
 /**
  * Creates a single scene with the specified properties
- * @param {object} liveSet - The LiveAPI live_set object
+ * @param {LiveAPI} liveSet - The LiveAPI live_set object
  * @param {number} sceneIndex - The scene index
  * @param {number} creationIndex - 0-based index in the creation sequence
  * @param {number} count - Total count of scenes being created
@@ -209,7 +212,7 @@ function applyCaptureProperties(result, props) {
  * @param {string | undefined} color - Color for the scene
  * @param {number | null | undefined} tempo - Tempo for the scene
  * @param {string | null | undefined} timeSignature - Time signature for the scene
- * @returns {object} The created scene object
+ * @returns {{ id: string, sceneIndex: number }} The created scene object
  */
 function createSingleScene(
   liveSet,
