@@ -1,15 +1,24 @@
 {
   "compilerOptions": {
-    "checkJs": true,
+    "checkJs": false,
     "noEmit": true,
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowJs": true,
+    "allowJs": false,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "strict": true
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.mjs"],
-  "exclude": ["chat-lib/**"]
+  "include": ["**/*.ts"]
 }
