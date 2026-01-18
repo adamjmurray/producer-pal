@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
@@ -152,10 +151,8 @@ function createSessionClip(
  */
 function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
-  const newClipResult = track.call(
-    "create_midi_clip",
-    arrangementStartBeats,
-    clipLength,
+  const newClipResult = /** @type {string} */ (
+    track.call("create_midi_clip", arrangementStartBeats, clipLength)
   );
   const clip = LiveAPI.from(newClipResult);
 
@@ -238,6 +235,7 @@ export function processClipIteration(
     }
 
     // For audio clips: only set name and color (no looping, timing, or notes)
+    /** @type {Record<string, unknown>} */
     const propsToSet = {};
 
     if (clipName) propsToSet.name = clipName;
