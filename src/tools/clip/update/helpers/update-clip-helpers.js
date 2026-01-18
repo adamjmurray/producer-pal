@@ -98,15 +98,12 @@ export function calculateBeatPositions({
     );
   }
 
-  // Determine start_marker value
-  if (firstStartBeats != null) {
-    // firstStart takes precedence
+  // Determine start_marker value (must be < end_marker content boundary)
+  const endMarker = /** @type {number} */ (clip.getProperty("end_marker"));
+
+  if (firstStartBeats != null && firstStartBeats < endMarker) {
     startMarkerBeats = firstStartBeats;
-  } else if (startBeats != null && !isLooping) {
-    // For non-looping clips, start_marker = start
-    startMarkerBeats = startBeats;
-  } else if (startBeats != null && isLooping) {
-    // For looping clips without firstStart, start_marker = start
+  } else if (startBeats != null && startBeats < endMarker) {
     startMarkerBeats = startBeats;
   }
 
@@ -114,31 +111,40 @@ export function calculateBeatPositions({
 }
 
 /**
- * Set loop region properties on a clip in the correct order
+ * Add loop-related properties in correct order to avoid Live API errors.
+ * Order: loop_end (if expanding) → loop_start → start_marker → loop_end (normal)
  * @param {object} propsToSet - Properties object to modify
  * @param {boolean} setEndFirst - Whether to set loop_end before loop_start
  * @param {number | null} startBeats - Start position in beats
  * @param {number | null} endBeats - End position in beats
+ * @param {number | null} startMarkerBeats - Start marker position in beats
  * @param {boolean} [looping] - Whether looping is enabled
  */
-function setLoopProperties(
+function addLoopProperties(
   propsToSet,
   setEndFirst,
   startBeats,
   endBeats,
+  startMarkerBeats,
   looping,
 ) {
+  // When expanding (setEndFirst), set loop_end first
   if (setEndFirst && endBeats != null && looping !== false) {
-    // Set end first to avoid "LoopStart behind LoopEnd" error
     propsToSet.loop_end = endBeats;
   }
 
+  // Set loop_start before start_marker
   if (startBeats != null && looping !== false) {
     propsToSet.loop_start = startBeats;
   }
 
+  // Set start_marker after loop region is established
+  if (startMarkerBeats != null) {
+    propsToSet.start_marker = startMarkerBeats;
+  }
+
+  // Set loop_end after loop_start in normal case
   if (!setEndFirst && endBeats != null && looping !== false) {
-    // Set end after start in normal case
     propsToSet.loop_end = endBeats;
   }
 }
@@ -172,12 +178,14 @@ export function buildClipPropertiesToSet({
   endBeats,
   currentLoopEnd,
 }) {
+  // Must expand loop_end BEFORE setting loop_start when new start >= old end
+  // (otherwise Live rejects with "Cannot set LoopStart behind LoopEnd")
   const setEndFirst =
     isLooping &&
     startBeats != null &&
     endBeats != null &&
     currentLoopEnd != null
-      ? startBeats > currentLoopEnd
+      ? startBeats >= currentLoopEnd
       : false;
 
   const propsToSet = {
@@ -185,13 +193,22 @@ export function buildClipPropertiesToSet({
     color: color,
     signature_numerator: timeSignature != null ? timeSigNumerator : null,
     signature_denominator: timeSignature != null ? timeSigDenominator : null,
-    start_marker: startMarkerBeats,
     looping: looping,
   };
 
   // Set loop properties for looping clips (order matters!)
   if (isLooping || looping == null) {
-    setLoopProperties(propsToSet, setEndFirst, startBeats, endBeats, looping);
+    addLoopProperties(
+      propsToSet,
+      setEndFirst,
+      startBeats,
+      endBeats,
+      startMarkerBeats,
+      looping,
+    );
+  } else if (startMarkerBeats != null) {
+    // Non-looping clip - just set start_marker
+    propsToSet.start_marker = startMarkerBeats;
   }
 
   // Set end_marker for non-looping clips
@@ -385,7 +402,7 @@ export function processSingleClipUpdate(params) {
     );
   }
 
-  // Calculate beat positions
+  // Calculate beat positions (includes end_marker bounds check for start_marker)
   const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
     start,
     length,
