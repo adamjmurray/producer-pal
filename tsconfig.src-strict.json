@@ -1,0 +1,8 @@
+{
+  "extends": "./src/tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": true
+  },
+  "include": ["src/shared/**/*.js", "src/types/**/*.d.ts"],
+  "exclude": ["**/*.test.js", "**/*-test-helpers.js"]
+}

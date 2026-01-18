@@ -2,53 +2,72 @@
 // Note: this is for Max v8 runtime only, meaning is can be used with src/live-api-adapter and src/tools code.
 // There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code
 // in the respective source code folders.
-const str = (any) => {
-  switch (Object.getPrototypeOf(any ?? Object.prototype)) {
+
+/**
+ * Convert any value to a human-readable string representation
+ * @param {unknown} value - Value to stringify
+ * @returns {string} String representation
+ */
+const str = (value) => {
+  const val = /** @type {any} */ (value);
+
+  switch (Object.getPrototypeOf(val ?? Object.prototype)) {
     case Array.prototype:
-      return `[${any.map(str).join(", ")}]`;
+      return `[${val.map(str).join(", ")}]`;
 
     case Set.prototype:
-      return `Set(${[...any].map(str).join(", ")})`;
+      return `Set(${[...val].map(str).join(", ")})`;
 
     case Object.prototype:
-      return `{${Object.entries(any)
+      return `{${Object.entries(val)
         .map(([k, v]) => `${str(k)}: ${str(v)}`)
         .join(", ")}}`;
 
     case Map.prototype: {
-      const entries = [...any.entries()]
-        .map(([k, v]) => `${str(k)} → ${str(v)}`)
+      /** @type {string} */
+      const entries = [...val.entries()]
+        .map(
+          (/** @type {[unknown, unknown]} */ [k, v]) => `${str(k)} → ${str(v)}`,
+        )
         .join(", ");
 
       return `Map(${entries})`;
     }
 
     case typeof Dict !== "undefined" ? Dict.prototype : null:
-      return `Dict("${any.name}") ${any.stringify().replaceAll("\n", " ")}`;
+      return `Dict("${val.name}") ${val.stringify().replaceAll("\n", " ")}`;
   }
 
-  const s = String(any);
+  const s = String(val);
 
   return s === "[object Object]"
-    ? any.constructor.name + JSON.stringify(any)
+    ? val.constructor.name + JSON.stringify(val)
     : s;
 };
 
-export const log = (...any) => {
+/**
+ * Log values to Max console (or Node console as fallback)
+ * @param {...unknown} args - Values to log
+ */
+export const log = (...args) => {
   if (typeof post === "function") {
-    post(...any.map(str), "\n");
+    post(...args.map(str), "\n");
   } else {
     // Fallback for test environment
-    console.log(...any.map(str));
+    console.log(...args.map(str));
   }
 };
 
-export const error = (...any) => {
+/**
+ * Log error values to Max console (or Node console as fallback)
+ * @param {...unknown} args - Values to log as errors
+ */
+export const error = (...args) => {
   if (typeof globalThis.error === "function") {
-    globalThis.error(...any.map(str), "\n");
+    globalThis.error(...args.map(str), "\n");
   } else {
     // Fallback for test environment
-    console.error(...any.map(str));
+    console.error(...args.map(str));
   }
 };
 
