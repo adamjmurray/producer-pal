@@ -356,9 +356,10 @@ export function mockLiveApiGet(overrides = {}) {
      * @returns {unknown[]} - Property value as array
      */
     function (prop) {
-      const overridesByProp = /** @type {Record<string, unknown> | undefined} */ (
-        overrides[this.id] ?? overrides[this.path] ?? overrides[this.type]
-      );
+      const overridesByProp =
+        /** @type {Record<string, unknown> | undefined} */ (
+          overrides[this.id] ?? overrides[this.path] ?? overrides[this.type]
+        );
 
       if (overridesByProp != null) {
         const override = overridesByProp[prop];

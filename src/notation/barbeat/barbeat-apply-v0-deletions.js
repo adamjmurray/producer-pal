@@ -1,12 +1,4 @@
-/**
- * @typedef {object} NoteEvent
- * @property {number} pitch - MIDI pitch
- * @property {number} start_time - Start time in beats
- * @property {number} duration - Duration in beats
- * @property {number} velocity - Velocity (0-127)
- * @property {number} [probability] - Probability (0.0-1.0)
- * @property {number} [velocity_deviation] - Velocity deviation
- */
+/** @typedef {import('../types.js').NoteEvent} NoteEvent */
 
 /**
  * Apply v0 (velocity 0) deletions to notes in serial order.

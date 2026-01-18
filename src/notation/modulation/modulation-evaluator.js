@@ -8,21 +8,12 @@ import * as parser from "./parser/modulation-parser.js";
  * @typedef {import('./modulation-evaluator-helpers.js').NoteContext} NoteContext
  * @typedef {import('./modulation-evaluator-helpers.js').NoteProperties} NoteProperties
  * @typedef {import('./modulation-evaluator-helpers.js').ModulationResult} ModulationResult
- */
-
-/**
- * @typedef {object} ModNote
- * @property {number} pitch - MIDI pitch
- * @property {number} start_time - Start time in beats
- * @property {number} duration - Duration in beats
- * @property {number} velocity - Velocity (0-127)
- * @property {number} [probability] - Probability (0.0-1.0)
- * @property {number} [velocity_deviation] - Velocity deviation
+ * @typedef {import('../types.js').NoteEvent} NoteEvent
  */
 
 /**
  * Apply modulations to a list of notes in-place
- * @param {Array<ModNote>} notes - Array of note objects to modify
+ * @param {Array<NoteEvent>} notes - Array of note objects to modify
  * @param {string | undefined} modulationString - Multi-line modulation string
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -52,7 +43,7 @@ export function applyModulations(
 
   // Calculate the overall clip timeRange in musical beats
   const clipStartTime = notes[0].start_time * (timeSigDenominator / 4);
-  const lastNote = /** @type {ModNote} */ (notes.at(-1));
+  const lastNote = /** @type {NoteEvent} */ (notes.at(-1));
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
@@ -80,7 +71,7 @@ export function applyModulations(
 
 /**
  * Build note context object
- * @param {ModNote} note - Note object
+ * @param {NoteEvent} note - Note object
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @param {number} clipStartTime - Clip start time in musical beats
@@ -125,7 +116,7 @@ function buildNoteContext(
 
 /**
  * Build note properties object
- * @param {ModNote} note - Note object
+ * @param {NoteEvent} note - Note object
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {NoteProperties} Note properties object
  */
@@ -142,7 +133,7 @@ function buildNoteProperties(note, timeSigDenominator) {
 
 /**
  * Apply velocity modulation to a note
- * @param {ModNote} note - Note object to modify
+ * @param {NoteEvent} note - Note object to modify
  * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyVelocityModulation(note, modulations) {
@@ -163,7 +154,7 @@ function applyVelocityModulation(note, modulations) {
 
 /**
  * Apply timing modulation to a note
- * @param {ModNote} note - Note object to modify
+ * @param {NoteEvent} note - Note object to modify
  * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyTimingModulation(note, modulations) {
@@ -182,7 +173,7 @@ function applyTimingModulation(note, modulations) {
 
 /**
  * Apply duration modulation to a note
- * @param {ModNote} note - Note object to modify
+ * @param {NoteEvent} note - Note object to modify
  * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyDurationModulation(note, modulations) {
@@ -199,7 +190,7 @@ function applyDurationModulation(note, modulations) {
 
 /**
  * Apply probability modulation to a note
- * @param {ModNote} note - Note object to modify
+ * @param {NoteEvent} note - Note object to modify
  * @param {Record<string, ModulationResult>} modulations - Modulation values
  */
 function applyProbabilityModulation(note, modulations) {

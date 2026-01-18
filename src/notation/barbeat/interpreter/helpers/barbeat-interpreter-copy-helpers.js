@@ -3,28 +3,8 @@ import { validateBufferedState } from "./barbeat-interpreter-buffer-helpers.js";
 
 /**
  * @typedef {import('./barbeat-interpreter-buffer-helpers.js').BufferState} BufferState
- */
-
-/**
- * @typedef {object} NoteEvent
- * @property {number} pitch - MIDI pitch
- * @property {number} start_time - Start time in beats
- * @property {number} duration - Duration in beats
- * @property {number} velocity - Velocity (0-127)
- * @property {number} [probability] - Probability (0.0-1.0)
- * @property {number} [velocity_deviation] - Velocity deviation
- */
-
-/**
- * @typedef {object} BarCopyNote
- * @property {number} pitch - MIDI pitch
- * @property {number} start_time - Start time in beats
- * @property {number} duration - Duration in beats
- * @property {number} velocity - Velocity (0-127)
- * @property {number} [probability] - Probability (0.0-1.0)
- * @property {number} [velocity_deviation] - Velocity deviation
- * @property {number} relativeTime - Relative time within bar
- * @property {number} originalBar - Original bar number
+ * @typedef {import('../../../types.js').NoteEvent} NoteEvent
+ * @typedef {import('../../../types.js').BarCopyNote} BarCopyNote
  */
 
 /**

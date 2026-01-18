@@ -7,15 +7,7 @@ import {
 } from "./barbeat-config.js";
 import { parseBeatsPerBar } from "./time/barbeat-time.js";
 
-/**
- * @typedef {object} ClipNote
- * @property {number} pitch - MIDI pitch
- * @property {number} start_time - Start time in beats
- * @property {number} duration - Duration in beats
- * @property {number} velocity - Velocity (0-127)
- * @property {number} [probability] - Probability (0.0-1.0)
- * @property {number} [velocity_deviation] - Velocity deviation
- */
+/** @typedef {import('../types.js').NoteEvent} NoteEvent */
 
 /**
  * Format a number to remove trailing zeros
@@ -67,13 +59,13 @@ function isSameTimePosition(bar1, beat1, bar2, beat2) {
  * @typedef {object} TimeGroup
  * @property {number} bar - Bar number
  * @property {number} beat - Beat number
- * @property {Array<ClipNote>} notes - Notes at this time position
+ * @property {Array<NoteEvent>} notes - Notes at this time position
  */
 
 /**
  * Group notes by their time position
  *
- * @param {Array<ClipNote>} sortedNotes - Array of sorted note objects
+ * @param {Array<NoteEvent>} sortedNotes - Array of sorted note objects
  * @param {number} beatsPerBar - Beats per bar
  * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @returns {Array<TimeGroup>} Array of time groups with notes
@@ -208,7 +200,7 @@ function formatBeat(beat) {
 
 /**
  * Convert Live clip notes to bar|beat string
- * @param {Array<ClipNote>} clipNotes - Array of note objects from the Live API
+ * @param {Array<NoteEvent>} clipNotes - Array of note objects from the Live API
  * @param {object} options - Formatting options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
