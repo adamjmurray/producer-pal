@@ -1,9 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+/** @typedef {import("./kb-config.mjs").KbConfig} KbConfig */
+
 /**
  * Recursively finds all files in a directory, excluding specified paths
- * @param {object} config - Configuration object with ignorePatterns
+ * @param {KbConfig} config - Configuration object with ignorePatterns
  * @param {string} dir - Directory to search
  * @param {string[]} excludePaths - Array of relative paths to exclude
  * @param {string} baseDir - Base directory for computing relative paths (defaults to dir)
@@ -52,7 +54,7 @@ export async function findAllFiles(
 
 /**
  * Copies a file, prepending path comment for code files
- * @param {object} config - Configuration object with codeExts and projectRoot
+ * @param {KbConfig} config - Configuration object with codeExts and projectRoot
  * @param {string} sourcePath - Source file path
  * @param {string} targetPath - Target file path
  */
@@ -79,7 +81,7 @@ export async function copyFile(config, sourcePath, targetPath) {
 
 /**
  * Writes a concatenated file from multiple source files
- * @param {object} config - Configuration object with codeExts and projectRoot
+ * @param {KbConfig} config - Configuration object with codeExts and projectRoot
  * @param {string} outputPath - Output file path
  * @param {string[]} sourceFiles - Array of source file paths
  * @returns {Promise<number>} - Number of files concatenated
@@ -111,7 +113,7 @@ export async function writeConcatenatedFile(config, outputPath, sourceFiles) {
 
 /**
  * Determines output filename with appropriate extension
- * @param {object} config - Configuration object with codeExts
+ * @param {KbConfig} config - Configuration object with codeExts
  * @param {string} groupName - Group name
  * @param {string[]} sourceFiles - Source files in the group
  * @returns {string} - Output filename with extension

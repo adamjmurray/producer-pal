@@ -2,10 +2,10 @@
  * Filters parameters from a Zod schema object based on excluded parameter names
  * and optionally overrides parameter descriptions.
  *
- * @param {object} schema - Zod schema object (key-value pairs of parameter names to Zod schemas)
+ * @param {Record<string, import("zod").ZodType>} schema - Zod schema object (key-value pairs of parameter names to Zod schemas)
  * @param {string[]} excludeParams - Array of parameter names to exclude
- * @param {object} descriptionOverrides - Object mapping parameter names to new descriptions
- * @returns {object} New schema object with excluded parameters removed and descriptions overridden
+ * @param {Record<string, string>} [descriptionOverrides] - Object mapping parameter names to new descriptions
+ * @returns {Record<string, import("zod").ZodType>} New schema object with excluded parameters removed and descriptions overridden
  */
 export function filterSchemaForSmallModel(
   schema,
@@ -20,6 +20,7 @@ export function filterSchemaForSmallModel(
     return schema;
   }
 
+  /** @type {Record<string, import("zod").ZodType>} */
   const filtered = {};
 
   for (const [key, value] of Object.entries(schema)) {

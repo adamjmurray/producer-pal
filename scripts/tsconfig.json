@@ -8,8 +8,7 @@
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "strict": false,
-    "noImplicitAny": false
+    "strict": true
   },
   "include": ["**/*.mjs"],
   "exclude": ["chat-lib/**"]

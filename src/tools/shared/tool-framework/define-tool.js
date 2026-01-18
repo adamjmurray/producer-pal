@@ -3,10 +3,37 @@ import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
 import { filterSchemaForSmallModel } from "./filter-schema.js";
 
 /**
+ * @typedef {object} SmallModelModeConfig
+ * @property {string[]} [excludeParams]
+ * @property {Record<string, string>} [descriptionOverrides]
+ * @property {string} [toolDescription]
+ */
+
+/**
+ * @typedef {object} ToolAnnotations
+ * @property {boolean} [readOnlyHint]
+ * @property {boolean} [destructiveHint]
+ */
+
+/**
+ * @typedef {object} ToolOptions
+ * @property {string} [title]
+ * @property {string} description
+ * @property {ToolAnnotations} [annotations]
+ * @property {Record<string, z.ZodType>} inputSchema
+ * @property {SmallModelModeConfig} [smallModelModeConfig]
+ */
+
+/**
+ * @typedef {object} McpOptions
+ * @property {boolean} [smallModelMode]
+ */
+
+/**
  * Defines an MCP tool with validation and small model mode support
  * @param {string} name - Tool name
- * @param {object} options - Tool configuration options
- * @returns {Function} - Function that registers the tool with the MCP server
+ * @param {ToolOptions} options - Tool configuration options
+ * @returns {(server: import("@modelcontextprotocol/sdk/server/mcp.js").McpServer, callLiveApi: Function, mcpOptions?: McpOptions) => void} - Function that registers the tool with the MCP server
  */
 export function defineTool(name, options) {
   return (server, callLiveApi, mcpOptions = {}) => {
@@ -18,7 +45,7 @@ export function defineTool(name, options) {
       smallModelMode && smallModelModeConfig
         ? filterSchemaForSmallModel(
             inputSchema,
-            smallModelModeConfig.excludeParams,
+            smallModelModeConfig.excludeParams || [],
             smallModelModeConfig.descriptionOverrides,
           )
         : inputSchema;
@@ -36,7 +63,7 @@ export function defineTool(name, options) {
         description: finalDescription,
         inputSchema: finalInputSchema,
       },
-      async (args) => {
+      async (/** @type {Record<string, unknown>} */ args) => {
         // Coerce args to expected types before validation (transport-layer tolerance)
         const coercedArgs = coerceArgsToSchema(args, finalInputSchema);
         // Create Zod object schema from the input schema object for validation
@@ -62,19 +89,28 @@ export function defineTool(name, options) {
 }
 
 /**
+ * @typedef {object} ZodDef
+ * @property {string} [type]
+ * @property {z.ZodType} [innerType]
+ */
+
+/**
  * Gets the expected primitive type from a Zod schema, unwrapping wrappers.
- * @param {object} zodType - A Zod type definition
+ * @param {z.ZodType | null | undefined} zodType - A Zod type definition
  * @returns {string|null} 'string', 'number', 'boolean', or null for non-primitives
  */
 export function getExpectedPrimitiveType(zodType) {
-  const type = zodType?._def?.type;
+  // Cast to access internal Zod _def property
+  const zodAny = /** @type {{_def?: ZodDef}} */ (zodType);
+  const def = zodAny?._def;
+  const type = def?.type;
 
   if (type === "string") return "string";
   if (type === "number") return "number";
   if (type === "boolean") return "boolean";
 
   // Unwrap optional, default, nullable, etc.
-  const inner = zodType?._def?.innerType;
+  const inner = def?.innerType;
 
   if (inner) return getExpectedPrimitiveType(inner);
 
@@ -84,14 +120,15 @@ export function getExpectedPrimitiveType(zodType) {
 /**
  * Coerces arg values to match schema expected types.
  * Handles: number→string, string→number, string→boolean, number→boolean
- * @param {object} args - The arguments object to coerce
- * @param {object} schema - The Zod schema defining expected types
- * @returns {object} A new object with coerced values
+ * @param {Record<string, unknown>} args - The arguments object to coerce
+ * @param {Record<string, z.ZodType>} schema - The Zod schema defining expected types
+ * @returns {Record<string, unknown>} A new object with coerced values
  */
 export function coerceArgsToSchema(args, schema) {
   // Return as-is if not a valid object (let Zod handle the error)
   if (args == null || typeof args !== "object") return args;
 
+  /** @type {Record<string, unknown>} */
   const result = { ...args };
 
   for (const [key, zodType] of Object.entries(schema)) {

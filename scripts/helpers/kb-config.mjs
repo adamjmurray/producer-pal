@@ -1,8 +1,25 @@
 import path from "node:path";
 
 /**
+ * @typedef {object} KbGroupContext
+ * @property {string} relativePath
+ * @property {object} [config]
+ * @property {string} [file]
+ */
+
+/**
+ * @typedef {object} KbItem
+ * @property {string} src
+ * @property {boolean} [isDir]
+ * @property {string} [targetDirName]
+ * @property {string|((ctx: KbGroupContext) => string)} [group]
+ * @property {string} [flatName]
+ * @property {string[]} [exclude]
+ */
+
+/**
  * Creates the items array defining what to include in knowledge base
- * @returns {Array} Array of item configurations
+ * @returns {KbItem[]} Array of item configurations
  */
 function createItemsArray() {
   return [
@@ -110,9 +127,22 @@ function createItemsArray() {
 }
 
 /**
+ * @typedef {object} KbConfig
+ * @property {string} projectRoot
+ * @property {string} outputDir
+ * @property {string} FLAT_SEP
+ * @property {string[]} codeExts
+ * @property {RegExp[]} ignorePatterns
+ * @property {KbItem[]} items
+ * @property {(pathStr: string) => string} flattenPath
+ * @property {(groups: Map<string, string[]>, groupName: string, ...item: string[]) => void} addToGroup
+ * @property {(item: KbItem, filePath: string) => string} computeGroupName
+ */
+
+/**
  * Creates configuration object for knowledge base generation
  * @param {string} projectRoot - Root directory of the project
- * @returns {object} Configuration object with paths, constants, items, and utilities
+ * @returns {KbConfig} Configuration object with paths, constants, items, and utilities
  */
 export function createKnowledgeBaseConfig(projectRoot) {
   const outputDir = path.join(projectRoot, "knowledge-base");
@@ -145,21 +175,21 @@ export function createKnowledgeBaseConfig(projectRoot) {
 
   /**
    * Adds items to a named group in the groups map
-   * @param {Map} groups - Map of group names to arrays of items
+   * @param {Map<string, string[]>} groups - Map of group names to arrays of items
    * @param {string} groupName - Name of the group to add to
-   * @param {...any} item - Items to add to the group
+   * @param {...string} item - Items to add to the group
    */
   function addToGroup(groups, groupName, ...item) {
     if (!groups.has(groupName)) {
       groups.set(groupName, []);
     }
 
-    groups.get(groupName).push(...item);
+    /** @type {string[]} */ (groups.get(groupName)).push(...item);
   }
 
   /**
    * Computes the group name for a file based on item configuration
-   * @param {object} item - Configuration item from items array
+   * @param {KbItem} item - Configuration item from items array
    * @param {string} filePath - Absolute path to the file
    * @returns {string} - Computed group name
    */

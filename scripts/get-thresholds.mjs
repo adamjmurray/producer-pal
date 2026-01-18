@@ -25,6 +25,10 @@ async function getCoverageThresholds() {
 
   // Extract thresholds from vitest config using regex
   // Matches patterns like: statements: 97.8,
+  /**
+   * @param {string} name - Threshold name to extract
+   * @returns {number} Extracted threshold value
+   */
   const extractThreshold = (name) => {
     const match = vitestConfig.match(new RegExp(`${name}:\\s*([\\d.]+)`));
 
@@ -71,7 +75,7 @@ if (command === "coverage") {
       process.exit(1);
     }
 
-    console.log(thresholds[field]);
+    console.log(thresholds[/** @type {keyof typeof thresholds} */ (field)]);
   } else {
     console.log(JSON.stringify(thresholds));
   }
@@ -84,7 +88,7 @@ if (command === "coverage") {
       process.exit(1);
     }
 
-    console.log(thresholds[field]);
+    console.log(thresholds[/** @type {keyof typeof thresholds} */ (field)]);
   } else {
     console.log(JSON.stringify(thresholds));
   }

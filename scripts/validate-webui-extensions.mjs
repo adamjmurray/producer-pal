@@ -34,7 +34,9 @@ try {
   console.log(
     "✓ No JavaScript files found in webui/ - TypeScript-only requirement satisfied",
   );
-} catch (error) {
+} catch (e) {
+  const error = /** @type {Error & {status?: number, stdout?: string}} */ (e);
+
   // If find returns no results, execSync throws but we want to treat that as success
   if (error.status === 0 || error.stdout?.trim() === "") {
     console.log(

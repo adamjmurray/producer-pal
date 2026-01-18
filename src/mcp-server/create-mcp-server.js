@@ -25,10 +25,14 @@ import { toolDefConnect } from "#src/tools/workflow/connect.def.js";
 import { toolDefMemory } from "#src/tools/workflow/memory.def.js";
 
 /**
+ * @typedef {(server: McpServer, callLiveApi: Function, options: {smallModelMode: boolean}) => void} ToolDefFunction
+ */
+
+/**
  * Create and configure an MCP server instance
  *
  * @param {Function} callLiveApi - Function to call Live API
- * @param {object} options - Configuration options
+ * @param {{smallModelMode?: boolean}} options - Configuration options
  * @returns {McpServer} Configured MCP server instance
  */
 export function createMcpServer(callLiveApi, options = {}) {
@@ -39,6 +43,10 @@ export function createMcpServer(callLiveApi, options = {}) {
     version: VERSION,
   });
 
+  /**
+   * @param {ToolDefFunction} toolDef - Tool definition function to register
+   * @returns {void}
+   */
   const addTool = (toolDef) => toolDef(server, callLiveApi, { smallModelMode });
 
   addTool(toolDefConnect);

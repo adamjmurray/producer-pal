@@ -7,9 +7,12 @@ import {
   determineOutputFilename,
 } from "./kb-file-operations.mjs";
 
+/** @typedef {import("./kb-config.mjs").KbConfig} KbConfig */
+/** @typedef {import("./kb-config.mjs").KbItem} KbItem */
+
 /**
  * Processes items in flat copy mode
- * @param {object} config - Configuration object
+ * @param {KbConfig} config - Configuration object
  * @param {Set<string>} excludeGroups - Groups to exclude
  */
 export async function processFlatMode(config, excludeGroups) {
@@ -34,7 +37,7 @@ export async function processFlatMode(config, excludeGroups) {
 
 /**
  * Processes items in concatenation mode
- * @param {object} config - Configuration object
+ * @param {KbConfig} config - Configuration object
  * @param {Set<string>} excludeGroups - Groups to exclude
  */
 export async function processConcatMode(config, excludeGroups) {
@@ -64,10 +67,10 @@ export async function processConcatMode(config, excludeGroups) {
 
 /**
  * Processes directory copying with flat file naming
- * @param {object} config - Configuration object
- * @param {object} item - Configuration item
+ * @param {KbConfig} config - Configuration object
+ * @param {KbItem} item - Configuration item
  * @param {string} sourcePath - Source directory path
- * @param {Set} excludeGroups - Set of group names to exclude
+ * @param {Set<string>} excludeGroups - Set of group names to exclude
  */
 async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
   const files = await findAllFiles(config, sourcePath, item.exclude || []);
@@ -95,10 +98,10 @@ async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
 
 /**
  * Processes single file copying with flat file naming
- * @param {object} config - Configuration object
- * @param {object} item - Configuration item
+ * @param {KbConfig} config - Configuration object
+ * @param {KbItem} item - Configuration item
  * @param {string} sourcePath - Source file path
- * @param {Set} excludeGroups - Set of group names to exclude
+ * @param {Set<string>} excludeGroups - Set of group names to exclude
  */
 async function processFileFlat(config, item, sourcePath, excludeGroups) {
   // Check if this file's group should be excluded
@@ -118,10 +121,10 @@ async function processFileFlat(config, item, sourcePath, excludeGroups) {
 
 /**
  * Processes directory for concatenation mode, grouping files
- * @param {object} config - Configuration object
- * @param {object} item - Configuration item
+ * @param {KbConfig} config - Configuration object
+ * @param {KbItem} item - Configuration item
  * @param {string} sourcePath - Source directory path
- * @param {Map} fileGroups - Map of group names to file arrays
+ * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
  */
 async function processDirectoryConcat(config, item, sourcePath, fileGroups) {
   const files = await findAllFiles(config, sourcePath, item.exclude || []);
@@ -150,10 +153,10 @@ async function processDirectoryConcat(config, item, sourcePath, fileGroups) {
 
 /**
  * Processes single file for concatenation mode, adding to group
- * @param {object} config - Configuration object
- * @param {object} item - Configuration item
+ * @param {KbConfig} config - Configuration object
+ * @param {KbItem} item - Configuration item
  * @param {string} sourcePath - Source file path
- * @param {Map} fileGroups - Map of group names to file arrays
+ * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
  */
 async function processFileConcat(config, item, sourcePath, fileGroups) {
   const relativePath = path.relative(config.projectRoot, sourcePath);
@@ -171,9 +174,9 @@ async function processFileConcat(config, item, sourcePath, fileGroups) {
 
 /**
  * Writes concatenated files for each group
- * @param {object} config - Configuration object
- * @param {Map} fileGroups - Map of group names to file arrays
- * @param {Set} excludeGroups - Set of group names to exclude
+ * @param {KbConfig} config - Configuration object
+ * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
+ * @param {Set<string>} excludeGroups - Set of group names to exclude
  */
 async function writeGroupedFiles(config, fileGroups, excludeGroups) {
   for (const [groupName, sourceFiles] of fileGroups) {

@@ -2,6 +2,26 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
+/**
+ * @typedef {object} McpTool
+ * @property {string} name
+ * @property {string} [description]
+ * @property {object} [inputSchema]
+ */
+
+/**
+ * @typedef {object} McpResource
+ * @property {string} uri
+ * @property {string} [text]
+ */
+
+/**
+ * @typedef {object} McpContent
+ * @property {string} type
+ * @property {string} [text]
+ * @property {McpResource} [resource]
+ */
+
 // Helper function to print large text without truncation
 /**
  * Print text line by line to avoid truncation
@@ -20,7 +40,7 @@ function printLargeText(text, prefix = "") {
 /**
  * Print a single tool's details
  *
- * @param {object} tool - Tool object with name, description, inputSchema
+ * @param {McpTool} tool - Tool object with name, description, inputSchema
  * @param {number} index - Tool index for display
  */
 function printTool(tool, index) {
@@ -41,13 +61,13 @@ function printTool(tool, index) {
 /**
  * Print a single content item from tool result
  *
- * @param {object} content - Content object
+ * @param {McpContent} content - Content object
  * @param {number} index - Content index for display
  */
 function printContentItem(content, index) {
   if (content.type === "text") {
     console.log(content.text);
-  } else if (content.type === "resource") {
+  } else if (content.type === "resource" && content.resource) {
     console.log(`Resource: ${content.resource.uri}`);
 
     if (content.resource.text) {
@@ -61,7 +81,7 @@ function printContentItem(content, index) {
 /**
  * Handle tools/list command
  *
- * @param {object} client - MCP client
+ * @param {Client} client - MCP client
  */
 async function handleToolsList(client) {
   console.log("\nAvailable Tools:");
@@ -79,9 +99,9 @@ async function handleToolsList(client) {
 /**
  * Handle tools/call command
  *
- * @param {object} client - MCP client
+ * @param {Client} client - MCP client
  * @param {string} toolName - Name of the tool to call
- * @param {object} toolArgs - Arguments to pass to the tool
+ * @param {Record<string, unknown>} toolArgs - Arguments to pass to the tool
  */
 async function handleToolsCall(client, toolName, toolArgs) {
   console.log(`\nCalling tool: ${toolName}`);
@@ -98,8 +118,10 @@ async function handleToolsCall(client, toolName, toolArgs) {
     console.log("ERROR:");
   }
 
-  if (result.content) {
-    for (const [index, content] of result.content.entries()) {
+  const contentArray = /** @type {McpContent[]} */ (result.content);
+
+  if (contentArray) {
+    for (const [index, content] of contentArray.entries()) {
       printContentItem(content, index);
     }
   } else {
@@ -113,7 +135,7 @@ const DEFAULT_URL = "http://localhost:3350/mcp";
 // Parse command line arguments
 /**
  * Parse command line arguments
- * @returns {{url: string, command: string|null, toolName: string|null, toolArgs: object|null}} - Parsed arguments
+ * @returns {{url: string, command: string|null, toolName: string|null, toolArgs: Record<string, unknown>|null}} - Parsed arguments
  */
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -148,7 +170,9 @@ function parseArgs() {
       try {
         toolArgs = JSON.parse(args[2]);
       } catch (e) {
-        console.error("Error: Invalid JSON arguments:", e.message);
+        const error = /** @type {Error} */ (e);
+
+        console.error("Error: Invalid JSON arguments:", error.message);
         process.exit(1);
       }
     }
@@ -199,7 +223,7 @@ async function main() {
     // Handle commands
     if (command === "tools/list") {
       await handleToolsList(client);
-    } else if (command === "tools/call") {
+    } else if (command === "tools/call" && toolName && toolArgs) {
       await handleToolsCall(client, toolName, toolArgs);
     } else if (command) {
       console.error(`\nError: Unknown command '${command}'`);
@@ -210,7 +234,9 @@ async function main() {
     // Close the connection
     await client.close();
     console.log("\nConnection closed.");
-  } catch (error) {
+  } catch (e) {
+    const error = /** @type {Error & {cause?: Error}} */ (e);
+
     console.error("\nError:", error.message);
 
     if (error.cause) {
