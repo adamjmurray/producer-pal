@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
@@ -490,7 +489,9 @@ function readViewState() {
   // master track gets no index property
 
   return {
-    view: fromLiveApiView(appView.getProperty("focused_document_view")),
+    view: fromLiveApiView(
+      /** @type {string} */ (appView.getProperty("focused_document_view")),
+    ),
     detailView,
     showBrowser,
     selectedTrack: selectedTrackObject,
