@@ -206,10 +206,11 @@ export function revealAudioContentAtPosition(
 /**
  * Sets audio-specific parameters on a clip
  * @param {LiveAPI} clip - The audio clip
- * @param {number} [gainDb] - Audio clip gain in decibels (-70 to 24)
- * @param {number} [pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
- * @param {string} [warpMode] - Audio clip warp mode
- * @param {boolean} [warping] - Audio clip warping on/off
+ * @param {object} params - Audio parameters
+ * @param {number} [params.gainDb] - Audio clip gain in decibels (-70 to 24)
+ * @param {number} [params.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @param {string} [params.warpMode] - Audio clip warp mode
+ * @param {boolean} [params.warping] - Audio clip warping on/off
  */
 export function setAudioParameters(
   clip,

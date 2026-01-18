@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
@@ -7,12 +6,10 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
-import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
-import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
+import { handleArrangementOperations } from "./update-clip-arrangement-helpers.js";
 import {
   setAudioParameters,
   handleWarpMarkerOperation,
@@ -65,11 +62,15 @@ export function calculateBeatPositions({
     // If start not provided, read current value from clip
     if (startBeats == null) {
       if (isLooping) {
-        startBeats = clip.getProperty("loop_start");
+        startBeats = /** @type {number} */ (clip.getProperty("loop_start"));
       } else {
         // For non-looping clips, derive from end_marker - length
-        const currentEndMarker = clip.getProperty("end_marker");
-        const currentStartMarker = clip.getProperty("start_marker");
+        const currentEndMarker = /** @type {number} */ (
+          clip.getProperty("end_marker")
+        );
+        const currentStartMarker = /** @type {number} */ (
+          clip.getProperty("start_marker")
+        );
 
         startBeats = currentEndMarker - lengthBeats;
 
@@ -207,7 +208,9 @@ export function handleNoteUpdates(
   if (noteUpdateMode === "merge") {
     // In merge mode, prepend existing notes as bar|beat notation
     const existingNotesResult = JSON.parse(
-      clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
+      /** @type {string} */ (
+        clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS)
+      ),
     );
     const existingNotes = existingNotesResult?.notes || [];
 
@@ -242,9 +245,11 @@ export function handleNoteUpdates(
   }
 
   // Query actual note count within playback region
-  const lengthBeats = clip.getProperty("length");
+  const lengthBeats = /** @type {number} */ (clip.getProperty("length"));
   const actualNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
+    /** @type {string} */ (
+      clip.call("get_notes_extended", 0, 128, 0, lengthBeats)
+    ),
   );
 
   return actualNotesResult?.notes?.length || 0;
@@ -323,15 +328,22 @@ export function processSingleClipUpdate(params) {
     timeSigNumerator = parsed.numerator;
     timeSigDenominator = parsed.denominator;
   } else {
-    timeSigNumerator = clip.getProperty("signature_numerator");
-    timeSigDenominator = clip.getProperty("signature_denominator");
+    timeSigNumerator = /** @type {number} */ (
+      clip.getProperty("signature_numerator")
+    );
+    timeSigDenominator = /** @type {number} */ (
+      clip.getProperty("signature_denominator")
+    );
   }
 
   // Track final note count
   let finalNoteCount = null;
 
   // Determine looping state
-  const isLooping = looping != null ? looping : clip.getProperty("looping") > 0;
+  const isLooping =
+    looping != null
+      ? looping
+      : /** @type {number} */ (clip.getProperty("looping")) > 0;
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
@@ -352,7 +364,9 @@ export function processSingleClipUpdate(params) {
   });
 
   // Build and set clip properties
-  const currentLoopEnd = isLooping ? clip.getProperty("loop_end") : null;
+  const currentLoopEnd = isLooping
+    ? /** @type {number} */ (clip.getProperty("loop_end"))
+    : null;
   const propsToSet = buildClipPropertiesToSet({
     name,
     color,
@@ -375,7 +389,8 @@ export function processSingleClipUpdate(params) {
   }
 
   // Audio-specific parameters
-  const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+  const isAudioClip =
+    /** @type {number} */ (clip.getProperty("is_audio_clip")) > 0;
 
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
@@ -421,61 +436,4 @@ export function processSingleClipUpdate(params) {
     updatedClips,
     finalNoteCount,
   });
-}
-
-/**
- * Handle arrangement start and length operations in correct order
- * @param {object} args - Operation arguments
- * @param {LiveAPI} args.clip - The clip to operate on
- * @param {boolean} args.isAudioClip - Whether the clip is audio
- * @param {number} args.arrangementStartBeats - Target start position in beats
- * @param {number} args.arrangementLengthBeats - Target length in beats
- * @param {Map} args.tracksWithMovedClips - Map of tracks with moved clips
- * @param {object} args.context - Tool execution context
- * @param {Array} args.updatedClips - Array to collect updated clips
- * @param {number} args.finalNoteCount - Final note count for result
- */
-function handleArrangementOperations({
-  clip,
-  isAudioClip,
-  arrangementStartBeats,
-  arrangementLengthBeats,
-  tracksWithMovedClips,
-  context,
-  updatedClips,
-  finalNoteCount,
-}) {
-  // Move FIRST so lengthening uses the new position
-  let finalClipId = clip.id;
-  let currentClip = clip;
-
-  if (arrangementStartBeats != null) {
-    finalClipId = handleArrangementStartOperation({
-      clip,
-      arrangementStartBeats,
-      tracksWithMovedClips,
-    });
-    currentClip = LiveAPI.from(`id ${finalClipId}`);
-  }
-
-  // Handle arrangementLength SECOND
-  let hasArrangementLengthResults = false;
-
-  if (arrangementLengthBeats != null) {
-    const results = handleArrangementLengthOperation({
-      clip: currentClip,
-      isAudioClip,
-      arrangementLengthBeats,
-      context,
-    });
-
-    if (results.length > 0) {
-      updatedClips.push(...results);
-      hasArrangementLengthResults = true;
-    }
-  }
-
-  if (!hasArrangementLengthResults) {
-    updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
-  }
 }
