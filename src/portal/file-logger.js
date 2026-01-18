@@ -62,8 +62,19 @@ function writeLog(level, message) {
 }
 
 export const logger = {
+  /**
+   * @param {string} message - Log message
+   * @returns {void}
+   */
   info: (message) => writeLog("INFO", message),
+  /**
+   * @param {string} message - Log message
+   * @returns {void}
+   */
   error: (message) => writeLog("ERROR", message),
+  /**
+   * @param {string} message - Log message
+   */
   debug: (message) => {
     if (verboseLogging && enableLogging) {
       writeLog("DEBUG", message);

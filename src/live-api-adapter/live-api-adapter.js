@@ -72,45 +72,56 @@ function initHoldingArea() {
 Use the `(args) => toolFunction(args, context)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
+/** @type {Record<string, (args: unknown) => unknown>} */
 const tools = {
-  "ppal-connect": (args) => connect(args, context),
-  "ppal-read-live-set": (args) => readLiveSet(args, context),
-  "ppal-update-live-set": (args) => updateLiveSet(args, context),
-  "ppal-create-track": (args) => createTrack(args, context),
-  "ppal-read-track": (args) => readTrack(args, context),
-  "ppal-update-track": (args) => updateTrack(args, context),
-  "ppal-create-scene": (args) => createScene(args, context),
-  "ppal-read-scene": (args) => readScene(args, context),
-  "ppal-update-scene": (args) => updateScene(args, context),
-  "ppal-create-clip": (args) => createClip(args, context),
-  "ppal-read-clip": (args) => readClip(args, context),
+  "ppal-connect": (args) => connect(/** @type {any} */ (args), context),
+  "ppal-read-live-set": (args) =>
+    readLiveSet(/** @type {any} */ (args), context),
+  "ppal-update-live-set": (args) =>
+    updateLiveSet(/** @type {any} */ (args), context),
+  "ppal-create-track": (args) =>
+    createTrack(/** @type {any} */ (args), context),
+  "ppal-read-track": (args) => readTrack(/** @type {any} */ (args), context),
+  "ppal-update-track": (args) =>
+    updateTrack(/** @type {any} */ (args), context),
+  "ppal-create-scene": (args) =>
+    createScene(/** @type {any} */ (args), context),
+  "ppal-read-scene": (args) => readScene(/** @type {any} */ (args), context),
+  "ppal-update-scene": (args) =>
+    updateScene(/** @type {any} */ (args), context),
+  "ppal-create-clip": (args) => createClip(/** @type {any} */ (args), context),
+  "ppal-read-clip": (args) => readClip(/** @type {any} */ (args), context),
   "ppal-update-clip": (args) => {
     initHoldingArea();
 
-    return updateClip(args, context);
+    return updateClip(/** @type {any} */ (args), context);
   },
   "ppal-transform-clips": (args) => {
     initHoldingArea();
 
-    return transformClips(args, context);
+    return transformClips(/** @type {any} */ (args), context);
   },
-  "ppal-create-device": (args) => createDevice(args, context),
-  "ppal-read-device": (args) => readDevice(args, context),
-  "ppal-update-device": (args) => updateDevice(args, context),
-  "ppal-playback": (args) => playback(args, context),
-  "ppal-select": (args) => select(args, context),
-  "ppal-delete": (args) => deleteObject(args, context),
+  "ppal-create-device": (args) =>
+    createDevice(/** @type {any} */ (args), context),
+  "ppal-read-device": (args) => readDevice(/** @type {any} */ (args), context),
+  "ppal-update-device": (args) =>
+    updateDevice(/** @type {any} */ (args), context),
+  "ppal-playback": (args) => playback(/** @type {any} */ (args), context),
+  "ppal-select": (args) => select(/** @type {any} */ (args), context),
+  "ppal-delete": (args) => deleteObject(/** @type {any} */ (args), context),
   "ppal-duplicate": (args) => {
     initHoldingArea();
 
-    return duplicate(args, context);
+    return duplicate(/** @type {any} */ (args), context);
   },
-  "ppal-memory": (args) => memory(args, context),
-  "ppal-read-samples": (args) => readSamples(args, context),
+  "ppal-memory": (args) => memory(/** @type {any} */ (args), context),
+  "ppal-read-samples": (args) =>
+    readSamples(/** @type {any} */ (args), context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args, context);
+  tools["ppal-raw-live-api"] = (args) =>
+    rawLiveApi(/** @type {any} */ (args), context);
 }
 
 /**
@@ -118,7 +129,7 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
  *
  * @param {string} toolName - Name of the tool to call
  * @param {object} args - Arguments to pass to the tool
- * @returns {object} Tool execution result
+ * @returns {unknown} Tool execution result
  */
 function callTool(toolName, args) {
   const tool = tools[toolName];
@@ -265,7 +276,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
-      const output = await callTool(tool, args);
+      const output = /** @type {object} */ (await callTool(tool, args));
 
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
