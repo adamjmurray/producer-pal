@@ -23,7 +23,7 @@ function parseDrumPadNoteFromPath(path) {
 
 /**
  * Move a device to a new location
- * @param {object} device - LiveAPI device object
+ * @param {LiveAPI} device - LiveAPI device object
  * @param {string} toPath - Target path
  */
 export function moveDeviceToPath(device, toPath) {
@@ -46,7 +46,7 @@ export function moveDeviceToPath(device, toPath) {
 
 /**
  * Move a drum chain to a different pad by updating in_note
- * @param {object} chain - LiveAPI drum chain object
+ * @param {LiveAPI} chain - LiveAPI drum chain object
  * @param {string} toPath - Target drum pad path
  * @param {boolean} moveEntirePad - If true, move all chains with same in_note
  */
@@ -89,7 +89,7 @@ export function moveDrumChainToPath(chain, toPath, moveEntirePad) {
 
 /**
  * Update the collapsed state of a device view
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @param {boolean} collapsed - Whether to collapse the device view
  */
 export function updateCollapsedState(device, collapsed) {
@@ -106,7 +106,7 @@ export function updateCollapsedState(device, collapsed) {
 
 /**
  * Set parameter values from JSON string
- * @param {object} device - LiveAPI device object to update
+ * @param {LiveAPI} device - LiveAPI device object to update
  * @param {string} paramsJson - JSON object mapping param IDs to values
  */
 export function setParamValues(device, paramsJson) {
@@ -126,9 +126,9 @@ export function setParamValues(device, paramsJson) {
 
 /**
  * Resolve a param ID relative to a target device
- * @param {object} device - LiveAPI device object
+ * @param {LiveAPI} device - LiveAPI device object
  * @param {string} paramId - Param identifier (path ending in "parameters N", or absolute ID)
- * @returns {object|null} LiveAPI param object or null
+ * @returns {LiveAPI|null} LiveAPI param object or null
  */
 function resolveParamForDevice(device, paramId) {
   // If paramId ends with "parameters N", extract index and resolve relative to device
@@ -143,12 +143,18 @@ function resolveParamForDevice(device, paramId) {
   return LiveAPI.from(paramId);
 }
 
+/**
+ * Set a parameter value with type-appropriate handling
+ * @param {LiveAPI} param - Parameter to set
+ * @param {string | number} inputValue - Value to set
+ */
 function setParamValue(param, inputValue) {
-  const isQuantized = param.getProperty("is_quantized") > 0;
+  const isQuantized =
+    /** @type {number} */ (param.getProperty("is_quantized")) > 0;
 
   // 1. Enum - string input with quantized param
   if (isQuantized && typeof inputValue === "string") {
-    const valueItems = param.get("value_items");
+    const valueItems = /** @type {string[]} */ (param.get("value_items"));
     const index = valueItems.indexOf(inputValue);
 
     if (index === -1) {
@@ -165,7 +171,7 @@ function setParamValue(param, inputValue) {
   }
 
   // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
-  if (isValidNoteName(inputValue)) {
+  if (typeof inputValue === "string" && isValidNoteName(inputValue)) {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
@@ -181,13 +187,16 @@ function setParamValue(param, inputValue) {
 
   // 3. Pan - detect via current label, convert -1/1 to internal range
   const currentValue = param.getProperty("value");
-  const currentLabel = param.call("str_for_value", currentValue);
+  const currentLabel = /** @type {string} */ (
+    param.call("str_for_value", currentValue)
+  );
 
   if (isPanLabel(currentLabel)) {
-    const min = param.getProperty("min");
-    const max = param.getProperty("max");
+    const min = /** @type {number} */ (param.getProperty("min"));
+    const max = /** @type {number} */ (param.getProperty("max"));
     // Convert -1 to 1 → internal range
-    const internalValue = ((inputValue + 1) / 2) * (max - min) + min;
+    const numValue = /** @type {number} */ (inputValue);
+    const internalValue = ((numValue + 1) / 2) * (max - min) + min;
 
     param.set("value", internalValue);
 
@@ -195,7 +204,9 @@ function setParamValue(param, inputValue) {
   }
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
-  const minLabel = param.call("str_for_value", param.getProperty("min"));
+  const minLabel = /** @type {string} */ (
+    param.call("str_for_value", param.getProperty("min"))
+  );
 
   if (isDivisionLabel(currentLabel) || isDivisionLabel(minLabel)) {
     const rawValue = findDivisionRawValue(param, inputValue);
@@ -217,13 +228,13 @@ function setParamValue(param, inputValue) {
 
 /**
  * Find the raw value for a division parameter by matching input to str_for_value
- * @param {object} param - LiveAPI parameter object
+ * @param {LiveAPI} param - LiveAPI parameter object
  * @param {string|number} inputValue - Target value (e.g., "1/8" or "1")
  * @returns {number|null} Raw value or null if not found
  */
 function findDivisionRawValue(param, inputValue) {
-  const min = param.getProperty("min");
-  const max = param.getProperty("max");
+  const min = /** @type {number} */ (param.getProperty("min"));
+  const max = /** @type {number} */ (param.getProperty("max"));
   const minInt = Math.ceil(Math.min(min, max));
   const maxInt = Math.floor(Math.max(min, max));
   const targetLabel =
@@ -247,7 +258,7 @@ function findDivisionRawValue(param, inputValue) {
 
 /**
  * Update macro variation state for rack devices
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @param {string} [action] - Variation action: create, load, delete, revert, randomize
  * @param {number} [index] - Variation index for load/delete (0-based)
  */
@@ -275,6 +286,12 @@ export function updateMacroVariation(device, action, index) {
   executeMacroVariationAction(device, action);
 }
 
+/**
+ * Validate macro variation parameter combinations
+ * @param {string | undefined} action - Variation action
+ * @param {number | undefined} index - Variation index
+ * @returns {boolean} True if parameters are valid
+ */
 function validateMacroVariationParams(action, index) {
   if (index != null && action == null) {
     console.error(
@@ -295,6 +312,11 @@ function validateMacroVariationParams(action, index) {
   return true;
 }
 
+/**
+ * Warn if index parameter is ignored for this action
+ * @param {string | undefined} action - Variation action
+ * @param {number | undefined} index - Variation index
+ */
 function warnIfIndexIgnored(action, index) {
   if (index == null) {
     return;
@@ -311,12 +333,21 @@ function warnIfIndexIgnored(action, index) {
   }
 }
 
+/**
+ * Set the selected variation index on device
+ * @param {LiveAPI} device - Rack device
+ * @param {string | undefined} action - Variation action
+ * @param {number | undefined} index - Variation index to select
+ * @returns {boolean} True if successful
+ */
 function setVariationIndex(device, action, index) {
   if ((action !== "load" && action !== "delete") || index == null) {
     return true;
   }
 
-  const variationCount = device.getProperty("variation_count");
+  const variationCount = /** @type {number} */ (
+    device.getProperty("variation_count")
+  );
 
   if (index >= variationCount) {
     console.error(
@@ -331,6 +362,11 @@ function setVariationIndex(device, action, index) {
   return true;
 }
 
+/**
+ * Execute the macro variation action on device
+ * @param {LiveAPI} device - Rack device
+ * @param {string | undefined} action - Action to execute
+ */
 function executeMacroVariationAction(device, action) {
   switch (action) {
     case "create":
@@ -358,7 +394,7 @@ function executeMacroVariationAction(device, action) {
 /**
  * Update visible macro count for rack devices.
  * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @param {number} targetCount - Target number of visible macros (0-16)
  */
 export function updateMacroCount(device, targetCount) {
@@ -380,7 +416,9 @@ export function updateMacroCount(device, targetCount) {
     );
   }
 
-  const currentCount = device.getProperty("visible_macro_count");
+  const currentCount = /** @type {number} */ (
+    device.getProperty("visible_macro_count")
+  );
   const diff = effectiveTarget - currentCount;
   const pairCount = Math.abs(diff) / 2;
 
@@ -401,7 +439,7 @@ export function updateMacroCount(device, targetCount) {
 
 /**
  * Update A/B Compare state for devices that support it
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @param {string} action - "a", "b", or "save"
  */
 export function updateABCompare(device, action) {
