@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
@@ -231,15 +230,18 @@ export function readTrackGeneric({
   }
 
   const groupId = track.get("group_track")[1];
-  const isMidiTrack = track.getProperty("has_midi_input") > 0;
+  const isMidiTrack =
+    /** @type {number} */ (track.getProperty("has_midi_input")) > 0;
   const isProducerPalHost =
     category === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
   // Check track capabilities to avoid warnings
-  const canBeArmed = track.getProperty("can_be_armed") > 0;
-  const isGroup = track.getProperty("is_foldable") > 0;
+  const canBeArmed =
+    /** @type {number} */ (track.getProperty("can_be_armed")) > 0;
+  const isGroup = /** @type {number} */ (track.getProperty("is_foldable")) > 0;
 
+  /** @type {Record<string, unknown>} */
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
@@ -343,11 +345,14 @@ function categorizeDevices(
   const audioEffects = [];
 
   for (const device of devices) {
-    const processedDevice = readDevice(device, {
-      includeChains: includeRackChains,
-      includeReturnChains,
-      includeDrumPads,
-    });
+    const processedDevice = readDevice(
+      device,
+      /** @type {Parameters<typeof readDevice>[1]} */ ({
+        includeChains: includeRackChains,
+        includeReturnChains,
+        includeDrumPads,
+      }),
+    );
 
     // Use processed device type for proper rack categorization
     const deviceType = processedDevice.type;
