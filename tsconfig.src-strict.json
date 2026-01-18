@@ -3,6 +3,11 @@
   "compilerOptions": {
     "noImplicitAny": true
   },
-  "include": ["src/shared/**/*.js", "src/test/**/*.js", "src/types/**/*.d.ts"],
+  "include": [
+    "src/shared/**/*.js",
+    "src/portal/**/*.js",
+    "src/test/**/*.js",
+    "src/types/**/*.d.ts"
+  ],
   "exclude": ["**/*.test.js", "**/*-test-helpers.js"]
 }
