@@ -11,6 +11,6 @@
     "strict": false,
     "noImplicitAny": false
   },
-  "include": ["src/**/*.js", "src/types/**/*.d.ts"],
-  "exclude": ["src/**/*.test.js", "src/test/**", "src/**/*-test-helpers.js"]
+  "include": ["**/*.mjs"],
+  "exclude": ["chat-lib/**"]
 }

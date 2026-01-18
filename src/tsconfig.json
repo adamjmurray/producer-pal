@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "#src/*": ["./*"]
+    },
     "checkJs": true,
     "noEmit": true,
     "target": "ES2022",
@@ -11,6 +15,6 @@
     "strict": false,
     "noImplicitAny": false
   },
-  "include": ["scripts/**/*.mjs"],
-  "exclude": ["scripts/chat-lib/**"]
+  "include": ["**/*.js", "types/**/*.d.ts"],
+  "exclude": ["**/*.test.js", "test/**", "**/*-test-helpers.js"]
 }
