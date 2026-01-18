@@ -1,29 +1,14 @@
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
-import {
-  processDrumPads,
-  updateDrumPadSoloStates,
-} from "./device-reader-drum-helpers.js";
-import {
-  buildChainInfo,
-  computeState,
-  hasInstrumentInDevices,
-  isInstrumentDevice,
-} from "./device-state-helpers.js";
+import { processDrumPads } from "./device-reader-drum-helpers.js";
+import { buildChainInfo } from "./device-state-helpers.js";
 import {
   buildChainPath,
   buildReturnChainPath,
 } from "./path/device-path-helpers.js";
 
 // Re-export for external use
-export {
-  buildChainInfo,
-  processDrumPads,
-  updateDrumPadSoloStates,
-  computeState,
-  hasInstrumentInDevices,
-  isInstrumentDevice,
-};
+export { buildChainInfo };
 
 /**
  * Check if device className is redundant (matches the rack type name)
@@ -62,7 +47,7 @@ export function isRedundantDeviceClassName(deviceType, className) {
  * @param {Function} readDeviceFn - readDevice function
  * @param {string | undefined} devicePath - Device path for building nested paths
  */
-export function processRegularChains(
+function processRegularChains(
   device,
   deviceInfo,
   includeChains,

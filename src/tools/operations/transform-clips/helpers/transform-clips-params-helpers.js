@@ -10,7 +10,7 @@ import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
  * @param {string | undefined} transposeValues - Comma-separated list of transpose values
  * @returns {boolean} True if any audio params are specified
  */
-export function hasAudioTransformParams(
+function hasAudioTransformParams(
   gainDbMin,
   gainDbMax,
   transposeMin,
@@ -39,7 +39,7 @@ export function hasAudioTransformParams(
  * @param {number | undefined} probability - Probability for note generation
  * @returns {boolean} True if any MIDI params are specified
  */
-export function hasMidiTransformParams(
+function hasMidiTransformParams(
   velocityMin,
   velocityMax,
   transposeMin,
@@ -70,7 +70,7 @@ export function hasMidiTransformParams(
  * @param {object} rng - Random number generator
  * @param {Set} warnings - Set to track emitted warnings
  */
-export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
+function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;
 
   if (!isAudioClip) {
@@ -92,7 +92,7 @@ export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
  * @param {object} rng - Random number generator
  * @param {Set} warnings - Set to track emitted warnings
  */
-export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
+function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
 
   if (!isMidiClip) {

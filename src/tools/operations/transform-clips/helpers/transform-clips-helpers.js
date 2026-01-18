@@ -8,34 +8,6 @@ import {
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.js";
-import {
-  hasAudioTransformParams,
-  hasMidiTransformParams,
-  applyAudioTransformIfNeeded,
-  applyMidiTransformIfNeeded,
-  applyParameterTransforms,
-} from "./transform-clips-params-helpers.js";
-import {
-  performShuffling,
-  shuffleArray,
-} from "./transform-clips-shuffling-helpers.js";
-import {
-  prepareSliceParams,
-  performSlicing,
-} from "./transform-clips-slicing-helpers.js";
-
-// Re-export for backward compatibility
-export {
-  prepareSliceParams,
-  performSlicing,
-  performShuffling,
-  hasAudioTransformParams,
-  hasMidiTransformParams,
-  applyAudioTransformIfNeeded,
-  applyMidiTransformIfNeeded,
-  applyParameterTransforms,
-  shuffleArray,
-};
 
 /**
  * Parse transpose values from comma-separated string

@@ -34,7 +34,7 @@ import * as console from "#src/shared/v8-max-console.js";
  * @param {number} currentDuration - Current note duration (used when step is null)
  * @returns {Array<TimePosition>} Expanded positions
  */
-export function expandRepeatPattern(
+function expandRepeatPattern(
   pattern,
   currentBar,
   beatsPerBar,
@@ -74,7 +74,7 @@ export function expandRepeatPattern(
  * @param {Array<NoteEvent>} events - Events array to append to
  * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
  */
-export function emitPitchAtPosition(
+function emitPitchAtPosition(
   pitchState,
   position,
   beatsPerBar,
@@ -136,7 +136,7 @@ export function emitPitchAtPosition(
  * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
  * @returns {{ currentTime: TimePosition | null, hasExplicitBarNumber: boolean }} Updated currentTime and hasExplicitBarNumber flag
  */
-export function emitPitchesAtPositions(
+function emitPitchesAtPositions(
   positions,
   currentPitches,
   element,

@@ -8,8 +8,7 @@
  * @param {number} ms - Milliseconds to sleep
  * @returns {Promise<void>} Resolves after the delay
  */
-export const sleep = (ms) =>
-  new Promise((resolve) => new Task(resolve).schedule(ms));
+const sleep = (ms) => new Promise((resolve) => new Task(resolve).schedule(ms));
 
 /**
  * Wait until a predicate returns true, polling at intervals

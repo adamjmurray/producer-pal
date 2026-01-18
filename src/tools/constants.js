@@ -30,9 +30,6 @@ export const DEVICE_TYPE = {
   MIDI_EFFECT_RACK: "midi-effect-rack",
 };
 
-// Array of all valid device types for documentation
-export const DEVICE_TYPES = Object.values(DEVICE_TYPE);
-
 // Monitoring states for user-facing API
 export const MONITORING_STATE = {
   IN: "in",
@@ -64,10 +61,6 @@ export const LIVE_API_WARP_MODE_REPITCH = 3;
 export const LIVE_API_WARP_MODE_COMPLEX = 4;
 export const LIVE_API_WARP_MODE_REX = 5;
 export const LIVE_API_WARP_MODE_PRO = 6;
-
-// Live API numeric values for focused_document_view
-export const LIVE_API_VIEW_SESSION = 1;
-export const LIVE_API_VIEW_ARRANGEMENT = 2;
 
 // Live API view names from available_main_views
 export const LIVE_API_VIEW_NAMES = {
@@ -116,14 +109,6 @@ export const VALID_SCALE_NAMES = [
   "Messiaen 6",
   "Messiaen 7",
 ];
-
-// Live API object type names (from LiveAPI.type property)
-export const LIVE_API_TYPE = {
-  TRACK: "Track",
-  SCENE: "Scene",
-  CLIP: "Clip",
-  DEVICE: "Device",
-};
 
 export const VALID_DEVICES = {
   instruments: [

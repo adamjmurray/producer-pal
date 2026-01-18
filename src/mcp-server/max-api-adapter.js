@@ -13,7 +13,7 @@ import * as console from "./node-for-max-logger.js";
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
 
-export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
+const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();

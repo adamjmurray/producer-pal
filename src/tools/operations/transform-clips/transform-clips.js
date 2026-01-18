@@ -4,20 +4,13 @@ import {
   parseTransposeValues,
   getClipIds,
   createSeededRNG,
-  randomInRange,
 } from "./helpers/transform-clips-helpers.js";
 import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.js";
-import {
-  performShuffling,
-  shuffleArray,
-} from "./helpers/transform-clips-shuffling-helpers.js";
+import { performShuffling } from "./helpers/transform-clips-shuffling-helpers.js";
 import {
   prepareSliceParams,
   performSlicing,
 } from "./helpers/transform-clips-slicing-helpers.js";
-
-// Re-export helpers for backward compatibility with tests
-export { createSeededRNG, randomInRange, shuffleArray };
 
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters

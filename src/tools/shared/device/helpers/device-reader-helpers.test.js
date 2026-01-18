@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
+import { updateDrumPadSoloStates } from "./device-reader-drum-helpers.js";
 import {
   buildChainInfo,
   isRedundantDeviceClassName,
-  computeState,
-  isInstrumentDevice,
-  hasInstrumentInDevices,
-  updateDrumPadSoloStates,
   readMacroVariations,
   readABCompare,
   processDeviceChains,
 } from "./device-reader-helpers.js";
+import {
+  computeState,
+  isInstrumentDevice,
+  hasInstrumentInDevices,
+} from "./device-state-helpers.js";
 
 describe("device-reader-helpers", () => {
   describe("buildChainInfo", () => {

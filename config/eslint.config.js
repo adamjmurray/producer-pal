@@ -30,6 +30,25 @@ const baseRules = {
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
   "import/no-relative-packages": "error", // Don't use relative paths to node_modules
   "import/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
+  // NOTE: This rule requires an empty .eslintrc.json at project root due to a
+  // known limitation in eslint-plugin-import with flat config.
+  // See: https://github.com/import-js/eslint-plugin-import/issues/3079
+  "import/no-unused-modules": [
+    "error",
+    {
+      unusedExports: true, // Report exports not imported anywhere
+      // Entry points not imported by other modules (external entry points):
+      ignoreExports: [
+        "**/live-api-adapter.js", // Max for Live V8 entry point
+        "**/producer-pal-portal.js", // MCP stdio-to-http portal entry point
+        "webui/src/main.tsx", // Chat UI entry point
+        "**/test/**", // Test utilities and mocks
+        "**/tests/**", // Test directories
+        "**/*.test.{js,ts,tsx}", // Test files
+        "**/*-test-helpers.js", // Test helpers
+      ],
+    },
+  ],
   "import/order": [
     "error",
     {

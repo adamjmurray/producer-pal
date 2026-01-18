@@ -28,7 +28,7 @@ import { handleQuantization } from "./update-clip-quantization-helpers.js";
  * @param {boolean} args.isLooping - Whether clip is looping
  * @returns {{startBeats, endBeats, firstStartBeats, startMarkerBeats}} Beat positions
  */
-export function calculateBeatPositions({
+function calculateBeatPositions({
   start,
   length,
   firstStart,
@@ -165,7 +165,7 @@ function addLoopProperties(
  * @param {number|null} args.currentLoopEnd - Current loop end position in beats
  * @returns {object} Properties object ready for clip.setAll()
  */
-export function buildClipPropertiesToSet({
+function buildClipPropertiesToSet({
   name,
   color,
   timeSignature,
@@ -229,7 +229,7 @@ export function buildClipPropertiesToSet({
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number|null} Final note count, or null if notes not modified
  */
-export function handleNoteUpdates(
+function handleNoteUpdates(
   clip,
   notationString,
   modulationString,
