@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   VALID_PITCH_CLASS_NAMES,
   pitchClassToNumber,
@@ -24,7 +23,7 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
  * @returns {object|null} Cleanup info or null if no extension needed
  */
 export function extendSongIfNeeded(liveSet, targetBeats, context) {
-  const songLength = liveSet.get("song_length")[0];
+  const songLength = /** @type {number} */ (liveSet.get("song_length")[0]);
 
   if (targetBeats <= songLength) {
     return null; // No extension needed
@@ -38,7 +37,7 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
 
-    if (track.getProperty("has_midi_input") > 0) {
+    if (/** @type {number} */ (track.getProperty("has_midi_input")) > 0) {
       selectedTrack = track;
       isMidiTrack = true;
       break;
@@ -58,10 +57,8 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
   if (isMidiTrack) {
     // Create temp MIDI clip in arrangement (1 beat minimum)
-    const tempClipResult = selectedTrack.call(
-      "create_midi_clip",
-      targetBeats,
-      1,
+    const tempClipResult = /** @type {string} */ (
+      selectedTrack.call("create_midi_clip", targetBeats, 1)
     );
     const tempClip = LiveAPI.from(tempClipResult);
 
@@ -81,10 +78,12 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
     context.silenceWavPath,
   );
 
-  const arrangementClipResult = selectedTrack.call(
-    "duplicate_clip_to_arrangement",
-    `id ${sessionClip.id}`,
-    targetBeats,
+  const arrangementClipResult = /** @type {string} */ (
+    selectedTrack.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sessionClip.id}`,
+      targetBeats,
+    )
   );
   const arrangementClip = LiveAPI.from(arrangementClipResult);
 
