@@ -12,11 +12,14 @@
     "src/live-api-adapter/**/*.js",
     "src/notation/**/*.js",
     "src/tools/shared/**/*.js",
+    "src/tools/scene/**/*.js",
+    "src/tools/control/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
     "**/*.test.js",
     "**/*-test-helpers.js",
+    "src/**/*.def.js",
     "src/notation/barbeat/parser/barbeat-parser.js",
     "src/notation/modulation/parser/modulation-parser.js"
   ]

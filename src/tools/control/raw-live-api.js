@@ -2,6 +2,7 @@ import { errorMessage } from "#src/shared/error-utils.js";
 
 const MAX_OPERATIONS = 50;
 
+/** @type {Record<string, { property?: boolean, method?: boolean, valueDefined?: boolean, valueTruthy?: boolean }>} */
 const OPERATION_REQUIREMENTS = {
   get_property: { property: true },
   set_property: { property: true, valueDefined: true },
@@ -18,6 +19,7 @@ const OPERATION_REQUIREMENTS = {
   setColor: { valueTruthy: true },
 };
 
+/** @type {Record<string, { property?: string, method?: string, value?: string }>} */
 const OPERATION_ERROR_MESSAGES = {
   get_property: { property: "get_property operation requires property" },
   set_property: {
@@ -97,7 +99,9 @@ function executeOperation(api, operation) {
 
   switch (type) {
     case "get_property":
-      return api[property];
+      return /** @type {Record<string, unknown>} */ (
+        /** @type {unknown} */ (api)
+      )[property];
 
     case "set_property":
       api.set(property, operation.value);
@@ -106,8 +110,11 @@ function executeOperation(api, operation) {
 
     case "call_method": {
       const args = operation.args || [];
+      const methodFn = /** @type {Record<string, Function>} */ (
+        /** @type {unknown} */ (api)
+      )[method];
 
-      return api[method](...args);
+      return methodFn.apply(api, args);
     }
 
     case "get":
