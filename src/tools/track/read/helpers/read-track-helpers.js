@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
@@ -95,7 +94,8 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
     };
   }
 
-  const isMidiTrack = track.getProperty("has_midi_input") > 0;
+  const isMidiTrack =
+    /** @type {number} */ (track.getProperty("has_midi_input")) > 0;
 
   const result = {
     id: track.id,
@@ -111,7 +111,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
   }
 
   // Arrangement clips - exclude group tracks which have no arrangement clips
-  const isGroup = track.getProperty("is_foldable") > 0;
+  const isGroup = /** @type {number} */ (track.getProperty("is_foldable")) > 0;
 
   if (isGroup) {
     if (includeFlags.includeArrangementClips || includeFlags.includeAllClips) {
@@ -162,19 +162,22 @@ export function handleNonExistentTrack(category, trackIndex) {
  * @param {boolean} canBeArmed - Whether the track can be armed
  */
 export function addOptionalBooleanProperties(result, track, canBeArmed) {
-  const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
+  const isArmed = canBeArmed
+    ? /** @type {number} */ (track.getProperty("arm")) > 0
+    : false;
 
   if (isArmed) {
     result.isArmed = isArmed;
   }
 
-  const isGroup = track.getProperty("is_foldable") > 0;
+  const isGroup = /** @type {number} */ (track.getProperty("is_foldable")) > 0;
 
   if (isGroup) {
     result.isGroup = isGroup;
   }
 
-  const isGroupMember = track.getProperty("is_grouped") > 0;
+  const isGroupMember =
+    /** @type {number} */ (track.getProperty("is_grouped")) > 0;
 
   if (isGroupMember) {
     result.isGroupMember = isGroupMember;
@@ -224,13 +227,17 @@ export function addSlotIndices(result, track, category) {
     return;
   }
 
-  const playingSlotIndex = track.getProperty("playing_slot_index");
+  const playingSlotIndex = /** @type {number} */ (
+    track.getProperty("playing_slot_index")
+  );
 
   if (playingSlotIndex >= 0) {
     result.playingSlotIndex = playingSlotIndex;
   }
 
-  const firedSlotIndex = track.getProperty("fired_slot_index");
+  const firedSlotIndex = /** @type {number} */ (
+    track.getProperty("fired_slot_index")
+  );
 
   if (firedSlotIndex >= 0) {
     result.firedSlotIndex = firedSlotIndex;
@@ -356,7 +363,7 @@ export function readMixerProperties(track, returnTrackNames) {
       names = returnTrackIds.map((_, idx) => {
         const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
 
-        return rt.getProperty("name");
+        return /** @type {string} */ (rt.getProperty("name"));
       });
     }
 
