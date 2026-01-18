@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 /**
  * @typedef {object} ResolvedPath
  * @property {string} liveApiPath - Live API canonical path
@@ -121,6 +120,7 @@ export function resolvePathToLiveApi(path) {
   }
 
   // Parse remaining segments using explicit prefixes
+  /** @type {'device'|'chain'|'drum-pad'|'return-chain'} */
   let targetType = "device";
 
   for (let i = 1; i < segments.length; i++) {

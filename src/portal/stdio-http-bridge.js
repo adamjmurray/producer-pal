@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -19,21 +18,31 @@ const SETUP_URL = "https://producer-pal.org";
  * Provides graceful fallback when Producer Pal is not running
  */
 export class StdioHttpBridge {
+  /**
+   * @param {string} httpUrl - URL of the HTTP MCP server
+   * @param {object} [options] - Configuration options
+   */
   constructor(httpUrl, options = {}) {
     this.httpUrl = httpUrl;
     this.options = options;
+    /** @type {import("@modelcontextprotocol/sdk/server/index.js").Server | null} */
     this.mcpServer = null;
+    /** @type {import("@modelcontextprotocol/sdk/client/index.js").Client | null} */
     this.httpClient = null;
     this.isConnected = false;
     this.fallbackTools = this._generateFallbackTools();
   }
 
   _generateFallbackTools() {
-    // Create MCP server instance to extract tool definitions
-    const server = createMcpServer();
+    // Create MCP server to extract tool definitions (callLiveApi not used)
+    const server = createMcpServer(/** @type {*} */ (null));
     const tools = [];
 
-    for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
+    // Access private _registeredTools for fallback tool list
+    /** @type {Record<string, {title?: string, description: string, inputSchema?: object}>} */
+    const registeredTools = /** @type {*} */ (server)._registeredTools;
+
+    for (const [name, toolInfo] of Object.entries(registeredTools)) {
       if (name === "ppal-raw-live-api") {
         continue;
       } // Skip development-only tool

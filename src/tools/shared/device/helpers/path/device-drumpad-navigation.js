@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { noteNameToMidi } from "#src/shared/pitch.js";
 
 /**
@@ -29,6 +28,7 @@ function getChildAtIndex(parent, childType, index) {
 // eslint-disable-next-line sonarjs/cognitive-complexity -- drum pad path navigation requires handling multiple segment types in one loop
 function navigateRemainingSegments(startDevice, segments) {
   let current = startDevice;
+  /** @type {'chain'|'device'} */
   let currentType = "device";
 
   for (let i = 0; i < segments.length; i++) {

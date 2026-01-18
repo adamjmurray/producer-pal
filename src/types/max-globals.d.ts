@@ -4,6 +4,16 @@
  */
 
 /**
+ * Process object (values injected by Rollup at build time)
+ */
+declare const process: {
+  env: {
+    ENABLE_RAW_LIVE_API?: string;
+    [key: string]: string | undefined;
+  };
+};
+
+/**
  * Context object passed to tool functions.
  * Contains runtime state managed by the live-api-adapter.
  */

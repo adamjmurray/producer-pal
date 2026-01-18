@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.js";
 
