@@ -255,6 +255,7 @@ export function handleNoteUpdates(
  * @param {object} params - Parameters object containing all update parameters
  * @param {LiveAPI} params.clip - The clip to update
  * @param {string} params.notationString - Musical notation string
+ * @param {string} params.modulationString - Modulation expressions to apply
  * @param {string} params.noteUpdateMode - Note update mode (merge or replace)
  * @param {string} params.name - Clip name
  * @param {string} params.color - Clip color

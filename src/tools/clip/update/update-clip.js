@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   validateAndParseArrangementParams,
   emitArrangementWarnings,
@@ -11,34 +10,38 @@ import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
 
 /**
+ * @typedef {object} UpdateClipArgs
+ * @property {string} ids - Clip ID or comma-separated list of clip IDs to update
+ * @property {string} [notes] - Musical notation string
+ * @property {string} [modulations] - Modulation expressions (parameter: expression per line)
+ * @property {string} [noteUpdateMode] - How to handle existing notes: 'replace' or 'merge'
+ * @property {string} [name] - Optional clip name
+ * @property {string} [color] - Optional clip color (CSS format: hex)
+ * @property {string} [timeSignature] - Time signature in format "4/4"
+ * @property {string} [start] - Bar|beat position where loop/clip region begins
+ * @property {string} [length] - Duration in bar:beat format. end = start + length
+ * @property {string} [firstStart] - Bar|beat position for initial playback start
+ * @property {boolean} [looping] - Enable looping for the clip
+ * @property {string} [arrangementStart] - Bar|beat position to move arrangement clip
+ * @property {string} [arrangementLength] - Bar:beat duration for arrangement span
+ * @property {number} [gainDb] - Audio clip gain in decibels (-70 to 24)
+ * @property {number} [pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @property {string} [warpMode] - Audio clip warp mode
+ * @property {boolean} [warping] - Audio clip warping on/off
+ * @property {string} [warpOp] - Warp marker operation: add, move, remove
+ * @property {number} [warpBeatTime] - Beat time for warp marker operation
+ * @property {number} [warpSampleTime] - Sample time for warp marker operation
+ * @property {number} [warpDistance] - Distance parameter for move operations
+ * @property {number} [quantize] - Quantization strength 0-1 (MIDI clips only)
+ * @property {string} [quantizeGrid] - Note grid for quantization
+ * @property {number} [quantizeSwing] - Swing amount 0-1 (default: 0)
+ * @property {number} [quantizePitch] - Limit quantization to specific pitch
+ */
+
+/**
  * Updates properties of existing clips
- * @param {object} args - The clip parameters
- * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
- * @param {string} [args.notes] - Musical notation string
- * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
- * @param {string} [args.noteUpdateMode="merge"] - How to handle existing notes: 'replace' or 'merge'
- * @param {string} [args.name] - Optional clip name
- * @param {string} [args.color] - Optional clip color (CSS format: hex)
- * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.start] - Bar|beat position where loop/clip region begins
- * @param {string} [args.length] - Duration in bar:beat format. end = start + length
- * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
- * @param {boolean} [args.looping] - Enable looping for the clip
- * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
- * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (supports shortening, hidden content exposure, and tiling)
- * @param {number} [args.gainDb] - Audio clip gain in decibels (-70 to 24)
- * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
- * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
- * @param {boolean} [args.warping] - Audio clip warping on/off
- * @param {string} [args.warpOp] - Warp marker operation: add, move, remove
- * @param {number} [args.warpBeatTime] - Beat time for warp marker operation
- * @param {number} [args.warpSampleTime] - Sample time for warp marker operation
- * @param {number} [args.warpDistance] - Distance parameter for move operations
- * @param {number} [args.quantize] - Quantization strength 0-1 (MIDI clips only)
- * @param {string} [args.quantizeGrid] - Note grid for quantization
- * @param {number} [args.quantizeSwing] - Swing amount 0-1 (default: 0)
- * @param {number} [args.quantizePitch] - Limit quantization to specific pitch
- * @param {object} context - Tool execution context with holding area settings
+ * @param {UpdateClipArgs} args - The clip parameters
+ * @param {Partial<ToolContext>} [context] - Tool execution context with holding area settings
  * @returns {object | Array<object>} Single clip object or array of clip objects
  */
 export function updateClip(
@@ -68,7 +71,7 @@ export function updateClip(
     quantizeGrid,
     quantizeSwing,
     quantizePitch,
-  } = {},
+  },
   context = {},
 ) {
   if (!ids) {
