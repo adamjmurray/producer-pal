@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
@@ -18,10 +17,9 @@ import {
 
 /**
  * Read comprehensive information about the Live Set
- * @param {object} args - The parameters
- * @param {Array<string>} [args.include] - Array of data to include in the response
- * @param {object} _context - Internal context object (unused)
- * @returns {object} Live Set information including tracks, scenes, tempo, time signature, and scale
+ * @param {{ include?: string[] }} [args] - The parameters
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
+ * @returns {Record<string, unknown>} Live Set information including tracks, scenes, tempo, time signature, and scale
  */
 export function readLiveSet(args = {}, _context = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
@@ -32,13 +30,15 @@ export function readLiveSet(args = {}, _context = {}) {
   const sceneIds = liveSet.getChildIds("scenes");
 
   // Compute return track names once for efficiency (used for sends in mixer data)
+  /** @type {string[]} */
   const returnTrackNames = returnTrackIds.map((_, idx) => {
     const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
 
-    return rt.getProperty("name");
+    return /** @type {string} */ (rt.getProperty("name"));
   });
 
   const liveSetName = liveSet.getProperty("name");
+  /** @type {Record<string, unknown>} */
   const result = {
     id: liveSet.id,
     ...(liveSetName && { name: liveSetName }),
@@ -56,7 +56,8 @@ export function readLiveSet(args = {}, _context = {}) {
   }
 
   // Only include isPlaying when true
-  const isPlaying = liveSet.getProperty("is_playing") > 0;
+  const isPlaying =
+    /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
 
   if (isPlaying) {
     result.isPlaying = isPlaying;
@@ -116,15 +117,18 @@ export function readLiveSet(args = {}, _context = {}) {
   }
 
   // Only include scale properties when scale is enabled
-  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
+  const scaleEnabled =
+    /** @type {number} */ (liveSet.getProperty("scale_mode")) > 0;
 
   if (scaleEnabled) {
     const scaleName = liveSet.getProperty("scale_name");
-    const rootNote = liveSet.getProperty("root_note");
+    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
 
     result.scale = `${scaleRoot} ${scaleName}`;
-    const scaleIntervals = liveSet.getProperty("scale_intervals");
+    const scaleIntervals = /** @type {number[]} */ (
+      liveSet.getProperty("scale_intervals")
+    );
 
     result.scalePitches = intervalsToPitchClasses(
       scaleIntervals,
@@ -134,8 +138,12 @@ export function readLiveSet(args = {}, _context = {}) {
 
   // Include locators when requested
   if (includeFlags.includeLocators) {
-    const timeSigNumerator = liveSet.getProperty("signature_numerator");
-    const timeSigDenominator = liveSet.getProperty("signature_denominator");
+    const timeSigNumerator = /** @type {number} */ (
+      liveSet.getProperty("signature_numerator")
+    );
+    const timeSigDenominator = /** @type {number} */ (
+      liveSet.getProperty("signature_denominator")
+    );
 
     result.locators = readLocators(
       liveSet,
