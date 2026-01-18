@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -203,7 +202,9 @@ function wrapInstrumentsInRack(devices, toPath, name) {
     getDeviceInsertionPoint(firstDevice);
 
   // 2. Create temp MIDI track (appended)
-  const tempTrackId = liveSet.call("create_midi_track", -1);
+  const tempTrackId = /** @type {string} */ (
+    liveSet.call("create_midi_track", -1)
+  );
   const tempTrack = LiveAPI.from(tempTrackId);
   const tempTrackIndex = tempTrack.trackIndex;
 
