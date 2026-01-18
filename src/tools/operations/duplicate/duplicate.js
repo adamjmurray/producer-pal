@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { select } from "#src/tools/control/select.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
@@ -53,25 +52,29 @@ function resolveArrangementPosition(
 }
 
 /**
+ * @typedef {object} DuplicateArgs
+ * @property {string} type - Type of object to duplicate ("track", "scene", "clip", or "device")
+ * @property {string} id - ID of the object to duplicate
+ * @property {number} [count] - Number of duplicates to create (default 1)
+ * @property {string} [destination] - Destination for clip duplication ("session" or "arrangement")
+ * @property {string} [arrangementStart] - Start time in bar|beat format
+ * @property {string} [arrangementLocatorId] - Locator ID for arrangement position
+ * @property {string} [arrangementLocatorName] - Locator name for arrangement position
+ * @property {string} [arrangementLength] - Duration in bar:beat format
+ * @property {string} [name] - Optional name for the duplicated object(s)
+ * @property {boolean} [withoutClips] - Whether to exclude clips
+ * @property {boolean} [withoutDevices] - Whether to exclude devices
+ * @property {boolean} [routeToSource] - Whether to enable MIDI layering
+ * @property {boolean} [switchView] - Automatically switch view
+ * @property {number} [toTrackIndex] - Destination track index (for session clips)
+ * @property {string} [toSceneIndex] - Destination scene index(es)
+ * @property {string} [toPath] - Destination path for device duplication
+ */
+
+/**
  * Duplicates an object based on its type.
- * @param {object} args - The parameters
- * @param {string} args.type - Type of object to duplicate ("track", "scene", "clip", or "device")
- * @param {string} args.id - ID of the object to duplicate
- * @param {number} [args.count=1] - Number of duplicates to create
- * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement")
- * @param {string} [args.arrangementStart] - Start time in bar|beat format
- * @param {string} [args.arrangementLocatorId] - Locator ID for arrangement position
- * @param {string} [args.arrangementLocatorName] - Locator name for arrangement position
- * @param {string} [args.arrangementLength] - Duration in bar:beat format
- * @param {string} [args.name] - Optional name for the duplicated object(s)
- * @param {boolean} [args.withoutClips] - Whether to exclude clips
- * @param {boolean} [args.withoutDevices] - Whether to exclude devices
- * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering
- * @param {boolean} [args.switchView=false] - Automatically switch view
- * @param {number} [args.toTrackIndex] - Destination track index (for session clips)
- * @param {string} [args.toSceneIndex] - Destination scene index(es)
- * @param {string} [args.toPath] - Destination path for device duplication
- * @param {object} [context] - Context object
+ * @param {DuplicateArgs} args - The parameters
+ * @param {Partial<ToolContext>} [context] - Context object
  * @returns {object | Array<object>} Result object(s)
  */
 export function duplicate(
@@ -92,7 +95,7 @@ export function duplicate(
     toTrackIndex,
     toSceneIndex,
     toPath,
-  } = {},
+  },
   context = {},
 ) {
   // Validate basic inputs
@@ -327,8 +330,12 @@ function duplicateSceneToArrangementView(
 ) {
   // All arrangement operations need song time signature for bar|beat conversion
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   // Resolve arrangement start position from bar|beat or locator
   const baseArrangementStartBeats = resolveArrangementPosition(

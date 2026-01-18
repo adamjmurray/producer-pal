@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
@@ -127,7 +126,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 
   for (let i = 0; i < returnTrackIds.length; i++) {
     const rt = LiveAPI.from(`live_set return_tracks ${i}`);
-    const name = rt.getProperty("name");
+    const name = /** @type {string} */ (rt.getProperty("name"));
 
     // Match exact name or single-letter prefix
     if (name === sendReturn || name.startsWith(sendReturn + "-")) {
@@ -263,28 +262,32 @@ function applyMixerProperties(
 }
 
 /**
+ * @typedef {object} UpdateTrackArgs
+ * @property {string} ids - Track ID or comma-separated list of track IDs to update
+ * @property {string} [name] - Optional track name
+ * @property {string} [color] - Optional track color (CSS format: hex)
+ * @property {number} [gainDb] - Optional track gain in dB (-70 to 6)
+ * @property {number} [pan] - Optional pan position in stereo mode (-1 to 1)
+ * @property {string} [panningMode] - Optional panning mode ('stereo' or 'split')
+ * @property {number} [leftPan] - Optional left channel pan in split mode (-1 to 1)
+ * @property {number} [rightPan] - Optional right channel pan in split mode (-1 to 1)
+ * @property {boolean} [mute] - Optional mute state
+ * @property {boolean} [solo] - Optional solo state
+ * @property {boolean} [arm] - Optional arm state
+ * @property {string} [inputRoutingTypeId] - Optional input routing type identifier
+ * @property {string} [inputRoutingChannelId] - Optional input routing channel identifier
+ * @property {string} [outputRoutingTypeId] - Optional output routing type identifier
+ * @property {string} [outputRoutingChannelId] - Optional output routing channel identifier
+ * @property {string} [monitoringState] - Optional monitoring state ('in', 'auto', 'off')
+ * @property {boolean} [arrangementFollower] - Whether the track should follow the arrangement timeline
+ * @property {number} [sendGainDb] - Optional send gain in dB (-70 to 0), requires sendReturn
+ * @property {string} [sendReturn] - Optional return track name (exact or letter prefix), requires sendGainDb
+ */
+
+/**
  * Updates properties of existing tracks
- * @param {object} args - The track parameters
- * @param {string} args.ids - Track ID or comma-separated list of track IDs to update
- * @param {string} [args.name] - Optional track name
- * @param {string} [args.color] - Optional track color (CSS format: hex)
- * @param {number} [args.gainDb] - Optional track gain in dB (-70 to 6)
- * @param {number} [args.pan] - Optional pan position in stereo mode (-1 to 1)
- * @param {string} [args.panningMode] - Optional panning mode ('stereo' or 'split')
- * @param {number} [args.leftPan] - Optional left channel pan in split mode (-1 to 1)
- * @param {number} [args.rightPan] - Optional right channel pan in split mode (-1 to 1)
- * @param {boolean} [args.mute] - Optional mute state
- * @param {boolean} [args.solo] - Optional solo state
- * @param {boolean} [args.arm] - Optional arm state
- * @param {string} [args.inputRoutingTypeId] - Optional input routing type identifier
- * @param {string} [args.inputRoutingChannelId] - Optional input routing channel identifier
- * @param {string} [args.outputRoutingTypeId] - Optional output routing type identifier
- * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
- * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
- * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
- * @param {number} [args.sendGainDb] - Optional send gain in dB (-70 to 0), requires sendReturn
- * @param {string} [args.sendReturn] - Optional return track name (exact or letter prefix), requires sendGainDb
- * @param {object} _context - Internal context object (unused)
+ * @param {UpdateTrackArgs} args - The track parameters
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
  * @returns {object | Array<object>} Single track object or array of track objects
  */
 export function updateTrack(
@@ -308,7 +311,7 @@ export function updateTrack(
     arrangementFollower,
     sendGainDb,
     sendReturn,
-  } = {},
+  },
   _context = {},
 ) {
   if (!ids) {

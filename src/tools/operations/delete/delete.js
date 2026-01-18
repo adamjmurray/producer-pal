@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
@@ -15,14 +14,11 @@ const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 
 /**
  * Deletes objects by ids and/or paths
- * @param {object} args - The parameters
- * @param {string} [args.ids] - ID or comma-separated list of IDs to delete
- * @param {string} [args.path] - Path or comma-separated paths to delete (for device or drum-pad types)
- * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", "device", or "drum-pad")
- * @param {object} _context - Internal context object (unused)
- * @returns {object | Array<object>} Result object(s) with success information
+ * @param {{ ids?: string, path?: string, type: string }} args - The parameters
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
+ * @returns {{ id: string, type: string, deleted: boolean } | Array<{ id: string, type: string, deleted: boolean }>} Result object(s) with success information
  */
-export function deleteObject({ ids, path, type } = {}, _context = {}) {
+export function deleteObject({ ids, path, type }, _context = {}) {
   if (!type) {
     throw new Error("delete failed: type is required");
   }

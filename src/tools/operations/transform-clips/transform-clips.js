@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
@@ -108,7 +107,8 @@ export function transformClips(
 
   // Filter arrangement clips only for position shuffling and slicing
   const arrangementClips = clips.filter(
-    (clip) => clip.getProperty("is_arrangement_clip") > 0,
+    (clip) =>
+      /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0,
   );
 
   // Prepare slice parameters if needed
@@ -127,7 +127,8 @@ export function transformClips(
     // After slicing, re-filter arrangement clips to get fresh objects
     // (the clips array was modified by splice operations during re-scanning)
     const freshArrangementClips = clips.filter(
-      (clip) => clip.getProperty("is_arrangement_clip") > 0,
+      (clip) =>
+        /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0,
     );
 
     // Update arrangementClips reference for subsequent operations
