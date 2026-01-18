@@ -10,6 +10,7 @@ export const liveApiSet = vi.fn();
 export const liveApiCall = vi.fn();
 
 export class LiveAPI {
+  /** @param {string} [path] - Live API path */
   constructor(path) {
     this._path = path;
     this.get = liveApiGet;
@@ -20,6 +21,11 @@ export class LiveAPI {
       : path?.replaceAll(/\s+/g, "/");
   }
 
+  /**
+   * Create LiveAPI from id or path
+   * @param {string | string[] | number} idOrPath - ID or path
+   * @returns {LiveAPI} - LiveAPI instance
+   */
   static from(idOrPath) {
     // Handle array format ["id", "123"] from Live API calls
     if (Array.isArray(idOrPath)) {
@@ -58,6 +64,11 @@ export class LiveAPI {
     return this.path;
   }
 
+  /**
+   * Get child IDs by property name
+   * @param {string} name - Property name
+   * @returns {string[]} - Array of child IDs
+   */
   getChildIds(name) {
     const idArray = this.get(name);
 
@@ -65,6 +76,7 @@ export class LiveAPI {
       return [];
     }
 
+    /** @type {string[]} */
     const ids = [];
 
     for (let i = 0; i < idArray.length; i += 2) {
@@ -76,10 +88,20 @@ export class LiveAPI {
     return ids;
   }
 
+  /**
+   * Get children by property name
+   * @param {string} name - Property name
+   * @returns {LiveAPI[]} - Array of LiveAPI instances
+   */
   getChildren(name) {
     return this.getChildIds(name).map((id) => new LiveAPI(id));
   }
 
+  /**
+   * Get property value
+   * @param {string} property - Property name
+   * @returns {unknown} - Property value
+   */
   getProperty(property) {
     return this.get(property)?.[0];
   }
@@ -323,37 +345,46 @@ function getPropertyByType(type, prop, _path) {
 
 /**
  * Mock the LiveAPI.get() method with optional custom overrides
- * @param {object} overrides - Property overrides by object id/path/type
+ * @param {Record<string, Record<string, unknown>>} overrides - Property overrides by object id/path/type
  */
 export function mockLiveApiGet(overrides = {}) {
-  liveApiGet.mockImplementation(function (prop) {
-    const overridesByProp =
-      overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
+  liveApiGet.mockImplementation(
+    /**
+     * Mock implementation for LiveAPI.get
+     * @this {{id: string, path: string, type: string}}
+     * @param {string} prop - Property name
+     * @returns {unknown[]} - Property value as array
+     */
+    function (prop) {
+      const overridesByProp = /** @type {Record<string, any> | undefined} */ (
+        overrides[this.id] ?? overrides[this.path] ?? overrides[this.type]
+      );
 
-    if (overridesByProp != null) {
-      const override = overridesByProp[prop];
+      if (overridesByProp != null) {
+        const override = overridesByProp[prop];
 
-      if (override !== undefined) {
-        // optionally support mocking a sequence of return values:
-        if (override instanceof MockSequence) {
-          overridesByProp.__callCount__ ??= {};
-          const callIndex = (overridesByProp.__callCount__[prop] ??= 0);
-          const value = override[callIndex];
+        if (override !== undefined) {
+          // optionally support mocking a sequence of return values:
+          if (override instanceof MockSequence) {
+            overridesByProp.__callCount__ ??= {};
+            const callIndex = (overridesByProp.__callCount__[prop] ??= 0);
+            const value = override[callIndex];
 
-          overridesByProp.__callCount__[prop]++;
+            overridesByProp.__callCount__[prop]++;
 
-          return [value];
+            return [value];
+          }
+
+          // or non-arrays always return the constant value for multiple calls to LiveAPI.get():
+          return Array.isArray(override) ? override : [override];
         }
-
-        // or non-arrays always return the constant value for multiple calls to LiveAPI.get():
-        return Array.isArray(override) ? override : [override];
       }
-    }
 
-    const result = getPropertyByType(this.type, prop, this.path);
+      const result = getPropertyByType(this.type, prop, this.path);
 
-    return result ?? [0];
-  });
+      return result ?? [0];
+    },
+  );
 }
 
 export const expectedTrack = (overrides = {}) => ({
@@ -405,8 +436,8 @@ export const expectedClip = (overrides = {}) => ({
 
 /**
  * Create Live API children array format from child IDs
- * @param {...any} childIds - Child object IDs to format as Live API array
- * @returns {Array} - Formatted Live API children array
+ * @param {...string} childIds - Child object IDs to format as Live API array
+ * @returns {string[]} - Formatted Live API children array
  */
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);

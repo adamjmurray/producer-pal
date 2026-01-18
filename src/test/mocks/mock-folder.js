@@ -1,12 +1,15 @@
 import { vi } from "vitest";
 
-// Store mock file system structure
+/**
+ * @typedef {{name: string, type: "file"|"fold", extension?: string}} FolderEntry
+ */
+
+/** @type {Record<string, FolderEntry[]>} */
 let mockFileSystem = {};
 
 /**
  * Configure the mock file system for Folder testing
- * @param {object} structure - Object mapping directory paths to arrays of entries
- *   Each entry: { name: string, type: "file"|"fold", extension?: string }
+ * @param {Record<string, FolderEntry[]>} structure - Object mapping directory paths to arrays of entries
  *
  * @example
  * mockFolderStructure({
@@ -35,6 +38,7 @@ export function clearMockFolderStructure() {
  * Mock Folder class that simulates v8 Max Folder API
  */
 export class Folder {
+  /** @param {string} path - Folder path */
   constructor(path) {
     this._path = path;
     this._entries = mockFileSystem[path] ?? [];
@@ -86,4 +90,6 @@ export class Folder {
 }
 
 // Spy versions for assertion testing
-export const folderConstructor = vi.fn((path) => new Folder(path));
+export const folderConstructor = vi.fn(
+  (/** @type {string} */ path) => new Folder(path),
+);
