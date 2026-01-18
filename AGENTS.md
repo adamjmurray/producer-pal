@@ -153,14 +153,19 @@ A file is classified as a **test file** if it matches any of these patterns:
   (ignoring blanks/comments); test helpers use the standard 325 line limit
 - **Coverage**: Test helpers excluded from coverage requirements
 
-## TypeScript (WebUI Only)
+## Type Checking
 
-**Scope:** TypeScript is ONLY used in `webui/` directory.
+**Scope:** All source code is type-checked via `npm run typecheck`:
+
+- `src/` and `scripts/` use JSDoc annotations with TypeScript's `checkJs`
+- `webui/` uses TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
-- All webui code must pass: `npm run typecheck`
-- All webui code must pass: `npm run lint`
+- All code must pass: `npm run typecheck`
+- All code must pass: `npm run lint`
+- Use JSDoc `@param`, `@returns`, and `@type` annotations for type safety in JS
+- Cast `getProperty()` returns: `/** @type {number} */ (obj.getProperty("x"))`
 - Prefer explicit return types on exported functions
 
 **Before committing:** `npm run check` must pass with zero errors
@@ -195,7 +200,7 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 ## Project Constraints
 
-- JavaScript for core project, TypeScript (.ts/.tsx) for webui source files
+- JavaScript with JSDoc types for `src/` and `scripts/`, TypeScript for `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
