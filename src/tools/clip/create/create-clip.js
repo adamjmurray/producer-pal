@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
   barBeatToAbletonBeats,
@@ -20,25 +19,29 @@ import {
 } from "./helpers/create-clip-helpers.js";
 
 /**
+ * @typedef {object} CreateClipArgs
+ * @property {string} view - View for the clip ('Session' or 'Arrangement')
+ * @property {number} trackIndex - Track index (0-based)
+ * @property {string} [sceneIndex] - Scene index(es), comma-separated for multiple
+ * @property {string} [arrangementStart] - Bar|beat position(s), comma-separated
+ * @property {string} [notes] - Musical notation string (MIDI clips only)
+ * @property {string} [modulations] - Modulation expressions
+ * @property {string} [sampleFile] - Absolute path to audio file (audio clips only)
+ * @property {string} [name] - Base name for the clips
+ * @property {string} [color] - Color in #RRGGBB hex format
+ * @property {string} [timeSignature] - Time signature in format "4/4"
+ * @property {string} [start] - Bar|beat position where loop/clip region begins
+ * @property {string} [length] - Clip length in bar:beat duration format
+ * @property {string} [firstStart] - Bar|beat position for initial playback start
+ * @property {boolean} [looping] - Enable looping for the clip
+ * @property {string} [auto] - Automatic playback action
+ * @property {boolean} [switchView] - Automatically switch to the appropriate view
+ */
+
+/**
  * Creates MIDI or audio clips in Session or Arrangement view
- * @param {object} args - The clip parameters
- * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
- * @param {number} args.trackIndex - Track index (0-based)
- * @param {string} [args.sceneIndex] - Scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')
- * @param {string} [args.arrangementStart] - Bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')
- * @param {string} [args.notes] - Musical notation string (MIDI clips only)
- * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
- * @param {string} [args.sampleFile] - Absolute path to audio file (audio clips only)
- * @param {string} [args.name] - Base name for the clips
- * @param {string} [args.color] - Color in #RRGGBB hex format
- * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.start] - Bar|beat position where loop/clip region begins
- * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars). end = start + length
- * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
- * @param {boolean} [args.looping] - Enable looping for the clip
- * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only.
- * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
- * @param {object} _context - Internal context object (unused)
+ * @param {CreateClipArgs} args - The clip parameters
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
  * @returns {object | Array<object>} Single clip object when one position, array when multiple positions
  */
 export function createClip(
@@ -59,7 +62,7 @@ export function createClip(
     looping = null,
     auto = null,
     switchView,
-  } = {},
+  },
   _context = {},
 ) {
   // Parse position lists
@@ -86,8 +89,12 @@ export function createClip(
   const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for arrangementStart conversion
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   // Determine clip time signature (custom or from song)
   let timeSigNumerator, timeSigDenominator;
