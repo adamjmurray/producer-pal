@@ -57,9 +57,9 @@ function resolveDrumPadContainer(path) {
     return LiveAPI.from(resolved.liveApiPath);
   }
 
-  // drumPadNote and remainingSegments are guaranteed for drum-pad targetType
+  // drumPadNote is guaranteed for drum-pad targetType
   const drumPadNote = /** @type {string} */ (resolved.drumPadNote);
-  const remainingSegments = resolved.remainingSegments ?? [];
+  const { remainingSegments } = resolved;
 
   // Try to resolve the drum pad chain
   const result = resolveDrumPadFromPath(

@@ -72,11 +72,11 @@ export function readDevice(
   }
 
   if (resolved.targetType === "drum-pad") {
-    // drumPadNote and remainingSegments are guaranteed for drum-pad targetType
+    // drumPadNote is guaranteed for drum-pad targetType
     return readDrumPadByPath(
       resolved.liveApiPath,
       /** @type {string} */ (resolved.drumPadNote),
-      resolved.remainingSegments ?? [],
+      resolved.remainingSegments,
       path,
       readOptions,
     );

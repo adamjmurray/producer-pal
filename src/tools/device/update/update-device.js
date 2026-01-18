@@ -236,9 +236,9 @@ function resolvePathToTarget(path) {
   }
 
   if (resolved.targetType === "drum-pad") {
-    // drumPadNote and remainingSegments are guaranteed for drum-pad targetType
+    // drumPadNote is guaranteed for drum-pad targetType
     const drumPadNote = /** @type {string} */ (resolved.drumPadNote);
-    const remainingSegments = resolved.remainingSegments ?? [];
+    const { remainingSegments } = resolved;
     const drumPadResult = resolveDrumPadFromPath(
       resolved.liveApiPath,
       drumPadNote,
