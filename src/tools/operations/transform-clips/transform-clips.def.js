@@ -115,4 +115,19 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .describe("probability offset to add (MIDI clips)"),
     seed: z.number().int().optional().describe("RNG seed for reproducibility"),
   },
+  smallModelModeConfig: {
+    toolDescription: "Randomize velocity and probability for MIDI clips",
+    excludeParams: [
+      "slice",
+      "shuffleOrder",
+      "transposeMin",
+      "transposeMax",
+      "transposeValues",
+      "gainDbMin",
+      "gainDbMax",
+      "durationMin",
+      "durationMax",
+      "seed",
+    ],
+  },
 });

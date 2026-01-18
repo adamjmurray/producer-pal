@@ -10,6 +10,7 @@ import {
   WARP_MODE,
 } from "#src/tools/constants.js";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
 
 // This approach is flawed. The warp marker algorithm does not work correctly in some cases.
@@ -118,7 +119,9 @@ function revealUnwarpedAudioContent(
   revealedClip.set("looping", 0);
 
   // Shorten the clip to only show the revealed portion (if needed)
-  const revealedClipEndTime = revealedClip.getProperty("end_time");
+  const revealedClipEndTime = /** @type {number} */ (
+    revealedClip.getProperty("end_time")
+  );
   const targetLengthBeats = newEndMarker - newStartMarker;
   const expectedEndTime = targetPosition + targetLengthBeats;
   const EPSILON = 0.001;
@@ -180,13 +183,12 @@ export function revealAudioContentAtPosition(
     );
     const revealedClip = LiveAPI.from(duplicateResult);
 
-    revealedClip.set("looping", 1);
-    revealedClip.set("loop_end", newEndMarker);
-    revealedClip.set("loop_start", newStartMarker);
-    revealedClip.set("end_marker", newEndMarker);
-    revealedClip.set("start_marker", newStartMarker);
-    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-    revealedClip.set("looping", 0);
+    setClipMarkersWithLoopingWorkaround(revealedClip, {
+      loopStart: newStartMarker,
+      loopEnd: newEndMarker,
+      startMarker: newStartMarker,
+      endMarker: newEndMarker,
+    });
 
     return revealedClip;
   }
@@ -205,10 +207,11 @@ export function revealAudioContentAtPosition(
 /**
  * Sets audio-specific parameters on a clip
  * @param {LiveAPI} clip - The audio clip
- * @param {number} [gainDb] - Audio clip gain in decibels (-70 to 24)
- * @param {number} [pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
- * @param {string} [warpMode] - Audio clip warp mode
- * @param {boolean} [warping] - Audio clip warping on/off
+ * @param {object} params - Audio parameters
+ * @param {number} [params.gainDb] - Audio clip gain in decibels (-70 to 24)
+ * @param {number} [params.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @param {string} [params.warpMode] - Audio clip warp mode
+ * @param {boolean} [params.warping] - Audio clip warping on/off
  */
 export function setAudioParameters(
   clip,
@@ -268,14 +271,18 @@ export function handleWarpMarkerOperation(
   const hasAudioFile = clip.getProperty("file_path") != null;
 
   if (!hasAudioFile) {
-    throw new Error(
-      `Warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+    console.error(
+      `Warning: warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
     );
+
+    return;
   }
 
   // Validate required parameters per operation
   if (warpBeatTime == null) {
-    throw new Error(`warpBeatTime required for ${warpOp} operation`);
+    console.error(`Warning: warpBeatTime required for ${warpOp} operation`);
+
+    return;
   }
 
   switch (warpOp) {
@@ -292,7 +299,9 @@ export function handleWarpMarkerOperation(
 
     case "move": {
       if (warpDistance == null) {
-        throw new Error("warpDistance required for move operation");
+        console.error("Warning: warpDistance required for move operation");
+
+        return;
       }
 
       clip.call("move_warp_marker", warpBeatTime, warpDistance);

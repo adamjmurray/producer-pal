@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { LiveAPI, mockLiveApiGet } from "#src/test/mock-live-api.js";
+import { LiveAPI, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
 import { getLocatorId, resolveLocatorToBeats } from "./locator-helpers.js";
 
 // Make the mock LiveAPI globally available

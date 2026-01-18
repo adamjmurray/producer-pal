@@ -5,7 +5,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
 import { createTrack } from "./create-track.js";

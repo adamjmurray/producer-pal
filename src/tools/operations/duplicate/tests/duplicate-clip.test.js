@@ -5,6 +5,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupArrangementClipMocks,
+  setupArrangementDuplicationMock,
+  setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Shared mocks - see duplicate-test-helpers.js for implementations
@@ -30,26 +33,14 @@ vi.mock(
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
+    setupSessionClipPath("clip1");
     expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
       "duplicate failed: destination is required for type 'clip'",
     );
   });
 
   it("should throw an error when destination is invalid", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
+    setupSessionClipPath("clip1");
     expect(() =>
       duplicate({ type: "clip", id: "clip1", destination: "invalid" }),
     ).toThrow(
@@ -59,13 +50,7 @@ describe("duplicate - clip duplication", () => {
 
   describe("session destination", () => {
     it("should duplicate a single clip to the session view", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
-
-        return this._path;
-      });
+      setupSessionClipPath("clip1");
 
       const result = duplicate({
         type: "clip",
@@ -91,13 +76,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("should duplicate multiple clips to session view with comma-separated toSceneIndex", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
-
-        return this._path;
-      });
+      setupSessionClipPath("clip1");
 
       const result = duplicate({
         type: "clip",
@@ -182,13 +161,7 @@ describe("duplicate - clip duplication", () => {
 
   describe("arrangement destination", () => {
     it("should throw an error when arrangementStartTime is missing", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
-
-        return this._path;
-      });
+      setupSessionClipPath("clip1");
       mockLiveApiGet({ clip1: { exists: () => true } });
 
       expect(() =>
@@ -199,31 +172,9 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("should duplicate a single clip to the arrangement view", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
-
-        return this._path;
-      });
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        return null;
-      });
-
-      // Mock for getMinimalClipInfo on the new arrangement clip
-      const originalPath = liveApiPath.getMockImplementation();
-
-      liveApiPath.mockImplementation(function () {
-        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
-      });
+      setupSessionClipPath("clip1");
+      setupArrangementDuplicationMock({ includeNotes: false });
+      setupArrangementClipMocks({ getStartTime: () => 8 });
 
       mockLiveApiGet({
         clip1: { exists: () => true },
@@ -255,13 +206,8 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("should duplicate multiple clips to arrangement view with comma-separated positions", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
+      setupSessionClipPath("clip1");
 
-        return this._path;
-      });
       let clipCounter = 0;
 
       liveApiCall.mockImplementation(function (method) {
@@ -276,18 +222,12 @@ describe("duplicate - clip duplication", () => {
         return null;
       });
 
-      // Mock for getMinimalClipInfo on the new arrangement clips
-      const originalPath = liveApiPath.getMockImplementation();
+      setupArrangementClipMocks({
+        getStartTime: (path) => {
+          const match = path.match(/arrangement_clips (\d+)/);
 
-      liveApiPath.mockImplementation(function () {
-        if (
-          this._path.startsWith("id live_set tracks") &&
-          this._path.includes("arrangement_clips")
-        ) {
-          return this._path.slice(3); // Remove "id " prefix
-        }
-
-        return originalPath ? originalPath.call(this) : this._path;
+          return match ? 8 + Number.parseInt(match[1]) * 4 : 8;
+        },
       });
 
       mockLiveApiGet({

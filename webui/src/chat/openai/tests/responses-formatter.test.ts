@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   expectValidTimestamps,
   stripTimestamps,
-} from "#webui/test-utils/message-test-utils";
+} from "#webui/test-utils/message-test-helpers";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import type { ResponsesConversationItem } from "#webui/types/responses-api";
 

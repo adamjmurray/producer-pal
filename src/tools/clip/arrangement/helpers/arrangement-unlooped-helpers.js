@@ -3,6 +3,7 @@ import {
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 
 const EPSILON = 0.001;
 
@@ -13,7 +14,6 @@ const EPSILON = 0.001;
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentArrangementLength - Current length in beats
- * @param {number} options._currentStartTime - Current start time in beats (unused)
  * @param {number} options.currentEndTime - Current end time in beats
  * @param {number} options.clipStartMarker - Clip start marker position
  * @param {object} options.track - The LiveAPI track object
@@ -25,7 +25,6 @@ export function handleUnloopedLengthening({
   isAudioClip,
   arrangementLengthBeats,
   currentArrangementLength,
-  _currentStartTime,
   currentEndTime,
   clipStartMarker,
   track,
@@ -90,13 +89,12 @@ export function handleUnloopedLengthening({
       }
 
       // Set markers using looping workaround
-      tileClip.set("looping", 1);
-      tileClip.set("loop_end", tileEndMarker);
-      tileClip.set("loop_start", tileStartMarker);
-      tileClip.set("end_marker", tileEndMarker);
-      tileClip.set("start_marker", tileStartMarker);
-      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-      tileClip.set("looping", 0);
+      setClipMarkersWithLoopingWorkaround(tileClip, {
+        loopStart: tileStartMarker,
+        loopEnd: tileEndMarker,
+        startMarker: tileStartMarker,
+        endMarker: tileEndMarker,
+      });
 
       updatedClips.push({ id: tileClip.id });
 
@@ -117,7 +115,7 @@ export function handleUnloopedLengthening({
     clipStartMarkerBeats = clipStartMarker;
   } else {
     const liveSet = LiveAPI.from("live_set");
-    const tempo = liveSet.getProperty("tempo");
+    const tempo = /** @type {number} */ (liveSet.getProperty("tempo"));
 
     clipStartMarkerBeats = clipStartMarker * (tempo / 60);
   }

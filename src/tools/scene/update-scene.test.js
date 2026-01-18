@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { updateScene } from "./update-scene.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 

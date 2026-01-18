@@ -1,5 +1,6 @@
 import vitestPlugin from "@vitest/eslint-plugin";
 import js from "@eslint/js";
+import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
@@ -50,6 +51,14 @@ const baseRules = {
 
   // Debug & Development
   "no-debugger": "error", // No debugger statements in production
+
+  // ESLint directive comments - require explanation for any rule disabling
+  "@eslint-community/eslint-comments/require-description": [
+    "error",
+    { ignore: [] }, // Require description for all directives
+  ],
+  "@eslint-community/eslint-comments/no-unlimited-disable": "error", // Must specify rules to disable
+  "@eslint-community/eslint-comments/no-unused-disable": "error", // Clean up stale disables
 
   // Type Coercion
   "no-implicit-coercion": "error", // Force explicit conversions like Number() not !!x
@@ -118,13 +127,13 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 120,
+      max: 115,
       skipBlankLines: true,
       skipComments: true,
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 19], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsdocRules = {
@@ -251,12 +260,25 @@ const tsOnlyRules = {
       caughtErrorsIgnorePattern: "^_",
     },
   ],
+  "@typescript-eslint/ban-ts-comment": [
+    "error",
+    {
+      "ts-expect-error": "allow-with-description", // Require explanation
+      "ts-ignore": true, // Ban completely - use ts-expect-error instead
+      "ts-nocheck": true, // Ban - too broad
+      "ts-check": false, // Allow - enables stricter checking
+      minimumDescriptionLength: 10, // Require meaningful descriptions
+    },
+  ],
   "@typescript-eslint/no-explicit-any": "error", // Force proper typing instead of any
   "@typescript-eslint/no-non-null-assertion": "error", // No ! operator - use proper null checks
   "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
   "@typescript-eslint/prefer-nullish-coalescing": "error", // Use ?? instead of || for null/undefined
   "@typescript-eslint/prefer-optional-chain": "error", // Use a?.b instead of a && a.b
-  "@typescript-eslint/no-unnecessary-condition": "error", // Remove conditions that are always true/false
+  "@typescript-eslint/no-unnecessary-condition": [
+    "error",
+    { allowConstantLoopConditions: "only-allowed-literals" }, // Allow while(true) but catch while(alwaysTrueVar)
+  ], // Remove conditions that are always true/false
   "@typescript-eslint/no-floating-promises": "error", // Must await or .catch() promises
   "@typescript-eslint/await-thenable": "error", // Only await actual promises
   "@typescript-eslint/no-misused-promises": "error", // Don't use promises in conditionals/spreads
@@ -311,6 +333,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       import: importPlugin,
       sonarjs,
       jsdoc,
@@ -358,6 +381,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -399,6 +423,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -438,6 +463,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       import: importPlugin,
       sonarjs,
     },
@@ -475,6 +501,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -510,6 +537,22 @@ export default [
     },
     rules: {
       ...reactHooksPlugin.configs.recommended.rules,
+    },
+  },
+
+  // Allow larger functions for main App component and custom hooks
+  // These orchestrate multiple hooks/effects and are naturally longer
+  {
+    files: ["webui/**/App.tsx", "webui/**/hooks/**/use-*.ts"],
+    rules: {
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 240,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
     },
   },
 
@@ -602,7 +645,7 @@ export default [
     files: ["src/**/*.js"],
     ignores: [
       "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
-      "src/test/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
+      "src/test/mocks/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
     ],
     rules: {
       "no-restricted-syntax": [
@@ -625,8 +668,15 @@ export default [
     rules: {
       ...vitestPlugin.configs.recommended.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
-      "max-lines-per-function": "off",
-      complexity: ["error", 30],
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 630, // TODO: ratchet down
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+      complexity: ["error", 28],
       "sonarjs/no-duplicate-string": "off",
       "import/first": "off", // Test files need imports after vi.mock() calls
       "import/order": "off",
@@ -650,7 +700,7 @@ export default [
   {
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
-      "sonarjs/cognitive-complexity": ["error", 40],
+      "sonarjs/cognitive-complexity": ["error", 38],
       // Allow DOM element narrowing casts (e.g., `as HTMLSelectElement`) in tests
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
@@ -668,10 +718,8 @@ export default [
     ],
     ignores: [
       "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
@@ -688,10 +736,9 @@ export default [
   {
     files: [
       "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures (these could be given a separate longer max file length, if needed, or ignore on a per-file basis)
+      "**/*-test-case.ts", // Test data fixtures
     ],
     rules: {
       "max-lines": [

@@ -6,7 +6,11 @@ export function parseSongTimeSignature() {
   const liveSet = LiveAPI.from("live_set");
 
   return {
-    numerator: liveSet.getProperty("signature_numerator"),
-    denominator: liveSet.getProperty("signature_denominator"),
+    numerator: /** @type {number} */ (
+      liveSet.getProperty("signature_numerator")
+    ),
+    denominator: /** @type {number} */ (
+      liveSet.getProperty("signature_denominator")
+    ),
   };
 }

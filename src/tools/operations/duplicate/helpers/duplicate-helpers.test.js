@@ -3,7 +3,7 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import {
   parseArrangementLength,
   getMinimalClipInfo,

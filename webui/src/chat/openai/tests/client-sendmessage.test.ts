@@ -11,7 +11,7 @@ import {
   createToolThenDoneGenerator,
   DONE_CHUNK,
   type StreamChunk,
-} from "#webui/test-utils/openai-client-test-utils";
+} from "#webui/test-utils/openai-client-test-helpers";
 
 // Mock MCP SDK
 // @ts-expect-error vi.mock partial implementation

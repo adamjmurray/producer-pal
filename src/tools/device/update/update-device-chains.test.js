@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiSet, liveApiType } from "#src/test/mock-live-api.js";
+import { liveApiSet, liveApiType } from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 
@@ -344,13 +344,14 @@ describe("updateDevice - Chain and DrumPad support", () => {
   });
 
   describe("invalid types", () => {
-    it("should throw error for Track type", () => {
-      expect(() =>
-        updateDevice({
-          ids: "791",
-          name: "Test",
-        }),
-      ).toThrow("updateDevice: cannot update Track objects");
+    it("should warn and skip for Track type", () => {
+      // Should not throw, just warn and return empty array (no valid targets)
+      const result = updateDevice({
+        ids: "791",
+        name: "Test",
+      });
+
+      expect(result).toStrictEqual([]);
     });
   });
 

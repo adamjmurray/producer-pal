@@ -30,9 +30,9 @@ export function moveDeviceToPath(device, toPath) {
   const { container, position } = resolveInsertionPath(toPath);
 
   if (!container || !container.exists()) {
-    throw new Error(
-      `updateDevice: move target at path "${toPath}" does not exist`,
-    );
+    console.error(`Warning: move target at path "${toPath}" does not exist`);
+
+    return;
   }
 
   const liveSet = LiveAPI.from("live_set");
@@ -54,13 +54,17 @@ export function moveDrumChainToPath(chain, toPath, moveEntirePad) {
   const targetNote = parseDrumPadNoteFromPath(toPath);
 
   if (targetNote == null) {
-    throw new Error(`updateDevice: toPath "${toPath}" is not a drum pad path`);
+    console.error(`Warning: toPath "${toPath}" is not a drum pad path`);
+
+    return;
   }
 
   const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
 
   if (targetInNote == null) {
-    throw new Error(`updateDevice: invalid note "${targetNote}" in toPath`);
+    console.error(`Warning: invalid note "${targetNote}" in toPath`);
+
+    return;
   }
 
   if (moveEntirePad) {

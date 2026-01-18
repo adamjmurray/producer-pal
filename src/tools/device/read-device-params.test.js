@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall } from "#src/test/mock-live-api.js";
+import { liveApiCall } from "#src/test/mocks/mock-live-api.js";
 import { setupDeviceParamMocks } from "./read-device-test-helpers.js";
 import { readDevice } from "./read-device.js";
 

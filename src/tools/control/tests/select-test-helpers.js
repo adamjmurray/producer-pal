@@ -5,7 +5,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 /**
  * Sets up the common mock implementations for select tests.

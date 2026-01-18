@@ -7,6 +7,43 @@ import {
   moveClipFromHolding,
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
+
+/**
+ * Iterate through slice positions and call handler for each
+ * @param {LiveAPI} sourceClip - The source clip to slice
+ * @param {number} sliceBeats - Slice duration in beats
+ * @param {number} currentStartTime - Start time of the original clip
+ * @param {number} currentEndTime - End time of the original clip
+ * @param {Function} sliceHandler - Handler called for each slice position
+ */
+function iterateSlicePositions(
+  sourceClip,
+  sliceBeats,
+  currentStartTime,
+  currentEndTime,
+  sliceHandler,
+) {
+  const clipStartMarker = /** @type {number} */ (
+    sourceClip.getProperty("start_marker")
+  );
+  let currentSlicePosition = currentStartTime + sliceBeats;
+  let currentContentOffset = sliceBeats;
+
+  while (currentSlicePosition < currentEndTime - 0.001) {
+    const sliceLengthNeeded = Math.min(
+      sliceBeats,
+      currentEndTime - currentSlicePosition,
+    );
+    const sliceContentStart = clipStartMarker + currentContentOffset;
+    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
+
+    sliceHandler(sliceContentStart, sliceContentEnd, currentSlicePosition);
+
+    currentSlicePosition += sliceBeats;
+    currentContentOffset += sliceBeats;
+  }
+}
 
 /**
  * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
@@ -24,36 +61,27 @@ function sliceUnloopedMidiContent(
   currentStartTime,
   currentEndTime,
 ) {
-  const clipStartMarker = sourceClip.getProperty("start_marker");
+  iterateSlicePositions(
+    sourceClip,
+    sliceBeats,
+    currentStartTime,
+    currentEndTime,
+    (sliceContentStart, sliceContentEnd, slicePosition) => {
+      const duplicateResult = /** @type {string} */ (
+        track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${sourceClip.id}`,
+          slicePosition,
+        )
+      );
+      const sliceClip = LiveAPI.from(duplicateResult);
 
-  let currentSlicePosition = currentStartTime + sliceBeats;
-  let currentContentOffset = sliceBeats;
-
-  while (currentSlicePosition < currentEndTime - 0.001) {
-    const sliceLengthNeeded = Math.min(
-      sliceBeats,
-      currentEndTime - currentSlicePosition,
-    );
-    const sliceContentStart = clipStartMarker + currentContentOffset;
-    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
-
-    // Duplicate the clip and set markers using looping workaround
-    const duplicateResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
-      currentSlicePosition,
-    );
-    const sliceClip = LiveAPI.from(duplicateResult);
-
-    sliceClip.set("looping", 1);
-    sliceClip.set("end_marker", sliceContentEnd);
-    sliceClip.set("start_marker", sliceContentStart);
-    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-    sliceClip.set("looping", 0);
-
-    currentSlicePosition += sliceBeats;
-    currentContentOffset += sliceBeats;
-  }
+      setClipMarkersWithLoopingWorkaround(sliceClip, {
+        startMarker: sliceContentStart,
+        endMarker: sliceContentEnd,
+      });
+    },
+  );
 }
 
 /**
@@ -73,38 +101,29 @@ function sliceUnloopedAudioContent(
   currentEndTime,
   _context,
 ) {
-  const clipStartMarker = sourceClip.getProperty("start_marker");
-
-  let currentSlicePosition = currentStartTime + sliceBeats;
-  let currentContentOffset = sliceBeats;
-
-  while (currentSlicePosition < currentEndTime - 0.001) {
-    const sliceLengthNeeded = Math.min(
-      sliceBeats,
-      currentEndTime - currentSlicePosition,
-    );
-    const sliceContentStart = clipStartMarker + currentContentOffset;
-    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
-
-    revealAudioContentAtPosition(
-      sourceClip,
-      track,
-      sliceContentStart,
-      sliceContentEnd,
-      currentSlicePosition,
-      _context,
-    );
-
-    currentSlicePosition += sliceBeats;
-    currentContentOffset += sliceBeats;
-  }
+  iterateSlicePositions(
+    sourceClip,
+    sliceBeats,
+    currentStartTime,
+    currentEndTime,
+    (sliceContentStart, sliceContentEnd, slicePosition) => {
+      revealAudioContentAtPosition(
+        sourceClip,
+        track,
+        sliceContentStart,
+        sliceContentEnd,
+        slicePosition,
+        _context,
+      );
+    },
+  );
 }
 
 /**
  * Prepare slice parameters by converting to Ableton beats
  * @param {string} slice - Slice duration in bar:beat format
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
- * @param {Set} warnings - Set to track warnings already issued
+ * @param {Set<string>} warnings - Set to track warnings already issued
  * @returns {number|null} - Slice duration in beats or null
  */
 export function prepareSliceParams(slice, arrangementClips, warnings) {
@@ -122,8 +141,12 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   }
 
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
   const sliceBeats = barBeatDurationToAbletonBeats(
     slice,
     songTimeSigNumerator,
@@ -142,7 +165,7 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
  * @param {number} sliceBeats - Slice duration in Ableton beats
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
- * @param {Set} warnings - Set to track warnings already issued
+ * @param {Set<string>} warnings - Set to track warnings already issued
  * @param {string} slice - Original slice parameter for error messages
  * @param {object} _context - Internal context object
  */
@@ -161,10 +184,12 @@ export function performSlicing(
 
   for (const clip of arrangementClips) {
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
-    const isLooping = clip.getProperty("looping") > 0;
+    const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
     // Get current clip arrangement length
-    const currentStartTime = clip.getProperty("start_time");
-    const currentEndTime = clip.getProperty("end_time");
+    const currentStartTime = /** @type {number} */ (
+      clip.getProperty("start_time")
+    );
+    const currentEndTime = /** @type {number} */ (clip.getProperty("end_time"));
     const currentArrangementLength = currentEndTime - currentStartTime;
 
     // Only slice if clip is longer than or equal to slice size
@@ -269,7 +294,7 @@ export function performSlicing(
     const freshClips = trackClipIds
       .map((id) => LiveAPI.from(id))
       .filter((c) => {
-        const clipStart = c.getProperty("start_time");
+        const clipStart = /** @type {number} */ (c.getProperty("start_time"));
 
         return (
           clipStart >= range.startTime - EPSILON &&

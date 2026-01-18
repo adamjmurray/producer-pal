@@ -4,7 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 import {
   extractDevicePath,
@@ -432,6 +432,20 @@ describe("device-path-helpers", () => {
       );
       expect(() => resolveInsertionPath("t0/d-1")).toThrow(
         "Invalid device position",
+      );
+    });
+
+    it("throws on invalid track segment for single-segment paths", () => {
+      // Single segment paths that don't match mt/rt*/t* prefixes
+      // Note: "track0" starts with "t" so it's handled by the t* branch
+      expect(() => resolveInsertionPath("xyz")).toThrow(
+        "Invalid track segment: xyz",
+      );
+      expect(() => resolveInsertionPath("abc")).toThrow(
+        "Invalid track segment: abc",
+      );
+      expect(() => resolveInsertionPath("scene0")).toThrow(
+        "Invalid track segment: scene0",
       );
     });
 

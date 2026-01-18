@@ -3,7 +3,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 // Helper functions for mock property lookup
 const getPadProperty = (id, prop, padProperties) => {

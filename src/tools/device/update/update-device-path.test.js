@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 import { updateDevice } from "./update-device.js";
 

@@ -25,7 +25,10 @@ if (typeof LiveAPI !== "undefined") {
     return new LiveAPI(idOrPath);
   };
   LiveAPI.prototype.exists = function () {
-    return this.id !== "id 0" && this.id !== "0" && this.id !== 0;
+    // id can be "id 0", "0", or 0 (number) when object doesn't exist
+    const id = /** @type {string | number} */ (this.id);
+
+    return id !== "id 0" && id !== "0" && id !== 0;
   };
 
   LiveAPI.prototype.getProperty = function (property) {
@@ -44,12 +47,14 @@ if (typeof LiveAPI !== "undefined") {
         const rawValue = this.get(property);
         if (rawValue && rawValue[0]) {
           try {
-            const parsed = JSON.parse(rawValue[0]);
+            const parsed = JSON.parse(/** @type {string} */ (rawValue[0]));
+
             return parsed[property];
           } catch {
             return null;
           }
         }
+
         return null;
       }
       default:
@@ -107,7 +112,9 @@ if (typeof LiveAPI !== "undefined") {
   };
 
   LiveAPI.prototype.getColor = function () {
-    const colorValue = this.getProperty("color");
+    const colorValue = /** @type {number | undefined} */ (
+      this.getProperty("color")
+    );
     if (colorValue === undefined) {
       return null;
     }

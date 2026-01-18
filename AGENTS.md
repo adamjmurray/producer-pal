@@ -86,6 +86,15 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
+- **Update tool error handling**: Update tools (update-clip, update-track,
+  update-device, etc.) should NOT throw errors for invalid parameter
+  combinations or incompatible operations. Instead:
+  - Emit a warning via `console.error()` with prefix "Warning:" or tool name
+  - Skip the operation and continue processing
+  - This allows partial successes when updating multiple items
+  - Example:
+    `console.error("Warning: quantize parameter ignored for audio clip")`
+
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/workflow/connect.js`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
@@ -105,13 +114,14 @@ See `dev-docs/Architecture.md` for detailed system design and
   in the same directory).
 
 - **File organization and size limits**:
-  - Max 600 lines per file for source files (enforced by ESLint)
-  - Max 800 lines per file for test files (enforced by ESLint)
+  - Max 325 lines per file for source files (ESLint, ignoring blanks/comments)
+  - Max 650 lines for `*.test.*` and `*-test-case.ts` (ESLint, ignoring
+    blanks/comments)
   - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
     in the same directory (e.g., `update-clip-helpers.js`)
   - Helper files group related utility functions by feature/domain (e.g., audio
     operations, content analysis, clip duplication)
-  - If a helper file exceeds 600 lines, split by feature group:
+  - If a helper file exceeds 325 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
   - When a directory accumulates multiple helper files (2+), move them to a
@@ -124,14 +134,38 @@ See `dev-docs/Architecture.md` for detailed system design and
     1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
     a feature to keep the main directory focused on source code
 
-## TypeScript (WebUI Only)
+## Test File Classification
 
-**Scope:** TypeScript is ONLY used in `webui/` directory.
+A file is classified as a **test file** if it matches any of these patterns:
+
+- `*.test.{js,ts,tsx}` - Unit/integration tests
+- `*-test-helpers.{js,ts}` - Shared test utilities
+- `*-test-case.ts` - Test data fixtures (webui)
+- Files in `tests/` directories
+- Files in `test-cases/` directories
+- Files in `test-utils/` directories
+
+**Implications of test file classification:**
+
+- **Knowledge base**: Excluded from `kb:small` (smaller context for LLMs)
+- **Duplication limits**: Higher threshold (5.9%) vs source code (0.4%)
+- **Line limits**: Only `*.test.*` and `*-test-case.ts` files get 650 lines max
+  (ignoring blanks/comments); test helpers use the standard 325 line limit
+- **Coverage**: Test helpers excluded from coverage requirements
+
+## Type Checking
+
+**Scope:** All source code is type-checked via `npm run typecheck`:
+
+- `src/` and `scripts/` use JSDoc annotations with TypeScript's `checkJs`
+- `webui/` uses TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
-- All webui code must pass: `npm run typecheck`
-- All webui code must pass: `npm run lint`
+- All code must pass: `npm run typecheck`
+- All code must pass: `npm run lint`
+- Use JSDoc `@param`, `@returns`, and `@type` annotations for type safety in JS
+- Cast `getProperty()` returns: `/** @type {number} */ (obj.getProperty("x"))`
 - Prefer explicit return types on exported functions
 
 **Before committing:** `npm run check` must pass with zero errors
@@ -166,10 +200,26 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 ## Project Constraints
 
-- JavaScript for core project, TypeScript (.ts/.tsx) for webui source files
+- JavaScript with JSDoc types for `src/` and `scripts/`, TypeScript for `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
+
+## Protected Files (Require User Approval)
+
+The following files contain code quality thresholds that should only be relaxed
+with explicit user approval. **Do not modify these values without asking
+first:**
+
+- `src/test/lint-suppression-limits.test.js` - Per-tree limits for
+  eslint-disable and @ts-expect-error comments. Increasing these limits weakens
+  code quality enforcement.
+
+- `config/vitest.config.mjs` (thresholds section) - Test coverage thresholds.
+  Lowering these allows coverage to drop.
+
+If a change requires relaxing these limits, ask the user for approval before
+making the modification.
 
 ## Refactoring & Code Quality
 
@@ -183,9 +233,9 @@ Key ESLint limits to respect:
     excluded from this rule via
     `eslint-disable-next-line max-lines-per-function` comments (do not disable
     for the whole file)
-- `max-lines` per file:
-  - 325 for non-test files (ignoring blank/comment lines)
-  - 750 for test files (total lines including blank/comment)
+- `max-lines` per file (ignoring blank/comment lines):
+  - 325 for source files
+  - 650 for `*.test.*` and `*-test-case.ts` files
 - `max-depth`: 4
 - `complexity`: 20
 

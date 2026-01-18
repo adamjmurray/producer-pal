@@ -6,7 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
 // [transform-clips-modifications] Setup mocks for clip tests
@@ -80,23 +80,7 @@ describe("transformClips - modifications", () => {
     const clipId = "clip_1";
 
     setupClipMocks(clipId);
-    liveApiCall.mockImplementation(function (method) {
-      if (this._id === clipId && method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              id: "0",
-              pitch: 60,
-              start_time: 0.0,
-              duration: 1.0,
-              velocity: 100,
-              velocity_deviation: 0,
-              probability: 1.0,
-            },
-          ],
-        });
-      }
-    });
+    setupNoteCaptureMock(clipId);
 
     transformClips({
       clipIds: clipId,

@@ -5,24 +5,21 @@ import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { createMcpServer } from "./create-mcp-server.js";
 import { callLiveApi } from "./max-api-adapter.js";
+import { parseMaxBoolean } from "./max-input-helpers.js";
 import * as console from "./node-for-max-logger.js";
 
 let chatUIEnabled = true; // default
 
 Max.addHandler(
   "chatUIEnabled",
-  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
-  // eslint-disable-next-line eqeqeq
-  (input) => (chatUIEnabled = input == 1 || input === "true"),
+  (input) => (chatUIEnabled = parseMaxBoolean(input)),
 );
 
 let smallModelMode = false; // default
 
 Max.addHandler(
   "smallModelMode",
-  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], 0, false, etc
-  // eslint-disable-next-line eqeqeq
-  (input) => (smallModelMode = input == 1 || input === "true"),
+  (input) => (smallModelMode = parseMaxBoolean(input)),
 );
 
 const methodNotAllowed = {

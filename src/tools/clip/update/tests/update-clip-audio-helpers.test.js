@@ -3,9 +3,11 @@ import {
   liveApiCall,
   liveApiGet,
   liveApiSet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
+import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import {
   handleWarpMarkerOperation,
+  revealAudioContentAtPosition,
   setAudioParameters,
 } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 
@@ -155,20 +157,22 @@ describe("handleWarpMarkerOperation", () => {
     liveApiCall.mockReturnValue(true);
   });
 
-  it("should throw error when clip is not an audio clip", () => {
+  it("should warn and skip when clip is not an audio clip", () => {
     mockClip.getProperty.mockReturnValue(null);
 
-    expect(() =>
-      handleWarpMarkerOperation(mockClip, "add", 1.0, 44100),
-    ).toThrow("Warp markers only available on audio clips");
+    // Should not throw, just warn and return early
+    handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
+
+    expect(liveApiCall).not.toHaveBeenCalled();
   });
 
-  it("should throw error when warpBeatTime is not provided", () => {
+  it("should warn and skip when warpBeatTime is not provided", () => {
     mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
 
-    expect(() =>
-      handleWarpMarkerOperation(mockClip, "add", null, 44100),
-    ).toThrow("warpBeatTime required for add operation");
+    // Should not throw, just warn and return early
+    handleWarpMarkerOperation(mockClip, "add", null, 44100);
+
+    expect(liveApiCall).not.toHaveBeenCalled();
   });
 
   describe("add operation", () => {
@@ -199,10 +203,11 @@ describe("handleWarpMarkerOperation", () => {
       mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
     });
 
-    it("should throw error when warpDistance is not provided", () => {
-      expect(() =>
-        handleWarpMarkerOperation(mockClip, "move", 4.0, null, null),
-      ).toThrow("warpDistance required for move operation");
+    it("should warn and skip when warpDistance is not provided", () => {
+      // Should not throw, just warn and return early
+      handleWarpMarkerOperation(mockClip, "move", 4.0, null, null);
+
+      expect(liveApiCall).not.toHaveBeenCalled();
     });
 
     it("should move warp marker by specified distance", () => {
@@ -228,5 +233,185 @@ describe("handleWarpMarkerOperation", () => {
 
       expect(liveApiCall).toHaveBeenCalledWith("remove_warp_marker", 4.0);
     });
+  });
+});
+
+describe("revealAudioContentAtPosition", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should handle warped clips with looping workaround", () => {
+    const sourceClip = {
+      id: "source-123",
+      getProperty: vi.fn((prop) => {
+        if (prop === "warping") return 1;
+
+        return null;
+      }),
+    };
+
+    const mockTrack = {
+      call: liveApiCall,
+    };
+
+    const revealedClipId = "revealed-456";
+
+    liveApiCall.mockReturnValue(`id ${revealedClipId}`);
+
+    const result = revealAudioContentAtPosition(
+      sourceClip,
+      mockTrack,
+      4, // newStartMarker
+      12, // newEndMarker
+      16, // targetPosition
+      {},
+    );
+
+    // Should duplicate to arrangement
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id source-123",
+      16,
+    );
+
+    // Should set looping markers
+    expect(liveApiSet).toHaveBeenCalledWith("looping", 1);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 12);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 4);
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 12);
+    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 4);
+    expect(liveApiSet).toHaveBeenCalledWith("looping", 0);
+
+    expect(result).toBeDefined();
+  });
+
+  it("should handle unwarped clips with session holding area", () => {
+    const sourceClip = {
+      id: "source-123",
+      getProperty: vi.fn((prop) => {
+        if (prop === "warping") return 0; // Unwarped
+        if (prop === "file_path") return "/audio/test.wav";
+
+        return null;
+      }),
+    };
+
+    const mockTrack = {
+      call: liveApiCall,
+    };
+
+    const sessionClipId = "session-789";
+    const revealedClipId = "revealed-456";
+
+    // Mock createAudioClipInSession - clip needs a set method
+    const mockCreateAudioClip = vi
+      .spyOn(arrangementTiling, "createAudioClipInSession")
+      .mockReturnValue({
+        clip: { id: sessionClipId, set: vi.fn() },
+        slot: { call: vi.fn() },
+      });
+
+    liveApiCall.mockReturnValue(`id ${revealedClipId}`);
+    liveApiGet.mockImplementation(function (prop) {
+      if (prop === "end_time") return 24; // Within expected bounds
+
+      return null;
+    });
+
+    const result = revealAudioContentAtPosition(
+      sourceClip,
+      mockTrack,
+      4, // newStartMarker
+      12, // newEndMarker
+      16, // targetPosition
+      {},
+    );
+
+    // Should create audio clip in session
+    expect(mockCreateAudioClip).toHaveBeenCalledWith(
+      mockTrack,
+      12, // newEndMarker
+      "/audio/test.wav",
+    );
+
+    expect(result).toBeDefined();
+
+    mockCreateAudioClip.mockRestore();
+  });
+
+  it("should shorten revealed clip when it is longer than expected", () => {
+    const sourceClip = {
+      id: "source-123",
+      getProperty: vi.fn((prop) => {
+        if (prop === "warping") return 0; // Unwarped
+        if (prop === "file_path") return "/audio/test.wav";
+
+        return null;
+      }),
+    };
+
+    const mockTrack = {
+      call: liveApiCall,
+    };
+
+    const sessionClipId = "session-789";
+    const revealedClipId = "revealed-456";
+    const shortenerId = "shortener-111";
+
+    // Mock createAudioClipInSession - clip needs a set method
+    const mockCreateAudioClip = vi
+      .spyOn(arrangementTiling, "createAudioClipInSession")
+      .mockReturnValue({
+        clip: { id: sessionClipId, set: vi.fn() },
+        slot: { call: vi.fn() },
+      });
+
+    let callCount = 0;
+
+    liveApiCall.mockImplementation((method) => {
+      if (method === "duplicate_clip_to_arrangement") {
+        callCount++;
+
+        if (callCount === 1) return `id ${revealedClipId}`;
+
+        return `id ${shortenerId}`;
+      }
+
+      return null;
+    });
+
+    // Make the revealed clip longer than expected to trigger shortening
+    // targetPosition (16) + targetLengthBeats (8) = 24
+    // revealedClipEndTime = 30 > expectedEndTime (24) + EPSILON
+    liveApiGet.mockImplementation(function (prop) {
+      // getProperty calls get()?.[0], so return array
+      if (prop === "end_time") return [30]; // Longer than expected (24)
+
+      return null;
+    });
+
+    const result = revealAudioContentAtPosition(
+      sourceClip,
+      mockTrack,
+      4, // newStartMarker
+      12, // newEndMarker (targetLengthBeats = 12 - 4 = 8)
+      16, // targetPosition
+      {},
+    );
+
+    // Should create temp shortener clip
+    // Called twice: once for temp clip and once for shortener
+    expect(mockCreateAudioClip).toHaveBeenCalledTimes(2);
+
+    // Should delete the shortener clip
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "delete_clip",
+      `id ${shortenerId}`,
+    );
+
+    expect(result).toBeDefined();
+
+    mockCreateAudioClip.mockRestore();
   });
 });

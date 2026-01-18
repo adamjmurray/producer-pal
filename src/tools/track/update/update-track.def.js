@@ -76,4 +76,19 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         'return track: exact name (e.g., "A-Reverb") or letter (e.g., "A")',
       ),
   },
+  smallModelModeConfig: {
+    excludeParams: [
+      "panningMode",
+      "leftPan",
+      "rightPan",
+      "inputRoutingTypeId",
+      "inputRoutingChannelId",
+      "outputRoutingTypeId",
+      "outputRoutingChannelId",
+      "monitoringState",
+      "arrangementFollower",
+      "sendGainDb",
+      "sendReturn",
+    ],
+  },
 });

@@ -1,8 +1,5 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import {
-  intervalsToPitchClasses,
-  pitchClassToNumber,
-} from "#src/shared/pitch.js";
+import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { waitUntil } from "#src/shared/v8-sleep.js";
 import {
@@ -12,25 +9,30 @@ import {
 } from "#src/tools/shared/locator/locator-helpers.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
+  applyScale,
+  applyTempo,
   cleanupTempClip,
   extendSongIfNeeded,
-  parseScale,
 } from "./helpers/update-live-set-helpers.js";
+
+/**
+ * @typedef {object} UpdateLiveSetArgs
+ * @property {number} [tempo] - Set tempo in BPM (20.0-999.0)
+ * @property {string} [timeSignature] - Time signature in format "4/4"
+ * @property {string} [scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
+ * @property {string} [locatorOperation] - Locator operation: "create", "delete", or "rename"
+ * @property {string} [locatorId] - Locator ID for delete/rename (e.g., "locator-0")
+ * @property {string} [locatorTime] - Bar|beat position for create/delete/rename
+ * @property {string} [locatorName] - Name for create/rename, or name filter for delete
+ * @property {boolean} [arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
+ */
 
 /**
  * Updates Live Set parameters like tempo, time signature, scale, and locators.
  * Note: Scale changes affect currently selected clips and set defaults for new clips.
- * @param {object} args - The parameters
- * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
- * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
- * @param {string} [args.locatorOperation] - Locator operation: "create", "delete", or "rename"
- * @param {string} [args.locatorId] - Locator ID for delete/rename (e.g., "locator-0")
- * @param {string} [args.locatorTime] - Bar|beat position for create/delete/rename
- * @param {string} [args.locatorName] - Name for create/rename, or name filter for delete
- * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
- * @param {object} context - Internal context object with silenceWavPath for audio clips
- * @returns {object} Updated Live Set information
+ * @param {UpdateLiveSetArgs} [args] - The parameters
+ * @param {Partial<ToolContext>} [context] - Internal context object with silenceWavPath for audio clips
+ * @returns {Promise<Record<string, unknown>>} Updated Live Set information
  */
 export async function updateLiveSet(
   {
@@ -48,18 +50,13 @@ export async function updateLiveSet(
   const liveSet = LiveAPI.from("live_set");
 
   // optimistic result object that only include properties that are actually set
+  /** @type {Record<string, unknown>} */
   const result = {
     id: liveSet.id,
   };
 
   if (tempo != null) {
-    if (tempo < 20 || tempo > 999) {
-      throw new Error("Tempo must be between 20.0 and 999.0 BPM");
-    }
-
-    liveSet.set("tempo", tempo);
-
-    result.tempo = tempo;
+    applyTempo(liveSet, tempo, result);
   }
 
   if (timeSignature != null) {
@@ -67,37 +64,17 @@ export async function updateLiveSet(
 
     liveSet.set("signature_numerator", parsed.numerator);
     liveSet.set("signature_denominator", parsed.denominator);
-
     result.timeSignature = `${parsed.numerator}/${parsed.denominator}`;
   }
 
   if (scale != null) {
-    if (scale === "") {
-      // Empty string disables the scale
-      liveSet.set("scale_mode", 0);
-
-      result.scale = "";
-    } else {
-      // Non-empty string sets the scale and enables it
-      const { scaleRoot, scaleName } = parseScale(scale);
-      const scaleRootNumber = pitchClassToNumber(scaleRoot);
-
-      if (scaleRootNumber == null) {
-        throw new Error(`Invalid scale root: ${scaleRoot}`);
-      }
-
-      liveSet.set("root_note", scaleRootNumber);
-      liveSet.set("scale_name", scaleName);
-      liveSet.set("scale_mode", 1);
-
-      result.scale = `${scaleRoot} ${scaleName}`;
-    }
+    applyScale(liveSet, scale, result);
 
     if (!result.$meta) {
       result.$meta = [];
     }
 
-    result.$meta.push(
+    /** @type {string[]} */ (result.$meta).push(
       "Scale applied to selected clips and defaults for new clips.",
     );
   }
@@ -112,8 +89,10 @@ export async function updateLiveSet(
   const shouldIncludeScalePitches = scale != null && scale !== "";
 
   if (shouldIncludeScalePitches) {
-    const rootNote = liveSet.getProperty("root_note");
-    const scaleIntervals = liveSet.getProperty("scale_intervals");
+    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
+    const scaleIntervals = /** @type {number[]} */ (
+      liveSet.getProperty("scale_intervals")
+    );
 
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
@@ -143,7 +122,8 @@ export async function updateLiveSet(
  * @returns {boolean} True if playback was stopped
  */
 function stopPlaybackIfNeeded(liveSet) {
-  const isPlaying = liveSet.getProperty("is_playing") > 0;
+  const isPlaying =
+    /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
 
   if (isPlaying) {
     liveSet.call("stop_playing");
@@ -166,7 +146,10 @@ function stopPlaybackIfNeeded(liveSet) {
 async function waitForPlayheadPosition(liveSet, targetBeats) {
   const success = await waitUntil(
     () =>
-      Math.abs(liveSet.getProperty("current_song_time") - targetBeats) < 0.001,
+      Math.abs(
+        /** @type {number} */ (liveSet.getProperty("current_song_time")) -
+          targetBeats,
+      ) < 0.001,
     { pollingInterval: 10, maxRetries: 10 },
   );
 
@@ -193,8 +176,12 @@ async function handleLocatorOperation(
   { locatorOperation, locatorId, locatorTime, locatorName },
   context,
 ) {
-  const timeSigNumerator = liveSet.getProperty("signature_numerator");
-  const timeSigDenominator = liveSet.getProperty("signature_denominator");
+  const timeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const timeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   switch (locatorOperation) {
     case "create":
@@ -241,7 +228,12 @@ async function createLocator(
   context,
 ) {
   if (locatorTime == null) {
-    throw new Error("locatorTime is required for create operation");
+    console.error("Warning: locatorTime is required for create operation");
+
+    return {
+      operation: "skipped",
+      reason: "missing_locatorTime",
+    };
   }
 
   const targetBeats = barBeatToAbletonBeats(
@@ -313,7 +305,14 @@ async function deleteLocator(
 ) {
   // Validate that at least one identifier is provided
   if (locatorId == null && locatorTime == null && locatorName == null) {
-    throw new Error("delete requires locatorId, locatorTime, or locatorName");
+    console.error(
+      "Warning: delete requires locatorId, locatorTime, or locatorName",
+    );
+
+    return {
+      operation: "skipped",
+      reason: "missing_identifier",
+    };
   }
 
   // Delete by name (can match multiple locators)
@@ -366,7 +365,7 @@ async function deleteLocator(
       };
     }
 
-    timeInBeats = found.locator.getProperty("time");
+    timeInBeats = /** @type {number} */ (found.locator.getProperty("time"));
   } else if (locatorTime != null) {
     timeInBeats = barBeatToAbletonBeats(
       locatorTime,
@@ -417,11 +416,21 @@ function renameLocator(
   { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
 ) {
   if (locatorName == null) {
-    throw new Error("locatorName is required for rename operation");
+    console.error("Warning: locatorName is required for rename operation");
+
+    return {
+      operation: "skipped",
+      reason: "missing_locatorName",
+    };
   }
 
   if (locatorId == null && locatorTime == null) {
-    throw new Error("rename requires locatorId or locatorTime");
+    console.error("Warning: rename requires locatorId or locatorTime");
+
+    return {
+      operation: "skipped",
+      reason: "missing_identifier",
+    };
   }
 
   let found;
@@ -430,7 +439,13 @@ function renameLocator(
     found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`Locator not found: ${locatorId}`);
+      console.error(`Warning: locator not found: ${locatorId}`);
+
+      return {
+        operation: "skipped",
+        reason: "locator_not_found",
+        id: locatorId,
+      };
     }
   } else {
     const timeInBeats = barBeatToAbletonBeats(
@@ -442,7 +457,13 @@ function renameLocator(
     found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      throw new Error(`No locator found at position: ${locatorTime}`);
+      console.error(`Warning: no locator found at position: ${locatorTime}`);
+
+      return {
+        operation: "skipped",
+        reason: "locator_not_found",
+        time: locatorTime,
+      };
     }
   }
 

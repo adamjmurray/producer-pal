@@ -48,7 +48,7 @@ function formatParamName(paramApi) {
 /**
  * Parse a label string to extract numeric value and unit.
  * @param {string} label - Display label from str_for_value()
- * @returns {{value: number|string|null, unit: string|null}} Parsed value and unit
+ * @returns {{value: number|string|null, unit: string|null, direction?: string}} Parsed value and unit
  */
 export function parseLabel(label) {
   if (!label || typeof label !== "string") {

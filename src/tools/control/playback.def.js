@@ -80,4 +80,15 @@ stop: session and arrangement`,
       .default(false)
       .describe("auto-switch view?"),
   },
+  smallModelModeConfig: {
+    excludeParams: [
+      "startLocatorId",
+      "startLocatorName",
+      "loopStartLocatorId",
+      "loopStartLocatorName",
+      "loopEndLocatorId",
+      "loopEndLocatorName",
+      "autoFollow",
+    ],
+  },
 });

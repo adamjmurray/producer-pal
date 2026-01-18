@@ -1,7 +1,5 @@
-import {
-  MAX_ARRANGEMENT_POSITION_BEATS,
-  MAX_AUTO_CREATED_SCENES,
-} from "#src/tools/constants.js";
+import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 
 /**
  * Creates an audio clip in a session clip slot
@@ -10,7 +8,7 @@ import {
  * @param {string} sampleFile - Absolute path to audio file
  * @param {LiveAPI} liveSet - LiveAPI liveSet object
  * @param {number} maxAutoCreatedScenes - Maximum number of scenes allowed
- * @returns {object} - Object with clip and sceneIndex
+ * @returns {{clip: LiveAPI, sceneIndex: number}} Object with clip and sceneIndex
  */
 export function createAudioSessionClip(
   trackIndex,
@@ -19,36 +17,13 @@ export function createAudioSessionClip(
   liveSet,
   maxAutoCreatedScenes,
 ) {
-  // Auto-create scenes if needed (same logic as MIDI)
-  if (sceneIndex >= maxAutoCreatedScenes) {
-    throw new Error(
-      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
-        MAX_AUTO_CREATED_SCENES - 1
-      }`,
-    );
-  }
-
-  const currentSceneCount = liveSet.getChildIds("scenes").length;
-
-  if (sceneIndex >= currentSceneCount) {
-    const scenesToCreate = sceneIndex - currentSceneCount + 1;
-
-    for (let j = 0; j < scenesToCreate; j++) {
-      liveSet.call("create_scene", -1); // -1 means append at the end
-    }
-  }
-
-  const clipSlot = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+  const clipSlot = prepareSessionClipSlot(
+    trackIndex,
+    sceneIndex,
+    liveSet,
+    maxAutoCreatedScenes,
   );
 
-  if (clipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
-    );
-  }
-
-  // Create audio clip with file path
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
@@ -62,7 +37,7 @@ export function createAudioSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @returns {object} - Object with clip and arrangementStartBeats
+ * @returns {{clip: LiveAPI, arrangementStartBeats: number}} Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
@@ -79,10 +54,8 @@ export function createAudioArrangementClip(
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create audio clip at position
-  const newClipResult = track.call(
-    "create_audio_clip",
-    sampleFile,
-    arrangementStartBeats,
+  const newClipResult = /** @type {string} */ (
+    track.call("create_audio_clip", sampleFile, arrangementStartBeats)
   );
   const clip = LiveAPI.from(newClipResult);
 

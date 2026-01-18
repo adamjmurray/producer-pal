@@ -147,7 +147,6 @@ async function handleNonStreaming(
 ): Promise<void> {
   const { client, conversation, model, options } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     const response = (await client.responses.create(
       requestBody,
@@ -181,7 +180,6 @@ async function handleStreaming(
 ): Promise<void> {
   const { client, conversation, model, options, mcpClient } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     const stream = await client.responses.create({
       ...requestBody,

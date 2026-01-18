@@ -46,7 +46,9 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 // Parse command line arguments
 let httpUrl = DEFAULT_HTTP_URL;
+/** @type {string | null} */
 let toolName = null;
+/** @type {Record<string, unknown>} */
 let toolArgs = {};
 
 if (process.argv.length > 2) {
@@ -161,10 +163,17 @@ function parseResponse(data) {
 }
 
 /**
+ * @typedef {object} JsonRpcResponse
+ * @property {string} [error]
+ * @property {string} [raw]
+ * @property {{serverInfo?: {name?: string}, protocolVersion?: string, tools?: {name: string}[], content?: unknown[]}} [result]
+ */
+
+/**
  * Log response based on response count and content
- * @param {object} response - Parsed JSON-RPC response
+ * @param {JsonRpcResponse} response - Parsed JSON-RPC response
  * @param {number} count - Sequential response number
- * @param {string} tool - Tool name being tested (if applicable)
+ * @param {string | null} tool - Tool name being tested (if applicable)
  */
 function logResponse(response, count, tool) {
   if (response.error) {
@@ -188,7 +197,7 @@ function logResponse(response, count, tool) {
 
       console.log(`✅ Tools list successful - ${toolCount} tools available`);
 
-      if (toolCount > 0) {
+      if (toolCount > 0 && response.result.tools) {
         const toolNames = response.result.tools.map((t) => t.name).join(", ");
 
         console.log(

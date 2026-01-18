@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  mockLiveApiGet,
-} from "#src/test/mock-live-api.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import { setupConnectMocks } from "./connect-test-helpers.js";
 import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function
@@ -18,37 +13,7 @@ vi.mock(
 
 describe("connect", () => {
   it("includes project notes when context is provided and enabled", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Project with Notes",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks({ liveSetName: "Project with Notes" });
     getHostTrackIndex.mockReturnValue(0);
 
     const context = {
@@ -70,37 +35,7 @@ describe("connect", () => {
   });
 
   it("notes when project notes are writable", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Project with Notes",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks({ liveSetName: "Project with Notes" });
     getHostTrackIndex.mockReturnValue(0);
 
     const context = {
@@ -126,37 +61,7 @@ describe("connect", () => {
   });
 
   it("excludes project notes when context is disabled", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Project without Notes",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks({ liveSetName: "Project without Notes" });
     getHostTrackIndex.mockReturnValue(0);
 
     const context = {
@@ -172,37 +77,7 @@ describe("connect", () => {
   });
 
   it("handles missing context gracefully", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "No Context Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks({ liveSetName: "No Context Project" });
     getHostTrackIndex.mockReturnValue(0);
 
     const result = connect();
@@ -211,37 +86,7 @@ describe("connect", () => {
   });
 
   it("returns standard skills and instructions by default", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks();
     getHostTrackIndex.mockReturnValue(0);
 
     const result = connect();
@@ -254,37 +99,7 @@ describe("connect", () => {
   });
 
   it("returns basic skills and instructions when smallModelMode is enabled", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Small Model Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks({ liveSetName: "Small Model Project" });
     getHostTrackIndex.mockReturnValue(0);
 
     const context = {
@@ -300,37 +115,7 @@ describe("connect", () => {
   });
 
   it("standard skills include advanced features that basic skills omit", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks();
     getHostTrackIndex.mockReturnValue(0);
 
     const standardResult = connect({}, {});
@@ -354,37 +139,7 @@ describe("connect", () => {
   });
 
   it("standard instructions include ppal-read-live-set call", () => {
-    liveApiId.mockImplementation(function () {
-      return this._id;
-    });
-
-    liveApiPath.mockImplementation(function () {
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.2";
-      }
-
-      return null;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Project",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
-      },
-      AppView: {
-        focused_document_view: "Session",
-      },
-    });
-
+    setupConnectMocks();
     getHostTrackIndex.mockReturnValue(0);
 
     const standardResult = connect({}, {});

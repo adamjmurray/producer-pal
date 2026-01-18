@@ -5,6 +5,12 @@ import { defineConfig } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Node 25+ enables webstorage by default, which conflicts with happy-dom's mock.
+// Disable it for tests. The flag doesn't exist in Node 24, so only add it for 25+.
+// See: https://github.com/vitest-dev/vitest/issues/8757
+const nodeMajorVersion = parseInt(process.versions.node.split(".")[0], 10);
+const execArgv = nodeMajorVersion >= 25 ? ["--no-webstorage"] : [];
+
 export default defineConfig({
   plugins: [preact()],
   resolve: {
@@ -13,7 +19,7 @@ export default defineConfig({
       "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
-        "../src/test/mock-chat-ui-html.js",
+        "../src/test/mocks/mock-chat-ui-html.js",
       ),
     },
   },
@@ -24,6 +30,7 @@ export default defineConfig({
     setupFiles: ["src/test/test-setup.js"],
     clearMocks: true,
     restoreMocks: true,
+    execArgv,
     coverage: {
       provider: "v8",
       ignoreEmptyLines: true,
@@ -71,16 +78,16 @@ export default defineConfig({
         "src/portal/file-logger.js",
 
         // ignore test mocks:
-        "src/test/mock-*.js",
+        "src/test/mocks/**",
       ],
       reportOnFailure: true,
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 97.8, // Keep above 97
-        branches: 93.8, // Keep above 93
-        functions: 98.6, // Keep above 98
-        lines: 98.1, // Keep above 98
+        statements: 97.9, // Keep above 97
+        branches: 93.9, // Keep above 93
+        functions: 98.7, // Keep above 98
+        lines: 98.3, // Keep above 98
       },
     },
   },

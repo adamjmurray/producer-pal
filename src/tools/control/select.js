@@ -489,7 +489,9 @@ function readViewState() {
   // master track gets no index property
 
   return {
-    view: fromLiveApiView(appView.getProperty("focused_document_view")),
+    view: fromLiveApiView(
+      /** @type {string} */ (appView.getProperty("focused_document_view")),
+    ),
     detailView,
     showBrowser,
     selectedTrack: selectedTrackObject,

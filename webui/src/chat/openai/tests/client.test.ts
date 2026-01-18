@@ -5,7 +5,7 @@ import {
   type ReasoningDetail,
 } from "#webui/chat/openai/client";
 import type { OpenAIToolCall } from "#webui/types/messages";
-import { createToolCallsMap } from "#webui/test-utils/openai-client-test-utils";
+import { createToolCallsMap } from "#webui/test-utils/openai-client-test-helpers";
 
 // Mock MCP SDK
 // @ts-expect-error vi.mock partial implementation

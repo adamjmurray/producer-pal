@@ -25,9 +25,10 @@ function getChildAtIndex(parent, childType, index) {
  * @param {string[]} segments - Remaining path segments with prefixes (c, d, rc, p)
  * @returns {DrumPadResolution} The resolved target and its type
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
+// eslint-disable-next-line sonarjs/cognitive-complexity -- drum pad path navigation requires handling multiple segment types in one loop
 function navigateRemainingSegments(startDevice, segments) {
   let current = startDevice;
+  /** @type {'chain'|'device'} */
   let currentType = "device";
 
   for (let i = 0; i < segments.length; i++) {

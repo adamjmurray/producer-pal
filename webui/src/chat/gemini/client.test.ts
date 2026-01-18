@@ -6,7 +6,7 @@ import {
   createMockGeminiMcpClient,
   setupGeminiMocks,
   collectGeminiHistory,
-} from "#webui/test-utils/gemini-client-test-utils";
+} from "#webui/test-utils/gemini-client-test-helpers";
 
 // Mock the Google GenAI SDK
 // @ts-expect-error vi.mock partial implementation

@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { select } from "#src/tools/control/select.js";
 import {
   setupSelectMocks,

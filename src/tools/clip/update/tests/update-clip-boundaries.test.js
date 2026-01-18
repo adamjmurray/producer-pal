@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiSet, mockLiveApiGet } from "#src/test/mock-live-api.js";
+import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
 import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 

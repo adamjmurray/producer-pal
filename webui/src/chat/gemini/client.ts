@@ -218,7 +218,7 @@ export class GeminiClient {
       if (!role) continue;
 
       for (const part of parts) {
-        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- optional chain would change semantics: need falsy check, not nullish
         if (!currentTurn || currentTurn.role !== role) {
           currentTurn = { role, parts: [] } as GeminiMessage;
           this.chatHistory.push(currentTurn);

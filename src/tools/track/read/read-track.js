@@ -230,15 +230,18 @@ export function readTrackGeneric({
   }
 
   const groupId = track.get("group_track")[1];
-  const isMidiTrack = track.getProperty("has_midi_input") > 0;
+  const isMidiTrack =
+    /** @type {number} */ (track.getProperty("has_midi_input")) > 0;
   const isProducerPalHost =
     category === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
   // Check track capabilities to avoid warnings
-  const canBeArmed = track.getProperty("can_be_armed") > 0;
-  const isGroup = track.getProperty("is_foldable") > 0;
+  const canBeArmed =
+    /** @type {number} */ (track.getProperty("can_be_armed")) > 0;
+  const isGroup = /** @type {number} */ (track.getProperty("is_foldable")) > 0;
 
+  /** @type {Record<string, unknown>} */
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
@@ -349,7 +352,7 @@ function categorizeDevices(
     });
 
     // Use processed device type for proper rack categorization
-    const deviceType = processedDevice.type;
+    const deviceType = /** @type {string} */ (processedDevice.type);
 
     if (
       deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||

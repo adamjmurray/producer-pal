@@ -71,3 +71,54 @@ export function updateBufferedPitches(state, updateFn) {
     state.stateChangedAfterEmission = true;
   }
 }
+
+/**
+ * Handle a property update (velocity, duration, probability, etc.)
+ * Tracks state changes and updates buffered pitches if needed.
+ * @param {object} state - State object
+ * @param {Function} pitchUpdater - Function that updates a single pitch state (receives pitchState)
+ */
+export function handlePropertyUpdate(state, pitchUpdater) {
+  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+    state.stateChangedSinceLastPitch = true;
+  }
+
+  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
+    for (const pitchState of state.currentPitches) {
+      pitchUpdater(pitchState);
+    }
+
+    state.stateChangedAfterEmission = true;
+  }
+
+  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+    state.stateChangedAfterEmission = true;
+  }
+}
+
+/**
+ * Extract buffer state snapshot for bar copy operations
+ * @param {object} state - Interpreter state object
+ * @returns {object} Snapshot of buffer-related state
+ */
+export function extractBufferState(state) {
+  return {
+    currentPitches: state.currentPitches,
+    pitchesEmitted: state.pitchesEmitted,
+    stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+    pitchGroupStarted: state.pitchGroupStarted,
+    stateChangedAfterEmission: state.stateChangedAfterEmission,
+  };
+}
+
+/**
+ * Apply bar copy result to interpreter state
+ * @param {object} state - Interpreter state object
+ * @param {object} result - Result from bar copy handler
+ */
+export function applyBarCopyResult(state, result) {
+  if (result.currentTime) {
+    state.currentTime = result.currentTime;
+    state.hasExplicitBarNumber = result.hasExplicitBarNumber;
+  }
+}

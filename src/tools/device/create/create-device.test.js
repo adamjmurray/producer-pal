@@ -4,7 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiPath,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { createDevice } from "./create-device.js";
 
 describe("createDevice", () => {

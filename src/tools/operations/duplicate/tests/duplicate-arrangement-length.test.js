@@ -7,6 +7,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  setupArrangementClipMocks,
+  setupArrangementDuplicationMock,
+  setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 // Shared mocks - see duplicate-test-helpers.js for implementations
@@ -30,48 +33,11 @@ vi.mock(
   },
 );
 
-function setupClipPathMock(clipId = "clip1") {
-  liveApiPath.mockImplementation(function () {
-    if (this._id === clipId) return "live_set tracks 0 clip_slots 0 clip";
-
-    return this._path;
-  });
-}
-
-function setupArrangementClipPathMock() {
-  const original = liveApiPath.getMockImplementation();
-
-  liveApiPath.mockImplementation(function () {
-    if (
-      this._path.startsWith("id live_set tracks") &&
-      this._path.includes("arrangement_clips")
-    ) {
-      return this._path.slice(3);
-    }
-
-    return original ? original.call(this) : this._path;
-  });
-}
-
-function setupDuplicateToArrangementMock({ includeNotes = true } = {}) {
-  liveApiCall.mockImplementation(function (method) {
-    if (method === "duplicate_clip_to_arrangement") {
-      return ["id", "live_set tracks 0 arrangement_clips 0"];
-    }
-
-    if (includeNotes && method === "get_notes_extended") {
-      return JSON.stringify({ notes: [] });
-    }
-
-    return null;
-  });
-}
-
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", () => {
-    setupClipPathMock();
-    setupDuplicateToArrangementMock();
-    setupArrangementClipPathMock();
+    setupSessionClipPath("clip1");
+    setupArrangementDuplicationMock();
+    setupArrangementClipMocks();
 
     mockLiveApiGet({
       clip1: {
@@ -111,9 +77,9 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should duplicate a looping clip with lengthening via updateClip", () => {
-    setupClipPathMock();
-    setupDuplicateToArrangementMock();
-    setupArrangementClipPathMock();
+    setupSessionClipPath("clip1");
+    setupArrangementDuplicationMock();
+    setupArrangementClipMocks();
 
     liveApiId.mockImplementation(function () {
       if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
@@ -171,9 +137,9 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should duplicate a non-looping clip at original length when requested length is longer", () => {
-    setupClipPathMock();
-    setupDuplicateToArrangementMock({ includeNotes: false });
-    setupArrangementClipPathMock();
+    setupSessionClipPath("clip1");
+    setupArrangementDuplicationMock({ includeNotes: false });
+    setupArrangementClipMocks();
 
     liveApiId.mockImplementation(function () {
       if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
@@ -394,7 +360,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should error when arrangementLength is zero or negative", () => {
-    setupClipPathMock();
+    setupSessionClipPath("clip1");
 
     mockLiveApiGet({
       clip1: {
@@ -418,9 +384,9 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should work normally without arrangementLength (backward compatibility)", () => {
-    setupClipPathMock();
-    setupDuplicateToArrangementMock({ includeNotes: false });
-    setupArrangementClipPathMock();
+    setupSessionClipPath("clip1");
+    setupArrangementDuplicationMock({ includeNotes: false });
+    setupArrangementClipMocks();
 
     mockLiveApiGet({
       clip1: {

@@ -5,8 +5,9 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
+import { setupLocatorMocks } from "./update-live-set-test-helpers.js";
 
 describe("updateLiveSet - locator operations", () => {
   beforeEach(() => {
@@ -171,34 +172,25 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
-    it("should throw if locatorTime is missing for create", async () => {
-      await expect(
-        updateLiveSet({
-          locatorOperation: "create",
-        }),
-      ).rejects.toThrow("locatorTime is required for create operation");
+    it("should skip if locatorTime is missing for create", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "create",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "missing_locatorTime",
+      });
     });
   });
 
   describe("delete locator", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2");
-
-        if (this._path === "id cue1") {
-          if (prop === "time") return [0];
-          if (prop === "name") return ["Intro"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Verse"];
-        }
-
-        return [0];
+      setupLocatorMocks({
+        cuePoints: [
+          { id: "cue1", time: 0, name: "Intro" },
+          { id: "cue2", time: 16, name: "Verse" },
+        ],
       });
     });
 
@@ -276,14 +268,15 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
-    it("should throw if no identifier provided for delete", async () => {
-      await expect(
-        updateLiveSet({
-          locatorOperation: "delete",
-        }),
-      ).rejects.toThrow(
-        "delete requires locatorId, locatorTime, or locatorName",
-      );
+    it("should skip if no identifier provided for delete", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "missing_identifier",
+      });
     });
 
     it("should skip if locator ID not found", async () => {
@@ -331,17 +324,11 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("rename locator", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2");
-
-        if (this._path === "id cue1" && prop === "time") return [0];
-
-        if (this._path === "id cue2" && prop === "time") return [16];
-
-        return [0];
+      setupLocatorMocks({
+        cuePoints: [
+          { id: "cue1", time: 0 },
+          { id: "cue2", time: 16 },
+        ],
       });
     });
 
@@ -375,32 +362,42 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
-    it("should throw if locatorName is missing for rename", async () => {
-      await expect(
-        updateLiveSet({
-          locatorOperation: "rename",
-          locatorId: "locator-0",
-        }),
-      ).rejects.toThrow("locatorName is required for rename operation");
+    it("should skip if locatorName is missing for rename", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "locator-0",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "missing_locatorName",
+      });
     });
 
-    it("should throw if no identifier provided for rename", async () => {
-      await expect(
-        updateLiveSet({
-          locatorOperation: "rename",
-          locatorName: "New Name",
-        }),
-      ).rejects.toThrow("rename requires locatorId or locatorTime");
+    it("should skip if no identifier provided for rename", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorName: "New Name",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "missing_identifier",
+      });
     });
 
-    it("should throw if locator ID not found for rename", async () => {
-      await expect(
-        updateLiveSet({
-          locatorOperation: "rename",
-          locatorId: "locator-99",
-          locatorName: "New Name",
-        }),
-      ).rejects.toThrow("Locator not found: locator-99");
+    it("should skip if locator ID not found for rename", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorId: "locator-99",
+        locatorName: "New Name",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "locator_not_found",
+        id: "locator-99",
+      });
     });
   });
 

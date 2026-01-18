@@ -8,7 +8,7 @@ import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 
-const server = createMcpServer();
+const server = createMcpServer(() => {});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -27,6 +27,7 @@ const version = rootPackageJson.version;
 // Generate tools from MCP server (excluding development-only ppal-raw-live-api)
 const tools = [];
 
+// @ts-expect-error - accessing private property to enumerate registered tools
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   const shortDescription = toolInfo.description.split("\n")[0];
 

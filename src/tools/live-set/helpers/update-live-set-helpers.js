@@ -1,4 +1,8 @@
-import { VALID_PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
+import {
+  VALID_PITCH_CLASS_NAMES,
+  pitchClassToNumber,
+} from "#src/shared/pitch.js";
+import * as console from "#src/shared/v8-max-console.js";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.js";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
@@ -19,7 +23,7 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
  * @returns {object|null} Cleanup info or null if no extension needed
  */
 export function extendSongIfNeeded(liveSet, targetBeats, context) {
-  const songLength = liveSet.get("song_length")[0];
+  const songLength = /** @type {number} */ (liveSet.get("song_length")[0]);
 
   if (targetBeats <= songLength) {
     return null; // No extension needed
@@ -33,7 +37,7 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
 
-    if (track.getProperty("has_midi_input") > 0) {
+    if (/** @type {number} */ (track.getProperty("has_midi_input")) > 0) {
       selectedTrack = track;
       isMidiTrack = true;
       break;
@@ -53,10 +57,8 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
   if (isMidiTrack) {
     // Create temp MIDI clip in arrangement (1 beat minimum)
-    const tempClipResult = selectedTrack.call(
-      "create_midi_clip",
-      targetBeats,
-      1,
+    const tempClipResult = /** @type {string} */ (
+      selectedTrack.call("create_midi_clip", targetBeats, 1)
     );
     const tempClip = LiveAPI.from(tempClipResult);
 
@@ -76,10 +78,12 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
     context.silenceWavPath,
   );
 
-  const arrangementClipResult = selectedTrack.call(
-    "duplicate_clip_to_arrangement",
-    `id ${sessionClip.id}`,
-    targetBeats,
+  const arrangementClipResult = /** @type {string} */ (
+    selectedTrack.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sessionClip.id}`,
+      targetBeats,
+    )
   );
   const arrangementClip = LiveAPI.from(arrangementClipResult);
 
@@ -152,4 +156,50 @@ export function parseScale(scaleString) {
     scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex],
     scaleName: VALID_SCALE_NAMES[scaleNameIndex],
   };
+}
+
+/**
+ * Apply tempo to live set, with validation
+ * @param {LiveAPI} liveSet - The live_set object
+ * @param {number} tempo - Tempo in BPM
+ * @param {object} result - Result object to update
+ */
+export function applyTempo(liveSet, tempo, result) {
+  if (tempo < 20 || tempo > 999) {
+    console.error("Warning: tempo must be between 20.0 and 999.0 BPM");
+
+    return;
+  }
+
+  liveSet.set("tempo", tempo);
+  result.tempo = tempo;
+}
+
+/**
+ * Apply scale to live set, with validation
+ * @param {LiveAPI} liveSet - The live_set object
+ * @param {string} scale - Scale string (e.g., "C Major") or empty string to disable
+ * @param {object} result - Result object to update
+ */
+export function applyScale(liveSet, scale, result) {
+  if (scale === "") {
+    liveSet.set("scale_mode", 0);
+    result.scale = "";
+
+    return;
+  }
+
+  const { scaleRoot, scaleName } = parseScale(scale);
+  const scaleRootNumber = pitchClassToNumber(scaleRoot);
+
+  if (scaleRootNumber == null) {
+    console.error(`Warning: invalid scale root: ${scaleRoot}`);
+
+    return;
+  }
+
+  liveSet.set("root_note", scaleRootNumber);
+  liveSet.set("scale_name", scaleName);
+  liveSet.set("scale_mode", 1);
+  result.scale = `${scaleRoot} ${scaleName}`;
 }

@@ -34,7 +34,7 @@ Also feel free to:
 
 ## Building from source
 
-Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
+Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 
 1. Clone this repository
 2. `npm install`

@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "#src/test/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.js";
 
 /**
  * Setup basic clip mocks for slicing tests
@@ -222,4 +222,28 @@ export function setupUnloopedClipSlicingMocks(clipId, clipProps = {}) {
   const callState = createSlicingCallMock({ tilePrefix: "slice_" });
 
   return { callState };
+}
+
+/**
+ * Filter set calls to find looping-related changes.
+ * @param {Array} setCalls - Array of set call objects
+ * @returns {{ enable: Array, disable: Array }} Filtered calls
+ */
+export function filterLoopingCalls(setCalls) {
+  return {
+    enable: setCalls.filter((c) => c.prop === "looping" && c.value === 1),
+    disable: setCalls.filter((c) => c.prop === "looping" && c.value === 0),
+  };
+}
+
+/**
+ * Filter set calls to find marker-related changes.
+ * @param {Array} setCalls - Array of set call objects
+ * @returns {{ startMarker: Array, endMarker: Array }} Filtered calls
+ */
+export function filterMarkerCalls(setCalls) {
+  return {
+    startMarker: setCalls.filter((c) => c.prop === "start_marker"),
+    endMarker: setCalls.filter((c) => c.prop === "end_marker"),
+  };
 }
