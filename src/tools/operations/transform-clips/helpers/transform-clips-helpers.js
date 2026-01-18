@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
@@ -93,8 +92,12 @@ export function getClipIds(
 
   const trackIndices = parseCommaSeparatedIndices(arrangementTrackIndex);
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   let arrangementStartBeats = 0;
   let arrangementEndBeats = Infinity;
@@ -134,7 +137,9 @@ export function getClipIds(
 
     for (const clipId of trackClipIds) {
       const clip = LiveAPI.from(clipId);
-      const clipStartTime = clip.getProperty("start_time");
+      const clipStartTime = /** @type {number} */ (
+        clip.getProperty("start_time")
+      );
 
       if (
         clipStartTime >= arrangementStartBeats &&
