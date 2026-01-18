@@ -7,6 +7,7 @@
     "src/shared/**/*.js",
     "src/portal/**/*.js",
     "src/test/**/*.js",
+    "src/live-api-adapter/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": ["**/*.test.js", "**/*-test-helpers.js"]
