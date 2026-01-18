@@ -182,77 +182,83 @@ The default URL value is http://localhost:3350`);
       return this.fallbackTools;
     });
 
-    this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      logger.debug(
-        `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
-      );
-
-      // Always try to connect to HTTP server first
-      try {
-        await this._ensureHttpConnection();
-        const toolRequest = {
-          name: request.params.name,
-          arguments: request.params.arguments || {},
-        };
-
-        // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-        const result = await /** @type {Client} */ (this.httpClient).callTool(
-          toolRequest,
-        );
-
+    this.mcpServer.setRequestHandler(
+      CallToolRequestSchema,
+      async (
+        /** @type {{params: {name: string, arguments?: Record<string, unknown>}}} */ request,
+      ) => {
         logger.debug(
-          `[Bridge] Tool call successful for ${request.params.name}`,
+          `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
-        return result;
-      } catch (error) {
-        logger.error(
-          `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,
-        );
+        // Always try to connect to HTTP server first
+        try {
+          await this._ensureHttpConnection();
+          const toolRequest = {
+            name: request.params.name,
+            arguments: request.params.arguments || {},
+          };
 
-        // Check if error has code property (Node.js/MCP errors)
-        const errorCode =
-          error && typeof error === "object" && "code" in error
-            ? /** @type {{code: unknown}} */ (error).code
-            : undefined;
-
-        // Check if this is an MCP protocol error (has numeric code) vs connectivity error
-        // Any numeric code means we connected and got a structured JSON-RPC response
-        if (typeof errorCode === "number") {
-          logger.debug(
-            `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
+          // httpClient is guaranteed non-null after successful _ensureHttpConnection()
+          const result = await /** @type {Client} */ (this.httpClient).callTool(
+            toolRequest,
           );
-          // Extract the actual error message, removing any "MCP error {code}:" prefix
-          let errMsg = errorMessage(error) || `Unknown MCP error ${errorCode}`;
-          // Strip redundant "MCP error {code}:" prefix if present
-          const mcpErrorPrefix = `MCP error ${errorCode}: `;
 
-          if (errMsg.startsWith(mcpErrorPrefix)) {
-            errMsg = errMsg.slice(mcpErrorPrefix.length);
+          logger.debug(
+            `[Bridge] Tool call successful for ${request.params.name}`,
+          );
+
+          return result;
+        } catch (error) {
+          logger.error(
+            `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,
+          );
+
+          // Check if error has code property (Node.js/MCP errors)
+          const errorCode =
+            error && typeof error === "object" && "code" in error
+              ? /** @type {{code: unknown}} */ (error).code
+              : undefined;
+
+          // Check if this is an MCP protocol error (has numeric code) vs connectivity error
+          // Any numeric code means we connected and got a structured JSON-RPC response
+          if (typeof errorCode === "number") {
+            logger.debug(
+              `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
+            );
+            // Extract the actual error message, removing any "MCP error {code}:" prefix
+            let errMsg =
+              errorMessage(error) || `Unknown MCP error ${errorCode}`;
+            // Strip redundant "MCP error {code}:" prefix if present
+            const mcpErrorPrefix = `MCP error ${errorCode}: `;
+
+            if (errMsg.startsWith(mcpErrorPrefix)) {
+              errMsg = errMsg.slice(mcpErrorPrefix.length);
+            }
+
+            return formatErrorResponse(errMsg);
           }
 
-          return formatErrorResponse(errMsg);
+          // This is a real connectivity/network error
+          this.isConnected = false;
+
+          if (errorCode === "ERR_INVALID_URL") {
+            logger.debug(
+              `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
+            );
+
+            return this._createMisconfiguredUrlResponse();
+          }
         }
 
-        // This is a real connectivity/network error
-        this.isConnected = false;
+        // Return setup error when Producer Pal is not available
+        logger.debug(
+          `[Bridge] Connectivity problem detected. Returning setup error response`,
+        );
 
-        if (errorCode === "ERR_INVALID_URL") {
-          logger.debug(
-            `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
-          );
-
-          return this._createMisconfiguredUrlResponse();
-        }
-      }
-
-      // Return setup error when Producer Pal is not available
-      logger.debug(
-        `[Bridge] Connectivity problem detected. Returning setup error response`,
-      );
-
-      return this._createSetupErrorResponse();
-    });
+        return this._createSetupErrorResponse();
+      },
+    );
 
     // Connect stdio transport
     const transport = new StdioServerTransport();
