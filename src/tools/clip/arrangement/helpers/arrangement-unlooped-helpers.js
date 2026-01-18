@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import {
   createShortenedClipInHolding,
@@ -118,7 +117,7 @@ export function handleUnloopedLengthening({
     clipStartMarkerBeats = clipStartMarker;
   } else {
     const liveSet = LiveAPI.from("live_set");
-    const tempo = liveSet.getProperty("tempo");
+    const tempo = /** @type {number} */ (liveSet.getProperty("tempo"));
 
     clipStartMarkerBeats = clipStartMarker * (tempo / 60);
   }
