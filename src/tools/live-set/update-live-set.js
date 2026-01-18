@@ -215,8 +215,8 @@ async function handleLocatorOperation(
  * Create a locator at the specified position
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Create options
- * @param {string} options.locatorTime - Bar|beat position for the locator
- * @param {string} [options.locatorName] - Optional name for the locator
+ * @param {string | undefined} options.locatorTime - Bar|beat position for the locator
+ * @param {string | undefined} options.locatorName - Optional name for the locator
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
  * @param {object} context - Context object with silenceWavPath
@@ -236,10 +236,8 @@ async function createLocator(
     };
   }
 
-  const targetBeats = barBeatToAbletonBeats(
-    locatorTime,
-    timeSigNumerator,
-    timeSigDenominator,
+  const targetBeats = /** @type {number} */ (
+    barBeatToAbletonBeats(locatorTime, timeSigNumerator, timeSigDenominator)
   );
 
   // Check if a locator already exists at this position
@@ -350,7 +348,8 @@ async function deleteLocator(
   }
 
   // Delete by ID or time (single locator)
-  let timeInBeats;
+  /** @type {number} */
+  let timeInBeats = 0;
 
   if (locatorId != null) {
     const found = findLocator(liveSet, { locatorId });
@@ -366,11 +365,14 @@ async function deleteLocator(
     }
 
     timeInBeats = /** @type {number} */ (found.locator.getProperty("time"));
-  } else if (locatorTime != null) {
-    timeInBeats = barBeatToAbletonBeats(
-      locatorTime,
-      timeSigNumerator,
-      timeSigDenominator,
+  } else {
+    // locatorTime must be defined here (validated above)
+    timeInBeats = /** @type {number} */ (
+      barBeatToAbletonBeats(
+        /** @type {string} */ (locatorTime),
+        timeSigNumerator,
+        timeSigDenominator,
+      )
     );
     const found = findLocator(liveSet, { timeInBeats });
 
@@ -404,9 +406,9 @@ async function deleteLocator(
  * Rename a locator by ID or time
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Rename options
- * @param {string} [options.locatorId] - Locator ID to rename
- * @param {string} [options.locatorTime] - Bar|beat position to rename
- * @param {string} options.locatorName - New name for the locator
+ * @param {string | undefined} options.locatorId - Locator ID to rename
+ * @param {string | undefined} options.locatorTime - Bar|beat position to rename
+ * @param {string | undefined} options.locatorName - New name for the locator
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
  * @returns {object} Rename result
@@ -448,10 +450,13 @@ function renameLocator(
       };
     }
   } else {
-    const timeInBeats = barBeatToAbletonBeats(
-      locatorTime,
-      timeSigNumerator,
-      timeSigDenominator,
+    // locatorTime must be defined here (validated above)
+    const timeInBeats = /** @type {number} */ (
+      barBeatToAbletonBeats(
+        /** @type {string} */ (locatorTime),
+        timeSigNumerator,
+        timeSigDenominator,
+      )
     );
 
     found = findLocator(liveSet, { timeInBeats });

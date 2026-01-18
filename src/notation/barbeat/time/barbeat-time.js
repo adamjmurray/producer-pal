@@ -240,7 +240,7 @@ function parseBeatValue(beatsStr, context) {
 /**
  * Parse bar:beat format and return musical beats
  * @param {string} barBeatDuration - Bar:beat string like "2:1.5"
- * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number | undefined} timeSigNumerator - Time signature numerator
  * @returns {number} Musical beats
  */
 function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
@@ -266,7 +266,7 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
     throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
   }
 
-  const musicalBeatsPerBar = timeSigNumerator;
+  const musicalBeatsPerBar = timeSigNumerator ?? 4;
 
   return bars * musicalBeatsPerBar + beats;
 }
@@ -275,8 +275,8 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
  * Convert bar:beat or beat-only duration to musical beats
  *
  * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} _timeSigDenominator - Time signature denominator (unused)
+ * @param {number | undefined} timeSigNumerator - Time signature numerator
+ * @param {number | undefined} _timeSigDenominator - Time signature denominator (unused)
  * @returns {number} Musical beats (duration)
  */
 export function barBeatDurationToMusicalBeats(

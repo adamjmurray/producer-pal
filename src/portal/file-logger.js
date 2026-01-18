@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { errorMessage } from "#src/shared/error-utils.js";
 
 // Check logging environment variables
 const enableLogging = process.env.ENABLE_LOGGING === "true";
@@ -28,7 +29,7 @@ if (!isRunningInVitest && enableLogging) {
       mkdirSync(LOG_DIR, { recursive: true });
     }
   } catch (error) {
-    console.error(`Failed to create log directory: ${error.message}`);
+    console.error(`Failed to create log directory: ${errorMessage(error)}`);
   }
 }
 
@@ -56,7 +57,7 @@ function writeLog(level, message) {
     appendFileSync(LOG_FILE, line);
   } catch (error) {
     // Don't throw - we're probably already in an error state
-    console.error(`Failed to write log: ${error.message}`);
+    console.error(`Failed to write log: ${errorMessage(error)}`);
   }
 }
 

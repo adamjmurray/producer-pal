@@ -164,8 +164,8 @@ export function select(
 /**
  * Build track path string based on category and index
  *
- * @param {string} category - Track category ('regular', 'return', or 'master')
- * @param {number} trackIndex - Track index (0-based)
+ * @param {string | null} [category] - Track category ('regular', 'return', or 'master')
+ * @param {number | null} [trackIndex] - Track index (0-based)
  * @returns {string|null} Track path string or null if invalid category
  */
 function buildTrackPath(category, trackIndex) {
@@ -190,14 +190,14 @@ function buildTrackPath(category, trackIndex) {
  * Validate selection parameters for conflicts
  *
  * @param {object} options - Parameters object
- * @param {string} options.trackId - Track ID
- * @param {string} options.category - Track category
- * @param {number} options.trackIndex - Track index
- * @param {string} options.sceneId - Scene ID
- * @param {number} options.sceneIndex - Scene index
- * @param {string} options.deviceId - Device ID
- * @param {boolean} options.instrument - Instrument selection flag
- * @param {object} options.clipSlot - Clip slot coordinates
+ * @param {string} [options.trackId] - Track ID
+ * @param {string} [options.category] - Track category
+ * @param {number} [options.trackIndex] - Track index
+ * @param {string} [options.sceneId] - Scene ID
+ * @param {number} [options.sceneIndex] - Scene index
+ * @param {string} [options.deviceId] - Device ID
+ * @param {boolean} [options.instrument] - Instrument selection flag
+ * @param {object} [options.clipSlot] - Clip slot coordinates
  */
 function validateParameters({
   trackId,
@@ -249,9 +249,9 @@ function validateParameters({
  *
  * @param {object} options - Selection parameters
  * @param {object} options.songView - LiveAPI instance for live_set view
- * @param {string} options.trackId - Track ID to select
- * @param {string} options.category - Track category
- * @param {number} options.trackIndex - Track index
+ * @param {string} [options.trackId] - Track ID to select
+ * @param {string} [options.category] - Track category
+ * @param {number} [options.trackIndex] - Track index
  * @returns {object} Selection result with track info
  */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
@@ -303,8 +303,8 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
  *
  * @param {object} options - Selection parameters
  * @param {object} options.songView - LiveAPI instance for live_set view
- * @param {string} options.sceneId - Scene ID to select
- * @param {number} options.sceneIndex - Scene index
+ * @param {string} [options.sceneId] - Scene ID to select
+ * @param {number} [options.sceneIndex] - Scene index
  * @returns {object} Selection result with scene info
  */
 function updateSceneSelection({ songView, sceneId, sceneIndex }) {
@@ -340,8 +340,8 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
  * Update device selection in Live
  *
  * @param {object} options - Selection parameters
- * @param {string} options.deviceId - Device ID to select
- * @param {boolean} options.instrument - Whether to select instrument
+ * @param {string} [options.deviceId] - Device ID to select
+ * @param {boolean} [options.instrument] - Whether to select instrument
  * @param {object} options.trackSelectionResult - Previous track selection result
  */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
@@ -394,7 +394,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
  *
  * @param {object} options - Selection parameters
  * @param {object} options.songView - LiveAPI instance for live_set view
- * @param {object} options.clipSlot - Clip slot coordinates {trackIndex, sceneIndex}
+ * @param {object} [options.clipSlot] - Clip slot coordinates {trackIndex, sceneIndex}
  */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {

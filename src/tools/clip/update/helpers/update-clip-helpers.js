@@ -114,19 +114,49 @@ export function calculateBeatPositions({
 }
 
 /**
+ * Set loop region properties on a clip in the correct order
+ * @param {object} propsToSet - Properties object to modify
+ * @param {boolean} setEndFirst - Whether to set loop_end before loop_start
+ * @param {number | null} startBeats - Start position in beats
+ * @param {number | null} endBeats - End position in beats
+ * @param {boolean} [looping] - Whether looping is enabled
+ */
+function setLoopProperties(
+  propsToSet,
+  setEndFirst,
+  startBeats,
+  endBeats,
+  looping,
+) {
+  if (setEndFirst && endBeats != null && looping !== false) {
+    // Set end first to avoid "LoopStart behind LoopEnd" error
+    propsToSet.loop_end = endBeats;
+  }
+
+  if (startBeats != null && looping !== false) {
+    propsToSet.loop_start = startBeats;
+  }
+
+  if (!setEndFirst && endBeats != null && looping !== false) {
+    // Set end after start in normal case
+    propsToSet.loop_end = endBeats;
+  }
+}
+
+/**
  * Build properties map for setAll
  * @param {object} args - Property building arguments
- * @param {string} args.name - Clip name
- * @param {string} args.color - Clip color
- * @param {string} args.timeSignature - Time signature string
+ * @param {string} [args.name] - Clip name
+ * @param {string} [args.color] - Clip color
+ * @param {string} [args.timeSignature] - Time signature string
  * @param {number} args.timeSigNumerator - Time signature numerator
  * @param {number} args.timeSigDenominator - Time signature denominator
- * @param {number} args.startMarkerBeats - Start marker position in beats
- * @param {boolean} args.looping - Whether looping is enabled
+ * @param {number|null} args.startMarkerBeats - Start marker position in beats
+ * @param {boolean} [args.looping] - Whether looping is enabled
  * @param {boolean} args.isLooping - Current looping state
- * @param {number} args.startBeats - Start position in beats
- * @param {number} args.endBeats - End position in beats
- * @param {number} args.currentLoopEnd - Current loop end position in beats
+ * @param {number|null} args.startBeats - Start position in beats
+ * @param {number|null} args.endBeats - End position in beats
+ * @param {number|null} args.currentLoopEnd - Current loop end position in beats
  * @returns {object} Properties object ready for clip.setAll()
  */
 export function buildClipPropertiesToSet({
@@ -143,7 +173,10 @@ export function buildClipPropertiesToSet({
   currentLoopEnd,
 }) {
   const setEndFirst =
-    isLooping && startBeats != null && endBeats != null
+    isLooping &&
+    startBeats != null &&
+    endBeats != null &&
+    currentLoopEnd != null
       ? startBeats > currentLoopEnd
       : false;
 
@@ -158,19 +191,7 @@ export function buildClipPropertiesToSet({
 
   // Set loop properties for looping clips (order matters!)
   if (isLooping || looping == null) {
-    if (setEndFirst && endBeats != null && looping !== false) {
-      // Set end first to avoid "LoopStart behind LoopEnd" error
-      propsToSet.loop_end = endBeats;
-    }
-
-    if (startBeats != null && looping !== false) {
-      propsToSet.loop_start = startBeats;
-    }
-
-    if (!setEndFirst && endBeats != null && looping !== false) {
-      // Set end after start in normal case
-      propsToSet.loop_end = endBeats;
-    }
+    setLoopProperties(propsToSet, setEndFirst, startBeats, endBeats, looping);
   }
 
   // Set end_marker for non-looping clips
@@ -184,8 +205,8 @@ export function buildClipPropertiesToSet({
 /**
  * Handle note updates (merge or replace)
  * @param {LiveAPI} clip - The clip to update
- * @param {string} notationString - The notation string to apply
- * @param {string} modulationString - Modulation expressions to apply to notes
+ * @param {string | undefined} notationString - The notation string to apply
+ * @param {string | undefined} modulationString - Modulation expressions to apply to notes
  * @param {string} noteUpdateMode - 'merge' or 'replace'
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -285,30 +306,30 @@ function getTimeSignature(timeSignature, clip) {
  * Process a single clip update
  * @param {object} params - Parameters object containing all update parameters
  * @param {LiveAPI} params.clip - The clip to update
- * @param {string} params.notationString - Musical notation string
- * @param {string} params.modulationString - Modulation expressions to apply
+ * @param {string} [params.notationString] - Musical notation string
+ * @param {string} [params.modulationString] - Modulation expressions to apply
  * @param {string} params.noteUpdateMode - Note update mode (merge or replace)
- * @param {string} params.name - Clip name
- * @param {string} params.color - Clip color
- * @param {string} params.timeSignature - Time signature
- * @param {string} params.start - Start position
- * @param {string} params.length - Clip length
- * @param {string} params.firstStart - First start position
- * @param {boolean} params.looping - Looping enabled
- * @param {number} params.gainDb - Gain in decibels
- * @param {number} params.pitchShift - Pitch shift amount
- * @param {string} params.warpMode - Warp mode
- * @param {boolean} params.warping - Warping enabled
- * @param {string} params.warpOp - Warp operation type
- * @param {number} params.warpBeatTime - Warp beat time
- * @param {number} params.warpSampleTime - Warp sample time
- * @param {number} params.warpDistance - Warp distance
- * @param {number} params.quantize - Quantization strength 0-1
- * @param {string} params.quantizeGrid - Note grid for quantization
- * @param {number} params.quantizeSwing - Swing amount 0-1
- * @param {number} params.quantizePitch - Limit quantization to specific pitch
- * @param {number} params.arrangementLengthBeats - Arrangement length in beats
- * @param {number} params.arrangementStartBeats - Arrangement start in beats
+ * @param {string} [params.name] - Clip name
+ * @param {string} [params.color] - Clip color
+ * @param {string} [params.timeSignature] - Time signature
+ * @param {string} [params.start] - Start position
+ * @param {string} [params.length] - Clip length
+ * @param {string} [params.firstStart] - First start position
+ * @param {boolean} [params.looping] - Looping enabled
+ * @param {number} [params.gainDb] - Gain in decibels
+ * @param {number} [params.pitchShift] - Pitch shift amount
+ * @param {string} [params.warpMode] - Warp mode
+ * @param {boolean} [params.warping] - Warping enabled
+ * @param {string} [params.warpOp] - Warp operation type
+ * @param {number} [params.warpBeatTime] - Warp beat time
+ * @param {number} [params.warpSampleTime] - Warp sample time
+ * @param {number} [params.warpDistance] - Warp distance
+ * @param {number} [params.quantize] - Quantization strength 0-1
+ * @param {string} [params.quantizeGrid] - Note grid for quantization
+ * @param {number} [params.quantizeSwing] - Swing amount 0-1
+ * @param {number} [params.quantizePitch] - Limit quantization to specific pitch
+ * @param {number | null} [params.arrangementLengthBeats] - Arrangement length in beats
+ * @param {number | null} [params.arrangementStartBeats] - Arrangement start in beats
  * @param {object} params.context - Context object
  * @param {Array} params.updatedClips - Array to collect updated clips
  * @param {Map} params.tracksWithMovedClips - Map of tracks with moved clips

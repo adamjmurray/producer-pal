@@ -57,11 +57,15 @@ function resolveDrumPadContainer(path) {
     return LiveAPI.from(resolved.liveApiPath);
   }
 
+  // drumPadNote and remainingSegments are guaranteed for drum-pad targetType
+  const drumPadNote = /** @type {string} */ (resolved.drumPadNote);
+  const remainingSegments = resolved.remainingSegments ?? [];
+
   // Try to resolve the drum pad chain
   const result = resolveDrumPadFromPath(
     resolved.liveApiPath,
-    resolved.drumPadNote,
-    resolved.remainingSegments,
+    drumPadNote,
+    remainingSegments,
   );
 
   // If found, return it
@@ -78,8 +82,7 @@ function resolveDrumPadContainer(path) {
     }
 
     // Parse the note to MIDI
-    const targetInNote =
-      resolved.drumPadNote === "*" ? -1 : noteNameToMidi(resolved.drumPadNote);
+    const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
 
     if (targetInNote == null) {
       return null;
@@ -89,8 +92,8 @@ function resolveDrumPadContainer(path) {
     // Chain index segment uses 'c' prefix: pC1/c2 means chain 2 of drum pad C1
     let chainIndex = 0;
 
-    if (resolved.remainingSegments?.length > 0) {
-      const chainSegment = resolved.remainingSegments[0];
+    if (remainingSegments.length > 0) {
+      const chainSegment = remainingSegments[0];
 
       chainIndex = chainSegment.startsWith("c")
         ? Number.parseInt(chainSegment.slice(1))
@@ -120,8 +123,8 @@ function resolveDrumPadContainer(path) {
     // Re-resolve after creation
     const resultAfter = resolveDrumPadFromPath(
       resolved.liveApiPath,
-      resolved.drumPadNote,
-      resolved.remainingSegments,
+      drumPadNote,
+      remainingSegments,
     );
 
     return resultAfter.target;
@@ -175,7 +178,8 @@ export function resolveInsertionPath(path) {
   }
 
   // Simple prefix-based logic: path ending with 'd' = position, otherwise = append
-  const lastSegment = segments.at(-1);
+  // lastSegment is guaranteed non-undefined since we checked segments[0] !== "" above
+  const lastSegment = /** @type {string} */ (segments.at(-1));
   const hasPosition = lastSegment.startsWith("d");
 
   if (hasPosition) {

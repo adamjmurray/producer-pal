@@ -79,9 +79,9 @@ export function resolveLocatorToBeats(
 
 /**
  * Validate mutual exclusivity of time and locator parameters
- * @param {string} timeParam - Time parameter value
- * @param {string} locatorIdParam - Locator ID parameter value
- * @param {string} locatorNameParam - Locator name parameter value
+ * @param {string | undefined} timeParam - Time parameter value
+ * @param {string | undefined} locatorIdParam - Locator ID parameter value
+ * @param {string | undefined} locatorNameParam - Locator name parameter value
  * @param {string} paramName - Name of the parameter for error messages
  */
 export function validateLocatorOrTime(
@@ -120,7 +120,7 @@ export function validateLocatorOrTime(
  * @param {string} [params.startLocatorName] - Locator name for start
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {{startTimeBeats: number|undefined, useLocatorStart: boolean}} Resolved start time
+ * @returns {{startTimeBeats: number|null|undefined, useLocatorStart: boolean}} Resolved start time
  */
 export function resolveStartTime(
   liveSet,
@@ -159,7 +159,7 @@ export function resolveStartTime(
  * @param {string} [params.loopStartLocatorName] - Locator name for loop start
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number|undefined} Resolved loop start in beats
+ * @returns {number|null|undefined} Resolved loop start in beats
  */
 export function resolveLoopStart(
   liveSet,
@@ -195,7 +195,7 @@ export function resolveLoopStart(
  * @param {string} [params.loopEnd] - Bar|beat position
  * @param {string} [params.loopEndLocatorId] - Locator ID for loop end
  * @param {string} [params.loopEndLocatorName] - Locator name for loop end
- * @param {number|undefined} loopStartBeats - Resolved loop start in beats
+ * @param {number|null|undefined} loopStartBeats - Resolved loop start in beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  */

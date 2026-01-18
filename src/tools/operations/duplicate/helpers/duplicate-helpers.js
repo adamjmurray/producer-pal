@@ -2,6 +2,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 import {
@@ -36,13 +37,15 @@ export function parseArrangementLength(
 
     return arrangementLengthBeats;
   } catch (error) {
-    if (error.message.includes("Invalid bar:beat duration format")) {
-      throw new Error(`duplicate failed: ${error.message}`);
+    const msg = errorMessage(error);
+
+    if (msg.includes("Invalid bar:beat duration format")) {
+      throw new Error(`duplicate failed: ${msg}`);
     }
 
-    if (error.message.includes("must be 0 or greater")) {
+    if (msg.includes("must be 0 or greater")) {
       throw new Error(
-        `duplicate failed: arrangementLength ${error.message.replace("in duration ", "")}`,
+        `duplicate failed: arrangementLength ${msg.replace("in duration ", "")}`,
       );
     }
 

@@ -2,12 +2,12 @@ import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbea
 
 /**
  * Builds the properties object to set on a clip
- * @param {number} startBeats - Loop start position in beats
- * @param {number} endBeats - Loop end position in beats
- * @param {number} firstStartBeats - First playback start position in beats
- * @param {boolean} looping - Whether the clip is looping
- * @param {string} clipName - Clip name
- * @param {string} color - Clip color in hex format
+ * @param {number | null} startBeats - Loop start position in beats
+ * @param {number | null} endBeats - Loop end position in beats
+ * @param {number | null} firstStartBeats - First playback start position in beats
+ * @param {boolean | null} looping - Whether the clip is looping
+ * @param {string | undefined} clipName - Clip name
+ * @param {string | null} color - Clip color in hex format
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @param {number} clipLength - Default clip length in beats (used when endBeats not specified)
@@ -69,14 +69,14 @@ export function buildClipProperties(
  * @param {object} clip - LiveAPI clip object
  * @param {number} trackIndex - Track index
  * @param {string} view - View type (session or arrangement)
- * @param {number} sceneIndex - Scene index for session clips
- * @param {string} arrangementStart - Arrangement start in bar|beat format (explicit position)
- * @param {string} notationString - Original notation string
+ * @param {number | undefined} sceneIndex - Scene index for session clips
+ * @param {string | null} arrangementStart - Arrangement start in bar|beat format (explicit position)
+ * @param {string | null} notationString - Original notation string
  * @param {Array} notes - Array of MIDI notes
- * @param {string} length - Original length parameter
+ * @param {string | null} length - Original length parameter
  * @param {number} timeSigNumerator - Clip time signature numerator
  * @param {number} timeSigDenominator - Clip time signature denominator
- * @param {string} sampleFile - Audio file path (for audio clips)
+ * @param {string | null} sampleFile - Audio file path (for audio clips)
  * @returns {object} - Clip result object
  */
 export function buildClipResult(

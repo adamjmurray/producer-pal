@@ -4,6 +4,7 @@ import {
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
+import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
 import {
@@ -22,19 +23,19 @@ import {
  * @typedef {object} CreateClipArgs
  * @property {string} view - View for the clip ('Session' or 'Arrangement')
  * @property {number} trackIndex - Track index (0-based)
- * @property {string} [sceneIndex] - Scene index(es), comma-separated for multiple
- * @property {string} [arrangementStart] - Bar|beat position(s), comma-separated
- * @property {string} [notes] - Musical notation string (MIDI clips only)
- * @property {string} [modulations] - Modulation expressions
- * @property {string} [sampleFile] - Absolute path to audio file (audio clips only)
- * @property {string} [name] - Base name for the clips
- * @property {string} [color] - Color in #RRGGBB hex format
- * @property {string} [timeSignature] - Time signature in format "4/4"
- * @property {string} [start] - Bar|beat position where loop/clip region begins
- * @property {string} [length] - Clip length in bar:beat duration format
- * @property {string} [firstStart] - Bar|beat position for initial playback start
- * @property {boolean} [looping] - Enable looping for the clip
- * @property {string} [auto] - Automatic playback action
+ * @property {string | null} [sceneIndex] - Scene index(es), comma-separated for multiple
+ * @property {string | null} [arrangementStart] - Bar|beat position(s), comma-separated
+ * @property {string | null} [notes] - Musical notation string (MIDI clips only)
+ * @property {string | null} [modulations] - Modulation expressions
+ * @property {string | null} [sampleFile] - Absolute path to audio file (audio clips only)
+ * @property {string | null} [name] - Base name for the clips
+ * @property {string | null} [color] - Color in #RRGGBB hex format
+ * @property {string | null} [timeSignature] - Time signature in format "4/4"
+ * @property {string | null} [start] - Bar|beat position where loop/clip region begins
+ * @property {string | null} [length] - Clip length in bar:beat duration format
+ * @property {string | null} [firstStart] - Bar|beat position for initial playback start
+ * @property {boolean | null} [looping] - Enable looping for the clip
+ * @property {string | null} [auto] - Automatic playback action
  * @property {boolean} [switchView] - Automatically switch to the appropriate view
  */
 
@@ -172,22 +173,22 @@ export function createClip(
  * @param {number} trackIndex - Track index
  * @param {number[]} sceneIndices - Array of scene indices (session view)
  * @param {string[]} arrangementStarts - Array of bar|beat positions (arrangement view)
- * @param {string} name - Base clip name
+ * @param {string | null} name - Base clip name
  * @param {number} initialClipLength - Initial clip length
  * @param {LiveAPI} liveSet - LiveAPI liveSet object
- * @param {number} startBeats - Loop start in beats
- * @param {number} endBeats - Loop end in beats
- * @param {number} firstStartBeats - First playback start in beats
- * @param {boolean} looping - Whether the clip is looping
- * @param {string} color - Clip color
+ * @param {number | null} startBeats - Loop start in beats
+ * @param {number | null} endBeats - Loop end in beats
+ * @param {number | null} firstStartBeats - First playback start in beats
+ * @param {boolean | null} looping - Whether the clip is looping
+ * @param {string | null} color - Clip color
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {string} notationString - Original notation string
+ * @param {string | null} notationString - Original notation string
  * @param {Array} notes - Array of MIDI notes
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {string} length - Original length parameter
- * @param {string} sampleFile - Audio file path
+ * @param {string | null} length - Original length parameter
+ * @param {string | null} sampleFile - Audio file path
  * @returns {Array} - Array of created clips
  */
 function createClips(
@@ -268,7 +269,7 @@ function createClips(
           : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
 
       console.error(
-        `Warning: Failed to create clip at ${position}: ${error.message}`,
+        `Warning: Failed to create clip at ${position}: ${errorMessage(error)}`,
       );
     }
   }
@@ -278,10 +279,10 @@ function createClips(
 
 /**
  * Prepares clip data (notes and initial length) based on clip type
- * @param {string} sampleFile - Audio file path (if audio clip)
- * @param {string} notationString - MIDI notation string (if MIDI clip)
- * @param {string} modulationString - Modulation expressions to apply to notes
- * @param {number} endBeats - End position in beats
+ * @param {string | null} sampleFile - Audio file path (if audio clip)
+ * @param {string | null} notationString - MIDI notation string (if MIDI clip)
+ * @param {string | null} modulationString - Modulation expressions to apply to notes
+ * @param {number | null} endBeats - End position in beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {object} - Object with notes array and clipLength
@@ -306,7 +307,7 @@ function prepareClipData(
   // Apply modulations to notes if provided
   applyModulations(
     notes,
-    modulationString,
+    modulationString ?? undefined,
     timeSigNumerator,
     timeSigDenominator,
   );
@@ -336,8 +337,8 @@ function prepareClipData(
  * @param {number} trackIndex - Track index
  * @param {number[]} sceneIndices - Parsed scene indices for session view
  * @param {string[]} arrangementStarts - Parsed arrangement starts for arrangement view
- * @param {string} notes - MIDI notes notation string
- * @param {string} sampleFile - Audio file path
+ * @param {string | null} notes - MIDI notes notation string
+ * @param {string | null} sampleFile - Audio file path
  */
 function validateCreateClipParams(
   view,
@@ -377,7 +378,7 @@ function validateCreateClipParams(
 
 /**
  * Calculates the clip length based on notes and parameters
- * @param {number} endBeats - End position in beats
+ * @param {number | null} endBeats - End position in beats
  * @param {Array} notes - Array of MIDI notes
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -418,7 +419,7 @@ function calculateClipLength(
 
 /**
  * Handles automatic playback for session clips
- * @param {string} auto - Auto playback mode (play-scene or play-clip)
+ * @param {string | null} auto - Auto playback mode (play-scene or play-clip)
  * @param {string} view - View type
  * @param {number[]} sceneIndices - Array of scene indices
  * @param {number} trackIndex - Track index

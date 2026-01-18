@@ -83,7 +83,7 @@ const SHORTCUT_MAPPINGS = {
 
 /**
  * Parse include array format and return boolean flags for each option
- * @param {string[]} includeArray - Array of kebab-case include options
+ * @param {string[] | undefined} includeArray - Array of kebab-case include options
  * @param {object} defaults - Default values for each parameter
  * @returns {object} Object with boolean include* properties
  */

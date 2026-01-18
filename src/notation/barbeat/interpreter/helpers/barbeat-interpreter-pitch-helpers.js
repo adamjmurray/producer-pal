@@ -44,7 +44,7 @@ export function expandRepeatPattern(
  * @param {object} pitchState - Pitch state with velocity, duration, etc.
  * @param {object} position - Position with bar and beat
  * @param {number} beatsPerBar - Musical beats per bar
- * @param {number} timeSigDenominator - Time signature denominator (or null)
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Array} events - Events array to append to
  * @param {Map} notesByBar - Bar copy tracking map
  */
@@ -105,7 +105,7 @@ export function emitPitchAtPosition(
  * @param {Array} currentPitches - Array of pitch states to emit
  * @param {object} element - AST element (to check if bar is explicit)
  * @param {number} beatsPerBar - Musical beats per bar
- * @param {number} timeSigDenominator - Time signature denominator (or null)
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Array} events - Events array to append to
  * @param {Map} notesByBar - Bar copy tracking map
  * @returns {object} Updated currentTime and hasExplicitBarNumber flag
@@ -185,7 +185,7 @@ export function calculatePositions(element, state, beatsPerBar) {
  * @param {object} state - Current interpreter state
  * @param {object} element - Time position element
  * @param {number} beatsPerBar - Beats per bar
- * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {number | undefined} timeSigDenominator - Time signature denominator
  * @param {Array} events - Events array
  * @param {Map} notesByBar - Notes by bar map
  */

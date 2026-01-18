@@ -17,7 +17,7 @@ export function captureScene({ sceneIndex, name } = {}) {
 
   const selectedScene = LiveAPI.from("live_set view selected_scene");
   const selectedSceneIndex = Number.parseInt(
-    selectedScene.path.match(/live_set scenes (\d+)/)?.[1],
+    selectedScene.path.match(/live_set scenes (\d+)/)?.[1] ?? "",
   );
 
   if (Number.isNaN(selectedSceneIndex)) {

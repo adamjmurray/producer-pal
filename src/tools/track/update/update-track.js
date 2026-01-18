@@ -16,10 +16,10 @@ import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
  * Apply routing properties to a track
  * @param {LiveAPI} track - Track object
  * @param {object} params - Routing properties
- * @param {string} params.inputRoutingTypeId - Input routing type ID
- * @param {string} params.inputRoutingChannelId - Input routing channel ID
- * @param {string} params.outputRoutingTypeId - Output routing type ID
- * @param {string} params.outputRoutingChannelId - Output routing channel ID
+ * @param {string | undefined} params.inputRoutingTypeId - Input routing type ID
+ * @param {string | undefined} params.inputRoutingChannelId - Input routing channel ID
+ * @param {string | undefined} params.outputRoutingTypeId - Output routing type ID
+ * @param {string | undefined} params.outputRoutingChannelId - Output routing channel ID
  */
 function applyRoutingProperties(
   track,
@@ -58,7 +58,7 @@ function applyRoutingProperties(
 /**
  * Apply monitoring state to a track
  * @param {LiveAPI} track - Track object
- * @param {string} monitoringState - Monitoring state value (in, auto, off)
+ * @param {string | undefined} monitoringState - Monitoring state value (in, auto, off)
  */
 function applyMonitoringState(track, monitoringState) {
   if (monitoringState == null) {
@@ -85,8 +85,8 @@ function applyMonitoringState(track, monitoringState) {
 /**
  * Apply send properties to a track
  * @param {LiveAPI} track - Track object
- * @param {number} sendGainDb - Send gain in dB (-70 to 0)
- * @param {string} sendReturn - Return track name (exact or letter prefix)
+ * @param {number | undefined} sendGainDb - Send gain in dB (-70 to 0)
+ * @param {string | undefined} sendReturn - Return track name (exact or letter prefix)
  */
 function applySendProperties(track, sendGainDb, sendReturn) {
   // Validate both params provided together
@@ -156,9 +156,9 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 /**
  * Apply stereo panning and warn about invalid params
  * @param {LiveAPI} mixer - Mixer device object
- * @param {number} pan - Pan value
- * @param {number} leftPan - Left pan value
- * @param {number} rightPan - Right pan value
+ * @param {number | undefined} pan - Pan value
+ * @param {number | undefined} leftPan - Left pan value
+ * @param {number | undefined} rightPan - Right pan value
  */
 function applyStereoPan(mixer, pan, leftPan, rightPan) {
   if (pan != null) {
@@ -180,9 +180,9 @@ function applyStereoPan(mixer, pan, leftPan, rightPan) {
 /**
  * Apply split panning and warn about invalid params
  * @param {LiveAPI} mixer - Mixer device object
- * @param {number} pan - Pan value
- * @param {number} leftPan - Left pan value
- * @param {number} rightPan - Right pan value
+ * @param {number | undefined} pan - Pan value
+ * @param {number | undefined} leftPan - Left pan value
+ * @param {number | undefined} rightPan - Right pan value
  */
 function applySplitPan(mixer, pan, leftPan, rightPan) {
   if (leftPan != null) {
@@ -213,11 +213,11 @@ function applySplitPan(mixer, pan, leftPan, rightPan) {
  * Apply mixer properties (gain and panning) to a track
  * @param {LiveAPI} track - Track object
  * @param {object} params - Mixer properties
- * @param {number} params.gainDb - Track gain in dB (-70 to 6)
- * @param {number} params.pan - Pan position in stereo mode (-1 to 1)
- * @param {string} params.panningMode - Panning mode ("stereo" or "split")
- * @param {number} params.leftPan - Left channel pan in split mode (-1 to 1)
- * @param {number} params.rightPan - Right channel pan in split mode (-1 to 1)
+ * @param {number | undefined} params.gainDb - Track gain in dB (-70 to 6)
+ * @param {number | undefined} params.pan - Pan position in stereo mode (-1 to 1)
+ * @param {string | undefined} params.panningMode - Panning mode ("stereo" or "split")
+ * @param {number | undefined} params.leftPan - Left channel pan in split mode (-1 to 1)
+ * @param {number | undefined} params.rightPan - Right channel pan in split mode (-1 to 1)
  */
 function applyMixerProperties(
   track,

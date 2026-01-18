@@ -256,9 +256,9 @@ export function setAudioParameters(
  * Handles warp marker operations on a clip
  * @param {LiveAPI} clip - The audio clip
  * @param {string} warpOp - Operation: add, move, or remove
- * @param {number} warpBeatTime - Beat time for the warp marker
- * @param {number} [warpSampleTime] - Sample time (for add operation)
- * @param {number} [warpDistance] - Distance to move (for move operation)
+ * @param {number | undefined} warpBeatTime - Beat time for the warp marker
+ * @param {number | undefined} [warpSampleTime] - Sample time (for add operation)
+ * @param {number | undefined} [warpDistance] - Distance to move (for move operation)
  */
 export function handleWarpMarkerOperation(
   clip,

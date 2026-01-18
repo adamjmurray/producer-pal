@@ -24,20 +24,22 @@ export { parseArrangementStartList };
 
 /**
  * Parses scene indices with createClip-specific error message
- * @param {string} input - Comma-separated scene indices
+ * @param {string | null} input - Comma-separated scene indices
  * @returns {number[]} - Array of scene indices
  */
 export function parseSceneIndexList(input) {
   try {
     return parseSceneIndexListBase(input);
   } catch (error) {
-    throw new Error(`createClip failed: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`createClip failed: ${message}`);
   }
 }
 
 /**
  * Builds a clip name based on count and iteration index
- * @param {string} name - Base clip name
+ * @param {string | null} name - Base clip name
  * @param {number} count - Total number of clips being created
  * @param {number} i - Current iteration index (0-based)
  * @returns {string|undefined} - Generated clip name
@@ -48,11 +50,11 @@ export function buildClipName(name, count, i) {
 
 /**
  * Converts bar|beat timing parameters to Ableton beats
- * @param {string} arrangementStart - Arrangement start position in bar|beat format
- * @param {string} start - Loop start position in bar|beat format
- * @param {string} firstStart - First playback start position in bar|beat format
- * @param {string} length - Clip length in bar|beat duration format
- * @param {boolean} looping - Whether the clip is looping
+ * @param {string | null} arrangementStart - Arrangement start position in bar|beat format
+ * @param {string | null} start - Loop start position in bar|beat format
+ * @param {string | null} firstStart - First playback start position in bar|beat format
+ * @param {string | null} length - Clip length in bar|beat duration format
+ * @param {boolean | null} looping - Whether the clip is looping
  * @param {number} timeSigNumerator - Clip time signature numerator
  * @param {number} timeSigDenominator - Clip time signature denominator
  * @param {number} songTimeSigNumerator - Song time signature numerator
@@ -145,7 +147,7 @@ function createSessionClip(
 /**
  * Creates an arrangement clip on a track
  * @param {number} trackIndex - Track index (0-based)
- * @param {number} arrangementStartBeats - Starting position in beats
+ * @param {number | null} arrangementStartBeats - Starting position in beats
  * @param {number} clipLength - Clip length in beats
  * @returns {object} - Object with clip and arrangementStartBeats
  */
@@ -167,23 +169,23 @@ function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
  * Processes one clip creation at a specific position
  * @param {string} view - View type (session or arrangement)
  * @param {number} trackIndex - Track index
- * @param {number} sceneIndex - Scene index for session clips (explicit position)
- * @param {number} arrangementStartBeats - Arrangement start in beats (explicit position)
- * @param {string} arrangementStart - Arrangement start in bar|beat format (for result)
+ * @param {number | null} sceneIndex - Scene index for session clips (explicit position)
+ * @param {number | null} arrangementStartBeats - Arrangement start in beats (explicit position)
+ * @param {string | null} arrangementStart - Arrangement start in bar|beat format (for result)
  * @param {number} clipLength - Clip length in beats
  * @param {object} liveSet - LiveAPI live_set object
- * @param {number} startBeats - Loop start in beats
- * @param {number} endBeats - Loop end in beats
- * @param {number} firstStartBeats - First playback start in beats
- * @param {boolean} looping - Whether the clip is looping
- * @param {string} clipName - Clip name
- * @param {string} color - Clip color
+ * @param {number | null} startBeats - Loop start in beats
+ * @param {number | null} endBeats - Loop end in beats
+ * @param {number | null} firstStartBeats - First playback start in beats
+ * @param {boolean | null} looping - Whether the clip is looping
+ * @param {string | undefined} clipName - Clip name
+ * @param {string | null} color - Clip color
  * @param {number} timeSigNumerator - Clip time signature numerator
  * @param {number} timeSigDenominator - Clip time signature denominator
- * @param {string} notationString - Original notation string
+ * @param {string | null} notationString - Original notation string
  * @param {Array} notes - Array of MIDI notes
- * @param {string} length - Original length parameter
- * @param {string} sampleFile - Audio file path (for audio clips)
+ * @param {string | null} length - Original length parameter
+ * @param {string | null} sampleFile - Audio file path (for audio clips)
  * @returns {object} - Clip result for this iteration
  */
 export function processClipIteration(
@@ -213,9 +215,11 @@ export function processClipIteration(
   if (sampleFile) {
     // Audio clip creation
     if (view === "session") {
+      // sceneIndex is guaranteed to be valid for session view (validated in calling code)
+      const validSceneIndex = /** @type {number} */ (sceneIndex);
       const result = createAudioSessionClip(
         trackIndex,
-        sceneIndex,
+        validSceneIndex,
         sampleFile,
         liveSet,
         MAX_AUTO_CREATED_SCENES,
@@ -247,9 +251,11 @@ export function processClipIteration(
   } else {
     // MIDI clip creation
     if (view === "session") {
+      // sceneIndex is guaranteed to be valid for session view (validated in calling code)
+      const validSceneIndex = /** @type {number} */ (sceneIndex);
       const result = createSessionClip(
         trackIndex,
-        sceneIndex,
+        validSceneIndex,
         clipLength,
         liveSet,
         MAX_AUTO_CREATED_SCENES,

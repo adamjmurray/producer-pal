@@ -35,9 +35,9 @@ export function createAudioSessionClip(
 /**
  * Creates an audio clip in arrangement view
  * @param {number} trackIndex - Track index (0-based)
- * @param {number} arrangementStartBeats - Start position in Ableton beats
+ * @param {number | null} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @returns {{clip: LiveAPI, arrangementStartBeats: number}} Object with clip and arrangementStartBeats
+ * @returns {{clip: LiveAPI, arrangementStartBeats: number | null}} Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
@@ -45,7 +45,10 @@ export function createAudioArrangementClip(
   sampleFile,
 ) {
   // Live API limit check
-  if (arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS) {
+  if (
+    arrangementStartBeats != null &&
+    arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS
+  ) {
     throw new Error(
       `arrangement position ${arrangementStartBeats} exceeds maximum allowed value of ${MAX_ARRANGEMENT_POSITION_BEATS}`,
     );

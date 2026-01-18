@@ -82,9 +82,9 @@ export function readTrack(args = {}, _context = {}) {
  * Process session clips for a track
  * @param {LiveAPI} track - Track object
  * @param {string} category - Track category (regular, return, or master)
- * @param {number} trackIndex - Track index
+ * @param {number | null} trackIndex - Track index
  * @param {boolean} includeSessionClips - Whether to include full session clip details
- * @param {Array<string>} include - Include array for nested reads
+ * @param {Array<string> | undefined} include - Include array for nested reads
  * @returns {object} - Object with session clips data
  */
 function processSessionClips(
@@ -111,7 +111,7 @@ function processSessionClips(
  * @param {boolean} isGroup - Whether the track is a group
  * @param {string} category - Track category (regular, return, or master)
  * @param {boolean} includeArrangementClips - Whether to include full arrangement clip details
- * @param {Array<string>} include - Include array for nested reads
+ * @param {Array<string> | undefined} include - Include array for nested reads
  * @returns {object} Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(

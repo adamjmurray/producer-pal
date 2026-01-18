@@ -19,10 +19,10 @@ export const QUANTIZE_GRID = {
  * Handle quantization for MIDI clips
  * @param {LiveAPI} clip - The clip to quantize
  * @param {object} options - Quantization options
- * @param {number} options.quantize - Quantization strength 0-1
- * @param {string} options.quantizeGrid - Note grid value
- * @param {number} options.quantizeSwing - Swing amount 0-1 (default: 0)
- * @param {number} options.quantizePitch - Limit to specific pitch (optional)
+ * @param {number | undefined} options.quantize - Quantization strength 0-1
+ * @param {string | undefined} options.quantizeGrid - Note grid value
+ * @param {number | undefined} options.quantizeSwing - Swing amount 0-1 (default: 0)
+ * @param {number | undefined} options.quantizePitch - Limit to specific pitch (optional)
  */
 export function handleQuantization(
   clip,

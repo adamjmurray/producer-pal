@@ -51,6 +51,11 @@ export function readDevice(
     return readDeviceById(deviceId, readOptions);
   }
 
+  // Path is required if deviceId is not provided (validated by validateExclusiveParams)
+  if (!path) {
+    throw new Error("Either deviceId or path must be provided");
+  }
+
   // Resolve path to Live API path and target type
   const resolved = resolvePathToLiveApi(path);
 
@@ -67,10 +72,11 @@ export function readDevice(
   }
 
   if (resolved.targetType === "drum-pad") {
+    // drumPadNote and remainingSegments are guaranteed for drum-pad targetType
     return readDrumPadByPath(
       resolved.liveApiPath,
-      resolved.drumPadNote,
-      resolved.remainingSegments,
+      /** @type {string} */ (resolved.drumPadNote),
+      resolved.remainingSegments ?? [],
       path,
       readOptions,
     );

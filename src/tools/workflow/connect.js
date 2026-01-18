@@ -28,7 +28,7 @@ export function connect(_params = {}, context = {}) {
 
   /** @type {{ name?: unknown, trackCount: number, sceneCount: number, tempo: unknown, timeSignature: string | null, scale?: string }} */
   const liveSetInfo = {
-    ...(liveSetName && { name: liveSetName }),
+    ...(liveSetName ? { name: liveSetName } : {}),
     trackCount: trackIds.length,
     sceneCount: sceneIds.length,
     tempo: liveSet.getProperty("tempo"),

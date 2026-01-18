@@ -1,3 +1,4 @@
+import { errorMessage } from "#src/shared/error-utils.js";
 import { logger } from "./file-logger.js";
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
@@ -27,6 +28,6 @@ process.on("SIGTERM", async () => {
 try {
   await bridge.start();
 } catch (error) {
-  logger.error(`Failed to start enhanced bridge: ${error.message}`);
+  logger.error(`Failed to start enhanced bridge: ${errorMessage(error)}`);
   process.exit(1);
 }
