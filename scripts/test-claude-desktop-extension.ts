@@ -6,10 +6,21 @@ const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 const JSON_RPC_VERSION = "2.0";
 const TOOLS_LIST_METHOD = "tools/list";
 
+interface JsonRpcResponse {
+  error?: string;
+  raw?: string;
+  result?: {
+    serverInfo?: { name?: string };
+    protocolVersion?: string;
+    tools?: { name: string }[];
+    content?: unknown[];
+  };
+}
+
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log(
-    "Usage: test-claude-desktop-extension.mjs [url] [tool-name] [tool-args-json]",
+    "Usage: test-claude-desktop-extension.ts [url] [tool-name] [tool-args-json]",
   );
   console.log("");
   console.log(
@@ -29,16 +40,16 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("");
   console.log("Examples:");
   console.log(
-    "  test-claude-desktop-extension.mjs                                    # Basic bridge test",
+    "  test-claude-desktop-extension.ts                                    # Basic bridge test",
   );
   console.log(
-    "  test-claude-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
+    "  test-claude-desktop-extension.ts http://localhost:3350/mcp          # Custom URL",
   );
   console.log(
-    "  test-claude-desktop-extension.mjs ppal-read-live-set                     # Test ppal-read-live-set tool",
+    "  test-claude-desktop-extension.ts ppal-read-live-set                     # Test ppal-read-live-set tool",
   );
   console.log(
-    "  test-claude-desktop-extension.mjs ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",
+    "  test-claude-desktop-extension.ts ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",
   );
   console.log("");
   process.exit(0);
@@ -46,21 +57,25 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 // Parse command line arguments
 let httpUrl = DEFAULT_HTTP_URL;
-/** @type {string | null} */
-let toolName = null;
-/** @type {Record<string, unknown>} */
-let toolArgs = {};
+let toolName: string | null = null;
+let toolArgs: Record<string, unknown> = {};
 
-if (process.argv.length > 2) {
+const arg2 = process.argv[2];
+
+if (arg2) {
   // Check if first arg looks like a URL
-  if (process.argv[2].includes("://")) {
-    httpUrl = process.argv[2];
-    toolName = process.argv[3];
-    toolArgs = process.argv[4] ? JSON.parse(process.argv[4]) : {};
+  if (arg2.includes("://")) {
+    httpUrl = arg2;
+    toolName = process.argv[3] ?? null;
+    toolArgs = process.argv[4]
+      ? (JSON.parse(process.argv[4]) as Record<string, unknown>)
+      : {};
   } else {
     // First arg is tool name
-    toolName = process.argv[2];
-    toolArgs = process.argv[3] ? JSON.parse(process.argv[3]) : {};
+    toolName = arg2;
+    toolArgs = process.argv[3]
+      ? (JSON.parse(process.argv[3]) as Record<string, unknown>)
+      : {};
   }
 }
 
@@ -115,10 +130,10 @@ const startTime = Date.now();
 
 /**
  * Send a JSON-RPC message to the bridge process
- * @param {object} message - JSON-RPC message to send
- * @param {string} description - Human-readable description for logging
+ * @param message - JSON-RPC message to send
+ * @param description - Human-readable description for logging
  */
-function sendMessage(message, description) {
+function sendMessage(message: object, description: string): void {
   console.log(`[${Date.now() - startTime}ms] Sending ${description}...`);
   bridge.stdin.write(JSON.stringify(message) + "\n");
 }
@@ -127,27 +142,27 @@ let responseBuffer = "";
 
 /**
  * Parse response data from the bridge, handling partial/incomplete JSON
- * @param {Buffer} data - Raw data buffer from bridge stdout
- * @returns {object|null} - Parsed JSON response or null if incomplete
+ * @param data - Raw data buffer from bridge stdout
+ * @returns Parsed JSON response or null if incomplete
  */
-function parseResponse(data) {
+function parseResponse(data: Buffer): JsonRpcResponse | null {
   responseBuffer += data.toString();
 
   // Try to parse the accumulated buffer
   try {
-    const response = JSON.parse(responseBuffer.trim());
+    const response = JSON.parse(responseBuffer.trim()) as JsonRpcResponse;
 
     responseBuffer = ""; // Clear buffer on successful parse
 
     return response;
   } catch {
     // If parse fails, check if we have a complete JSON by counting braces
-    const openBraces = (responseBuffer.match(/{/g) || []).length;
-    const closeBraces = (responseBuffer.match(/}/g) || []).length;
+    const openBraces = (responseBuffer.match(/{/g) ?? []).length;
+    const closeBraces = (responseBuffer.match(/}/g) ?? []).length;
 
     if (openBraces === closeBraces && openBraces > 0) {
       // We have balanced braces but still can't parse - it's a real error
-      const error = {
+      const error: JsonRpcResponse = {
         error: "Failed to parse complete response",
         raw: responseBuffer,
       };
@@ -163,19 +178,16 @@ function parseResponse(data) {
 }
 
 /**
- * @typedef {object} JsonRpcResponse
- * @property {string} [error]
- * @property {string} [raw]
- * @property {{serverInfo?: {name?: string}, protocolVersion?: string, tools?: {name: string}[], content?: unknown[]}} [result]
- */
-
-/**
  * Log response based on response count and content
- * @param {JsonRpcResponse} response - Parsed JSON-RPC response
- * @param {number} count - Sequential response number
- * @param {string | null} tool - Tool name being tested (if applicable)
+ * @param response - Parsed JSON-RPC response
+ * @param count - Sequential response number
+ * @param tool - Tool name being tested (if applicable)
  */
-function logResponse(response, count, tool) {
+function logResponse(
+  response: JsonRpcResponse,
+  count: number,
+  tool: string | null,
+): void {
   if (response.error) {
     console.log("❌ Error:", response.error);
     if (response.raw) console.log("Raw data:", response.raw);
@@ -188,12 +200,12 @@ function logResponse(response, count, tool) {
       // Initialize response
       console.log("✅ Initialize successful");
       console.log(
-        `   Server: ${response.result.serverInfo?.name || "Unknown"}`,
+        `   Server: ${response.result.serverInfo?.name ?? "Unknown"}`,
       );
       console.log(`   Protocol: ${response.result.protocolVersion}`);
     } else if (count === 2) {
       // Tools list response
-      const toolCount = response.result.tools?.length || 0;
+      const toolCount = response.result.tools?.length ?? 0;
 
       console.log(`✅ Tools list successful - ${toolCount} tools available`);
 
@@ -224,10 +236,10 @@ function logResponse(response, count, tool) {
 
 /**
  * Continue test sequence based on response count
- * @param {number} count - Number of responses received so far
- * @param {number} elapsed - Time elapsed since test start in milliseconds
+ * @param count - Number of responses received so far
+ * @param elapsed - Time elapsed since test start in milliseconds
  */
-function continueTestSequence(count, elapsed) {
+function continueTestSequence(count: number, elapsed: number): void {
   if (count === 1) {
     sendMessage(listToolsMessage, TOOLS_LIST_METHOD);
   } else if (count === 2 && toolName) {
@@ -250,7 +262,7 @@ function continueTestSequence(count, elapsed) {
 }
 
 // Listen for responses
-bridge.stdout.on("data", (data) => {
+bridge.stdout.on("data", (data: Buffer) => {
   const response = parseResponse(data);
 
   // If response is null, we're still accumulating data
@@ -268,7 +280,7 @@ bridge.stdout.on("data", (data) => {
 });
 
 // Filter stderr to reduce noise from bridge debugging
-bridge.stderr.on("data", (data) => {
+bridge.stderr.on("data", (data: Buffer) => {
   const message = data.toString();
 
   // Only show important errors, not routine bridge logging

@@ -4,10 +4,10 @@
  * Used by GitHub Actions to populate summary tables.
  *
  * Usage:
- *   node scripts/get-thresholds.mjs coverage              # outputs all as JSON
- *   node scripts/get-thresholds.mjs coverage statements   # outputs single value
- *   node scripts/get-thresholds.mjs duplication           # outputs all as JSON
- *   node scripts/get-thresholds.mjs duplication source    # outputs single value
+ *   node scripts/get-thresholds.ts coverage              # outputs all as JSON
+ *   node scripts/get-thresholds.ts coverage statements   # outputs single value
+ *   node scripts/get-thresholds.ts duplication           # outputs all as JSON
+ *   node scripts/get-thresholds.ts duplication source    # outputs single value
  */
 
 import { readFile } from "node:fs/promises";
@@ -17,28 +17,43 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const configDir = join(__dirname, "..", "config");
 
-async function getCoverageThresholds() {
+interface CoverageThresholds {
+  statements: number;
+  branches: number;
+  functions: number;
+  lines: number;
+}
+
+interface DuplicationThresholds {
+  source: number;
+  tests: number;
+  scripts: number;
+}
+
+async function getCoverageThresholds(): Promise<CoverageThresholds> {
   const vitestConfig = await readFile(
     join(configDir, "vitest.config.mjs"),
     "utf-8",
   );
 
-  // Extract thresholds from vitest config using regex
-  // Matches patterns like: statements: 97.8,
   /**
-   * @param {string} name - Threshold name to extract
-   * @returns {number} Extracted threshold value
+   * Extracts a threshold from vitest config using regex.
+   * Matches patterns like: statements: 97.8,
+   * @param name - Threshold name to extract
+   * @returns Extracted threshold value
    */
-  const extractThreshold = (name) => {
+  const extractThreshold = (name: string): number => {
     const match = vitestConfig.match(new RegExp(`${name}:\\s*([\\d.]+)`));
 
-    if (!match) {
+    const value = match?.[1];
+
+    if (!value) {
       throw new Error(
         `Failed to extract ${name} threshold from vitest.config.mjs`,
       );
     }
 
-    return Number.parseFloat(match[1]);
+    return Number.parseFloat(value);
   };
 
   return {
@@ -49,7 +64,7 @@ async function getCoverageThresholds() {
   };
 }
 
-async function getDuplicationThresholds() {
+async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
   const [srcConfig, testsConfig, scriptsConfig] = await Promise.all([
     readFile(join(configDir, ".jscpd.json"), "utf-8").then(JSON.parse),
     readFile(join(configDir, ".jscpd-tests.json"), "utf-8").then(JSON.parse),
@@ -75,7 +90,7 @@ if (command === "coverage") {
       process.exit(1);
     }
 
-    console.log(thresholds[/** @type {keyof typeof thresholds} */ (field)]);
+    console.log(thresholds[field as keyof CoverageThresholds]);
   } else {
     console.log(JSON.stringify(thresholds));
   }
@@ -88,13 +103,13 @@ if (command === "coverage") {
       process.exit(1);
     }
 
-    console.log(thresholds[/** @type {keyof typeof thresholds} */ (field)]);
+    console.log(thresholds[field as keyof DuplicationThresholds]);
   } else {
     console.log(JSON.stringify(thresholds));
   }
 } else {
   console.error(
-    "Usage: node scripts/get-thresholds.mjs <coverage|duplication> [field]",
+    "Usage: node scripts/get-thresholds.ts <coverage|duplication> [field]",
   );
   process.exit(1);
 }

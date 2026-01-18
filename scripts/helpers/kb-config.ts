@@ -1,27 +1,41 @@
 import path from "node:path";
 
-/**
- * @typedef {object} KbGroupContext
- * @property {string} relativePath
- * @property {object} [config]
- * @property {string} [file]
- */
+export interface KbGroupContext {
+  relativePath: string;
+  config?: KbItem;
+  file?: string;
+}
 
-/**
- * @typedef {object} KbItem
- * @property {string} src
- * @property {boolean} [isDir]
- * @property {string} [targetDirName]
- * @property {string|((ctx: KbGroupContext) => string)} [group]
- * @property {string} [flatName]
- * @property {string[]} [exclude]
- */
+export interface KbItem {
+  src: string;
+  isDir?: boolean;
+  targetDirName?: string;
+  group?: string | ((ctx: KbGroupContext) => string);
+  flatName?: string;
+  exclude?: string[];
+}
+
+export interface KbConfig {
+  projectRoot: string;
+  outputDir: string;
+  FLAT_SEP: string;
+  codeExts: string[];
+  ignorePatterns: RegExp[];
+  items: KbItem[];
+  flattenPath: (pathStr: string) => string;
+  addToGroup: (
+    groups: Map<string, string[]>,
+    groupName: string,
+    ...item: string[]
+  ) => void;
+  computeGroupName: (item: KbItem, filePath: string) => string;
+}
 
 /**
  * Creates the items array defining what to include in knowledge base
- * @returns {KbItem[]} Array of item configurations
+ * @returns Array of item configurations
  */
-function createItemsArray() {
+function createItemsArray(): KbItem[] {
   return [
     // Directories (automatically get directory prefix)
     { src: ".github", isDir: true, targetDirName: "_github", group: "config" },
@@ -40,8 +54,8 @@ function createItemsArray() {
       isDir: true,
       group: ({ relativePath }) => {
         const isTestFile =
-          relativePath.match(/\.test\.\w+$/) ||
-          relativePath.match(/-test-helpers\.\w+$/) ||
+          Boolean(relativePath.match(/\.test\.\w+$/)) ||
+          Boolean(relativePath.match(/-test-helpers\.\w+$/)) ||
           relativePath.includes("/tests/");
 
         if (isTestFile) {
@@ -73,9 +87,9 @@ function createItemsArray() {
       exclude: ["node_modules", "dist"],
       group: ({ relativePath }) => {
         const isTestFile =
-          relativePath.match(/\.test\.\w+$/) ||
-          relativePath.match(/-test-helpers\.\w+$/) ||
-          relativePath.match(/-test-case\.ts$/) ||
+          Boolean(relativePath.match(/\.test\.\w+$/)) ||
+          Boolean(relativePath.match(/-test-helpers\.\w+$/)) ||
+          Boolean(relativePath.match(/-test-case\.ts$/)) ||
           relativePath.includes("/test-cases/") ||
           relativePath.includes("/test-utils/");
 
@@ -127,24 +141,11 @@ function createItemsArray() {
 }
 
 /**
- * @typedef {object} KbConfig
- * @property {string} projectRoot
- * @property {string} outputDir
- * @property {string} FLAT_SEP
- * @property {string[]} codeExts
- * @property {RegExp[]} ignorePatterns
- * @property {KbItem[]} items
- * @property {(pathStr: string) => string} flattenPath
- * @property {(groups: Map<string, string[]>, groupName: string, ...item: string[]) => void} addToGroup
- * @property {(item: KbItem, filePath: string) => string} computeGroupName
- */
-
-/**
  * Creates configuration object for knowledge base generation
- * @param {string} projectRoot - Root directory of the project
- * @returns {KbConfig} Configuration object with paths, constants, items, and utilities
+ * @param projectRoot - Root directory of the project
+ * @returns Configuration object with paths, constants, items, and utilities
  */
-export function createKnowledgeBaseConfig(projectRoot) {
+export function createKnowledgeBaseConfig(projectRoot: string): KbConfig {
   const outputDir = path.join(projectRoot, "knowledge-base");
   const FLAT_SEP = "--";
   const codeExts = [".js", ".mjs", ".ts", ".jsx", ".tsx"];
@@ -166,34 +167,40 @@ export function createKnowledgeBaseConfig(projectRoot) {
 
   /**
    * Converts filesystem path separators to flat separator for file naming
-   * @param {string} pathStr - The path string to flatten
-   * @returns {string} - Flattened path string
+   * @param pathStr - The path string to flatten
+   * @returns Flattened path string
    */
-  function flattenPath(pathStr) {
+  function flattenPath(pathStr: string): string {
     return pathStr.replaceAll(/[/\\]/g, FLAT_SEP);
   }
 
   /**
    * Adds items to a named group in the groups map
-   * @param {Map<string, string[]>} groups - Map of group names to arrays of items
-   * @param {string} groupName - Name of the group to add to
-   * @param {...string} item - Items to add to the group
+   * @param groups - Map of group names to arrays of items
+   * @param groupName - Name of the group to add to
+   * @param item - Items to add to the group
    */
-  function addToGroup(groups, groupName, ...item) {
-    if (!groups.has(groupName)) {
-      groups.set(groupName, []);
-    }
+  function addToGroup(
+    groups: Map<string, string[]>,
+    groupName: string,
+    ...item: string[]
+  ): void {
+    const existing = groups.get(groupName);
 
-    /** @type {string[]} */ (groups.get(groupName)).push(...item);
+    if (existing) {
+      existing.push(...item);
+    } else {
+      groups.set(groupName, [...item]);
+    }
   }
 
   /**
    * Computes the group name for a file based on item configuration
-   * @param {KbItem} item - Configuration item from items array
-   * @param {string} filePath - Absolute path to the file
-   * @returns {string} - Computed group name
+   * @param item - Configuration item from items array
+   * @param filePath - Absolute path to the file
+   * @returns Computed group name
    */
-  function computeGroupName(item, filePath) {
+  function computeGroupName(item: KbItem, filePath: string): string {
     const itemGroup =
       typeof item.group === "function"
         ? item.group({
@@ -203,7 +210,7 @@ export function createKnowledgeBaseConfig(projectRoot) {
           })
         : item.group;
 
-    return itemGroup || item.targetDirName || path.basename(item.src) || "misc";
+    return itemGroup ?? item.targetDirName ?? path.basename(item.src);
   }
 
   return {

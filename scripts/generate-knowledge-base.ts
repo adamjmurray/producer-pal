@@ -2,20 +2,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createKnowledgeBaseConfig } from "./helpers/kb-config.mjs";
-import {
-  processFlatMode,
-  processConcatMode,
-} from "./helpers/kb-processors.mjs";
+import { createKnowledgeBaseConfig } from "./helpers/kb-config.ts";
+import { processFlatMode, processConcatMode } from "./helpers/kb-processors.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 
 /**
  * Cleans and creates the output directory
- * @param {string} outputDir - Output directory path
+ * @param outputDir - Output directory path
  */
-async function cleanAndCreateOutputDir(outputDir) {
+async function cleanAndCreateOutputDir(outputDir: string): Promise<void> {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
     console.log(`Removed existing outputDir: ${outputDir}`);
@@ -29,7 +26,7 @@ async function cleanAndCreateOutputDir(outputDir) {
 /**
  * Main entry point for knowledge base generation
  */
-async function main() {
+async function main(): Promise<void> {
   try {
     // Parse command line arguments
     const args = process.argv.slice(2);
@@ -41,13 +38,12 @@ async function main() {
     );
     const excludeGroups = excludeGroupsArg
       ? new Set(
-          excludeGroupsArg
-            .split("=")[1]
+          (excludeGroupsArg.split("=")[1] ?? "")
             .split(",")
             .map((g) => g.trim())
             .filter(Boolean),
         )
-      : new Set();
+      : new Set<string>();
 
     // Create configuration
     const config = createKnowledgeBaseConfig(projectRoot);

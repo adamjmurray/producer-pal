@@ -1,21 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { KbConfig, KbItem } from "./kb-config.ts";
 import {
   findAllFiles,
   copyFile,
   writeConcatenatedFile,
   determineOutputFilename,
-} from "./kb-file-operations.mjs";
-
-/** @typedef {import("./kb-config.mjs").KbConfig} KbConfig */
-/** @typedef {import("./kb-config.mjs").KbItem} KbItem */
+} from "./kb-file-operations.ts";
 
 /**
  * Processes items in flat copy mode
- * @param {KbConfig} config - Configuration object
- * @param {Set<string>} excludeGroups - Groups to exclude
+ * @param config - Configuration object
+ * @param excludeGroups - Groups to exclude
  */
-export async function processFlatMode(config, excludeGroups) {
+export async function processFlatMode(
+  config: KbConfig,
+  excludeGroups: Set<string>,
+): Promise<void> {
   console.log("Copying files...");
 
   for (const item of config.items) {
@@ -37,13 +38,16 @@ export async function processFlatMode(config, excludeGroups) {
 
 /**
  * Processes items in concatenation mode
- * @param {KbConfig} config - Configuration object
- * @param {Set<string>} excludeGroups - Groups to exclude
+ * @param config - Configuration object
+ * @param excludeGroups - Groups to exclude
  */
-export async function processConcatMode(config, excludeGroups) {
+export async function processConcatMode(
+  config: KbConfig,
+  excludeGroups: Set<string>,
+): Promise<void> {
   console.log("Concatenating files into groups...");
 
-  const fileGroups = new Map(); // Map of output filename -> array of source files
+  const fileGroups = new Map<string, string[]>(); // Map of output filename -> array of source files
 
   // Process each item to group files appropriately
   for (const item of config.items) {
@@ -67,14 +71,19 @@ export async function processConcatMode(config, excludeGroups) {
 
 /**
  * Processes directory copying with flat file naming
- * @param {KbConfig} config - Configuration object
- * @param {KbItem} item - Configuration item
- * @param {string} sourcePath - Source directory path
- * @param {Set<string>} excludeGroups - Set of group names to exclude
+ * @param config - Configuration object
+ * @param item - Configuration item
+ * @param sourcePath - Source directory path
+ * @param excludeGroups - Set of group names to exclude
  */
-async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
-  const files = await findAllFiles(config, sourcePath, item.exclude || []);
-  const dirName = item.targetDirName || path.basename(item.src);
+async function processDirectoryFlat(
+  config: KbConfig,
+  item: KbItem,
+  sourcePath: string,
+  excludeGroups: Set<string>,
+): Promise<void> {
+  const files = await findAllFiles(config, sourcePath, item.exclude ?? []);
+  const dirName = item.targetDirName ?? path.basename(item.src);
 
   for (const filePath of files) {
     // Check if this file's group should be excluded
@@ -98,12 +107,17 @@ async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
 
 /**
  * Processes single file copying with flat file naming
- * @param {KbConfig} config - Configuration object
- * @param {KbItem} item - Configuration item
- * @param {string} sourcePath - Source file path
- * @param {Set<string>} excludeGroups - Set of group names to exclude
+ * @param config - Configuration object
+ * @param item - Configuration item
+ * @param sourcePath - Source file path
+ * @param excludeGroups - Set of group names to exclude
  */
-async function processFileFlat(config, item, sourcePath, excludeGroups) {
+async function processFileFlat(
+  config: KbConfig,
+  item: KbItem,
+  sourcePath: string,
+  excludeGroups: Set<string>,
+): Promise<void> {
   // Check if this file's group should be excluded
   const groupName = config.computeGroupName(item, sourcePath);
 
@@ -112,7 +126,7 @@ async function processFileFlat(config, item, sourcePath, excludeGroups) {
   }
 
   // Copy single file
-  const targetName = item.flatName || config.flattenPath(item.src);
+  const targetName = item.flatName ?? config.flattenPath(item.src);
   const targetPath = path.join(config.outputDir, targetName);
 
   await copyFile(config, sourcePath, targetPath);
@@ -121,31 +135,35 @@ async function processFileFlat(config, item, sourcePath, excludeGroups) {
 
 /**
  * Processes directory for concatenation mode, grouping files
- * @param {KbConfig} config - Configuration object
- * @param {KbItem} item - Configuration item
- * @param {string} sourcePath - Source directory path
- * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
+ * @param config - Configuration object
+ * @param item - Configuration item
+ * @param sourcePath - Source directory path
+ * @param fileGroups - Map of group names to file arrays
  */
-async function processDirectoryConcat(config, item, sourcePath, fileGroups) {
-  const files = await findAllFiles(config, sourcePath, item.exclude || []);
-  const dirName = item.targetDirName || path.basename(item.src);
+async function processDirectoryConcat(
+  config: KbConfig,
+  item: KbItem,
+  sourcePath: string,
+  fileGroups: Map<string, string[]>,
+): Promise<void> {
+  const files = await findAllFiles(config, sourcePath, item.exclude ?? []);
+  const dirName = item.targetDirName ?? path.basename(item.src);
 
   if (typeof item.group === "function") {
     // Dynamic grouping - call function for each file
     for (const filePath of files) {
       const relativePath = path.relative(config.projectRoot, filePath);
-      const groupName =
-        item.group({
-          config: item,
-          file: filePath,
-          relativePath,
-        }) || dirName;
+      const groupName = item.group({
+        config: item,
+        file: filePath,
+        relativePath,
+      });
 
       config.addToGroup(fileGroups, groupName, filePath);
     }
   } else {
     // Static grouping - use string or default
-    const groupName = item.group || dirName;
+    const groupName = item.group ?? dirName;
 
     config.addToGroup(fileGroups, groupName, ...files);
   }
@@ -153,12 +171,17 @@ async function processDirectoryConcat(config, item, sourcePath, fileGroups) {
 
 /**
  * Processes single file for concatenation mode, adding to group
- * @param {KbConfig} config - Configuration object
- * @param {KbItem} item - Configuration item
- * @param {string} sourcePath - Source file path
- * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
+ * @param config - Configuration object
+ * @param item - Configuration item
+ * @param sourcePath - Source file path
+ * @param fileGroups - Map of group names to file arrays
  */
-async function processFileConcat(config, item, sourcePath, fileGroups) {
+async function processFileConcat(
+  config: KbConfig,
+  item: KbItem,
+  sourcePath: string,
+  fileGroups: Map<string, string[]>,
+): Promise<void> {
   const relativePath = path.relative(config.projectRoot, sourcePath);
   const groupName =
     (typeof item.group === "function"
@@ -167,18 +190,22 @@ async function processFileConcat(config, item, sourcePath, fileGroups) {
           file: sourcePath,
           relativePath,
         })
-      : item.group) || "misc";
+      : item.group) ?? "misc";
 
   config.addToGroup(fileGroups, groupName, sourcePath);
 }
 
 /**
  * Writes concatenated files for each group
- * @param {KbConfig} config - Configuration object
- * @param {Map<string, string[]>} fileGroups - Map of group names to file arrays
- * @param {Set<string>} excludeGroups - Set of group names to exclude
+ * @param config - Configuration object
+ * @param fileGroups - Map of group names to file arrays
+ * @param excludeGroups - Set of group names to exclude
  */
-async function writeGroupedFiles(config, fileGroups, excludeGroups) {
+async function writeGroupedFiles(
+  config: KbConfig,
+  fileGroups: Map<string, string[]>,
+  excludeGroups: Set<string>,
+): Promise<void> {
   for (const [groupName, sourceFiles] of fileGroups) {
     if (sourceFiles.length === 0) continue;
 
