@@ -57,12 +57,3 @@ export const error = (...any) => {
 // for fatal errors), so alias console.warn to Max error()
 // TODO: prefer use of this for emitting warnings moving forward.
 export const warn = error;
-
-/**
- * Extract error message from an unknown caught error.
- * In strict mode, caught errors are typed as `unknown`.
- * @param {unknown} err - The caught error
- * @returns {string} - The error message
- */
-export const errorMessage = (err) =>
-  err instanceof Error ? err.message : String(err);
