@@ -32,6 +32,12 @@ declare class LiveAPI {
   /** Call a method on the Live object */
   call(method: string, ...args: unknown[]): unknown;
 
+  /** Navigate to a different Live Object Model path */
+  goto(path: string): void;
+
+  /** Get information about the current object (properties, children, etc.) */
+  readonly info: string;
+
   // ===== Custom extensions from live-api-extensions.js =====
 
   /**

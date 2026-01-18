@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 const MAX_OPERATIONS = 50;
 
 const OPERATION_REQUIREMENTS = {
@@ -39,9 +38,17 @@ const OPERATION_ERROR_MESSAGES = {
 };
 
 /**
+ * @typedef {object} RawApiOperation
+ * @property {string} type - The operation type
+ * @property {string} [property] - Property name for property operations
+ * @property {string} [method] - Method name for method operations
+ * @property {*} [value] - Value for set/goto operations
+ * @property {Array<*>} [args] - Arguments for call operations
+ */
+
+/**
  * Validates operation parameters based on operation type
- * @param {object} operation - The operation object
- * @param {string} operation.type - The operation type
+ * @param {RawApiOperation} operation - The operation object
  * @throws {Error} If required parameters are missing
  */
 function validateOperationParameters(operation) {
@@ -75,8 +82,8 @@ function validateOperationParameters(operation) {
 
 /**
  * Executes a single operation on the LiveAPI instance
- * @param {object} api - The LiveAPI instance
- * @param {object} operation - The operation to execute
+ * @param {LiveAPI} api - The LiveAPI instance
+ * @param {RawApiOperation} operation - The operation to execute
  * @returns {*} The result of the operation
  */
 function executeOperation(api, operation) {
@@ -137,18 +144,11 @@ function executeOperation(api, operation) {
 
 /**
  * Provides direct, low-level access to the Live API for research, development, and debugging
- * @param {object} args - The parameters
- * @param {string} [args.path] - Optional LiveAPI path (e.g., "live_set tracks 0")
- * @param {Array} args.operations - Array of operations to execute (max 50)
- * @param {string} args.operations[].type - Operation type: "get_property", "set_property", "call_method", "get", "set", "call", "goto", "info", "getProperty", "getChildIds", "exists", "getColor", or "setColor"
- * @param {string} [args.operations[].property] - Property name for get_property/set_property operations or get/set convenience operations
- * @param {string} [args.operations[].method] - Method name for call_method operations
- * @param {Array} [args.operations[].args] - Arguments for call_method operations or convenience operations
- * @param {*} [args.operations[].value] - Value for set_property operations
- * @param {object} _context - Internal context object (unused)
- * @returns {object} Result object with path, id, and operation results
+ * @param {{ path?: string, operations: RawApiOperation[] }} args - The parameters
+ * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
+ * @returns {{ path: string, id: string, results: Array<{ operation: RawApiOperation, result: * }> }} Result object with path, id, and operation results
  */
-export function rawLiveApi({ path, operations } = {}, _context = {}) {
+export function rawLiveApi({ path, operations }, _context = {}) {
   if (!Array.isArray(operations)) {
     throw new Error("operations must be an array");
   }
