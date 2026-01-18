@@ -2,7 +2,7 @@
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
-   * @param {string|number|Array} idOrPath - ID number/string, full path, or ["id", "123"] array
+   * @param {string|number|Array<string|number>} idOrPath - ID number/string, full path, or ["id", "123"] array
    * @returns {LiveAPI} New LiveAPI instance
    */
   LiveAPI.from = function (idOrPath) {
@@ -31,6 +31,11 @@ if (typeof LiveAPI !== "undefined") {
     return id !== "id 0" && id !== "0" && id !== 0;
   };
 
+  /**
+   * Get a Live API property value with type-appropriate handling
+   * @param {string} property - Property name to get
+   * @returns {unknown} Property value
+   */
   LiveAPI.prototype.getProperty = function (property) {
     switch (property) {
       case "scale_intervals":
@@ -62,14 +67,22 @@ if (typeof LiveAPI !== "undefined") {
     }
   };
 
+  /**
+   * Set a Live API property with type-appropriate handling
+   * @param {string} property - Property name to set
+   * @param {unknown} value - Property value to set
+   * @returns {void}
+   */
   LiveAPI.prototype.setProperty = function (property, value) {
+    const val = /** @type {any} */ (value);
+
     switch (property) {
       case "input_routing_type":
       case "input_routing_channel":
       case "output_routing_type":
       case "output_routing_channel": {
         // Convert value to JSON format expected by Live API
-        const jsonValue = JSON.stringify({ [property]: value });
+        const jsonValue = JSON.stringify({ [property]: val });
         return this.set(property, jsonValue);
       }
       case "selected_track":
@@ -78,19 +91,22 @@ if (typeof LiveAPI !== "undefined") {
       case "highlighted_clip_slot": {
         // Properties that expect "id X" format - automatically format IDs
         const formattedValue =
-          typeof value === "string" &&
-          !value.startsWith("id ") &&
-          /^\d+$/.test(value)
-            ? `id ${value}`
-            : value;
+          typeof val === "string" && !val.startsWith("id ") && /^\d+$/.test(val)
+            ? `id ${val}`
+            : val;
         return this.set(property, formattedValue);
       }
       default:
         // For all other properties, use regular set
-        return this.set(property, value);
+        return this.set(property, val);
     }
   };
 
+  /**
+   * Get child object IDs for a named collection
+   * @param {string} name - Collection name to query
+   * @returns {string[]} Array of child IDs in "id X" format
+   */
   LiveAPI.prototype.getChildIds = function (name) {
     const idArray = this.get(name);
 
@@ -107,6 +123,11 @@ if (typeof LiveAPI !== "undefined") {
     return children;
   };
 
+  /**
+   * Get child LiveAPI instances for a named collection
+   * @param {string} name - Collection name to query
+   * @returns {LiveAPI[]} Array of child LiveAPI instances
+   */
   LiveAPI.prototype.getChildren = function (name) {
     return this.getChildIds(name).map((id) => new LiveAPI(id));
   };
@@ -131,6 +152,10 @@ if (typeof LiveAPI !== "undefined") {
     );
   };
 
+  /**
+   * Set color from CSS hex format
+   * @param {string} cssColor - Color in "#RRGGBB" format
+   */
   LiveAPI.prototype.setColor = function (cssColor) {
     if (!cssColor.startsWith("#") || cssColor.length !== 7) {
       throw new Error(`Invalid color format: must be "#RRGGBB"`);
@@ -150,13 +175,17 @@ if (typeof LiveAPI !== "undefined") {
     this.set("color", (r << 16) | (g << 8) | b);
   };
 
+  /**
+   * Set multiple properties at once
+   * @param {Record<string, unknown>} properties - Properties to set
+   */
   LiveAPI.prototype.setAll = function (properties) {
     for (const [property, value] of Object.entries(properties)) {
       if (value != null) {
         if (property === "color") {
-          this.setColor(value);
+          this.setColor(/** @type {string} */ (value));
         } else {
-          this.set(property, value);
+          this.set(property, /** @type {any} */ (value));
         }
       }
     }
