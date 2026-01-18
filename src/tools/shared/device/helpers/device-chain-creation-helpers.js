@@ -9,7 +9,7 @@ const MAX_AUTO_CREATE_CHAINS = 16;
  * Resolve container with auto-creation of missing chains
  * @param {string[]} segments - Path segments with explicit prefixes (t, rt, mt, d, c, rc)
  * @param {string} path - Original path for error messages
- * @returns {object} LiveAPI object (Track or Chain)
+ * @returns {LiveAPI} LiveAPI object (Track or Chain)
  */
 export function resolveContainerWithAutoCreate(segments, path) {
   // Start with track
@@ -66,7 +66,7 @@ function resolveTrackPath(segment) {
  * @param {string} currentPath - Current Live API path
  * @param {string} segment - Device index segment
  * @param {string} fullPath - Full path for error messages
- * @returns {object} LiveAPI device object
+ * @returns {LiveAPI} LiveAPI device object
  */
 function navigateToDevice(currentPath, segment, fullPath) {
   const devicePath = `${currentPath} devices ${segment}`;
@@ -81,11 +81,11 @@ function navigateToDevice(currentPath, segment, fullPath) {
 
 /**
  * Navigate to a chain, auto-creating if necessary
- * @param {object} parentDevice - Parent device LiveAPI object
+ * @param {LiveAPI} parentDevice - Parent device LiveAPI object
  * @param {string} currentPath - Current Live API path
  * @param {string} segment - Chain segment ("cN" for chain, "rcN" for return chain)
  * @param {string} fullPath - Full path for error messages
- * @returns {object} LiveAPI chain object
+ * @returns {LiveAPI} LiveAPI chain object
  */
 function navigateToChain(parentDevice, currentPath, segment, fullPath) {
   // Return chain (rc prefix) - no auto-creation
@@ -116,7 +116,7 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
 
 /**
  * Auto-create chains up to the requested index
- * @param {object} device - Parent device LiveAPI object
+ * @param {LiveAPI} device - Parent device LiveAPI object
  * @param {number} targetIndex - Target chain index
  * @param {string} fullPath - Full path for error messages
  */
@@ -127,7 +127,7 @@ function autoCreateChains(device, targetIndex, fullPath) {
   }
 
   // Check if it's a Drum Rack
-  if (device.getProperty("can_have_drum_pads") > 0) {
+  if (/** @type {number} */ (device.getProperty("can_have_drum_pads")) > 0) {
     throw new Error(
       `Auto-creating chains in Drum Racks is not supported (path: "${fullPath}")`,
     );
@@ -158,7 +158,7 @@ function autoCreateChains(device, targetIndex, fullPath) {
 /**
  * Auto-create drum pad chains up to the requested index within a note group.
  * Creates chains with the specified in_note value (MIDI note number).
- * @param {object} device - Drum rack device LiveAPI object
+ * @param {LiveAPI} device - Drum rack device LiveAPI object
  * @param {number} targetInNote - MIDI note for the chain's in_note property
  * @param {number} targetIndex - Target chain index within the note group
  * @param {number} existingCount - Current count of chains with this in_note
@@ -186,6 +186,8 @@ export function autoCreateDrumPadChains(
     const newChain = chains.at(-1);
 
     // Set in_note to assign it to the correct pad
-    newChain.set("in_note", targetInNote);
+    if (newChain) {
+      newChain.set("in_note", targetInNote);
+    }
   }
 }

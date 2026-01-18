@@ -74,8 +74,7 @@ export function readLiveSet(args = {}, _context = {}) {
     );
   } else if (
     includeFlags.includeSessionClips ||
-    includeFlags.includeArrangementClips ||
-    includeFlags.includeAllClips
+    includeFlags.includeArrangementClips
   ) {
     // Auto-include minimal track info when clips are requested without explicit track inclusion
     result.tracks = trackIds.map((_trackId, trackIndex) =>

@@ -57,7 +57,9 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   }
 
   const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
-  const rackId = container.call("insert_device", rackName, position ?? 0);
+  const rackId = /** @type {string} */ (
+    container.call("insert_device", rackName, position ?? 0)
+  );
   const rack = LiveAPI.from(rackId);
 
   if (name) {
@@ -221,10 +223,12 @@ function wrapInstrumentsInRack(devices, toPath, name) {
       ? resolveInsertionPath(toPath)
       : { container: sourceContainer, position: devicePosition };
 
-    const rackId = container.call(
-      "insert_device",
-      "Instrument Rack",
-      position ?? 0,
+    if (!container || !container.exists()) {
+      throw new Error(`wrapInRack: target container does not exist`);
+    }
+
+    const rackId = /** @type {string} */ (
+      container.call("insert_device", "Instrument Rack", position ?? 0)
     );
     const rack = LiveAPI.from(rackId);
 

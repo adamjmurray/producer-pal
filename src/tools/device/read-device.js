@@ -135,11 +135,13 @@ function readChain(liveApiPath, path, options) {
     throw new Error(`Chain not found at path: ${path}`);
   }
 
-  const devices = chain.getChildren("devices").map((device) => {
-    const deviceInfo = readDeviceShared(device, options);
+  const devices = /** @type {Record<string, unknown>[]} */ (
+    chain.getChildren("devices").map((device) => {
+      const deviceInfo = readDeviceShared(device, options);
 
-    return cleanupInternalDrumPads(deviceInfo);
-  });
+      return cleanupInternalDrumPads(deviceInfo);
+    })
+  );
 
   return buildChainInfo(chain, { path, devices });
 }

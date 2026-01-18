@@ -1,8 +1,8 @@
 /**
  * Sets properties on a target object, but only for non-null values
- * @param {object} target - The object to set properties on
- * @param {object} properties - Object with key-value pairs to set
- * @returns {object} The target object (for chaining)
+ * @param {Record<string, unknown>} target - The object to set properties on
+ * @param {Record<string, unknown>} properties - Object with key-value pairs to set
+ * @returns {Record<string, unknown>} The target object (for chaining)
  */
 export function setAllNonNull(target, properties) {
   for (const [key, value] of Object.entries(properties)) {
@@ -16,10 +16,11 @@ export function setAllNonNull(target, properties) {
 
 /**
  * Creates a new object with all non-null properties from the input object
- * @param {object} obj - Object with key-value pairs
- * @returns {object} New object containing only non-null properties
+ * @param {Record<string, unknown>} obj - Object with key-value pairs
+ * @returns {Record<string, unknown>} New object containing only non-null properties
  */
 export function withoutNulls(obj) {
+  /** @type {Record<string, unknown>} */
   const result = {};
 
   for (const [key, value] of Object.entries(obj)) {
@@ -103,8 +104,8 @@ export function buildIndexedName(baseName, count, index) {
  * Unwraps a single-element array to its element, otherwise returns the array
  * Used for tool results that should return a single object when one item,
  * or an array when multiple items.
- * @param {Array} array - Array of results
- * @returns {*} Single element if array has one item, otherwise the full array
+ * @param {Array<unknown>} array - Array of results
+ * @returns {unknown} Single element if array has one item, otherwise the full array
  */
 export function unwrapSingleResult(array) {
   return array.length === 1 ? array[0] : array;

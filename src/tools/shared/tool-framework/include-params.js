@@ -82,10 +82,35 @@ const SHORTCUT_MAPPINGS = {
 };
 
 /**
+ * @typedef {object} IncludeFlags
+ * @property {boolean} includeDrumPads
+ * @property {boolean} includeDrumMaps
+ * @property {boolean} includeClipNotes
+ * @property {boolean} includeRackChains
+ * @property {boolean} includeReturnChains
+ * @property {boolean} includeScenes
+ * @property {boolean} includeMidiEffects
+ * @property {boolean} includeInstruments
+ * @property {boolean} includeAudioEffects
+ * @property {boolean} includeRoutings
+ * @property {boolean} includeAvailableRoutings
+ * @property {boolean} includeSessionClips
+ * @property {boolean} includeArrangementClips
+ * @property {boolean} includeClips
+ * @property {boolean} includeRegularTracks
+ * @property {boolean} includeReturnTracks
+ * @property {boolean} includeMasterTrack
+ * @property {boolean} includeColor
+ * @property {boolean} includeWarpMarkers
+ * @property {boolean} includeMixer
+ * @property {boolean} includeLocators
+ */
+
+/**
  * Parse include array format and return boolean flags for each option
  * @param {string[] | undefined} includeArray - Array of kebab-case include options
- * @param {object} defaults - Default values for each parameter
- * @returns {object} Object with boolean include* properties
+ * @param {Partial<IncludeFlags>} defaults - Default values for each parameter
+ * @returns {IncludeFlags} Object with boolean include* properties
  */
 export function parseIncludeArray(includeArray, defaults = {}) {
   // If no include array is provided (undefined), use defaults
@@ -202,11 +227,14 @@ const FLAG_TO_OPTION = [
 
 /**
  * Convert include flags back to an array format
- * @param {object} includeFlags - Object with boolean include* properties
+ * @param {Partial<IncludeFlags>} includeFlags - Object with boolean include* properties
  * @returns {string[]} Array of include options
  */
 export function includeArrayFromFlags(includeFlags) {
-  return FLAG_TO_OPTION.filter(([flag]) => includeFlags[flag]).map(
+  /** @type {Record<string, boolean | undefined>} */
+  const flagsRecord = includeFlags;
+
+  return FLAG_TO_OPTION.filter(([flag]) => flagsRecord[flag]).map(
     ([, option]) => option,
   );
 }
@@ -279,16 +307,19 @@ export const READ_CLIP_DEFAULTS = {
 /**
  * Expand shortcuts and '*' in include array to concrete options
  * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
- * @param {object} defaults - Default values to determine tool type from structure
+ * @param {Partial<IncludeFlags>} defaults - Default values to determine tool type from structure
  * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
  */
 function expandWildcardIncludes(includeArray, defaults) {
   // First expand shortcuts
+  /** @type {string[]} */
   const expandedArray = [];
+  /** @type {Record<string, string[]>} */
+  const shortcuts = SHORTCUT_MAPPINGS;
 
   for (const option of includeArray) {
-    if (SHORTCUT_MAPPINGS[option]) {
-      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
+    if (shortcuts[option]) {
+      expandedArray.push(...shortcuts[option]);
     } else {
       expandedArray.push(option);
     }
@@ -317,7 +348,9 @@ function expandWildcardIncludes(includeArray, defaults) {
     toolType = "song"; // fallback
   }
 
-  const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];
+  /** @type {Record<string, string[]>} */
+  const optionsByType = ALL_INCLUDE_OPTIONS;
+  const allOptions = optionsByType[toolType] || [];
 
   // Create set with all non-'*' options plus all available options
   const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
