@@ -74,6 +74,7 @@ export const logger = {
   error: (message) => writeLog("ERROR", message),
   /**
    * @param {string} message - Log message
+   * @returns {void}
    */
   debug: (message) => {
     if (verboseLogging && enableLogging) {
