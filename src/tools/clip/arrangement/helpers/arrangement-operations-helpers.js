@@ -57,7 +57,6 @@ export function handleArrangementLengthening({
       isAudioClip,
       arrangementLengthBeats,
       currentArrangementLength,
-      _currentStartTime: currentStartTime,
       currentEndTime,
       clipStartMarker,
       track,
@@ -97,9 +96,6 @@ export function handleArrangementLengthening({
       currentArrangementLength,
       currentStartTime,
       currentEndTime,
-      _clipLoopStart: clipLoopStart,
-      _clipLoopEnd: clipLoopEnd,
-      _clipStartMarker: clipStartMarker,
       totalContentLength,
       currentOffset,
       track,
@@ -122,9 +118,6 @@ export function handleArrangementLengthening({
  * @param {number} options.currentArrangementLength - Current length in beats
  * @param {number} options.currentStartTime - Current start time in beats
  * @param {number} options.currentEndTime - Current end time in beats
- * @param {number} options._clipLoopStart - Clip loop start position (unused)
- * @param {number} options._clipLoopEnd - Clip loop end position (unused)
- * @param {number} options._clipStartMarker - Clip start marker (unused)
  * @param {number} options.totalContentLength - Total content length in beats
  * @param {number} options.currentOffset - Current offset from loop start
  * @param {object} options.track - The LiveAPI track object
@@ -138,9 +131,6 @@ function createLoopeClipTiles({
   currentArrangementLength,
   currentStartTime,
   currentEndTime,
-  _clipLoopStart,
-  _clipLoopEnd,
-  _clipStartMarker,
   totalContentLength,
   currentOffset,
   track,

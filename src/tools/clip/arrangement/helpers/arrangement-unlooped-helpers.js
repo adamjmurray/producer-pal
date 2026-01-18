@@ -14,7 +14,6 @@ const EPSILON = 0.001;
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentArrangementLength - Current length in beats
- * @param {number} options._currentStartTime - Current start time in beats (unused)
  * @param {number} options.currentEndTime - Current end time in beats
  * @param {number} options.clipStartMarker - Clip start marker position
  * @param {object} options.track - The LiveAPI track object
@@ -26,7 +25,6 @@ export function handleUnloopedLengthening({
   isAudioClip,
   arrangementLengthBeats,
   currentArrangementLength,
-  _currentStartTime,
   currentEndTime,
   clipStartMarker,
   track,
