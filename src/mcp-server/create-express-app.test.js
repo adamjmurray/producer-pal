@@ -455,9 +455,33 @@ describe("MCP Express App", () => {
       expect(html.length).toBeGreaterThan(0);
     });
 
-    // NOTE: Testing chatUIEnabled=false requires creating a separate Express app instance
-    // because the module-level variable is captured at import time.
-    // The handler registration tests below verify the handler logic works correctly.
+    it("should return 403 when chat UI is disabled", async () => {
+      // The chatUIEnabled variable is module-level - get the handler and disable it
+      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+
+      chatUIHandler(0);
+
+      // Create a new app instance to use the updated chatUIEnabled value
+      const { createExpressApp } = await import("./create-express-app.js");
+      const testApp = createExpressApp();
+      const testServer = await new Promise((resolve) => {
+        const s = testApp.listen(0, () => resolve(s));
+      });
+      const testChatUrl = `http://localhost:${testServer.address().port}/chat`;
+
+      try {
+        const response = await fetch(testChatUrl);
+
+        expect(response.status).toBe(403);
+        const text = await response.text();
+
+        expect(text).toBe("Chat UI is disabled");
+      } finally {
+        // Clean up and re-enable for other tests
+        await new Promise((resolve) => testServer.close(resolve));
+        chatUIHandler(1);
+      }
+    });
   });
 
   describe("Handler Registration", () => {

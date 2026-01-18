@@ -35,6 +35,7 @@ export function connect(_params = {}, context = {}) {
     timeSignature: liveSet.timeSignature,
   };
 
+  /** @type {{ connected: boolean, producerPalVersion: string, abletonLiveVersion: unknown, liveSet: typeof liveSetInfo, $skills?: string, $instructions?: string, messagesForUser?: string, projectNotes?: string }} */
   const result = {
     connected: true,
     producerPalVersion: VERSION,

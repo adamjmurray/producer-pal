@@ -93,7 +93,7 @@ export function readScene(args = {}, _context = {}) {
           include: args.include,
         }),
       )
-      .filter((clip) => clip.id != null);
+      .filter((/** @type {{ id?: string | null }} */ clip) => clip.id != null);
   } else {
     // When not including full clip details, just return the count
     result.clipCount = liveSet
@@ -105,7 +105,9 @@ export function readScene(args = {}, _context = {}) {
           include: [],
         }),
       )
-      .filter((clip) => clip.id != null).length;
+      .filter(
+        (/** @type {{ id?: string | null }} */ clip) => clip.id != null,
+      ).length;
   }
 
   return result;

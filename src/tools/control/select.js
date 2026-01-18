@@ -27,7 +27,7 @@ const MASTER_TRACK_PATH = "live_set master_track";
  * @param {string|null} [args.clipId] - Clip ID to select (null to deselect all clips)
  * @param {string} [args.deviceId] - Device ID to select
  * @param {boolean} [args.instrument] - Select the track's instrument
- * @param {object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
+ * @param {{ trackIndex: number, sceneIndex: number }} [args.clipSlot] - Clip slot to highlight
  * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
  * @param {boolean} [args.showLoop] - Show loop view for selected clip
  * @param {boolean} [args.showBrowser] - Show browser view
@@ -245,16 +245,24 @@ function validateParameters({
 }
 
 /**
+ * @typedef {object} TrackSelectionResult
+ * @property {string} [selectedTrackId] - Selected track ID
+ * @property {string} [selectedCategory] - Track category
+ * @property {number} [selectedTrackIndex] - Track index
+ */
+
+/**
  * Update track selection in Live
  *
  * @param {object} options - Selection parameters
- * @param {object} options.songView - LiveAPI instance for live_set view
+ * @param {LiveAPI} options.songView - LiveAPI instance for live_set view
  * @param {string} [options.trackId] - Track ID to select
  * @param {string} [options.category] - Track category
  * @param {number} [options.trackIndex] - Track index
- * @returns {object} Selection result with track info
+ * @returns {TrackSelectionResult} Selection result with track info
  */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
+  /** @type {TrackSelectionResult} */
   const result = {};
 
   // Determine track selection approach
@@ -302,7 +310,7 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
  * Update scene selection in Live
  *
  * @param {object} options - Selection parameters
- * @param {object} options.songView - LiveAPI instance for live_set view
+ * @param {LiveAPI} options.songView - LiveAPI instance for live_set view
  * @param {string} [options.sceneId] - Scene ID to select
  * @param {number} [options.sceneIndex] - Scene index
  * @returns {object} Selection result with scene info
@@ -342,7 +350,7 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
  * @param {object} options - Selection parameters
  * @param {string} [options.deviceId] - Device ID to select
  * @param {boolean} [options.instrument] - Whether to select instrument
- * @param {object} options.trackSelectionResult - Previous track selection result
+ * @param {TrackSelectionResult} options.trackSelectionResult - Previous track selection result
  */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
@@ -393,8 +401,8 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
  * Update highlighted clip slot in Live
  *
  * @param {object} options - Selection parameters
- * @param {object} options.songView - LiveAPI instance for live_set view
- * @param {object} [options.clipSlot] - Clip slot coordinates {trackIndex, sceneIndex}
+ * @param {LiveAPI} options.songView - LiveAPI instance for live_set view
+ * @param {{ trackIndex: number, sceneIndex: number }} [options.clipSlot] - Clip slot coordinates
  */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {
@@ -476,6 +484,7 @@ function readViewState() {
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
+  /** @type {{ trackId: string | null, category: "regular" | "return" | "master" | null, trackIndex?: number | null, returnTrackIndex?: number | null }} */
   const selectedTrackObject = {
     trackId: selectedTrackId,
     category: category,

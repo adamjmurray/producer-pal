@@ -13,11 +13,17 @@
     "src/notation/**/*.js",
     "src/tools/shared/**/*.js",
     "src/tools/track/**/*.js",
+    "src/tools/scene/**/*.js",
+    "src/tools/control/**/*.js",
+    "src/tools/workflow/**/*.js",
+    "src/tools/live-set/**/*.js",
+    "src/tools/samples/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
     "**/*.test.js",
     "**/*-test-helpers.js",
+    "src/**/*.def.js",
     "src/notation/barbeat/parser/barbeat-parser.js",
     "src/notation/modulation/parser/modulation-parser.js"
   ]

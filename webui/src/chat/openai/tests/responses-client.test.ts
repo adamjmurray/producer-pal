@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   ResponsesClient,
   type ResponsesClientConfig,
+  type ResponsesMessageOverrides,
 } from "#webui/chat/openai/responses-client";
 
 // Mock MCP SDK
@@ -49,7 +50,7 @@ function createMockStream(
 async function setupMockAndSendMessage(
   client: ResponsesClient,
   message = "Test",
-  options?: Parameters<typeof client.sendMessage>[2],
+  options?: ResponsesMessageOverrides,
 ) {
   const mockCreate = vi
     .fn()
