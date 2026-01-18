@@ -1,8 +1,41 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   findLocator,
   findLocatorsByName,
 } from "#src/tools/shared/locator/locator-helpers.js";
+
+/**
+ * Get the current loop state from liveSet
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {{startBeats: number, start: string, end: string}} Loop state
+ */
+export function getCurrentLoopState(
+  liveSet,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  const startBeats = /** @type {number} */ (liveSet.getProperty("loop_start"));
+  const lengthBeats = /** @type {number} */ (
+    liveSet.getProperty("loop_length")
+  );
+  const start = abletonBeatsToBarBeat(
+    startBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  const end = abletonBeatsToBarBeat(
+    startBeats + lengthBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  return { startBeats, start, end };
+}
 
 /**
  * Resolve a locator by ID or name to its time in beats

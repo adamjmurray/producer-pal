@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 
@@ -9,7 +8,7 @@ import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
  * @param {string} sampleFile - Absolute path to audio file
  * @param {LiveAPI} liveSet - LiveAPI liveSet object
  * @param {number} maxAutoCreatedScenes - Maximum number of scenes allowed
- * @returns {object} - Object with clip and sceneIndex
+ * @returns {{clip: LiveAPI, sceneIndex: number}} Object with clip and sceneIndex
  */
 export function createAudioSessionClip(
   trackIndex,
@@ -38,7 +37,7 @@ export function createAudioSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @returns {object} - Object with clip and arrangementStartBeats
+ * @returns {{clip: LiveAPI, arrangementStartBeats: number}} Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
@@ -55,10 +54,8 @@ export function createAudioArrangementClip(
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create audio clip at position
-  const newClipResult = track.call(
-    "create_audio_clip",
-    sampleFile,
-    arrangementStartBeats,
+  const newClipResult = /** @type {string} */ (
+    track.call("create_audio_clip", sampleFile, arrangementStartBeats)
   );
   const clip = LiveAPI.from(newClipResult);
 
