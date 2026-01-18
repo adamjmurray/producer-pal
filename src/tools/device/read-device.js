@@ -17,10 +17,10 @@ import { validateExclusiveParams } from "#src/tools/shared/validation/id-validat
  * @param {object} args - The parameters
  * @param {string} [args.deviceId] - Device ID to read
  * @param {string} [args.path] - Device/chain/drum-pad path
- * @param {Array} args.include - Array of data to include in the response
+ * @param {string[]} args.include - Array of data to include in the response
  * @param {string} [args.paramSearch] - Filter parameters by substring match on name
  * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {object} Device, chain, or drum pad information
+ * @returns {Record<string, unknown>} Device, chain, or drum pad information
  */
 export function readDevice(
   { deviceId, path, include = ["chains"], paramSearch },
@@ -86,10 +86,20 @@ export function readDevice(
 }
 
 /**
+ * @typedef {object} ReadOptions
+ * @property {boolean} includeChains
+ * @property {boolean} includeReturnChains
+ * @property {boolean} includeDrumPads
+ * @property {boolean} includeParams
+ * @property {boolean} includeParamValues
+ * @property {string} [paramSearch]
+ */
+
+/**
  * Read device by ID
  * @param {string} deviceId - Device ID to read
- * @param {object} options - Read options
- * @returns {object} Device information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Device information
  */
 function readDeviceById(deviceId, options) {
   const device = LiveAPI.from(`id ${deviceId}`);
@@ -100,14 +110,16 @@ function readDeviceById(deviceId, options) {
 
   const deviceInfo = readDeviceShared(device, options);
 
-  return cleanupInternalDrumPads(deviceInfo);
+  return /** @type {Record<string, unknown>} */ (
+    cleanupInternalDrumPads(deviceInfo)
+  );
 }
 
 /**
  * Read device by Live API path
  * @param {string} liveApiPath - Live API canonical path
- * @param {object} options - Read options
- * @returns {object} Device information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Device information
  */
 function readDeviceByLiveApiPath(liveApiPath, options) {
   const device = LiveAPI.from(liveApiPath);
@@ -118,15 +130,17 @@ function readDeviceByLiveApiPath(liveApiPath, options) {
 
   const deviceInfo = readDeviceShared(device, options);
 
-  return cleanupInternalDrumPads(deviceInfo);
+  return /** @type {Record<string, unknown>} */ (
+    cleanupInternalDrumPads(deviceInfo)
+  );
 }
 
 /**
  * Read chain information
  * @param {string} liveApiPath - Live API canonical path to the chain
  * @param {string} path - Simplified path for response
- * @param {object} options - Read options
- * @returns {object} Chain information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Chain information
  */
 function readChain(liveApiPath, path, options) {
   const chain = LiveAPI.from(liveApiPath);
@@ -152,8 +166,8 @@ function readChain(liveApiPath, path, options) {
  * @param {string} drumPadNote - Note name of the drum pad (e.g., "C1")
  * @param {string[]} remainingSegments - Segments after drum pad in path
  * @param {string} fullPath - Full simplified path for response
- * @param {object} options - Read options
- * @returns {object} Drum pad, chain, or device information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Drum pad, chain, or device information
  */
 function readDrumPadByPath(
   liveApiPath,
@@ -193,11 +207,11 @@ function readDrumPadByPath(
 
 /**
  * Navigate into drum pad chains based on remaining path segments
- * @param {object} pad - Drum pad Live API object
+ * @param {LiveAPI} pad - Drum pad Live API object
  * @param {string[]} remainingSegments - Segments after drum pad in path
  * @param {string} fullPath - Full simplified path for response
- * @param {object} options - Read options
- * @returns {object} Chain or device information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Chain or device information
  */
 function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
@@ -240,48 +254,55 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
     parentPath: fullPath,
   });
 
-  return cleanupInternalDrumPads(deviceInfo);
+  return /** @type {Record<string, unknown>} */ (
+    cleanupInternalDrumPads(deviceInfo)
+  );
 }
 
 /**
  * Read chain within a drum pad
- * @param {object} chain - Chain Live API object
+ * @param {LiveAPI} chain - Chain Live API object
  * @param {string} path - Simplified path for response
- * @param {object} options - Read options
- * @returns {object} Chain information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Chain information
  */
 function readDrumPadChain(chain, path, options) {
-  const devices = chain.getChildren("devices").map((device, index) => {
-    const devicePath = `${path}/d${index}`;
-    const deviceInfo = readDeviceShared(device, {
-      ...options,
-      parentPath: devicePath,
-    });
+  const devices = /** @type {Record<string, unknown>[]} */ (
+    chain
+      .getChildren("devices")
+      .map((/** @type {LiveAPI} */ device, /** @type {number} */ index) => {
+        const devicePath = `${path}/d${index}`;
+        const deviceInfo = readDeviceShared(device, {
+          ...options,
+          parentPath: devicePath,
+        });
 
-    return cleanupInternalDrumPads(deviceInfo);
-  });
+        return cleanupInternalDrumPads(deviceInfo);
+      })
+  );
 
   return buildChainInfo(chain, { path, devices });
 }
 
 /**
  * Build drum pad info object
- * @param {object} pad - Drum pad Live API object
+ * @param {LiveAPI} pad - Drum pad Live API object
  * @param {string} path - Simplified path for response
- * @param {object} options - Read options
- * @returns {object} Drum pad information
+ * @param {ReadOptions} options - Read options
+ * @returns {Record<string, unknown>} Drum pad information
  */
 function buildDrumPadInfo(pad, path, options) {
-  const midiNote = pad.getProperty("note");
+  const midiNote = /** @type {number} */ (pad.getProperty("note"));
   const noteName = midiToNoteName(midiNote);
 
   if (noteName == null) {
     throw new Error(`Invalid MIDI note from drum pad: ${midiNote}`);
   }
 
-  const isMuted = pad.getProperty("mute") > 0;
-  const isSoloed = pad.getProperty("solo") > 0;
+  const isMuted = /** @type {number} */ (pad.getProperty("mute")) > 0;
+  const isSoloed = /** @type {number} */ (pad.getProperty("solo")) > 0;
 
+  /** @type {Record<string, unknown>} */
   const drumPadInfo = {
     id: pad.id,
     path,
@@ -300,25 +321,34 @@ function buildDrumPadInfo(pad, path, options) {
   if (options.includeChains || options.includeDrumPads) {
     const chains = pad.getChildren("chains");
 
-    drumPadInfo.chains = chains.map((chain, chainIndex) => {
-      const chainPath = `${path}/c${chainIndex}`;
-      const devices = chain
-        .getChildren("devices")
-        .map((device, deviceIndex) => {
-          const devicePath = `${chainPath}/d${deviceIndex}`;
-          const deviceInfo = readDeviceShared(device, {
-            ...options,
-            parentPath: devicePath,
-          });
+    drumPadInfo.chains = chains.map(
+      (/** @type {LiveAPI} */ chain, /** @type {number} */ chainIndex) => {
+        const chainPath = `${path}/c${chainIndex}`;
+        const devices = /** @type {Record<string, unknown>[]} */ (
+          chain
+            .getChildren("devices")
+            .map(
+              (
+                /** @type {LiveAPI} */ device,
+                /** @type {number} */ deviceIndex,
+              ) => {
+                const devicePath = `${chainPath}/d${deviceIndex}`;
+                const deviceInfo = readDeviceShared(device, {
+                  ...options,
+                  parentPath: devicePath,
+                });
 
-          return cleanupInternalDrumPads(deviceInfo);
+                return cleanupInternalDrumPads(deviceInfo);
+              },
+            )
+        );
+
+        return buildChainInfo(chain, {
+          path: chainPath,
+          devices,
         });
-
-      return buildChainInfo(chain, {
-        path: chainPath,
-        devices,
-      });
-    });
+      },
+    );
   }
 
   return drumPadInfo;

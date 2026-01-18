@@ -22,7 +22,7 @@ const RACK_TYPE_TO_DEVICE_NAME = {
  * @param {string} [options.path] - Comma-separated device path(s)
  * @param {string} [options.toPath] - Target path for the new rack
  * @param {string} [options.name] - Name for the new rack
- * @returns {object} Info about the created rack
+ * @returns {{id: string, type: string, deviceCount: number} | null} Info about the created rack
  */
 export function wrapDevicesInRack({ ids, path, toPath, name }) {
   const items = parseCommaSeparatedIds(ids ?? path);
@@ -56,7 +56,10 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     return null;
   }
 
-  const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
+  const rackName =
+    RACK_TYPE_TO_DEVICE_NAME[
+      /** @type {keyof typeof RACK_TYPE_TO_DEVICE_NAME} */ (rackType)
+    ];
   const rackId = /** @type {string} */ (
     container.call("insert_device", rackName, position ?? 0)
   );
@@ -103,7 +106,14 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   return { id: rack.id, type: rackType, deviceCount: devices.length };
 }
 
+/**
+ * Resolve device items (IDs or paths) to LiveAPI objects
+ * @param {string[]} items - Device IDs or paths
+ * @param {boolean} isIdBased - True if items are IDs, false if paths
+ * @returns {LiveAPI[]} Array of device LiveAPI objects
+ */
 function resolveDevices(items, isIdBased) {
+  /** @type {LiveAPI[]} */
   const devices = [];
 
   for (const item of items) {
@@ -125,6 +135,11 @@ function resolveDevices(items, isIdBased) {
   return devices;
 }
 
+/**
+ * Resolve a device from a simplified path
+ * @param {string} path - Device path
+ * @returns {LiveAPI | null} Device LiveAPI or null if not found
+ */
 function resolveDeviceFromPath(path) {
   const resolved = resolveInsertionPath(path);
 
@@ -141,6 +156,11 @@ function resolveDeviceFromPath(path) {
   return resolved.container;
 }
 
+/**
+ * Determine the appropriate rack type for wrapping devices
+ * @param {LiveAPI[]} devices - Devices to wrap
+ * @returns {string | null} Rack type or null if incompatible
+ */
 function determineRackType(devices) {
   const types = new Set();
 
@@ -178,6 +198,11 @@ function determineRackType(devices) {
   return null;
 }
 
+/**
+ * Get the parent container and position for a device
+ * @param {LiveAPI} device - Device to get insertion point for
+ * @returns {{container: LiveAPI, position: number}} Container and position
+ */
 function getDeviceInsertionPoint(device) {
   const parentPath = device.path.replace(/ devices \d+$/, "");
   const container = LiveAPI.from(parentPath);
@@ -190,10 +215,10 @@ function getDeviceInsertionPoint(device) {
 /**
  * Wrap instrument(s) in an Instrument Rack using temp-track workaround.
  * Live doesn't allow creating Instrument Rack on track with existing instrument.
- * @param {object[]} devices - Instrument device(s) to wrap
+ * @param {LiveAPI[]} devices - Instrument device(s) to wrap
  * @param {string} [toPath] - Target path for the new rack
  * @param {string} [name] - Name for the new rack
- * @returns {object} Info about the created rack
+ * @returns {{id: string, type: string, deviceCount: number}} Info about the created rack
  */
 function wrapInstrumentsInRack(devices, toPath, name) {
   const liveSet = LiveAPI.from("live_set");
@@ -276,6 +301,11 @@ function wrapInstrumentsInRack(devices, toPath, name) {
   }
 }
 
+/**
+ * Format an ID with "id " prefix if needed
+ * @param {string} id - ID to format
+ * @returns {string} Formatted ID
+ */
 function formatId(id) {
   return id.startsWith("id ") ? id : `id ${id}`;
 }

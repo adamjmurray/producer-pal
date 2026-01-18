@@ -25,24 +25,50 @@ import { wrapDevicesInRack } from "./update-device-wrap-helpers.js";
 // Type detection helpers
 // ============================================================================
 
+/**
+ * Check if type is updatable (device, chain, or drum pad)
+ * @param {string} type - Live object type
+ * @returns {boolean} True if type is updatable
+ */
 function isValidUpdateType(type) {
   return (
     type.endsWith("Device") || type.endsWith("Chain") || type === "DrumPad"
   );
 }
 
+/**
+ * Check if type is a device type
+ * @param {string} type - Live object type
+ * @returns {boolean} True if type ends with Device
+ */
 function isDeviceType(type) {
   return type.endsWith("Device");
 }
 
+/**
+ * Check if type is a rack device
+ * @param {string} type - Live object type
+ * @returns {boolean} True if type is RackDevice
+ */
 function isRackDevice(type) {
   return type === "RackDevice";
 }
 
+/**
+ * Check if type is a chain type
+ * @param {string} type - Live object type
+ * @returns {boolean} True if type ends with Chain
+ */
 function isChainType(type) {
   return type.endsWith("Chain");
 }
 
+/**
+ * Warn if parameter is set but not applicable to this type
+ * @param {string} paramName - Parameter name
+ * @param {unknown} value - Parameter value
+ * @param {string} type - Live object type
+ */
 function warnIfSet(paramName, value, type) {
   if (value != null) {
     console.error(`updateDevice: '${paramName}' not applicable to ${type}`);
@@ -73,7 +99,7 @@ function warnIfSet(paramName, value, type) {
  * @param {string} [args.mappedPitch] - Output MIDI note (drum chains only)
  * @param {boolean} [args.wrapInRack] - Wrap device(s) in a new rack
  * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {object|Array} Updated object info(s)
+ * @returns {Record<string, unknown> | Record<string, unknown>[] | null} Updated object info(s)
  */
 export function updateDevice(
   {
@@ -100,7 +126,9 @@ export function updateDevice(
 
   // Handle wrapInRack separately (creates rack and moves devices into it)
   if (wrapInRack) {
-    return wrapDevicesInRack({ ids, path, toPath, name });
+    return /** @type {Record<string, unknown> | null} */ (
+      wrapDevicesInRack({ ids, path, toPath, name })
+    );
   }
 
   const updateOptions = {
@@ -142,14 +170,33 @@ export function updateDevice(
 // ============================================================================
 
 /**
+ * @typedef {object} UpdateOptions
+ * @property {string} [toPath]
+ * @property {string} [name]
+ * @property {boolean} [collapsed]
+ * @property {string} [params]
+ * @property {string} [macroVariation]
+ * @property {number} [macroVariationIndex]
+ * @property {number} [macroCount]
+ * @property {string} [abCompare]
+ * @property {boolean} [mute]
+ * @property {boolean} [solo]
+ * @property {string} [color]
+ * @property {number} [chokeGroup]
+ * @property {string} [mappedPitch]
+ * @property {boolean} [isDrumPadPath]
+ */
+
+/**
  * Update multiple targets with common logic for path/ID resolution
  * @param {string[]} items - Array of paths or IDs
- * @param {Function} resolveItem - Function to resolve item to ResolvedTarget
+ * @param {(item: string) => ResolvedTarget | null} resolveItem - Function to resolve item to ResolvedTarget
  * @param {string} itemType - "path" or "id" for error messages
- * @param {object} updateOptions - Options to pass to updateTarget
- * @returns {object|Array} Single result or array of results
+ * @param {UpdateOptions} updateOptions - Options to pass to updateTarget
+ * @returns {Record<string, unknown> | Record<string, unknown>[]} Single result or array of results
  */
 function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
+  /** @type {Record<string, unknown>[]} */
   const results = [];
 
   for (const item of items) {
@@ -173,7 +220,9 @@ function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
     }
   }
 
-  return unwrapSingleResult(results);
+  return /** @type {Record<string, unknown> | Record<string, unknown>[]} */ (
+    unwrapSingleResult(results)
+  );
 }
 
 /**
@@ -193,7 +242,7 @@ function resolveIdToTarget(id) {
 
 /**
  * @typedef {object} ResolvedTarget
- * @property {object} target - LiveAPI object
+ * @property {LiveAPI} target - LiveAPI object
  * @property {boolean} [isDrumPadPath] - True if path targets a drum pad (not specific chain)
  */
 
@@ -266,7 +315,7 @@ function resolvePathToTarget(path) {
 /**
  * Resolve a device from Live API path
  * @param {string} liveApiPath - Live API canonical path
- * @returns {object|null} LiveAPI object or null if not found
+ * @returns {LiveAPI|null} LiveAPI object or null if not found
  */
 function resolveDeviceTarget(liveApiPath) {
   const device = LiveAPI.from(liveApiPath);
@@ -277,7 +326,7 @@ function resolveDeviceTarget(liveApiPath) {
 /**
  * Resolve a chain from Live API path
  * @param {string} liveApiPath - Live API canonical path
- * @returns {object|null} LiveAPI object or null if not found
+ * @returns {LiveAPI|null} LiveAPI object or null if not found
  */
 function resolveChainTarget(liveApiPath) {
   const chain = LiveAPI.from(liveApiPath);
@@ -289,6 +338,12 @@ function resolveChainTarget(liveApiPath) {
 // Target update logic
 // ============================================================================
 
+/**
+ * Update a single target (device, chain, or drum pad)
+ * @param {LiveAPI} target - Live API object to update
+ * @param {UpdateOptions} options - Update options
+ * @returns {{id: string} | null} Result with ID or null if update failed
+ */
 function updateTarget(target, options) {
   const type = target.type;
 
@@ -304,7 +359,11 @@ function updateTarget(target, options) {
     if (isDeviceType(type)) {
       moveDeviceToPath(target, options.toPath);
     } else if (type === "DrumChain") {
-      moveDrumChainToPath(target, options.toPath, options.isDrumPadPath);
+      moveDrumChainToPath(
+        target,
+        options.toPath,
+        Boolean(options.isDrumPadPath),
+      );
     } else {
       console.error(`Warning: cannot move ${type}`);
     }
@@ -328,6 +387,12 @@ function updateTarget(target, options) {
   return { id: target.id };
 }
 
+/**
+ * Update device-specific properties
+ * @param {LiveAPI} target - Device to update
+ * @param {string} type - Device type
+ * @param {UpdateOptions} options - Update options
+ */
 function updateDeviceProperties(target, type, options) {
   const {
     collapsed,
@@ -379,6 +444,12 @@ function updateDeviceProperties(target, type, options) {
   warnIfSet("mappedPitch", mappedPitch, type);
 }
 
+/**
+ * Update chain/drum pad properties
+ * @param {LiveAPI} target - Chain or drum pad to update
+ * @param {string} type - Target type
+ * @param {UpdateOptions} options - Update options
+ */
 function updateNonDeviceProperties(target, type, options) {
   const {
     collapsed,
