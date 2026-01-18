@@ -80,7 +80,9 @@ export function deleteObject({ ids, path, type }, _context = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  return unwrapSingleResult(deletedObjects);
+  return /** @type {{ id: string, type: string, deleted: boolean } | Array<{ id: string, type: string, deleted: boolean }>} */ (
+    unwrapSingleResult(deletedObjects)
+  );
 }
 
 /**

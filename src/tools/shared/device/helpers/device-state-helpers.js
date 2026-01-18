@@ -3,15 +3,16 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 
 /**
  * Build chain info object with standard properties
- * @param {object} chain - Chain Live API object
+ * @param {LiveAPI} chain - Chain Live API object
  * @param {object} options - Build options
  * @param {string | null} [options.path] - Optional simplified path
- * @param {Array} [options.devices] - Pre-processed devices array (skips device fetching)
- * @returns {object} Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
+ * @param {Array<Record<string, unknown>>} [options.devices] - Pre-processed devices array (skips device fetching)
+ * @returns {Record<string, unknown>} Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
  */
 export function buildChainInfo(chain, options = {}) {
   const { path, devices } = options;
 
+  /** @type {Record<string, unknown>} */
   const chainInfo = {
     id: chain.id,
   };
@@ -33,7 +34,9 @@ export function buildChainInfo(chain, options = {}) {
   // DrumChain-only properties: mappedPitch and chokeGroup
   if (chain.type === "DrumChain") {
     // out_note is the MIDI pitch sent to the instrument
-    const outNote = chain.getProperty("out_note");
+    const outNote = /** @type {number | null} */ (
+      chain.getProperty("out_note")
+    );
 
     if (outNote != null) {
       const noteName = midiToNoteName(outNote);
@@ -43,7 +46,7 @@ export function buildChainInfo(chain, options = {}) {
       }
     }
 
-    const chokeGroup = chain.getProperty("choke_group");
+    const chokeGroup = /** @type {number} */ (chain.getProperty("choke_group"));
 
     if (chokeGroup > 0) {
       chainInfo.chokeGroup = chokeGroup;
@@ -65,7 +68,7 @@ export function buildChainInfo(chain, options = {}) {
 
 /**
  * Compute the state of a Live object based on mute/solo properties
- * @param {object} liveObject - Live API object
+ * @param {LiveAPI} liveObject - Live API object
  * @param {string} category - Category type (default "regular")
  * @returns {string} State value
  */
@@ -74,9 +77,10 @@ export function computeState(liveObject, category = "regular") {
     return STATE.ACTIVE;
   }
 
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+  const isMuted = /** @type {number} */ (liveObject.getProperty("mute")) > 0;
+  const isSoloed = /** @type {number} */ (liveObject.getProperty("solo")) > 0;
+  const isMutedViaSolo =
+    /** @type {number} */ (liveObject.getProperty("muted_via_solo")) > 0;
 
   if (isMuted && isSoloed) {
     return STATE.MUTED_AND_SOLOED;
@@ -115,8 +119,14 @@ export function isInstrumentDevice(deviceType) {
 }
 
 /**
+ * @typedef {object} DeviceInfo
+ * @property {string} type - Device type string
+ * @property {Array<{devices?: DeviceInfo[]}>} [chains] - Device chains
+ */
+
+/**
  * Check if any device in the list is an instrument
- * @param {Array} devices - Array of device objects
+ * @param {DeviceInfo[]} devices - Array of device objects
  * @returns {boolean} True if any instrument found
  */
 export function hasInstrumentInDevices(devices) {

@@ -70,12 +70,14 @@ export function defineTool(name, options) {
         const validation = z.object(finalInputSchema).safeParse(coercedArgs);
 
         if (!validation.success) {
-          const errorMessages = validation.error.issues.map((issue) => {
-            const path =
-              issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+          const errorMessages = validation.error.issues.map(
+            (/** @type {{path: PropertyKey[], message: string}} */ issue) => {
+              const path =
+                issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
 
-            return `${path}${issue.message}`;
-          });
+              return `${path}${issue.message}`;
+            },
+          );
 
           return formatErrorResponse(
             `Validation error in ${name}:\n${errorMessages.join("\n")}`,

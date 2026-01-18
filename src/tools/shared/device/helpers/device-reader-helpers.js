@@ -38,8 +38,8 @@ export function isRedundantDeviceClassName(deviceType, className) {
 
 /**
  * Process regular (non-drum) rack chains
- * @param {object} device - Device object
- * @param {object} deviceInfo - Device info to update
+ * @param {LiveAPI} device - Device object
+ * @param {Record<string, unknown>} deviceInfo - Device info to update
  * @param {boolean} includeChains - Include chains
  * @param {boolean} includeDrumPads - Include drum pads
  * @param {number} depth - Current depth
@@ -58,7 +58,9 @@ function processRegularChains(
   devicePath,
 ) {
   const chains = device.getChildren("chains");
-  const hasSoloedChain = chains.some((chain) => chain.getProperty("solo") > 0);
+  const hasSoloedChain = chains.some(
+    (chain) => /** @type {number} */ (chain.getProperty("solo")) > 0,
+  );
 
   if (includeChains) {
     deviceInfo.chains = chains.map((chain, index) => {
@@ -89,18 +91,22 @@ function processRegularChains(
 }
 
 /**
+ * @typedef {object} ProcessChainsOptions
+ * @property {boolean} includeChains - Include regular chains
+ * @property {boolean} includeReturnChains - Include return chains
+ * @property {boolean} includeDrumPads - Include drum pads
+ * @property {number} depth - Current depth
+ * @property {number} maxDepth - Max depth
+ * @property {Function} readDeviceFn - readDevice function
+ * @property {string} [devicePath] - Device path for building nested paths
+ */
+
+/**
  * Process all chain types for rack devices
  * @param {LiveAPI} device - Device object
- * @param {object} deviceInfo - Device info to update
+ * @param {Record<string, unknown>} deviceInfo - Device info to update
  * @param {string} deviceType - Device type
- * @param {object} options - Processing options
- * @param {boolean} options.includeChains - Include regular chains
- * @param {boolean} options.includeReturnChains - Include return chains
- * @param {boolean} options.includeDrumPads - Include drum pads
- * @param {number} options.depth - Current depth
- * @param {number} options.maxDepth - Max depth
- * @param {Function} options.readDeviceFn - readDevice function
- * @param {string} [options.devicePath] - Device path for building nested paths
+ * @param {ProcessChainsOptions} options - Processing options
  */
 export function processDeviceChains(device, deviceInfo, deviceType, options) {
   const {
@@ -160,7 +166,17 @@ export function processDeviceChains(device, deviceInfo, deviceType, options) {
   }
 }
 
-// Process return chains for rack devices (internal helper)
+/**
+ * Process return chains for rack devices (internal helper)
+ * @param {LiveAPI} device - Device object
+ * @param {Record<string, unknown>} deviceInfo - Device info to update
+ * @param {boolean} includeChains - Include chains
+ * @param {boolean} includeReturnChains - Include return chains
+ * @param {number} depth - Current depth
+ * @param {number} maxDepth - Max depth
+ * @param {Function} readDeviceFn - readDevice function
+ * @param {string | undefined} devicePath - Device path for building nested paths
+ */
 function processReturnChains(
   device,
   deviceInfo,
@@ -197,8 +213,8 @@ function processReturnChains(
 
 /**
  * Read macro variation and macro info for rack devices
- * @param {object} device - LiveAPI device object
- * @returns {object} Object with variations and/or macros properties if applicable, empty object otherwise
+ * @param {LiveAPI} device - LiveAPI device object
+ * @returns {Record<string, unknown>} Object with variations and/or macros properties if applicable, empty object otherwise
  */
 export function readMacroVariations(device) {
   const canHaveChains = device.getProperty("can_have_chains");
@@ -207,6 +223,7 @@ export function readMacroVariations(device) {
     return {};
   }
 
+  /** @type {Record<string, unknown>} */
   const result = {};
 
   // Variation info
@@ -220,12 +237,15 @@ export function readMacroVariations(device) {
   }
 
   // Macro info
-  const visibleMacroCount = device.getProperty("visible_macro_count");
+  const visibleMacroCount = /** @type {number} */ (
+    device.getProperty("visible_macro_count")
+  );
 
   if (visibleMacroCount > 0) {
     result.macros = {
       count: visibleMacroCount,
-      hasMappings: device.getProperty("has_macro_mappings") > 0,
+      hasMappings:
+        /** @type {number} */ (device.getProperty("has_macro_mappings")) > 0,
     };
   }
 
@@ -234,8 +254,8 @@ export function readMacroVariations(device) {
 
 /**
  * Read A/B Compare state for devices that support it
- * @param {object} device - LiveAPI device object
- * @returns {object} Object with abCompare property if supported, empty object otherwise
+ * @param {LiveAPI} device - LiveAPI device object
+ * @returns {Record<string, unknown>} Object with abCompare property if supported, empty object otherwise
  */
 export function readABCompare(device) {
   const canCompareAB = device.getProperty("can_compare_ab");
@@ -244,7 +264,8 @@ export function readABCompare(device) {
     return {};
   }
 
-  const isUsingB = device.getProperty("is_using_compare_preset_b") > 0;
+  const isUsingB =
+    /** @type {number} */ (device.getProperty("is_using_compare_preset_b")) > 0;
 
   return {
     abCompare: isUsingB ? "b" : "a",
@@ -257,7 +278,7 @@ export function readABCompare(device) {
  * @param {object} [options] - Reading options
  * @param {boolean} [options.includeValues] - Include full values/metadata
  * @param {string} [options.search] - Filter by name substring (case-insensitive)
- * @returns {Array} Array of parameter info objects
+ * @returns {Array<Record<string, unknown>>} Array of parameter info objects
  */
 export function readDeviceParameters(device, options = {}) {
   const { includeValues = false, search } = options;

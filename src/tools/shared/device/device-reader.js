@@ -17,7 +17,7 @@ import { extractDevicePath } from "./helpers/path/device-path-helpers.js";
 
 /**
  * Determine device type from Live API properties
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @returns {string} Combined device type string
  */
 export function getDeviceType(device) {
@@ -53,9 +53,15 @@ export function getDeviceType(device) {
 }
 
 /**
+ * @typedef {object} DeviceWithChains
+ * @property {Array<{devices?: unknown[]}>} [chains] - Device chains
+ * @property {unknown} [_processedDrumPads] - Internal drum pad data
+ */
+
+/**
  * Clean up internal _processedDrumPads property from device objects
- * @param {object | Array} obj - Device object or array of devices to clean
- * @returns {object | Array} Cleaned object/array
+ * @param {unknown} obj - Device object or array of devices to clean
+ * @returns {unknown} Cleaned object/array
  */
 export function cleanupInternalDrumPads(obj) {
   if (!obj || typeof obj !== "object") {
@@ -66,11 +72,21 @@ export function cleanupInternalDrumPads(obj) {
     return obj.map(cleanupInternalDrumPads);
   }
 
-  const { _processedDrumPads, ...rest } = obj;
+  const deviceObj = /** @type {DeviceWithChains & Record<string, unknown>} */ (
+    obj
+  );
+  const { _processedDrumPads, chains, ...rest } = deviceObj;
+  /** @type {Record<string, unknown>} */
+  const result = { ...rest };
 
-  if (rest.chains) {
-    rest.chains = rest.chains.map((chain) => {
-      if (chain.devices) {
+  if (Array.isArray(chains)) {
+    result.chains = chains.map((chain) => {
+      if (
+        chain &&
+        typeof chain === "object" &&
+        "devices" in chain &&
+        chain.devices
+      ) {
         return {
           ...chain,
           devices: cleanupInternalDrumPads(chain.devices),
@@ -81,19 +97,33 @@ export function cleanupInternalDrumPads(obj) {
     });
   }
 
-  return rest;
+  return result;
 }
 
 /**
+ * @typedef {object} DrumPadInfo
+ * @property {string} pitch - Note name (e.g., "C1")
+ * @property {string} name - Drum pad name
+ * @property {boolean} [hasInstrument] - Whether pad has an instrument
+ */
+
+/**
+ * @typedef {object} DeviceWithDrumPads
+ * @property {string} type - Device type string
+ * @property {DrumPadInfo[]} [_processedDrumPads] - Internal drum pad data
+ * @property {Array<{devices?: DeviceWithDrumPads[]}>} [chains] - Device chains
+ */
+
+/**
  * Extract track-level drum map from the processed device structure
- * @param {Array} devices - Array of processed device objects
- * @returns {object | null} Object mapping pitch names to drum pad names, or null if none found
+ * @param {DeviceWithDrumPads[]} devices - Array of processed device objects
+ * @returns {Record<string, string> | null} Object mapping pitch names to drum pad names, or null if none found
  */
 export function getDrumMap(devices) {
   /**
    * Recursively find drum rack devices in a device list
-   * @param {Array} deviceList - Array of device objects to search
-   * @returns {Array} - Array of drum rack devices
+   * @param {DeviceWithDrumPads[]} deviceList - Array of device objects to search
+   * @returns {DeviceWithDrumPads[]} - Array of drum rack devices
    */
   function findDrumRacksInDevices(deviceList) {
     const drumRacks = [];
@@ -124,9 +154,11 @@ export function getDrumMap(devices) {
     return null;
   }
 
+  /** @type {Record<string, string>} */
   const drumMap = {};
+  const drumPads = drumRacks[0]._processedDrumPads ?? [];
 
-  for (const drumPad of drumRacks[0]._processedDrumPads) {
+  for (const drumPad of drumPads) {
     if (drumPad.hasInstrument !== false) {
       const noteName = drumPad.pitch;
 
@@ -245,9 +277,9 @@ export function readDevice(device, options = {}) {
 
 /**
  * Read sample path from Simpler device
- * @param {object} device - Live API device object
+ * @param {LiveAPI} device - Live API device object
  * @param {string} className - Device class display name
- * @returns {object} Object with sample property, or empty object
+ * @returns {Record<string, unknown>} Object with sample property, or empty object
  */
 function readSimplerSample(device, className) {
   if (className !== DEVICE_CLASS.SIMPLER) {
@@ -255,7 +287,7 @@ function readSimplerSample(device, className) {
   }
 
   // Multisample mode doesn't expose a single sample file path
-  if (device.getProperty("multi_sample_mode") > 0) {
+  if (/** @type {number} */ (device.getProperty("multi_sample_mode")) > 0) {
     return { multisample: true };
   }
 
