@@ -25,10 +25,21 @@ const rootPackageJson = JSON.parse(
 const version = rootPackageJson.version;
 
 // Generate tools from MCP server (excluding development-only ppal-raw-live-api)
-const tools = [];
+const tools: { name: string; description: string }[] = [];
+
+interface RegisteredTool {
+  name: string;
+  description: string;
+  annotations?: { title?: string };
+}
 
 // @ts-expect-error - accessing private property to enumerate registered tools
-for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
+const registeredTools = server._registeredTools as Record<
+  string,
+  RegisteredTool
+>;
+
+for (const [name, toolInfo] of Object.entries(registeredTools)) {
   const shortDescription = toolInfo.description.split("\n")[0];
 
   tools.push({
