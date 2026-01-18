@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
@@ -263,7 +262,9 @@ function applyOutputRouting(
  */
 function configureRouting(newTrack, sourceTrackIndex) {
   const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
-  const sourceTrackName = sourceTrack.getProperty("name");
+  const sourceTrackName = /** @type {string} */ (
+    sourceTrack.getProperty("name")
+  );
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);
 
@@ -397,7 +398,7 @@ export function calculateSceneLength(sceneIndex) {
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
       const clip = LiveAPI.from(`${clipSlot.path} clip`);
-      const clipLength = clip.getProperty("length");
+      const clipLength = /** @type {number} */ (clip.getProperty("length"));
 
       maxLength = Math.max(maxLength, clipLength);
     }
@@ -424,8 +425,8 @@ function assignNamesToClips(clips, name) {
  * @param {string} [name] - Optional name for the duplicated clips
  * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
  * @param {string} [arrangementLength] - Optional length in bar:beat format
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @param {number} [songTimeSigNumerator] - Song time signature numerator
+ * @param {number} [songTimeSigDenominator] - Song time signature denominator
  * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns {object} Object with arrangementStart and clips array
  */
@@ -435,8 +436,8 @@ export function duplicateSceneToArrangement(
   name,
   withoutClips,
   arrangementLength,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
+  songTimeSigNumerator = 4,
+  songTimeSigDenominator = 4,
   context = {},
 ) {
   const scene = LiveAPI.from(sceneId);

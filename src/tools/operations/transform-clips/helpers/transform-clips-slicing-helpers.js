@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
@@ -25,7 +24,9 @@ function iterateSlicePositions(
   currentEndTime,
   sliceHandler,
 ) {
-  const clipStartMarker = sourceClip.getProperty("start_marker");
+  const clipStartMarker = /** @type {number} */ (
+    sourceClip.getProperty("start_marker")
+  );
   let currentSlicePosition = currentStartTime + sliceBeats;
   let currentContentOffset = sliceBeats;
 
@@ -66,10 +67,12 @@ function sliceUnloopedMidiContent(
     currentStartTime,
     currentEndTime,
     (sliceContentStart, sliceContentEnd, slicePosition) => {
-      const duplicateResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
-        slicePosition,
+      const duplicateResult = /** @type {string} */ (
+        track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${sourceClip.id}`,
+          slicePosition,
+        )
       );
       const sliceClip = LiveAPI.from(duplicateResult);
 
@@ -120,7 +123,7 @@ function sliceUnloopedAudioContent(
  * Prepare slice parameters by converting to Ableton beats
  * @param {string} slice - Slice duration in bar:beat format
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
- * @param {Set} warnings - Set to track warnings already issued
+ * @param {Set<string>} warnings - Set to track warnings already issued
  * @returns {number|null} - Slice duration in beats or null
  */
 export function prepareSliceParams(slice, arrangementClips, warnings) {
@@ -138,8 +141,12 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   }
 
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
   const sliceBeats = barBeatDurationToAbletonBeats(
     slice,
     songTimeSigNumerator,
@@ -158,7 +165,7 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
  * @param {number} sliceBeats - Slice duration in Ableton beats
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
- * @param {Set} warnings - Set to track warnings already issued
+ * @param {Set<string>} warnings - Set to track warnings already issued
  * @param {string} slice - Original slice parameter for error messages
  * @param {object} _context - Internal context object
  */
@@ -177,10 +184,12 @@ export function performSlicing(
 
   for (const clip of arrangementClips) {
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
-    const isLooping = clip.getProperty("looping") > 0;
+    const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
     // Get current clip arrangement length
-    const currentStartTime = clip.getProperty("start_time");
-    const currentEndTime = clip.getProperty("end_time");
+    const currentStartTime = /** @type {number} */ (
+      clip.getProperty("start_time")
+    );
+    const currentEndTime = /** @type {number} */ (clip.getProperty("end_time"));
     const currentArrangementLength = currentEndTime - currentStartTime;
 
     // Only slice if clip is longer than or equal to slice size
@@ -285,7 +294,7 @@ export function performSlicing(
     const freshClips = trackClipIds
       .map((id) => LiveAPI.from(id))
       .filter((c) => {
-        const clipStart = c.getProperty("start_time");
+        const clipStart = /** @type {number} */ (c.getProperty("start_time"));
 
         return (
           clipStart >= range.startTime - EPSILON &&

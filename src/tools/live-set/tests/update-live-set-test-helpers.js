@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
 
 /**

@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
@@ -67,8 +66,12 @@ export function duplicateClipWithPositions(
   } else {
     // Arrangement destination
     const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+    const songTimeSigNumerator = /** @type {number} */ (
+      liveSet.getProperty("signature_numerator")
+    );
+    const songTimeSigDenominator = /** @type {number} */ (
+      liveSet.getProperty("signature_denominator")
+    );
 
     // Resolve positions from locator (single) or bar|beat (multiple)
     const positionsInBeats = resolveClipArrangementPositions(
