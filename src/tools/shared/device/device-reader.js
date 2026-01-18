@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 import {
   DEVICE_CLASS,
@@ -139,17 +138,23 @@ export function getDrumMap(devices) {
 }
 
 /**
+ * @typedef {object} ReadDeviceOptions
+ * @property {boolean} [includeChains] - Include chains in rack devices (default true)
+ * @property {boolean} [includeReturnChains] - Include return chains (default false)
+ * @property {boolean} [includeDrumPads] - Include drum pads (default false)
+ * @property {boolean} [includeParams] - Include device parameters (default false)
+ * @property {boolean} [includeParamValues] - Include parameter values (default false)
+ * @property {string} [paramSearch] - Filter parameters by search string
+ * @property {number} [depth] - Current recursion depth (default 0)
+ * @property {number} [maxDepth] - Maximum recursion depth (default 4)
+ * @property {string} [parentPath] - Override path extraction (used for drum pad devices)
+ */
+
+/**
  * Read device information including nested chains for rack devices
- * @param {object} device - Live API device object
- * @param {object} options - Options for reading device
- * @param {boolean} options.includeChains - Include chains in rack devices
- * @param {boolean} options.includeReturnChains - Include return chains in rack devices
- * @param {boolean} options.includeDrumPads - Include drum pads
- * @param {boolean} options.includeParams - Include device parameters
- * @param {number} options.depth - Current recursion depth
- * @param {number} options.maxDepth - Maximum recursion depth
- * @param {string} options.parentPath - Override path extraction (used for drum pad devices)
- * @returns {object} Device object with nested structure
+ * @param {LiveAPI} device - Live API device object
+ * @param {ReadDeviceOptions} [options] - Options for reading device
+ * @returns {Record<string, unknown>} Device object with nested structure
  */
 export function readDevice(device, options = {}) {
   const {
@@ -171,12 +176,15 @@ export function readDevice(device, options = {}) {
   }
 
   const deviceType = getDeviceType(device);
-  const className = device.getProperty("class_display_name");
-  const userDisplayName = device.getProperty("name");
+  const className = /** @type {string} */ (
+    device.getProperty("class_display_name")
+  );
+  const userDisplayName = /** @type {string} */ (device.getProperty("name"));
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
   // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
   const path = parentPath ?? extractDevicePath(device.path);
 
+  /** @type {Record<string, unknown>} */
   const deviceInfo = {
     id: device.id,
     ...(path && { path }),
@@ -187,7 +195,7 @@ export function readDevice(device, options = {}) {
     deviceInfo.name = userDisplayName;
   }
 
-  const isActive = device.getProperty("is_active") > 0;
+  const isActive = /** @type {number} */ (device.getProperty("is_active")) > 0;
 
   if (!isActive) {
     deviceInfo.deactivated = true;
@@ -195,7 +203,10 @@ export function readDevice(device, options = {}) {
 
   const deviceView = LiveAPI.from(`${device.path} view`);
 
-  if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
+  if (
+    deviceView.exists() &&
+    /** @type {number} */ (deviceView.getProperty("is_collapsed")) > 0
+  ) {
     deviceInfo.collapsed = true;
   }
 
@@ -207,15 +218,20 @@ export function readDevice(device, options = {}) {
   Object.assign(deviceInfo, readSimplerSample(device, className));
 
   // Process chains for rack devices
-  processDeviceChains(device, deviceInfo, deviceType, {
-    includeChains,
-    includeReturnChains,
-    includeDrumPads,
-    depth,
-    maxDepth,
-    readDeviceFn: readDevice,
-    devicePath: path,
-  });
+  processDeviceChains(
+    device,
+    deviceInfo,
+    deviceType,
+    /** @type {Parameters<typeof processDeviceChains>[3]} */ ({
+      includeChains,
+      includeReturnChains,
+      includeDrumPads,
+      depth,
+      maxDepth,
+      readDeviceFn: readDevice,
+      devicePath: path,
+    }),
+  );
 
   if (includeParams) {
     deviceInfo.parameters = readDeviceParameters(device, {

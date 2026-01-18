@@ -345,17 +345,14 @@ function categorizeDevices(
   const audioEffects = [];
 
   for (const device of devices) {
-    const processedDevice = readDevice(
-      device,
-      /** @type {Parameters<typeof readDevice>[1]} */ ({
-        includeChains: includeRackChains,
-        includeReturnChains,
-        includeDrumPads,
-      }),
-    );
+    const processedDevice = readDevice(device, {
+      includeChains: includeRackChains,
+      includeReturnChains,
+      includeDrumPads,
+    });
 
     // Use processed device type for proper rack categorization
-    const deviceType = processedDevice.type;
+    const deviceType = /** @type {string} */ (processedDevice.type);
 
     if (
       deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
