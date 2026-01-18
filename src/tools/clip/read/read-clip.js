@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
 import {
   abletonBeatsToBarBeat,
@@ -66,20 +65,27 @@ export function readClip(args = {}, _context = {}) {
     }
   }
 
-  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
-  const timeSigNumerator = clip.getProperty("signature_numerator");
-  const timeSigDenominator = clip.getProperty("signature_denominator");
+  const isArrangementClip =
+    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
+  const timeSigNumerator = /** @type {number} */ (
+    clip.getProperty("signature_numerator")
+  );
+  const timeSigDenominator = /** @type {number} */ (
+    clip.getProperty("signature_denominator")
+  );
 
-  const isLooping = clip.getProperty("looping") > 0;
-  const lengthBeats = clip.getProperty("length"); // Live API already gives us the effective length!
+  const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
+  const lengthBeats = /** @type {number} */ (clip.getProperty("length")); // Live API already gives us the effective length!
 
   const clipName = clip.getProperty("name");
 
   // Read boundary properties from Live
-  const startMarkerBeats = clip.getProperty("start_marker");
-  const loopStartBeats = clip.getProperty("loop_start");
-  const loopEndBeats = clip.getProperty("loop_end");
-  const endMarkerBeats = clip.getProperty("end_marker");
+  const startMarkerBeats = /** @type {number} */ (
+    clip.getProperty("start_marker")
+  );
+  const loopStartBeats = /** @type {number} */ (clip.getProperty("loop_start"));
+  const loopEndBeats = /** @type {number} */ (clip.getProperty("loop_end"));
+  const endMarkerBeats = /** @type {number} */ (clip.getProperty("end_marker"));
 
   // Calculate start and end based on looping state
   const { startBeats, endBeats } = getActiveClipBounds(
@@ -321,12 +327,18 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 function addClipLocationProperties(result, clip, isArrangementClip) {
   if (isArrangementClip) {
     const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+    const songTimeSigNumerator = /** @type {number} */ (
+      liveSet.getProperty("signature_numerator")
+    );
+    const songTimeSigDenominator = /** @type {number} */ (
+      liveSet.getProperty("signature_denominator")
+    );
 
     result.trackIndex = clip.trackIndex;
-    const startTimeBeats = clip.getProperty("start_time");
-    const endTimeBeats = clip.getProperty("end_time");
+    const startTimeBeats = /** @type {number} */ (
+      clip.getProperty("start_time")
+    );
+    const endTimeBeats = /** @type {number} */ (clip.getProperty("end_time"));
 
     result.arrangementStart = abletonBeatsToBarBeat(
       startTimeBeats,
