@@ -1,9 +1,9 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
   getArrangementFollowerTrackIds,
+  getCurrentLoopState,
   resolveLoopEnd,
   resolveLoopStart,
   resolveStartTime,
@@ -15,8 +15,8 @@ import { select } from "./select.js";
  * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
- * @param {object} args - The parameters
- * @param {string} args.action - Action to perform
+ * @param {object} [args] - The parameters
+ * @param {string} [args.action] - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {string} [args.startLocatorId] - Locator ID for start position (mutually exclusive with startTime)
  * @param {string} [args.startLocatorName] - Locator name for start position (mutually exclusive with startTime)
@@ -81,8 +81,12 @@ export function playback(
   const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for bar|beat conversions
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = /** @type {number} */ (
+    liveSet.getProperty("signature_numerator")
+  );
+  const songTimeSigDenominator = /** @type {number} */ (
+    liveSet.getProperty("signature_denominator")
+  );
 
   // Resolve start time from bar|beat or locator
   const { startTimeBeats, useLocatorStart } = resolveStartTime(
@@ -115,8 +119,10 @@ export function playback(
 
   // Default result values that will be overridden by specific actions
   // (for optimistic results to avoid a sleep() for playback state updates)
-  let isPlaying = liveSet.getProperty("is_playing") > 0;
-  let currentTimeBeats = liveSet.getProperty("current_song_time");
+  let isPlaying = /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
+  let currentTimeBeats = /** @type {number} */ (
+    liveSet.getProperty("current_song_time")
+  );
 
   const playbackState = handlePlaybackAction(
     action,
@@ -143,15 +149,8 @@ export function playback(
   );
 
   // Get current loop state and convert to bar|beat
-  const currentLoopStartBeats = liveSet.getProperty("loop_start");
-  const currentLoopLengthBeats = liveSet.getProperty("loop_length");
-  const currentLoopStart = abletonBeatsToBarBeat(
-    currentLoopStartBeats,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-  const currentLoopEnd = abletonBeatsToBarBeat(
-    currentLoopStartBeats + currentLoopLengthBeats,
+  const currentLoop = getCurrentLoopState(
+    liveSet,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -166,8 +165,8 @@ export function playback(
     loop,
     loopStart,
     loopEnd,
-    currentLoopStart,
-    currentLoopEnd,
+    currentLoopStart: currentLoop.start,
+    currentLoopEnd: currentLoop.end,
     liveSet,
     arrangementFollowerTrackIds,
   });
@@ -218,7 +217,8 @@ function buildPlaybackResult({
     currentTime,
   };
 
-  const loopEnabled = loop ?? liveSet.getProperty("loop") > 0;
+  const loopEnabled =
+    loop ?? /** @type {number} */ (liveSet.getProperty("loop")) > 0;
 
   if (loopEnabled) {
     result.arrangementLoop = {

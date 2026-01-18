@@ -1,4 +1,3 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 
 /**
@@ -6,7 +5,7 @@ import * as console from "#src/shared/v8-max-console.js";
  * @param {object} args - Operation arguments
  * @param {LiveAPI} args.clip - The clip to move
  * @param {number} args.arrangementStartBeats - New position in beats
- * @param {Map} args.tracksWithMovedClips - Track of clips moved per track
+ * @param {Map<number, number>} args.tracksWithMovedClips - Track of clips moved per track
  * @returns {string} The new clip ID after move
  */
 export function handleArrangementStartOperation({
@@ -14,7 +13,8 @@ export function handleArrangementStartOperation({
   arrangementStartBeats,
   tracksWithMovedClips,
 }) {
-  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+  const isArrangementClip =
+    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
 
   if (!isArrangementClip) {
     console.error(
@@ -42,10 +42,12 @@ export function handleArrangementStartOperation({
 
   tracksWithMovedClips.set(trackIndex, moveCount);
 
-  const newClipResult = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${clip.id}`,
-    arrangementStartBeats,
+  const newClipResult = /** @type {string} */ (
+    track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${clip.id}`,
+      arrangementStartBeats,
+    )
   );
   const newClip = LiveAPI.from(newClipResult);
 

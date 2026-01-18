@@ -1,8 +1,8 @@
-// @ts-nocheck -- TODO: Add JSDoc type annotations
 import * as console from "#src/shared/v8-max-console.js";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
+ * @type {Record<string, number>}
  */
 export const QUANTIZE_GRID = {
   "1/4": 1,
@@ -33,7 +33,7 @@ export function handleQuantization(
   }
 
   // Warn and skip for audio clips
-  if (clip.getProperty("is_midi_clip") <= 0) {
+  if (/** @type {number} */ (clip.getProperty("is_midi_clip")) <= 0) {
     console.error(
       `Warning: quantize parameter ignored for audio clip (id ${clip.id})`,
     );
