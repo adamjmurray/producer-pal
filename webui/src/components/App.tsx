@@ -56,7 +56,6 @@ function getBaseUrl(
  *
  * @returns {JSX.Element} - React component
  */
-// eslint-disable-next-line max-lines-per-function -- main App component orchestrates multiple hooks and UI sections
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();

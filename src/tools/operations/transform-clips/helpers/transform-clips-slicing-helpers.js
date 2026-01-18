@@ -8,6 +8,7 @@ import {
   moveClipFromHolding,
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 
 /**
  * Iterate through slice positions and call handler for each
@@ -72,11 +73,10 @@ function sliceUnloopedMidiContent(
       );
       const sliceClip = LiveAPI.from(duplicateResult);
 
-      sliceClip.set("looping", 1);
-      sliceClip.set("end_marker", sliceContentEnd);
-      sliceClip.set("start_marker", sliceContentStart);
-      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround
-      sliceClip.set("looping", 0);
+      setClipMarkersWithLoopingWorkaround(sliceClip, {
+        startMarker: sliceContentStart,
+        endMarker: sliceContentEnd,
+      });
     },
   );
 }

@@ -9,9 +9,9 @@ const projectRoot = path.resolve(__dirname, "../..");
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
 const ESLINT_DISABLE_LIMITS = {
-  src: 8,
+  src: 4,
   scripts: 0,
-  webui: 5,
+  webui: 1,
 };
 
 const TS_EXPECT_ERROR_LIMITS = {

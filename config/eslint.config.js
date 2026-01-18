@@ -540,6 +540,22 @@ export default [
     },
   },
 
+  // Allow larger functions for main App component and custom hooks
+  // These orchestrate multiple hooks/effects and are naturally longer
+  {
+    files: ["webui/**/App.tsx", "webui/**/hooks/**/use-*.ts"],
+    rules: {
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 250,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
+  },
+
   // Max for Live / Live API rules
   {
     files: ["src/**/*.js"],

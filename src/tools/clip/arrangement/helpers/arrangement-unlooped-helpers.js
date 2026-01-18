@@ -4,6 +4,7 @@ import {
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 
 const EPSILON = 0.001;
 
@@ -91,13 +92,12 @@ export function handleUnloopedLengthening({
       }
 
       // Set markers using looping workaround
-      tileClip.set("looping", 1);
-      tileClip.set("loop_end", tileEndMarker);
-      tileClip.set("loop_start", tileStartMarker);
-      tileClip.set("end_marker", tileEndMarker);
-      tileClip.set("start_marker", tileStartMarker);
-      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-      tileClip.set("looping", 0);
+      setClipMarkersWithLoopingWorkaround(tileClip, {
+        loopStart: tileStartMarker,
+        loopEnd: tileEndMarker,
+        startMarker: tileStartMarker,
+        endMarker: tileEndMarker,
+      });
 
       updatedClips.push({ id: tileClip.id });
 

@@ -32,15 +32,12 @@ export function useTheme() {
     applyTheme();
     localStorage.setItem("theme", theme);
 
-    // Listen for system theme changes when using "system" theme
-    if (theme === "system") {
-      mediaQuery.addEventListener("change", applyTheme);
+    // Only listen for system theme changes when using "system" theme
+    if (theme !== "system") return;
 
-      return () => mediaQuery.removeEventListener("change", applyTheme);
-    }
+    mediaQuery.addEventListener("change", applyTheme);
 
-    // eslint-disable-next-line unicorn/no-useless-undefined -- TypeScript requires explicit return
-    return undefined;
+    return () => mediaQuery.removeEventListener("change", applyTheme);
   }, [theme]);
 
   return { theme, setTheme };

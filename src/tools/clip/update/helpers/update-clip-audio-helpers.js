@@ -11,6 +11,7 @@ import {
   WARP_MODE,
 } from "#src/tools/constants.js";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
 
 // This approach is flawed. The warp marker algorithm does not work correctly in some cases.
@@ -181,13 +182,12 @@ export function revealAudioContentAtPosition(
     );
     const revealedClip = LiveAPI.from(duplicateResult);
 
-    revealedClip.set("looping", 1);
-    revealedClip.set("loop_end", newEndMarker);
-    revealedClip.set("loop_start", newStartMarker);
-    revealedClip.set("end_marker", newEndMarker);
-    revealedClip.set("start_marker", newStartMarker);
-    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-    revealedClip.set("looping", 0);
+    setClipMarkersWithLoopingWorkaround(revealedClip, {
+      loopStart: newStartMarker,
+      loopEnd: newEndMarker,
+      startMarker: newStartMarker,
+      endMarker: newEndMarker,
+    });
 
     return revealedClip;
   }
