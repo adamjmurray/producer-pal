@@ -78,3 +78,50 @@ export async function collectGeminiHistory(
 
   return historyUpdates;
 }
+
+/** Result from setupGeminiOverrideMocks containing the tracked create calls */
+export interface OverrideMocksResult {
+  createCalls: unknown[];
+  mockChat: { sendMessageStream: ReturnType<typeof vi.fn> };
+}
+
+/**
+ * Sets up mocks for testing message overrides (temperature, thinking, etc.).
+ * @param client - GeminiClient instance to configure
+ * @returns Object containing createCalls array and mockChat
+ */
+export function setupGeminiOverrideMocks(
+  client: GeminiClient,
+): OverrideMocksResult {
+  const mockMcpClient = {
+    connect: vi.fn(),
+    listTools: vi.fn().mockResolvedValue({ tools: [] }),
+    callTool: vi.fn(),
+  };
+
+  const createCalls: unknown[] = [];
+  const mockChat = {
+    sendMessageStream: vi.fn().mockImplementation(async function* () {
+      yield {
+        candidates: [
+          { content: { role: "model", parts: [{ text: "Response" }] } },
+        ],
+      };
+    }),
+  };
+
+  client.ai = {
+    chats: {
+      create: vi.fn((config) => {
+        createCalls.push(config);
+
+        return mockChat;
+      }),
+    },
+  } as unknown as typeof client.ai;
+
+  client.mcpClient = mockMcpClient as unknown as Client;
+  client.chat = mockChat as unknown as Chat;
+
+  return { createCalls, mockChat };
+}

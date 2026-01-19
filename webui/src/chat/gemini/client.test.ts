@@ -6,6 +6,7 @@ import {
   createMockGeminiMcpClient,
   setupGeminiMocks,
   collectGeminiHistory,
+  setupGeminiOverrideMocks,
 } from "#webui/test-utils/gemini-client-test-helpers";
 
 // Mock the Google GenAI SDK
@@ -535,6 +536,45 @@ describe("GeminiClient", () => {
       );
 
       consoleWarnSpy.mockRestore();
+    });
+
+    it("applies temperature override to chat config", async () => {
+      const client = new GeminiClient("test-api-key", { temperature: 0.5 });
+      const { createCalls } = setupGeminiOverrideMocks(client);
+
+      client.chatConfig = { temperature: 0.5 };
+
+      for await (const _history of client.sendMessage("test", undefined, {
+        temperature: 0.9,
+      })) {
+        // collect history
+      }
+
+      expect(createCalls.length).toBeGreaterThanOrEqual(1);
+      const lastCall = createCalls.at(-1) as {
+        config: { temperature: number };
+      };
+
+      expect(lastCall.config.temperature).toBe(0.9);
+    });
+
+    it("deletes thinkingConfig when thinking is turned off via override", async () => {
+      const client = new GeminiClient("test-api-key", {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      });
+
+      setupGeminiOverrideMocks(client);
+      client.chatConfig = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      };
+
+      for await (const _history of client.sendMessage("test", undefined, {
+        thinking: "Off",
+      })) {
+        // collect history
+      }
+
+      expect(client.chatConfig.thinkingConfig).toBeUndefined();
     });
   });
 });
