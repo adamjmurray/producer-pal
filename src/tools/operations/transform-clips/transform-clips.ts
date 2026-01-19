@@ -11,32 +11,57 @@ import {
   prepareSliceParams,
   performSlicing,
 } from "./helpers/transform-clips-slicing-helpers.js";
+import type { SlicingContext } from "./helpers/transform-clips-slicing-helpers.js";
 
-/** @typedef {import("./helpers/transform-clips-slicing-helpers.js").SlicingContext} SlicingContext */
+interface TransformClipsArgs {
+  clipIds?: string;
+  arrangementTrackIndex?: string;
+  arrangementStart?: string;
+  arrangementLength?: string;
+  slice?: string;
+  shuffleOrder?: boolean;
+  gainDbMin?: number;
+  gainDbMax?: number;
+  transposeMin?: number;
+  transposeMax?: number;
+  transposeValues?: string;
+  velocityMin?: number;
+  velocityMax?: number;
+  durationMin?: number;
+  durationMax?: number;
+  velocityRange?: number;
+  probability?: number;
+  seed?: number;
+}
+
+interface TransformClipsResult {
+  clipIds: string[];
+  seed: number;
+}
 
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
- * @param {object} args - The parameters
- * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackIndex)
- * @param {string} [args.arrangementTrackIndex] - Track index(es) to query arrangement clips from (ignored if clipIds provided)
- * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
- * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
- * @param {string} [args.slice] - Bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments
- * @param {boolean} [args.shuffleOrder] - Randomize clip positions
- * @param {number} [args.gainDbMin] - Min gain offset in dB to add (audio clips, -24 to 24)
- * @param {number} [args.gainDbMax] - Max gain offset in dB to add (audio clips, -24 to 24)
- * @param {number} [args.transposeMin] - Min transpose in semitones (audio/MIDI clips, -128 to 128)
- * @param {number} [args.transposeMax] - Max transpose in semitones (audio/MIDI clips, -128 to 128)
- * @param {string} [args.transposeValues] - Comma-separated semitone values to randomly pick from (ignores transposeMin/transposeMax)
- * @param {number} [args.velocityMin] - Min velocity offset (MIDI clips, -127 to 127)
- * @param {number} [args.velocityMax] - Max velocity offset (MIDI clips, -127 to 127)
- * @param {number} [args.durationMin] - Min duration multiplier (MIDI clips, 0.01 to 100)
- * @param {number} [args.durationMax] - Max duration multiplier (MIDI clips, 0.01 to 100)
- * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
- * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
- * @param {number} [args.seed] - RNG seed for reproducibility
- * @param {Partial<SlicingContext>} [context] - Internal context object with holdingAreaStartBeats and silenceWavPath
- * @returns {object} Result with clipIds and seed
+ * @param args - The parameters
+ * @param args.clipIds - Comma-separated list of clip IDs to transform
+ * @param args.arrangementTrackIndex - Track index for arrangement clips
+ * @param args.arrangementStart - Start position for arrangement selection
+ * @param args.arrangementLength - Length for arrangement selection
+ * @param args.slice - Slice clips before shuffling
+ * @param args.shuffleOrder - Shuffle order strategy
+ * @param args.gainDbMin - Minimum gain in dB
+ * @param args.gainDbMax - Maximum gain in dB
+ * @param args.transposeMin - Minimum transpose semitones
+ * @param args.transposeMax - Maximum transpose semitones
+ * @param args.transposeValues - Comma-separated transpose values
+ * @param args.velocityMin - Minimum velocity (0-127)
+ * @param args.velocityMax - Maximum velocity (0-127)
+ * @param args.durationMin - Minimum duration multiplier
+ * @param args.durationMax - Maximum duration multiplier
+ * @param args.velocityRange - Velocity range adjustment
+ * @param args.probability - Note probability (0-1)
+ * @param args.seed - Random seed for reproducibility
+ * @param context - Internal context object with holdingAreaStartBeats and silenceWavPath
+ * @returns Result with clipIds and seed
  */
 export function transformClips(
   {
@@ -58,9 +83,9 @@ export function transformClips(
     velocityRange,
     probability,
     seed,
-  } = {},
-  context = {},
-) {
+  }: TransformClipsArgs = {},
+  context: Partial<SlicingContext> = {},
+): TransformClipsResult {
   // Generate seed if not provided (do this early so it's available for return)
   const actualSeed = seed ?? Date.now();
   const rng = createSeededRNG(actualSeed);
@@ -98,12 +123,11 @@ export function transformClips(
   }
 
   // Track warnings to emit each type only once
-  const warnings = new Set();
+  const warnings = new Set<string>();
 
   // Filter arrangement clips only for position shuffling and slicing
   const arrangementClips = clips.filter(
-    (clip) =>
-      /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0,
+    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
   );
 
   // Prepare slice parameters if needed
@@ -117,13 +141,12 @@ export function transformClips(
       clips,
       warnings,
       slice,
-      /** @type {SlicingContext} */ (context),
+      context as SlicingContext,
     );
     // After slicing, re-filter arrangement clips to get fresh objects
     // (the clips array was modified by splice operations during re-scanning)
     const freshArrangementClips = clips.filter(
-      (clip) =>
-        /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0,
+      (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
     );
 
     // Update arrangementClips reference for subsequent operations
@@ -138,7 +161,7 @@ export function transformClips(
       clips,
       warnings,
       rng,
-      /** @type {{ holdingAreaStartBeats: number }} */ (context),
+      context as { holdingAreaStartBeats: number },
     );
   }
 

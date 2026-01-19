@@ -502,6 +502,8 @@ export default [
           "./src/skills/tsconfig.test.json",
           "./src/tools/track/tsconfig.json",
           "./src/tools/track/tsconfig.test.json",
+          "./src/tools/operations/transform-clips/tsconfig.json",
+          "./src/tools/operations/transform-clips/tsconfig.test.json",
           "./src/tools/device/tsconfig.json",
           "./src/tools/device/tsconfig.test.json",
           "./src/tools/operations/duplicate/tsconfig.json",

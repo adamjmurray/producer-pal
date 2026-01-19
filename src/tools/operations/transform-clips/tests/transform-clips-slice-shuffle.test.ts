@@ -8,12 +8,17 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
 describe("transformClips - slice + shuffle combination", () => {
   it("should handle slice + shuffle without stale object errors", () => {
     const clip1Id = "clip_1";
     const clip2Id = "clip_2";
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockContext) {
       if (this._path === "id clip_1") {
         return clip1Id;
       }
@@ -25,7 +30,7 @@ describe("transformClips - slice + shuffle combination", () => {
       return this._id;
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockContext) {
       // Original clips
       if (this._id === clip1Id) {
         return "live_set tracks 0 arrangement_clips 0";
@@ -48,23 +53,26 @@ describe("transformClips - slice + shuffle combination", () => {
       return this._path;
     });
 
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockContext) {
       if (this._id === clip1Id || this._id === clip2Id) {
         return "Clip";
       }
     });
 
-    const slicedClips = [];
-    const shuffledClips = [];
+    const slicedClips: string[] = [];
+    const shuffledClips: string[] = [];
     let isShufflePhase = false;
 
     /**
      * Mock clip properties for test clips
-     * @param {string} prop - Property name to retrieve
-     * @param {string} clipId - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param clipId - Clip ID
+     * @returns Mock property value
      */
-    function mockClipProperties(prop, clipId) {
+    function mockClipProperties(
+      prop: string,
+      clipId: string | undefined,
+    ): number[] | null {
       if (clipId === clip1Id || clipId === clip2Id) {
         if (prop === "is_midi_clip") return [0];
         if (prop === "is_audio_clip") return [1];
@@ -84,11 +92,14 @@ describe("transformClips - slice + shuffle combination", () => {
 
     /**
      * Mock properties for sliced clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} clipId - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param clipId - Clip ID
+     * @returns Mock property value
      */
-    function mockSlicedClipProperties(prop, clipId) {
+    function mockSlicedClipProperties(
+      prop: string,
+      clipId: string | undefined,
+    ): number[] | null {
       if (clipId?.startsWith("moved_") || clipId?.startsWith("tile_")) {
         if (prop === "is_midi_clip") return [0];
         if (prop === "is_audio_clip") return [1];
@@ -100,7 +111,7 @@ describe("transformClips - slice + shuffle combination", () => {
         if (prop === "end_marker") return [1];
         if (prop === "gain") return [1.0];
 
-        const clipNum = Number.parseInt(clipId.split("_")[1]);
+        const clipNum = Number.parseInt(clipId.split("_")[1] as string);
 
         if (prop === "start_time") return [clipNum - 1];
         if (prop === "end_time") return [clipNum];
@@ -111,11 +122,14 @@ describe("transformClips - slice + shuffle combination", () => {
 
     /**
      * Mock properties for shuffled clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} clipId - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param clipId - Clip ID
+     * @returns Mock property value
      */
-    function mockShuffledClipProperties(prop, clipId) {
+    function mockShuffledClipProperties(
+      prop: string,
+      clipId: string | undefined,
+    ): number[] | null {
       if (clipId?.startsWith("shuffled_")) {
         if (prop === "is_midi_clip") return [0];
         if (prop === "is_audio_clip") return [1];
@@ -129,15 +143,15 @@ describe("transformClips - slice + shuffle combination", () => {
       return null;
     }
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
       }
 
       const clipResult =
-        mockClipProperties(prop, this._id) ||
-        mockSlicedClipProperties(prop, this._id) ||
+        mockClipProperties(prop, this._id) ??
+        mockSlicedClipProperties(prop, this._id) ??
         mockShuffledClipProperties(prop, this._id);
 
       if (clipResult) return clipResult;
@@ -164,9 +178,13 @@ describe("transformClips - slice + shuffle combination", () => {
       return [null];
     });
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
-        const position = args[1];
+        const position = args[1] as number;
         const idCounter = Date.now() + Math.random();
 
         if (position >= 40000) {

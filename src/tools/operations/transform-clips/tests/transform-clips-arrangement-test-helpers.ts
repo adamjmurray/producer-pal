@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import { vi } from "vitest";
 import {
   liveApiGet,
@@ -6,16 +7,24 @@ import {
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 
+interface MockContext {
+  _path?: string;
+  _id?: string;
+  id?: string;
+}
+
 /**
  * Setup mocks for testing error scenarios with no clips in arrangement.
- * @param {number} [trackIndex] - Track index to mock (default: 0)
- * @returns {import("vitest").SpyInstance} Console error spy
+ * @param trackIndex - Track index to mock (default: 0)
+ * @returns Console error spy
  */
-export function setupNoClipsInArrangementMocks(trackIndex = 0) {
-  liveApiType.mockImplementation(function () {
+export function setupNoClipsInArrangementMocks(
+  trackIndex = 0,
+): MockInstance<typeof console.error> {
+  liveApiType.mockImplementation(function (this: MockContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "Track";
   });
-  liveApiGet.mockImplementation(function (prop) {
+  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
     if (this._path === "live_set") {
       if (prop === "signature_numerator") return [4];
       if (prop === "signature_denominator") return [4];
@@ -35,18 +44,18 @@ export function setupNoClipsInArrangementMocks(trackIndex = 0) {
 
 /**
  * Setup mocks for testing error scenarios with non-existent track.
- * @param {number} trackIndex - Track index that doesn't exist
+ * @param trackIndex - Track index that doesn't exist
  */
-export function setupNonExistentTrackMocks(trackIndex) {
-  liveApiId.mockImplementation(function () {
+export function setupNonExistentTrackMocks(trackIndex: number): void {
+  liveApiId.mockImplementation(function (this: MockContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "0";
 
     return this._id;
   });
-  liveApiType.mockImplementation(function () {
+  liveApiType.mockImplementation(function (this: MockContext) {
     // Track doesn't exist - return undefined
   });
-  liveApiGet.mockImplementation(function (prop) {
+  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
     if (this._path === "live_set") {
       if (prop === "signature_numerator") return [4];
       if (prop === "signature_denominator") return [4];
@@ -56,33 +65,25 @@ export function setupNonExistentTrackMocks(trackIndex) {
   });
 }
 
-/**
- * @typedef {object} MockContext
- * @property {string} [_path] - Live API path
- * @property {string} [_id] - Live API ID
- * @property {string} [id] - Alternate ID property
- */
-
-/**
- * @typedef {object} ClipConfig
- * @property {string} id - Clip ID
- * @property {number} startTime - Start time in beats
- * @property {number} [length] - Clip length in beats
- */
+interface ClipConfig {
+  id: string;
+  startTime: number;
+  length?: number;
+}
 
 /**
  * Setup mocks for arrangement clip tests with multiple clips
- * @param {ClipConfig[]} clips - Array of clip configurations
+ * @param clips - Array of clip configurations
  */
-export function setupArrangementClipMocks(clips) {
+export function setupArrangementClipMocks(clips: ClipConfig[]): void {
   const clipIds = clips.map((c) => c.id);
 
   liveApiId.mockImplementation(
     /**
-     * @this {MockContext}
-     * @returns {string | undefined} Mock ID or undefined
+     * @this - Mock context
+     * @returns Mock ID or undefined
      */
-    function () {
+    function (this: MockContext): string | undefined {
       for (const clip of clips) {
         if (this._path === `id ${clip.id}`) {
           return clip.id;
@@ -95,10 +96,10 @@ export function setupArrangementClipMocks(clips) {
 
   liveApiPath.mockImplementation(
     /**
-     * @this {MockContext}
-     * @returns {string | undefined} Mock ID or undefined
+     * @this - Mock context
+     * @returns Mock ID or undefined
      */
-    function () {
+    function (this: MockContext): string | undefined {
       const idx = this._id ? clipIds.indexOf(this._id) : -1;
 
       if (idx !== -1) {
@@ -111,10 +112,10 @@ export function setupArrangementClipMocks(clips) {
 
   liveApiType.mockImplementation(
     /**
-     * @this {MockContext}
-     * @returns {string | undefined} Mock ID or undefined
+     * @this - Mock context
+     * @returns Mock ID or undefined
      */
-    function () {
+    function (this: MockContext): string | undefined {
       if (this._path === "live_set tracks 0") {
         return "Track";
       }
@@ -129,11 +130,11 @@ export function setupArrangementClipMocks(clips) {
 
   liveApiGet.mockImplementation(
     /**
-     * @this {MockContext}
-     * @param {string} prop - Property name
-     * @returns {unknown[]} Mock property value array
+     * @this - Mock context
+     * @param prop - Property name
+     * @returns Mock property value array
      */
-    function (prop) {
+    function (this: MockContext, prop: string): unknown[] {
       // LiveSet time signature
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
