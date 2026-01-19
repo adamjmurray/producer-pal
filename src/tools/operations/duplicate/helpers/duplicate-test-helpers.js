@@ -18,6 +18,9 @@ export {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 
+/** Default arrangement clip path for testing */
+const DEFAULT_ARRANGEMENT_CLIP = "live_set tracks 0 arrangement_clips 0";
+
 /**
  * @typedef {object} MockContext
  * @property {string} [_path] - Live API path
@@ -211,10 +214,7 @@ export function setupSessionClipPath(
  * @param {boolean} [opts.includeNotes] - Whether to mock get_notes_extended (default: true)
  */
 export function setupArrangementDuplicationMock(opts = {}) {
-  const {
-    returnClipId = "live_set tracks 0 arrangement_clips 0",
-    includeNotes = true,
-  } = opts;
+  const { returnClipId = DEFAULT_ARRANGEMENT_CLIP, includeNotes = true } = opts;
 
   liveApiCall.mockImplementation(
     /**
@@ -294,4 +294,78 @@ export function setupDeviceDuplicationMocks(
       }
     },
   );
+}
+
+/**
+ * Create expected track duplication result object.
+ * @param {number} trackIndex - Track index in result
+ * @returns {{id: string, trackIndex: number, clips: Array<unknown>}} Expected result
+ */
+export function createTrackResult(trackIndex) {
+  return {
+    id: `live_set/tracks/${trackIndex}`,
+    trackIndex,
+    clips: [],
+  };
+}
+
+/**
+ * Create expected array of track duplication results.
+ * @param {number} startIndex - Starting track index
+ * @param {number} count - Number of tracks
+ * @returns {Array<{id: string, trackIndex: number, clips: Array<unknown>}>} Expected results array
+ */
+export function createTrackResultArray(startIndex, count) {
+  return Array.from({ length: count }, (_, i) =>
+    createTrackResult(startIndex + i),
+  );
+}
+
+/**
+ * Setup mock for time signature duration conversion tests.
+ * @param {object} opts - Options
+ * @param {string} [opts.clipId] - Clip ID (default: "clip1")
+ * @param {string} [opts.clipPath] - Clip path (default: "live_set tracks 0 clip_slots 0 clip")
+ */
+export function setupTimeSignatureDurationMock(opts = {}) {
+  const { clipId = "clip1", clipPath = "live_set tracks 0 clip_slots 0 clip" } =
+    opts;
+
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clipId) {
+      return clipPath;
+    }
+
+    if (this._path === `id ${DEFAULT_ARRANGEMENT_CLIP}`) {
+      return DEFAULT_ARRANGEMENT_CLIP;
+    }
+
+    return this._path;
+  });
+
+  liveApiCall.mockImplementation(function (method) {
+    if (method === "create_midi_clip") {
+      let trackIndex = "0";
+
+      if (this.path) {
+        const trackMatch = this.path.match(/live_set tracks (\d+)/);
+
+        if (trackMatch) {
+          trackIndex = trackMatch[1];
+        }
+      }
+
+      return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+    }
+
+    if (method === "get_notes_extended") {
+      return JSON.stringify({ notes: [] });
+    }
+
+    if (method === "duplicate_clip_to_arrangement") {
+      return ["id", DEFAULT_ARRANGEMENT_CLIP];
+    }
+
+    return null;
+  });
 }

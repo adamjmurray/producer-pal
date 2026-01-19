@@ -5,12 +5,12 @@ import {
   children,
   liveApiCall,
   liveApiId,
-  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
   setupArrangementClipMocks,
   setupArrangementDuplicationMock,
   setupSessionClipPath,
+  setupTimeSignatureDurationMock,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
 describe("duplicate - arrangementLength functionality", () => {
@@ -172,50 +172,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should correctly handle 6/8 time signature duration conversion", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "create_midi_clip") {
-        // Track which track this is called on
-        let trackIndex = "0";
-
-        if (this.path) {
-          const trackMatch = this.path.match(/live_set tracks (\d+)/);
-
-          if (trackMatch) {
-            trackIndex = trackMatch[1];
-          }
-        }
-
-        return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
-      }
-
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupTimeSignatureDurationMock();
 
     mockLiveApiGet({
       clip1: {
@@ -259,45 +216,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 
   it("should correctly handle 2/2 time signature duration conversion", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "create_midi_clip") {
-        let trackIndex = "0";
-
-        if (this.path) {
-          const trackMatch = this.path.match(/live_set tracks (\d+)/);
-
-          if (trackMatch) {
-            trackIndex = trackMatch[1];
-          }
-        }
-
-        return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
-      }
-
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-
-      return null;
-    });
-
-    const originalPath = liveApiPath.getMockImplementation();
-
-    liveApiPath.mockImplementation(function () {
-      if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
+    setupTimeSignatureDurationMock();
 
     mockLiveApiGet({
       clip1: {
