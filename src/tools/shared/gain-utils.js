@@ -11,6 +11,12 @@
 import { LOOKUP_TABLE } from "./gain-lookup-table.js";
 
 /**
+ * @typedef {object} LookupEntry
+ * @property {number} gain - Normalized gain value (0 to 1)
+ * @property {number | null} dB - Decibel value
+ */
+
+/**
  * Converts Ableton Live's normalized gain parameter (0-1) to decibels (dB).
  *
  * Uses a lookup table with linear interpolation for high accuracy across the full range.
@@ -42,16 +48,17 @@ export function liveGainToDb(gain) {
 
   while (upperIndex - lowerIndex > 1) {
     const mid = Math.floor((lowerIndex + upperIndex) / 2);
+    const midEntry = /** @type {LookupEntry} */ (LOOKUP_TABLE[mid]);
 
-    if (LOOKUP_TABLE[mid].gain <= gain) {
+    if (midEntry.gain <= gain) {
       lowerIndex = mid;
     } else {
       upperIndex = mid;
     }
   }
 
-  const lower = LOOKUP_TABLE[lowerIndex];
-  const upper = LOOKUP_TABLE[upperIndex];
+  const lower = /** @type {LookupEntry} */ (LOOKUP_TABLE[lowerIndex]);
+  const upper = /** @type {LookupEntry} */ (LOOKUP_TABLE[upperIndex]);
 
   // Handle edge cases with null/invalid dB values
   if (lower.dB === null || lower.dB === -Infinity) {
@@ -103,7 +110,7 @@ export function dbToLiveGain(dB) {
   let upperIndex = -1;
 
   for (let i = 0; i < LOOKUP_TABLE.length; i++) {
-    const entry = LOOKUP_TABLE[i];
+    const entry = /** @type {LookupEntry} */ (LOOKUP_TABLE[i]);
 
     if (entry.dB === null || entry.dB === -Infinity) {
       continue;
@@ -123,11 +130,11 @@ export function dbToLiveGain(dB) {
   }
 
   if (upperIndex === -1) {
-    return LOOKUP_TABLE[lowerIndex].gain;
+    return /** @type {LookupEntry} */ (LOOKUP_TABLE[lowerIndex]).gain;
   }
 
-  const lower = LOOKUP_TABLE[lowerIndex];
-  const upper = LOOKUP_TABLE[upperIndex];
+  const lower = /** @type {LookupEntry} */ (LOOKUP_TABLE[lowerIndex]);
+  const upper = /** @type {LookupEntry} */ (LOOKUP_TABLE[upperIndex]);
 
   // Linear interpolation (dB values are guaranteed non-null for table entries)
   const lowerDb = /** @type {number} */ (lower.dB);

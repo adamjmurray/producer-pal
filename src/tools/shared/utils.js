@@ -125,8 +125,8 @@ export function parseTimeSignature(timeSignature) {
   }
 
   return {
-    numerator: Number.parseInt(match[1]),
-    denominator: Number.parseInt(match[2]),
+    numerator: Number.parseInt(/** @type {string} */ (match[1])),
+    denominator: Number.parseInt(/** @type {string} */ (match[2])),
   };
 }
 

@@ -93,7 +93,7 @@ export function duplicateDevice(device, toPath, name, count = 1) {
 function extractRegularTrackIndex(devicePath) {
   const match = devicePath.match(/^live_set tracks (\d+)/);
 
-  return match ? Number.parseInt(match[1]) : null;
+  return match ? Number.parseInt(/** @type {string} */ (match[1])) : null;
 }
 
 /**
@@ -112,7 +112,7 @@ function extractDevicePathWithinTrack(devicePath) {
     );
   }
 
-  return match[1];
+  return /** @type {string} */ (match[1]);
 }
 
 /**
@@ -161,7 +161,7 @@ function adjustTrackIndicesForTempTrack(toPath, sourceTrackIndex) {
     return toPath; // Not a regular track path (return/master), no adjustment needed
   }
 
-  const destTrackIndex = Number.parseInt(match[1]);
+  const destTrackIndex = Number.parseInt(/** @type {string} */ (match[1]));
 
   // If destination is after the source track, increment by 1
   // (because the temp track was inserted at sourceTrackIndex + 1)

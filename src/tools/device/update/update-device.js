@@ -301,7 +301,8 @@ function resolvePathToTarget(path) {
     // Detect if this is a drum pad path (no explicit chain index) vs chain path
     // pC1 = pad path, pC1/c0 = chain path
     const hasExplicitChainIndex =
-      remainingSegments.length > 0 && remainingSegments[0].startsWith("c");
+      remainingSegments.length > 0 &&
+      /** @type {string} */ (remainingSegments[0]).startsWith("c");
 
     return {
       target: drumPadResult.target,

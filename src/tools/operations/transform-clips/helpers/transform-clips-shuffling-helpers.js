@@ -40,11 +40,13 @@ export function performShuffling(
   const gaps = [];
 
   for (let i = 0; i < sortedClips.length - 1; i++) {
+    const currentClip = /** @type {LiveAPI} */ (sortedClips[i]);
+    const nextClip = /** @type {LiveAPI} */ (sortedClips[i + 1]);
     const clipEnd =
-      /** @type {number} */ (sortedClips[i].getProperty("start_time")) +
-      /** @type {number} */ (sortedClips[i].getProperty("length"));
+      /** @type {number} */ (currentClip.getProperty("start_time")) +
+      /** @type {number} */ (currentClip.getProperty("length"));
     const nextStart = /** @type {number} */ (
-      sortedClips[i + 1].getProperty("start_time")
+      nextClip.getProperty("start_time")
     );
 
     gaps.push(nextStart - clipEnd);
@@ -54,22 +56,24 @@ export function performShuffling(
   const shuffledClips = shuffleArray(sortedClips, rng);
 
   // Calculate new positions: place sequentially with preserved gaps
+  const firstSortedClip = /** @type {LiveAPI} */ (sortedClips[0]);
   const startPosition = /** @type {number} */ (
-    sortedClips[0].getProperty("start_time")
+    firstSortedClip.getProperty("start_time")
   );
   let currentPos = startPosition;
   const targetPositions = shuffledClips.map((clip, i) => {
     const pos = currentPos;
 
     currentPos += /** @type {number} */ (clip.getProperty("length"));
-    if (i < gaps.length) currentPos += gaps[i];
+    if (i < gaps.length) currentPos += /** @type {number} */ (gaps[i]);
 
     return pos;
   });
 
   // Move all clips to holding area first
   // Store trackIndex before entering loop (all arrangement clips are on same track)
-  const trackIndexForShuffle = arrangementClips[0].trackIndex;
+  const firstArrangementClip = /** @type {LiveAPI} */ (arrangementClips[0]);
+  const trackIndexForShuffle = firstArrangementClip.trackIndex;
 
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
@@ -119,8 +123,10 @@ export function shuffleArray(array, rng) {
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
+    const temp = shuffled[i];
 
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    shuffled[i] = /** @type {T} */ (shuffled[j]);
+    shuffled[j] = /** @type {T} */ (temp);
   }
 
   return shuffled;
@@ -138,21 +144,33 @@ export function calculateShufflePositions(sortedClipInfo, shuffledIndices) {
   const gaps = [];
 
   for (let i = 0; i < sortedClipInfo.length - 1; i++) {
-    const clipEnd = sortedClipInfo[i].startTime + sortedClipInfo[i].length;
-    const nextStart = sortedClipInfo[i + 1].startTime;
+    const currentInfo = /** @type {NonNullable<typeof sortedClipInfo[0]>} */ (
+      sortedClipInfo[i]
+    );
+    const nextInfo = /** @type {NonNullable<typeof sortedClipInfo[0]>} */ (
+      sortedClipInfo[i + 1]
+    );
+    const clipEnd = currentInfo.startTime + currentInfo.length;
+    const nextStart = nextInfo.startTime;
 
     gaps.push(nextStart - clipEnd);
   }
 
   // Calculate new positions: place sequentially with preserved gaps
-  const startPosition = sortedClipInfo[0].startTime;
+  const firstInfo = /** @type {NonNullable<typeof sortedClipInfo[0]>} */ (
+    sortedClipInfo[0]
+  );
+  const startPosition = firstInfo.startTime;
   let currentPos = startPosition;
 
   return shuffledIndices.map((origIndex, i) => {
     const pos = currentPos;
+    const clipInfo = /** @type {NonNullable<typeof sortedClipInfo[0]>} */ (
+      sortedClipInfo[origIndex]
+    );
 
-    currentPos += sortedClipInfo[origIndex].length;
-    if (i < gaps.length) currentPos += gaps[i];
+    currentPos += clipInfo.length;
+    if (i < gaps.length) currentPos += /** @type {number} */ (gaps[i]);
 
     return pos;
   });

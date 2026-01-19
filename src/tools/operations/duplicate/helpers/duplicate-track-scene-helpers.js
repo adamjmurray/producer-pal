@@ -26,9 +26,10 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
       const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
 
       if (deviceIndexMatch) {
-        const deviceIndex = Number.parseInt(deviceIndexMatch[1]);
-
-        newTrack.call("delete_device", deviceIndex);
+        newTrack.call(
+          "delete_device",
+          Number.parseInt(deviceIndexMatch[1] ?? ""),
+        );
         console.error(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
@@ -47,10 +48,9 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
  * @param {LiveAPI} newTrack - The track LiveAPI object
  */
 function deleteAllDevices(newTrack) {
-  const deviceIds = newTrack.getChildIds("devices");
-  const deviceCount = deviceIds.length;
-
   // Delete from the end backwards to avoid index shifting
+  const deviceCount = newTrack.getChildIds("devices").length;
+
   for (let i = deviceCount - 1; i >= 0; i--) {
     newTrack.call("delete_device", i);
   }

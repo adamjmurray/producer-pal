@@ -93,7 +93,7 @@ function resolveDrumPadContainer(path) {
     let chainIndex = 0;
 
     if (remainingSegments.length > 0) {
-      const chainSegment = remainingSegments[0];
+      const chainSegment = /** @type {string} */ (remainingSegments[0]);
 
       chainIndex = chainSegment.startsWith("c")
         ? Number.parseInt(chainSegment.slice(1))
@@ -142,7 +142,8 @@ function resolveDrumPadContainer(path) {
 function resolveContainer(path) {
   const segments = path.split("/");
 
-  if (segments.length === 1) return resolveTrack(segments[0]);
+  if (segments.length === 1)
+    return resolveTrack(/** @type {string} */ (segments[0]));
   if (segments.some((s) => s.startsWith("p")))
     return resolveDrumPadContainer(path);
 

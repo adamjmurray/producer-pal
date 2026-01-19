@@ -231,9 +231,9 @@ function createClips(
     let currentArrangementStart = null;
 
     if (view === "session") {
-      currentSceneIndex = sceneIndices[i];
+      currentSceneIndex = /** @type {number} */ (sceneIndices[i]);
     } else {
-      currentArrangementStart = arrangementStarts[i];
+      currentArrangementStart = /** @type {string} */ (arrangementStarts[i]);
       currentArrangementStartBeats = barBeatToAbletonBeats(
         currentArrangementStart,
         songTimeSigNumerator,

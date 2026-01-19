@@ -13,7 +13,7 @@ const MAX_AUTO_CREATE_CHAINS = 16;
  */
 export function resolveContainerWithAutoCreate(segments, path) {
   // Start with track
-  let currentPath = resolveTrackPath(segments[0]);
+  let currentPath = resolveTrackPath(/** @type {string} */ (segments[0]));
   let current = LiveAPI.from(currentPath);
 
   if (!current.exists()) {
@@ -22,7 +22,7 @@ export function resolveContainerWithAutoCreate(segments, path) {
 
   // Process remaining segments using explicit prefixes
   for (let i = 1; i < segments.length; i++) {
-    const segment = segments[i];
+    const segment = /** @type {string} */ (segments[i]);
 
     if (segment.startsWith("d")) {
       // Device segment

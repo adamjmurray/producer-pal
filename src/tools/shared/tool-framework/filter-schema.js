@@ -28,7 +28,7 @@ export function filterSchemaForSmallModel(
 
     filtered[key] =
       descriptionOverrides && key in descriptionOverrides
-        ? value.describe(descriptionOverrides[key])
+        ? value.describe(/** @type {string} */ (descriptionOverrides[key]))
         : value;
   }
 

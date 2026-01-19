@@ -57,7 +57,7 @@ export function duplicateClipWithPositions(
         trackIndex,
         sourceSceneIndex,
         toTrackIndex ?? trackIndex,
-        sceneIndices[i],
+        /** @type {number} */ (sceneIndices[i]),
         objectName,
       );
 
@@ -87,7 +87,7 @@ export function duplicateClipWithPositions(
       const objectName = buildIndexedName(name, positionsInBeats.length, i);
       const result = duplicateClipToArrangement(
         id,
-        positionsInBeats[i],
+        /** @type {number} */ (positionsInBeats[i]),
         objectName,
         arrangementLength,
         songTimeSigNumerator,

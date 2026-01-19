@@ -104,7 +104,7 @@ export function isValidNoteName(name) {
 
   if (!match) return false;
 
-  const pitchClass = match[1].toLowerCase();
+  const pitchClass = /** @type {string} */ (match[1]).toLowerCase();
 
   return pitchClass in PITCH_CLASS_VALUES_LOWERCASE;
 }
@@ -153,7 +153,7 @@ export function numberToPitchClass(num) {
     return null;
   }
 
-  return PITCH_CLASS_NAMES[num];
+  return PITCH_CLASS_NAMES[num] ?? null;
 }
 
 /**
@@ -190,7 +190,8 @@ export function noteNameToMidi(name) {
     return null;
   }
 
-  const [, pitchClassName, octaveStr] = match;
+  const pitchClassName = /** @type {string} */ (match[1]);
+  const octaveStr = /** @type {string} */ (match[2]);
   // Note: pitchClassToNumber won't return null here because the regex
   // already validates that pitchClassName is a valid pitch class (A-G with optional #/b)
   const pitchClass = /** @type {number} */ (pitchClassToNumber(pitchClassName));
@@ -217,6 +218,6 @@ export function intervalsToPitchClasses(intervals, rootNote) {
   return intervals.map((interval) => {
     const pitchClass = (rootNote + interval) % 12;
 
-    return PITCH_CLASS_NAMES[pitchClass];
+    return /** @type {string} */ (PITCH_CLASS_NAMES[pitchClass]);
   });
 }

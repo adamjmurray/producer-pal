@@ -42,7 +42,8 @@ export function applyModulations(
   }
 
   // Calculate the overall clip timeRange in musical beats
-  const clipStartTime = notes[0].start_time * (timeSigDenominator / 4);
+  const firstNote = /** @type {NoteEvent} */ (notes[0]);
+  const clipStartTime = firstNote.start_time * (timeSigDenominator / 4);
   const lastNote = /** @type {NoteEvent} */ (notes.at(-1));
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
@@ -95,8 +96,12 @@ function buildNoteContext(
     timeSigDenominator,
   );
   const barBeatMatch = barBeatStr.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-  const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : undefined;
-  const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : undefined;
+  const bar = barBeatMatch
+    ? Number.parseInt(/** @type {string} */ (barBeatMatch[1]))
+    : undefined;
+  const beat = barBeatMatch
+    ? Number.parseFloat(/** @type {string} */ (barBeatMatch[2]))
+    : undefined;
 
   return {
     position: musicalBeats,

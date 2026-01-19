@@ -156,7 +156,10 @@ export function getDrumMap(devices) {
 
   /** @type {Record<string, string>} */
   const drumMap = {};
-  const drumPads = drumRacks[0]._processedDrumPads ?? [];
+  const firstDrumRack = /** @type {NonNullable<typeof drumRacks[0]>} */ (
+    drumRacks[0]
+  );
+  const drumPads = firstDrumRack._processedDrumPads ?? [];
 
   for (const drumPad of drumPads) {
     if (drumPad.hasInstrument !== false) {
@@ -297,7 +300,8 @@ function readSimplerSample(device, className) {
     return {};
   }
 
-  const samplePath = samples[0].getProperty("file_path");
+  const firstSample = /** @type {LiveAPI} */ (samples[0]);
+  const samplePath = firstSample.getProperty("file_path");
 
   return samplePath ? { sample: samplePath } : {};
 }

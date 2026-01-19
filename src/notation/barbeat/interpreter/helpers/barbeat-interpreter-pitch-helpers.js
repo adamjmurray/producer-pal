@@ -226,12 +226,20 @@ export function handlePitchEmission(
 ) {
   if (state.currentPitches.length === 0) {
     if (positions.length === 1) {
+      const pos = /** @type {NonNullable<typeof positions[0]>} */ (
+        positions[0]
+      );
+
       console.error(
-        `Warning: Time position ${positions[0].bar}|${positions[0].beat} has no pitches`,
+        `Warning: Time position ${pos.bar}|${pos.beat} has no pitches`,
       );
     } else {
+      const pos = /** @type {NonNullable<typeof positions[0]>} */ (
+        positions[0]
+      );
+
       console.error(
-        `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
+        `Warning: Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,
       );
     }
 

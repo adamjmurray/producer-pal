@@ -20,7 +20,7 @@ function createSingleTrack(liveSet, type, currentIndex) {
     result = liveSet.call("create_audio_track", currentIndex);
   }
 
-  return /** @type {string[]} */ (result)[1]; // Live API returns ["id", "123"]
+  return /** @type {string} */ (/** @type {string[]} */ (result)[1]); // Live API returns ["id", "123"]
 }
 
 /**
@@ -209,5 +209,5 @@ export function createTrack(
   }
 
   // Return single object if count=1, array if count>1
-  return count === 1 ? createdTracks[0] : createdTracks;
+  return count === 1 ? /** @type {object} */ (createdTracks[0]) : createdTracks;
 }

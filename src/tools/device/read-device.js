@@ -216,7 +216,7 @@ function readDrumPadByPath(
 function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
   // Parse chain index from prefixed segment (e.g., "c0" -> 0)
-  const chainSegment = remainingSegments[0];
+  const chainSegment = /** @type {string} */ (remainingSegments[0]);
   const chainIndex = Number.parseInt(chainSegment.slice(1));
 
   if (
@@ -227,7 +227,7 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
     throw new Error(`Invalid chain index in path: ${fullPath}`);
   }
 
-  const chain = chains[chainIndex];
+  const chain = /** @type {LiveAPI} */ (chains[chainIndex]);
 
   // If only chain index, return chain info
   if (remainingSegments.length === 1) {
@@ -236,7 +236,7 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
 
   // Navigate to device within chain
   // Parse device index from prefixed segment (e.g., "d0" -> 0)
-  const deviceSegment = remainingSegments[1];
+  const deviceSegment = /** @type {string} */ (remainingSegments[1]);
   const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 
@@ -248,7 +248,7 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
     throw new Error(`Invalid device index in path: ${fullPath}`);
   }
 
-  const device = devices[deviceIndex];
+  const device = /** @type {LiveAPI} */ (devices[deviceIndex]);
   const deviceInfo = readDeviceShared(device, {
     ...options,
     parentPath: fullPath,

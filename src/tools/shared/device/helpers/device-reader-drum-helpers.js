@@ -123,7 +123,9 @@ function groupChainsByNote(chains) {
  * @returns {Record<string, unknown>} Drum pad info object
  */
 function buildDrumPadFromChains(inNote, processedChains) {
-  const firstChain = processedChains[0];
+  const firstChain = /** @type {NonNullable<typeof processedChains[0]>} */ (
+    processedChains[0]
+  );
   const isCatchAll = inNote === -1;
 
   /** @type {Record<string, unknown>} */

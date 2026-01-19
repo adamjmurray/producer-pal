@@ -18,7 +18,7 @@ import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/devi
 function parseDrumPadNoteFromPath(path) {
   const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
 
-  return match ? match[1] : null;
+  return match ? (match[1] ?? null) : null;
 }
 
 /**

@@ -424,7 +424,7 @@ export function duplicateClipToArrangement(
 
   // Return single clip info directly, or clips array with trackIndex for multiple
   if (duplicatedClips.length === 1) {
-    return duplicatedClips[0];
+    return /** @type {MinimalClipInfo} */ (duplicatedClips[0]);
   }
 
   return {

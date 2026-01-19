@@ -64,21 +64,27 @@ export function barBeatToBeats(barBeat, beatsPerBar) {
     );
   }
 
-  const bar = Number.parseInt(match[1]);
+  const bar = Number.parseInt(/** @type {string} */ (match[1]));
 
   // Parse beat as decimal, fraction, or integer+fraction
-  const beatStr = match[2];
+  const beatStr = /** @type {string} */ (match[2]);
   let beat;
 
   if (beatStr.includes("+")) {
-    const [intPart, fracPart] = beatStr.split("+");
-    const [numerator, denominator] = fracPart.split("/");
+    const parts = beatStr.split("+");
+    const intPart = /** @type {string} */ (parts[0]);
+    const fracPart = /** @type {string} */ (parts[1]);
+    const fracParts = fracPart.split("/");
+    const numerator = /** @type {string} */ (fracParts[0]);
+    const denominator = /** @type {string} */ (fracParts[1]);
 
     beat =
       Number.parseInt(intPart) +
       Number.parseInt(numerator) / Number.parseInt(denominator);
   } else if (beatStr.includes("/")) {
-    const [numerator, denominator] = beatStr.split("/");
+    const parts = beatStr.split("/");
+    const numerator = /** @type {string} */ (parts[0]);
+    const denominator = /** @type {string} */ (parts[1]);
 
     beat = Number.parseInt(numerator) / Number.parseInt(denominator);
   } else {
@@ -186,14 +192,18 @@ export function abletonBeatsToBarBeatDuration(
  */
 function parseBeatValue(beatsStr, context) {
   if (beatsStr.includes("+")) {
-    const [intPart, fracPart] = beatsStr.split("+");
+    const plusParts = beatsStr.split("+");
+    const intPart = /** @type {string} */ (plusParts[0]);
+    const fracPart = /** @type {string} */ (plusParts[1]);
     const num = Number.parseInt(intPart);
 
     if (Number.isNaN(num)) {
       throw new Error(`Invalid integer+fraction format: "${context}"`);
     }
 
-    const [numerator, denominator] = fracPart.split("/");
+    const slashParts = fracPart.split("/");
+    const numerator = /** @type {string} */ (slashParts[0]);
+    const denominator = /** @type {string} */ (slashParts[1]);
     const fracNum = Number.parseInt(numerator);
     const fracDen = Number.parseInt(denominator);
 
@@ -209,7 +219,9 @@ function parseBeatValue(beatsStr, context) {
   }
 
   if (beatsStr.includes("/")) {
-    const [numerator, denominator] = beatsStr.split("/");
+    const parts = beatsStr.split("/");
+    const numerator = /** @type {string} */ (parts[0]);
+    const denominator = /** @type {string} */ (parts[1]);
     const num = Number.parseInt(numerator);
     const den = Number.parseInt(denominator);
 
@@ -250,8 +262,8 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
     );
   }
 
-  const bars = Number.parseInt(match[1]);
-  const beatsStr = match[2];
+  const bars = Number.parseInt(/** @type {string} */ (match[1]));
+  const beatsStr = /** @type {string} */ (match[2]);
   const beats = parseBeatValue(beatsStr, barBeatDuration);
 
   if (bars < 0) {

@@ -101,7 +101,7 @@ function evaluateRamp(
 
   // First argument: start value
   const start = evaluateExpression(
-    args[0],
+    /** @type {ExpressionNode} */ (args[0]),
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -111,7 +111,7 @@ function evaluateRamp(
 
   // Second argument: end value
   const end = evaluateExpression(
-    args[1],
+    /** @type {ExpressionNode} */ (args[1]),
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -124,7 +124,7 @@ function evaluateRamp(
 
   if (args.length >= 3) {
     speed = evaluateExpression(
-      args[2],
+      /** @type {ExpressionNode} */ (args[2]),
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -176,7 +176,7 @@ function evaluateWaveform(
 
   // First argument is period (either period type with "t" suffix, or a number expression)
   const period = parsePeriod(
-    args[0],
+    /** @type {ExpressionNode} */ (args[0]),
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -194,7 +194,7 @@ function evaluateWaveform(
 
   if (args.length >= 2) {
     phaseOffset = evaluateExpression(
-      args[1],
+      /** @type {ExpressionNode} */ (args[1]),
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -222,7 +222,7 @@ function evaluateWaveform(
 
       if (args.length >= 3) {
         pulseWidth = evaluateExpression(
-          args[2],
+          /** @type {ExpressionNode} */ (args[2]),
           position,
           timeSigNumerator,
           timeSigDenominator,

@@ -16,7 +16,7 @@ function getChildAtIndex(parent, childType, index) {
   if (Number.isNaN(index)) return null;
   const c = parent.getChildren(childType);
 
-  return index >= 0 && index < c.length ? c[index] : null;
+  return index >= 0 && index < c.length ? (c[index] ?? null) : null;
 }
 
 /**
@@ -32,7 +32,7 @@ function navigateRemainingSegments(startDevice, segments) {
   let currentType = "device";
 
   for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
+    const seg = /** @type {string} */ (segments[i]);
 
     if (seg.startsWith("p")) {
       const n = seg.slice(1);
@@ -104,7 +104,7 @@ export function resolveDrumPadFromPath(
   let nextSegmentStart = 0;
 
   if (remainingSegments && remainingSegments.length > 0) {
-    const firstSegment = remainingSegments[0];
+    const firstSegment = /** @type {string} */ (remainingSegments[0]);
 
     // Only consume segment if it's a chain index (c prefix)
     if (firstSegment.startsWith("c")) {
@@ -130,7 +130,7 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "chain" };
   }
 
-  const chain = matchingChains[chainIndexWithinNote];
+  const chain = /** @type {LiveAPI} */ (matchingChains[chainIndexWithinNote]);
 
   // Check if we need to navigate further
   const nextSegments = remainingSegments
@@ -142,7 +142,7 @@ export function resolveDrumPadFromPath(
   }
 
   // Navigate to device within chain (d prefix)
-  const deviceSegment = nextSegments[0];
+  const deviceSegment = /** @type {string} */ (nextSegments[0]);
 
   if (!deviceSegment.startsWith("d")) {
     return { target: null, targetType: "device" };
@@ -159,7 +159,7 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "device" };
   }
 
-  const targetDevice = devices[deviceIndex];
+  const targetDevice = /** @type {LiveAPI} */ (devices[deviceIndex]);
 
   // Check if there are more segments after the device index
   const afterDeviceSegments = nextSegments.slice(1);

@@ -421,7 +421,7 @@ function categorizeDevices(
 
   return {
     midiEffects,
-    instrument: instruments.length > 0 ? instruments[0] : null,
+    instrument: instruments.length > 0 ? (instruments[0] ?? null) : null,
     audioEffects,
   };
 }

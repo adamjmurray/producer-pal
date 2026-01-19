@@ -234,9 +234,9 @@ export function includeArrayFromFlags(includeFlags) {
   /** @type {Record<string, boolean | undefined>} */
   const flagsRecord = includeFlags;
 
-  return FLAG_TO_OPTION.filter(([flag]) => flagsRecord[flag]).map(
-    ([, option]) => option,
-  );
+  return FLAG_TO_OPTION.filter(
+    ([flag]) => flagsRecord[/** @type {keyof IncludeFlags} */ (flag)],
+  ).map(([, option]) => /** @type {string} */ (option));
 }
 
 /**

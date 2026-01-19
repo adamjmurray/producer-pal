@@ -69,19 +69,21 @@ export function parseLabel(label) {
     }
 
     if (pattern.isNoteName) {
-      return { value: match[1], unit: "note" };
+      return { value: /** @type {string} */ (match[1]), unit: "note" };
     }
 
     if (pattern.isPan) {
       // Will be normalized later when we know the max pan value
-      const num = Number.parseInt(match[1]);
-      const dir = match[2];
+      const num = Number.parseInt(/** @type {string} */ (match[1]));
+      const dir = /** @type {string} */ (match[2]);
 
       return { value: num, unit: "pan", direction: dir };
     }
 
     return {
-      value: Number.parseFloat(match[1]) * (pattern.multiplier || 1),
+      value:
+        Number.parseFloat(/** @type {string} */ (match[1])) *
+        (pattern.multiplier || 1),
       unit: pattern.unit,
     };
   }
@@ -90,7 +92,10 @@ export function parseLabel(label) {
   const numMatch = label.match(/^([\d.-]+)/);
 
   if (numMatch) {
-    return { value: Number.parseFloat(numMatch[1]), unit: null };
+    return {
+      value: Number.parseFloat(/** @type {string} */ (numMatch[1])),
+      unit: null,
+    };
   }
 
   return { value: null, unit: null };
@@ -158,8 +163,8 @@ export function normalizePan(label, maxPanValue) {
 
   if (!match) return 0;
 
-  const num = Number.parseInt(match[1]);
-  const dir = match[2];
+  const num = Number.parseInt(/** @type {string} */ (match[1]));
+  const dir = /** @type {string} */ (match[2]);
 
   return dir === "L" ? -num / maxPanValue : num / maxPanValue;
 }
@@ -172,7 +177,7 @@ export function normalizePan(label, maxPanValue) {
 export function extractMaxPanValue(label) {
   const match = label.match(/^(\d+)[LR]$/);
 
-  return match ? Number.parseInt(match[1]) : 50;
+  return match ? Number.parseInt(/** @type {string} */ (match[1])) : 50;
 }
 
 /**

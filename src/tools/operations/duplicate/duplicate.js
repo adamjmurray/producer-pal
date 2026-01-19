@@ -140,7 +140,7 @@ export function duplicate(
 
   // Return single object or array based on results
   if (createdObjects.length === 1) {
-    return createdObjects[0];
+    return /** @type {object} */ (createdObjects[0]);
   }
 
   return createdObjects;

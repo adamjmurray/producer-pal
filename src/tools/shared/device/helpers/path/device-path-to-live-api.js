@@ -118,11 +118,13 @@ export function resolvePathToLiveApi(path) {
 
   const segments = path.split("/");
 
-  if (segments.length === 0 || segments[0] === "") {
+  const firstSegment = /** @type {string} */ (segments[0]);
+
+  if (segments.length === 0 || firstSegment === "") {
     throw new Error(`Invalid path: ${path}`);
   }
 
-  let liveApiPath = parseTrackSegment(segments[0], path);
+  let liveApiPath = parseTrackSegment(firstSegment, path);
 
   // Track-only path is not valid for devices
   if (segments.length === 1) {
@@ -134,7 +136,7 @@ export function resolvePathToLiveApi(path) {
   let targetType = "device";
 
   for (let i = 1; i < segments.length; i++) {
-    const segment = segments[i];
+    const segment = /** @type {string} */ (segments[i]);
 
     if (segment.startsWith("d")) {
       // Device segment

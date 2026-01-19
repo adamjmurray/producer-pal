@@ -71,7 +71,7 @@ export function resolveLocatorToBeats(
     }
 
     // Use the first matching locator
-    return matches[0].time;
+    return /** @type {NonNullable<typeof matches[0]>} */ (matches[0]).time;
   }
 
   return null;

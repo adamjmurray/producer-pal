@@ -64,7 +64,10 @@ function validateOperationParameters(operation) {
     );
   }
 
-  const requirements = OPERATION_REQUIREMENTS[type];
+  const requirements =
+    /** @type {NonNullable<typeof OPERATION_REQUIREMENTS[typeof type]>} */ (
+      OPERATION_REQUIREMENTS[type]
+    );
   const messages = OPERATION_ERROR_MESSAGES[type] || {};
 
   if (requirements.property && !property) {
@@ -110,9 +113,11 @@ function executeOperation(api, operation) {
 
     case "call_method": {
       const args = operation.args || [];
-      const methodFn = /** @type {Record<string, Function>} */ (
-        /** @type {unknown} */ (api)
-      )[method];
+      const methodFn = /** @type {Function} */ (
+        /** @type {Record<string, Function>} */ (/** @type {unknown} */ (api))[
+          method
+        ]
+      );
 
       return methodFn.apply(api, args);
     }

@@ -138,7 +138,8 @@ export function parseScale(scaleString) {
     );
   }
 
-  const [scaleRoot, ...scaleNameParts] = parts;
+  const scaleRoot = /** @type {string} */ (parts[0]);
+  const scaleNameParts = parts.slice(1);
   const scaleName = scaleNameParts.join(" ");
   const scaleRootLower = scaleRoot.toLowerCase();
   const scaleNameLower = scaleName.toLowerCase();
@@ -161,8 +162,8 @@ export function parseScale(scaleString) {
   }
 
   return {
-    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex],
-    scaleName: VALID_SCALE_NAMES[scaleNameIndex],
+    scaleRoot: /** @type {string} */ (VALID_PITCH_CLASS_NAMES[scaleRootIndex]),
+    scaleName: /** @type {string} */ (VALID_SCALE_NAMES[scaleNameIndex]),
   };
 }
 

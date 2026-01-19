@@ -79,7 +79,7 @@ export function createScene(
     select({ view: "session" });
   }
 
-  return count === 1 ? createdScenes[0] : createdScenes;
+  return count === 1 ? /** @type {object} */ (createdScenes[0]) : createdScenes;
 }
 
 /**

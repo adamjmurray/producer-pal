@@ -48,7 +48,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
 
   const { container, position } = toPath
     ? resolveInsertionPath(toPath)
-    : getDeviceInsertionPoint(devices[0]);
+    : getDeviceInsertionPoint(/** @type {LiveAPI} */ (devices[0]));
 
   if (!container || !container.exists()) {
     console.error("Warning: wrapInRack: target container does not exist");
@@ -72,7 +72,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   const liveSet = LiveAPI.from("live_set");
 
   for (let i = 0; i < devices.length; i++) {
-    const device = devices[i];
+    const device = /** @type {LiveAPI} */ (devices[i]);
 
     // Ensure chain exists (create if needed)
     const currentChainCount = rack.getChildren("chains").length;
@@ -207,7 +207,9 @@ function getDeviceInsertionPoint(device) {
   const parentPath = device.path.replace(/ devices \d+$/, "");
   const container = LiveAPI.from(parentPath);
   const match = device.path.match(/ devices (\d+)$/);
-  const position = match ? Number.parseInt(match[1]) : 0;
+  const position = match
+    ? Number.parseInt(/** @type {string} */ (match[1]))
+    : 0;
 
   return { container, position };
 }
@@ -222,7 +224,7 @@ function getDeviceInsertionPoint(device) {
  */
 function wrapInstrumentsInRack(devices, toPath, name) {
   const liveSet = LiveAPI.from("live_set");
-  const firstDevice = devices[0];
+  const firstDevice = /** @type {LiveAPI} */ (devices[0]);
 
   // 1. Get source track from first instrument
   const { container: sourceContainer, position: devicePosition } =

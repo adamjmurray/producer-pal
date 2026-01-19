@@ -58,8 +58,9 @@ export function applyAudioParams(
   // Apply transpose (pitch shift)
   if (transposeValuesArray != null) {
     // Pick from discrete values
-    const transposeOffset =
-      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
+    const transposeOffset = /** @type {number} */ (
+      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)]
+    );
 
     const currentPitchCoarse = /** @type {number} */ (
       clip.getProperty("pitch_coarse")
@@ -127,8 +128,9 @@ function applyTranspose(note, transposeParams, rng) {
 
   if (transposeValuesArray != null) {
     // Pick from discrete values
-    const transposeOffset =
-      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
+    const transposeOffset = /** @type {number} */ (
+      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)]
+    );
 
     note.pitch = Math.max(
       0,

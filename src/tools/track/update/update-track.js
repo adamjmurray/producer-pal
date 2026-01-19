@@ -150,7 +150,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   }
 
   // Set the send gain
-  sends[sendIndex].set("display_value", sendGainDb);
+  /** @type {LiveAPI} */ (sends[sendIndex]).set("display_value", sendGainDb);
 }
 
 /**
