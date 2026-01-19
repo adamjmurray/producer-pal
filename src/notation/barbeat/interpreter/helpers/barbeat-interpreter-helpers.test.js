@@ -269,6 +269,64 @@ describe("barbeat-interpreter-helpers", () => {
       consoleErrorSpy.mockRestore();
     });
 
+    it("returns null when source range has invalid bar numbers (zero or negative)", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: { range: [0, 2] }, // Invalid - bar 0 doesn't exist
+        destination: { range: [5, 6] },
+      };
+
+      const result = handleBarCopyRangeDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid source range @5-6=0-2"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("returns null when source range start is greater than end", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: { range: [5, 2] }, // Invalid - start > end
+        destination: { range: [8, 10] },
+      };
+
+      const result = handleBarCopyRangeDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid source range @8-10=5-2 (start > end)"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
     it("returns null when all destination bars match source bar", () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
@@ -310,6 +368,66 @@ describe("barbeat-interpreter-helpers", () => {
   });
 
   describe("handleBarCopySingleDestination", () => {
+    it("returns null when source range has invalid bar numbers (zero or negative)", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: { range: [0, 2] }, // Invalid - bar 0 doesn't exist
+        destination: { bar: 5 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Cannot copy from range 0-2 (invalid bar numbers)",
+        ),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("returns null when source range start is greater than end", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const element = {
+        source: { range: [5, 2] }, // Invalid - start > end
+        destination: { bar: 8 },
+      };
+
+      const result = handleBarCopySingleDestination(
+        element,
+        4, // beatsPerBar
+        4, // timeSigDenominator
+        new Map(),
+        [],
+        { inBuffer: false, currentPitches: [], pitchesEmitted: true },
+      );
+
+      expect(result).toStrictEqual({
+        currentTime: null,
+        hasExplicitBarNumber: false,
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid source range 5-2 (start > end)"),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
     it("returns null when source is invalid (no bar, range, or previous)", () => {
       const element = {
         source: {}, // Invalid - no bar, range, or "previous"
