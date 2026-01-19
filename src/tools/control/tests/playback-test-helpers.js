@@ -1,4 +1,9 @@
 import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
+import {
+  liveApiId,
+  liveApiPath,
+  liveApiType,
+} from "#src/test/mocks/mock-live-api.js";
 
 /**
  * @typedef {object} LiveSetConfig
@@ -9,6 +14,36 @@ import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
  * @property {number} [loopLength=4] - Loop length in beats
  * @property {unknown[]} [tracks=[]] - Track IDs
  */
+
+/**
+ * Setup mock for a clip that exists but has no track/scene info in its path
+ * @param {string} clipId - The clip ID to mock
+ */
+export function setupClipWithNoTrackPath(clipId) {
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clipId) {
+      return "some_invalid_path"; // No track info in path
+    }
+
+    return this._path;
+  });
+
+  liveApiId.mockImplementation(function () {
+    if (this._id === clipId) {
+      return `id ${clipId}`;
+    }
+
+    return "id 1";
+  });
+
+  liveApiType.mockImplementation(function () {
+    if (this._id === clipId) {
+      return "Clip";
+    }
+
+    return "LiveSet";
+  });
+}
 
 /**
  * Setup mocks for playback tests with cue points

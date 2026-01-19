@@ -7,6 +7,7 @@ import {
   mockLiveApiGet,
   MockSequence,
 } from "#src/test/mocks/mock-live-api.js";
+import { createNote } from "#src/test/test-data-builders.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createClip } from "./create-clip.js";
 
@@ -73,30 +74,9 @@ describe("createClip - session view", () => {
       "add_new_notes",
       {
         notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 64,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
+          createNote(),
+          createNote({ pitch: 62 }),
+          createNote({ pitch: 64 }),
         ],
       },
     );
