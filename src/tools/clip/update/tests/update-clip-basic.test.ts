@@ -41,7 +41,7 @@ describe("updateClip - Basic operations", () => {
 
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes || [];
+        addedNotes = args[0]?.notes ?? [];
       } else if (method === "get_notes_extended") {
         // First call returns existing notes, subsequent calls return added notes
         if (addedNotes.length === 0) {

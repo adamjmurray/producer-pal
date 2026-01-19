@@ -121,7 +121,7 @@ describe("updateClip - Note update modes", () => {
 
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes || [];
+        addedNotes = args[0]?.notes ?? [];
       } else if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: addedNotes,

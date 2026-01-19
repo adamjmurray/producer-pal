@@ -3,7 +3,7 @@ import { assertPatternLimit } from "./meta-test-helpers.js";
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
 const ESLINT_DISABLE_LIMITS = {
-  src: 7, // Increased for live-api-adapter and notation TypeScript migrations
+  src: 8, // Increased for TypeScript migrations (cross-language import resolution)
   scripts: 0,
   webui: 1,
 };

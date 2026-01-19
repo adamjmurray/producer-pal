@@ -4,15 +4,20 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: "Update clip(s), MIDI notes, and warp markers (audio clips)",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
+    // Basic clip properties
     ids: z.string().describe("comma-separated clip ID(s) to update"),
     name: z.string().optional().describe("clip name"),
     color: z.string().optional().describe("#RRGGBB"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
+
+    // Clip region and loop settings
     start: z
       .string()
       .optional()
@@ -46,6 +51,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
       ),
+
+    // Audio clip parameters
     gainDb: z
       .number()
       .min(-70)
@@ -68,6 +75,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .boolean()
       .optional()
       .describe("audio clip warping on/off (ignored for MIDI)"),
+
+    // MIDI note parameters
     notes: z
       .string()
       .optional()
@@ -85,6 +94,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),
+
+    // Quantization parameters
     quantize: z
       .number()
       .min(0)
@@ -117,6 +128,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(127)
       .optional()
       .describe("limit quantization to specific pitch"),
+
+    // Warp marker parameters
     warpOp: z
       .enum(["add", "move", "remove"])
       .optional()
@@ -140,6 +153,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe("beats to shift (+forward, -backward) for move operation"),
   },
+
   smallModelModeConfig: {
     toolDescription: "Update clip(s) and MIDI notes",
     excludeParams: [

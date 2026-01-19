@@ -1,9 +1,9 @@
-import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 
 const EPSILON = 0.001;
 

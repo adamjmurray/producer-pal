@@ -188,7 +188,7 @@ describe("updateClip - Advanced note operations", () => {
 
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes || [];
+        addedNotes = args[0]?.notes ?? [];
       } else if (method === "get_notes_extended") {
         return JSON.stringify({ notes: addedNotes });
       }
@@ -229,11 +229,11 @@ describe("updateClip - Advanced note operations", () => {
 
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
-        allAddedNotes = args[0]?.notes || [];
+        allAddedNotes = args[0]?.notes ?? [];
       } else if (method === "get_notes_extended") {
         // First call returns empty (replace mode), second call filters by length
-        const startBeat = args[2] || 0;
-        const endBeat = args[3] || Infinity;
+        const startBeat = args[2] ?? 0;
+        const endBeat = args[3] ?? Infinity;
         const notesInRange = allAddedNotes.filter(
           (n) => n.start_time >= startBeat && n.start_time < endBeat,
         );
