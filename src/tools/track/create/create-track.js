@@ -1,6 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
-import { buildIndexedName } from "#src/tools/shared/utils.js";
+import { assertDefined, buildIndexedName } from "#src/tools/shared/utils.js";
 
 /**
  * Create a single track via Live API
@@ -20,7 +20,11 @@ function createSingleTrack(liveSet, type, currentIndex) {
     result = liveSet.call("create_audio_track", currentIndex);
   }
 
-  return /** @type {string} */ (/** @type {string[]} */ (result)[1]); // Live API returns ["id", "123"]
+  // Live API returns ["id", "123"]
+  return assertDefined(
+    /** @type {string[]} */ (result)[1],
+    "track id from result",
+  );
 }
 
 /**
@@ -209,5 +213,7 @@ export function createTrack(
   }
 
   // Return single object if count=1, array if count>1
-  return count === 1 ? /** @type {object} */ (createdTracks[0]) : createdTracks;
+  return count === 1
+    ? assertDefined(createdTracks[0], "created track")
+    : createdTracks;
 }

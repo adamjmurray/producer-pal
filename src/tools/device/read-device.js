@@ -6,6 +6,7 @@ import {
 } from "#src/tools/shared/device/device-reader.js";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
 
 // ============================================================================
@@ -216,7 +217,7 @@ function readDrumPadByPath(
 function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   const chains = pad.getChildren("chains");
   // Parse chain index from prefixed segment (e.g., "c0" -> 0)
-  const chainSegment = /** @type {string} */ (remainingSegments[0]);
+  const chainSegment = assertDefined(remainingSegments[0], "chain segment");
   const chainIndex = Number.parseInt(chainSegment.slice(1));
 
   if (
@@ -227,7 +228,10 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
     throw new Error(`Invalid chain index in path: ${fullPath}`);
   }
 
-  const chain = /** @type {LiveAPI} */ (chains[chainIndex]);
+  const chain = assertDefined(
+    chains[chainIndex],
+    `chain at index ${chainIndex}`,
+  );
 
   // If only chain index, return chain info
   if (remainingSegments.length === 1) {
@@ -236,7 +240,7 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
 
   // Navigate to device within chain
   // Parse device index from prefixed segment (e.g., "d0" -> 0)
-  const deviceSegment = /** @type {string} */ (remainingSegments[1]);
+  const deviceSegment = assertDefined(remainingSegments[1], "device segment");
   const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 
@@ -248,7 +252,10 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
     throw new Error(`Invalid device index in path: ${fullPath}`);
   }
 
-  const device = /** @type {LiveAPI} */ (devices[deviceIndex]);
+  const device = assertDefined(
+    devices[deviceIndex],
+    `device at index ${deviceIndex}`,
+  );
   const deviceInfo = readDeviceShared(device, {
     ...options,
     parentPath: fullPath,

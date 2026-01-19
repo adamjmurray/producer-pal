@@ -1,4 +1,5 @@
 import { noteNameToMidi } from "#src/shared/pitch.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 
 /**
  * @typedef {object} DrumPadResolution
@@ -32,7 +33,7 @@ function navigateRemainingSegments(startDevice, segments) {
   let currentType = "device";
 
   for (let i = 0; i < segments.length; i++) {
-    const seg = /** @type {string} */ (segments[i]);
+    const seg = assertDefined(segments[i], `segment at index ${i}`);
 
     if (seg.startsWith("p")) {
       const n = seg.slice(1);
@@ -104,7 +105,7 @@ export function resolveDrumPadFromPath(
   let nextSegmentStart = 0;
 
   if (remainingSegments && remainingSegments.length > 0) {
-    const firstSegment = /** @type {string} */ (remainingSegments[0]);
+    const firstSegment = assertDefined(remainingSegments[0], "first segment");
 
     // Only consume segment if it's a chain index (c prefix)
     if (firstSegment.startsWith("c")) {
@@ -130,7 +131,10 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "chain" };
   }
 
-  const chain = /** @type {LiveAPI} */ (matchingChains[chainIndexWithinNote]);
+  const chain = assertDefined(
+    matchingChains[chainIndexWithinNote],
+    `chain at index ${chainIndexWithinNote}`,
+  );
 
   // Check if we need to navigate further
   const nextSegments = remainingSegments
@@ -142,7 +146,7 @@ export function resolveDrumPadFromPath(
   }
 
   // Navigate to device within chain (d prefix)
-  const deviceSegment = /** @type {string} */ (nextSegments[0]);
+  const deviceSegment = assertDefined(nextSegments[0], "device segment");
 
   if (!deviceSegment.startsWith("d")) {
     return { target: null, targetType: "device" };
@@ -159,7 +163,10 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "device" };
   }
 
-  const targetDevice = /** @type {LiveAPI} */ (devices[deviceIndex]);
+  const targetDevice = assertDefined(
+    devices[deviceIndex],
+    `device at index ${deviceIndex}`,
+  );
 
   // Check if there are more segments after the device index
   const afterDeviceSegments = nextSegments.slice(1);

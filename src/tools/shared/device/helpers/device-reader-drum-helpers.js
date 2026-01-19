@@ -1,5 +1,6 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
 import { STATE } from "#src/tools/constants.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 import {
   buildChainInfo,
   hasInstrumentInDevices,
@@ -123,9 +124,7 @@ function groupChainsByNote(chains) {
  * @returns {Record<string, unknown>} Drum pad info object
  */
 function buildDrumPadFromChains(inNote, processedChains) {
-  const firstChain = /** @type {NonNullable<typeof processedChains[0]>} */ (
-    processedChains[0]
-  );
+  const firstChain = assertDefined(processedChains[0], "first chain");
   const isCatchAll = inNote === -1;
 
   /** @type {Record<string, unknown>} */

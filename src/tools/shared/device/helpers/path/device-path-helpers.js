@@ -3,6 +3,7 @@ import {
   autoCreateDrumPadChains,
   resolveContainerWithAutoCreate,
 } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 import { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
 import { resolvePathToLiveApi } from "./device-path-to-live-api.js";
 
@@ -93,7 +94,7 @@ function resolveDrumPadContainer(path) {
     let chainIndex = 0;
 
     if (remainingSegments.length > 0) {
-      const chainSegment = /** @type {string} */ (remainingSegments[0]);
+      const chainSegment = assertDefined(remainingSegments[0], "chain segment");
 
       chainIndex = chainSegment.startsWith("c")
         ? Number.parseInt(chainSegment.slice(1))
@@ -143,7 +144,7 @@ function resolveContainer(path) {
   const segments = path.split("/");
 
   if (segments.length === 1)
-    return resolveTrack(/** @type {string} */ (segments[0]));
+    return resolveTrack(assertDefined(segments[0], "track segment"));
   if (segments.some((s) => s.startsWith("p")))
     return resolveDrumPadContainer(path);
 
@@ -179,8 +180,7 @@ export function resolveInsertionPath(path) {
   }
 
   // Simple prefix-based logic: path ending with 'd' = position, otherwise = append
-  // lastSegment is guaranteed non-undefined since we checked segments[0] !== "" above
-  const lastSegment = /** @type {string} */ (segments.at(-1));
+  const lastSegment = assertDefined(segments.at(-1), "last path segment");
   const hasPosition = lastSegment.startsWith("d");
 
   if (hasPosition) {

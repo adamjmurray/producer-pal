@@ -1,4 +1,5 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 
 /**
  * Generate a stable locator ID from a locator's index
@@ -22,7 +23,9 @@ export function readLocators(liveSet, timeSigNumerator, timeSigDenominator) {
   const locators = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(/** @type {string} */ (locatorIds[i]));
+    const locator = LiveAPI.from(
+      assertDefined(locatorIds[i], `locator id at index ${i}`),
+    );
     const name = /** @type {string} */ (locator.getProperty("name"));
     const timeInBeats = /** @type {number} */ (locator.getProperty("time"));
     const timeFormatted = abletonBeatsToBarBeat(
@@ -53,7 +56,9 @@ export function findLocator(liveSet, { locatorId, timeInBeats }) {
   const locatorIds = liveSet.getChildIds("cue_points");
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(/** @type {string} */ (locatorIds[i]));
+    const locator = LiveAPI.from(
+      assertDefined(locatorIds[i], `locator id at index ${i}`),
+    );
 
     if (locatorId != null && getLocatorId(i) === locatorId) {
       return { locator, index: i };
@@ -83,7 +88,9 @@ export function findLocatorsByName(liveSet, locatorName) {
   const matches = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(/** @type {string} */ (locatorIds[i]));
+    const locator = LiveAPI.from(
+      assertDefined(locatorIds[i], `locator id at index ${i}`),
+    );
     const name = locator.getProperty("name");
 
     if (name === locatorName) {
@@ -131,7 +138,7 @@ export function resolveLocatorToBeats(
     }
 
     // Use the first matching locator
-    return /** @type {NonNullable<typeof matches[0]>} */ (matches[0]).time;
+    return assertDefined(matches[0], "first matching locator").time;
   }
 
   throw new Error(`${toolName} failed: locatorId or locatorName is required`);

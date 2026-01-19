@@ -7,6 +7,7 @@ import {
 } from "#src/tools/constants.js";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import {
+  assertDefined,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
@@ -150,7 +151,10 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   }
 
   // Set the send gain
-  /** @type {LiveAPI} */ (sends[sendIndex]).set("display_value", sendGainDb);
+  assertDefined(sends[sendIndex], `send at index ${sendIndex}`).set(
+    "display_value",
+    sendGainDb,
+  );
 }
 
 /**

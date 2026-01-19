@@ -5,7 +5,10 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import {
+  assertDefined,
+  parseCommaSeparatedIds,
+} from "#src/tools/shared/utils.js";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -48,7 +51,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
 
   const { container, position } = toPath
     ? resolveInsertionPath(toPath)
-    : getDeviceInsertionPoint(/** @type {LiveAPI} */ (devices[0]));
+    : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
 
   if (!container || !container.exists()) {
     console.error("Warning: wrapInRack: target container does not exist");
@@ -72,7 +75,7 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
   const liveSet = LiveAPI.from("live_set");
 
   for (let i = 0; i < devices.length; i++) {
-    const device = /** @type {LiveAPI} */ (devices[i]);
+    const device = assertDefined(devices[i], `device at index ${i}`);
 
     // Ensure chain exists (create if needed)
     const currentChainCount = rack.getChildren("chains").length;
@@ -224,7 +227,7 @@ function getDeviceInsertionPoint(device) {
  */
 function wrapInstrumentsInRack(devices, toPath, name) {
   const liveSet = LiveAPI.from("live_set");
-  const firstDevice = /** @type {LiveAPI} */ (devices[0]);
+  const firstDevice = assertDefined(devices[0], "first device");
 
   // 1. Get source track from first instrument
   const { container: sourceContainer, position: devicePosition } =

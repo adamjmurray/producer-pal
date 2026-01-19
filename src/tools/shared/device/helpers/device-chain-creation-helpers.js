@@ -2,6 +2,8 @@
  * Helpers for auto-creating chains when resolving container paths
  */
 
+import { assertDefined } from "#src/tools/shared/utils.js";
+
 // Maximum chains that can be auto-created to prevent runaway creation
 const MAX_AUTO_CREATE_CHAINS = 16;
 
@@ -13,7 +15,9 @@ const MAX_AUTO_CREATE_CHAINS = 16;
  */
 export function resolveContainerWithAutoCreate(segments, path) {
   // Start with track
-  let currentPath = resolveTrackPath(/** @type {string} */ (segments[0]));
+  let currentPath = resolveTrackPath(
+    assertDefined(segments[0], "track segment"),
+  );
   let current = LiveAPI.from(currentPath);
 
   if (!current.exists()) {

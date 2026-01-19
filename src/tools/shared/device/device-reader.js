@@ -6,6 +6,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 import {
   isRedundantDeviceClassName,
   processDeviceChains,
@@ -156,9 +157,7 @@ export function getDrumMap(devices) {
 
   /** @type {Record<string, string>} */
   const drumMap = {};
-  const firstDrumRack = /** @type {NonNullable<typeof drumRacks[0]>} */ (
-    drumRacks[0]
-  );
+  const firstDrumRack = assertDefined(drumRacks[0], "first drum rack");
   const drumPads = firstDrumRack._processedDrumPads ?? [];
 
   for (const drumPad of drumPads) {
@@ -300,7 +299,7 @@ function readSimplerSample(device, className) {
     return {};
   }
 
-  const firstSample = /** @type {LiveAPI} */ (samples[0]);
+  const firstSample = assertDefined(samples[0], "first sample");
   const samplePath = firstSample.getProperty("file_path");
 
   return samplePath ? { sample: samplePath } : {};

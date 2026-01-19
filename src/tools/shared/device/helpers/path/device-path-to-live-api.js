@@ -1,3 +1,5 @@
+import { assertDefined } from "#src/tools/shared/utils.js";
+
 /**
  * @typedef {object} ResolvedPath
  * @property {string} liveApiPath - Live API canonical path
@@ -118,7 +120,7 @@ export function resolvePathToLiveApi(path) {
 
   const segments = path.split("/");
 
-  const firstSegment = /** @type {string} */ (segments[0]);
+  const firstSegment = assertDefined(segments[0], "first path segment");
 
   if (segments.length === 0 || firstSegment === "") {
     throw new Error(`Invalid path: ${path}`);

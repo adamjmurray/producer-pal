@@ -165,3 +165,18 @@ export function fromLiveApiView(liveApiView) {
       throw new Error(`Unknown Live API view: ${liveApiView}`);
   }
 }
+
+/**
+ * Asserts a value is defined, throwing if null/undefined. Used for type narrowing.
+ * @template T
+ * @param {T} value - Value to check
+ * @param {string} msg - Error message if undefined
+ * @returns {NonNullable<T>} The value, narrowed to exclude null/undefined
+ */
+export function assertDefined(value, msg) {
+  if (value == null) {
+    throw new Error(`Bug: ${msg}`);
+  }
+
+  return value;
+}
