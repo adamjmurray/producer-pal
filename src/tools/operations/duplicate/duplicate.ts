@@ -51,10 +51,25 @@ interface DuplicateParams {
 /**
  * Duplicates an object based on its type.
  * @param args - The parameters
+ * @param args.type - Object type to duplicate
+ * @param args.id - Object ID
+ * @param args.count - Number of duplicates
+ * @param args.destination - Destination type
+ * @param args.arrangementStart - Arrangement start position
+ * @param args.arrangementLocatorId - Locator ID
+ * @param args.arrangementLocatorName - Locator name
+ * @param args.arrangementLength - Arrangement length
+ * @param args.name - Name for duplicates
+ * @param args.withoutClips - Exclude clips
+ * @param args.withoutDevices - Exclude devices
+ * @param args.routeToSource - Route to source
+ * @param args.switchView - Switch view
+ * @param args.toTrackIndex - Destination track index
+ * @param args.toSceneIndex - Destination scene index
+ * @param args.toPath - Destination path
  * @param context - Context object
  * @returns Result object(s)
  */
-// eslint-disable-next-line jsdoc/require-param -- destructured params typed via DuplicateArgs interface
 export function duplicate(
   {
     type,

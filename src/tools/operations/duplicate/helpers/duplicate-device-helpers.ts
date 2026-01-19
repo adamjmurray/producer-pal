@@ -142,7 +142,7 @@ function calculateDefaultDestination(
   const segments = simplifiedPath.split("/");
   const lastSegment = segments.at(-1);
 
-  if (lastSegment != null && lastSegment.startsWith("d")) {
+  if (lastSegment?.startsWith("d")) {
     const deviceIndex = Number.parseInt(lastSegment.slice(1));
 
     segments[segments.length - 1] = `d${deviceIndex + 1}`;
