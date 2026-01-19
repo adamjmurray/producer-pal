@@ -7,6 +7,7 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 import {
   createMixerPathIdMap,
+  createSplitPanningMock,
   setupMixerIdMock,
 } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
@@ -260,30 +261,9 @@ describe("readTrack - mixer properties", () => {
         rightSplitId: "right_split_param_1",
       }),
     );
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: [],
-        devices: [],
-        mixer_device: children("mixer_1"),
-      },
-      mixer_1: {
-        volume: children("volume_param_1"),
-        panning_mode: 1, // Split mode
-        left_split_stereo: children("left_split_param_1"),
-        right_split_stereo: children("right_split_param_1"),
-      },
-      volume_param_1: {
-        display_value: -3,
-      },
-      left_split_param_1: {
-        value: -1, // Full left
-      },
-      right_split_param_1: {
-        value: 1, // Full right
-      },
-    });
+    mockLiveApiGet(
+      createSplitPanningMock({ gainDb: -3, leftPan: -1, rightPan: 1 }),
+    );
 
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 
@@ -301,30 +281,9 @@ describe("readTrack - mixer properties", () => {
         rightSplitId: "right_split_param_1",
       }),
     );
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: [],
-        devices: [],
-        mixer_device: children("mixer_1"),
-      },
-      mixer_1: {
-        volume: children("volume_param_1"),
-        panning_mode: 1, // Split mode
-        left_split_stereo: children("left_split_param_1"),
-        right_split_stereo: children("right_split_param_1"),
-      },
-      volume_param_1: {
-        display_value: 0,
-      },
-      left_split_param_1: {
-        value: 0.25,
-      },
-      right_split_param_1: {
-        value: -0.5,
-      },
-    });
+    mockLiveApiGet(
+      createSplitPanningMock({ gainDb: 0, leftPan: 0.25, rightPan: -0.5 }),
+    );
 
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 

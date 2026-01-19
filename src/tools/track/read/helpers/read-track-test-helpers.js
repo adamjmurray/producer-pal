@@ -92,3 +92,40 @@ export function createMixerPathIdMap(opts = {}) {
 
   return map;
 }
+
+/**
+ * Create mock data for split panning mode test
+ * @param {object} opts - Options for the mock
+ * @param {number} [opts.gainDb=0] - Volume display value in dB
+ * @param {number} [opts.leftPan=-1] - Left pan value (-1 to 1)
+ * @param {number} [opts.rightPan=1] - Right pan value (-1 to 1)
+ * @returns {object} Mock data object for mockLiveApiGet
+ */
+export function createSplitPanningMock(opts = {}) {
+  const { gainDb = 0, leftPan = -1, rightPan = 1 } = opts;
+
+  return {
+    Track: {
+      has_midi_input: 1,
+      name: "Test Track",
+      clip_slots: [],
+      devices: [],
+      mixer_device: children("mixer_1"),
+    },
+    mixer_1: {
+      volume: children("volume_param_1"),
+      panning_mode: 1, // Split mode
+      left_split_stereo: children("left_split_param_1"),
+      right_split_stereo: children("right_split_param_1"),
+    },
+    volume_param_1: {
+      display_value: gainDb,
+    },
+    left_split_param_1: {
+      value: leftPan,
+    },
+    right_split_param_1: {
+      value: rightPan,
+    },
+  };
+}

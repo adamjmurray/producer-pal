@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "./duplicate-mocks-test-helpers.js";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   children,
+  createTrackResult,
+  createTrackResultArray,
   liveApiCall,
   liveApiId,
   liveApiPath,
@@ -18,11 +20,7 @@ describe("duplicate - track duplication", () => {
 
     const result = duplicate({ type: "track", id: "track1" });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -41,23 +39,7 @@ describe("duplicate - track duplication", () => {
       name: "Custom Track",
     });
 
-    expect(result).toStrictEqual([
-      {
-        id: "live_set/tracks/1",
-        trackIndex: 1,
-        clips: [],
-      },
-      {
-        id: "live_set/tracks/2",
-        trackIndex: 2,
-        clips: [],
-      },
-      {
-        id: "live_set/tracks/3",
-        trackIndex: 3,
-        clips: [],
-      },
-    ]);
+    expect(result).toStrictEqual(createTrackResultArray(1, 3));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -112,11 +94,7 @@ describe("duplicate - track duplication", () => {
       withoutClips: true,
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -171,11 +149,7 @@ describe("duplicate - track duplication", () => {
       withoutDevices: true,
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -215,11 +189,7 @@ describe("duplicate - track duplication", () => {
       id: "track1",
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -249,11 +219,7 @@ describe("duplicate - track duplication", () => {
       withoutDevices: false,
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -301,11 +267,7 @@ describe("duplicate - track duplication", () => {
       id: "track1",
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -347,11 +309,7 @@ describe("duplicate - track duplication", () => {
       withoutDevices: true,
     });
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1",
-      trackIndex: 1,
-      clips: [],
-    });
+    expect(result).toStrictEqual(createTrackResult(1));
 
     // Verify delete_device was called 3 times (once for each device)
     // but NOT specifically for Producer Pal before the withoutDevices logic
@@ -386,11 +344,7 @@ describe("duplicate - track duplication", () => {
         routeToSource: true,
       });
 
-      expect(result).toStrictEqual({
-        id: "live_set/tracks/1",
-        trackIndex: 1,
-        clips: [],
-      });
+      expect(result).toStrictEqual(createTrackResult(1));
 
       // Test currently simplified to verify basic functionality
       // TODO: Add specific API call verifications when LiveAPI mocking is improved
