@@ -7,7 +7,10 @@ import {
   liveApiSet,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
-import { setupLocatorMocks } from "./update-live-set-test-helpers.js";
+import {
+  setupLocatorCreationMocks,
+  setupLocatorMocks,
+} from "./update-live-set-test-helpers.js";
 
 describe("updateLiveSet - locator operations", () => {
   beforeEach(() => {
@@ -17,30 +20,7 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("create locator", () => {
     it("should create locator at specified position", async () => {
-      // Track whether set_or_delete_cue was called (simulates locator creation)
-      let locatorCreated = false;
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "song_length") return [1000]; // Large value so no extension needed
-
-        // Return empty before creation, return locator after
-        if (prop === "cue_points") {
-          return locatorCreated ? children("new_cue") : children();
-        }
-
-        if (prop === "time") return [0]; // 1|1 = 0 beats
-
-        return [0];
-      });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "set_or_delete_cue") {
-          locatorCreated = true;
-        }
-      });
+      setupLocatorCreationMocks({ time: 0 }); // 1|1 = 0 beats
 
       const result = await updateLiveSet({
         locatorOperation: "create",
@@ -61,29 +41,9 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should create locator with name", async () => {
-      let locatorCreated = false;
       let locatorNameSet = null;
 
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "song_length") return [1000]; // Large value so no extension needed
-
-        if (prop === "cue_points") {
-          return locatorCreated ? children("new_cue") : children();
-        }
-
-        if (prop === "time") return [16]; // 5|1 = 16 beats
-
-        return [0];
-      });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "set_or_delete_cue") {
-          locatorCreated = true;
-        }
-      });
+      setupLocatorCreationMocks({ time: 16 }); // 5|1 = 16 beats
 
       liveApiSet.mockImplementation(function (prop, value) {
         if (prop === "name") {
@@ -113,28 +73,7 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should stop playback before creating locator", async () => {
-      let locatorCreated = false;
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [1];
-        if (prop === "song_length") return [1000]; // Large value so no extension needed
-
-        if (prop === "cue_points") {
-          return locatorCreated ? children("new_cue") : children();
-        }
-
-        if (prop === "time") return [0];
-
-        return [0];
-      });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "set_or_delete_cue") {
-          locatorCreated = true;
-        }
-      });
+      setupLocatorCreationMocks({ isPlaying: 1 });
 
       await updateLiveSet({
         locatorOperation: "create",
@@ -403,27 +342,7 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("combined with other operations", () => {
     it("should allow locator operation with tempo change", async () => {
-      let locatorCreated = false;
-
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-
-        if (prop === "cue_points") {
-          return locatorCreated ? children("new_cue") : children();
-        }
-
-        if (prop === "time") return [0];
-
-        return [0];
-      });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "set_or_delete_cue") {
-          locatorCreated = true;
-        }
-      });
+      setupLocatorCreationMocks({ time: 0 });
 
       const result = await updateLiveSet({
         tempo: 140,
