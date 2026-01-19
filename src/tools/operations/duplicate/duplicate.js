@@ -170,15 +170,28 @@ function generateObjectName(baseName, count, index) {
 }
 
 /**
+ * @typedef {object} DuplicateParams
+ * @property {string} [arrangementStart] - Start time in bar|beat format
+ * @property {string} [arrangementLocatorId] - Locator ID for arrangement position
+ * @property {string} [arrangementLocatorName] - Locator name for arrangement position
+ * @property {string} [arrangementLength] - Duration in bar:beat format
+ * @property {boolean} [withoutClips] - Whether to exclude clips
+ * @property {boolean} [withoutDevices] - Whether to exclude devices
+ * @property {boolean} [routeToSource] - Whether to enable MIDI layering
+ * @property {number | null} [toTrackIndex] - Destination track index (for session clips)
+ * @property {string | null} [toSceneIndex] - Destination scene index(es)
+ */
+
+/**
  * Duplicates a track or scene using count-based iteration
  * @param {string} type - Type of object (track or scene)
  * @param {string | undefined} destination - Destination for duplication
- * @param {object} object - Live API object to duplicate
+ * @param {LiveAPI} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} count - Number of duplicates to create
  * @param {string | undefined} name - Base name for duplicated objects
- * @param {object} params - Additional parameters
- * @param {object} context - Context object with holdingAreaStartBeats
+ * @param {DuplicateParams} params - Additional parameters
+ * @param {Partial<ToolContext>} context - Context object with holdingAreaStartBeats
  * @returns {Array<object>} Array of result objects
  */
 function duplicateTrackOrSceneWithCount(
@@ -191,6 +204,7 @@ function duplicateTrackOrSceneWithCount(
   params,
   context,
 ) {
+  /** @type {object[]} */
   const createdObjects = [];
   const {
     arrangementStart,
@@ -226,7 +240,9 @@ function duplicateTrackOrSceneWithCount(
       context,
     );
 
-    createdObjects.push(newObjectMetadata);
+    if (newObjectMetadata != null) {
+      createdObjects.push(newObjectMetadata);
+    }
   }
 
   return createdObjects;
@@ -270,7 +286,7 @@ function switchViewIfRequested(switchView, destination, type) {
 
 /**
  * Duplicates a scene to the arrangement view
- * @param {object} object - Live API object to duplicate
+ * @param {LiveAPI} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
  * @param {string | undefined} objectName - Name for the duplicated object
@@ -279,7 +295,7 @@ function switchViewIfRequested(switchView, destination, type) {
  * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
  * @param {string | undefined} arrangementLength - Duration in bar|beat format
  * @param {boolean | undefined} withoutClips - Whether to exclude clips
- * @param {object} context - Context object with holdingAreaStartBeats
+ * @param {Partial<ToolContext>} context - Context object with holdingAreaStartBeats
  * @returns {object} Metadata about the duplicated object
  */
 function duplicateSceneToArrangementView(
@@ -341,7 +357,7 @@ function duplicateSceneToArrangementView(
 /**
  * Duplicates a track or scene to the session view
  * @param {string} type - Type of object being duplicated (track or scene)
- * @param {object} object - Live API object to duplicate
+ * @param {LiveAPI} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
  * @param {string | undefined} objectName - Name for the duplicated object
@@ -400,12 +416,12 @@ function duplicateTrackOrSceneToSession(
  * Performs the duplication operation for tracks or scenes
  * @param {string} type - Type of object being duplicated (track or scene)
  * @param {string | undefined} destination - Destination for duplication
- * @param {object} object - Live API object to duplicate
+ * @param {LiveAPI} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
  * @param {string | undefined} objectName - Name for the duplicated object
- * @param {object} params - Additional parameters for duplication
- * @param {object} context - Context object with holdingAreaStartBeats
+ * @param {DuplicateParams} params - Additional parameters for duplication
+ * @param {Partial<ToolContext>} context - Context object with holdingAreaStartBeats
  * @returns {object | undefined} Metadata about the duplicated object
  */
 function performDuplication(

@@ -19,6 +19,7 @@
     "src/tools/workflow/**/*.js",
     "src/tools/live-set/**/*.js",
     "src/tools/samples/**/*.js",
+    "src/tools/operations/duplicate/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
