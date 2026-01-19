@@ -3,6 +3,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 
 interface LiveSetConfig {
@@ -28,6 +29,19 @@ interface SetupCuePointMocksOptions {
 interface MockContext {
   _id?: string;
   _path?: string;
+}
+
+/**
+ * Setup default time signature mock (4/4) for playback tests.
+ * Use in beforeEach to initialize standard test state.
+ */
+export function setupDefaultTimeSignature(): void {
+  mockLiveApiGet({
+    LiveSet: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+    },
+  });
 }
 
 /**
