@@ -14,6 +14,76 @@ import {
  */
 
 /**
+ * Generic setup for entity mocks (tracks, scenes, clips, etc.)
+ * @param {Record<string, string>} idToPathMap - Mapping of IDs to their paths
+ * @param {string} entityType - Live API type to return (e.g., "Track", "Scene")
+ * @returns {void}
+ */
+export function setupEntityMocks(idToPathMap, entityType) {
+  const pathToIdMap = Object.fromEntries(
+    Object.entries(idToPathMap).map(([id, path]) => [path, id]),
+  );
+
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._path && pathToIdMap[this._path]) {
+        return pathToIdMap[this._path];
+      }
+
+      return this._id;
+    },
+  );
+
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id && idToPathMap[this._id]) {
+        return idToPathMap[this._id];
+      }
+
+      return this._path;
+    },
+  );
+
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id && idToPathMap[this._id]) {
+        return entityType;
+      }
+    },
+  );
+}
+
+/**
+ * Setup mocks for track-related tests.
+ * @param {Record<string, string>} idToPathMap - Mapping of track IDs to their paths
+ * @returns {void}
+ */
+export function setupTrackMocks(idToPathMap) {
+  setupEntityMocks(idToPathMap, "Track");
+}
+
+/**
+ * Setup mocks for scene-related tests.
+ * @param {Record<string, string>} idToPathMap - Mapping of scene IDs to their paths
+ * @returns {void}
+ */
+export function setupSceneMocks(idToPathMap) {
+  setupEntityMocks(idToPathMap, "Scene");
+}
+
+/**
  * Setup mocks for device deletion tests.
  * @param {string|string[]} deviceIds - Device ID(s) to mock
  * @param {string|Record<string, string>} pathOrMap - Path string for single device, or ID-to-path mapping for multiple

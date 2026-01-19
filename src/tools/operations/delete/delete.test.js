@@ -5,80 +5,38 @@ import {
   liveApiPath,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
+import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject", () => {
   it("should delete a single track when type is 'track'", () => {
-    const id = "track_2";
-    const trackIndex = 1;
-    const path = `live_set tracks ${trackIndex}`;
+    setupTrackMocks({ track_2: "live_set tracks 1" });
 
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case path:
-          return id;
-        default:
-          return this._id;
-      }
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case id:
-          return path;
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Track";
-      }
-    });
+    const result = deleteObject({ ids: "track_2", type: "track" });
 
-    const result = deleteObject({ ids: id, type: "track" });
-
-    expect(result).toStrictEqual({ id, type: "track", deleted: true });
+    expect(result).toStrictEqual({
+      id: "track_2",
+      type: "track",
+      deleted: true,
+    });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
-      trackIndex,
+      1,
     );
   });
 
   it("should delete multiple tracks in descending index order", () => {
-    const ids = "track_0,track_1,track_2";
-
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set tracks 0":
-          return "track_0";
-        case "live_set tracks 1":
-          return "track_1";
-        case "live_set tracks 2":
-          return "track_2";
-        default:
-          return this._id;
-      }
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case "track_0":
-          return "live_set tracks 0";
-        case "track_1":
-          return "live_set tracks 1";
-        case "track_2":
-          return "live_set tracks 2";
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1", "track_2"].includes(this._id)) {
-        return "Track";
-      }
+    setupTrackMocks({
+      track_0: "live_set tracks 0",
+      track_1: "live_set tracks 1",
+      track_2: "live_set tracks 2",
     });
 
-    const result = deleteObject({ ids, type: "track" });
+    const result = deleteObject({
+      ids: "track_0,track_1,track_2",
+      type: "track",
+    });
 
     // Should delete in descending order (2, 1, 0) to maintain indices
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
@@ -108,72 +66,29 @@ describe("deleteObject", () => {
   });
 
   it("should delete a single scene when type is 'scene'", () => {
-    const id = "scene_2";
-    const sceneIndex = 1;
-    const path = `live_set scenes ${sceneIndex}`;
+    setupSceneMocks({ scene_2: "live_set scenes 1" });
 
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case path:
-          return id;
-        default:
-          return this._id;
-      }
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case id:
-          return path;
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === id) {
-        return "Scene";
-      }
-    });
+    const result = deleteObject({ ids: "scene_2", type: "scene" });
 
-    const result = deleteObject({ ids: id, type: "scene" });
-
-    expect(result).toStrictEqual({ id, type: "scene", deleted: true });
+    expect(result).toStrictEqual({
+      id: "scene_2",
+      type: "scene",
+      deleted: true,
+    });
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
-      sceneIndex,
+      1,
     );
   });
 
   it("should delete multiple scenes in descending index order", () => {
-    const ids = "scene_0, scene_2";
-
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set scenes 0":
-          return "scene_0";
-        case "live_set scenes 2":
-          return "scene_2";
-        default:
-          return this._id;
-      }
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case "scene_0":
-          return "live_set scenes 0";
-        case "scene_2":
-          return "live_set scenes 2";
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (["scene_0", "scene_2"].includes(this._id)) {
-        return "Scene";
-      }
+    setupSceneMocks({
+      scene_0: "live_set scenes 0",
+      scene_2: "live_set scenes 2",
     });
 
-    const result = deleteObject({ ids, type: "scene" });
+    const result = deleteObject({ ids: "scene_0, scene_2", type: "scene" });
 
     // Should delete in descending order (2, 0) to maintain indices
     expect(liveApiCall).toHaveBeenNthCalledWithThis(

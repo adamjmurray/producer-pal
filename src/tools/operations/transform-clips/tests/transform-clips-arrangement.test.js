@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   liveApiGet,
   liveApiId,
-  liveApiPath,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 import { setupArrangementClipMocks } from "./transform-clips-arrangement-test-helpers.js";
+import { setupClipMocks } from "./transform-clips-test-helpers.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
 describe("transformClips - arrangement", () => {
@@ -28,58 +28,17 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should prioritize clipIds over arrangementTrackIndex when both provided", () => {
-    const clipId = "clip_1";
-
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id clip_1") {
-        return clipId;
-      }
-
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === clipId) {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === clipId) {
-        return "Clip";
-      }
-    });
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._id === clipId) {
-        if (prop === "is_midi_clip") {
-          return [1];
-        }
-
-        if (prop === "is_audio_clip") {
-          return [0];
-        }
-
-        if (prop === "is_arrangement_clip") {
-          return [0];
-        }
-
-        if (prop === "length") {
-          return [4.0];
-        }
-      }
-
-      return [0];
-    });
+    setupClipMocks("clip_1");
 
     const result = transformClips({
-      clipIds: clipId,
+      clipIds: "clip_1",
       arrangementTrackIndex: "0", // Should be ignored
       arrangementStart: "1|1.0",
       arrangementLength: "4:0.0",
       seed: 12345,
     });
 
-    expect(result.clipIds).toStrictEqual([clipId]);
+    expect(result.clipIds).toStrictEqual(["clip_1"]);
   });
 
   it("should filter clips by start_time in arrangement range", () => {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { liveApiId, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
+import {
+  createRoutingMockProperties,
+  mockTrackProperties,
+} from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
@@ -8,32 +11,7 @@ describe("readTrack", () => {
     it("excludes routing properties by default", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          available_input_routing_channels: [
-            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
-          ],
-          available_input_routing_types: [
-            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
-          ],
-          available_output_routing_channels: [
-            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
-          ],
-          available_output_routing_types: [
-            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
-          ],
-          input_routing_channel: [
-            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
-          ],
-          input_routing_type: [
-            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
-          ],
-          output_routing_channel: [
-            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
-          ],
-          output_routing_type: [
-            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
-          ],
-        }),
+        Track: mockTrackProperties(createRoutingMockProperties()),
       });
 
       const result = readTrack({ trackIndex: 0 });
@@ -51,33 +29,9 @@ describe("readTrack", () => {
     it("includes routing properties when includeRoutings is true", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          available_input_routing_channels: [
-            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
-          ],
-          available_input_routing_types: [
-            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
-          ],
-          available_output_routing_channels: [
-            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
-          ],
-          available_output_routing_types: [
-            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
-          ],
-          input_routing_channel: [
-            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
-          ],
-          input_routing_type: [
-            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
-          ],
-          output_routing_channel: [
-            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
-          ],
-          output_routing_type: [
-            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
-          ],
-          current_monitoring_state: [1],
-        }),
+        Track: mockTrackProperties(
+          createRoutingMockProperties({ current_monitoring_state: [1] }),
+        ),
       });
 
       const result = readTrack({

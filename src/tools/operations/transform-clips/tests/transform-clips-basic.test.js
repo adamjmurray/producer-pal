@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
-import { setupClipMocks } from "./transform-clips-test-helpers.js";
+import {
+  setupClipMocks,
+  setupSessionClipMocks,
+} from "./transform-clips-test-helpers.js";
 
 describe("transformClips - basic", () => {
   it("should throw error when clipIds and arrangementTrackIndex are missing", () => {
@@ -42,66 +39,12 @@ describe("transformClips - basic", () => {
   });
 
   it("should handle comma-separated clip IDs", () => {
-    const clipIds = "clip_1,clip_2,clip_3";
+    setupSessionClipMocks(["clip_1", "clip_2", "clip_3"]);
 
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id clip_1") {
-        return "clip_1";
-      }
-
-      if (this._path === "id clip_2") {
-        return "clip_2";
-      }
-
-      if (this._path === "id clip_3") {
-        return "clip_3";
-      }
-
-      return this._id;
+    const result = transformClips({
+      clipIds: "clip_1,clip_2,clip_3",
+      seed: 12345,
     });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "clip_1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      if (this._id === "clip_2") {
-        return "live_set tracks 0 clip_slots 1 clip";
-      }
-
-      if (this._id === "clip_3") {
-        return "live_set tracks 0 clip_slots 2 clip";
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (["clip_1", "clip_2", "clip_3"].includes(this._id)) {
-        return "Clip";
-      }
-    });
-    liveApiGet.mockImplementation(function (prop) {
-      if (["clip_1", "clip_2", "clip_3"].includes(this._id)) {
-        if (prop === "is_midi_clip") {
-          return [1];
-        }
-
-        if (prop === "is_audio_clip") {
-          return [0];
-        }
-
-        if (prop === "is_arrangement_clip") {
-          return [0];
-        }
-
-        if (prop === "length") {
-          return [4.0];
-        }
-      }
-
-      return [0];
-    });
-
-    const result = transformClips({ clipIds, seed: 12345 });
 
     expect(result.clipIds).toStrictEqual(["clip_1", "clip_2", "clip_3"]);
   });
