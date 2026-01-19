@@ -337,3 +337,116 @@ describe("OpenAIClient with non-function tool calls", () => {
     expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("OpenAIClient max iterations warning", () => {
+  it("warns and stops when max iterations reached", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "loop-tool", description: "Tool", inputSchema: {} }],
+    });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    client.mcpClient = mcpClient;
+
+    let callCount = 0;
+
+    client.ai = {
+      chat: {
+        completions: {
+          // Always return tool calls to trigger max iterations
+          create: vi.fn().mockImplementation(async function* () {
+            callCount++;
+            yield {
+              choices: [
+                {
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: `call_${callCount}`,
+                        function: { name: "loop-tool", arguments: "{}" },
+                      },
+                    ],
+                  },
+                  finish_reason: "tool_calls",
+                },
+              ],
+            };
+          }),
+        },
+      },
+    } as unknown as typeof client.ai;
+
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Loop forever"),
+    );
+
+    // Should stop after 10 iterations
+    expect(callCount).toBe(10);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "OpenAI tool calling loop reached max iterations:",
+      10,
+    );
+
+    warnSpy.mockRestore();
+
+    // Should have history updates
+    expect(historyUpdates.length).toBeGreaterThan(0);
+  });
+
+  it("stops loop when abort signal is triggered after tool execution", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+    });
+    const abortController = new AbortController();
+    let callCount = 0;
+
+    client.mcpClient = mcpClient;
+    client.ai = {
+      chat: {
+        completions: {
+          create: vi.fn().mockImplementation(async function* () {
+            callCount++;
+            yield {
+              choices: [
+                {
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: `call_${callCount}`,
+                        function: { name: "test-tool", arguments: "{}" },
+                      },
+                    ],
+                  },
+                  finish_reason: "tool_calls",
+                },
+              ],
+            };
+          }),
+        },
+      },
+    } as unknown as typeof client.ai;
+
+    // Abort after the first tool call is executed (in callTool mock)
+    vi.mocked(mcpClient.callTool).mockImplementation(async () => {
+      abortController.abort();
+
+      return { content: [{ type: "text", text: "result" }] };
+    });
+
+    const historyUpdates: unknown[][] = [];
+
+    for await (const history of client.sendMessage(
+      "Test",
+      abortController.signal,
+    )) {
+      historyUpdates.push([...history]);
+    }
+
+    // Should stop after first tool call due to abort
+    expect(callCount).toBe(1);
+    expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
+  });
+});
