@@ -13,7 +13,7 @@ import {
 /**
  * Duplicates a clip to explicit positions
  * @param {string | undefined} destination - Destination for clip duplication (session or arrangement)
- * @param {object} object - Live API object to duplicate
+ * @param {LiveAPI} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {string | undefined} name - Base name for duplicated clips
  * @param {number | undefined} toTrackIndex - Destination track index
@@ -22,7 +22,7 @@ import {
  * @param {string | undefined} arrangementLocatorId - Locator ID for arrangement position
  * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
  * @param {string | undefined} arrangementLength - Duration in bar|beat format
- * @param {object} context - Context object with holdingAreaStartBeats
+ * @param {Partial<ToolContext>} context - Context object with holdingAreaStartBeats
  * @returns {Array<object>} Array of result objects
  */
 export function duplicateClipWithPositions(

@@ -65,13 +65,14 @@ function hasMidiTransformParams(
 
 /**
  * Apply audio parameters to a clip if appropriate
- * @param {object} clip - Live API clip object
+ * @param {LiveAPI} clip - Live API clip object
  * @param {object} audioParams - Audio transformation parameters
- * @param {object} rng - Random number generator
- * @param {Set} warnings - Set to track emitted warnings
+ * @param {function(): number} rng - Random number generator
+ * @param {Set<string>} warnings - Set to track emitted warnings
  */
 function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
-  const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+  const isAudioClip =
+    /** @type {number} */ (clip.getProperty("is_audio_clip")) > 0;
 
   if (!isAudioClip) {
     if (!warnings.has("audio-params-midi-clip")) {
@@ -87,10 +88,10 @@ function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
 
 /**
  * Apply MIDI parameters to a clip if appropriate
- * @param {object} clip - Live API clip object
+ * @param {LiveAPI} clip - Live API clip object
  * @param {object} midiParams - MIDI transformation parameters
- * @param {object} rng - Random number generator
- * @param {Set} warnings - Set to track emitted warnings
+ * @param {function(): number} rng - Random number generator
+ * @param {Set<string>} warnings - Set to track emitted warnings
  */
 function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -109,7 +110,7 @@ function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
 
 /**
  * Apply parameter transformations to all clips
- * @param {Array<object>} clips - Array of Live API clip objects
+ * @param {Array<LiveAPI>} clips - Array of Live API clip objects
  * @param {object} options - Transformation parameters object
  * @param {number | undefined} options.gainDbMin - Minimum gain in decibels
  * @param {number | undefined} options.gainDbMax - Maximum gain in decibels
@@ -123,8 +124,8 @@ function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
  * @param {number | undefined} options.durationMax - Maximum note duration
  * @param {number | undefined} options.velocityRange - Range for velocity variation
  * @param {number | undefined} options.probability - Probability for note generation
- * @param {object} rng - Random number generator
- * @param {Set} warnings - Set to track emitted warnings
+ * @param {function(): number} rng - Random number generator
+ * @param {Set<string>} warnings - Set to track emitted warnings
  */
 export function applyParameterTransforms(
   clips,

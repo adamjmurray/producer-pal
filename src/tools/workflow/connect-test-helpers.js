@@ -23,21 +23,40 @@ export function setupConnectMocks(opts = {}) {
     liveSetOverrides = {},
   } = opts;
 
-  liveApiId.mockImplementation(function () {
-    return this._id;
-  });
+  liveApiId.mockImplementation(
+    /**
+     * @this {{_id: string}}
+     * @returns {string} The mock ID
+     */
+    function () {
+      return this._id;
+    },
+  );
 
-  liveApiPath.mockImplementation(function () {
-    return this._path;
-  });
+  liveApiPath.mockImplementation(
+    /**
+     * @this {{_path: string}}
+     * @returns {string} The mock path
+     */
+    function () {
+      return this._path;
+    },
+  );
 
-  liveApiCall.mockImplementation(function (method) {
-    if (method === "get_version_string") {
-      return version;
-    }
+  liveApiCall.mockImplementation(
+    /**
+     * @this {unknown}
+     * @param {string} method - The method name to call
+     * @returns {string | null} The mock result
+     */
+    function (method) {
+      if (method === "get_version_string") {
+        return version;
+      }
 
-    return null;
-  });
+      return null;
+    },
+  );
 
   mockLiveApiGet({
     LiveSet: {

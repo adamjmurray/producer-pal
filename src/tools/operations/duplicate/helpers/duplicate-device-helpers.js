@@ -9,11 +9,11 @@ import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-
  * 2. Move the duplicated device to the destination
  * 3. Delete the temporary track
  *
- * @param {object} device - LiveAPI device object to duplicate
+ * @param {LiveAPI} device - LiveAPI device object to duplicate
  * @param {string} [toPath] - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param {string} [name] - Optional name for the duplicated device
  * @param {number} [count=1] - Number of duplicates (only 1 supported, warns if > 1)
- * @returns {object} Result with duplicated device info
+ * @returns {{ id: string }} Result with duplicated device info
  */
 export function duplicateDevice(device, toPath, name, count = 1) {
   if (count > 1) {

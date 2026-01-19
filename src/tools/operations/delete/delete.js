@@ -88,7 +88,7 @@ export function deleteObject({ ids, path, type }, _context = {}) {
 /**
  * Deletes a track by its index
  * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {LiveAPI} object - The object to delete
  */
 function deleteTrackObject(id, object) {
   // Check for return track first
@@ -128,7 +128,7 @@ function deleteTrackObject(id, object) {
 /**
  * Deletes a scene by its index
  * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {LiveAPI} object - The object to delete
  */
 function deleteSceneObject(id, object) {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
@@ -147,7 +147,7 @@ function deleteSceneObject(id, object) {
 /**
  * Deletes a clip by its track and clip ID
  * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {LiveAPI} object - The object to delete
  */
 function deleteClipObject(id, object) {
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
@@ -166,7 +166,7 @@ function deleteClipObject(id, object) {
 /**
  * Deletes a device by its ID via the parent (track or chain)
  * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {LiveAPI} object - The object to delete
  */
 function deleteDeviceObject(id, object) {
   // Find the LAST "devices X" in the path to handle nested devices
@@ -179,11 +179,13 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const lastMatch = deviceMatches.at(-1);
+  const lastMatch = /** @type {RegExpMatchArray} */ (deviceMatches.at(-1));
   const deviceIndex = Number(lastMatch[1]);
 
   // Parent path is everything before the last "devices X"
-  const parentPath = object.path.substring(0, lastMatch.index).trim();
+  const parentPath = object.path
+    .substring(0, /** @type {number} */ (lastMatch.index))
+    .trim();
 
   if (!parentPath) {
     throw new Error(
@@ -198,10 +200,10 @@ function deleteDeviceObject(id, object) {
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {string} _id - The object ID (unused, kept for consistent signature)
+ * @param {LiveAPI} object - The object to delete
  */
-function deleteDrumPadObject(id, object) {
+function deleteDrumPadObject(_id, object) {
   const drumPad = LiveAPI.from(`id ${object.id}`);
 
   drumPad.call("delete_all_chains");
@@ -211,7 +213,7 @@ function deleteDrumPadObject(id, object) {
  * Deletes an object based on its type
  * @param {string} type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
  * @param {string} id - The object ID
- * @param {object} object - The object to delete
+ * @param {LiveAPI} object - The object to delete
  */
 function deleteObjectByType(type, id, object) {
   if (type === "track") {
@@ -254,7 +256,7 @@ function resolvePathsToIds(paths, type) {
 
 /**
  * Resolves a single path resolution result to an ID
- * @param {object} resolved - Result from resolvePathToLiveApi
+ * @param {import("#src/tools/shared/device/helpers/path/device-path-to-live-api.js").ResolvedPath} resolved - Result from resolvePathToLiveApi
  * @param {string} targetPath - Original path for error messages
  * @param {string} type - The target type ("device" or "drum-pad")
  * @returns {string|null} The resolved ID or null
@@ -273,7 +275,7 @@ function resolvePathToId(resolved, targetPath, type) {
     // Use shared helper to get just the drum pad (no remaining segments)
     const result = resolveDrumPadFromPath(
       resolved.liveApiPath,
-      resolved.drumPadNote,
+      /** @type {string} */ (resolved.drumPadNote),
       [], // Ignore remaining segments for drum-pad deletion
     );
 
@@ -308,7 +310,7 @@ function resolvePathToId(resolved, targetPath, type) {
     ) {
       const result = resolveDrumPadFromPath(
         resolved.liveApiPath,
-        resolved.drumPadNote,
+        /** @type {string} */ (resolved.drumPadNote),
         resolved.remainingSegments,
       );
 

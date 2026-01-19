@@ -10,12 +10,18 @@ import {
 import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 
 /**
+ * @typedef {object} SlicingContext
+ * @property {number} holdingAreaStartBeats - Start position for holding area
+ * @property {string} [silenceWavPath] - Path to silence WAV file for audio clip operations
+ */
+
+/**
  * Iterate through slice positions and call handler for each
  * @param {LiveAPI} sourceClip - The source clip to slice
  * @param {number} sliceBeats - Slice duration in beats
  * @param {number} currentStartTime - Start time of the original clip
  * @param {number} currentEndTime - End time of the original clip
- * @param {Function} sliceHandler - Handler called for each slice position
+ * @param {(sliceContentStart: number, sliceContentEnd: number, slicePosition: number) => void} sliceHandler - Handler called for each slice position
  */
 function iterateSlicePositions(
   sourceClip,
@@ -91,7 +97,7 @@ function sliceUnloopedMidiContent(
  * @param {number} sliceBeats - Slice duration in beats
  * @param {number} currentStartTime - Start time of the original clip
  * @param {number} currentEndTime - End time of the original clip
- * @param {object} _context - Internal context object
+ * @param {SlicingContext} _context - Internal context object
  */
 function sliceUnloopedAudioContent(
   sourceClip,
@@ -165,15 +171,15 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
  * @param {number} sliceBeats - Slice duration in Ableton beats
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
- * @param {Set<string>} warnings - Set to track warnings already issued
+ * @param {Set<string>} _warnings - Set to track warnings (unused, kept for consistent signature)
  * @param {string} slice - Original slice parameter for error messages
- * @param {object} _context - Internal context object
+ * @param {SlicingContext} _context - Internal context object
  */
 export function performSlicing(
   arrangementClips,
   sliceBeats,
   clips,
-  warnings,
+  _warnings,
   slice,
   _context,
 ) {
@@ -233,7 +239,9 @@ export function performSlicing(
       sliceBeats,
       holdingAreaStart,
       isMidiClip,
-      _context,
+      /** @type {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} */ (
+        _context
+      ),
     );
 
     // Delete original clip before moving from holding
@@ -256,7 +264,9 @@ export function performSlicing(
           currentStartTime + sliceBeats,
           remainingLength,
           holdingAreaStart,
-          _context,
+          /** @type {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} */ (
+            _context
+          ),
           { adjustPreRoll: true, tileLength: sliceBeats },
         );
       } else if (isMidiClip) {
