@@ -1,4 +1,5 @@
 import * as console from "#src/shared/v8-max-console.js";
+import { assertDefined } from "#src/tools/shared/utils.js";
 
 /**
  * @typedef {import('./barbeat-interpreter-buffer-helpers.js').PitchState} PitchState
@@ -226,17 +227,13 @@ export function handlePitchEmission(
 ) {
   if (state.currentPitches.length === 0) {
     if (positions.length === 1) {
-      const pos = /** @type {NonNullable<typeof positions[0]>} */ (
-        positions[0]
-      );
+      const pos = assertDefined(positions[0], "single position");
 
       console.error(
         `Warning: Time position ${pos.bar}|${pos.beat} has no pitches`,
       );
-    } else {
-      const pos = /** @type {NonNullable<typeof positions[0]>} */ (
-        positions[0]
-      );
+    } else if (positions.length > 0) {
+      const pos = assertDefined(positions[0], "first position");
 
       console.error(
         `Warning: Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,

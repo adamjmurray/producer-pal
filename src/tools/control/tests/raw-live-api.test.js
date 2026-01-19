@@ -140,6 +140,16 @@ describe("rawLiveApi", () => {
         }),
       ).toThrow("call_method operation requires method");
     });
+
+    it("should throw error for call_method with non-existent method", () => {
+      expect(() =>
+        rawLiveApi({
+          operations: [
+            { type: "call_method", method: "nonExistentMethod", args: [] },
+          ],
+        }),
+      ).toThrow('Method "nonExistentMethod" not found on LiveAPI object');
+    });
   });
 
   describe("convenience shortcuts", () => {

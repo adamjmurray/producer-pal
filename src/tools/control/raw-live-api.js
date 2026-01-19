@@ -113,11 +113,13 @@ function executeOperation(api, operation) {
 
     case "call_method": {
       const args = operation.args || [];
-      const methodFn = /** @type {Function} */ (
-        /** @type {Record<string, Function>} */ (/** @type {unknown} */ (api))[
-          method
-        ]
-      );
+      const methodFn = /** @type {Record<string, unknown>} */ (
+        /** @type {unknown} */ (api)
+      )[method];
+
+      if (typeof methodFn !== "function") {
+        throw new Error(`Method "${method}" not found on LiveAPI object`);
+      }
 
       return methodFn.apply(api, args);
     }

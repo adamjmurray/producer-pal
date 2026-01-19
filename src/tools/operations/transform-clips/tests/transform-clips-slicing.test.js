@@ -317,6 +317,7 @@ describe("transformClips - slicing", () => {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
+        if (prop === "scenes") return ["id", "scene_1"];
       }
 
       const result =

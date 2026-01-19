@@ -4,6 +4,8 @@
  * arrangement clips using the holding area technique.
  */
 
+import { assertDefined } from "#src/tools/shared/utils.js";
+
 /**
  * @typedef {object} TilingContext
  * @property {string} silenceWavPath - Path to silence WAV file for audio clip operations
@@ -21,7 +23,7 @@
 export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const liveSet = LiveAPI.from("live_set");
   let sceneIds = liveSet.getChildIds("scenes");
-  const lastSceneId = /** @type {string} */ (sceneIds.at(-1));
+  const lastSceneId = assertDefined(sceneIds.at(-1), "last scene ID");
   const lastScene = LiveAPI.from(lastSceneId);
 
   // Check if last scene is empty, if not create a new one
