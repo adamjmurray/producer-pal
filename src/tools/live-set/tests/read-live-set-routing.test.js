@@ -4,6 +4,7 @@ import {
   liveApiId,
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
+import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - routing", () => {
@@ -29,31 +30,7 @@ describe("readLiveSet - routing", () => {
       "live_set tracks 0": {
         has_midi_input: 1,
         name: "Test Track",
-        available_input_routing_channels: [
-          '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}]}',
-        ],
-        available_input_routing_types: [
-          '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
-        ],
-        available_output_routing_channels: [
-          '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
-        ],
-        available_output_routing_types: [
-          '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
-        ],
-        input_routing_channel: [
-          '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
-        ],
-        input_routing_type: [
-          '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
-        ],
-        output_routing_channel: [
-          '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
-        ],
-        output_routing_type: [
-          '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
-        ],
-        current_monitoring_state: [1],
+        ...createSimpleRoutingMock(),
       },
     });
 

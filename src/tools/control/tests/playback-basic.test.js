@@ -10,17 +10,14 @@ import {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
-import { setupClipWithNoTrackPath } from "./playback-test-helpers.js";
+import {
+  setupClipWithNoTrackPath,
+  setupDefaultTimeSignature,
+} from "./playback-test-helpers.js";
 
 describe("transport", () => {
   beforeEach(() => {
-    // Default time signature for tests
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+    setupDefaultTimeSignature();
   });
 
   it("should throw an error when action is missing", () => {

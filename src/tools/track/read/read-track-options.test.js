@@ -8,6 +8,10 @@ import {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 import {
+  createOutputOnlyRoutingMock,
+  createSimpleRoutingMock,
+} from "#src/test/mocks/routing-mock-helpers.js";
+import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.js";
@@ -65,31 +69,7 @@ describe("readTrack", () => {
           devices: children("synth1", "effect1"),
           clip_slots: children("slot1"),
           arrangement_clips: children("arr_clip1"),
-          available_input_routing_channels: [
-            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}]}',
-          ],
-          available_input_routing_types: [
-            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
-          ],
-          available_output_routing_channels: [
-            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
-          ],
-          available_output_routing_types: [
-            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
-          ],
-          input_routing_channel: [
-            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
-          ],
-          input_routing_type: [
-            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
-          ],
-          output_routing_channel: [
-            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
-          ],
-          output_routing_type: [
-            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
-          ],
-          current_monitoring_state: [1],
+          ...createSimpleRoutingMock(),
         }),
         MixerDevice: {
           volume: children("volume_param_1"),
@@ -265,18 +245,7 @@ describe("readTrack", () => {
             playing_slot_index: -1,
             fired_slot_index: -1,
             muted_via_solo: 0,
-            available_output_routing_channels: [
-              '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
-            ],
-            available_output_routing_types: [
-              '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
-            ],
-            output_routing_channel: [
-              '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
-            ],
-            output_routing_type: [
-              '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
-            ],
+            ...createOutputOnlyRoutingMock(),
             available_input_routing_channels: null,
             available_input_routing_types: null,
             input_routing_channel: null,
