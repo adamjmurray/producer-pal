@@ -1,16 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
+import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 import {
   setupLoopedClipSlicingMocks,
   setupSlicingClipBaseMocks,
   setupSlicingClipGetMock,
+  setupTwoClipBaseMocks,
 } from "./transform-clips-slicing-test-helpers.js";
 
 describe("transformClips - slicing", () => {
@@ -125,41 +120,7 @@ describe("transformClips - slicing", () => {
     const clip2Id = "clip_2";
     let sliceOperationCount = 0;
 
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id clip_1") {
-        return clip1Id;
-      }
-
-      if (this._path === "id clip_2") {
-        return clip2Id;
-      }
-
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === clip1Id) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._id === clip2Id) {
-        return "live_set tracks 0 arrangement_clips 1";
-      }
-
-      if (
-        this._id?.startsWith("holding_") ||
-        this._id?.startsWith("moved_") ||
-        this._id?.startsWith("tile_")
-      ) {
-        return "live_set tracks 0 arrangement_clips 2";
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === clip1Id || this._id === clip2Id) {
-        return "Clip";
-      }
-    });
+    setupTwoClipBaseMocks(clip1Id, clip2Id);
     liveApiGet.mockImplementation(function (prop) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") {
@@ -273,41 +234,7 @@ describe("transformClips - slicing", () => {
     const followingClipId = "clip_following";
     let callCount = 0;
 
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id clip_1") {
-        return clipId;
-      }
-
-      if (this._path === "id clip_following") {
-        return followingClipId;
-      }
-
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === clipId) {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      if (this._id === followingClipId) {
-        return "live_set tracks 0 arrangement_clips 1";
-      }
-
-      if (
-        this._id?.startsWith("holding_") ||
-        this._id?.startsWith("moved_") ||
-        this._id?.startsWith("tile_")
-      ) {
-        return "live_set tracks 0 arrangement_clips 2";
-      }
-
-      return this._path;
-    });
-    liveApiType.mockImplementation(function () {
-      if (this._id === clipId || this._id === followingClipId) {
-        return "Clip";
-      }
-    });
+    setupTwoClipBaseMocks(clipId, followingClipId);
 
     /**
      * Mock properties for primary clip objects

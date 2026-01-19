@@ -225,6 +225,38 @@ export function setupUnloopedClipSlicingMocks(clipId, clipProps = {}) {
 }
 
 /**
+ * Setup base mocks for two clips in slicing tests.
+ * Used when testing scenarios with a primary clip and a secondary/following clip.
+ * @param {string} clip1Id - First clip ID
+ * @param {string} clip2Id - Second clip ID
+ * @param {object} opts - Options
+ * @param {string[]} opts.generatedPrefixes - Prefixes for generated clips
+ */
+export function setupTwoClipBaseMocks(clip1Id, clip2Id, opts = {}) {
+  const { generatedPrefixes = ["holding_", "moved_", "tile_"] } = opts;
+
+  liveApiId.mockImplementation(function () {
+    if (this._path === `id ${clip1Id}`) return clip1Id;
+    if (this._path === `id ${clip2Id}`) return clip2Id;
+
+    return this._id;
+  });
+  liveApiPath.mockImplementation(function () {
+    if (this._id === clip1Id) return "live_set tracks 0 arrangement_clips 0";
+    if (this._id === clip2Id) return "live_set tracks 0 arrangement_clips 1";
+
+    if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
+      return "live_set tracks 0 arrangement_clips 2";
+    }
+
+    return this._path;
+  });
+  liveApiType.mockImplementation(function () {
+    if (this._id === clip1Id || this._id === clip2Id) return "Clip";
+  });
+}
+
+/**
  * Filter set calls to find looping-related changes.
  * @param {Array} setCalls - Array of set call objects
  * @returns {{ enable: Array, disable: Array }} Filtered calls
