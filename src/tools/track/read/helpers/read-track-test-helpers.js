@@ -129,3 +129,38 @@ export function createSplitPanningMock(opts = {}) {
     },
   };
 }
+
+/**
+ * Creates standard routing mock properties for track routing tests.
+ * @param {object} [overrides] - Properties to override the defaults
+ * @returns {object} Routing properties for mockTrackProperties
+ */
+export function createRoutingMockProperties(overrides = {}) {
+  return {
+    available_input_routing_channels: [
+      '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
+    ],
+    available_input_routing_types: [
+      '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
+    ],
+    available_output_routing_channels: [
+      '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+    ],
+    available_output_routing_types: [
+      '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+    ],
+    input_routing_channel: [
+      '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+    ],
+    input_routing_type: [
+      '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+    ],
+    output_routing_channel: [
+      '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+    ],
+    output_routing_type: [
+      '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+    ],
+    ...overrides,
+  };
+}
