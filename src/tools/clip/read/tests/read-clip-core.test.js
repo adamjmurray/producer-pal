@@ -7,51 +7,11 @@ import {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
-
-// Default test notes: C3, D3, E3 at beats 0, 1, 2
-const defaultTestNotes = [
-  {
-    note_id: 1,
-    pitch: 60,
-    start_time: 0,
-    duration: 1,
-    velocity: 100,
-    probability: 1.0,
-    velocity_deviation: 0,
-  },
-  {
-    note_id: 2,
-    pitch: 62,
-    start_time: 1,
-    duration: 1,
-    velocity: 100,
-    probability: 1.0,
-    velocity_deviation: 0,
-  },
-  {
-    note_id: 3,
-    pitch: 64,
-    start_time: 2,
-    duration: 1,
-    velocity: 100,
-    probability: 1.0,
-    velocity_deviation: 0,
-  },
-];
-
-// Helper to set up mocks for a MIDI clip with notes
-function setupMidiClipMock({ notes = defaultTestNotes, clipProps }) {
-  liveApiCall.mockImplementation(function (method) {
-    if (method === "get_notes_extended") {
-      return JSON.stringify({ notes });
-    }
-
-    return null;
-  });
-  mockLiveApiGet({
-    "live_set/tracks/1/clip_slots/1/clip": clipProps,
-  });
-}
+import {
+  createTestNote,
+  setupMidiClipMock,
+  setupNotesMock,
+} from "./read-clip-test-helpers.js";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
@@ -146,40 +106,11 @@ describe("readClip", () => {
       },
     });
 
-    liveApiCall.mockImplementation((method) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              pitch: 62,
-              start_time: 3,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            }, // Start of bar 2 in 3/4
-            {
-              pitch: 64,
-              start_time: 4,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            }, // bar 2, beat 2
-          ],
-        });
-      }
-
-      return null;
-    });
+    setupNotesMock([
+      createTestNote({ pitch: 60, startTime: 0 }),
+      createTestNote({ pitch: 62, startTime: 3 }), // Start of bar 2 in 3/4
+      createTestNote({ pitch: 64, startTime: 4 }), // bar 2, beat 2
+    ]);
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
@@ -213,40 +144,11 @@ describe("readClip", () => {
       },
     });
 
-    liveApiCall.mockImplementation((method) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              pitch: 62,
-              start_time: 3,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            }, // Start of bar 2 in 6/8 (3 quarter notes)
-            {
-              pitch: 64,
-              start_time: 3.5,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            }, // bar 2, beat 2
-          ],
-        });
-      }
-
-      return null;
-    });
+    setupNotesMock([
+      createTestNote({ pitch: 60, startTime: 0 }),
+      createTestNote({ pitch: 62, startTime: 3 }), // Start of bar 2 in 6/8 (3 quarter notes)
+      createTestNote({ pitch: 64, startTime: 3.5 }), // bar 2, beat 2
+    ]);
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
