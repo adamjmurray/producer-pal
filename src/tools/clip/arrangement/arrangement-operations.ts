@@ -3,11 +3,10 @@ import {
   handleArrangementLengthening,
   handleArrangementShortening,
 } from "./helpers/arrangement-operations-helpers.js";
-import type { ArrangementContext } from "./helpers/arrangement-operations-helpers.js";
-
-export interface ClipIdResult {
-  id: string;
-}
+import type {
+  ArrangementContext,
+  ClipIdResult,
+} from "./helpers/arrangement-operations-helpers.js";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
