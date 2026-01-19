@@ -31,6 +31,8 @@
     "#src/tools/operations/duplicate/*.js": "./src/tools/operations/duplicate/*.ts",
     "#src/tools/operations/duplicate/helpers/*.js": "./src/tools/operations/duplicate/helpers/*.ts",
     "#src/tools/operations/duplicate/tests/*.js": "./src/tools/operations/duplicate/tests/*.ts",
+    "#src/tools/clip/arrangement/*.js": "./src/tools/clip/arrangement/*.ts",
+    "#src/tools/clip/arrangement/helpers/*.js": "./src/tools/clip/arrangement/helpers/*.ts",
     "#src/tools/clip/update/*.js": "./src/tools/clip/update/*.ts",
     "#src/tools/clip/update/helpers/*.js": "./src/tools/clip/update/helpers/*.ts",
     "#src/tools/clip/update/tests/*.js": "./src/tools/clip/update/tests/*.ts",
