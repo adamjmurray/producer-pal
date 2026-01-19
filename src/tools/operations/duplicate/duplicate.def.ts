@@ -4,21 +4,26 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate Track/Scene/Clip/Device",
   description: "Duplicate an object",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
     type: z
       .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
+
     id: z.string().describe("object to duplicate"),
+
     count: z
       .number()
       .int()
       .min(1)
       .default(1)
       .describe("number of copies (for tracks/scenes only, ignored for clips)"),
+
     destination: z
       .enum(["session", "arrangement"])
       .optional()
