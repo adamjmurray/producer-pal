@@ -502,6 +502,8 @@ export default [
           "./src/skills/tsconfig.test.json",
           "./src/tools/track/tsconfig.json",
           "./src/tools/track/tsconfig.test.json",
+          "./src/tools/operations/duplicate/tsconfig.json",
+          "./src/tools/operations/duplicate/tsconfig.test.json",
         ],
       },
       globals: {

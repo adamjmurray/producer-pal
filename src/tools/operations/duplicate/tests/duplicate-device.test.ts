@@ -6,6 +6,7 @@ import {
   liveApiSet,
   setupDeviceDuplicationMocks,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+import type { Mock } from "vitest";
 
 // Mock moveDeviceToPath to track calls
 vi.mock(import("#src/tools/device/update/update-device-helpers.js"), () => ({
@@ -22,6 +23,11 @@ vi.mock(import("#src/shared/v8-max-console.js"), () => ({
 // Import the mocks after vi.mock
 import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/update-device-helpers.js";
 import * as consoleMock from "#src/shared/v8-max-console.js";
+
+interface MockContext {
+  _path?: string;
+  _id?: string;
+}
 
 describe("duplicate - device duplication", () => {
   beforeEach(() => {
@@ -178,12 +184,14 @@ describe("duplicate - device duplication", () => {
     setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
 
     // Mock id to return "0" for the temp device path (makes exists() return false)
-    liveApiId.mockImplementation(function () {
+    (liveApiId as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string {
       if (this._path === "live_set tracks 1 devices 0") {
         return "0"; // Makes exists() return false
       }
 
-      return this._id;
+      return this._id ?? "";
     });
 
     expect(() => duplicate({ type: "device", id: "device1" })).toThrow(

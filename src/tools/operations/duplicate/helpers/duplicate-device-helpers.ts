@@ -9,13 +9,18 @@ import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-
  * 2. Move the duplicated device to the destination
  * 3. Delete the temporary track
  *
- * @param {LiveAPI} device - LiveAPI device object to duplicate
- * @param {string} [toPath] - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
- * @param {string} [name] - Optional name for the duplicated device
- * @param {number} [count=1] - Number of duplicates (only 1 supported, warns if > 1)
- * @returns {{ id: string }} Result with duplicated device info
+ * @param device - LiveAPI device object to duplicate
+ * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
+ * @param name - Optional name for the duplicated device
+ * @param count - Number of duplicates (only 1 supported, warns if > 1)
+ * @returns Result with duplicated device info
  */
-export function duplicateDevice(device, toPath, name, count = 1) {
+export function duplicateDevice(
+  device: LiveAPI,
+  toPath: string | undefined,
+  name: string | undefined,
+  count = 1,
+): { id: string } {
   if (count > 1) {
     console.error(
       "Warning: count parameter ignored for device duplication (only single copy supported)",
@@ -87,21 +92,21 @@ export function duplicateDevice(device, toPath, name, count = 1) {
 
 /**
  * Extract the regular track index from a device path
- * @param {string} devicePath - Live API device path
- * @returns {number|null} Track index or null if return/master track
+ * @param devicePath - Live API device path
+ * @returns Track index or null if return/master track
  */
-function extractRegularTrackIndex(devicePath) {
+function extractRegularTrackIndex(devicePath: string): number | null {
   const match = devicePath.match(/^live_set tracks (\d+)/);
 
-  return match ? Number.parseInt(/** @type {string} */ (match[1])) : null;
+  return match ? Number.parseInt(match[1] as string) : null;
 }
 
 /**
  * Extract the device portion of the path (everything after the track)
- * @param {string} devicePath - Full Live API path (e.g., "live_set tracks 1 devices 0 chains 2 devices 1")
- * @returns {string} Device path within track (e.g., "devices 0 chains 2 devices 1")
+ * @param devicePath - Full Live API path (e.g., "live_set tracks 1 devices 0 chains 2 devices 1")
+ * @returns Device path within track (e.g., "devices 0 chains 2 devices 1")
  */
-function extractDevicePathWithinTrack(devicePath) {
+function extractDevicePathWithinTrack(devicePath: string): string {
   const match = devicePath.match(
     /^live_set (?:tracks \d+|return_tracks \d+|master_track) (.+)$/,
   );
@@ -112,16 +117,19 @@ function extractDevicePathWithinTrack(devicePath) {
     );
   }
 
-  return /** @type {string} */ (match[1]);
+  return match[1] as string;
 }
 
 /**
  * Calculate the default destination: position after the original device on the same track
- * @param {string} devicePath - Full Live API path of the source device
- * @param {number} trackIndex - Track index
- * @returns {string} Simplified path for destination
+ * @param devicePath - Full Live API path of the source device
+ * @param trackIndex - Track index
+ * @returns Simplified path for destination
  */
-function calculateDefaultDestination(devicePath, trackIndex) {
+function calculateDefaultDestination(
+  devicePath: string,
+  trackIndex: number,
+): string {
   // Get simplified path (e.g., "t1/d0/c2/d1")
   const simplifiedPath = extractDevicePath(devicePath);
 
@@ -150,18 +158,21 @@ function calculateDefaultDestination(devicePath, trackIndex) {
  * Adjust track indices in the destination path to account for the temporary track.
  * When we duplicate a track at index N, a new track appears at N+1.
  * So any destination referencing tracks > N needs to be incremented.
- * @param {string} toPath - Destination path
- * @param {number} sourceTrackIndex - Index of the source track that was duplicated
- * @returns {string} Adjusted path
+ * @param toPath - Destination path
+ * @param sourceTrackIndex - Index of the source track that was duplicated
+ * @returns Adjusted path
  */
-function adjustTrackIndicesForTempTrack(toPath, sourceTrackIndex) {
+function adjustTrackIndicesForTempTrack(
+  toPath: string,
+  sourceTrackIndex: number,
+): string {
   const match = toPath.match(/^t(\d+)/);
 
   if (!match) {
     return toPath; // Not a regular track path (return/master), no adjustment needed
   }
 
-  const destTrackIndex = Number.parseInt(/** @type {string} */ (match[1]));
+  const destTrackIndex = Number.parseInt(match[1] as string);
 
   // If destination is after the source track, increment by 1
   // (because the temp track was inserted at sourceTrackIndex + 1)
@@ -175,11 +186,14 @@ function adjustTrackIndicesForTempTrack(toPath, sourceTrackIndex) {
 /**
  * Recalculate the temp track's index after the device has been moved.
  * If the device was moved to a track before the temp track, indices shift.
- * @param {number} originalTempTrackIndex - Original index of the temp track (sourceTrackIndex + 1)
- * @param {string} _destination - The destination path the device was moved to (unused - kept for API clarity)
- * @returns {number} Current index of the temp track
+ * @param originalTempTrackIndex - Original index of the temp track (sourceTrackIndex + 1)
+ * @param _destination - The destination path the device was moved to (unused - kept for API clarity)
+ * @returns Current index of the temp track
  */
-function recalculateTempTrackIndex(originalTempTrackIndex, _destination) {
+function recalculateTempTrackIndex(
+  originalTempTrackIndex: number,
+  _destination: string,
+): number {
   // Device movement doesn't create/delete tracks, so temp track index is stable
   // The temp track is always at originalTempTrackIndex after the duplicate_track call
   return originalTempTrackIndex;

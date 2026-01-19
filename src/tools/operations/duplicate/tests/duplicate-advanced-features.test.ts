@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Mock, MockInstance } from "vitest";
 import "./duplicate-mocks-test-helpers.js";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
@@ -12,9 +13,16 @@ import {
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
+interface MockContext {
+  _path?: string;
+  _id?: string;
+}
+
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "track2") {
         return "live_set tracks 1"; // Second "Synth" track (sourceTrackIndex)
       }
@@ -65,7 +73,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     // Mock IDs for creation order - track2 has higher ID than track0
-    liveApiId.mockImplementation(function () {
+    (liveApiId as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string {
       if (this._path === "live_set tracks 0" || this._id === "id track0") {
         return "100";
       }
@@ -78,7 +88,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
         return "300";
       }
 
-      return this._id;
+      return this._id ?? "";
     });
 
     // Test that the function doesn't crash with duplicate names
@@ -97,7 +107,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should handle unique track names without crashing (backward compatibility)", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
@@ -150,9 +162,13 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should warn when track is not found in routing options", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy: MockInstance = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
@@ -214,7 +230,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
 describe("duplicate - switchView functionality", () => {
   it("should switch to arrangement view when duplicating to arrangement destination", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -222,7 +240,9 @@ describe("duplicate - switchView functionality", () => {
       return this._path;
     });
 
-    liveApiCall.mockImplementation(function (method) {
+    (liveApiCall as Mock).mockImplementation(function (
+      method: string,
+    ): string[] | null {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "live_set tracks 0 arrangement_clips 0"];
       }
@@ -230,9 +250,13 @@ describe("duplicate - switchView functionality", () => {
       return null;
     });
 
-    const originalPath = liveApiPath.getMockImplementation();
+    const originalPath = (liveApiPath as Mock).getMockImplementation() as
+      | ((this: MockContext) => string | undefined)
+      | undefined;
 
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
       }
@@ -260,7 +284,9 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating to session destination", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -268,7 +294,7 @@ describe("duplicate - switchView functionality", () => {
       return this._path;
     });
 
-    liveApiCall.mockImplementation(function () {
+    (liveApiCall as Mock).mockImplementation(function (): null {
       return null;
     });
 
@@ -292,7 +318,9 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating tracks", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
@@ -337,7 +365,9 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should work with multiple duplicates when switchView=true", () => {
-    liveApiPath.mockImplementation(function () {
+    (liveApiPath as Mock).mockImplementation(function (
+      this: MockContext,
+    ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }

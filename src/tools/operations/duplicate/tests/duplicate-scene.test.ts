@@ -10,6 +10,25 @@ import {
   setupArrangementClipMocks,
   setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+import type { Mock } from "vitest";
+
+interface MockContext {
+  _path?: string;
+  path?: string;
+}
+
+interface DuplicateClipResult {
+  id: string;
+  trackIndex: number;
+  name?: string;
+}
+
+interface DuplicateSceneResult {
+  id?: string;
+  sceneIndex?: number;
+  arrangementStart?: string;
+  clips: DuplicateClipResult[];
+}
 
 describe("duplicate - scene duplication", () => {
   it("should duplicate a single scene to session view (default behavior)", () => {
@@ -24,7 +43,7 @@ describe("duplicate - scene duplication", () => {
       "live_set tracks 1 clip_slots 1": { has_clip: 1 },
     });
 
-    const result = duplicate({ type: "scene", id: "scene1" });
+    const result = duplicate({ type: "scene", id: "scene1" }) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
@@ -67,7 +86,7 @@ describe("duplicate - scene duplication", () => {
       id: "scene1",
       count: 2,
       name: "Custom Scene",
-    });
+    }) as DuplicateSceneResult[];
 
     expect(result).toStrictEqual([
       {
@@ -140,7 +159,7 @@ describe("duplicate - scene duplication", () => {
       type: "scene",
       id: "scene1",
       withoutClips: true,
-    });
+    }) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
@@ -161,8 +180,8 @@ describe("duplicate - scene duplication", () => {
       }),
       "delete_clip",
     );
-    const deleteCallCount = liveApiCall.mock.calls.filter(
-      (call) => call[0] === "delete_clip",
+    const deleteCallCount = (liveApiCall as Mock).mock.calls.filter(
+      (call: unknown[]) => call[0] === "delete_clip",
     ).length;
 
     expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
@@ -211,24 +230,27 @@ describe("duplicate - scene duplication", () => {
         },
       });
 
-      liveApiCall.mockImplementation(
-        function (method, clipIdOrStartTime, _startTimeOrLength) {
-          if (method === "duplicate_clip_to_arrangement") {
-            // Extract track index from the clip ID path
-            const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
-            const trackIndex = trackMatch ? trackMatch[1] : "0";
+      (liveApiCall as Mock).mockImplementation(function (
+        this: MockContext,
+        method: string,
+        clipIdOrStartTime: string,
+        _startTimeOrLength?: number,
+      ): string[] | string | null {
+        if (method === "duplicate_clip_to_arrangement") {
+          // Extract track index from the clip ID path
+          const trackMatch = (clipIdOrStartTime as string).match(/tracks\/(\d+)/);
+          const trackIndex = trackMatch ? trackMatch[1] : "0";
 
-            // Return a mock arrangement clip ID
-            return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
-          }
+          // Return a mock arrangement clip ID
+          return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+        }
 
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: [] }); // Empty notes for testing
-          }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] }); // Empty notes for testing
+        }
 
-          return null;
-        },
-      );
+        return null;
+      });
 
       setupArrangementClipMocks();
 
@@ -237,7 +259,7 @@ describe("duplicate - scene duplication", () => {
         id: "scene1",
         destination: "arrangement",
         arrangementStart: "5|1",
-      });
+      }) as DuplicateSceneResult;
 
       // Both clips now use duplicate_clip_to_arrangement
       // Track 0 clip (4 beats → 8 beats) - lengthened via updateClip
@@ -261,7 +283,7 @@ describe("duplicate - scene duplication", () => {
       expect(Array.isArray(result.clips)).toBe(true);
       // At least the exact-match clip (track 2) should appear
       // Track 0's lengthening via updateClip is tested in updateClip's own tests
-      expect(result.clips.some((c) => c.trackIndex === 2)).toBe(true);
+      expect(result.clips.some((c: DuplicateClipResult) => c.trackIndex === 2)).toBe(true);
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", () => {
@@ -278,31 +300,34 @@ describe("duplicate - scene duplication", () => {
 
       let clipCounter = 0;
 
-      liveApiCall.mockImplementation(
-        function (method, _clipIdOrStartTime, _startTimeOrLength) {
-          if (method === "duplicate_clip_to_arrangement") {
-            // Return unique clip IDs for each duplication
-            const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+      (liveApiCall as Mock).mockImplementation(function (
+        this: MockContext,
+        method: string,
+        _clipIdOrStartTime?: string,
+        _startTimeOrLength?: number,
+      ): string[] | string | null {
+        if (method === "duplicate_clip_to_arrangement") {
+          // Return unique clip IDs for each duplication
+          const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
 
-            clipCounter++;
+          clipCounter++;
 
-            return ["id", clipId];
-          }
+          return ["id", clipId];
+        }
 
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: [] }); // Empty notes for testing
-          }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] }); // Empty notes for testing
+        }
 
-          return null;
-        },
-      );
+        return null;
+      });
 
       setupArrangementClipMocks({
-        getStartTime: (path) => {
+        getStartTime: (path: string): number => {
           const clipMatch = path.match(/arrangement_clips (\d+)/);
 
           if (clipMatch) {
-            const clipIndex = Number.parseInt(clipMatch[1]);
+            const clipIndex = Number.parseInt(clipMatch[1] as string);
 
             return 16 + clipIndex * 8; // 16, 24, 32
           }
@@ -318,7 +343,7 @@ describe("duplicate - scene duplication", () => {
         arrangementStart: "5|1",
         count: 3,
         name: "Scene Copy",
-      });
+      }) as DuplicateSceneResult[];
 
       // Scenes should be placed at sequential positions based on scene length (8 beats)
       // All use duplicate_clip_to_arrangement (exact match, no lengthening needed)
@@ -392,7 +417,7 @@ describe("duplicate - scene duplication", () => {
         id: "scene1",
         destination: "arrangement",
         arrangementStart: "5|1",
-      });
+      }) as DuplicateSceneResult;
 
       expect(result).toStrictEqual({
         arrangementStart: "5|1",
@@ -421,7 +446,7 @@ describe("duplicate - scene duplication", () => {
         destination: "arrangement",
         arrangementStart: "5|1",
         withoutClips: true,
-      });
+      }) as DuplicateSceneResult;
 
       // Verify that duplicate_clip_to_arrangement was NOT called
       expect(liveApiCall).not.toHaveBeenCalledWith(

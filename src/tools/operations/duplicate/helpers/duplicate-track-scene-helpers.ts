@@ -1,20 +1,27 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import {
   getMinimalClipInfo,
   createClipsForLength,
   parseArrangementLength,
 } from "./duplicate-helpers.js";
+import type { MinimalClipInfo } from "./duplicate-helpers.js";
 import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
+import type { RoutingType } from "./duplicate-routing-helpers.js";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Remove the Producer Pal device from a duplicated track if it was the host track
- * @param {number} trackIndex - Original track index
- * @param {boolean | undefined} withoutDevices - Whether devices were excluded
- * @param {LiveAPI} newTrack - The new track LiveAPI object
+ * @param trackIndex - Original track index
+ * @param withoutDevices - Whether devices were excluded
+ * @param newTrack - The new track LiveAPI object
  */
-function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
+function removeHostTrackDevice(
+  trackIndex: number,
+  withoutDevices: boolean | undefined,
+  newTrack: LiveAPI,
+): void {
   const hostTrackIndex = getHostTrackIndex();
 
   if (trackIndex === hostTrackIndex && withoutDevices !== true) {
@@ -45,9 +52,9 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
 
 /**
  * Delete all devices from a track
- * @param {LiveAPI} newTrack - The track LiveAPI object
+ * @param newTrack - The track LiveAPI object
  */
-function deleteAllDevices(newTrack) {
+function deleteAllDevices(newTrack: LiveAPI): void {
   // Delete from the end backwards to avoid index shifting
   const deviceCount = newTrack.getChildIds("devices").length;
 
@@ -56,17 +63,17 @@ function deleteAllDevices(newTrack) {
   }
 }
 
-/** @typedef {import("./duplicate-helpers.js").MinimalClipInfo} MinimalClipInfo */
-
 /**
  * Collect or delete clips from a duplicated track
- * @param {LiveAPI} newTrack - The new track LiveAPI object
- * @param {boolean | undefined} withoutClips - Whether to delete clips instead of collecting them
- * @returns {MinimalClipInfo[]} Array of clip info objects
+ * @param newTrack - The new track LiveAPI object
+ * @param withoutClips - Whether to delete clips instead of collecting them
+ * @returns Array of clip info objects
  */
-function processClipsForDuplication(newTrack, withoutClips) {
-  /** @type {MinimalClipInfo[]} */
-  const duplicatedClips = [];
+function processClipsForDuplication(
+  newTrack: LiveAPI,
+  withoutClips: boolean | undefined,
+): MinimalClipInfo[] {
+  const duplicatedClips: MinimalClipInfo[] = [];
 
   if (withoutClips === true) {
     deleteSessionClips(newTrack);
@@ -81,9 +88,9 @@ function processClipsForDuplication(newTrack, withoutClips) {
 
 /**
  * Delete all session clips from a track
- * @param {LiveAPI} newTrack - The track LiveAPI object
+ * @param newTrack - The track LiveAPI object
  */
-function deleteSessionClips(newTrack) {
+function deleteSessionClips(newTrack: LiveAPI): void {
   const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
 
   for (const clipSlotId of sessionClipSlotIds) {
@@ -97,9 +104,9 @@ function deleteSessionClips(newTrack) {
 
 /**
  * Delete all arrangement clips from a track
- * @param {LiveAPI} newTrack - The track LiveAPI object
+ * @param newTrack - The track LiveAPI object
  */
-function deleteArrangementClips(newTrack) {
+function deleteArrangementClips(newTrack: LiveAPI): void {
   const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
 
   for (const clipId of arrangementClipIds) {
@@ -109,10 +116,13 @@ function deleteArrangementClips(newTrack) {
 
 /**
  * Collect info about session clips in a track
- * @param {LiveAPI} newTrack - The track LiveAPI object
- * @param {MinimalClipInfo[]} duplicatedClips - Array to append clip info to
+ * @param newTrack - The track LiveAPI object
+ * @param duplicatedClips - Array to append clip info to
  */
-function collectSessionClips(newTrack, duplicatedClips) {
+function collectSessionClips(
+  newTrack: LiveAPI,
+  duplicatedClips: MinimalClipInfo[],
+): void {
   const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
 
   for (const clipSlotId of sessionClipSlotIds) {
@@ -128,10 +138,13 @@ function collectSessionClips(newTrack, duplicatedClips) {
 
 /**
  * Collect info about arrangement clips in a track
- * @param {LiveAPI} newTrack - The track LiveAPI object
- * @param {MinimalClipInfo[]} duplicatedClips - Array to append clip info to
+ * @param newTrack - The track LiveAPI object
+ * @param duplicatedClips - Array to append clip info to
  */
-function collectArrangementClips(newTrack, duplicatedClips) {
+function collectArrangementClips(
+  newTrack: LiveAPI,
+  duplicatedClips: MinimalClipInfo[],
+): void {
   const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
 
   for (const clipId of arrangementClipIds) {
@@ -143,14 +156,15 @@ function collectArrangementClips(newTrack, duplicatedClips) {
   }
 }
 
-/** @typedef {import("./duplicate-routing-helpers.js").RoutingType} RoutingType */
-
 /**
  * Configure the source track input routing
- * @param {LiveAPI} sourceTrack - The source track LiveAPI object
- * @param {string} sourceTrackName - The source track name
+ * @param sourceTrack - The source track LiveAPI object
+ * @param sourceTrackName - The source track name
  */
-function configureSourceTrackInput(sourceTrack, sourceTrackName) {
+function configureSourceTrackInput(
+  sourceTrack: LiveAPI,
+  sourceTrackName: string,
+): void {
   // Arm the source track for input
   const currentArm = sourceTrack.getProperty("arm");
 
@@ -160,16 +174,16 @@ function configureSourceTrackInput(sourceTrack, sourceTrackName) {
     console.error(`routeToSource: Armed the source track`);
   }
 
-  const currentInputType = /** @type {RoutingType | null} */ (
-    sourceTrack.getProperty("input_routing_type")
-  );
+  const currentInputType = sourceTrack.getProperty(
+    "input_routing_type",
+  ) as RoutingType | null;
   const currentInputName = currentInputType?.display_name;
 
   if (currentInputName !== "No Input") {
     // Set source track input to "No Input" to prevent unwanted external input
-    const sourceInputTypes = /** @type {RoutingType[] | null} */ (
-      sourceTrack.getProperty("available_input_routing_types")
-    );
+    const sourceInputTypes = sourceTrack.getProperty(
+      "available_input_routing_types",
+    ) as RoutingType[] | null;
     const noInput = sourceInputTypes?.find(
       (type) => type.display_name === "No Input",
     );
@@ -192,15 +206,19 @@ function configureSourceTrackInput(sourceTrack, sourceTrackName) {
 
 /**
  * Find source routing for duplicate track
- * @param {LiveAPI} sourceTrack - The source track LiveAPI object
- * @param {string} sourceTrackName - The source track name
- * @param {RoutingType[] | null} availableTypes - Available routing types
- * @returns {RoutingType | undefined} The routing type to use
+ * @param sourceTrack - The source track LiveAPI object
+ * @param sourceTrackName - The source track name
+ * @param availableTypes - Available routing types
+ * @returns The routing type to use
  */
-function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
+function findSourceRouting(
+  sourceTrack: LiveAPI,
+  sourceTrackName: string,
+  availableTypes: RoutingType[] | null,
+): RoutingType | undefined {
   // Check if there are duplicate track names
   const matchingNames =
-    availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
+    availableTypes?.filter((type) => type.display_name === sourceTrackName) ??
     [];
 
   if (matchingNames.length > 1) {
@@ -209,7 +227,7 @@ function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
     const sourceRouting = findRoutingOptionForDuplicateNames(
       sourceTrack,
       sourceTrackName,
-      /** @type {RoutingType[]} */ (availableTypes),
+      availableTypes as RoutingType[],
     );
 
     if (!sourceRouting) {
@@ -228,17 +246,17 @@ function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
 
 /**
  * Apply output routing configuration to the new track
- * @param {LiveAPI} newTrack - The new track LiveAPI object
- * @param {string} sourceTrackName - The source track name
- * @param {RoutingType[] | null} availableTypes - Available routing types
- * @param {LiveAPI} sourceTrack - The source track LiveAPI object
+ * @param newTrack - The new track LiveAPI object
+ * @param sourceTrackName - The source track name
+ * @param availableTypes - Available routing types
+ * @param sourceTrack - The source track LiveAPI object
  */
 function applyOutputRouting(
-  newTrack,
-  sourceTrackName,
-  availableTypes,
-  sourceTrack,
-) {
+  newTrack: LiveAPI,
+  sourceTrackName: string,
+  availableTypes: RoutingType[] | null,
+  sourceTrack: LiveAPI,
+): void {
   const sourceRouting = findSourceRouting(
     sourceTrack,
     sourceTrackName,
@@ -252,7 +270,7 @@ function applyOutputRouting(
     // Let Live set the default channel for this routing type
   } else {
     const matchingNames =
-      availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
+      availableTypes?.filter((type) => type.display_name === sourceTrackName) ??
       [];
 
     if (matchingNames.length === 0) {
@@ -265,42 +283,43 @@ function applyOutputRouting(
 
 /**
  * Configure routing to source track
- * @param {LiveAPI} newTrack - The new track LiveAPI object
- * @param {number | undefined} sourceTrackIndex - Source track index
+ * @param newTrack - The new track LiveAPI object
+ * @param sourceTrackIndex - Source track index
  */
-function configureRouting(newTrack, sourceTrackIndex) {
+function configureRouting(
+  newTrack: LiveAPI,
+  sourceTrackIndex: number | undefined,
+): void {
   const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
-  const sourceTrackName = /** @type {string} */ (
-    sourceTrack.getProperty("name")
-  );
+  const sourceTrackName = sourceTrack.getProperty("name") as string;
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);
 
-  const availableTypes = /** @type {RoutingType[] | null} */ (
-    newTrack.getProperty("available_output_routing_types")
-  );
+  const availableTypes = newTrack.getProperty(
+    "available_output_routing_types",
+  ) as RoutingType[] | null;
 
   applyOutputRouting(newTrack, sourceTrackName, availableTypes, sourceTrack);
 }
 
 /**
  * Duplicate a track
- * @param {number} trackIndex - Track index to duplicate
- * @param {string} [name] - Optional name for the duplicated track
- * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
- * @param {boolean} [withoutDevices] - Whether to exclude devices when duplicating
- * @param {boolean} [routeToSource] - Whether to route the new track to the source track
- * @param {number} [sourceTrackIndex] - Source track index for routing
- * @returns {object} Track info object with id, trackIndex, and clips array
+ * @param trackIndex - Track index to duplicate
+ * @param name - Optional name for the duplicated track
+ * @param withoutClips - Whether to exclude clips when duplicating
+ * @param withoutDevices - Whether to exclude devices when duplicating
+ * @param routeToSource - Whether to route the new track to the source track
+ * @param sourceTrackIndex - Source track index for routing
+ * @returns Track info object with id, trackIndex, and clips array
  */
 export function duplicateTrack(
-  trackIndex,
-  name,
-  withoutClips,
-  withoutDevices,
-  routeToSource,
-  sourceTrackIndex,
-) {
+  trackIndex: number,
+  name?: string,
+  withoutClips?: boolean,
+  withoutDevices?: boolean,
+  routeToSource?: boolean,
+  sourceTrackIndex?: number,
+): { id: string; trackIndex: number; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_track", trackIndex);
@@ -331,12 +350,16 @@ export function duplicateTrack(
 
 /**
  * Duplicate a scene
- * @param {number} sceneIndex - Scene index to duplicate
- * @param {string} [name] - Optional name for the duplicated scene
- * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
- * @returns {object} Scene info object with id, sceneIndex, and clips array
+ * @param sceneIndex - Scene index to duplicate
+ * @param name - Optional name for the duplicated scene
+ * @param withoutClips - Whether to exclude clips when duplicating
+ * @returns Scene info object with id, sceneIndex, and clips array
  */
-export function duplicateScene(sceneIndex, name, withoutClips) {
+export function duplicateScene(
+  sceneIndex: number,
+  name?: string,
+  withoutClips?: boolean,
+): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from("live_set");
 
   liveSet.call("duplicate_scene", sceneIndex);
@@ -349,7 +372,7 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
   }
 
   // Get all duplicated clips in this scene
-  const duplicatedClips = [];
+  const duplicatedClips: MinimalClipInfo[] = [];
   const trackIds = liveSet.getChildIds("tracks");
 
   if (withoutClips === true) {
@@ -390,10 +413,10 @@ export function duplicateScene(sceneIndex, name, withoutClips) {
 
 /**
  * Calculate the length of a scene (longest clip in the scene)
- * @param {number} sceneIndex - Scene index
- * @returns {number} Length in Ableton beats
+ * @param sceneIndex - Scene index
+ * @returns Length in Ableton beats
  */
-export function calculateSceneLength(sceneIndex) {
+export function calculateSceneLength(sceneIndex: number): number {
   const liveSet = LiveAPI.from("live_set");
   const trackIds = liveSet.getChildIds("tracks");
 
@@ -406,7 +429,7 @@ export function calculateSceneLength(sceneIndex) {
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
       const clip = LiveAPI.from(`${clipSlot.path} clip`);
-      const clipLength = /** @type {number} */ (clip.getProperty("length"));
+      const clipLength = clip.getProperty("length") as number;
 
       maxLength = Math.max(maxLength, clipLength);
     }
@@ -417,39 +440,37 @@ export function calculateSceneLength(sceneIndex) {
 
 /**
  * Assign scene name to clip info objects
- * @param {MinimalClipInfo[]} clips - Array of clip info objects
- * @param {string} name - Name to assign to each clip
+ * @param clips - Array of clip info objects
+ * @param name - Name to assign to each clip
  */
-function assignNamesToClips(clips, name) {
+function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
   for (const clipInfo of clips) {
     clipInfo.name = name;
   }
 }
 
-/** @typedef {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} TilingContext */
-
 /**
  * Duplicate a scene to the arrangement view
- * @param {string} sceneId - Scene ID to duplicate
- * @param {number} arrangementStartBeats - Start position in beats
- * @param {string} [name] - Optional name for the duplicated clips
- * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
- * @param {string} [arrangementLength] - Optional length in bar:beat format
- * @param {number} [songTimeSigNumerator] - Song time signature numerator
- * @param {number} [songTimeSigDenominator] - Song time signature denominator
- * @param {Partial<ToolContext & TilingContext>} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {{ arrangementStart: string, clips: MinimalClipInfo[] }} Object with arrangementStart and clips array
+ * @param sceneId - Scene ID to duplicate
+ * @param arrangementStartBeats - Start position in beats
+ * @param name - Optional name for the duplicated clips
+ * @param withoutClips - Whether to exclude clips when duplicating
+ * @param arrangementLength - Optional length in bar:beat format
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns Object with arrangementStart and clips array
  */
 export function duplicateSceneToArrangement(
-  sceneId,
-  arrangementStartBeats,
-  name,
-  withoutClips,
-  arrangementLength,
+  sceneId: string,
+  arrangementStartBeats: number,
+  name?: string,
+  withoutClips?: boolean,
+  arrangementLength?: string,
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
-  context = {},
-) {
+  context: Partial<ToolContext & TilingContext> = {},
+): { arrangementStart: string; clips: MinimalClipInfo[] } {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
@@ -469,12 +490,11 @@ export function duplicateSceneToArrangement(
   const liveSet = LiveAPI.from("live_set");
   const trackIds = liveSet.getChildIds("tracks");
 
-  /** @type {MinimalClipInfo[]} */
-  const duplicatedClips = [];
+  const duplicatedClips: MinimalClipInfo[] = [];
 
   if (withoutClips !== true) {
     // Determine the length to use for all clips
-    let arrangementLengthBeats;
+    let arrangementLengthBeats: number;
 
     if (arrangementLength != null) {
       arrangementLengthBeats = parseArrangementLength(

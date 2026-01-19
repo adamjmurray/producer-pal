@@ -154,8 +154,8 @@ describe("duplicate - locator-based arrangement positioning", () => {
   });
 
   describe("clip duplication with locator", () => {
-    // Helper to set up mocks for locator-based clip duplication tests
-    function setupLocatorDuplicationMocks() {
+    /** Helper to set up mocks for locator-based clip duplication tests */
+    function setupLocatorDuplicationMocks(): void {
       setupSessionClipPath("clip1");
 
       mockLiveApiGet({
@@ -220,7 +220,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("error handling", () => {
     /** Helper to set up common mocks for error handling tests */
-    function setupErrorHandlingMocks() {
+    function setupErrorHandlingMocks(): void {
       setupScenePath("scene1");
       mockLiveApiGet({
         LiveSet: {

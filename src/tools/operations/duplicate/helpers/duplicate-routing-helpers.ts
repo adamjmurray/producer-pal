@@ -1,23 +1,22 @@
 import * as console from "#src/shared/v8-max-console.js";
 
-/**
- * @typedef {object} RoutingType
- * @property {string} display_name - Display name of the routing type
- * @property {string | number} identifier - Identifier of the routing type
- */
+export interface RoutingType {
+  display_name: string;
+  identifier: string | number;
+}
 
 /**
  * Find the correct routing option for a track when duplicate names exist
- * @param {LiveAPI} sourceTrack - The source track LiveAPI object
- * @param {string} sourceTrackName - The source track's name
- * @param {RoutingType[]} availableTypes - Available output routing types from the new track
- * @returns {RoutingType | undefined} The correct routing option or undefined
+ * @param sourceTrack - The source track LiveAPI object
+ * @param sourceTrackName - The source track's name
+ * @param availableTypes - Available output routing types from the new track
+ * @returns The correct routing option or undefined
  */
 export function findRoutingOptionForDuplicateNames(
-  sourceTrack,
-  sourceTrackName,
-  availableTypes,
-) {
+  sourceTrack: LiveAPI,
+  sourceTrackName: string,
+  availableTypes: RoutingType[],
+): RoutingType | undefined {
   // Get all routing options with the same name
   const matchingOptions = availableTypes.filter(
     (type) => type.display_name === sourceTrackName,
