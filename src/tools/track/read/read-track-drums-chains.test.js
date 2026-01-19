@@ -9,7 +9,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
+import {
+  mockTrackProperties,
+  setupDevicePathIdMock,
+} from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
@@ -59,16 +62,9 @@ describe("readTrack", () => {
     });
 
     it("returns empty array when the drum rack has no chains", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-
-        if (this._path === "live_set tracks 0 devices 0") {
-          return "drumrack";
-        }
-
-        return this._id;
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "drumrack",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -93,19 +89,11 @@ describe("readTrack", () => {
     });
 
     it("includes all drum chains that have instruments", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "drumrack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 1":
-            return "chain2";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "drumrack",
+        "live_set tracks 0 devices 0 chains 0": "chain1",
+        "live_set tracks 0 devices 0 chains 1": "chain2",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -167,23 +155,13 @@ describe("readTrack", () => {
     });
 
     it("stops at first drum rack found", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "midiEffect";
-          case "live_set tracks 0 devices 1":
-            return "drumrack1";
-          case "live_set tracks 0 devices 2":
-            return "drumrack2";
-          case "live_set tracks 0 devices 1 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 2 chains 0":
-            return "chain2";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "midiEffect",
+        "live_set tracks 0 devices 1": "drumrack1",
+        "live_set tracks 0 devices 2": "drumrack2",
+        "live_set tracks 0 devices 1 chains 0": "chain1",
+        "live_set tracks 0 devices 2 chains 0": "chain2",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -266,23 +244,13 @@ describe("readTrack", () => {
     });
 
     it("finds drum chains in nested drum rack inside instrument rack", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "instrumentRack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "rackchain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "nestedDrumRack";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
-            return "drumchain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 1":
-            return "drumchain2";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "instrumentRack",
+        "live_set tracks 0 devices 0 chains 0": "rackchain1",
+        "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
+        "live_set tracks 0 devices 0 chains 0 devices 0 chains 0": "drumchain1",
+        "live_set tracks 0 devices 0 chains 0 devices 0 chains 1": "drumchain2",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -380,19 +348,11 @@ describe("readTrack", () => {
     });
 
     it("handles catch-all chains (in_note=-1) in drum racks", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "drumrack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "catchAllChain";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "nestedDrumRack";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "drumrack",
+        "live_set tracks 0 devices 0 chains 0": "catchAllChain",
+        "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -451,17 +411,10 @@ describe("readTrack", () => {
     });
 
     it("aggregates muted state from chains", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "drumrack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "mutedChain";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "drumrack",
+        "live_set tracks 0 devices 0 chains 0": "mutedChain",
       });
       mockLiveApiGet({
         Track: mockTrackProperties({

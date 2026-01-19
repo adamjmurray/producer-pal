@@ -338,32 +338,10 @@ describe("deleteObject", () => {
   it("should handle whitespace in comma-separated IDs", () => {
     const ids = " track_0 , track_1 ";
 
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set tracks 0":
-          return "track_0";
-        case "live_set tracks 1":
-          return "track_1";
-        default:
-          return this._id;
-      }
+    setupTrackMocks({
+      track_0: "live_set tracks 0",
+      track_1: "live_set tracks 1",
     });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case "track_0":
-          return "live_set tracks 0";
-        case "track_1":
-          return "live_set tracks 1";
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1"].includes(this._id)) {
-        return "Track";
-      }
-    });
-
     const result = deleteObject({ ids, type: "track" });
 
     expect(result).toStrictEqual([
@@ -373,30 +351,9 @@ describe("deleteObject", () => {
   });
 
   it("should return single object for single ID and array for multiple IDs", () => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "live_set tracks 0":
-          return "track_0";
-        case "live_set tracks 1":
-          return "track_1";
-        default:
-          return this._id;
-      }
-    });
-    liveApiPath.mockImplementation(function () {
-      switch (this._id) {
-        case "track_0":
-          return "live_set tracks 0";
-        case "track_1":
-          return "live_set tracks 1";
-        default:
-          return this._path;
-      }
-    });
-    liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1"].includes(this._id)) {
-        return "Track";
-      }
+    setupTrackMocks({
+      track_0: "live_set tracks 0",
+      track_1: "live_set tracks 1",
     });
 
     const singleResult = deleteObject({ ids: "track_0", type: "track" });
