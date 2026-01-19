@@ -1,10 +1,13 @@
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import {
   parseCommaSeparatedIds,
-  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+import {
+  applyTempoProperty,
+  applyTimeSignatureProperty,
+} from "./scene-helpers.js";
 
 /**
  * @typedef {object} UpdateSceneResult
@@ -46,24 +49,8 @@ export function updateScene(
       verifyColorQuantization(scene, color);
     }
 
-    // Handle tempo - explicit -1 disables, non-null enables
-    if (tempo === -1) {
-      scene.set("tempo_enabled", false);
-    } else if (tempo != null) {
-      scene.set("tempo", tempo);
-      scene.set("tempo_enabled", true);
-    }
-
-    // Handle time signature - explicit "disabled" disables, non-null enables
-    if (timeSignature === "disabled") {
-      scene.set("time_signature_enabled", false);
-    } else if (timeSignature != null) {
-      const parsed = parseTimeSignature(timeSignature);
-
-      scene.set("time_signature_numerator", parsed.numerator);
-      scene.set("time_signature_denominator", parsed.denominator);
-      scene.set("time_signature_enabled", true);
-    }
+    applyTempoProperty(scene, tempo);
+    applyTimeSignatureProperty(scene, timeSignature);
 
     // Build optimistic result object
     updatedScenes.push({
