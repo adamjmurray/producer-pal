@@ -68,6 +68,7 @@ export default [
               source.includes("/tools/operations/transform-clips/") ||
               source.includes("/tools/device/") ||
               source.includes("/tools/operations/duplicate/") ||
+              source.includes("/tools/clip/helpers/") ||
               source.includes("/tools/clip/arrangement/") ||
               source.includes("/tools/clip/update/") ||
               source.includes("/tools/clip/read/") ||
