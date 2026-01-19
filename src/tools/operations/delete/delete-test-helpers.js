@@ -7,69 +7,103 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 
 /**
- * Setup mocks for device deletion tests
+ * @typedef {object} MockContext
+ * @property {string} [_path] - Live API path
+ * @property {string} [_id] - Live API ID
+ * @property {string} [id] - Alternate ID property
+ */
+
+/**
+ * Setup mocks for device deletion tests.
  * @param {string|string[]} deviceIds - Device ID(s) to mock
- * @param {string|object} pathOrMap - Path string for single device, or ID-to-path mapping for multiple
+ * @param {string|Record<string, string>} pathOrMap - Path string for single device, or ID-to-path mapping for multiple
  * @param {string} [type="Device"] - Live API type to return
+ * @returns {void}
  */
 export function setupDeviceMocks(deviceIds, pathOrMap, type = "Device") {
   const ids = Array.isArray(deviceIds) ? deviceIds : [deviceIds];
+  /** @type {Record<string, string>} */
   const pathMap =
-    typeof pathOrMap === "string" ? { [ids[0]]: pathOrMap } : pathOrMap;
+    typeof pathOrMap === "string"
+      ? { [ids[0]]: pathOrMap }
+      : /** @type {Record<string, string>} */ (pathOrMap);
 
-  liveApiId.mockImplementation(function () {
-    if (this._path?.startsWith("live_set ") && this._path.includes("devices")) {
-      // Path-based lookup returns the device ID
-      for (const [id, path] of Object.entries(pathMap)) {
-        if (this._path === path) {
-          return id;
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (
+        this._path?.startsWith("live_set ") &&
+        this._path.includes("devices")
+      ) {
+        // Path-based lookup returns the device ID
+        for (const [id, path] of Object.entries(pathMap)) {
+          if (this._path === path) {
+            return id;
+          }
         }
       }
-    }
 
-    return this._id;
-  });
+      return this._id;
+    },
+  );
 
-  liveApiPath.mockImplementation(function () {
-    if (pathMap[this._id]) {
-      return pathMap[this._id];
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id && pathMap[this._id]) {
+        return pathMap[this._id];
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 
-  liveApiType.mockImplementation(function () {
-    if (ids.includes(this._id)) {
-      return type;
-    }
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id && ids.includes(this._id)) {
+        return type;
+      }
 
-    // Only return type for known paths in the map
-    const knownPaths = Object.values(pathMap);
+      // Only return type for known paths in the map
+      const knownPaths = Object.values(pathMap);
 
-    if (this._path && knownPaths.includes(this._path)) {
-      return type;
-    }
-  });
+      if (this._path && knownPaths.includes(this._path)) {
+        return type;
+      }
+    },
+  );
 }
 
 /**
- * Setup mocks for drum pad deletion tests
+ * Setup mocks for drum pad deletion tests.
  * @param {string|string[]} padIds - Drum pad ID(s) to mock
- * @param {string|object} pathOrMap - Path string for single pad, or ID-to-path mapping for multiple
+ * @param {string|Record<string, string>} pathOrMap - Path string for single pad, or ID-to-path mapping for multiple
+ * @returns {void}
  */
 export function setupDrumPadMocks(padIds, pathOrMap) {
   setupDeviceMocks(padIds, pathOrMap, "DrumPad");
 }
 
 /**
- * Setup mocks for drum chain deletion tests (path-based drum pad deletion)
+ * Setup mocks for drum chain deletion tests (path-based drum pad deletion).
  * @param {object} config - Configuration object
  * @param {string} config.devicePath - Path to the drum rack device
  * @param {string} config.chainPath - Path to the chain
  * @param {string} config.drumRackId - ID for the drum rack
  * @param {string} config.chainId - ID for the chain
  * @param {number} [config.inNote=36] - MIDI note for the chain (default C1=36)
- * @param {object} [config.extraPadPath] - Optional extra pad path mapping {padId: path}
+ * @param {Record<string, string>|null} [config.extraPadPath] - Optional extra pad path mapping {padId: path}
+ * @returns {void}
  */
 export function setupDrumChainMocks({
   devicePath,
@@ -79,49 +113,81 @@ export function setupDrumChainMocks({
   inNote = 36,
   extraPadPath = null,
 }) {
-  liveApiId.mockImplementation(function () {
-    if (this._path === devicePath) return drumRackId;
-    if (this._path === `id ${chainId}`) return chainId;
+  /** @type {Record<string, string> | null} */
+  const extraPadPathTyped = extraPadPath;
 
-    return this._id;
-  });
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._path === devicePath) return drumRackId;
+      if (this._path === `id ${chainId}`) return chainId;
 
-  liveApiPath.mockImplementation(function () {
-    const id = this._id ?? this.id;
+      return this._id;
+    },
+  );
 
-    if (id === chainId) return chainPath;
-    if (extraPadPath && extraPadPath[id]) return extraPadPath[id];
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      const id = this._id ?? this.id;
 
-    return this._path;
-  });
+      if (id === chainId) return chainPath;
+      if (id && extraPadPathTyped && extraPadPathTyped[id])
+        return extraPadPathTyped[id];
 
-  liveApiType.mockImplementation(function () {
-    const id = this._id ?? this.id;
+      return this._path;
+    },
+  );
 
-    if (extraPadPath && extraPadPath[id]) return "DrumPad";
-    if (id?.startsWith("chain-")) return "DrumChain";
-    if (id === drumRackId || this._path === devicePath)
-      return "DrumGroupDevice";
-  });
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      const id = this._id ?? this.id;
 
-  liveApiGet.mockImplementation(function (prop) {
-    const id = this._id ?? this.id;
+      if (id && extraPadPathTyped && extraPadPathTyped[id]) return "DrumPad";
+      if (id?.startsWith("chain-")) return "DrumChain";
+      if (id === drumRackId || this._path === devicePath)
+        return "DrumGroupDevice";
+    },
+  );
 
-    if ((id === drumRackId || this._path === devicePath) && prop === "chains") {
-      return children(chainId);
-    }
+  liveApiGet.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @param {string} prop - Property name
+     * @returns {unknown[]} Mock property value array
+     */
+    function (prop) {
+      const id = this._id ?? this.id;
 
-    if (
-      (id === drumRackId || this._path === devicePath) &&
-      prop === "can_have_drum_pads"
-    ) {
-      return [1];
-    }
+      if (
+        (id === drumRackId || this._path === devicePath) &&
+        prop === "chains"
+      ) {
+        return children(chainId);
+      }
 
-    if (id?.startsWith("chain-") && prop === "in_note") {
-      return [inNote];
-    }
+      if (
+        (id === drumRackId || this._path === devicePath) &&
+        prop === "can_have_drum_pads"
+      ) {
+        return [1];
+      }
 
-    return [0];
-  });
+      if (id?.startsWith("chain-") && prop === "in_note") {
+        return [inNote];
+      }
+
+      return [0];
+    },
+  );
 }

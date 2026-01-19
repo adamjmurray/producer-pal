@@ -8,6 +8,13 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 
 /**
+ * @typedef {object} MockContext
+ * @property {string} [_path] - Live API path
+ * @property {string} [_id] - Live API ID
+ * @property {string} [id] - Alternate ID property
+ */
+
+/**
  * Shared mock context for update-clip tests
  */
 export const mockContext = {
@@ -20,77 +27,111 @@ export const mockContext = {
  */
 export function setupMocks() {
   // Track added notes per clip ID for get_notes_extended mocking
+  /** @type {Record<string, Array<unknown>>} */
   const addedNotesByClipId = {};
 
-  liveApiId.mockImplementation(function () {
-    switch (this._path) {
-      case "id 123":
-        return "123";
-      case "id 456":
-        return "456";
-      case "id 789":
-        return "789";
-      case "id 999":
-        return "999";
-      default:
-        return this._id;
-    }
-  });
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      switch (this._path) {
+        case "id 123":
+          return "123";
+        case "id 456":
+          return "456";
+        case "id 789":
+          return "789";
+        case "id 999":
+          return "999";
+        default:
+          return this._id;
+      }
+    },
+  );
 
-  liveApiPath.mockImplementation(function () {
-    switch (this._id) {
-      case "123":
-        return "live_set tracks 0 clip_slots 0 clip";
-      case "456":
-        return "live_set tracks 1 clip_slots 1 clip";
-      case "789":
-        return "live_set tracks 2 arrangement_clips 0";
-      case "999":
-        return "live_set tracks 3 arrangement_clips 1";
-      default:
-        return this._path;
-    }
-  });
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      switch (this._id) {
+        case "123":
+          return "live_set tracks 0 clip_slots 0 clip";
+        case "456":
+          return "live_set tracks 1 clip_slots 1 clip";
+        case "789":
+          return "live_set tracks 2 arrangement_clips 0";
+        case "999":
+          return "live_set tracks 3 arrangement_clips 1";
+        default:
+          return this._path;
+      }
+    },
+  );
 
   // Mock liveApiCall to track added notes and return them for get_notes_extended
-  liveApiCall.mockImplementation(function (method, ...args) {
-    if (method === "add_new_notes") {
-      // Store the notes for this clip ID
-      addedNotesByClipId[this.id] = args[0]?.notes || [];
-    } else if (method === "get_notes_extended") {
-      // Return the notes that were previously added for this clip
-      const notes = addedNotesByClipId[this.id] || [];
+  liveApiCall.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @param {string} method - API method name
+     * @param {Array<{notes?: unknown[]}>} args - Method arguments
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function (method, ...args) {
+      const id = this.id ?? this._id;
 
-      return JSON.stringify({ notes });
-    }
-  });
+      if (method === "add_new_notes") {
+        // Store the notes for this clip ID
+        if (id) {
+          addedNotesByClipId[id] = args[0]?.notes || [];
+        }
+      } else if (method === "get_notes_extended") {
+        // Return the notes that were previously added for this clip
+        const notes = id ? addedNotesByClipId[id] || [] : [];
+
+        return JSON.stringify({ notes });
+      }
+    },
+  );
 }
 
 /**
  * Setup liveApiPath mock for arrangement clip tests.
  * @param {number} trackIndex - Track index
- * @param {string[]|function} clipIds - Array of clip IDs that should return the track's arrangement_clips path, or predicate function
+ * @param {string[]|((id: string | undefined) => boolean)} clipIds - Array of clip IDs that should return the track's arrangement_clips path, or predicate function
  */
 export function setupArrangementClipPath(trackIndex, clipIds) {
+  /** @type {(id: string | undefined) => boolean} */
   const matchesClipId = Array.isArray(clipIds)
-    ? (id) => clipIds.includes(id) || clipIds.includes(String(id))
+    ? (id) =>
+        id !== undefined &&
+        (clipIds.includes(id) || clipIds.includes(String(id)))
     : clipIds;
 
-  liveApiPath.mockImplementation(function () {
-    if (matchesClipId(this._id)) {
-      return `live_set tracks ${trackIndex} arrangement_clips 0`;
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (matchesClipId(this._id)) {
+        return `live_set tracks ${trackIndex} arrangement_clips 0`;
+      }
 
-    if (this._path === "live_set") {
-      return "live_set";
-    }
+      if (this._path === "live_set") {
+        return "live_set";
+      }
 
-    if (this._path === `live_set tracks ${trackIndex}`) {
-      return `live_set tracks ${trackIndex}`;
-    }
+      if (this._path === `live_set tracks ${trackIndex}`) {
+        return `live_set tracks ${trackIndex}`;
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 }
 
 /**
@@ -169,15 +210,23 @@ export function buildRevealedClipMock({
 /**
  * Setup liveApiCall mock to return a revealed clip ID on duplicate_clip_to_arrangement.
  * @param {string} revealedClipId - ID to return for duplicated clip
+ * @returns {void}
  */
 export function setupDuplicateClipMock(revealedClipId) {
-  liveApiCall.mockImplementation(function (method, ..._args) {
-    if (method === "duplicate_clip_to_arrangement") {
-      return ["id", revealedClipId];
-    }
+  liveApiCall.mockImplementation(
+    /**
+     * @param {string} method - API method name
+     * @param {unknown[]} _args - Method arguments
+     * @returns {string[] | number} Mock API result
+     */
+    function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return ["id", revealedClipId];
+      }
 
-    return 1;
-  });
+      return 1;
+    },
+  );
 }
 
 /**
@@ -186,6 +235,7 @@ export function setupDuplicateClipMock(revealedClipId) {
  * @param {number} expectedEndMarker - Expected end marker value
  */
 export function assertSourceClipEndMarker(clipId, expectedEndMarker) {
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(
     expect.objectContaining({ id: clipId }),
     "end_marker",
@@ -213,36 +263,20 @@ export function assertDuplicateClipCalled(clipId, position) {
  * @param {number} endMarker - Expected end marker
  */
 export function assertRevealedClipMarkers(clipId, startMarker, endMarker) {
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "looping",
-    1,
-  );
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "loop_end",
-    endMarker,
-  );
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "loop_start",
-    startMarker,
-  );
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "end_marker",
-    endMarker,
-  );
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "start_marker",
-    startMarker,
-  );
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "looping",
-    0,
-  );
+  const ctx = expect.objectContaining({ id: clipId });
+
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 1);
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_end", endMarker);
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_start", startMarker);
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "end_marker", endMarker);
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "start_marker", startMarker);
+  // @ts-expect-error - custom vitest matcher from expect-extensions.js
+  expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 0);
 }
 
 /**

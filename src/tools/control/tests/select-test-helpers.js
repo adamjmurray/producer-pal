@@ -1,3 +1,4 @@
+/// <reference path="../../../types/max-globals.d.ts" />
 import { vi } from "vitest";
 import {
   liveApiCall,
@@ -48,89 +49,89 @@ export function setupSelectMocks() {
   liveApiGet.mockReturnValue(["id", "device_123", "id", "device_456"]);
 
   // Default LiveAPI constructor mock
-  globalThis.LiveAPI.mockImplementation(
-    /**
-     * @this {ReturnType<typeof globalThis.LiveAPI>}
-     * @param {string} path - The Live API path
-     * @returns {ReturnType<typeof globalThis.LiveAPI>} The mock instance
-     */
-    function (path) {
-      this.path = path;
-      this._path = path;
+  // eslint-disable-next-line complexity -- mock handles many path variations
+  globalThis.LiveAPI.mockImplementation(function (path) {
+    /** @type {Record<string, unknown>} */
+    // @ts-expect-error - this context is provided by vitest mock at runtime
+    const self = this;
 
-      // Basic methods that all instances need
-      this.exists = vi.fn().mockReturnValue(true);
-      this.set = liveApiSet;
-      this.call = liveApiCall;
-      this.get = liveApiGet;
-      this.getProperty = vi.fn();
-      this.setProperty = vi.fn(
-        /**
-         * @param {string} property - Property name
-         * @param {unknown} value - Property value
-         * @returns {void}
-         */
-        (property, value) => this.set(property, value),
-      );
+    self.path = path;
+    self._path = path;
 
-      // Mock some specific properties based on path
-      if (path === "live_app view") {
-        Object.assign(this, mockAppView);
-        this.getProperty.mockReturnValue(1); // Default to session view
-        this.call.mockReturnValue(0); // Default to no special views visible
-      } else if (path === "live_set view") {
-        Object.assign(this, mockSongView);
-      } else if (path === "live_set view selected_track") {
-        Object.assign(this, mockTrackAPI);
-        this.exists.mockReturnValue(false); // Default to no track selected
-        this.trackIndex = null;
-        this.returnTrackIndex = null;
-        this.category = null;
-        this.id = null;
-        this.path = null;
-      } else if (path === "live_set view selected_scene") {
-        this.exists.mockReturnValue(false);
-        this.sceneIndex = null;
-        this.id = null;
-      } else if (path === "live_set view detail_clip") {
-        this.exists.mockReturnValue(false);
-        this.id = null;
-      } else if (path === "live_set view highlighted_clip_slot") {
-        this.exists.mockReturnValue(false);
-        this.trackIndex = null;
-        this.sceneIndex = null;
-      } else if (path.includes("clip_slots")) {
-        this._id = "id clipslot_id_789";
-      } else if (
-        path.startsWith("live_set tracks") ||
-        path.startsWith("live_set return_tracks") ||
-        path.startsWith("live_set master_track")
-      ) {
-        this._id = "id track_id_123";
-      } else if (path.startsWith("live_set scenes")) {
-        this._id = "id scene_id_456";
-      } else if (path.includes(" view") && path.includes("tracks")) {
-        // Track view paths for device selection
-        this.get.mockReturnValue(null);
-      }
+    // Basic methods that all instances need
+    self.exists = vi.fn().mockReturnValue(true);
+    self.set = liveApiSet;
+    self.call = liveApiCall;
+    self.get = liveApiGet;
+    self.getProperty = vi.fn();
+    self.setProperty = vi.fn(
+      /**
+       * @param {string} property - Property name
+       * @param {unknown} value - Property value
+       * @returns {void}
+       */
+      (property, value) => liveApiSet(property, value),
+    );
 
-      // Add id getter that executes the mock function
-      Object.defineProperty(this, "id", {
-        get: function () {
-          return liveApiId.apply(this);
-        },
-      });
+    // Mock some specific properties based on path
+    if (path === "live_app view") {
+      Object.assign(self, mockAppView);
+      /** @type {import("vitest").Mock} */ (self.getProperty).mockReturnValue(
+        1,
+      ); // Default to session view
+      /** @type {import("vitest").Mock} */ (self.call).mockReturnValue(0); // Default to no special views visible
+    } else if (path === "live_set view") {
+      Object.assign(self, mockSongView);
+    } else if (path === "live_set view selected_track") {
+      Object.assign(self, mockTrackAPI);
+      /** @type {import("vitest").Mock} */ (self.exists).mockReturnValue(false); // Default to no track selected
+      self.trackIndex = null;
+      self.returnTrackIndex = null;
+      self.category = null;
+      self.id = null;
+      self.path = null;
+    } else if (path === "live_set view selected_scene") {
+      /** @type {import("vitest").Mock} */ (self.exists).mockReturnValue(false);
+      self.sceneIndex = null;
+      self.id = null;
+    } else if (path === "live_set view detail_clip") {
+      /** @type {import("vitest").Mock} */ (self.exists).mockReturnValue(false);
+      self.id = null;
+    } else if (path === "live_set view highlighted_clip_slot") {
+      /** @type {import("vitest").Mock} */ (self.exists).mockReturnValue(false);
+      self.trackIndex = null;
+      self.sceneIndex = null;
+    } else if (path?.includes("clip_slots")) {
+      self._id = "id clipslot_id_789";
+    } else if (
+      path?.startsWith("live_set tracks") ||
+      path?.startsWith("live_set return_tracks") ||
+      path?.startsWith("live_set master_track")
+    ) {
+      self._id = "id track_id_123";
+    } else if (path?.startsWith("live_set scenes")) {
+      self._id = "id scene_id_456";
+    } else if (path?.includes(" view") && path.includes("tracks")) {
+      // Track view paths for device selection
+      /** @type {import("vitest").Mock} */ (self.get).mockReturnValue(null);
+    }
 
-      // Add type getter that executes the mock function
-      Object.defineProperty(this, "type", {
-        get: function () {
-          return liveApiType.apply(this);
-        },
-      });
+    // Add id getter that executes the mock function
+    Object.defineProperty(self, "id", {
+      get: function () {
+        return liveApiId.apply(this);
+      },
+    });
 
-      return this;
-    },
-  );
+    // Add type getter that executes the mock function
+    Object.defineProperty(self, "type", {
+      get: function () {
+        return liveApiType.apply(this);
+      },
+    });
+
+    return self;
+  });
 
   // Mock static methods - from() should behave like the constructor
   globalThis.LiveAPI.from = vi.fn((idOrPath) => {

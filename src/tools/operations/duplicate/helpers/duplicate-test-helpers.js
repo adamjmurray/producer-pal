@@ -19,18 +19,31 @@ export {
 } from "#src/test/mocks/mock-live-api.js";
 
 /**
+ * @typedef {object} MockContext
+ * @property {string} [_path] - Live API path
+ * @property {string} [_id] - Live API ID
+ * @property {string} [id] - Alternate ID property
+ */
+
+/**
  * Setup liveApiPath mock for track duplication tests.
  * @param {string} trackId - Track ID (e.g., "track1")
  * @param {number} trackIndex - Track index (e.g., 0)
  */
 export function setupTrackPath(trackId, trackIndex = 0) {
-  liveApiPath.mockImplementation(function () {
-    if (this._id === trackId) {
-      return `live_set tracks ${trackIndex}`;
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id === trackId) {
+        return `live_set tracks ${trackIndex}`;
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 }
 
 /**
@@ -39,57 +52,91 @@ export function setupTrackPath(trackId, trackIndex = 0) {
  * @param {number} sceneIndex - Scene index (e.g., 0)
  */
 export function setupScenePath(sceneId, sceneIndex = 0) {
-  liveApiPath.mockImplementation(function () {
-    if (this._id === sceneId) {
-      return `live_set scenes ${sceneIndex}`;
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id === sceneId) {
+        return `live_set scenes ${sceneIndex}`;
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 }
 
 /**
  * Setup arrangement clip mocks for scene-to-arrangement tests.
  * Extends existing liveApiPath and liveApiGet mocks to handle arrangement clips.
  * @param {object} opts - Options
- * @param {function} [opts.getStartTime] - Function to get start time based on path (default: returns 16)
+ * @param {(path: string) => number} [opts.getStartTime] - Function to get start time based on path (default: returns 16)
  */
 export function setupArrangementClipMocks(opts = {}) {
   const { getStartTime = () => 16 } = opts;
 
-  const originalGet = liveApiGet.getMockImplementation();
-  const originalPath = liveApiPath.getMockImplementation();
+  const originalGet =
+    /** @type {((this: MockContext, prop: string) => unknown[]) | undefined} */ (
+      liveApiGet.getMockImplementation()
+    );
+  const originalPath =
+    /** @type {((this: MockContext) => string | undefined) | undefined} */ (
+      liveApiPath.getMockImplementation()
+    );
 
-  liveApiPath.mockImplementation(function () {
-    // For arrangement clips created by ID, return a proper path
-    if (
-      this._path.startsWith("id live_set tracks") &&
-      this._path.includes("arrangement_clips")
-    ) {
-      return this._path.slice(3); // Remove "id " prefix
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      // For arrangement clips created by ID, return a proper path
+      if (
+        this._path?.startsWith("id live_set tracks") &&
+        this._path.includes("arrangement_clips")
+      ) {
+        return this._path.slice(3); // Remove "id " prefix
+      }
 
-    return originalPath ? originalPath.call(this) : this._path;
-  });
+      return originalPath ? originalPath.call(this) : this._path;
+    },
+  );
 
-  liveApiGet.mockImplementation(function (prop) {
-    // Check if this is an arrangement clip requesting is_arrangement_clip
-    if (
-      this._path.includes("arrangement_clips") &&
-      prop === "is_arrangement_clip"
-    ) {
-      return [1];
-    }
+  liveApiGet.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @param {string} prop - Property name
+     * @returns {unknown[]} Mock property value array
+     */
+    function (prop) {
+      // Check if this is an arrangement clip requesting is_arrangement_clip
+      if (
+        this._path?.includes("arrangement_clips") &&
+        prop === "is_arrangement_clip"
+      ) {
+        return [1];
+      }
 
-    // Check if this is an arrangement clip requesting start_time
-    if (this._path.includes("arrangement_clips") && prop === "start_time") {
-      return [getStartTime(this._path)];
-    }
+      // Check if this is an arrangement clip requesting start_time
+      if (this._path?.includes("arrangement_clips") && prop === "start_time") {
+        return [getStartTime(this._path)];
+      }
 
-    // Otherwise use the original mock implementation
-    return originalGet ? originalGet.call(this, prop) : [];
-  });
+      // Otherwise use the original mock implementation
+      return originalGet ? originalGet.call(this, prop) : [];
+    },
+  );
 }
+
+/**
+ * @typedef {object} SourceTrackMock
+ * @property {string} name - Track name
+ * @property {number} current_monitoring_state - Current monitoring state
+ * @property {{ display_name: string }} input_routing_type - Input routing type
+ * @property {Array<{ display_name: string, identifier: string }>} available_input_routing_types - Available input routing types
+ * @property {number} [arm] - Arm state
+ */
 
 /**
  * Setup mock for routeToSource track tests.
@@ -98,7 +145,7 @@ export function setupArrangementClipMocks(opts = {}) {
  * @param {number} [opts.monitoringState] - Current monitoring state (default: 0 = IN)
  * @param {string} [opts.inputRoutingName] - Input routing display name (default: "No Input")
  * @param {number} [opts.arm] - Arm state (default: undefined)
- * @returns {object} Mock data keyed by track path
+ * @returns {Record<string, unknown>} Mock data keyed by track path
  */
 export function setupRouteToSourceMock(opts = {}) {
   const {
@@ -108,6 +155,7 @@ export function setupRouteToSourceMock(opts = {}) {
     arm,
   } = opts;
 
+  /** @type {SourceTrackMock} */
   const sourceTrackMock = {
     name: trackName,
     current_monitoring_state: monitoringState,
@@ -142,11 +190,17 @@ export function setupSessionClipPath(
   clipId,
   clipPath = "live_set tracks 0 clip_slots 0 clip",
 ) {
-  liveApiPath.mockImplementation(function () {
-    if (this._id === clipId) return clipPath;
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id === clipId) return clipPath;
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 }
 
 /**
@@ -162,17 +216,23 @@ export function setupArrangementDuplicationMock(opts = {}) {
     includeNotes = true,
   } = opts;
 
-  liveApiCall.mockImplementation(function (method) {
-    if (method === "duplicate_clip_to_arrangement") {
-      return ["id", returnClipId];
-    }
+  liveApiCall.mockImplementation(
+    /**
+     * @param {string} method - API method name
+     * @returns {string[] | string | null} Mock API result
+     */
+    function (method) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return ["id", returnClipId];
+      }
 
-    if (includeNotes && method === "get_notes_extended") {
-      return JSON.stringify({ notes: [] });
-    }
+      if (includeNotes && method === "get_notes_extended") {
+        return JSON.stringify({ notes: [] });
+      }
 
-    return null;
-  });
+      return null;
+    },
+  );
 }
 
 /**
@@ -209,17 +269,29 @@ export function setupDeviceDuplicationMocks(
   devicePath,
   deviceType = "PluginDevice",
 ) {
-  liveApiPath.mockImplementation(function () {
-    if (this._id === deviceId) {
-      return devicePath;
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id === deviceId) {
+        return devicePath;
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 
-  liveApiType.mockImplementation(function () {
-    if (this._id === deviceId) {
-      return deviceType;
-    }
-  });
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      if (this._id === deviceId) {
+        return deviceType;
+      }
+    },
+  );
 }
