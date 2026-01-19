@@ -43,7 +43,10 @@ describe("duplicate - scene duplication", () => {
       "live_set tracks 1 clip_slots 1": { has_clip: 1 },
     });
 
-    const result = duplicate({ type: "scene", id: "scene1" }) as DuplicateSceneResult;
+    const result = duplicate({
+      type: "scene",
+      id: "scene1",
+    }) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
@@ -238,7 +241,9 @@ describe("duplicate - scene duplication", () => {
       ): string[] | string | null {
         if (method === "duplicate_clip_to_arrangement") {
           // Extract track index from the clip ID path
-          const trackMatch = (clipIdOrStartTime as string).match(/tracks\/(\d+)/);
+          const trackMatch = (clipIdOrStartTime as string).match(
+            /tracks\/(\d+)/,
+          );
           const trackIndex = trackMatch ? trackMatch[1] : "0";
 
           // Return a mock arrangement clip ID
@@ -283,7 +288,9 @@ describe("duplicate - scene duplication", () => {
       expect(Array.isArray(result.clips)).toBe(true);
       // At least the exact-match clip (track 2) should appear
       // Track 0's lengthening via updateClip is tested in updateClip's own tests
-      expect(result.clips.some((c: DuplicateClipResult) => c.trackIndex === 2)).toBe(true);
+      expect(
+        result.clips.some((c: DuplicateClipResult) => c.trackIndex === 2),
+      ).toBe(true);
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", () => {

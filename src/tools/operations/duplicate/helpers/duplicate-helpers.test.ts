@@ -521,9 +521,8 @@ describe("duplicate-helpers", () => {
     });
 
     it("throws error when clip does not exist", () => {
-      (global as Record<string, unknown>).LiveAPI = createArrangementMockLiveAPI(
-        { clipExists: false },
-      );
+      (global as Record<string, unknown>).LiveAPI =
+        createArrangementMockLiveAPI({ clipExists: false });
 
       expect(() => duplicateClipToArrangement("nonexistent", 0)).toThrow(
         'duplicate failed: no clip exists for clipId "nonexistent"',
@@ -531,12 +530,11 @@ describe("duplicate-helpers", () => {
     });
 
     it("throws error when clip has no track index", () => {
-      (global as Record<string, unknown>).LiveAPI = createArrangementMockLiveAPI(
-        {
+      (global as Record<string, unknown>).LiveAPI =
+        createArrangementMockLiveAPI({
           clipExists: true,
           trackIndex: null,
-        },
-      );
+        });
 
       expect(() => duplicateClipToArrangement("clip1", 0)).toThrow(
         'duplicate failed: no track index for clipId "clip1"',

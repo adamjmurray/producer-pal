@@ -83,7 +83,10 @@ describe("duplicate-track-scene-helpers", () => {
       return `id ${Math.random()}`;
     });
 
-    liveApiGet.mockImplementation(function (this: MockContext, property: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockContext,
+      property: string,
+    ) {
       if (this.path === "live_set" && property === "tracks") {
         return ["id", "10", "id", "11", "id", "12"];
       }
@@ -98,7 +101,10 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("calculateSceneLength", () => {
     it("should return default minimum length when scene has no clips", () => {
-      liveApiGet.mockImplementation(function (this: MockContext, property: string) {
+      liveApiGet.mockImplementation(function (
+        this: MockContext,
+        property: string,
+      ) {
         if (property === "tracks") {
           return ["id", "10"];
         }
@@ -116,7 +122,10 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return length of longest clip in scene", () => {
-      liveApiGet.mockImplementation(function (this: MockContext, property: string) {
+      liveApiGet.mockImplementation(function (
+        this: MockContext,
+        property: string,
+      ) {
         if (this.path === "live_set" && property === "tracks") {
           return ["id", "10", "id", "11"];
         }
@@ -654,7 +663,10 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      liveApiCall.mockImplementation(function (this: MockContext, method: string) {
+      liveApiCall.mockImplementation(function (
+        this: MockContext,
+        method: string,
+      ) {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
@@ -692,7 +704,10 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      liveApiCall.mockImplementation(function (this: MockContext, method: string) {
+      liveApiCall.mockImplementation(function (
+        this: MockContext,
+        method: string,
+      ) {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }

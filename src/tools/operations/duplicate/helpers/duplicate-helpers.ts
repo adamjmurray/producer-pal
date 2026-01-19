@@ -235,7 +235,9 @@ function lengthenClipAndCollectInfo(
 ): void {
   // Convert beats to bar:beat format using clip's time signature
   const timeSigNum = sourceClip.getProperty("signature_numerator") as number;
-  const timeSigDenom = sourceClip.getProperty("signature_denominator") as number;
+  const timeSigDenom = sourceClip.getProperty(
+    "signature_denominator",
+  ) as number;
   const beatsPerBar = 4 * (timeSigNum / timeSigDenom);
   const bars = Math.floor(targetBeats / beatsPerBar);
   const remainingBeats = targetBeats - bars * beatsPerBar;

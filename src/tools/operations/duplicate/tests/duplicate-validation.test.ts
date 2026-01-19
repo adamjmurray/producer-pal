@@ -17,15 +17,15 @@ interface MockContext {
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", () => {
-    expect(() => duplicate({ id: "some-id" } as { type: string; id: string })).toThrow(
-      "duplicate failed: type is required",
-    );
+    expect(() =>
+      duplicate({ id: "some-id" } as { type: string; id: string }),
+    ).toThrow("duplicate failed: type is required");
   });
 
   it("should throw an error when id is missing", () => {
-    expect(() => duplicate({ type: "track" } as { type: string; id: string })).toThrow(
-      "duplicate failed: id is required",
-    );
+    expect(() =>
+      duplicate({ type: "track" } as { type: string; id: string }),
+    ).toThrow("duplicate failed: id is required");
   });
 
   it("should throw an error when type is invalid", () => {
