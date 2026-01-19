@@ -8,6 +8,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { ZodTypeAny } from "zod";
+import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.js";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
@@ -57,7 +58,7 @@ export class StdioHttpBridge {
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
     // Create MCP server to extract tool definitions (callLiveApi not used)
-    const server = createMcpServer(null as unknown as () => unknown);
+    const server = createMcpServer(null as unknown as CallLiveApiFunction);
     const tools: FallbackTool[] = [];
 
     // Access private _registeredTools for fallback tool list

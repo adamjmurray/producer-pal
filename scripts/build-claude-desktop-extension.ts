@@ -4,12 +4,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
-// @ts-expect-error - importing JS module without type declarations
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
+import type { CallLiveApiFunction } from "../src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 
-const server = createMcpServer(() => {});
+const server = createMcpServer(null as unknown as CallLiveApiFunction);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -34,10 +34,9 @@ interface RegisteredTool {
   annotations?: { title?: string };
 }
 
-const registeredTools = server._registeredTools as Record<
-  string,
-  RegisteredTool
->;
+const registeredTools = (
+  server as unknown as { _registeredTools: Record<string, RegisteredTool> }
+)._registeredTools;
 
 for (const [name, toolInfo] of Object.entries(registeredTools)) {
   const shortDescription = toolInfo.description.split("\n")[0] ?? "";

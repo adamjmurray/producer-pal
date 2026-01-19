@@ -59,7 +59,7 @@ describe("Node for Max Logger", () => {
       expect(verboseHandler).toBeDefined();
 
       // Enable verbose mode with 1
-      verboseHandler(1);
+      verboseHandler!(1);
       logger.info("verbose info message");
 
       expect(Max.post).toHaveBeenCalledWith(
@@ -72,7 +72,7 @@ describe("Node for Max Logger", () => {
     it("should post when verbose is enabled with 'true'", () => {
       const verboseHandler = Max.handlers.get("verbose");
 
-      verboseHandler("true");
+      verboseHandler!("true");
       logger.info("verbose string true message");
 
       expect(Max.post).toHaveBeenCalledWith(
@@ -85,7 +85,7 @@ describe("Node for Max Logger", () => {
     it("should not post when verbose is disabled with 0", () => {
       const verboseHandler = Max.handlers.get("verbose");
 
-      verboseHandler(0);
+      verboseHandler!(0);
       logger.info("should not post");
 
       expect(Max.post).not.toHaveBeenCalled();
@@ -94,7 +94,7 @@ describe("Node for Max Logger", () => {
     it("should not post when verbose is disabled with false", () => {
       const verboseHandler = Max.handlers.get("verbose");
 
-      verboseHandler(false);
+      verboseHandler!(false);
       logger.info("should not post");
 
       expect(Max.post).not.toHaveBeenCalled();

@@ -68,15 +68,14 @@ export default defineConfig({
 
         // peggy grammars and generated parsers
         "**/*.peggy",
-        "**/*-parser.js",
+        "**/*-parser.{js,ts}",
 
         // test helper functions
-        "**/*-test-helpers.js",
-        "**/*-test-helpers.ts",
+        "**/*-test-helpers.{js,ts}",
 
         // ignore the bundle entry scripts:
-        "src/live-api-adapter/live-api-adapter.js",
-        "src/mcp-server/mcp-server.js",
+        "src/live-api-adapter/live-api-adapter.{js,ts}",
+        "src/mcp-server/mcp-server.{js,ts}",
         "src/portal/producer-pal-portal.{js,ts}",
 
         // ignore loggers:

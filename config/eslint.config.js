@@ -491,6 +491,8 @@ export default [
         project: [
           "./src/portal/tsconfig.json",
           "./src/portal/tsconfig.test.json",
+          "./src/mcp-server/tsconfig.json",
+          "./src/mcp-server/tsconfig.test.json",
         ],
       },
       globals: {
@@ -500,7 +502,10 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: ["./src/portal/tsconfig.json"],
+          project: [
+            "./src/portal/tsconfig.json",
+            "./src/mcp-server/tsconfig.json",
+          ],
         },
         node: true,
       },

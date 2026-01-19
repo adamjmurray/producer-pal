@@ -65,7 +65,7 @@ export default [
     ],
   },
   {
-    input: join(rootDir, "src/mcp-server/mcp-server.js"),
+    input: join(rootDir, "src/mcp-server/mcp-server.ts"),
     output: {
       file: join(rootDir, "max-for-live-device/mcp-server.mjs"),
       format: "es",
@@ -86,8 +86,14 @@ export default [
         ),
         preventAssignment: true,
       }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2024",
+        tsconfig: join(rootDir, "src/mcp-server/tsconfig.json"),
+      }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
         preferBuiltins: true,
         browser: false,
       }),
@@ -123,6 +129,7 @@ export default [
         tsconfig: join(rootDir, "src/portal/tsconfig.json"),
       }),
       resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
         preferBuiltins: true,
         browser: false,
       }),

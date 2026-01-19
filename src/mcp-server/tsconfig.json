@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "checkJs": false,
+    "allowJs": true,
+    "noEmit": true,
+    "declaration": false,
+    "target": "ES2024"
+  },
+  "include": ["*.ts", "../types/**/*.d.ts", "../**/*.js"],
+  "exclude": ["*.test.ts"]
+}

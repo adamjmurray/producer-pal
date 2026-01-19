@@ -10,35 +10,49 @@ import {
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.js";
 import * as console from "./node-for-max-logger.js";
 
+interface McpResponseContent {
+  type: string;
+  text: string;
+}
+
+interface McpResponse {
+  content: McpResponseContent[];
+  isError?: boolean;
+}
+
+interface PendingRequest {
+  resolve: (value: McpResponse) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
 
 const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 
 // Map to store pending requests and their resolve functions
-const pendingRequests = new Map();
+const pendingRequests = new Map<string, PendingRequest>();
 
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 
-Max.addHandler("timeoutMs", (input) => {
+Max.addHandler("timeoutMs", (input: unknown) => {
   const n = Number(input);
 
   if (n > 0 && n <= 60_000) {
     timeoutMs = n;
   } else {
-    console.error(`Invalid Live API timeoutMs: ${input}`);
+    console.error(`Invalid Live API timeoutMs: ${String(input)}`);
   }
 });
 
-// Function to send a tool call to the Max v8 environment
 /**
  * Send a tool call to the Max v8 environment
  *
- * @param {string} tool - Tool name to call
- * @param {object} args - Arguments for the tool
- * @returns {Promise<object>} Tool execution result
+ * @param tool - Tool name to call
+ * @param args - Arguments for the tool
+ * @returns Tool execution result
  */
-function callLiveApi(tool, args) {
+function callLiveApi(tool: string, args: object): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
   const contextJSON = JSON.stringify({ silenceWavPath });
   const requestId = crypto.randomUUID();
@@ -49,17 +63,28 @@ function callLiveApi(tool, args) {
 
   // Return a promise that will be resolved when Max responds or timeout
   return new Promise((resolve) => {
-    try {
-      // Send the request to Max as JSON (with context)
-      Max.outlet("mcp_request", requestId, tool, argsJSON, contextJSON);
-    } catch (error) {
-      // Always resolve (not reject) with the standard error format
-      return resolve(
-        formatErrorResponse(
-          errorMessage(error) || `Error sending message to ${tool}: ${error}`,
-        ),
-      );
-    }
+    // Send the request to Max as JSON (with context)
+    // If outlet fails, resolve immediately with error (don't wait for timeout)
+    Max.outlet("mcp_request", requestId, tool, argsJSON, contextJSON).catch(
+      (error: unknown) => {
+        const pending = pendingRequests.get(requestId);
+
+        if (pending) {
+          clearTimeout(pending.timeout);
+          pendingRequests.delete(requestId);
+        }
+
+        const msg = errorMessage(error);
+
+        resolve(
+          formatErrorResponse(
+            msg.length > 0
+              ? msg
+              : `Error sending message to ${tool}: ${String(error)}`,
+          ) as McpResponse,
+        );
+      },
+    );
 
     pendingRequests.set(requestId, {
       resolve,
@@ -70,7 +95,7 @@ function callLiveApi(tool, args) {
           resolve(
             formatErrorResponse(
               `Tool call '${tool}' timed out after ${timeoutMs}ms`,
-            ),
+            ) as McpResponse,
           );
         }
       }, timeoutMs),
@@ -81,19 +106,19 @@ function callLiveApi(tool, args) {
 /**
  * Handle Live API result from Max
  *
- * @param {...any} args - Request ID followed by response parameters (chunks and errors)
+ * @param args - Request ID followed by response parameters (chunks and errors)
  */
-function handleLiveApiResult(...args) {
-  const [requestId, ...params] = args;
+function handleLiveApiResult(...args: unknown[]): void {
+  const [requestId, ...params] = args as [string, ...unknown[]];
 
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
-  if (pendingRequests.has(requestId)) {
-    const { resolve, timeout } = pendingRequests.get(requestId);
+  const pendingRequest = pendingRequests.get(requestId);
 
-    if (timeout) {
-      clearTimeout(timeout);
-    }
+  if (pendingRequest) {
+    const { resolve, timeout } = pendingRequest;
+
+    clearTimeout(timeout);
 
     pendingRequests.delete(requestId);
 
@@ -111,18 +136,17 @@ function handleLiveApiResult(...args) {
 
       // Reassemble chunks
       const resultJSON = chunks.join("");
-      const result = JSON.parse(resultJSON);
+      const result = JSON.parse(resultJSON) as McpResponse;
 
       const resultLength = result.content.reduce(
-        (/** @type {number} */ sum, /** @type {{ text: string }} */ { text }) =>
-          sum + text.length,
+        (sum: number, { text }: { text: string }) => sum + text.length,
         0,
       );
       let errorMessageLength = 0;
 
       // Add any Max errors as warnings
-      for (const error of maxErrors) {
-        let msg = `${error}`;
+      for (const err of maxErrors) {
+        let msg = String(err);
 
         // Remove v8: prefix and trim whitespace
         if (msg.startsWith("v8:")) {
@@ -149,7 +173,9 @@ function handleLiveApiResult(...args) {
       resolve(result);
     } catch (error) {
       resolve(
-        formatErrorResponse(`Error parsing tool result from Max: ${error}`),
+        formatErrorResponse(
+          `Error parsing tool result from Max: ${String(error)}`,
+        ) as McpResponse,
       );
     }
   } else {
@@ -159,13 +185,12 @@ function handleLiveApiResult(...args) {
 
 Max.addHandler("mcp_response", handleLiveApiResult);
 
-// Test helper function to control timeout in tests
 /**
  * Set the timeout for testing purposes
  *
- * @param {number} ms - Timeout in milliseconds
+ * @param ms - Timeout in milliseconds
  */
-export function setTimeoutForTesting(ms) {
+export function setTimeoutForTesting(ms: number): void {
   timeoutMs = ms;
 }
 

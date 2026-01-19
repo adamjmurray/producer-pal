@@ -28,6 +28,7 @@
     "test/**",
     "**/*-test-helpers.js",
     "**/parser/*-parser.js",
-    "portal/*.ts"
+    "portal/*.ts",
+    "mcp-server/*.ts"
   ]
 }

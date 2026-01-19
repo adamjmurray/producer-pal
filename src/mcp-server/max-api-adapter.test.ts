@@ -11,25 +11,38 @@ import {
 import "./max-api-adapter.js";
 
 // Capture the timeoutMs handler before mocks are cleared
-let timeoutMsHandler;
-const timeoutMsCall = Max.addHandler.mock.calls.find(
-  (call) => call[0] === "timeoutMs",
-);
+let timeoutMsHandler: ((input: unknown) => void) | undefined;
+const timeoutMsCall = (
+  Max.addHandler as ReturnType<typeof vi.fn>
+).mock.calls.find((call: [string, unknown]) => call[0] === "timeoutMs");
 
 if (timeoutMsCall) {
-  timeoutMsHandler = timeoutMsCall[1];
+  timeoutMsHandler = timeoutMsCall[1] as (input: unknown) => void;
+}
+
+interface PendingRequestResult {
+  promise: Promise<{
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  }>;
+  requestId: string;
 }
 
 /**
  * Helper to set up a pending request and get its ID.
- * @param {string} [tool="test-tool"] - Tool name
- * @param {object} [args={}] - Tool arguments
- * @returns {{ promise: Promise, requestId: string }} Promise and request ID
+ *
+ * @param tool - Tool name
+ * @param args - Tool arguments
+ * @returns Promise and request ID
  */
-function setupPendingRequest(tool = "test-tool", args = {}) {
-  Max.outlet = vi.fn();
+function setupPendingRequest(
+  tool = "test-tool",
+  args = {},
+): PendingRequestResult {
+  Max.outlet = vi.fn().mockResolvedValue(undefined);
   const promise = callLiveApi(tool, args);
-  const requestId = Max.outlet.mock.calls[0][1];
+  const requestId = (Max.outlet as ReturnType<typeof vi.fn>).mock
+    .calls[0][1] as string;
 
   return { promise, requestId };
 }
@@ -56,8 +69,8 @@ describe("Max API Adapter", () => {
       );
 
       // Get the requestId from the outlet call
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestId = callArgs[1] as string;
 
       expect(typeof requestId).toBe("string");
       expect(callArgs[2]).toBe("test-tool");
@@ -80,7 +93,7 @@ describe("Max API Adapter", () => {
       setTimeoutForTesting(2);
 
       // Replace Max.outlet with a simple mock that doesn't auto-respond
-      Max.outlet = vi.fn();
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
 
       const result = await callLiveApi("test-tool", {});
 
@@ -105,8 +118,8 @@ describe("Max API Adapter", () => {
       expect(Max.outlet).toHaveBeenCalled();
 
       // Manually trigger response
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestId = callArgs[1] as string;
 
       handleLiveApiResult(
         requestId,
@@ -117,12 +130,10 @@ describe("Max API Adapter", () => {
       await promise;
     });
 
-    it("should handle Max.outlet throwing an error", async () => {
+    it("should handle Max.outlet rejecting with an error", async () => {
       const errorMessage = "Simulated Max error";
 
-      Max.outlet = vi.fn(() => {
-        throw new Error(errorMessage);
-      });
+      Max.outlet = vi.fn().mockRejectedValue(new Error(errorMessage));
 
       const result = await callLiveApi("test-tool", {});
 
@@ -137,10 +148,8 @@ describe("Max API Adapter", () => {
       });
     });
 
-    it("should handle Max.outlet throwing an error with no message", async () => {
-      Max.outlet = vi.fn(() => {
-        throw new Error();
-      });
+    it("should handle Max.outlet rejecting with an error with no message", async () => {
+      Max.outlet = vi.fn().mockRejectedValue(new Error());
 
       const result = await callLiveApi("test-tool", {});
 
@@ -161,7 +170,7 @@ describe("Max API Adapter", () => {
       expect(timeoutMsHandler).toBeDefined();
 
       // Call the handler with a valid timeout
-      timeoutMsHandler(5000);
+      timeoutMsHandler!(5000);
 
       // Verify it doesn't log an error
       expect(Max.post).not.toHaveBeenCalled();
@@ -169,7 +178,7 @@ describe("Max API Adapter", () => {
 
     it("should reject timeout values above 60000ms", () => {
       // Call with invalid timeout (too high)
-      timeoutMsHandler(70000);
+      timeoutMsHandler!(70000);
 
       // Should log an error
       expect(Max.post).toHaveBeenCalledWith(
@@ -182,7 +191,7 @@ describe("Max API Adapter", () => {
       vi.clearAllMocks();
 
       // Call with invalid timeout (zero)
-      timeoutMsHandler(0);
+      timeoutMsHandler!(0);
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringContaining("Invalid Live API timeoutMs: 0"),
@@ -194,7 +203,7 @@ describe("Max API Adapter", () => {
       vi.clearAllMocks();
 
       // Call with non-numeric value
-      timeoutMsHandler("invalid");
+      timeoutMsHandler!("invalid");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringContaining("Invalid Live API timeoutMs: invalid"),
@@ -209,15 +218,15 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle valid response with matching request ID", async () => {
-      // Ensure Max.outlet is mocked properly and doesn't throw
-      Max.outlet = vi.fn();
+      // Ensure Max.outlet is mocked properly and returns a promise
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
 
       // Start a request to create a pending request
       const promise = callLiveApi("test-tool", {});
 
       // Get the request ID from the outlet call
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestId = callArgs[1];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestId = callArgs[1] as string;
 
       // Simulate the response
       const mockResult = { content: [{ type: "text", text: "success" }] };

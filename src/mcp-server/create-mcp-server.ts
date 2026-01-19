@@ -24,18 +24,32 @@ import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.js"
 import { toolDefConnect } from "#src/tools/workflow/connect.def.js";
 import { toolDefMemory } from "#src/tools/workflow/memory.def.js";
 
-/**
- * @typedef {(server: McpServer, callLiveApi: Function, options: {smallModelMode: boolean}) => void} ToolDefFunction
- */
+export type CallLiveApiFunction = (
+  tool: string,
+  args: object,
+) => Promise<object>;
+
+interface CreateMcpServerOptions {
+  smallModelMode?: boolean;
+}
+
+type ToolDefFunction = (
+  server: McpServer,
+  callLiveApi: CallLiveApiFunction,
+  options: { smallModelMode: boolean },
+) => void;
 
 /**
  * Create and configure an MCP server instance
  *
- * @param {Function} callLiveApi - Function to call Live API
- * @param {{smallModelMode?: boolean}} options - Configuration options
- * @returns {McpServer} Configured MCP server instance
+ * @param callLiveApi - Function to call Live API
+ * @param options - Configuration options
+ * @returns Configured MCP server instance
  */
-export function createMcpServer(callLiveApi, options = {}) {
+export function createMcpServer(
+  callLiveApi: CallLiveApiFunction,
+  options: CreateMcpServerOptions = {},
+): McpServer {
   const { smallModelMode = false } = options;
 
   const server = new McpServer({
@@ -43,11 +57,8 @@ export function createMcpServer(callLiveApi, options = {}) {
     version: VERSION,
   });
 
-  /**
-   * @param {ToolDefFunction} toolDef - Tool definition function to register
-   * @returns {void}
-   */
-  const addTool = (toolDef) => toolDef(server, callLiveApi, { smallModelMode });
+  const addTool = (toolDef: ToolDefFunction): void =>
+    toolDef(server, callLiveApi, { smallModelMode });
 
   addTool(toolDefConnect);
 

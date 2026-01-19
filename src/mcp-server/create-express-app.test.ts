@@ -1,17 +1,25 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
+interface TestState {
+  client: Client | null;
+  transport: StreamableHTTPClientTransport | null;
+}
+
 /**
  * Create a test client and transport, returning cleanup function
- * @param {Function} getServerUrl - Function to get server URL
- * @returns {{ client: Client|null, transport: StreamableHTTPClientTransport|null }} Test state object
+ *
+ * @param getServerUrl - Function to get server URL
+ * @returns Test state object
  */
-function setupTestClient(getServerUrl) {
-  const state = { client: null, transport: null };
+function setupTestClient(getServerUrl: () => string): TestState {
+  const state: TestState = { client: null, transport: null };
 
   beforeAll(async () => {
     state.client = new Client({ name: "test-client", version: "1.0.0" });
@@ -29,8 +37,8 @@ function setupTestClient(getServerUrl) {
 }
 
 describe("MCP Express App", () => {
-  let server;
-  let serverUrl;
+  let server: Server | undefined;
+  let serverUrl: string;
 
   beforeAll(async () => {
     // Enable ppal-raw-live-api tool for testing
@@ -39,10 +47,10 @@ describe("MCP Express App", () => {
     // Import and start the server first
     const { createExpressApp } = await import("./create-express-app.js");
 
-    const app = createExpressApp({ timeoutMs: 100 }); // Use a short timeout to avoid hanging tests
-    const port = await new Promise((resolve) => {
+    const app = createExpressApp();
+    const port = await new Promise<number>((resolve) => {
       server = app.listen(0, () => {
-        resolve(server.address().port);
+        resolve((server!.address() as AddressInfo).port);
       });
     });
 
@@ -51,14 +59,14 @@ describe("MCP Express App", () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise((resolve) => server.close(resolve));
+      await new Promise<void>((resolve) => server!.close(() => resolve()));
     }
   });
 
   describe("Server Setup", () => {
     it("should register mcp_response handler when module loads", async () => {
       // Clear the mock and module cache to test fresh registration
-      Max.addHandler.mockClear();
+      (Max.addHandler as ReturnType<typeof vi.fn>).mockClear();
       vi.resetModules();
 
       // Re-import the module to trigger handler registration
@@ -94,7 +102,7 @@ describe("MCP Express App", () => {
 
     it("should list all available tools", async () => {
       const { client } = testState;
-      const result = await client.listTools();
+      const result = await client!.listTools();
 
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
@@ -128,7 +136,7 @@ describe("MCP Express App", () => {
 
     it("should provide tool schemas with correct names and descriptions", async () => {
       const { client } = testState;
-      const result = await client.listTools();
+      const result = await client!.listTools();
       const toolsByName = Object.fromEntries(
         result.tools.map((tool) => [tool.name, tool]),
       );
@@ -169,7 +177,7 @@ describe("MCP Express App", () => {
 
     it("should have valid input schemas for all tools", async () => {
       const { client } = testState;
-      const result = await client.listTools();
+      const result = await client!.listTools();
 
       // Every tool should have required fields
       for (const tool of result.tools) {
@@ -180,7 +188,7 @@ describe("MCP Express App", () => {
 
           expect(tool.description).toBeDefined();
           expect(typeof tool.description).toBe("string");
-          expect(tool.description.length).toBeGreaterThan(0);
+          expect(tool.description!.length).toBeGreaterThan(0);
 
           expect(tool.inputSchema).toBeDefined();
           expect(tool.inputSchema.type).toBe("object");
@@ -189,7 +197,7 @@ describe("MCP Express App", () => {
         } catch (error) {
           // Add tool name to error message for debugging
           throw new Error(
-            `Tool "${tool.name}" validation failed: ${error.message}`,
+            `Tool "${tool.name}" validation failed: ${(error as Error).message}`,
           );
         }
       }
@@ -200,9 +208,9 @@ describe("MCP Express App", () => {
       );
 
       expect(createClipTool).toBeDefined();
-      expect(createClipTool.description).toContain("Create MIDI or audio");
-      expect(createClipTool.inputSchema.properties.view).toBeDefined();
-      expect(createClipTool.inputSchema.properties.trackIndex).toBeDefined();
+      expect(createClipTool!.description).toContain("Create MIDI or audio");
+      expect(createClipTool!.inputSchema.properties!.view).toBeDefined();
+      expect(createClipTool!.inputSchema.properties!.trackIndex).toBeDefined();
     });
   });
 
@@ -214,24 +222,33 @@ describe("MCP Express App", () => {
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
-      const mockHandler = vi.fn((message, requestId, _tool, _argsJSON) => {
-        if (message === "mcp_request") {
-          // Simulate the response from Max after a short delay
-          setTimeout(() => {
-            // Call the real handleLiveApiResult with mock data in chunked format
-            Max.defaultMcpResponseHandler(
-              requestId,
-              JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
-              MAX_ERROR_DELIMITER,
-            );
-          }, 1);
-        }
-      });
+      const mockHandler = vi.fn(
+        (
+          message: string,
+          requestId: string,
+          _tool: string,
+          _argsJSON: string,
+        ) => {
+          if (message === "mcp_request") {
+            // Simulate the response from Max after a short delay
+            setTimeout(() => {
+              // Call the real handleLiveApiResult with mock data in chunked format
+              Max.defaultMcpResponseHandler(
+                requestId,
+                JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
+                MAX_ERROR_DELIMITER,
+              );
+            }, 1);
+          }
+
+          return Promise.resolve();
+        },
+      );
 
       // Replace Max.outlet with our mock for this test
-      Max.outlet = mockHandler;
+      Max.outlet = mockHandler as typeof Max.outlet;
 
-      const result = await client.callTool({
+      const result = await client!.callTool({
         name: "ppal-read-track",
         arguments: { trackIndex: 1 },
       });
@@ -239,10 +256,14 @@ describe("MCP Express App", () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(Array.isArray(result.content)).toBe(true);
-      expect(result.content[0].type).toBe("text");
+      expect((result.content[0] as { type: string; text: string }).type).toBe(
+        "text",
+      );
 
       // Parse the JSON response
-      const mockReturnValue = JSON.parse(result.content[0].text);
+      const mockReturnValue = JSON.parse(
+        (result.content[0] as { type: string; text: string }).text,
+      );
 
       // this is hard-coded in our mock response above:
       expect(mockReturnValue).toStrictEqual({});
@@ -267,9 +288,9 @@ describe("MCP Express App", () => {
       // Remove the mcp_response handler to cause a timeout on the request calling side of the flow:
       Max.mcpResponseHandler = null;
       // Also replace Max.outlet with a simple mock that doesn't auto-respond
-      Max.outlet = vi.fn();
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
 
-      const result = await client.callTool({
+      const result = await client!.callTool({
         name: "ppal-read-live-set",
         arguments: {},
       });
@@ -278,50 +299,54 @@ describe("MCP Express App", () => {
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain(
-        "Tool call 'ppal-read-live-set' timed out after 2ms",
+      expect((result.content[0] as { type: string; text: string }).type).toBe(
+        "text",
       );
+      expect(
+        (result.content[0] as { type: string; text: string }).text,
+      ).toContain("Tool call 'ppal-read-live-set' timed out after 2ms");
     });
 
     it("should handle tool with missing required arguments", async () => {
       const { client } = testState;
-      const result = await client.callTool({
+      const result = await client!.callTool({
         name: "delete-scene",
         arguments: {}, // Missing sceneIndex
       });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("MCP error -32602");
+      expect(
+        (result.content[0] as { type: string; text: string }).text,
+      ).toContain("MCP error -32602");
     });
 
     it("should handle unknown tool", async () => {
       const { client } = testState;
-      const result = await client.callTool({
+      const result = await client!.callTool({
         name: "nonexistent-tool",
         arguments: {},
       });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("MCP error -32602");
+      expect(
+        (result.content[0] as { type: string; text: string }).text,
+      ).toContain("MCP error -32602");
     });
 
-    it("should return isError: true when Max.outlet throws", async () => {
+    it("should return isError: true when Max.outlet rejects", async () => {
       const { client } = testState;
-      // This test verifies that errors thrown when sending to Max are properly
+      // This test verifies that errors from Max.outlet rejection are properly
       // caught and returned as MCP error responses with isError: true
       const errorMessage = "Simulated tool error";
 
       // Save the original mock to restore it after
       const originalOutlet = Max.outlet;
 
-      // Replace Max.outlet to throw an error instead of responding
-      Max.outlet = vi.fn(() => {
-        throw new Error(errorMessage);
-      });
+      // Replace Max.outlet to reject with an error instead of responding
+      Max.outlet = vi.fn().mockRejectedValue(new Error(errorMessage));
 
       try {
-        const result = await client.callTool({
+        const result = await client!.callTool({
           name: "ppal-read-track",
           arguments: { trackIndex: 0 },
         });
@@ -329,8 +354,12 @@ describe("MCP Express App", () => {
         expect(result).toBeDefined();
         expect(result.isError).toBe(true);
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe("text");
-        expect(result.content[0].text).toContain(errorMessage);
+        expect((result.content[0] as { type: string; text: string }).type).toBe(
+          "text",
+        );
+        expect(
+          (result.content[0] as { type: string; text: string }).text,
+        ).toContain(errorMessage);
       } finally {
         // Always restore the original mock
         if (Max.outlet) {
@@ -342,8 +371,8 @@ describe("MCP Express App", () => {
 
   describe("Multiple Concurrent Clients", () => {
     it("should handle multiple clients connecting simultaneously", async () => {
-      const clients = [];
-      const transports = [];
+      const clients: Client[] = [];
+      const transports: StreamableHTTPClientTransport[] = [];
 
       try {
         // Create 3 clients
@@ -437,7 +466,7 @@ describe("MCP Express App", () => {
   });
 
   describe("Chat UI", () => {
-    let chatUrl;
+    let chatUrl: string;
 
     beforeAll(() => {
       chatUrl = serverUrl.replace("/mcp", "/chat");
@@ -457,17 +486,19 @@ describe("MCP Express App", () => {
 
     it("should return 403 when chat UI is disabled", async () => {
       // The chatUIEnabled variable is module-level - get the handler and disable it
-      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+        input: unknown,
+      ) => void;
 
       chatUIHandler(0);
 
       // Create a new app instance to use the updated chatUIEnabled value
       const { createExpressApp } = await import("./create-express-app.js");
       const testApp = createExpressApp();
-      const testServer = await new Promise((resolve) => {
+      const testServer = await new Promise<Server>((resolve) => {
         const s = testApp.listen(0, () => resolve(s));
       });
-      const testChatUrl = `http://localhost:${testServer.address().port}/chat`;
+      const testChatUrl = `http://localhost:${(testServer.address() as AddressInfo).port}/chat`;
 
       try {
         const response = await fetch(testChatUrl);
@@ -478,7 +509,7 @@ describe("MCP Express App", () => {
         expect(text).toBe("Chat UI is disabled");
       } finally {
         // Clean up and re-enable for other tests
-        await new Promise((resolve) => testServer.close(resolve));
+        await new Promise<void>((resolve) => testServer.close(() => resolve()));
         chatUIHandler(1);
       }
     });
@@ -486,7 +517,9 @@ describe("MCP Express App", () => {
 
   describe("Handler Registration", () => {
     it("should set chatUIEnabled to true with 1", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+        input: unknown,
+      ) => void;
 
       expect(chatUIHandler).toBeDefined();
       // Input 1 should enable
@@ -495,14 +528,18 @@ describe("MCP Express App", () => {
     });
 
     it("should set chatUIEnabled to true with 'true'", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+        input: unknown,
+      ) => void;
 
       expect(chatUIHandler).toBeDefined();
       chatUIHandler("true");
     });
 
     it("should set chatUIEnabled to false with 0", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled");
+      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+        input: unknown,
+      ) => void;
 
       expect(chatUIHandler).toBeDefined();
       chatUIHandler(0);
@@ -511,7 +548,9 @@ describe("MCP Express App", () => {
     });
 
     it("should set smallModelMode with various inputs", () => {
-      const smallModelHandler = Max.handlers.get("smallModelMode");
+      const smallModelHandler = Max.handlers.get("smallModelMode") as (
+        input: unknown,
+      ) => void;
 
       expect(smallModelHandler).toBeDefined();
 

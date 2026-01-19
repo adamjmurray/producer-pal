@@ -4,10 +4,12 @@ import { VERSION } from "#src/shared/version.js";
 import { createExpressApp } from "./create-express-app.js";
 import * as console from "./node-for-max-logger.js";
 
+interface ServerError extends Error {
+  code?: string;
+}
+
 // Cast process to access Node.js argv (max-globals.d.ts has limited process type)
-const args = /** @type {{ argv: string[] }} */ (
-  /** @type {unknown} */ (process)
-).argv;
+const args = (process as unknown as { argv: string[] }).argv;
 
 let port = 3350;
 
@@ -38,9 +40,9 @@ appServer
     console.log(
       `Producer Pal ${VERSION} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );
-    Max.outlet("version", VERSION);
+    void Max.outlet("version", VERSION);
   })
-  .on("error", (/** @type {{ code?: string }} */ error) => {
+  .on("error", (error: ServerError) => {
     throw new Error(
       error.code === "EADDRINUSE"
         ? `Producer Pal failed to start: Port ${port} is already in use.`

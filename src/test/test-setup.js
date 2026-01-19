@@ -76,6 +76,8 @@ class Max {
           );
         }, 1);
       }
+
+      return Promise.resolve();
     },
   );
 }
