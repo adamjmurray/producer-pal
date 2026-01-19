@@ -3,8 +3,41 @@
  */
 import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
 
+interface TestNote {
+  note_id?: number;
+  pitch: number;
+  start_time: number;
+  duration: number;
+  velocity: number;
+  probability: number;
+  velocity_deviation: number;
+}
+
+interface CreateTestNoteOptions {
+  pitch?: number;
+  startTime: number;
+  duration?: number;
+  velocity?: number;
+}
+
+interface ClipProperties {
+  signature_numerator?: number;
+  signature_denominator?: number;
+  length?: number;
+  start_marker?: number;
+  end_marker?: number;
+  loop_start?: number;
+  loop_end?: number;
+  [key: string]: unknown;
+}
+
+interface SetupMidiClipMockOptions {
+  notes?: TestNote[];
+  clipProps: ClipProperties;
+}
+
 // Default test notes: C3, D3, E3 at beats 0, 1, 2
-export const defaultTestNotes = [
+export const defaultTestNotes: TestNote[] = [
   {
     note_id: 1,
     pitch: 60,
@@ -36,14 +69,14 @@ export const defaultTestNotes = [
 
 /**
  * Creates a test note object
- * @param {object} opts - Options
- * @param {number} opts.pitch - MIDI pitch (default 60 = C3)
- * @param {number} opts.startTime - Start time in Ableton beats
- * @param {number} [opts.duration=1] - Duration in beats
- * @param {number} [opts.velocity=100] - Velocity
- * @returns {object} Note object
+ * @param opts - Options
+ * @param opts.pitch - MIDI pitch (default 60 = C3)
+ * @param opts.startTime - Start time in Ableton beats
+ * @param opts.duration - Duration in beats
+ * @param opts.velocity - Velocity
+ * @returns Note object
  */
-export function createTestNote(opts) {
+export function createTestNote(opts: CreateTestNoteOptions): TestNote {
   const { pitch = 60, startTime, duration = 1, velocity = 100 } = opts;
 
   return {
@@ -58,12 +91,15 @@ export function createTestNote(opts) {
 
 /**
  * Helper to set up mocks for a MIDI clip with notes
- * @param {object} opts - Options
- * @param {Array} [opts.notes] - Notes array (defaults to defaultTestNotes)
- * @param {object} opts.clipProps - Clip properties to mock
+ * @param opts - Options
+ * @param opts.notes - Notes array (defaults to defaultTestNotes)
+ * @param opts.clipProps - Clip properties to mock
  */
-export function setupMidiClipMock({ notes = defaultTestNotes, clipProps }) {
-  liveApiCall.mockImplementation(function (method) {
+export function setupMidiClipMock({
+  notes = defaultTestNotes,
+  clipProps,
+}: SetupMidiClipMockOptions): void {
+  liveApiCall.mockImplementation(function (method: string) {
     if (method === "get_notes_extended") {
       return JSON.stringify({ notes });
     }
@@ -77,10 +113,10 @@ export function setupMidiClipMock({ notes = defaultTestNotes, clipProps }) {
 
 /**
  * Helper to set up liveApiCall mock for get_notes_extended
- * @param {Array} notes - Notes array to return
+ * @param notes - Notes array to return
  */
-export function setupNotesMock(notes) {
-  liveApiCall.mockImplementation((method) => {
+export function setupNotesMock(notes: TestNote[]): void {
+  liveApiCall.mockImplementation((method: string) => {
     if (method === "get_notes_extended") {
       return JSON.stringify({ notes });
     }
@@ -91,10 +127,12 @@ export function setupNotesMock(notes) {
 
 /**
  * Creates standard clip properties for 4/4 time
- * @param {object} [overrides] - Properties to override
- * @returns {object} Clip properties
+ * @param overrides - Properties to override
+ * @returns Clip properties
  */
-export function createClipProps44(overrides = {}) {
+export function createClipProps44(
+  overrides: ClipProperties = {},
+): ClipProperties {
   return {
     signature_numerator: 4,
     signature_denominator: 4,
@@ -109,10 +147,12 @@ export function createClipProps44(overrides = {}) {
 
 /**
  * Creates standard clip properties for 6/8 time
- * @param {object} [overrides] - Properties to override
- * @returns {object} Clip properties
+ * @param overrides - Properties to override
+ * @returns Clip properties
  */
-export function createClipProps68(overrides = {}) {
+export function createClipProps68(
+  overrides: ClipProperties = {},
+): ClipProperties {
   return {
     signature_numerator: 6,
     signature_denominator: 8,

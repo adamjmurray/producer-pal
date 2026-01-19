@@ -20,10 +20,10 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
 //  * Get the actual audio content end position for unlooped audio clips.
 //  * For unwarped clips: calculates from sample_length, sample_rate, and tempo.
 //  * For warped clips: uses warp markers (second-to-last marker).
-//  * @param {LiveAPI} clip - The audio clip to analyze
-//  * @returns {number} The end position of the audio in beats
+//  * @param clip - The audio clip to analyze
+//  * @returns The end position of the audio in beats
 //  */
-// export function getActualAudioEnd(clip) {
+// export function getActualAudioEnd(clip: LiveAPI): number {
 //   try {
 //     const isWarped = clip.getProperty("warping") === 1;
 
@@ -72,23 +72,23 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
  * Reveals hidden content in an unwarped audio clip using session holding area technique.
  * Creates a temp warped/looped clip, sets markers, then restores unwarp/unloop state.
  * ONLY used for unlooped + unwarped + audio clips with hidden content.
- * @param {LiveAPI} sourceClip - The source clip to get audio file from
- * @param {LiveAPI} track - The track to work with
- * @param {number} newStartMarker - Start marker for revealed content
- * @param {number} newEndMarker - End marker for revealed content
- * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {Partial<ToolContext>} _context - Context object with paths (unused)
- * @returns {LiveAPI} The revealed clip in arrangement
+ * @param sourceClip - The source clip to get audio file from
+ * @param track - The track to work with
+ * @param newStartMarker - Start marker for revealed content
+ * @param newEndMarker - End marker for revealed content
+ * @param targetPosition - Where to place revealed clip in arrangement
+ * @param _context - Context object with paths (unused)
+ * @returns The revealed clip in arrangement
  */
 function revealUnwarpedAudioContent(
-  sourceClip,
-  track,
-  newStartMarker,
-  newEndMarker,
-  targetPosition,
-  _context,
-) {
-  const filePath = /** @type {string} */ (sourceClip.getProperty("file_path"));
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  newStartMarker: number,
+  newEndMarker: number,
+  targetPosition: number,
+  _context: Partial<ToolContext>,
+): LiveAPI {
+  const filePath = sourceClip.getProperty("file_path") as string;
 
   console.error(
     `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
@@ -107,13 +107,11 @@ function revealUnwarpedAudioContent(
   tempClip.set("start_marker", newStartMarker);
 
   // Duplicate to arrangement WHILE STILL WARPED (preserves markers)
-  const result = /** @type {string} */ (
-    track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${tempClip.id}`,
-      targetPosition,
-    )
-  );
+  const result = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${tempClip.id}`,
+    targetPosition,
+  ) as string;
   const revealedClip = LiveAPI.from(result);
 
   // Unwarp and unloop the ARRANGEMENT clip (markers auto-convert to seconds)
@@ -121,9 +119,7 @@ function revealUnwarpedAudioContent(
   revealedClip.set("looping", 0);
 
   // Shorten the clip to only show the revealed portion (if needed)
-  const revealedClipEndTime = /** @type {number} */ (
-    revealedClip.getProperty("end_time")
-  );
+  const revealedClipEndTime = revealedClip.getProperty("end_time") as number;
   const targetLengthBeats = newEndMarker - newStartMarker;
   const expectedEndTime = targetPosition + targetLengthBeats;
   const EPSILON = 0.001;
@@ -135,16 +131,14 @@ function revealUnwarpedAudioContent(
       createAudioClipInSession(
         track,
         targetLengthBeats,
-        /** @type {string} */ (sourceClip.getProperty("file_path")),
+        sourceClip.getProperty("file_path") as string,
       );
 
-    const tempShortenerResult = /** @type {string} */ (
-      track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${tempShortenerClip.id}`,
-        revealedClipEndTime,
-      )
-    );
+    const tempShortenerResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${tempShortenerClip.id}`,
+      revealedClipEndTime,
+    ) as string;
 
     const tempShortener = LiveAPI.from(tempShortenerResult);
 
@@ -160,33 +154,31 @@ function revealUnwarpedAudioContent(
 /**
  * Reveals audio content at a target position with specific markers.
  * Handles both warped (looping workaround) and unwarped (session holding area) clips.
- * @param {LiveAPI} sourceClip - The source clip to duplicate from
- * @param {LiveAPI} track - The track to work with
- * @param {number} newStartMarker - Start marker for revealed content
- * @param {number} newEndMarker - End marker for revealed content
- * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {Partial<ToolContext>} _context - Context object
- * @returns {LiveAPI} The revealed clip in arrangement
+ * @param sourceClip - The source clip to duplicate from
+ * @param track - The track to work with
+ * @param newStartMarker - Start marker for revealed content
+ * @param newEndMarker - End marker for revealed content
+ * @param targetPosition - Where to place revealed clip in arrangement
+ * @param _context - Context object
+ * @returns The revealed clip in arrangement
  */
 export function revealAudioContentAtPosition(
-  sourceClip,
-  track,
-  newStartMarker,
-  newEndMarker,
-  targetPosition,
-  _context,
-) {
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  newStartMarker: number,
+  newEndMarker: number,
+  targetPosition: number,
+  _context: Partial<ToolContext>,
+): LiveAPI {
   const isWarped = sourceClip.getProperty("warping") === 1;
 
   if (isWarped) {
     // Warped: duplicate and use looping workaround
-    const duplicateResult = /** @type {string} */ (
-      track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
-        targetPosition,
-      )
-    );
+    const duplicateResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      targetPosition,
+    ) as string;
     const revealedClip = LiveAPI.from(duplicateResult);
 
     setClipMarkersWithLoopingWorkaround(revealedClip, {
@@ -210,19 +202,30 @@ export function revealAudioContentAtPosition(
   );
 }
 
+interface AudioParams {
+  /** Audio clip gain in decibels (-70 to 24) */
+  gainDb?: number;
+  /** Audio clip pitch shift in semitones (-48 to 48) */
+  pitchShift?: number;
+  /** Audio clip warp mode */
+  warpMode?: string;
+  /** Audio clip warping on/off */
+  warping?: boolean;
+}
+
 /**
  * Sets audio-specific parameters on a clip
- * @param {LiveAPI} clip - The audio clip
- * @param {object} params - Audio parameters
- * @param {number} [params.gainDb] - Audio clip gain in decibels (-70 to 24)
- * @param {number} [params.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
- * @param {string} [params.warpMode] - Audio clip warp mode
- * @param {boolean} [params.warping] - Audio clip warping on/off
+ * @param clip - The audio clip
+ * @param params - Audio parameters
+ * @param params.gainDb - Audio clip gain in decibels (-70 to 24)
+ * @param params.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
+ * @param params.warpMode - Audio clip warp mode
+ * @param params.warping - Audio clip warping on/off
  */
 export function setAudioParameters(
-  clip,
-  { gainDb, pitchShift, warpMode, warping },
-) {
+  clip: LiveAPI,
+  { gainDb, pitchShift, warpMode, warping }: AudioParams,
+): void {
   if (gainDb !== undefined) {
     const liveGain = dbToLiveGain(gainDb);
 
@@ -238,7 +241,7 @@ export function setAudioParameters(
   }
 
   if (warpMode !== undefined) {
-    const warpModeValue = {
+    const warpModeValue: Record<string, number> = {
       [WARP_MODE.BEATS]: LIVE_API_WARP_MODE_BEATS,
       [WARP_MODE.TONES]: LIVE_API_WARP_MODE_TONES,
       [WARP_MODE.TEXTURE]: LIVE_API_WARP_MODE_TEXTURE,
@@ -246,10 +249,10 @@ export function setAudioParameters(
       [WARP_MODE.COMPLEX]: LIVE_API_WARP_MODE_COMPLEX,
       [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
       [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
-    }[warpMode];
+    };
 
-    if (warpModeValue !== undefined) {
-      clip.set("warp_mode", warpModeValue);
+    if (warpModeValue[warpMode] !== undefined) {
+      clip.set("warp_mode", warpModeValue[warpMode]);
     }
   }
 
@@ -260,19 +263,19 @@ export function setAudioParameters(
 
 /**
  * Handles warp marker operations on a clip
- * @param {LiveAPI} clip - The audio clip
- * @param {string} warpOp - Operation: add, move, or remove
- * @param {number | undefined} warpBeatTime - Beat time for the warp marker
- * @param {number | undefined} [warpSampleTime] - Sample time (for add operation)
- * @param {number | undefined} [warpDistance] - Distance to move (for move operation)
+ * @param clip - The audio clip
+ * @param warpOp - Operation: add, move, or remove
+ * @param warpBeatTime - Beat time for the warp marker
+ * @param warpSampleTime - Sample time (for add operation)
+ * @param warpDistance - Distance to move (for move operation)
  */
 export function handleWarpMarkerOperation(
-  clip,
-  warpOp,
-  warpBeatTime,
-  warpSampleTime,
-  warpDistance,
-) {
+  clip: LiveAPI,
+  warpOp: string,
+  warpBeatTime: number | undefined,
+  warpSampleTime?: number | undefined,
+  warpDistance?: number | undefined,
+): void {
   // Validate audio clip
   const hasAudioFile = clip.getProperty("file_path") != null;
 

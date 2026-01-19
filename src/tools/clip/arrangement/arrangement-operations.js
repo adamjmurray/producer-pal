@@ -22,6 +22,7 @@ import {
  * @param {ArrangementContext} args.context - Tool execution context
  * @returns {Array<ClipIdResult>} Array of clip result objects to add to updatedClips
  */
+// eslint-disable-next-line import/no-unused-modules -- Used by TypeScript file update-clip-arrangement-helpers.ts
 export function handleArrangementLengthOperation({
   clip,
   isAudioClip,
