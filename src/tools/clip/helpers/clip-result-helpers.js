@@ -7,6 +7,14 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
 /**
+ * @typedef {object} MidiNote
+ * @property {number} pitch
+ * @property {number} start_time
+ * @property {number} duration
+ * @property {number} velocity
+ */
+
+/**
  * @typedef {object} ArrangementParams
  * @property {number | null} songTimeSigNumerator
  * @property {number | null} songTimeSigDenominator

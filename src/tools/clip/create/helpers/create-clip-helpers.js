@@ -19,6 +19,8 @@ import {
   buildClipResult,
 } from "./create-clip-result-helpers.js";
 
+/** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
+
 // Re-export for use by create-clip.js
 export { parseArrangementStartList };
 
@@ -185,14 +187,6 @@ function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
 
   return { clip, arrangementStartBeats };
 }
-
-/**
- * @typedef {object} MidiNote
- * @property {number} pitch
- * @property {number} start_time
- * @property {number} duration
- * @property {number} velocity
- */
 
 /**
  * Processes one clip creation at a specific position

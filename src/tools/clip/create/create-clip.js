@@ -19,6 +19,8 @@ import {
   processClipIteration,
 } from "./helpers/create-clip-helpers.js";
 
+/** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
+
 /**
  * @typedef {object} CreateClipArgs
  * @property {string} view - View for the clip ('Session' or 'Arrangement')
@@ -278,14 +280,6 @@ function createClips(
 
   return createdClips;
 }
-
-/**
- * @typedef {object} MidiNote
- * @property {number} pitch
- * @property {number} start_time
- * @property {number} duration
- * @property {number} velocity
- */
 
 /**
  * @typedef {object} PreparedClipData

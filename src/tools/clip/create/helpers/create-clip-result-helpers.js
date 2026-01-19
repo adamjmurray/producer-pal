@@ -1,5 +1,7 @@
 import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.js";
 
+/** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
+
 /**
  * @typedef {object} ClipPropertiesToSet
  * @property {number} start_marker
@@ -81,14 +83,6 @@ export function buildClipProperties(
 
   return propsToSet;
 }
-
-/**
- * @typedef {object} MidiNote
- * @property {number} pitch
- * @property {number} start_time
- * @property {number} duration
- * @property {number} velocity
- */
 
 /**
  * @typedef {object} ClipResultObject
