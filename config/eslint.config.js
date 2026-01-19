@@ -680,7 +680,7 @@ export default [
 
   // Test files - relax some rules
   {
-    files: ["**/*.test.{js,ts,tsx}"],
+    files: ["**/*.test.{js,ts,tsx}", "**/test-setup.js"],
     plugins: {
       vitest: vitestPlugin,
     },
