@@ -164,7 +164,9 @@ export function createClip(
     select({ view });
   }
 
-  return unwrapSingleResult(createdClips);
+  return /** @type {object | Array<object>} */ (
+    unwrapSingleResult(createdClips)
+  );
 }
 
 /**
@@ -184,12 +186,12 @@ export function createClip(
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @param {string | null} notationString - Original notation string
- * @param {Array} notes - Array of MIDI notes
+ * @param {Array<MidiNote>} notes - Array of MIDI notes
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
  * @param {string | null} length - Original length parameter
  * @param {string | null} sampleFile - Audio file path
- * @returns {Array} - Array of created clips
+ * @returns {Array<object>} - Array of created clips
  */
 function createClips(
   view,
@@ -278,6 +280,20 @@ function createClips(
 }
 
 /**
+ * @typedef {object} MidiNote
+ * @property {number} pitch
+ * @property {number} start_time
+ * @property {number} duration
+ * @property {number} velocity
+ */
+
+/**
+ * @typedef {object} PreparedClipData
+ * @property {Array<MidiNote>} notes
+ * @property {number} clipLength
+ */
+
+/**
  * Prepares clip data (notes and initial length) based on clip type
  * @param {string | null} sampleFile - Audio file path (if audio clip)
  * @param {string | null} notationString - MIDI notation string (if MIDI clip)
@@ -285,7 +301,7 @@ function createClips(
  * @param {number | null} endBeats - End position in beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {object} - Object with notes array and clipLength
+ * @returns {PreparedClipData} - Object with notes array and clipLength
  */
 function prepareClipData(
   sampleFile,
@@ -379,7 +395,7 @@ function validateCreateClipParams(
 /**
  * Calculates the clip length based on notes and parameters
  * @param {number | null} endBeats - End position in beats
- * @param {Array} notes - Array of MIDI notes
+ * @param {Array<MidiNote>} notes - Array of MIDI notes
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} - Calculated clip length in beats

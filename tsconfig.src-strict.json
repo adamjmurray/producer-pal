@@ -19,6 +19,9 @@
     "src/tools/workflow/**/*.js",
     "src/tools/live-set/**/*.js",
     "src/tools/samples/**/*.js",
+    "src/tools/clip/update/**/*.js",
+    "src/tools/clip/create/**/*.js",
+    "src/tools/clip/helpers/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
