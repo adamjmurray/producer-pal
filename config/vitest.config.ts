@@ -73,6 +73,9 @@ export default defineConfig({
         // test helper functions
         "**/*-test-helpers.{js,ts}",
 
+        // type definition only files (no executable code)
+        "src/notation/types.js",
+
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.{js,ts}",
         "src/mcp-server/mcp-server.{js,ts}",
@@ -90,8 +93,8 @@ export default defineConfig({
       thresholds: {
         statements: 98.25, // Keep above 98
         branches: 94, // Keep above 94
-        functions: 98.75, // Keep above 98
-        lines: 98.5, // Keep above 98
+        functions: 98.85, // Keep above 98
+        lines: 98.6, // Keep above 98
       },
     },
   },
