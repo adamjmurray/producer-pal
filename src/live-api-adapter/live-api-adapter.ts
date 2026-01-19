@@ -1,6 +1,5 @@
 /// <reference path="../types/live-api.d.ts" />
 /// <reference path="../types/max-globals.d.ts" />
-/* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.js";
 
@@ -65,6 +64,7 @@ function initHoldingArea(): void {
 Use the `(args) => toolFunction(args, context)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
+/* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const tools: Record<string, (args: unknown) => unknown> = {
   "ppal-connect": (args) => connect(args as any, context),
   "ppal-read-live-set": (args) => readLiveSet(args as any, context),
@@ -105,6 +105,7 @@ const tools: Record<string, (args: unknown) => unknown> = {
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
   tools["ppal-raw-live-api"] = (args) => rawLiveApi(args as any, context);
 }
+/* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**
  * Call a tool by name with the given arguments
