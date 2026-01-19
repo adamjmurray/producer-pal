@@ -38,7 +38,6 @@ export default defineConfig({
     execArgv,
     coverage: {
       provider: "v8",
-      ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
         "text-summary", // Minimal console output (just totals)
@@ -93,7 +92,7 @@ export default defineConfig({
       thresholds: {
         statements: 98.3, // Keep above 98
         branches: 94.1, // Keep above 94
-        functions: 98.85, // Keep above 98
+        functions: 99, // Keep above 99
         lines: 98.65, // Keep above 98
       },
     },

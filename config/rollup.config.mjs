@@ -65,6 +65,7 @@ export default [
               source.includes("/tools/scene/") ||
               source.includes("/tools/control/") ||
               source.includes("/tools/track/") ||
+              source.includes("/tools/device/") ||
               source.includes("/tools/operations/duplicate/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")

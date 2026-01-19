@@ -16,18 +16,38 @@ const RACK_TYPE_TO_DEVICE_NAME = {
   "audio-effect-rack": "Audio Effect Rack",
   "midi-effect-rack": "MIDI Effect Rack",
   [RACK_TYPE_INSTRUMENT]: "Instrument Rack",
-};
+} as const;
+
+type RackType = keyof typeof RACK_TYPE_TO_DEVICE_NAME;
+
+interface WrapDevicesOptions {
+  ids?: string;
+  path?: string;
+  toPath?: string;
+  name?: string;
+}
+
+interface WrapResult {
+  id: string;
+  type: string;
+  deviceCount: number;
+}
 
 /**
  * Wrap device(s) in a new rack
- * @param {object} options - The options
- * @param {string} [options.ids] - Comma-separated device ID(s)
- * @param {string} [options.path] - Comma-separated device path(s)
- * @param {string} [options.toPath] - Target path for the new rack
- * @param {string} [options.name] - Name for the new rack
- * @returns {{id: string, type: string, deviceCount: number} | null} Info about the created rack
+ * @param options - The options
+ * @param options.ids - Comma-separated device ID(s)
+ * @param options.path - Comma-separated device path(s)
+ * @param options.toPath - Target path for the new rack
+ * @param options.name - Name for the new rack
+ * @returns Info about the created rack
  */
-export function wrapDevicesInRack({ ids, path, toPath, name }) {
+export function wrapDevicesInRack({
+  ids,
+  path,
+  toPath,
+  name,
+}: WrapDevicesOptions): WrapResult | null {
   const items = parseCommaSeparatedIds(ids ?? path);
   const isIdBased = ids != null;
   const devices = resolveDevices(items, isIdBased);
@@ -53,19 +73,18 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
     ? resolveInsertionPath(toPath)
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
 
-  if (!container || !container.exists()) {
+  if (!container?.exists()) {
     console.error("Warning: wrapInRack: target container does not exist");
 
     return null;
   }
 
-  const rackName =
-    RACK_TYPE_TO_DEVICE_NAME[
-      /** @type {keyof typeof RACK_TYPE_TO_DEVICE_NAME} */ (rackType)
-    ];
-  const rackId = /** @type {string} */ (
-    container.call("insert_device", rackName, position ?? 0)
-  );
+  const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType as RackType];
+  const rackId = container.call(
+    "insert_device",
+    rackName,
+    position ?? 0,
+  ) as string;
   const rack = LiveAPI.from(rackId);
 
   if (name) {
@@ -111,18 +130,17 @@ export function wrapDevicesInRack({ ids, path, toPath, name }) {
 
 /**
  * Resolve device items (IDs or paths) to LiveAPI objects
- * @param {string[]} items - Device IDs or paths
- * @param {boolean} isIdBased - True if items are IDs, false if paths
- * @returns {LiveAPI[]} Array of device LiveAPI objects
+ * @param items - Device IDs or paths
+ * @param isIdBased - True if items are IDs, false if paths
+ * @returns Array of device LiveAPI objects
  */
-function resolveDevices(items, isIdBased) {
-  /** @type {LiveAPI[]} */
-  const devices = [];
+function resolveDevices(items: string[], isIdBased: boolean): LiveAPI[] {
+  const devices: LiveAPI[] = [];
 
   for (const item of items) {
     const device = isIdBased ? LiveAPI.from(item) : resolveDeviceFromPath(item);
 
-    if (device && device.exists()) {
+    if (device?.exists()) {
       const type = device.type;
 
       if (type.endsWith("Device")) {
@@ -140,10 +158,10 @@ function resolveDevices(items, isIdBased) {
 
 /**
  * Resolve a device from a simplified path
- * @param {string} path - Device path
- * @returns {LiveAPI | null} Device LiveAPI or null if not found
+ * @param path - Device path
+ * @returns Device LiveAPI or null if not found
  */
-function resolveDeviceFromPath(path) {
+function resolveDeviceFromPath(path: string): LiveAPI | null {
   const resolved = resolveInsertionPath(path);
 
   if (!resolved.container) {
@@ -161,14 +179,14 @@ function resolveDeviceFromPath(path) {
 
 /**
  * Determine the appropriate rack type for wrapping devices
- * @param {LiveAPI[]} devices - Devices to wrap
- * @returns {string | null} Rack type or null if incompatible
+ * @param devices - Devices to wrap
+ * @returns Rack type or null if incompatible
  */
-function determineRackType(devices) {
-  const types = new Set();
+function determineRackType(devices: LiveAPI[]): string | null {
+  const types = new Set<number>();
 
   for (const device of devices) {
-    const deviceType = device.getProperty("type");
+    const deviceType = device.getProperty("type") as number;
 
     types.add(deviceType);
   }
@@ -203,16 +221,17 @@ function determineRackType(devices) {
 
 /**
  * Get the parent container and position for a device
- * @param {LiveAPI} device - Device to get insertion point for
- * @returns {{container: LiveAPI, position: number}} Container and position
+ * @param device - Device to get insertion point for
+ * @returns Container and position
  */
-function getDeviceInsertionPoint(device) {
+function getDeviceInsertionPoint(device: LiveAPI): {
+  container: LiveAPI;
+  position: number;
+} {
   const parentPath = device.path.replace(/ devices \d+$/, "");
   const container = LiveAPI.from(parentPath);
   const match = device.path.match(/ devices (\d+)$/);
-  const position = match
-    ? Number.parseInt(/** @type {string} */ (match[1]))
-    : 0;
+  const position = match ? Number.parseInt(match[1] as string) : 0;
 
   return { container, position };
 }
@@ -220,12 +239,16 @@ function getDeviceInsertionPoint(device) {
 /**
  * Wrap instrument(s) in an Instrument Rack using temp-track workaround.
  * Live doesn't allow creating Instrument Rack on track with existing instrument.
- * @param {LiveAPI[]} devices - Instrument device(s) to wrap
- * @param {string} [toPath] - Target path for the new rack
- * @param {string} [name] - Name for the new rack
- * @returns {{id: string, type: string, deviceCount: number}} Info about the created rack
+ * @param devices - Instrument device(s) to wrap
+ * @param toPath - Target path for the new rack
+ * @param name - Name for the new rack
+ * @returns Info about the created rack
  */
-function wrapInstrumentsInRack(devices, toPath, name) {
+function wrapInstrumentsInRack(
+  devices: LiveAPI[],
+  toPath?: string,
+  name?: string,
+): WrapResult {
   const liveSet = LiveAPI.from("live_set");
   const firstDevice = assertDefined(devices[0], "first device");
 
@@ -234,9 +257,7 @@ function wrapInstrumentsInRack(devices, toPath, name) {
     getDeviceInsertionPoint(firstDevice);
 
   // 2. Create temp MIDI track (appended)
-  const tempTrackId = /** @type {string} */ (
-    liveSet.call("create_midi_track", -1)
-  );
+  const tempTrackId = liveSet.call("create_midi_track", -1) as string;
   const tempTrack = LiveAPI.from(tempTrackId);
   const tempTrackIndex = tempTrack.trackIndex;
 
@@ -253,13 +274,15 @@ function wrapInstrumentsInRack(devices, toPath, name) {
       ? resolveInsertionPath(toPath)
       : { container: sourceContainer, position: devicePosition };
 
-    if (!container || !container.exists()) {
+    if (!container?.exists()) {
       throw new Error(`wrapInRack: target container does not exist`);
     }
 
-    const rackId = /** @type {string} */ (
-      container.call("insert_device", "Instrument Rack", position ?? 0)
-    );
+    const rackId = container.call(
+      "insert_device",
+      "Instrument Rack",
+      position ?? 0,
+    ) as string;
     const rack = LiveAPI.from(rackId);
 
     if (name) {
@@ -308,9 +331,9 @@ function wrapInstrumentsInRack(devices, toPath, name) {
 
 /**
  * Format an ID with "id " prefix if needed
- * @param {string} id - ID to format
- * @returns {string} Formatted ID
+ * @param id - ID to format
+ * @returns Formatted ID
  */
-function formatId(id) {
+function formatId(id: string): string {
   return id.startsWith("id ") ? id : `id ${id}`;
 }

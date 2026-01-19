@@ -4,10 +4,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
   description: "Update device(s), chain(s), or drum pad(s)",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
     ids: z
       .string()
@@ -20,6 +22,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "Comma-separated device/chain/drum-pad path(s): t=track, rt=return, mt=master, d=device, c=chain, rc=return chain, p=drum pad. " +
           "E.g., 't1/d0' (device), 't1/d0/c0,t1/d0/c1' (chains), 't1/d0/pC1' (drum pad)",
       ),
+
     toPath: z
       .string()
       .optional()
@@ -62,6 +65,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
       ),
+
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: z.string().optional().describe("color #RRGGBB (chains only)"),
@@ -81,6 +85,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .optional()
       .describe("Wrap device(s) in a new rack (auto-detects type from device)"),
   },
+
   smallModelModeConfig: {
     excludeParams: [
       "macroVariation",

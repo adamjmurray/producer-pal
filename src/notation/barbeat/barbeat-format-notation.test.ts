@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.js";
 import { formatNotation } from "./barbeat-format-notation.js";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.js";

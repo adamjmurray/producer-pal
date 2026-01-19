@@ -55,7 +55,7 @@ describe("updateDevice - division params", () => {
 
     liveApiCall.mockImplementation(function (method, value) {
       if (method === "str_for_value" && this._path === "id 793") {
-        return divisionMap[String(value)] || String(value);
+        return divisionMap[String(value)] ?? String(value);
       }
 
       return String(value);

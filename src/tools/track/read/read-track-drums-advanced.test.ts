@@ -2,10 +2,32 @@ import { describe, expect, it } from "vitest";
 import { children, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import {
+  createDrumChainMock,
+  createSimpleInstrumentMock,
   mockTrackProperties,
   setupDevicePathIdMock,
 } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
+
+/**
+ * Creates a standard drum rack mock object for testing
+ * @param {object} opts - Options
+ * @param {string[]} opts.chainIds - Chain children IDs
+ * @returns {object} Drum rack mock
+ */
+function createDrumRackMock(opts) {
+  return {
+    name: "Test Drum Rack",
+    class_name: "DrumGroupDevice",
+    class_display_name: "Drum Rack",
+    type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    is_active: 1,
+    can_have_chains: 1,
+    can_have_drum_pads: 1,
+    chains: children(...opts.chainIds),
+    return_chains: [],
+  };
+}
 
 describe("readTrack", () => {
   describe("drumPads", () => {
@@ -118,47 +140,22 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drum_rack"),
+        Track: mockTrackProperties({ devices: children("drum_rack") }),
+        drum_rack: createDrumRackMock({
+          chainIds: ["kick_chain", "empty_chain"],
         }),
-        drum_rack: {
-          name: "Test Drum Rack",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("kick_chain", "empty_chain"),
-          return_chains: [],
-        },
-        kick_chain: {
-          in_note: 36, // C1
+        kick_chain: createDrumChainMock({
+          inNote: 36,
           name: "Kick",
           color: 16711680,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("kick_device"),
-        },
-        empty_chain: {
-          in_note: 37, // Db1
+          deviceId: "kick_device",
+        }),
+        empty_chain: createDrumChainMock({
+          inNote: 37,
           name: "Empty",
           color: 65280,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [], // No devices = no instruments
-        },
-        kick_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }), // No deviceId = no instruments
+        kick_device: createSimpleInstrumentMock(),
       });
 
       const result = readTrack({
@@ -210,65 +207,29 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drum_rack"),
+        Track: mockTrackProperties({ devices: children("drum_rack") }),
+        drum_rack: createDrumRackMock({
+          chainIds: ["kick_chain", "empty_chain", "snare_chain"],
         }),
-        drum_rack: {
-          name: "Test Drum Rack",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("kick_chain", "empty_chain", "snare_chain"),
-          return_chains: [],
-        },
-        kick_chain: {
-          in_note: 36, // C1
+        kick_chain: createDrumChainMock({
+          inNote: 36,
           name: "Kick",
           color: 16711680,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("kick_device"),
-        },
-        empty_chain: {
-          in_note: 37, // Db1
+          deviceId: "kick_device",
+        }),
+        empty_chain: createDrumChainMock({
+          inNote: 37,
           name: "Empty",
           color: 65280,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [], // No devices = no instruments
-        },
-        snare_chain: {
-          in_note: 38, // D1
+        }), // No deviceId = no instruments
+        snare_chain: createDrumChainMock({
+          inNote: 38,
           name: "Snare",
           color: 255,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("snare_device"),
-        },
-        kick_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        snare_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+          deviceId: "snare_device",
+        }),
+        kick_device: createSimpleInstrumentMock(),
+        snare_device: createSimpleInstrumentMock(),
       });
 
       const result = readTrack({ trackIndex: 0 });
@@ -294,29 +255,14 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drum_rack"),
-        }),
-        drum_rack: {
-          name: "Test Drum Rack",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("kick_chain"),
-          return_chains: [],
-        },
-        kick_chain: {
-          in_note: 36, // C1
+        Track: mockTrackProperties({ devices: children("drum_rack") }),
+        drum_rack: createDrumRackMock({ chainIds: ["kick_chain"] }),
+        kick_chain: createDrumChainMock({
+          inNote: 36,
           name: "Kick",
           color: 16711680,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("nested_rack"), // Nested rack instead of direct instrument
-        },
+          deviceId: "nested_rack", // Nested rack instead of direct instrument
+        }),
         nested_rack: {
           name: "Nested Rack",
           class_name: "InstrumentGroupDevice",
@@ -336,15 +282,7 @@ describe("readTrack", () => {
           solo: 0,
           devices: children("nested_instrument"),
         },
-        nested_instrument: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        nested_instrument: createSimpleInstrumentMock(),
       });
 
       const result = readTrack({
