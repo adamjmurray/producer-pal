@@ -5,13 +5,22 @@ import {
 } from "./helpers/arrangement-operations-helpers.js";
 
 /**
+ * @typedef {import("./helpers/arrangement-operations-helpers.js").ArrangementContext} ArrangementContext
+ */
+
+/**
+ * @typedef {object} ClipIdResult
+ * @property {string} id - Clip ID
+ */
+
+/**
  * Handle arrangement length changes (lengthening via tiling/exposure or shortening)
  * @param {object} args - Operation arguments
- * @param {object} args.clip - The LiveAPI clip object
+ * @param {LiveAPI} args.clip - The LiveAPI clip object
  * @param {boolean} args.isAudioClip - Whether the clip is an audio clip
  * @param {number} args.arrangementLengthBeats - Target length in beats
- * @param {object} args.context - Tool execution context
- * @returns {Array} Array of clip result objects to add to updatedClips
+ * @param {ArrangementContext} args.context - Tool execution context
+ * @returns {Array<ClipIdResult>} Array of clip result objects to add to updatedClips
  */
 export function handleArrangementLengthOperation({
   clip,
@@ -19,8 +28,10 @@ export function handleArrangementLengthOperation({
   arrangementLengthBeats,
   context,
 }) {
+  /** @type {Array<ClipIdResult>} */
   const updatedClips = [];
-  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+  const isArrangementClip =
+    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
 
   if (!isArrangementClip) {
     console.error(
@@ -31,8 +42,10 @@ export function handleArrangementLengthOperation({
   }
 
   // Get current clip dimensions
-  const currentStartTime = clip.getProperty("start_time");
-  const currentEndTime = clip.getProperty("end_time");
+  const currentStartTime = /** @type {number} */ (
+    clip.getProperty("start_time")
+  );
+  const currentEndTime = /** @type {number} */ (clip.getProperty("end_time"));
   const currentArrangementLength = currentEndTime - currentStartTime;
 
   // Check if shortening, lengthening, or same

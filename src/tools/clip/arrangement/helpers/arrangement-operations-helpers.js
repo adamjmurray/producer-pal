@@ -5,16 +5,53 @@ import {
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.js";
 
 /**
+ * @typedef {object} ArrangementContext
+ * @property {number} [holdingAreaStartBeats] - Start position of holding area
+ * @property {string} [silenceWavPath] - Path to silence WAV file (required for audio clips)
+ */
+
+/**
+ * @typedef {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} TilingContext
+ */
+
+/**
+ * @typedef {object} ClipIdResult
+ * @property {string} id - Clip ID
+ */
+
+/**
+ * Wrapper for tileClipToRange with type casts for ArrangementContext
+ * @param {LiveAPI} clip - Source clip
+ * @param {LiveAPI} track - Track to tile on
+ * @param {number} position - Start position
+ * @param {number} length - Length to tile
+ * @param {ArrangementContext} ctx - Context with holding area info
+ * @param {object} options - Tiling options
+ * @returns {Array<ClipIdResult>} Array of tiled clip info
+ */
+function tileWithContext(clip, track, position, length, ctx, options) {
+  return tileClipToRange(
+    clip,
+    track,
+    position,
+    length,
+    /** @type {number} */ (ctx.holdingAreaStartBeats),
+    /** @type {TilingContext} */ (ctx),
+    options,
+  );
+}
+
+/**
  * Handle lengthening of arrangement clips via tiling or content exposure
  * @param {object} options - Parameters object
- * @param {object} options.clip - The LiveAPI clip object to lengthen
+ * @param {LiveAPI} options.clip - The LiveAPI clip object to lengthen
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentArrangementLength - Current length in beats
  * @param {number} options.currentStartTime - Current start time in beats
  * @param {number} options.currentEndTime - Current end time in beats
- * @param {object} options.context - Tool execution context with holding area info
- * @returns {Array<object>} - Array of updated clip info
+ * @param {ArrangementContext} options.context - Tool execution context with holding area info
+ * @returns {Array<ClipIdResult>} - Array of updated clip info
  */
 export function handleArrangementLengthening({
   clip,
@@ -25,13 +62,16 @@ export function handleArrangementLengthening({
   currentEndTime,
   context,
 }) {
+  /** @type {Array<ClipIdResult>} */
   const updatedClips = [];
 
-  const isLooping = clip.getProperty("looping") > 0;
-  const clipLoopStart = clip.getProperty("loop_start");
-  const clipLoopEnd = clip.getProperty("loop_end");
-  const clipStartMarker = clip.getProperty("start_marker");
-  const clipEndMarker = clip.getProperty("end_marker");
+  const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
+  const clipLoopStart = /** @type {number} */ (clip.getProperty("loop_start"));
+  const clipLoopEnd = /** @type {number} */ (clip.getProperty("loop_end"));
+  const clipStartMarker = /** @type {number} */ (
+    clip.getProperty("start_marker")
+  );
+  const clipEndMarker = /** @type {number} */ (clip.getProperty("end_marker"));
 
   // For unlooped clips, use end_marker - start_marker (actual playback length)
   // For looped clips, use loop region
@@ -69,12 +109,11 @@ export function handleArrangementLengthening({
     // Expose hidden content by tiling with start_marker offsets
     const currentOffset = clipStartMarker - clipLoopStart;
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileClipToRange(
+    const tiledClips = tileWithContext(
       clip,
       track,
       currentEndTime,
       remainingLength,
-      context.holdingAreaStartBeats,
       context,
       {
         adjustPreRoll: false,
@@ -112,7 +151,7 @@ export function handleArrangementLengthening({
 /**
  * Create tiles for looped clips
  * @param {object} options - Parameters object
- * @param {object} options.clip - The LiveAPI clip object
+ * @param {LiveAPI} options.clip - The LiveAPI clip object
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentArrangementLength - Current length in beats
@@ -120,9 +159,9 @@ export function handleArrangementLengthening({
  * @param {number} options.currentEndTime - Current end time in beats
  * @param {number} options.totalContentLength - Total content length in beats
  * @param {number} options.currentOffset - Current offset from loop start
- * @param {object} options.track - The LiveAPI track object
- * @param {object} options.context - Tool execution context
- * @returns {Array<object>} - Array of tiled clip info
+ * @param {LiveAPI} options.track - The LiveAPI track object
+ * @param {ArrangementContext} options.context - Tool execution context
+ * @returns {Array<ClipIdResult>} - Array of tiled clip info
  */
 function createLoopeClipTiles({
   clip,
@@ -136,17 +175,17 @@ function createLoopeClipTiles({
   track,
   context,
 }) {
+  /** @type {Array<ClipIdResult>} */
   const updatedClips = [];
 
   // If clip not showing full content, tile with start_marker offsets
   if (currentArrangementLength < totalContentLength) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileClipToRange(
+    const tiledClips = tileWithContext(
       clip,
       track,
       currentEndTime,
       remainingLength,
-      context.holdingAreaStartBeats,
       context,
       {
         adjustPreRoll: true,
@@ -177,22 +216,22 @@ function createLoopeClipTiles({
       const { clip: sessionClip, slot } = createAudioClipInSession(
         track,
         tempClipLength,
-        context.silenceWavPath,
+        /** @type {string} */ (context.silenceWavPath),
       );
-      const tempResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        newEndTime,
+      const tempResult = /** @type {string} */ (
+        track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${sessionClip.id}`,
+          newEndTime,
+        )
       );
       const tempClip = LiveAPI.from(tempResult);
 
       slot.call("delete_clip");
       track.call("delete_clip", `id ${tempClip.id}`);
     } else {
-      const tempClipPath = track.call(
-        "create_midi_clip",
-        newEndTime,
-        tempClipLength,
+      const tempClipPath = /** @type {string} */ (
+        track.call("create_midi_clip", newEndTime, tempClipLength)
       );
       const tempClip = LiveAPI.from(tempClipPath);
 
@@ -202,14 +241,16 @@ function createLoopeClipTiles({
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;
     const remainingSpace = arrangementLengthBeats - firstTileLength;
-    const tiledClips = tileClipToRange(
+    const tiledClips = tileWithContext(
       clip,
       track,
       newEndTime,
       remainingSpace,
-      context.holdingAreaStartBeats,
       context,
-      { adjustPreRoll: true, tileLength: firstTileLength },
+      {
+        adjustPreRoll: true,
+        tileLength: firstTileLength,
+      },
     );
 
     updatedClips.push(...tiledClips);
@@ -220,14 +261,16 @@ function createLoopeClipTiles({
   // Tile the properly-sized clip
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
-  const tiledClips = tileClipToRange(
+  const tiledClips = tileWithContext(
     clip,
     track,
     currentEndTime,
     remainingSpace,
-    context.holdingAreaStartBeats,
     context,
-    { adjustPreRoll: true, tileLength: firstTileLength },
+    {
+      adjustPreRoll: true,
+      tileLength: firstTileLength,
+    },
   );
 
   updatedClips.push(...tiledClips);
@@ -238,12 +281,12 @@ function createLoopeClipTiles({
 /**
  * Handle arrangement clip shortening
  * @param {object} options - Parameters object
- * @param {object} options.clip - The LiveAPI clip object to shorten
+ * @param {LiveAPI} options.clip - The LiveAPI clip object to shorten
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentStartTime - Current start time in beats
  * @param {number} options.currentEndTime - Current end time in beats
- * @param {object} options.context - Tool execution context
+ * @param {ArrangementContext} options.context - Tool execution context
  */
 export function handleArrangementShortening({
   clip,
@@ -279,7 +322,7 @@ export function handleArrangementShortening({
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
       tempClipLength,
-      context.silenceWavPath,
+      /** @type {string} */ (context.silenceWavPath),
     );
     const tempResult = /** @type {string} */ (
       track.call(
