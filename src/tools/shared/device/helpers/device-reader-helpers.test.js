@@ -691,5 +691,68 @@ describe("device-reader-helpers", () => {
 
       expect(deviceInfo.returnChains).toBeUndefined();
     });
+
+    it("processes return chains with nested devices and builds paths", () => {
+      const mockNestedDevice = { id: "nested-dev-1" };
+      const createReturnChain = (name) => ({
+        id: `return-chain-${name}`,
+        type: "Chain",
+        getProperty: (prop) => {
+          if (prop === "name") return name;
+
+          return 0;
+        },
+        getColor: () => null,
+        getChildren: (child) => {
+          if (child === "devices") return [mockNestedDevice];
+
+          return [];
+        },
+      });
+
+      const mockDevice = {
+        getChildren: (child) => {
+          if (child === "chains") return [];
+          if (child === "return_chains") return [createReturnChain("Return A")];
+
+          return [];
+        },
+      };
+
+      const deviceInfo = {};
+
+      const readDeviceCalls = [];
+
+      const mockReadDevice = (device, options) => {
+        readDeviceCalls.push({ device, options });
+
+        return { id: device.id, type: "effect" };
+      };
+
+      processDeviceChains(
+        mockDevice,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn: mockReadDevice,
+          devicePath: "0",
+        },
+      );
+
+      expect(deviceInfo.returnChains).toHaveLength(1);
+      expect(deviceInfo.returnChains[0].devices).toHaveLength(1);
+      expect(deviceInfo.returnChains[0].devices[0]).toMatchObject({
+        id: "nested-dev-1",
+        type: "effect",
+      });
+      // Verify readDevice was called with correct nested path
+      expect(readDeviceCalls).toHaveLength(1);
+      expect(readDeviceCalls[0].options.parentPath).toBe("0/rc0/0");
+    });
   });
 });

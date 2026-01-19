@@ -183,6 +183,25 @@ describe("toHaveBeenCalledWithThis", () => {
       ["array", "arg"],
     );
   });
+
+  it("negation (.not) fails when mock was called with expected context and args", () => {
+    const mock = {
+      id: "test-id",
+      fn: vi.fn(),
+    };
+
+    mock.fn("expected", "args");
+
+    expect(() => {
+      expect(mock.fn).not.toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "test-id" }),
+        "expected",
+        "args",
+      );
+    }).toThrow(
+      "Expected mock function not to have been called with this context and args",
+    );
+  });
 });
 
 describe("toHaveBeenNthCalledWithThis", () => {
@@ -357,6 +376,27 @@ describe("toHaveBeenNthCalledWithThis", () => {
     expect(caughtError.message).toContain('"second"');
     expect(caughtError.message).toContain("2");
   });
+
+  it("negation (.not) fails when nth call matches expected context and args", () => {
+    const mock = {
+      id: "test-id",
+      fn: vi.fn(),
+    };
+
+    mock.fn("first", "call");
+    mock.fn("second", "call");
+
+    expect(() => {
+      expect(mock.fn).not.toHaveBeenNthCalledWithThis(
+        2,
+        expect.objectContaining({ id: "test-id" }),
+        "second",
+        "call",
+      );
+    }).toThrow(
+      "Expected mock function not to have been called the 2th time with",
+    );
+  });
 });
 
 describe("toHaveBeenCalledExactlyOnceWithThis", () => {
@@ -524,5 +564,24 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
     expect(caughtError.message).toContain("But it was called once with:");
     expect(caughtError.message).toContain('"actual"');
     expect(caughtError.message).toContain('"expected"');
+  });
+
+  it("negation (.not) fails when mock was called exactly once with expected context and args", () => {
+    const mock = {
+      id: "test-id",
+      fn: vi.fn(),
+    };
+
+    mock.fn("expected", "args");
+
+    expect(() => {
+      expect(mock.fn).not.toHaveBeenCalledExactlyOnceWithThis(
+        expect.objectContaining({ id: "test-id" }),
+        "expected",
+        "args",
+      );
+    }).toThrow(
+      "Expected mock function not to have been called exactly once with",
+    );
   });
 });
