@@ -5,6 +5,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
+import { createNote } from "#src/test/test-data-builders.js";
 import {
   setupMidiClipMock,
   setupMocks,
@@ -36,16 +37,7 @@ describe("updateClip - Basic operations", () => {
 
     // Mock existing notes, then return added notes on subsequent calls
     let addedNotes = [];
-    const existingNotes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1,
-        velocity_deviation: 0,
-      },
-    ];
+    const existingNotes = [createNote()];
 
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "add_new_notes") {
@@ -279,22 +271,8 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       {
         notes: [
-          {
-            pitch: 72,
-            velocity: 80,
-            start_time: 0,
-            duration: 2,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 74,
-            velocity: 120,
-            start_time: 2,
-            duration: 1,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          createNote({ pitch: 72, velocity: 80, duration: 2 }),
+          createNote({ pitch: 74, velocity: 120, start_time: 2 }),
         ],
       },
     );
@@ -318,22 +296,8 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       {
         notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 3,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          createNote({ duration: 0.5 }),
+          createNote({ pitch: 62, start_time: 3, duration: 0.5 }),
         ],
       },
     );
@@ -368,22 +332,8 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       {
         notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 3, // Beat 3 in 3/4 time
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          createNote(),
+          createNote({ pitch: 62, start_time: 3 }), // Beat 3 in 3/4 time
         ],
       },
     );
@@ -406,46 +356,34 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       {
         notes: [
-          {
-            pitch: 36,
-            start_time: 0,
-            duration: 0.25,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
+          createNote({ pitch: 36, duration: 0.25 }),
+          createNote({
             pitch: 42,
-            start_time: 0,
             duration: 0.25,
             velocity: 80,
             probability: 0.8,
             velocity_deviation: 20,
-          },
-          {
+          }),
+          createNote({
             pitch: 42,
             start_time: 0.5,
             duration: 0.25,
             velocity: 80,
             probability: 0.6,
             velocity_deviation: 20,
-          },
-          {
+          }),
+          createNote({
             pitch: 38,
             start_time: 1,
             duration: 0.25,
             velocity: 90,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
+          }),
+          createNote({
             pitch: 42,
             start_time: 1,
             duration: 0.25,
-            velocity: 100,
             probability: 0.9,
-            velocity_deviation: 0,
-          },
+          }),
         ],
       },
     );

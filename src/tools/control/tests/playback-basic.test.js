@@ -10,6 +10,7 @@ import {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
+import { setupClipWithNoTrackPath } from "./playback-test-helpers.js";
 
 describe("transport", () => {
   beforeEach(() => {
@@ -512,32 +513,7 @@ describe("transport", () => {
   });
 
   it("should throw error when clip has no trackIndex for play-session-clips", () => {
-    // Mock a clip that exists but has no trackIndex
-    liveApiPath.mockImplementation(function () {
-      // Return path without track info for clip1
-      if (this._id === "clip1") {
-        return "some_invalid_path"; // No track info in path
-      }
-
-      return this._path;
-    });
-
-    liveApiId.mockImplementation(function () {
-      // Return valid ID for clip1 (LiveAPI constructor stores ID in _id)
-      if (this._id === "clip1") {
-        return "id clip1";
-      }
-
-      return "id 1";
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "Clip";
-      }
-
-      return "LiveSet";
-    });
+    setupClipWithNoTrackPath("clip1");
 
     expect(() =>
       playback({
@@ -550,32 +526,7 @@ describe("transport", () => {
   });
 
   it("should throw error when clip has no trackIndex for stop-session-clips", () => {
-    // Mock a clip that exists but has no trackIndex
-    liveApiPath.mockImplementation(function () {
-      // Return path without track info for clip1
-      if (this._id === "clip1") {
-        return "some_invalid_path"; // No track info in path
-      }
-
-      return this._path;
-    });
-
-    liveApiId.mockImplementation(function () {
-      // Return valid ID for clip1 (LiveAPI constructor stores ID in _id)
-      if (this._id === "clip1") {
-        return "id clip1";
-      }
-
-      return "id 1";
-    });
-
-    liveApiType.mockImplementation(function () {
-      if (this._id === "clip1") {
-        return "Clip";
-      }
-
-      return "LiveSet";
-    });
+    setupClipWithNoTrackPath("clip1");
 
     expect(() =>
       playback({

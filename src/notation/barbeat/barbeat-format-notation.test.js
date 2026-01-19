@@ -1,3 +1,4 @@
+import { createNote } from "#src/test/test-data-builders.js";
 import { formatNotation } from "./barbeat-format-notation.js";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.js";
 
@@ -10,30 +11,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats simple notes with defaults", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62 }),
+      createNote({ pitch: 64 }),
     ];
     const result = formatNotation(notes);
 
@@ -42,30 +22,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with time changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 1,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 4,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, start_time: 1 }),
+      createNote({ pitch: 64, start_time: 4 }),
     ];
     const result = formatNotation(notes);
 
@@ -74,30 +33,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with probability changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.8,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.5,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 0.5,
-        velocity_deviation: 0,
-      },
+      createNote({ probability: 0.8 }),
+      createNote({ pitch: 62, probability: 0.5 }),
+      createNote({ pitch: 64, probability: 0.5 }),
     ];
     const result = formatNotation(notes);
 
@@ -106,30 +44,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with velocity changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 120,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 120,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ velocity: 80 }),
+      createNote({ pitch: 62, velocity: 120 }),
+      createNote({ pitch: 64, velocity: 120 }),
     ];
     const result = formatNotation(notes);
 
@@ -138,30 +55,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with velocity range changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 60,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 60,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
+      createNote({ velocity: 80, velocity_deviation: 40 }),
+      createNote({ pitch: 62, velocity: 60, velocity_deviation: 40 }),
+      createNote({ pitch: 64, velocity: 60, velocity_deviation: 40 }),
     ];
     const result = formatNotation(notes);
 
@@ -170,30 +66,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with mixed velocity and velocity range", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 80,
-        probability: 1.0,
-        velocity_deviation: 40,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 90,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, velocity: 80, velocity_deviation: 40 }),
+      createNote({ pitch: 64, velocity: 90 }),
     ];
     const result = formatNotation(notes);
 
@@ -202,30 +77,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats notes with duration changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 0.5,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 2.0,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 2.0,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ duration: 0.5 }),
+      createNote({ pitch: 62, duration: 2.0 }),
+      createNote({ pitch: 64, duration: 2.0 }),
     ];
     const result = formatNotation(notes);
 
@@ -234,22 +88,8 @@ describe("bar|beat formatNotation()", () => {
 
   it("formats sub-beat timing", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0.5,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 1.25,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ start_time: 0.5 }),
+      createNote({ pitch: 62, start_time: 1.25 }),
     ];
     const result = formatNotation(notes);
 
@@ -257,48 +97,14 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("handles different time signatures with beatsPerBar option (legacy)", () => {
-    const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
+    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
     const result = formatNotation(notes, { beatsPerBar: 3 });
 
     expect(result).toBe("C3 1|1 D3 2|1");
   });
 
   it("handles different time signatures with timeSigNumerator/timeSigDenominator", () => {
-    const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
+    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
     const result = formatNotation(notes, {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
@@ -308,24 +114,7 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
-    const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 3,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
+    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
     const result = formatNotation(notes, {
       beatsPerBar: 4,
       timeSigNumerator: 3,
@@ -336,65 +125,26 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("throws error when only timeSigNumerator is provided", () => {
-    const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
-
-    expect(() => formatNotation(notes, { timeSigNumerator: 4 })).toThrow(
+    expect(() =>
+      formatNotation([createNote()], { timeSigNumerator: 4 }),
+    ).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
   });
 
   it("throws error when only timeSigDenominator is provided", () => {
-    const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
-
-    expect(() => formatNotation(notes, { timeSigDenominator: 4 })).toThrow(
+    expect(() =>
+      formatNotation([createNote()], { timeSigDenominator: 4 }),
+    ).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
   });
 
   it("omits redundant state changes", () => {
     const notes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 1,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 2,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote(),
+      createNote({ pitch: 62, start_time: 1 }),
+      createNote({ pitch: 64, start_time: 2 }),
     ];
     const result = formatNotation(notes);
 
@@ -403,30 +153,9 @@ describe("bar|beat formatNotation()", () => {
 
   it("sorts notes by time then pitch", () => {
     const notes = [
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
+      createNote({ pitch: 64 }),
+      createNote(),
+      createNote({ pitch: 62 }),
     ];
     const result = formatNotation(notes);
 
@@ -462,46 +191,29 @@ describe("bar|beat formatNotation()", () => {
 
   it("handles complex drum pattern with probability and velocity range", () => {
     const notes = [
-      {
-        pitch: 36,
-        start_time: 0,
-        duration: 0.25,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // C1 (kick)
-      {
+      createNote({ pitch: 36, duration: 0.25 }), // C1 (kick)
+      createNote({
         pitch: 42,
-        start_time: 0,
         duration: 0.25,
         velocity: 80,
         probability: 0.8,
         velocity_deviation: 20,
-      }, // Gb1 (hihat)
-      {
+      }), // Gb1 (hihat)
+      createNote({
         pitch: 42,
         start_time: 0.5,
         duration: 0.25,
         velocity: 80,
         probability: 0.6,
         velocity_deviation: 20,
-      }, // Gb1 (hihat)
-      {
-        pitch: 38,
-        start_time: 1,
-        duration: 0.25,
-        velocity: 90,
-        probability: 1.0,
-        velocity_deviation: 0,
-      }, // D1 (snare)
-      {
+      }), // Gb1 (hihat)
+      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }), // D1 (snare)
+      createNote({
         pitch: 42,
         start_time: 1,
         duration: 0.25,
-        velocity: 100,
         probability: 0.9,
-        velocity_deviation: 0,
-      }, // Gb1 (hihat)
+      }), // Gb1 (hihat)
     ];
     const result = formatNotation(notes);
 
@@ -534,17 +246,8 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("throws error for invalid MIDI pitch", () => {
-    const notes = [
-      {
-        pitch: -1,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ];
-
-    expect(() => formatNotation(notes)).toThrow("Invalid MIDI pitch: -1");
+    expect(() => formatNotation([createNote({ pitch: -1 })])).toThrow(
+      "Invalid MIDI pitch: -1",
+    );
   });
 });

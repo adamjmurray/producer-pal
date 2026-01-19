@@ -390,6 +390,97 @@ describe("device-path-helpers", () => {
       expect(result.target).toBeNull();
       expect(result.targetType).toBe("chain");
     });
+
+    it("returns null for NaN chain index (e.g., cABC)", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: { "chain-36": { inNote: 36 } },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["cABC"], // Non-numeric chain index
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns null when segment after chain is not device prefix", () => {
+      setupChainMocks({
+        chainIds: ["chain-36"],
+        chainProperties: {
+          "chain-36": { inNote: 36, deviceIds: ["device-1"] },
+        },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["c0", "xyz"], // Invalid segment (not 'd' prefix)
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("device");
+    });
+
+    it("returns null for invalid segment in navigateRemainingSegments", () => {
+      // Setup: drum rack -> C1 chain -> device (instrument rack) -> chain -> device
+      const drumRackPath = "live_set tracks 1 devices 0";
+      const drumChainId = "drum-chain-36";
+      const instrRackId = "instr-rack";
+      const rackChainId = "rack-chain";
+      const finalDeviceId = "final-device";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === drumRackPath) return "drum-rack";
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id === drumChainId) return "DrumChain";
+        if (id === rackChainId) return "Chain";
+        if (id === instrRackId) return "InstrumentGroupDevice";
+        if (id === finalDeviceId) return "PluginDevice";
+
+        return "DrumGroupDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (this._path === drumRackPath && prop === "chains")
+          return ["id", drumChainId];
+
+        if (id === drumChainId) {
+          if (prop === "in_note") return [36];
+          if (prop === "devices") return ["id", instrRackId];
+        }
+
+        if (id === instrRackId && prop === "chains") return ["id", rackChainId];
+        if (id === rackChainId && prop === "devices")
+          return ["id", finalDeviceId];
+
+        return [];
+      });
+
+      // Path: pC1/c0/d0/c0/d0/invalidSegment
+      // This navigates through the nested structure and then hits an invalid segment
+      const result = resolveDrumPadFromPath(drumRackPath, "C1", [
+        "c0",
+        "d0",
+        "c0",
+        "d0",
+        "invalid", // Invalid segment after reaching final device
+      ]);
+
+      expect(result.target).toBeNull();
+    });
   });
 
   describe("resolveInsertionPath drum pad auto-creation", () => {
