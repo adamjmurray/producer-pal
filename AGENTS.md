@@ -168,10 +168,9 @@ A file is classified as a **test file** if it matches any of these patterns:
 - Cast `getProperty()` returns: `/** @type {number} */ (obj.getProperty("x"))`
 - Prefer explicit return types on exported functions
 
-**Scripts JSDoc convention:** ESLint only enforces JSDoc on exported function
-declarations. For scripts, also add JSDoc with `@param` and `@returns`
-descriptions (without types) to helper functions for clarity. This is enforced
-by code review, not linting.
+**Scripts JSDoc convention:** ESLint enforces JSDoc on all function declarations
+in scripts. Add `@param` and `@returns` descriptions (without types) to all
+functions for clarity.
 
 **Before committing:** `npm run check` must pass with zero errors
 

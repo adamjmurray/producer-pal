@@ -460,6 +460,26 @@ export default [
     },
   },
 
+  // Require JSDoc for ALL functions in scripts (not just exported)
+  {
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            FunctionDeclaration: true,
+            FunctionExpression: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: false, // Handled via contexts below
+          },
+          // Contexts for arrow functions assigned to variables (not inline callbacks)
+          contexts: ["VariableDeclarator > ArrowFunctionExpression"],
+        },
+      ],
+    },
+  },
+
   // Node.js code
   {
     files: ["src/**/*.{js,mjs}", "scripts/**/*.ts"],
@@ -680,7 +700,7 @@ export default [
 
   // Test files - relax some rules
   {
-    files: ["**/*.test.{js,ts,tsx}"],
+    files: ["**/*.test.{js,ts,tsx}", "**/test-setup.js"],
     plugins: {
       vitest: vitestPlugin,
     },

@@ -7,11 +7,24 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 
 /**
+ * @typedef {object} MockLiveApiContext
+ * @property {string | undefined} _path
+ * @property {string | undefined} _id
+ * @property {string} id
+ * @property {string} path
+ * @property {string} type
+ */
+
+/**
+ * @typedef {object} SlicingBaseMockOptions
+ * @property {string} [path] - The clip path (default: arrangement clip)
+ * @property {string[]} [generatedPrefixes] - Prefixes for generated clip IDs
+ */
+
+/**
  * Setup basic clip mocks for slicing tests
  * @param {string} clipId - The clip ID to mock
- * @param {object} opts - Options
- * @param {string} opts.path - The clip path (default: arrangement clip)
- * @param {string[]} opts.generatedPrefixes - Prefixes for generated clip IDs (default: holding_, moved_, tile_)
+ * @param {SlicingBaseMockOptions} [opts] - Options
  */
 export function setupSlicingClipBaseMocks(clipId, opts = {}) {
   const {
@@ -19,34 +32,58 @@ export function setupSlicingClipBaseMocks(clipId, opts = {}) {
     generatedPrefixes = ["holding_", "moved_", "tile_", "slice_"],
   } = opts;
 
-  liveApiId.mockImplementation(function () {
-    if (this._path === `id ${clipId}`) {
-      return clipId;
-    }
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked ID
+     */
+    function () {
+      if (this._path === `id ${clipId}`) {
+        return clipId;
+      }
 
-    return this._id;
-  });
+      return this._id;
+    },
+  );
 
-  liveApiPath.mockImplementation(function () {
-    if (this._id === clipId) {
-      return path;
-    }
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked path
+     */
+    function () {
+      if (this._id === clipId) {
+        return path;
+      }
 
-    // Generated clips get valid track paths
-    if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
-      return "live_set tracks 0 arrangement_clips 1";
-    }
+      // Generated clips get valid track paths
+      if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
+        return "live_set tracks 0 arrangement_clips 1";
+      }
 
-    return this._path;
-  });
+      return this._path;
+    },
+  );
 
-  liveApiType.mockImplementation(function () {
-    if (this._id === clipId) {
-      return "Clip";
-    }
-  });
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked type
+     */
+    function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    },
+  );
 }
 
+/**
+ * Get property value for live_set path
+ * @param {string | undefined} path - API path
+ * @param {string} prop - Property name
+ * @returns {number[] | null} Property value or null if not applicable
+ */
 function getLiveSetProp(path, prop) {
   if (path !== "live_set") return null;
   if (prop === "signature_numerator") return [4];
@@ -55,6 +92,13 @@ function getLiveSetProp(path, prop) {
   return null;
 }
 
+/**
+ * Get property value for holding clip
+ * @param {string | undefined} id - Clip ID
+ * @param {string} prop - Property name
+ * @param {number} clipLength - Clip length in beats
+ * @returns {number[] | null} Property value or null if not applicable
+ */
 function getHoldingClipProp(id, prop, clipLength) {
   if (!id?.startsWith("holding_")) return null;
   if (prop === "end_time") return [40000 + clipLength];
@@ -63,6 +107,13 @@ function getHoldingClipProp(id, prop, clipLength) {
   return null;
 }
 
+/**
+ * Get property value for generated clip
+ * @param {string | undefined} id - Clip ID
+ * @param {string} prop - Property name
+ * @param {string[]} prefixes - Generated prefixes
+ * @returns {number[] | null} Property value or null if not applicable
+ */
 function getGeneratedClipProp(id, prop, prefixes) {
   if (!prefixes.some((p) => id?.startsWith(p))) return null;
   if (prop === "loop_start" || prop === "start_marker") return [0.0];
@@ -71,17 +122,21 @@ function getGeneratedClipProp(id, prop, prefixes) {
 }
 
 /**
+ * @typedef {object} SlicingClipProps
+ * @property {boolean} [isMidi] - Is MIDI clip (default: true)
+ * @property {boolean} [looping] - Is looping (default: true)
+ * @property {number} [startTime] - Start time in beats (default: 0)
+ * @property {number} [endTime] - End time in beats (default: 16)
+ * @property {number} [loopStart] - Loop start in beats (default: 0)
+ * @property {number} [loopEnd] - Loop end in beats (default: 4)
+ * @property {number} [endMarker] - End marker in beats (default: loopEnd)
+ */
+
+/**
  * Setup liveApiGet mock for slicing tests with looped clip
  * @param {string} clipId - The clip ID
- * @param {object} clipProps - Clip properties
- * @param {boolean} clipProps.isMidi - Is MIDI clip (default: true)
- * @param {boolean} clipProps.looping - Is looping (default: true)
- * @param {number} clipProps.startTime - Start time in beats (default: 0)
- * @param {number} clipProps.endTime - End time in beats (default: 16)
- * @param {number} clipProps.loopStart - Loop start in beats (default: 0)
- * @param {number} clipProps.loopEnd - Loop end in beats (default: 4)
- * @param {number} clipProps.endMarker - End marker in beats (default: loopEnd)
- * @param {string[]} generatedPrefixes - Prefixes for generated clips
+ * @param {SlicingClipProps} [clipProps] - Clip properties
+ * @param {string[]} [generatedPrefixes] - Prefixes for generated clips
  */
 export function setupSlicingClipGetMock(
   clipId,
@@ -98,6 +153,7 @@ export function setupSlicingClipGetMock(
     endMarker = loopEnd,
   } = clipProps;
 
+  /** @type {Record<string, number>} */
   const mainClipProps = {
     is_midi_clip: isMidi ? 1 : 0,
     is_audio_clip: isMidi ? 0 : 1,
@@ -112,40 +168,65 @@ export function setupSlicingClipGetMock(
   };
   const clipLength = endTime - startTime;
 
-  liveApiGet.mockImplementation(function (prop) {
-    const liveSetVal = getLiveSetProp(this._path, prop);
+  liveApiGet.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @param {string} prop - Property name
+     * @returns {number[]} Property value
+     */
+    function (prop) {
+      const liveSetVal = getLiveSetProp(this._path, prop);
 
-    if (liveSetVal) return liveSetVal;
+      if (liveSetVal) return liveSetVal;
 
-    if (this._id === clipId && prop in mainClipProps)
-      return [mainClipProps[prop]];
+      if (this._id === clipId && prop in mainClipProps)
+        return [mainClipProps[prop]];
 
-    const holdingVal = getHoldingClipProp(this._id, prop, clipLength);
+      const holdingVal = getHoldingClipProp(this._id, prop, clipLength);
 
-    if (holdingVal) return holdingVal;
+      if (holdingVal) return holdingVal;
 
-    const generatedVal = getGeneratedClipProp(
-      this._id,
-      prop,
-      generatedPrefixes,
-    );
+      const generatedVal = getGeneratedClipProp(
+        this._id,
+        prop,
+        generatedPrefixes,
+      );
 
-    if (generatedVal) return generatedVal;
+      if (generatedVal) return generatedVal;
 
-    if (this._path === "live_set tracks 0" && prop === "track_index")
+      if (this._path === "live_set tracks 0" && prop === "track_index")
+        return [0];
+
       return [0];
-
-    return [0];
-  });
+    },
+  );
 }
 
 /**
+ * @typedef {object} SlicingCallMockOptions
+ * @property {string} [holdingPrefix] - Prefix for holding clip (default: "holding_")
+ * @property {string} [movedPrefix] - Prefix for moved clip (default: "moved_")
+ * @property {string} [tilePrefix] - Prefix for tiled clips (default: "tile_")
+ */
+
+/**
+ * @typedef {object} DuplicateCall
+ * @property {string} method - Method name
+ * @property {unknown[]} args - Method arguments
+ * @property {string | undefined} id - Clip ID
+ */
+
+/**
+ * @typedef {object} SlicingCallState
+ * @property {number} callCount - Number of calls
+ * @property {DuplicateCall[]} duplicateCalls - Duplicate calls
+ * @property {unknown[]} setCalls - Set calls
+ */
+
+/**
  * Create a liveApiCall mock for slicing operations
- * @param {object} opts - Options
- * @param {string} opts.holdingPrefix - Prefix for holding clip (default: "holding_")
- * @param {string} opts.movedPrefix - Prefix for moved clip (default: "moved_")
- * @param {string} opts.tilePrefix - Prefix for tiled clips (default: "tile_")
- * @returns {{ callCount: number, duplicateCalls: Array, setCalls: Array }} State object for tracking mock calls
+ * @param {SlicingCallMockOptions} [opts] - Options
+ * @returns {SlicingCallState} State object for tracking mock calls
  */
 export function createSlicingCallMock(opts = {}) {
   const {
@@ -154,26 +235,35 @@ export function createSlicingCallMock(opts = {}) {
     tilePrefix = "tile_",
   } = opts;
 
+  /** @type {SlicingCallState} */
   const state = { callCount: 0, duplicateCalls: [], setCalls: [] };
 
-  liveApiCall.mockImplementation(function (method, ..._args) {
-    if (method === "duplicate_clip_to_arrangement") {
-      state.callCount++;
-      state.duplicateCalls.push({ method, args: _args, id: this._id });
+  liveApiCall.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @param {string} method - Method name
+     * @param {...unknown} _args - Method arguments
+     * @returns {string[] | undefined} Result
+     */
+    function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        state.callCount++;
+        state.duplicateCalls.push({ method, args: _args, id: this._id });
 
-      if (state.callCount === 1) {
-        return ["id", `${holdingPrefix}1`];
-      } else if (state.callCount === 2) {
-        return ["id", `${movedPrefix}1`];
+        if (state.callCount === 1) {
+          return ["id", `${holdingPrefix}1`];
+        } else if (state.callCount === 2) {
+          return ["id", `${movedPrefix}1`];
+        }
+
+        return ["id", `${tilePrefix}${state.callCount}`];
       }
 
-      return ["id", `${tilePrefix}${state.callCount}`];
-    }
-
-    if (method === "create_midi_clip") {
-      return ["id", "temp_1"];
-    }
-  });
+      if (method === "create_midi_clip") {
+        return ["id", "temp_1"];
+      }
+    },
+  );
 
   return state;
 }
@@ -181,8 +271,8 @@ export function createSlicingCallMock(opts = {}) {
 /**
  * Setup all mocks for a standard looped clip slicing test
  * @param {string} clipId - The clip ID
- * @param {object} clipProps - Clip properties (see setupSlicingClipGetMock)
- * @returns {{ callState: object }} - State object for tracking calls
+ * @param {SlicingClipProps} [clipProps] - Clip properties (see setupSlicingClipGetMock)
+ * @returns {{ callState: SlicingCallState }} - State object for tracking calls
  */
 export function setupLoopedClipSlicingMocks(clipId, clipProps = {}) {
   const generatedPrefixes = ["holding_", "moved_", "tile_"];
@@ -201,8 +291,8 @@ export function setupLoopedClipSlicingMocks(clipId, clipProps = {}) {
 /**
  * Setup all mocks for an unlooped clip slicing test
  * @param {string} clipId - The clip ID
- * @param {object} clipProps - Clip properties (see setupSlicingClipGetMock)
- * @returns {{ callState: object }} - State object for tracking calls
+ * @param {SlicingClipProps} [clipProps] - Clip properties (see setupSlicingClipGetMock)
+ * @returns {{ callState: SlicingCallState }} - State object for tracking calls
  */
 export function setupUnloopedClipSlicingMocks(clipId, clipProps = {}) {
   const generatedPrefixes = ["holding_", "moved_", "slice_"];
@@ -225,41 +315,69 @@ export function setupUnloopedClipSlicingMocks(clipId, clipProps = {}) {
 }
 
 /**
+ * @typedef {object} TwoClipBaseMockOptions
+ * @property {string[]} [generatedPrefixes] - Prefixes for generated clips
+ */
+
+/**
  * Setup base mocks for two clips in slicing tests.
  * Used when testing scenarios with a primary clip and a secondary/following clip.
  * @param {string} clip1Id - First clip ID
  * @param {string} clip2Id - Second clip ID
- * @param {object} opts - Options
- * @param {string[]} opts.generatedPrefixes - Prefixes for generated clips
+ * @param {TwoClipBaseMockOptions} [opts] - Options
  */
 export function setupTwoClipBaseMocks(clip1Id, clip2Id, opts = {}) {
   const { generatedPrefixes = ["holding_", "moved_", "tile_"] } = opts;
 
-  liveApiId.mockImplementation(function () {
-    if (this._path === `id ${clip1Id}`) return clip1Id;
-    if (this._path === `id ${clip2Id}`) return clip2Id;
+  liveApiId.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked ID
+     */
+    function () {
+      if (this._path === `id ${clip1Id}`) return clip1Id;
+      if (this._path === `id ${clip2Id}`) return clip2Id;
 
-    return this._id;
-  });
-  liveApiPath.mockImplementation(function () {
-    if (this._id === clip1Id) return "live_set tracks 0 arrangement_clips 0";
-    if (this._id === clip2Id) return "live_set tracks 0 arrangement_clips 1";
+      return this._id;
+    },
+  );
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked path
+     */
+    function () {
+      if (this._id === clip1Id) return "live_set tracks 0 arrangement_clips 0";
+      if (this._id === clip2Id) return "live_set tracks 0 arrangement_clips 1";
 
-    if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
-      return "live_set tracks 0 arrangement_clips 2";
-    }
+      if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
+        return "live_set tracks 0 arrangement_clips 2";
+      }
 
-    return this._path;
-  });
-  liveApiType.mockImplementation(function () {
-    if (this._id === clip1Id || this._id === clip2Id) return "Clip";
-  });
+      return this._path;
+    },
+  );
+  liveApiType.mockImplementation(
+    /**
+     * @this {MockLiveApiContext}
+     * @returns {string | undefined} Mocked type
+     */
+    function () {
+      if (this._id === clip1Id || this._id === clip2Id) return "Clip";
+    },
+  );
 }
 
 /**
+ * @typedef {object} SetCall
+ * @property {string} prop - Property name
+ * @property {unknown} value - Property value
+ */
+
+/**
  * Filter set calls to find looping-related changes.
- * @param {Array} setCalls - Array of set call objects
- * @returns {{ enable: Array, disable: Array }} Filtered calls
+ * @param {SetCall[]} setCalls - Array of set call objects
+ * @returns {{ enable: SetCall[], disable: SetCall[] }} Filtered calls
  */
 export function filterLoopingCalls(setCalls) {
   return {
@@ -270,8 +388,8 @@ export function filterLoopingCalls(setCalls) {
 
 /**
  * Filter set calls to find marker-related changes.
- * @param {Array} setCalls - Array of set call objects
- * @returns {{ startMarker: Array, endMarker: Array }} Filtered calls
+ * @param {SetCall[]} setCalls - Array of set call objects
+ * @returns {{ startMarker: SetCall[], endMarker: SetCall[] }} Filtered calls
  */
 export function filterMarkerCalls(setCalls) {
   return {

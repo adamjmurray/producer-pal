@@ -26,13 +26,7 @@ import { evaluateFunction } from "./modulation-functions.js";
  */
 
 /**
- * @typedef {object} NoteProperties
- * @property {number} [pitch] - MIDI pitch (0-127)
- * @property {number} [start] - Start time in musical beats
- * @property {number} [velocity] - Velocity (1-127)
- * @property {number} [velocityDeviation] - Velocity deviation
- * @property {number} [duration] - Duration in beats
- * @property {number} [probability] - Probability (0.0-1.0)
+ * @typedef {{ [key: string]: number | undefined }} NoteProperties
  */
 
 /**
@@ -293,7 +287,7 @@ export function evaluateExpression(
       );
     }
 
-    return noteProperties[node.name];
+    return /** @type {number} */ (noteProperties[node.name]);
   }
 
   // Arithmetic operators

@@ -24,10 +24,22 @@ type McpClient = {
   }) => Promise<unknown>;
 };
 
+/**
+ * Extracts text from a stream event delta
+ *
+ * @param delta - Delta object or string from stream event
+ * @returns Text content or undefined
+ */
 function getDeltaText(delta: OpenAIStreamEvent["delta"]): string | undefined {
   return typeof delta === "string" ? delta : delta?.text;
 }
 
+/**
+ * Handles reasoning/thought stream deltas
+ *
+ * @param event - Stream event with reasoning delta
+ * @param state - Current stream state to update
+ */
 function handleReasoningDelta(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,
@@ -42,6 +54,11 @@ function handleReasoningDelta(
   state.inThought = true;
 }
 
+/**
+ * Handles completion of a reasoning section
+ *
+ * @param state - Current stream state to update
+ */
 function handleReasoningDone(state: OpenAIStreamState): void {
   if (state.inThought) {
     process.stdout.write(endThought());
@@ -49,6 +66,12 @@ function handleReasoningDone(state: OpenAIStreamState): void {
   }
 }
 
+/**
+ * Handles text content deltas
+ *
+ * @param event - Stream event with text delta
+ * @param state - Current stream state to update
+ */
 function handleTextDelta(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,
@@ -57,6 +80,12 @@ function handleTextDelta(
   process.stdout.write(getDeltaText(event.delta) ?? "");
 }
 
+/**
+ * Handles new output item events (e.g., function calls)
+ *
+ * @param event - Stream event with item info
+ * @param state - Current stream state to update
+ */
 function handleOutputItemAdded(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,
@@ -72,6 +101,13 @@ function handleOutputItemAdded(
   }
 }
 
+/**
+ * Executes a completed function call via MCP
+ *
+ * @param event - Stream event with function call details
+ * @param state - Current stream state with pending calls
+ * @param mcpClient - MCP client to execute the call
+ */
 async function handleFunctionCallDone(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,
@@ -116,6 +152,12 @@ export function extractReasoningText(item: OpenAIResponseOutput): string {
   return item.text ?? "";
 }
 
+/**
+ * Displays any reasoning not shown during streaming
+ *
+ * @param output - Response output items
+ * @param displayed - Whether reasoning was already displayed
+ */
 function displayMissedReasoning(
   output: OpenAIResponseOutput[],
   displayed: boolean,
@@ -131,6 +173,13 @@ function displayMissedReasoning(
   }
 }
 
+/**
+ * Handles response completion and updates conversation
+ *
+ * @param event - Completion event with final response
+ * @param state - Stream state with tool results
+ * @param conversation - Conversation array to update
+ */
 function handleResponseCompleted(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,

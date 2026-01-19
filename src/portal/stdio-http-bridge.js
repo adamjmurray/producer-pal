@@ -40,7 +40,7 @@ export class StdioHttpBridge {
     const tools = [];
 
     // Access private _registeredTools for fallback tool list
-    /** @type {Record<string, {title?: string, description: string, inputSchema?: object}>} */
+    /** @type {Record<string, {title?: string, description: string, inputSchema?: import('zod').ZodTypeAny}>} */
     const registeredTools = /** @type {*} */ (server)._registeredTools;
 
     for (const [name, toolInfo] of Object.entries(registeredTools)) {

@@ -122,6 +122,13 @@ export async function runChatSession(
   }
 }
 
+/**
+ * Sends a message in a Chat API session
+ *
+ * @param ctx - Session context with client and messages
+ * @param input - User input text
+ * @param turnCount - Current conversation turn number
+ */
 async function sendMessageChat(
   ctx: ChatSessionContext,
   input: string,
@@ -145,6 +152,12 @@ async function sendMessageChat(
   }
 }
 
+/**
+ * Builds the Chat API request body from context
+ *
+ * @param ctx - Session context with messages and options
+ * @returns Request body for chat.completions.create
+ */
 function buildRequestBody(ctx: ChatSessionContext): RequestBody {
   const { messages, model, tools, options, config } = ctx;
 
@@ -184,6 +197,12 @@ function buildRequestBody(ctx: ChatSessionContext): RequestBody {
   return body;
 }
 
+/**
+ * Handles non-streaming Chat API response
+ *
+ * @param ctx - Session context with client and messages
+ * @returns Whether to continue with tool calls
+ */
 async function handleNonStreamingResponse(
   ctx: ChatSessionContext,
 ): Promise<boolean> {
@@ -248,6 +267,12 @@ async function handleNonStreamingResponse(
   return false;
 }
 
+/**
+ * Handles streaming Chat API response
+ *
+ * @param ctx - Session context with client and messages
+ * @returns Whether to continue with tool calls
+ */
 async function handleStreamingResponse(
   ctx: ChatSessionContext,
 ): Promise<boolean> {
