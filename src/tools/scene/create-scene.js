@@ -1,7 +1,10 @@
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { select } from "#src/tools/control/select.js";
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import { captureScene } from "./capture-scene.js";
+import {
+  applyTempoProperty,
+  applyTimeSignatureProperty,
+} from "./scene-helpers.js";
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips
@@ -94,37 +97,6 @@ function applySceneProperties(scene, { color, tempo, timeSignature }) {
 
   applyTempoProperty(scene, tempo);
   applyTimeSignatureProperty(scene, timeSignature);
-}
-
-/**
- * Applies tempo property to a scene
- * @param {LiveAPI} scene - The LiveAPI scene object
- * @param {number | null | undefined} tempo - Tempo in BPM. -1 disables, other values enable
- */
-function applyTempoProperty(scene, tempo) {
-  if (tempo === -1) {
-    scene.set("tempo_enabled", false);
-  } else if (tempo != null) {
-    scene.set("tempo", tempo);
-    scene.set("tempo_enabled", true);
-  }
-}
-
-/**
- * Applies time signature property to a scene
- * @param {LiveAPI} scene - The LiveAPI scene object
- * @param {string | null | undefined} timeSignature - Time signature. "disabled" disables, other values enable
- */
-function applyTimeSignatureProperty(scene, timeSignature) {
-  if (timeSignature === "disabled") {
-    scene.set("time_signature_enabled", false);
-  } else if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    scene.set("time_signature_numerator", parsed.numerator);
-    scene.set("time_signature_denominator", parsed.denominator);
-    scene.set("time_signature_enabled", true);
-  }
 }
 
 /**
