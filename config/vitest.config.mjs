@@ -26,7 +26,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.js", "webui/**/*.test.ts", "webui/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.js",
+      "src/**/*.test.ts",
+      "webui/**/*.test.ts",
+      "webui/**/*.test.tsx",
+    ],
     setupFiles: ["src/test/test-setup.js"],
     clearMocks: true,
     restoreMocks: true,
@@ -72,10 +77,10 @@ export default defineConfig({
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.js",
         "src/mcp-server/mcp-server.js",
-        "src/portal/producer-pal-portal.js",
+        "src/portal/producer-pal-portal.{js,ts}",
 
         // ignore loggers:
-        "src/portal/file-logger.js",
+        "src/portal/file-logger.{js,ts}",
 
         // ignore test mocks:
         "src/test/mocks/**",

@@ -40,7 +40,7 @@ const baseRules = {
       // Entry points not imported by other modules (external entry points):
       ignoreExports: [
         "**/live-api-adapter.js", // Max for Live V8 entry point
-        "**/producer-pal-portal.js", // MCP stdio-to-http portal entry point
+        "**/producer-pal-portal.{js,ts}", // MCP stdio-to-http portal entry point
         "webui/src/main.tsx", // Chat UI entry point
         "**/test/**", // Test utilities and mocks
         "**/tests/**", // Test directories
@@ -480,9 +480,54 @@ export default [
     },
   },
 
+  // src TypeScript files (portal and future migrations)
+  {
+    files: ["src/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: [
+          "./src/portal/tsconfig.json",
+          "./src/portal/tsconfig.test.json",
+        ],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: ["./src/portal/tsconfig.json"],
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      ...jsdocRules,
+      ...tsOnlyRules,
+    },
+  },
+
   // Node.js code
   {
-    files: ["src/**/*.{js,mjs}", "scripts/**/*.ts"],
+    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,

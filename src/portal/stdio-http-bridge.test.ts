@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 
 // Mock MCP SDK components
 const mockClient = {
@@ -89,26 +97,56 @@ import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
 /**
  * Get a registered handler from mockServer.setRequestHandler calls
- * @param {string} schema - Schema name to find (e.g., "CallToolRequestSchema")
- * @param {"first" | "last"} [which="first"] - Which matching call to return
- * @returns {Function} The handler function
+ * @param schema - Schema name to find (e.g., "CallToolRequestSchema")
+ * @param which - Which matching call to return
+ * @returns The handler function
  */
-function getHandler(schema, which = "first") {
-  const calls = mockServer.setRequestHandler.mock.calls.filter(
-    (c) => c[0] === schema,
+function getHandler(
+  schema: string,
+  which: "first" | "last" = "first",
+): (request: unknown) => Promise<unknown> {
+  const calls = (mockServer.setRequestHandler as Mock).mock.calls.filter(
+    (c: unknown[]) => c[0] === schema,
   );
 
-  return which === "last" ? calls.at(-1)[1] : calls[0][1];
+  return which === "last" ? calls.at(-1)?.[1] : calls[0]?.[1];
+}
+
+// Type for accessing private properties on the bridge
+interface BridgeInternals {
+  httpUrl: string;
+  mcpServer: object | null;
+  httpClient: object | null;
+  isConnected: boolean;
+  fallbackTools: {
+    tools: Array<{
+      name: string;
+      title?: string;
+      description: string;
+      inputSchema: object;
+    }>;
+  };
+  _createSetupErrorResponse: () => {
+    content: Array<{ type: string; text: string }>;
+    isError: boolean;
+  };
+  _createMisconfiguredUrlResponse: () => {
+    content: Array<{ type: string; text: string }>;
+    isError: boolean;
+  };
+  _ensureHttpConnection: () => Promise<void>;
 }
 
 describe("StdioHttpBridge", () => {
-  let bridge;
-  let consoleErrorSpy;
+  let bridge: StdioHttpBridge & BridgeInternals;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    bridge = new StdioHttpBridge("http://localhost:3350/mcp");
+    bridge = new StdioHttpBridge(
+      "http://localhost:3350/mcp",
+    ) as StdioHttpBridge & BridgeInternals;
   });
 
   afterEach(() => {
@@ -118,28 +156,18 @@ describe("StdioHttpBridge", () => {
   describe("constructor", () => {
     it("initializes with correct default values", () => {
       expect(bridge.httpUrl).toBe("http://localhost:3350/mcp");
-      expect(bridge.options).toStrictEqual({});
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.httpClient).toBeNull();
       expect(bridge.isConnected).toBe(false);
       expect(bridge.fallbackTools).toHaveProperty("tools");
     });
 
-    it("accepts custom options", () => {
-      const options = { timeout: 5000 };
+    it("accepts custom URL", () => {
       const customBridge = new StdioHttpBridge(
         "http://localhost:8080/mcp",
-        options,
-      );
+      ) as StdioHttpBridge & BridgeInternals;
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
-      expect(customBridge.options).toStrictEqual(options);
-    });
-
-    it("creates bridge with no options", () => {
-      const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
-
-      expect(quietBridge.options).toStrictEqual({});
     });
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
@@ -180,8 +208,8 @@ describe("StdioHttpBridge", () => {
         isError: true,
       });
 
-      expect(response.content[0].text).toContain("Ableton Live is running");
-      expect(response.content[0].text).toContain(
+      expect(response.content[0]?.text).toContain("Ableton Live is running");
+      expect(response.content[0]?.text).toContain(
         "https://github.com/adamjmurray/producer-pal",
       );
     });
@@ -201,14 +229,14 @@ describe("StdioHttpBridge", () => {
         isError: true,
       });
 
-      expect(response.content[0].text).toContain("http://localhost:3350");
-      expect(response.content[0].text).toContain("Desktop Extension");
+      expect(response.content[0]?.text).toContain("http://localhost:3350");
+      expect(response.content[0]?.text).toContain("Desktop Extension");
     });
   });
 
   describe("_ensureHttpConnection", () => {
     it("creates new connection when none exists", async () => {
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
 
       await bridge._ensureHttpConnection();
 
@@ -242,8 +270,8 @@ describe("StdioHttpBridge", () => {
     it("handles stale connection cleanup", async () => {
       bridge.httpClient = mockClient;
       bridge.isConnected = false;
-      mockClient.close.mockResolvedValue();
-      mockClient.connect.mockResolvedValue();
+      mockClient.close.mockResolvedValue(undefined);
+      mockClient.connect.mockResolvedValue(undefined);
 
       await bridge._ensureHttpConnection();
 
@@ -279,7 +307,7 @@ describe("StdioHttpBridge", () => {
       const closeError = new Error("Close failed");
 
       mockClient.close.mockRejectedValue(closeError);
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
 
       await bridge._ensureHttpConnection();
 
@@ -292,7 +320,7 @@ describe("StdioHttpBridge", () => {
 
   describe("start", () => {
     it("starts successfully and logs appropriate messages", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
 
       await bridge.start();
 
@@ -309,16 +337,16 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns HTTP tools when connected", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
       const httpTools = { tools: [{ name: "test-tool" }] };
 
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
       mockClient.listTools.mockResolvedValue(httpTools);
 
-      const result = await listToolsHandler();
+      const result = await listToolsHandler({});
 
       expect(result).toStrictEqual(httpTools);
       expect(logger.debug).toHaveBeenCalledWith(
@@ -327,14 +355,14 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns fallback tools when HTTP fails", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
-      const result = await listToolsHandler();
+      const result = await listToolsHandler({});
 
       expect(result).toStrictEqual(bridge.fallbackTools);
       // Verify that fallback behavior was triggered
@@ -344,13 +372,13 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that calls HTTP tool when connected", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockResolvedValue(toolResult);
 
       const request = {
@@ -373,7 +401,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that returns setup error when HTTP fails", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
@@ -397,13 +425,13 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that handles missing arguments", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockResolvedValue(toolResult);
 
       const request = {
@@ -423,7 +451,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("logs tool call details", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
@@ -445,17 +473,19 @@ describe("StdioHttpBridge", () => {
     });
 
     it("returns formatted error response for MCP protocol errors", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
 
       // Simulate MCP protocol error (has numeric code)
-      const mcpError = new Error("Invalid tool parameters");
+      const mcpError = new Error("Invalid tool parameters") as Error & {
+        code: number;
+      };
 
       mcpError.code = -32602;
 
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockRejectedValue(mcpError);
 
       const request = {
@@ -465,7 +495,10 @@ describe("StdioHttpBridge", () => {
         },
       };
 
-      const result = await callToolHandler(request);
+      const result = (await callToolHandler(request)) as {
+        content: Array<{ type: string; text: string }>;
+        isError: boolean;
+      };
 
       expect(result).toStrictEqual({
         content: [{ type: "text", text: "Invalid tool parameters" }],
@@ -477,17 +510,19 @@ describe("StdioHttpBridge", () => {
     });
 
     it("strips redundant MCP error prefix from error message", async () => {
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const callToolHandler = getHandler("CallToolRequestSchema");
 
       // Error with redundant prefix
-      const mcpError = new Error("MCP error -32602: Invalid parameters");
+      const mcpError = new Error(
+        "MCP error -32602: Invalid parameters",
+      ) as Error & { code: number };
 
       mcpError.code = -32602;
 
-      mockClient.connect.mockResolvedValue();
+      mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockRejectedValue(mcpError);
 
       const request = {
@@ -497,16 +532,20 @@ describe("StdioHttpBridge", () => {
         },
       };
 
-      const result = await callToolHandler(request);
+      const result = (await callToolHandler(request)) as {
+        content: Array<{ type: string; text: string }>;
+      };
 
-      expect(result.content[0].text).toBe("Invalid parameters");
+      expect(result.content[0]?.text).toBe("Invalid parameters");
     });
 
     it("returns misconfigured URL error for ERR_INVALID_URL", async () => {
       // Create bridge with invalid URL that will cause ERR_INVALID_URL
-      const invalidBridge = new StdioHttpBridge("not-a-valid-url");
+      const invalidBridge = new StdioHttpBridge(
+        "not-a-valid-url",
+      ) as StdioHttpBridge & BridgeInternals;
 
-      mockServer.connect.mockResolvedValue();
+      mockServer.connect.mockResolvedValue(undefined);
       await invalidBridge.start();
 
       // Get the most recent handler (from invalidBridge, not the beforeEach bridge)

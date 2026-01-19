@@ -6,7 +6,7 @@
     },
     "checkJs": true,
     "noEmit": true,
-    "target": "ES2022",
+    "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
@@ -27,6 +27,7 @@
     "**/*.test.js",
     "test/**",
     "**/*-test-helpers.js",
-    "**/parser/*-parser.js"
+    "**/parser/*-parser.js",
+    "portal/*.ts"
   ]
 }

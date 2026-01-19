@@ -15,7 +15,7 @@ const LOG_DIR = (() => {
   if (process.platform === "darwin") {
     return join(homedir(), "Library", "Logs", "Producer Pal");
   } else if (process.platform === "win32") {
-    return join(process.env.LOCALAPPDATA || homedir(), "ProducerPal", "Logs");
+    return join(process.env.LOCALAPPDATA ?? homedir(), "ProducerPal", "Logs");
   }
 
   // Linux/Unix: follows XDG Base Directory specification
@@ -40,11 +40,10 @@ const LOG_FILE = join(
 
 /**
  * Write a log message to the log file
- *
- * @param {string} level - Log level (INFO, ERROR, DEBUG)
- * @param {string} message - Message to log
+ * @param level - Log level (INFO, ERROR, DEBUG)
+ * @param message - Message to log
  */
-function writeLog(level, message) {
+function writeLog(level: string, message: string): void {
   // Skip file operations when running under Vitest or when logging disabled
   if (isRunningInVitest || !enableLogging) {
     return;
@@ -63,20 +62,22 @@ function writeLog(level, message) {
 
 export const logger = {
   /**
-   * @param {string} message - Log message
-   * @returns {void}
+   * Log an info message
+   * @param message - Log message
+   * @returns void
    */
-  info: (message) => writeLog("INFO", message),
+  info: (message: string): void => writeLog("INFO", message),
   /**
-   * @param {string} message - Log message
-   * @returns {void}
+   * Log an error message
+   * @param message - Log message
+   * @returns void
    */
-  error: (message) => writeLog("ERROR", message),
+  error: (message: string): void => writeLog("ERROR", message),
   /**
-   * @param {string} message - Log message
-   * @returns {void}
+   * Log a debug message (only when verbose logging enabled)
+   * @param message - Log message
    */
-  debug: (message) => {
+  debug: (message: string): void => {
     if (verboseLogging && enableLogging) {
       writeLog("DEBUG", message);
     }

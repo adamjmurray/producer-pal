@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 
 // Mock the StdioHttpBridge class
 const mockBridge = {
@@ -25,9 +25,9 @@ describe("producer-pal-portal", () => {
       expect(mockBridge.start).toHaveBeenCalled();
 
       // Verify it was called with a localhost URL on some port
-      const calls = StdioHttpBridge.mock.calls;
+      const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
 
-      expect(calls[0][0]).toMatch(/^http:\/\/localhost:\d+\/mcp$/);
+      expect(calls[0]?.[0]).toMatch(/^http:\/\/localhost:\d+\/mcp$/);
     });
   });
 });

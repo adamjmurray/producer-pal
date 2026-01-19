@@ -24,6 +24,10 @@ release
 scratchpad
 .env
 
+# Generated JS from TypeScript in portal
+src/portal/*.js
+src/portal/*.js.map
+
 # VitePress Documentation Site
 docs/.vitepress/dist
 docs/.vitepress/cache

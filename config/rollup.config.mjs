@@ -4,6 +4,7 @@ import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
+import esbuild from "rollup-plugin-esbuild";
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -97,7 +98,7 @@ export default [
     ],
   },
   {
-    input: join(rootDir, "src/portal/producer-pal-portal.js"),
+    input: join(rootDir, "src/portal/producer-pal-portal.ts"),
     output: [
       {
         file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
@@ -115,6 +116,11 @@ export default [
     plugins: [
       alias({
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
+      }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2024",
+        tsconfig: join(rootDir, "src/portal/tsconfig.json"),
       }),
       resolve({
         preferBuiltins: true,

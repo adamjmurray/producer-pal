@@ -7,6 +7,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import type { ZodTypeAny } from "zod";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
@@ -14,34 +15,57 @@ import { logger } from "./file-logger.js";
 
 const SETUP_URL = "https://producer-pal.org";
 
+interface BridgeOptions {
+  timeout?: number;
+}
+
+interface FallbackTool {
+  name: string;
+  title?: string;
+  description: string;
+  inputSchema: object;
+}
+
+interface RegisteredToolInfo {
+  title?: string;
+  description: string;
+  inputSchema?: ZodTypeAny;
+}
+
+interface CallToolRequest {
+  params: {
+    name: string;
+    arguments?: Record<string, unknown>;
+  };
+}
+
 /**
  * stdio-to-HTTP bridge for MCP communication
  * Provides graceful fallback when Producer Pal is not running
  */
 export class StdioHttpBridge {
-  /**
-   * @param {string} httpUrl - URL of the HTTP MCP server
-   * @param {object} [options] - Configuration options
-   */
-  constructor(httpUrl, options = {}) {
+  private httpUrl: string;
+  private mcpServer: Server | null = null;
+  private httpClient: Client | null = null;
+  private isConnected = false;
+  private fallbackTools: { tools: FallbackTool[] };
+
+  constructor(httpUrl: string, _options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
-    this.options = options;
-    /** @type {import("@modelcontextprotocol/sdk/server/index.js").Server | null} */
-    this.mcpServer = null;
-    /** @type {import("@modelcontextprotocol/sdk/client/index.js").Client | null} */
-    this.httpClient = null;
-    this.isConnected = false;
     this.fallbackTools = this._generateFallbackTools();
   }
 
-  _generateFallbackTools() {
+  private _generateFallbackTools(): { tools: FallbackTool[] } {
     // Create MCP server to extract tool definitions (callLiveApi not used)
-    const server = createMcpServer(/** @type {*} */ (null));
-    const tools = [];
+    const server = createMcpServer(null as unknown as () => unknown);
+    const tools: FallbackTool[] = [];
 
     // Access private _registeredTools for fallback tool list
-    /** @type {Record<string, {title?: string, description: string, inputSchema?: import('zod').ZodTypeAny}>} */
-    const registeredTools = /** @type {*} */ (server)._registeredTools;
+    const registeredTools = (
+      server as unknown as {
+        _registeredTools: Record<string, RegisteredToolInfo>;
+      }
+    )._registeredTools;
 
     for (const [name, toolInfo] of Object.entries(registeredTools)) {
       if (name === "ppal-raw-live-api") {
@@ -64,7 +88,7 @@ export class StdioHttpBridge {
     return { tools };
   }
 
-  _createSetupErrorResponse() {
+  private _createSetupErrorResponse() {
     return formatErrorResponse(`❌ Cannot connect to Producer Pal in Ableton Live.
 The Producer Pal tools cannot work without an Ableton Live connection.
 It requires Live version 12.2 or higher with Max for Live (e.g. Ableton Live Suite 12.2+).
@@ -77,14 +101,14 @@ For Producer Pal to work, the user must ensure:
 Direct the user to the [documentation site](${SETUP_URL}) for guidance.`);
   }
 
-  _createMisconfiguredUrlResponse() {
+  private _createMisconfiguredUrlResponse() {
     return formatErrorResponse(`❌ Invalid URL for the Producer Pal Desktop Extension.
 We cannot even attempt to connect to Producer Pal inside Ableton Live because the configured URL "${this.httpUrl.replace(/\/mcp$/, "")}" is not a valid URL.
 The user must provide a valid URL in the configuration settings for the Claude Desktop Extension for Producer Pal.
 The default URL value is http://localhost:3350`);
   }
 
-  async _ensureHttpConnection() {
+  private async _ensureHttpConnection(): Promise<void> {
     // If we have a client and think we're connected, reuse it
     if (this.httpClient && this.isConnected) {
       return;
@@ -121,7 +145,7 @@ The default URL value is http://localhost:3350`);
 
       if (this.httpClient) {
         try {
-          this.httpClient.close();
+          await this.httpClient.close();
         } catch (closeError) {
           logger.error(
             `Error closing failed client: ${errorMessage(closeError)}`,
@@ -137,7 +161,7 @@ The default URL value is http://localhost:3350`);
     }
   }
 
-  async start() {
+  async start(): Promise<void> {
     logger.info(`Starting stdio-to-HTTP bridge`);
     logger.debug(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
 
@@ -162,9 +186,7 @@ The default URL value is http://localhost:3350`);
       try {
         await this._ensureHttpConnection();
         // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-        const result = await /** @type {Client} */ (
-          this.httpClient
-        ).listTools();
+        const result = await (this.httpClient as Client).listTools();
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
 
@@ -184,9 +206,7 @@ The default URL value is http://localhost:3350`);
 
     this.mcpServer.setRequestHandler(
       CallToolRequestSchema,
-      async (
-        /** @type {{params: {name: string, arguments?: Record<string, unknown>}}} */ request,
-      ) => {
+      async (request: CallToolRequest) => {
         logger.debug(
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
@@ -196,11 +216,11 @@ The default URL value is http://localhost:3350`);
           await this._ensureHttpConnection();
           const toolRequest = {
             name: request.params.name,
-            arguments: request.params.arguments || {},
+            arguments: request.params.arguments ?? {},
           };
 
           // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-          const result = await /** @type {Client} */ (this.httpClient).callTool(
+          const result = await (this.httpClient as Client).callTool(
             toolRequest,
           );
 
@@ -217,7 +237,7 @@ The default URL value is http://localhost:3350`);
           // Check if error has code property (Node.js/MCP errors)
           const errorCode =
             error && typeof error === "object" && "code" in error
-              ? /** @type {{code: unknown}} */ (error).code
+              ? (error as { code: unknown }).code
               : undefined;
 
           // Check if this is an MCP protocol error (has numeric code) vs connectivity error
@@ -227,8 +247,7 @@ The default URL value is http://localhost:3350`);
               `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
             );
             // Extract the actual error message, removing any "MCP error {code}:" prefix
-            let errMsg =
-              errorMessage(error) || `Unknown MCP error ${errorCode}`;
+            let errMsg = errorMessage(error);
             // Strip redundant "MCP error {code}:" prefix if present
             const mcpErrorPrefix = `MCP error ${errorCode}: `;
 
@@ -269,10 +288,10 @@ The default URL value is http://localhost:3350`);
     logger.debug(`[Bridge] HTTP connected: ${this.isConnected}`);
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     if (this.httpClient) {
       try {
-        this.httpClient.close();
+        await this.httpClient.close();
       } catch (error) {
         logger.error(`Error closing HTTP client: ${errorMessage(error)}`);
       }
@@ -282,7 +301,7 @@ The default URL value is http://localhost:3350`);
 
     if (this.mcpServer) {
       try {
-        this.mcpServer.close();
+        await this.mcpServer.close();
       } catch (error) {
         logger.error(`Error closing MCP server: ${errorMessage(error)}`);
       }
