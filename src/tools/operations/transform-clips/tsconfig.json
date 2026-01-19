@@ -7,6 +7,6 @@
     "declaration": false,
     "target": "ES2024"
   },
-  "include": ["**/*.ts", "../../types/**/*.d.ts"],
+  "include": ["**/*.ts", "../../../types/**/*.d.ts"],
   "exclude": ["**/*.test.ts", "**/*-test-helpers.ts"]
 }
