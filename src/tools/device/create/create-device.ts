@@ -1,11 +1,21 @@
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.js";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
+interface CreateDeviceArgs {
+  deviceName?: string;
+  path?: string;
+}
+
+interface CreateDeviceResult {
+  deviceId: string | number;
+  deviceIndex: number | null;
+}
+
 /**
  * Validate device name and throw error with valid options if invalid
- * @param {string} deviceName - Device name to validate
+ * @param deviceName - Device name to validate
  */
-function validateDeviceName(deviceName) {
+function validateDeviceName(deviceName: string): void {
   if (ALL_VALID_DEVICES.includes(deviceName)) {
     return;
   }
@@ -22,13 +32,16 @@ function validateDeviceName(deviceName) {
 
 /**
  * Creates a native Live device on a track or chain, or lists available devices
- * @param {object} args - The device parameters
- * @param {string} [args.deviceName] - Device name, omit to list available devices
- * @param {string} [args.path] - Device path (required when deviceName provided)
- * @param {object} _context - Internal context object (unused)
- * @returns {object} Device list, or object with deviceId and deviceIndex
+ * @param args - The device parameters
+ * @param args.deviceName - Device name, omit to list available devices
+ * @param args.path - Device path (required when deviceName provided)
+ * @param _context - Internal context object (unused)
+ * @returns Device list, or object with deviceId and deviceIndex
  */
-export function createDevice({ deviceName, path } = {}, _context = {}) {
+export function createDevice(
+  { deviceName, path }: CreateDeviceArgs = {},
+  _context: Partial<ToolContext> = {},
+): typeof VALID_DEVICES | CreateDeviceResult {
   // List mode: return valid devices when deviceName is omitted
   if (deviceName == null) {
     return VALID_DEVICES;
@@ -47,29 +60,37 @@ export function createDevice({ deviceName, path } = {}, _context = {}) {
 
 /**
  * Create device at a path (track or chain)
- * @param {string} deviceName - Device name
- * @param {string} path - Device path
- * @returns {object} Object with deviceId and deviceIndex
+ * @param deviceName - Device name
+ * @param path - Device path
+ * @returns Object with deviceId and deviceIndex
  */
-function createDeviceAtPath(deviceName, path) {
+function createDeviceAtPath(
+  deviceName: string,
+  path: string,
+): CreateDeviceResult {
   const { container, position } = resolveInsertionPath(path);
 
-  if (!container || !container.exists()) {
+  if (!container?.exists()) {
     throw new Error(
       `createDevice failed: container at path "${path}" does not exist`,
     );
   }
 
-  const result = /** @type {[string, string | number]} */ (
+  const result =
     position != null
-      ? container.call("insert_device", deviceName, position)
-      : container.call("insert_device", deviceName)
-  );
+      ? (container.call("insert_device", deviceName, position) as [
+          string,
+          string | number,
+        ])
+      : (container.call("insert_device", deviceName) as [
+          string,
+          string | number,
+        ]);
 
   const deviceId = result[1];
   const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;
 
-  if (!device || !device.exists()) {
+  if (!device?.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";
 
     throw new Error(

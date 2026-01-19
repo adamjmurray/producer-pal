@@ -41,6 +41,7 @@
     "tools/live-set/*.ts",
     "tools/scene/*.ts",
     "tools/control/*.ts",
-    "tools/track/**/*.ts"
+    "tools/track/**/*.ts",
+    "tools/device/**/*.ts"
   ]
 }

@@ -5,10 +5,12 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:
     "Read information about a device, chain, or drum pad by ID or path.",
+
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
+
   inputSchema: {
     deviceId: z.string().optional().describe("Device ID to read"),
     path: z
