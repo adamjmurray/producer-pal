@@ -37,7 +37,7 @@ interface DuplicationThresholds {
  */
 async function getCoverageThresholds(): Promise<CoverageThresholds> {
   const vitestConfig = await readFile(
-    join(configDir, "vitest.config.mjs"),
+    join(configDir, "vitest.config.ts"),
     "utf-8",
   );
 
@@ -54,7 +54,7 @@ async function getCoverageThresholds(): Promise<CoverageThresholds> {
 
     if (!value) {
       throw new Error(
-        `Failed to extract ${name} threshold from vitest.config.mjs`,
+        `Failed to extract ${name} threshold from vitest.config.ts`,
       );
     }
 
