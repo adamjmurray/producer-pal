@@ -1,7 +1,8 @@
 {
   "extends": "./src/tsconfig.json",
   "compilerOptions": {
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "types": ["vitest/globals", "node"]
   },
   "include": [
     "src/shared/**/*.js",
@@ -28,7 +29,6 @@
   ],
   "exclude": [
     "**/*.test.js",
-    "**/*-test-helpers.js",
     "src/notation/barbeat/parser/barbeat-parser.js",
     "src/notation/modulation/parser/modulation-parser.js"
   ]
