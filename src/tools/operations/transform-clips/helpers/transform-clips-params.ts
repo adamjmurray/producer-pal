@@ -31,7 +31,7 @@ interface AudioParams {
   transposeMin?: number;
   transposeMax?: number;
   transposeValues?: string;
-  transposeValuesArray?: number[];
+  transposeValuesArray?: number[] | null;
 }
 
 /**
@@ -220,7 +220,7 @@ interface MidiParams {
   velocityMax?: number;
   transposeMin?: number;
   transposeMax?: number;
-  transposeValuesArray?: number[];
+  transposeValuesArray?: number[] | null;
   durationMin?: number;
   durationMax?: number;
   velocityRange?: number;
