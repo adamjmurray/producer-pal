@@ -37,8 +37,9 @@ export default defineConfig({
           console.log(
             `Renamed ${oldPath.replace(process.cwd() + "/", "")} -> ${newPath.replace(process.cwd() + "/", "")}`,
           );
-        } catch (err) {
-          console.error("Error renaming file:", err.message);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error("Error renaming file:", message);
         }
       },
     },
@@ -70,8 +71,9 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
           console.log(
             `Added license header to ${filePath.replace(process.cwd() + "/", "")}`,
           );
-        } catch (err) {
-          console.error("Error adding license header:", err.message);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error("Error adding license header:", message);
         }
       },
     },

@@ -45,7 +45,7 @@ const baseRules = {
         "**/test/**", // Test utilities and mocks
         "**/tests/**", // Test directories
         "**/*.test.{js,ts,tsx}", // Test files
-        "**/*-test-helpers.js", // Test helpers
+        "**/*-test-helpers.{js,ts}", // Test helpers
       ],
     },
   ],
