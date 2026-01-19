@@ -91,10 +91,10 @@ export default defineConfig({
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 98.25, // Keep above 98
-        branches: 94, // Keep above 94
+        statements: 98.3, // Keep above 98
+        branches: 94.1, // Keep above 94
         functions: 98.85, // Keep above 98
-        lines: 98.6, // Keep above 98
+        lines: 98.65, // Keep above 98
       },
     },
   },
