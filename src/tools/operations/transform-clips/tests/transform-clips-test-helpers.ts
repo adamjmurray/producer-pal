@@ -1,18 +1,9 @@
-import type { MockInstance } from "vitest";
 import {
   liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
-
-interface ClipMockConfig {
-  id: string;
-  path?: string;
-  isMidi?: boolean;
-  isArrangement?: boolean;
-  length?: number;
-}
 
 interface SessionClipMockOptions {
   isMidi?: boolean;

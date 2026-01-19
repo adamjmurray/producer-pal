@@ -7,6 +7,7 @@ import * as console from "#src/shared/v8-max-console.js";
  * @param warnings - Set to track warnings already issued
  * @param rng - Random number generator function
  * @param context - Context object with holdingAreaStartBeats
+ * @param context.holdingAreaStartBeats - Start position for temporary holding area
  */
 export function performShuffling(
   arrangementClips: LiveAPI[],

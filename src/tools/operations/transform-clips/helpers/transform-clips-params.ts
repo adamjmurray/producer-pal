@@ -38,6 +38,11 @@ interface AudioParams {
  * Apply audio parameters to a clip
  * @param clip - The clip to modify
  * @param params - Audio parameters
+ * @param params.gainDbMin - Minimum gain in dB
+ * @param params.gainDbMax - Maximum gain in dB
+ * @param params.transposeMin - Minimum transpose semitones
+ * @param params.transposeMax - Maximum transpose semitones
+ * @param params.transposeValuesArray - Parsed transpose values array
  * @param rng - Random number generator
  */
 export function applyAudioParams(
@@ -226,6 +231,15 @@ interface MidiParams {
  * Apply MIDI parameters to a clip's notes
  * @param clip - The MIDI clip to modify
  * @param params - MIDI parameters
+ * @param params.velocityMin - Minimum velocity (0-127)
+ * @param params.velocityMax - Maximum velocity (0-127)
+ * @param params.transposeMin - Minimum transpose semitones
+ * @param params.transposeMax - Maximum transpose semitones
+ * @param params.transposeValuesArray - Parsed transpose values array
+ * @param params.durationMin - Minimum duration multiplier
+ * @param params.durationMax - Maximum duration multiplier
+ * @param params.velocityRange - Velocity range adjustment
+ * @param params.probability - Note probability (0-1)
  * @param rng - Random number generator
  */
 export function applyMidiParams(

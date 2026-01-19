@@ -42,6 +42,24 @@ interface TransformClipsResult {
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
  * @param args - The parameters
+ * @param args.clipIds - Comma-separated list of clip IDs to transform
+ * @param args.arrangementTrackIndex - Track index for arrangement clips
+ * @param args.arrangementStart - Start position for arrangement selection
+ * @param args.arrangementLength - Length for arrangement selection
+ * @param args.slice - Slice clips before shuffling
+ * @param args.shuffleOrder - Shuffle order strategy
+ * @param args.gainDbMin - Minimum gain in dB
+ * @param args.gainDbMax - Maximum gain in dB
+ * @param args.transposeMin - Minimum transpose semitones
+ * @param args.transposeMax - Maximum transpose semitones
+ * @param args.transposeValues - Comma-separated transpose values
+ * @param args.velocityMin - Minimum velocity (0-127)
+ * @param args.velocityMax - Maximum velocity (0-127)
+ * @param args.durationMin - Minimum duration multiplier
+ * @param args.durationMax - Maximum duration multiplier
+ * @param args.velocityRange - Velocity range adjustment
+ * @param args.probability - Note probability (0-1)
+ * @param args.seed - Random seed for reproducibility
  * @param context - Internal context object with holdingAreaStartBeats and silenceWavPath
  * @returns Result with clipIds and seed
  */

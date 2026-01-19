@@ -156,6 +156,18 @@ interface ParameterTransformOptions {
  * Apply parameter transformations to all clips
  * @param clips - Array of Live API clip objects
  * @param options - Transformation parameters object
+ * @param options.gainDbMin - Minimum gain in dB
+ * @param options.gainDbMax - Maximum gain in dB
+ * @param options.transposeMin - Minimum transpose semitones
+ * @param options.transposeMax - Maximum transpose semitones
+ * @param options.transposeValues - Comma-separated transpose values
+ * @param options.transposeValuesArray - Parsed transpose values array
+ * @param options.velocityMin - Minimum velocity (0-127)
+ * @param options.velocityMax - Maximum velocity (0-127)
+ * @param options.durationMin - Minimum duration multiplier
+ * @param options.durationMax - Maximum duration multiplier
+ * @param options.velocityRange - Velocity range adjustment
+ * @param options.probability - Note probability (0-1)
  * @param rng - Random number generator
  * @param warnings - Set to track emitted warnings
  */
