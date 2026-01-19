@@ -33,6 +33,8 @@
     "#src/tools/operations/duplicate/tests/*.js": "./src/tools/operations/duplicate/tests/*.ts",
     "#src/tools/clip/read/*.js": "./src/tools/clip/read/*.ts",
     "#src/tools/clip/read/tests/*.js": "./src/tools/clip/read/tests/*.ts",
+    "#src/tools/clip/create/*.js": "./src/tools/clip/create/*.ts",
+    "#src/tools/clip/create/helpers/*.js": "./src/tools/clip/create/helpers/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",
