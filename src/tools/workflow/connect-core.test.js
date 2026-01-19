@@ -263,4 +263,65 @@ describe("connect", () => {
     expect(result.liveSet.name).toBeUndefined();
     expect(result.liveSet).not.toHaveProperty("name");
   });
+
+  it("skips non-instrument devices when searching for instruments", () => {
+    // Test that the inner loop continues when a device is not an instrument (effect device)
+    setupBasicMocks("12.2", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
+      "live_set tracks 0 devices 0": "effect_device",
+      "live_set tracks 0 devices 1": "synth_device",
+    });
+    mockLiveApiGet(
+      createLiveSetConfig({
+        name: "Mixed Devices Project",
+        tracks: children("track0"),
+        scenes: children("scene0"),
+        extra: {
+          track0: {
+            has_midi_input: 1,
+            devices: children("effect_device", "synth_device"),
+          },
+          effect_device: { type: 0 }, // Audio effect type
+          synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+        },
+      }),
+    );
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = connect();
+
+    // Should find the instrument after skipping the effect
+    expect(result.messagesForUser).not.toContain("No instruments found.");
+  });
+
+  it("breaks outer loop after finding first instrument", () => {
+    // Test the outer break when foundAnyInstrument is true
+    setupBasicMocks("12.2", {
+      live_set: "live_set_id",
+      "live_set tracks 0": "track0",
+      "live_set tracks 1": "track1",
+      "live_set tracks 0 devices 0": "synth_device0",
+      "live_set tracks 1 devices 0": "synth_device1",
+    });
+    mockLiveApiGet(
+      createLiveSetConfig({
+        name: "Multi-Instrument Project",
+        tracks: children("track0", "track1"),
+        scenes: children("scene0"),
+        extra: {
+          track0: { has_midi_input: 1, devices: children("synth_device0") },
+          track1: { has_midi_input: 1, devices: children("synth_device1") },
+          synth_device0: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+          synth_device1: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+        },
+      }),
+    );
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = connect();
+
+    // Should have found instrument and broken out of loop early
+    expect(result.messagesForUser).not.toContain("No instruments found.");
+  });
 });
