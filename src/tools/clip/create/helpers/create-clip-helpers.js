@@ -1,7 +1,3 @@
-import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
@@ -18,6 +14,10 @@ import {
   buildClipProperties,
   buildClipResult,
 } from "./create-clip-result-helpers.js";
+import {
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 
 /** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
 

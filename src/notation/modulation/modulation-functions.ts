@@ -1,46 +1,42 @@
-import { parseFrequency } from "./modulation-frequency.js";
+import type {
+  TimeRange,
+  NoteProperties,
+} from "./modulation-evaluator-helpers.js";
+import { parseFrequency, type PeriodObject } from "./modulation-frequency.js";
 import * as waveforms from "./modulation-waveforms.js";
+import type { ExpressionNode } from "./parser/modulation-parser.js";
 
-/**
- * @typedef {import('./modulation-evaluator-helpers.js').ExpressionNode} ExpressionNode
- * @typedef {import('./modulation-evaluator-helpers.js').TimeRange} TimeRange
- * @typedef {import('./modulation-evaluator-helpers.js').NoteProperties} NoteProperties
- * @typedef {import('./modulation-frequency.js').PeriodObject} PeriodObject
- */
-
-/**
- * @callback EvaluateExpressionFn
- * @param {ExpressionNode} node - Expression AST node
- * @param {number} position - Note position in musical beats
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param {TimeRange} timeRange - Active time range for this expression
- * @param {NoteProperties} [noteProperties] - Note properties accessible via note.* variables
- * @returns {number} Evaluated value
- */
+export type EvaluateExpressionFn = (
+  node: ExpressionNode,
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties?: NoteProperties,
+) => number;
 
 /**
  * Evaluate a function call
- * @param {string} name - Function name
- * @param {Array<ExpressionNode>} args - Function arguments (AST nodes)
- * @param {number} position - Note position in musical beats
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param {TimeRange} timeRange - Active time range for this expression
- * @param {NoteProperties} noteProperties - Note properties accessible via note.* variables
- * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
- * @returns {number} Function result
+ * @param name - Function name
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Evaluated function result
  */
 export function evaluateFunction(
-  name,
-  args,
-  position,
-  timeSigNumerator,
-  timeSigDenominator,
-  timeRange,
-  noteProperties,
-  evaluateExpression,
-) {
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
   // noise() has no arguments
   if (name === "noise") {
     return waveforms.noise();
@@ -74,24 +70,24 @@ export function evaluateFunction(
 
 /**
  * Evaluate ramp function
- * @param {Array<ExpressionNode>} args - Function arguments
- * @param {number} position - Note position in musical beats
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param {TimeRange} timeRange - Active time range
- * @param {NoteProperties} noteProperties - Note properties
- * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
- * @returns {number} Ramp value
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Ramp value
  */
 function evaluateRamp(
-  args,
-  position,
-  timeSigNumerator,
-  timeSigDenominator,
-  timeRange,
-  noteProperties,
-  evaluateExpression,
-) {
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
   // ramp() requires start and end arguments
   if (args.length < 2) {
     throw new Error(
@@ -101,7 +97,7 @@ function evaluateRamp(
 
   // First argument: start value
   const start = evaluateExpression(
-    /** @type {ExpressionNode} */ (args[0]),
+    args[0] as ExpressionNode,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -111,7 +107,7 @@ function evaluateRamp(
 
   // Second argument: end value
   const end = evaluateExpression(
-    /** @type {ExpressionNode} */ (args[1]),
+    args[1] as ExpressionNode,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -124,7 +120,7 @@ function evaluateRamp(
 
   if (args.length >= 3) {
     speed = evaluateExpression(
-      /** @type {ExpressionNode} */ (args[2]),
+      args[2] as ExpressionNode,
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -149,26 +145,26 @@ function evaluateRamp(
 
 /**
  * Evaluate waveform function (cos, tri, saw, square)
- * @param {string} name - Function name
- * @param {Array<ExpressionNode>} args - Function arguments
- * @param {number} position - Note position in musical beats
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param {TimeRange} timeRange - Active time range
- * @param {NoteProperties} noteProperties - Note properties
- * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
- * @returns {number} Waveform value
+ * @param name - Waveform function name
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Waveform value
  */
 function evaluateWaveform(
-  name,
-  args,
-  position,
-  timeSigNumerator,
-  timeSigDenominator,
-  timeRange,
-  noteProperties,
-  evaluateExpression,
-) {
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
   // All waveforms require at least a period argument
   if (args.length === 0) {
     throw new Error(`Function ${name}() requires at least a period argument`);
@@ -176,7 +172,7 @@ function evaluateWaveform(
 
   // First argument is period (either period type with "t" suffix, or a number expression)
   const period = parsePeriod(
-    /** @type {ExpressionNode} */ (args[0]),
+    args[0] as ExpressionNode | PeriodObject,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -194,7 +190,7 @@ function evaluateWaveform(
 
   if (args.length >= 2) {
     phaseOffset = evaluateExpression(
-      /** @type {ExpressionNode} */ (args[1]),
+      args[1] as ExpressionNode,
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -222,7 +218,7 @@ function evaluateWaveform(
 
       if (args.length >= 3) {
         pulseWidth = evaluateExpression(
-          /** @type {ExpressionNode} */ (args[2]),
+          args[2] as ExpressionNode,
           position,
           timeSigNumerator,
           timeSigDenominator,
@@ -241,43 +237,39 @@ function evaluateWaveform(
 
 /**
  * Parse period argument for waveform functions
- * @param {ExpressionNode | PeriodObject} periodArg - Period argument node
- * @param {number} position - Note position
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param {TimeRange} timeRange - Time range
- * @param {NoteProperties} noteProperties - Note properties
- * @param {EvaluateExpressionFn} evaluateExpression - Function to evaluate expressions
- * @param {string} name - Function name
- * @returns {number} Period in beats
+ * @param periodArg - Period argument (expression or period object)
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @param name - Function name for error messages
+ * @returns Period in beats
  */
 function parsePeriod(
-  periodArg,
-  position,
-  timeSigNumerator,
-  timeSigDenominator,
-  timeRange,
-  noteProperties,
-  evaluateExpression,
-  name,
-) {
+  periodArg: ExpressionNode | PeriodObject,
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+  name: string,
+): number {
   let period;
 
   // Check if it's a period object (has "period" type)
   if (
     typeof periodArg === "object" &&
-    periodArg !== null &&
     "type" in periodArg &&
     periodArg.type === "period"
   ) {
-    period = parseFrequency(
-      /** @type {PeriodObject} */ (periodArg),
-      timeSigNumerator,
-    );
+    period = parseFrequency(periodArg, timeSigNumerator);
   } else {
     // Evaluate as expression (e.g., variable or number) - treated as beats
     period = evaluateExpression(
-      /** @type {ExpressionNode} */ (periodArg),
+      periodArg as ExpressionNode,
       position,
       timeSigNumerator,
       timeSigDenominator,

@@ -1,4 +1,3 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { waitUntil } from "#src/shared/v8-sleep.js";
@@ -14,6 +13,7 @@ import {
   cleanupTempClip,
   extendSongIfNeeded,
 } from "./helpers/update-live-set-helpers.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * @typedef {object} UpdateLiveSetArgs

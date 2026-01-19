@@ -1,8 +1,3 @@
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
-import {
-  abletonBeatsToBarBeat,
-  abletonBeatsToBarBeatDuration,
-} from "#src/notation/barbeat/time/barbeat-time.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
@@ -21,6 +16,11 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
+import {
+  abletonBeatsToBarBeat,
+  abletonBeatsToBarBeatDuration,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Read a MIDI or audio clip from Ableton Live

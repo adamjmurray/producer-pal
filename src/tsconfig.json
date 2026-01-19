@@ -22,15 +22,18 @@
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.js", "types/**/*.d.ts"],
+  "include": ["**/*.js", "**/*.ts", "types/**/*.d.ts"],
   "exclude": [
     "**/*.test.js",
+    "**/*.test.ts",
     "test/**",
     "**/*-test-helpers.js",
+    "**/*-test-helpers.ts",
     "**/parser/*-parser.js",
     "portal/*.ts",
     "mcp-server/*.ts",
     "live-api-adapter/*.ts",
-    "skills/*.ts"
+    "skills/*.ts",
+    "shared/*.ts"
   ]
 }

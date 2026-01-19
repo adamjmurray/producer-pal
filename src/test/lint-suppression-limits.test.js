@@ -9,7 +9,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
 const ESLINT_DISABLE_LIMITS = {
-  src: 6, // Increased for live-api-adapter TypeScript migration
+  src: 7, // Increased for live-api-adapter and notation TypeScript migrations
   scripts: 0,
   webui: 1,
 };

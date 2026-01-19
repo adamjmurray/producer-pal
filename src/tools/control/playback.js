@@ -1,4 +1,3 @@
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
@@ -10,6 +9,7 @@ import {
   validateLocatorOrTime,
 } from "./playback-helpers.js";
 import { select } from "./select.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * @typedef {object} PlaybackState

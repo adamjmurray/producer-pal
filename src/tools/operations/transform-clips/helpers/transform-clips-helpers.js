@@ -1,13 +1,13 @@
-import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
   parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.js";
+import {
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Parse transpose values from comma-separated string

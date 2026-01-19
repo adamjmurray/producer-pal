@@ -6,10 +6,10 @@
 
 /**
  * Cosine wave generator
- * @param {number} phase - Phase in cycles (0.0-1.0)
- * @returns {number} Value in range [-1.0, 1.0]
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @returns Value in range [-1.0, 1.0]
  */
-export function cos(phase) {
+export function cos(phase: number): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
@@ -19,10 +19,10 @@ export function cos(phase) {
 
 /**
  * Triangle wave generator
- * @param {number} phase - Phase in cycles (0.0-1.0)
- * @returns {number} Value in range [-1.0, 1.0]
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @returns Value in range [-1.0, 1.0]
  */
-export function tri(phase) {
+export function tri(phase: number): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
@@ -38,10 +38,10 @@ export function tri(phase) {
 
 /**
  * Sawtooth wave generator
- * @param {number} phase - Phase in cycles (0.0-1.0)
- * @returns {number} Value in range [-1.0, 1.0]
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @returns Value in range [-1.0, 1.0]
  */
-export function saw(phase) {
+export function saw(phase: number): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
@@ -51,11 +51,11 @@ export function saw(phase) {
 
 /**
  * Square wave generator
- * @param {number} phase - Phase in cycles (0.0-1.0)
- * @param {number} [pulseWidth=0.5] - Duty cycle (0.0-1.0), default 50%
- * @returns {number} Value in range [-1.0, 1.0]
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @param pulseWidth - Duty cycle (0.0-1.0), default 50%
+ * @returns Value in range [-1.0, 1.0]
  */
-export function square(phase, pulseWidth = 0.5) {
+export function square(phase: number, pulseWidth = 0.5): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
@@ -65,22 +65,27 @@ export function square(phase, pulseWidth = 0.5) {
 
 /**
  * Random noise generator (non-deterministic)
- * @returns {number} Random value in range [-1.0, 1.0]
+ * @returns Random value in range [-1.0, 1.0]
  */
-export function noise() {
+export function noise(): number {
   // Generate random value between -1.0 and 1.0
   return Math.random() * 2.0 - 1.0;
 }
 
 /**
  * Ramp generator - linearly interpolates from start to end
- * @param {number} phase - Phase in cycles (0.0-1.0)
- * @param {number} start - Starting value
- * @param {number} end - Ending value
- * @param {number} [speed=1] - Speed multiplier (must be > 0)
- * @returns {number} Interpolated value between start and end
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @param start - Starting value
+ * @param end - Ending value
+ * @param speed - Speed multiplier (must be > 0)
+ * @returns Interpolated value between start and end
  */
-export function ramp(phase, start, end, speed = 1) {
+export function ramp(
+  phase: number,
+  start: number,
+  end: number,
+  speed = 1,
+): number {
   // Apply speed multiplier and normalize to 0-1 range
   const scaledPhase = (phase * speed) % 1.0;
 

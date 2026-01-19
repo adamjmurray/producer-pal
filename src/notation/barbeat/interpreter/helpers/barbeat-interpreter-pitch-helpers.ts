@@ -1,46 +1,37 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { assertDefined } from "#src/tools/shared/utils.js";
+import type { NoteEvent, BarCopyNote } from "../../../types.js";
+import type {
+  PitchState,
+  InterpreterState,
+  TimePosition,
+} from "./barbeat-interpreter-buffer-helpers.js";
 
-/**
- * @typedef {import('./barbeat-interpreter-buffer-helpers.js').PitchState} PitchState
- * @typedef {import('./barbeat-interpreter-buffer-helpers.js').InterpreterState} InterpreterState
- * @typedef {import('./barbeat-interpreter-copy-helpers.js').NoteEvent} NoteEvent
- * @typedef {import('./barbeat-interpreter-copy-helpers.js').BarCopyNote} BarCopyNote
- */
+export interface RepeatPattern {
+  start: number;
+  times: number;
+  step?: number | null;
+}
 
-/**
- * @typedef {object} TimePosition
- * @property {number} bar - Bar number
- * @property {number} beat - Beat number
- */
-
-/**
- * @typedef {object} RepeatPattern
- * @property {number} start - Starting beat
- * @property {number} times - Number of repetitions
- * @property {number | null} [step] - Step size (defaults to duration)
- */
-
-/**
- * @typedef {object} TimeElement
- * @property {number | null | undefined} [bar] - Bar number
- * @property {number | RepeatPattern} [beat] - Beat number or repeat pattern
- */
+export interface TimeElement {
+  bar?: number | null;
+  beat?: number | RepeatPattern;
+}
 
 /**
  * Expand a repeat pattern into multiple beat positions
- * @param {RepeatPattern} pattern - Repeat pattern { start, times, step }
- * @param {number} currentBar - Current bar number (1-indexed)
- * @param {number} beatsPerBar - Musical beats per bar
- * @param {number} currentDuration - Current note duration (used when step is null)
- * @returns {Array<TimePosition>} Expanded positions
+ * @param pattern - Repeat pattern to expand
+ * @param currentBar - Current bar number
+ * @param beatsPerBar - Beats per bar
+ * @param currentDuration - Current note duration
+ * @returns Array of time positions
  */
 function expandRepeatPattern(
-  pattern,
-  currentBar,
-  beatsPerBar,
-  currentDuration,
-) {
+  pattern: RepeatPattern,
+  currentBar: number,
+  beatsPerBar: number,
+  currentDuration: number,
+): TimePosition[] {
   const { start, times, step: stepValue } = pattern;
   const step = stepValue ?? currentDuration;
 
@@ -50,7 +41,7 @@ function expandRepeatPattern(
     );
   }
 
-  const positions = [];
+  const positions: TimePosition[] = [];
 
   // Convert starting position to absolute beats (0-based)
   const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
@@ -68,21 +59,21 @@ function expandRepeatPattern(
 
 /**
  * Emit a single pitch at a position, creating note event and tracking for bar copy
- * @param {PitchState} pitchState - Pitch state with velocity, duration, etc.
- * @param {TimePosition} position - Position with bar and beat
- * @param {number} beatsPerBar - Musical beats per bar
- * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array<NoteEvent>} events - Events array to append to
- * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
+ * @param pitchState - Pitch state to emit
+ * @param position - Time position
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator
+ * @param events - Output events array
+ * @param notesByBar - Notes by bar cache
  */
 function emitPitchAtPosition(
-  pitchState,
-  position,
-  beatsPerBar,
-  timeSigDenominator,
-  events,
-  notesByBar,
-) {
+  pitchState: PitchState,
+  position: TimePosition,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+  events: NoteEvent[],
+  notesByBar: Map<number, BarCopyNote[]>,
+): void {
   // Convert bar|beat to absolute beats
   const absoluteBeats = (position.bar - 1) * beatsPerBar + (position.beat - 1);
   // Convert to Ableton beats
@@ -94,7 +85,7 @@ function emitPitchAtPosition(
     timeSigDenominator != null
       ? pitchState.duration * (4 / timeSigDenominator)
       : pitchState.duration;
-  const noteEvent = {
+  const noteEvent: NoteEvent = {
     pitch: pitchState.pitch,
     start_time: abletonBeats,
     duration: abletonDuration,
@@ -119,34 +110,38 @@ function emitPitchAtPosition(
   }
 
   // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-  /** @type {Array<BarCopyNote>} */ (notesByBar.get(actualBar)).push({
-    ...noteEvent,
-    relativeTime: relativeAbletonBeats,
-    originalBar: actualBar,
-  });
+  const barNotes = notesByBar.get(actualBar);
+
+  if (barNotes) {
+    barNotes.push({
+      ...noteEvent,
+      relativeTime: relativeAbletonBeats,
+      originalBar: actualBar,
+    });
+  }
 }
 
 /**
  * Emit all pitches at multiple positions
- * @param {Array<TimePosition>} positions - Array of positions {bar, beat}
- * @param {Array<PitchState>} currentPitches - Array of pitch states to emit
- * @param {TimeElement} element - AST element (to check if bar is explicit)
- * @param {number} beatsPerBar - Musical beats per bar
- * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array<NoteEvent>} events - Events array to append to
- * @param {Map<number, Array<BarCopyNote>>} notesByBar - Bar copy tracking map
- * @returns {{ currentTime: TimePosition | null, hasExplicitBarNumber: boolean }} Updated currentTime and hasExplicitBarNumber flag
+ * @param positions - Array of time positions
+ * @param currentPitches - Array of pitch states
+ * @param element - Time element
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator
+ * @param events - Output events array
+ * @param notesByBar - Notes by bar cache
+ * @returns Current time and bar number flag
  */
 function emitPitchesAtPositions(
-  positions,
-  currentPitches,
-  element,
-  beatsPerBar,
-  timeSigDenominator,
-  events,
-  notesByBar,
-) {
-  let currentTime = null;
+  positions: TimePosition[],
+  currentPitches: PitchState[],
+  element: TimeElement,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+  events: NoteEvent[],
+  notesByBar: Map<number, BarCopyNote[]>,
+): { currentTime: TimePosition | null; hasExplicitBarNumber: boolean } {
+  let currentTime: TimePosition | null = null;
   let hasExplicitBarNumber = false;
 
   for (const position of positions) {
@@ -173,19 +168,19 @@ function emitPitchesAtPositions(
 
 /**
  * Calculate positions from time element
- * @param {TimeElement} element - Time position element with bar and beat
- * @param {InterpreterState} state - Current interpreter state
- * @param {number} beatsPerBar - Beats per bar
- * @returns {Array<TimePosition>} Array of position objects with bar and beat
+ * @param element - Time element
+ * @param state - Interpreter state
+ * @param beatsPerBar - Beats per bar
+ * @returns Array of time positions
  */
-export function calculatePositions(element, state, beatsPerBar) {
-  if (typeof element.beat === "object" && element.beat.start !== undefined) {
+export function calculatePositions(
+  element: TimeElement,
+  state: InterpreterState,
+  beatsPerBar: number,
+): TimePosition[] {
+  if (typeof element.beat === "object") {
     const currentBar =
-      element.bar == null
-        ? state.hasExplicitBarNumber
-          ? state.currentTime.bar
-          : 1
-        : element.bar;
+      element.bar ?? (state.hasExplicitBarNumber ? state.currentTime.bar : 1);
 
     return expandRepeatPattern(
       element.beat,
@@ -196,35 +191,31 @@ export function calculatePositions(element, state, beatsPerBar) {
   }
 
   const bar =
-    element.bar == null
-      ? state.hasExplicitBarNumber
-        ? state.currentTime.bar
-        : 1
-      : element.bar;
-  const beat = /** @type {number} */ (element.beat);
+    element.bar ?? (state.hasExplicitBarNumber ? state.currentTime.bar : 1);
+  const beat = element.beat as number;
 
   return [{ bar, beat }];
 }
 
 /**
  * Handle pitch emission or warn if no pitches
- * @param {Array<TimePosition>} positions - Array of positions to emit pitches at
- * @param {InterpreterState} state - Current interpreter state
- * @param {TimeElement} element - Time position element
- * @param {number} beatsPerBar - Beats per bar
- * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @param {Array<NoteEvent>} events - Events array
- * @param {Map<number, Array<BarCopyNote>>} notesByBar - Notes by bar map
+ * @param positions - Array of time positions
+ * @param state - Interpreter state
+ * @param element - Time element
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator
+ * @param events - Output events array
+ * @param notesByBar - Notes by bar cache
  */
 export function handlePitchEmission(
-  positions,
-  state,
-  element,
-  beatsPerBar,
-  timeSigDenominator,
-  events,
-  notesByBar,
-) {
+  positions: TimePosition[],
+  state: InterpreterState,
+  element: TimeElement,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+  events: NoteEvent[],
+  notesByBar: Map<number, BarCopyNote[]>,
+): void {
   if (state.currentPitches.length === 0) {
     if (positions.length === 1) {
       const pos = assertDefined(positions[0], "single position");

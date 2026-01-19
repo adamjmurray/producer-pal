@@ -1,9 +1,3 @@
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
-import {
-  barBeatToAbletonBeats,
-  timeSigToAbletonBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
@@ -18,6 +12,12 @@ import {
   parseSceneIndexList,
   processClipIteration,
 } from "./helpers/create-clip-helpers.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import {
+  barBeatToAbletonBeats,
+  timeSigToAbletonBeatsPerBar,
+} from "#src/notation/barbeat/time/barbeat-time.js";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 
 /** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
 

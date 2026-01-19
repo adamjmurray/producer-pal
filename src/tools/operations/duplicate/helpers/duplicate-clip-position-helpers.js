@@ -1,4 +1,3 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
@@ -9,6 +8,7 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Duplicates a clip to explicit positions

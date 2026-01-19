@@ -1,4 +1,3 @@
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
@@ -7,6 +6,7 @@ import {
   parseArrangementLength,
 } from "./duplicate-helpers.js";
 import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Remove the Producer Pal device from a duplicated track if it was the host track

@@ -1,22 +1,25 @@
 import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
-/**
- * @typedef {object} PeriodObject
- * @property {'period'} type - Type identifier
- * @property {number} bars - Number of bars
- * @property {number} beats - Number of beats
- */
+export interface PeriodObject {
+  type: "period";
+  bars: number;
+  beats: number;
+}
 
 /**
  * Parse a period parameter and convert to period in musical beats
- * @param {PeriodObject} periodObj - Period object from parser: {type: "period", bars: number, beats: number}
- * @param {number} timeSigNumerator - Time signature numerator
- * @returns {number} Period in musical beats
+ * @param periodObj - Period object from parser
+ * @param timeSigNumerator - Time signature numerator
+ * @returns Period in musical beats
  */
-export function parseFrequency(periodObj, timeSigNumerator) {
-  if (periodObj.type !== "period") {
+export function parseFrequency(
+  periodObj: PeriodObject,
+  timeSigNumerator: number,
+): number {
+  // Runtime type check for JavaScript callers (TypeScript can't enforce at runtime)
+  if ((periodObj as { type: string }).type !== "period") {
     throw new Error(
-      `Invalid period object: expected type "period", got "${periodObj.type}"`,
+      `Invalid period object: expected type "period", got "${(periodObj as { type: string }).type}"`,
     );
   }
 

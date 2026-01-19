@@ -53,8 +53,13 @@ export default [
       alias({
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
         customResolver: (source) => {
-          // Resolve .js imports to .ts files in skills directory
-          if (source.includes("/skills/") && source.endsWith(".js")) {
+          // Resolve .js imports to .ts files in skills and notation directories
+          // but exclude Peggy-generated parser files (*-parser.js)
+          if (
+            (source.includes("/skills/") || source.includes("/notation/")) &&
+            source.endsWith(".js") &&
+            !source.endsWith("-parser.js")
+          ) {
             return source.replace(/\.js$/, ".ts");
           }
           return null;

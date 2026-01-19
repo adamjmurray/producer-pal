@@ -1,4 +1,5 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
+import type { NoteEvent } from "../types.js";
 import {
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
@@ -7,15 +8,24 @@ import {
 } from "./barbeat-config.js";
 import { parseBeatsPerBar } from "./time/barbeat-time.js";
 
-/** @typedef {import('../types.js').NoteEvent} NoteEvent */
+interface TimeGroup {
+  bar: number;
+  beat: number;
+  notes: NoteEvent[];
+}
+
+interface FormatOptions {
+  beatsPerBar?: number;
+  timeSigNumerator?: number;
+  timeSigDenominator?: number;
+}
 
 /**
  * Format a number to remove trailing zeros
- *
- * @param {number} value - Number to format
- * @returns {string} Formatted number string
+ * @param value - Number to format
+ * @returns Formatted number string
  */
-function formatNumberWithoutTrailingZeros(value) {
+function formatNumberWithoutTrailingZeros(value: number): string {
   return value % 1 === 0
     ? value.toString()
     : value.toFixed(3).replace(/\.?0+$/, "");
@@ -23,13 +33,16 @@ function formatNumberWithoutTrailingZeros(value) {
 
 /**
  * Calculate bar and beat from start time
- *
- * @param {number} startTime - Start time in beats
- * @param {number} beatsPerBar - Beats per bar
- * @param {number | undefined} timeSigDenominator - Time signature denominator for adjustment
- * @returns {{bar: number, beat: number}} Bar and beat position
+ * @param startTime - Start time in beats
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator for adjustment
+ * @returns Bar and beat position
  */
-function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
+function calculateBarBeat(
+  startTime: number,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+): { bar: number; beat: number } {
   let adjustedTime = Math.round(startTime * 1000) / 1000;
 
   if (timeSigDenominator != null) {
@@ -44,37 +57,35 @@ function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
 
 /**
  * Check if two time positions are at the same moment
- *
- * @param {number} bar1 - First position bar number
- * @param {number} beat1 - First position beat number
- * @param {number} bar2 - Second position bar number
- * @param {number} beat2 - Second position beat number
- * @returns {boolean} True if positions are at the same moment
+ * @param bar1 - First position bar number
+ * @param beat1 - First position beat number
+ * @param bar2 - Second position bar number
+ * @param beat2 - Second position beat number
+ * @returns True if positions are at the same moment
  */
-function isSameTimePosition(bar1, beat1, bar2, beat2) {
+function isSameTimePosition(
+  bar1: number,
+  beat1: number,
+  bar2: number,
+  beat2: number,
+): boolean {
   return bar1 === bar2 && Math.abs(beat1 - beat2) <= 0.001;
 }
 
 /**
- * @typedef {object} TimeGroup
- * @property {number} bar - Bar number
- * @property {number} beat - Beat number
- * @property {Array<NoteEvent>} notes - Notes at this time position
- */
-
-/**
  * Group notes by their time position
- *
- * @param {Array<NoteEvent>} sortedNotes - Array of sorted note objects
- * @param {number} beatsPerBar - Beats per bar
- * @param {number | undefined} timeSigDenominator - Time signature denominator
- * @returns {Array<TimeGroup>} Array of time groups with notes
+ * @param sortedNotes - Array of sorted note objects
+ * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Array of time groups with notes
  */
-function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
-  /** @type {Array<TimeGroup>} */
-  const timeGroups = [];
-  /** @type {TimeGroup | null} */
-  let currentGroup = null;
+function groupNotesByTime(
+  sortedNotes: NoteEvent[],
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+): TimeGroup[] {
+  const timeGroups: TimeGroup[] = [];
+  let currentGroup: TimeGroup | null = null;
 
   for (const note of sortedNotes) {
     const { bar, beat } = calculateBarBeat(
@@ -99,21 +110,20 @@ function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
 
 /**
  * Format velocity change and update state
- *
- * @param {number} noteVelocity - Note velocity value
- * @param {number} noteVelocityDeviation - Note velocity deviation
- * @param {number} currentVelocity - Current velocity state
- * @param {number} currentVelocityDeviation - Current velocity deviation state
- * @param {Array<string>} elements - Output elements array to append to
- * @returns {{velocity: number, velocityDeviation: number}} Updated velocity state
+ * @param noteVelocity - Note velocity value
+ * @param noteVelocityDeviation - Note velocity deviation
+ * @param currentVelocity - Current velocity state
+ * @param currentVelocityDeviation - Current velocity deviation state
+ * @param elements - Output elements array to append to
+ * @returns Updated velocity state
  */
 function handleVelocityChange(
-  noteVelocity,
-  noteVelocityDeviation,
-  currentVelocity,
-  currentVelocityDeviation,
-  elements,
-) {
+  noteVelocity: number,
+  noteVelocityDeviation: number,
+  currentVelocity: number,
+  currentVelocityDeviation: number,
+  elements: string[],
+): { velocity: number; velocityDeviation: number } {
   if (noteVelocityDeviation > 0) {
     const velocityMin = noteVelocity;
     const velocityMax = noteVelocity + noteVelocityDeviation;
@@ -145,13 +155,16 @@ function handleVelocityChange(
 
 /**
  * Format duration change and update state
- *
- * @param {number} noteDuration - Note duration value
- * @param {number} currentDuration - Current duration state
- * @param {Array<string>} elements - Output elements array to append to
- * @returns {number} Updated duration state
+ * @param noteDuration - Note duration value
+ * @param currentDuration - Current duration state
+ * @param elements - Output elements array to append to
+ * @returns Updated duration state
  */
-function handleDurationChange(noteDuration, currentDuration, elements) {
+function handleDurationChange(
+  noteDuration: number,
+  currentDuration: number,
+  elements: string[],
+): number {
   if (Math.abs(noteDuration - currentDuration) > 0.001) {
     const durationFormatted = formatNumberWithoutTrailingZeros(noteDuration);
 
@@ -165,17 +178,16 @@ function handleDurationChange(noteDuration, currentDuration, elements) {
 
 /**
  * Format probability change and update state
- *
- * @param {number} noteProbability - Note probability value
- * @param {number} currentProbability - Current probability state
- * @param {Array<string>} elements - Output elements array to append to
- * @returns {number} Updated probability state
+ * @param noteProbability - Note probability value
+ * @param currentProbability - Current probability state
+ * @param elements - Output elements array to append to
+ * @returns Updated probability state
  */
 function handleProbabilityChange(
-  noteProbability,
-  currentProbability,
-  elements,
-) {
+  noteProbability: number,
+  currentProbability: number,
+  elements: string[],
+): number {
   if (Math.abs(noteProbability - currentProbability) > 0.001) {
     const probabilityFormatted =
       formatNumberWithoutTrailingZeros(noteProbability);
@@ -190,24 +202,23 @@ function handleProbabilityChange(
 
 /**
  * Format beat value for output
- *
- * @param {number} beat - Beat number to format
- * @returns {string} Formatted beat string
+ * @param beat - Beat number to format
+ * @returns Formatted beat string
  */
-function formatBeat(beat) {
+function formatBeat(beat: number): string {
   return formatNumberWithoutTrailingZeros(beat);
 }
 
 /**
  * Convert Live clip notes to bar|beat string
- * @param {Array<NoteEvent>} clipNotes - Array of note objects from the Live API
- * @param {object} options - Formatting options
- * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
- * @param {number} [options.timeSigNumerator] - Time signature numerator
- * @param {number} [options.timeSigDenominator] - Time signature denominator
- * @returns {string} bar|beat representation
+ * @param clipNotes - Array of note objects from the Live API
+ * @param options - Formatting options
+ * @returns bar|beat representation
  */
-export function formatNotation(clipNotes, options = {}) {
+export function formatNotation(
+  clipNotes: NoteEvent[] | null | undefined,
+  options: FormatOptions = {},
+): string {
   if (!clipNotes || clipNotes.length === 0) {
     return "";
   }
@@ -232,7 +243,7 @@ export function formatNotation(clipNotes, options = {}) {
   );
 
   // Generate output in pitch-first format
-  const elements = [];
+  const elements: string[] = [];
   let currentVelocity = DEFAULT_VELOCITY;
   let currentDuration = DEFAULT_DURATION;
   let currentProbability = DEFAULT_PROBABILITY;

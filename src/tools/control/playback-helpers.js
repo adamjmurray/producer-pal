@@ -1,11 +1,11 @@
 import {
-  abletonBeatsToBarBeat,
-  barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import {
   findLocator,
   findLocatorsByName,
 } from "#src/tools/shared/locator/locator-helpers.js";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Get the current loop state from liveSet

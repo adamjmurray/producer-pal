@@ -61,6 +61,7 @@
     "vite",
     "vitest",
     "wavetable",
+    "webstorage",
     "webui"
   ],
   "prettier.configPath": "config/prettier.config.mjs",
