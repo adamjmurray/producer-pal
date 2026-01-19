@@ -38,7 +38,6 @@ export default defineConfig({
     execArgv,
     coverage: {
       provider: "v8",
-      ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
         "text-summary", // Minimal console output (just totals)
