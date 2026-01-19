@@ -167,22 +167,38 @@ export function readClip(args = {}, _context = {}) {
 }
 
 /**
+ * @typedef {object} WarpMarker
+ * @property {number} sampleTime - Sample time position
+ * @property {number} beatTime - Beat time position
+ */
+
+/**
+ * @typedef {object} WarpMarkerData
+ * @property {number} sample_time - Sample time position
+ * @property {number} beat_time - Beat time position
+ */
+
+/**
  * Process warp markers for an audio clip
- * @param {object} clip - LiveAPI clip object
- * @returns {Array<{sampleTime: number, beatTime: number}>|undefined} - Array of warp markers or undefined
+ * @param {LiveAPI} clip - LiveAPI clip object
+ * @returns {Array<WarpMarker>|undefined} - Array of warp markers or undefined
  */
 function processWarpMarkers(clip) {
   try {
-    const warpMarkersJson = clip.getProperty("warp_markers");
+    const warpMarkersJson = /** @type {string} */ (
+      clip.getProperty("warp_markers")
+    );
 
     if (!warpMarkersJson || warpMarkersJson === "") {
       return;
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
-    const mapMarker = (
-      /** @type {{sample_time: number, beat_time: number}} */ marker,
-    ) => ({
+    /**
+     * @param {WarpMarkerData} marker - Raw warp marker data
+     * @returns {WarpMarker} Formatted warp marker
+     */
+    const mapMarker = (marker) => ({
       sampleTime: marker.sample_time,
       beatTime: marker.beat_time,
     });
@@ -209,35 +225,35 @@ function processWarpMarkers(clip) {
 /**
  * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
  * Only includes properties that are true
- * @param {object} result - Result object to add properties to
- * @param {object} clip - LiveAPI clip object
+ * @param {Record<string, unknown>} result - Result object to add properties to
+ * @param {LiveAPI} clip - LiveAPI clip object
  */
 function addBooleanStateProperties(result, clip) {
-  if (clip.getProperty("is_playing") > 0) {
+  if (/** @type {number} */ (clip.getProperty("is_playing")) > 0) {
     result.playing = true;
   }
 
-  if (clip.getProperty("is_triggered") > 0) {
+  if (/** @type {number} */ (clip.getProperty("is_triggered")) > 0) {
     result.triggered = true;
   }
 
-  if (clip.getProperty("is_recording") > 0) {
+  if (/** @type {number} */ (clip.getProperty("is_recording")) > 0) {
     result.recording = true;
   }
 
-  if (clip.getProperty("is_overdubbing") > 0) {
+  if (/** @type {number} */ (clip.getProperty("is_overdubbing")) > 0) {
     result.overdubbing = true;
   }
 
-  if (clip.getProperty("muted") > 0) {
+  if (/** @type {number} */ (clip.getProperty("muted")) > 0) {
     result.muted = true;
   }
 }
 
 /**
  * Process MIDI clip specific properties
- * @param {object} result - Result object to add properties to
- * @param {object} clip - LiveAPI clip object
+ * @param {Record<string, unknown>} result - Result object to add properties to
+ * @param {LiveAPI} clip - LiveAPI clip object
  * @param {boolean} includeClipNotes - Whether to include formatted notes
  * @param {number} lengthBeats - Clip length in beats
  * @param {number} timeSigNumerator - Time signature numerator
@@ -251,12 +267,8 @@ function processMidiClip(
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  const notesDictionary = clip.call(
-    "get_notes_extended",
-    0,
-    128,
-    0,
-    lengthBeats,
+  const notesDictionary = /** @type {string} */ (
+    clip.call("get_notes_extended", 0, 128, 0, lengthBeats)
   );
   const notes = JSON.parse(notesDictionary).notes;
 
@@ -283,32 +295,36 @@ const WARP_MODE_MAPPING = {
 
 /**
  * Process audio clip specific properties
- * @param {object} result - Result object to add properties to
- * @param {object} clip - LiveAPI clip object
+ * @param {Record<string, unknown>} result - Result object to add properties to
+ * @param {LiveAPI} clip - LiveAPI clip object
  * @param {boolean} includeWarpMarkers - Whether to include warp markers
  */
 function processAudioClip(result, clip, includeWarpMarkers) {
-  const liveGain = clip.getProperty("gain");
+  const liveGain = /** @type {number} */ (clip.getProperty("gain"));
 
   result.gainDb = liveGainToDb(liveGain);
 
-  const filePath = clip.getProperty("file_path");
+  const filePath = /** @type {string | null} */ (clip.getProperty("file_path"));
 
   if (filePath) {
     result.sampleFile = filePath;
   }
 
-  const pitchCoarse = clip.getProperty("pitch_coarse");
-  const pitchFine = clip.getProperty("pitch_fine");
+  const pitchCoarse = /** @type {number} */ (clip.getProperty("pitch_coarse"));
+  const pitchFine = /** @type {number} */ (clip.getProperty("pitch_fine"));
 
   result.pitchShift = pitchCoarse + pitchFine / 100;
 
-  result.sampleLength = clip.getProperty("sample_length");
-  result.sampleRate = clip.getProperty("sample_rate");
+  result.sampleLength = /** @type {number} */ (
+    clip.getProperty("sample_length")
+  );
+  result.sampleRate = /** @type {number} */ (clip.getProperty("sample_rate"));
 
   // Warping state
-  result.warping = clip.getProperty("warping") > 0;
-  const warpModeValue = clip.getProperty("warp_mode");
+  result.warping = /** @type {number} */ (clip.getProperty("warping")) > 0;
+  const warpModeValue = /** @type {keyof typeof WARP_MODE_MAPPING} */ (
+    clip.getProperty("warp_mode")
+  );
 
   result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
@@ -324,8 +340,8 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
 /**
  * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
- * @param {object} result - Result object to add properties to
- * @param {object} clip - LiveAPI clip object
+ * @param {Record<string, unknown>} result - Result object to add properties to
+ * @param {LiveAPI} clip - LiveAPI clip object
  * @param {boolean} isArrangementClip - Whether clip is in arrangement view
  */
 function addClipLocationProperties(result, clip, isArrangementClip) {
@@ -368,7 +384,7 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
  * @param {number} endMarkerBeats - End marker position in beats
  * @param {number} loopEndBeats - Loop end position in beats
  * @param {number} lengthBeats - Clip length in beats
- * @returns {object} - Object with startBeats and endBeats
+ * @returns {{startBeats: number, endBeats: number}} - Object with startBeats and endBeats
  */
 function getActiveClipBounds(
   isLooping,

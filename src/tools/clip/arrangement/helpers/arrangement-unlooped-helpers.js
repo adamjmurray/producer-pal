@@ -8,17 +8,29 @@ import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-mark
 const EPSILON = 0.001;
 
 /**
+ * @typedef {import("./arrangement-operations-helpers.js").ArrangementContext} ArrangementContext
+ */
+
+/**
+ * @typedef {import("./arrangement-operations-helpers.js").ClipIdResult} ClipIdResult
+ */
+
+/**
+ * @typedef {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} TilingContext
+ */
+
+/**
  * Handle unlooped clip lengthening
  * @param {object} options - Parameters object
- * @param {object} options.clip - The LiveAPI clip object
+ * @param {LiveAPI} options.clip - The LiveAPI clip object
  * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
  * @param {number} options.arrangementLengthBeats - Target length in beats
  * @param {number} options.currentArrangementLength - Current length in beats
  * @param {number} options.currentEndTime - Current end time in beats
  * @param {number} options.clipStartMarker - Clip start marker position
- * @param {object} options.track - The LiveAPI track object
- * @param {object} options.context - Tool execution context
- * @returns {Array<object>} - Array of updated clip info
+ * @param {LiveAPI} options.track - The LiveAPI track object
+ * @param {ArrangementContext} options.context - Tool execution context
+ * @returns {Array<ClipIdResult>} - Array of updated clip info
  */
 export function handleUnloopedLengthening({
   clip,
@@ -30,6 +42,7 @@ export function handleUnloopedLengthening({
   track,
   context,
 }) {
+  /** @type {Array<ClipIdResult>} */
   const updatedClips = [];
 
   // MIDI clip handling - tile with chunks matching the current arrangement length
@@ -71,18 +84,20 @@ export function handleUnloopedLengthening({
           clip,
           track,
           tileLengthNeeded,
-          holdingAreaStart,
+          /** @type {number} */ (holdingAreaStart),
           true, // isMidiClip
-          context,
+          /** @type {TilingContext} */ (context),
         );
 
         tileClip = moveClipFromHolding(holdingClipId, track, currentPosition);
       } else {
         // Full tiles use direct duplication
-        const duplicateResult = track.call(
-          "duplicate_clip_to_arrangement",
-          `id ${clip.id}`,
-          currentPosition,
+        const duplicateResult = /** @type {string} */ (
+          track.call(
+            "duplicate_clip_to_arrangement",
+            `id ${clip.id}`,
+            currentPosition,
+          )
         );
 
         tileClip = LiveAPI.from(duplicateResult);
@@ -108,7 +123,7 @@ export function handleUnloopedLengthening({
   // Audio clip handling
   // Note: We don't try to detect hidden content - just attempt to extend
   // and let Live handle it (fills with silence if audio runs out)
-  const isWarped = clip.getProperty("warping") === 1;
+  const isWarped = /** @type {number} */ (clip.getProperty("warping")) === 1;
   let clipStartMarkerBeats;
 
   if (isWarped) {
@@ -133,13 +148,15 @@ export function handleUnloopedLengthening({
     clip.set("end_marker", targetEndMarker);
   }
 
-  const revealedClip = revealAudioContentAtPosition(
-    clip,
-    track,
-    newStartMarker,
-    newEndMarker,
-    currentEndTime,
-    context,
+  const revealedClip = /** @type {LiveAPI} */ (
+    revealAudioContentAtPosition(
+      clip,
+      track,
+      newStartMarker,
+      newEndMarker,
+      currentEndTime,
+      context,
+    )
   );
 
   updatedClips.push({ id: clip.id });

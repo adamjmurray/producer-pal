@@ -20,6 +20,8 @@
     "src/tools/workflow/**/*.js",
     "src/tools/live-set/**/*.js",
     "src/tools/samples/**/*.js",
+    "src/tools/clip/read/**/*.js",
+    "src/tools/clip/arrangement/**/*.js",
     "src/tools/operations/duplicate/**/*.js",
     "src/tools/operations/transform-clips/**/*.js",
     "src/tools/operations/delete/**/*.js",
