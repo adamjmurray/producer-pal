@@ -1,5 +1,10 @@
+import {
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
@@ -14,22 +19,16 @@ import {
   buildClipProperties,
   buildClipResult,
 } from "./create-clip-result-helpers.js";
-import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-
-/** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
 
 // Re-export for use by create-clip.js
 export { parseArrangementStartList };
 
 /**
  * Parses scene indices with createClip-specific error message
- * @param {string | null} input - Comma-separated scene indices
- * @returns {number[]} - Array of scene indices
+ * @param input - Comma-separated scene indices
+ * @returns Array of scene indices
  */
-export function parseSceneIndexList(input) {
+export function parseSceneIndexList(input: string | null): number[] {
   try {
     return parseSceneIndexListBase(input);
   } catch (error) {
@@ -41,47 +40,50 @@ export function parseSceneIndexList(input) {
 
 /**
  * Builds a clip name based on count and iteration index
- * @param {string | null} name - Base clip name
- * @param {number} count - Total number of clips being created
- * @param {number} i - Current iteration index (0-based)
- * @returns {string|undefined} - Generated clip name
+ * @param name - Base clip name
+ * @param count - Total number of clips being created
+ * @param i - Current iteration index (0-based)
+ * @returns Generated clip name
  */
-export function buildClipName(name, count, i) {
+export function buildClipName(
+  name: string | null,
+  count: number,
+  i: number,
+): string | undefined {
   return buildIndexedName(name, count, i);
 }
 
-/**
- * @typedef {object} TimingParameters
- * @property {number | null} arrangementStartBeats
- * @property {number | null} startBeats
- * @property {number | null} firstStartBeats
- * @property {number | null} endBeats
- */
+export interface TimingParameters {
+  arrangementStartBeats: number | null;
+  startBeats: number | null;
+  firstStartBeats: number | null;
+  endBeats: number | null;
+}
 
 /**
  * Converts bar|beat timing parameters to Ableton beats
- * @param {string | null} arrangementStart - Arrangement start position in bar|beat format
- * @param {string | null} start - Loop start position in bar|beat format
- * @param {string | null} firstStart - First playback start position in bar|beat format
- * @param {string | null} length - Clip length in bar|beat duration format
- * @param {boolean | null} looping - Whether the clip is looping
- * @param {number} timeSigNumerator - Clip time signature numerator
- * @param {number} timeSigDenominator - Clip time signature denominator
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @param {number} songTimeSigDenominator - Song time signature denominator
- * @returns {TimingParameters} - Converted timing parameters in beats
+ * @param arrangementStart - Arrangement start position in bar|beat format
+ * @param start - Loop start position in bar|beat format
+ * @param firstStart - First playback start position in bar|beat format
+ * @param length - Clip length in bar|beat duration format
+ * @param looping - Whether the clip is looping
+ * @param timeSigNumerator - Clip time signature numerator
+ * @param timeSigDenominator - Clip time signature denominator
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @returns Converted timing parameters in beats
  */
 export function convertTimingParameters(
-  arrangementStart,
-  start,
-  firstStart,
-  length,
-  looping,
-  timeSigNumerator,
-  timeSigDenominator,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
-) {
+  arrangementStart: string | null,
+  start: string | null,
+  firstStart: string | null,
+  length: string | null,
+  looping: boolean | null,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
+): TimingParameters {
   // Convert bar|beat timing parameters to Ableton beats
   const arrangementStartBeats =
     arrangementStart != null
@@ -108,7 +110,7 @@ export function convertTimingParameters(
   }
 
   // Convert length parameter to end position
-  let endBeats = null;
+  let endBeats: number | null = null;
 
   if (length != null) {
     const lengthBeats = barBeatDurationToAbletonBeats(
@@ -116,7 +118,7 @@ export function convertTimingParameters(
       timeSigNumerator,
       timeSigDenominator,
     );
-    const startOffsetBeats = startBeats || 0;
+    const startOffsetBeats = startBeats ?? 0;
 
     endBeats = startOffsetBeats + lengthBeats;
   }
@@ -124,28 +126,27 @@ export function convertTimingParameters(
   return { arrangementStartBeats, startBeats, firstStartBeats, endBeats };
 }
 
-/**
- * @typedef {object} SessionClipResult
- * @property {LiveAPI} clip
- * @property {number} sceneIndex
- */
+interface SessionClipResult {
+  clip: LiveAPI;
+  sceneIndex: number;
+}
 
 /**
  * Creates a session clip in a clip slot, auto-creating scenes if needed
- * @param {number} trackIndex - Track index (0-based)
- * @param {number} sceneIndex - Target scene index (0-based)
- * @param {number} clipLength - Clip length in beats
- * @param {LiveAPI} liveSet - LiveAPI live_set object
- * @param {number} maxAutoCreatedScenes - Maximum scenes allowed
- * @returns {SessionClipResult} - Object with clip and sceneIndex
+ * @param trackIndex - Track index (0-based)
+ * @param sceneIndex - Target scene index (0-based)
+ * @param clipLength - Clip length in beats
+ * @param liveSet - LiveAPI live_set object
+ * @param maxAutoCreatedScenes - Maximum scenes allowed
+ * @returns Object with clip and sceneIndex
  */
 function createSessionClip(
-  trackIndex,
-  sceneIndex,
-  clipLength,
-  liveSet,
-  maxAutoCreatedScenes,
-) {
+  trackIndex: number,
+  sceneIndex: number,
+  clipLength: number,
+  liveSet: LiveAPI,
+  maxAutoCreatedScenes: number,
+): SessionClipResult {
   const clipSlot = prepareSessionClipSlot(
     trackIndex,
     sceneIndex,
@@ -161,24 +162,29 @@ function createSessionClip(
   };
 }
 
-/**
- * @typedef {object} ArrangementClipResult
- * @property {LiveAPI} clip
- * @property {number | null} arrangementStartBeats
- */
+interface ArrangementClipResult {
+  clip: LiveAPI;
+  arrangementStartBeats: number | null;
+}
 
 /**
  * Creates an arrangement clip on a track
- * @param {number} trackIndex - Track index (0-based)
- * @param {number | null} arrangementStartBeats - Starting position in beats
- * @param {number} clipLength - Clip length in beats
- * @returns {ArrangementClipResult} - Object with clip and arrangementStartBeats
+ * @param trackIndex - Track index (0-based)
+ * @param arrangementStartBeats - Starting position in beats
+ * @param clipLength - Clip length in beats
+ * @returns Object with clip and arrangementStartBeats
  */
-function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
+function createArrangementClip(
+  trackIndex: number,
+  arrangementStartBeats: number | null,
+  clipLength: number,
+): ArrangementClipResult {
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
-  const newClipResult = /** @type {string} */ (
-    track.call("create_midi_clip", arrangementStartBeats, clipLength)
-  );
+  const newClipResult = track.call(
+    "create_midi_clip",
+    arrangementStartBeats,
+    clipLength,
+  ) as string;
   const clip = LiveAPI.from(newClipResult);
 
   if (!clip.exists()) {
@@ -190,56 +196,56 @@ function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
 
 /**
  * Processes one clip creation at a specific position
- * @param {string} view - View type (session or arrangement)
- * @param {number} trackIndex - Track index
- * @param {number | null} sceneIndex - Scene index for session clips (explicit position)
- * @param {number | null} arrangementStartBeats - Arrangement start in beats (explicit position)
- * @param {string | null} arrangementStart - Arrangement start in bar|beat format (for result)
- * @param {number} clipLength - Clip length in beats
- * @param {LiveAPI} liveSet - LiveAPI live_set object
- * @param {number | null} startBeats - Loop start in beats
- * @param {number | null} endBeats - Loop end in beats
- * @param {number | null} firstStartBeats - First playback start in beats
- * @param {boolean | null} looping - Whether the clip is looping
- * @param {string | undefined} clipName - Clip name
- * @param {string | null} color - Clip color
- * @param {number} timeSigNumerator - Clip time signature numerator
- * @param {number} timeSigDenominator - Clip time signature denominator
- * @param {string | null} notationString - Original notation string
- * @param {Array<MidiNote>} notes - Array of MIDI notes
- * @param {string | null} length - Original length parameter
- * @param {string | null} sampleFile - Audio file path (for audio clips)
- * @returns {object} - Clip result for this iteration
+ * @param view - View type (session or arrangement)
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index for session clips (explicit position)
+ * @param arrangementStartBeats - Arrangement start in beats (explicit position)
+ * @param arrangementStart - Arrangement start in bar|beat format (for result)
+ * @param clipLength - Clip length in beats
+ * @param liveSet - LiveAPI live_set object
+ * @param startBeats - Loop start in beats
+ * @param endBeats - Loop end in beats
+ * @param firstStartBeats - First playback start in beats
+ * @param looping - Whether the clip is looping
+ * @param clipName - Clip name
+ * @param color - Clip color
+ * @param timeSigNumerator - Clip time signature numerator
+ * @param timeSigDenominator - Clip time signature denominator
+ * @param notationString - Original notation string
+ * @param notes - Array of MIDI notes
+ * @param length - Original length parameter
+ * @param sampleFile - Audio file path (for audio clips)
+ * @returns Clip result for this iteration
  */
 export function processClipIteration(
-  view,
-  trackIndex,
-  sceneIndex,
-  arrangementStartBeats,
-  arrangementStart,
-  clipLength,
-  liveSet,
-  startBeats,
-  endBeats,
-  firstStartBeats,
-  looping,
-  clipName,
-  color,
-  timeSigNumerator,
-  timeSigDenominator,
-  notationString,
-  notes,
-  length,
-  sampleFile,
-) {
-  let clip;
-  let currentSceneIndex;
+  view: string,
+  trackIndex: number,
+  sceneIndex: number | null,
+  arrangementStartBeats: number | null,
+  arrangementStart: string | null,
+  clipLength: number,
+  liveSet: LiveAPI,
+  startBeats: number | null,
+  endBeats: number | null,
+  firstStartBeats: number | null,
+  looping: boolean | null,
+  clipName: string | undefined,
+  color: string | null,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  notationString: string | null,
+  notes: MidiNote[],
+  length: string | null,
+  sampleFile: string | null,
+): object {
+  let clip: LiveAPI;
+  let currentSceneIndex: number | undefined;
 
   if (sampleFile) {
     // Audio clip creation
     if (view === "session") {
       // sceneIndex is guaranteed to be valid for session view (validated in calling code)
-      const validSceneIndex = /** @type {number} */ (sceneIndex);
+      const validSceneIndex = sceneIndex as number;
       const result = createAudioSessionClip(
         trackIndex,
         validSceneIndex,
@@ -262,8 +268,7 @@ export function processClipIteration(
     }
 
     // For audio clips: only set name and color (no looping, timing, or notes)
-    /** @type {Record<string, unknown>} */
-    const propsToSet = {};
+    const propsToSet: Record<string, unknown> = {};
 
     if (clipName) propsToSet.name = clipName;
     if (color != null) propsToSet.color = color;
@@ -275,7 +280,7 @@ export function processClipIteration(
     // MIDI clip creation
     if (view === "session") {
       // sceneIndex is guaranteed to be valid for session view (validated in calling code)
-      const validSceneIndex = /** @type {number} */ (sceneIndex);
+      const validSceneIndex = sceneIndex as number;
       const result = createSessionClip(
         trackIndex,
         validSceneIndex,
