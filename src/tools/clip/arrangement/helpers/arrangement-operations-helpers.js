@@ -212,31 +212,13 @@ function createLoopeClipTiles({
     }
 
     // Create temp clip to truncate
-    if (isAudioClip) {
-      const { clip: sessionClip, slot } = createAudioClipInSession(
-        track,
-        tempClipLength,
-        /** @type {string} */ (context.silenceWavPath),
-      );
-      const tempResult = /** @type {string} */ (
-        track.call(
-          "duplicate_clip_to_arrangement",
-          `id ${sessionClip.id}`,
-          newEndTime,
-        )
-      );
-      const tempClip = LiveAPI.from(tempResult);
-
-      slot.call("delete_clip");
-      track.call("delete_clip", `id ${tempClip.id}`);
-    } else {
-      const tempClipPath = /** @type {string} */ (
-        track.call("create_midi_clip", newEndTime, tempClipLength)
-      );
-      const tempClip = LiveAPI.from(tempClipPath);
-
-      track.call("delete_clip", `id ${tempClip.id}`);
-    }
+    truncateWithTempClip({
+      track,
+      isAudioClip,
+      position: newEndTime,
+      length: tempClipLength,
+      silenceWavPath: /** @type {string} */ (context.silenceWavPath),
+    });
 
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;
@@ -318,30 +300,63 @@ export function handleArrangementShortening({
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   // Create temporary clip to truncate
+  truncateWithTempClip({
+    track,
+    isAudioClip,
+    position: newEndTime,
+    length: tempClipLength,
+    silenceWavPath: /** @type {string} */ (context.silenceWavPath),
+    setupAudioClip: (tempClip) => {
+      // Re-apply warping and looping to arrangement clip
+      tempClip.set("warping", 1);
+      tempClip.set("looping", 1);
+      tempClip.set("loop_end", tempClipLength);
+    },
+  });
+}
+
+/**
+ * Creates and immediately deletes a temporary clip to truncate arrangement clips
+ * @param {object} options - Truncation options
+ * @param {LiveAPI} options.track - Track to create temp clip on
+ * @param {boolean} options.isAudioClip - Whether to create audio or MIDI clip
+ * @param {number} options.position - Position for temp clip
+ * @param {number} options.length - Length of temp clip
+ * @param {string} options.silenceWavPath - Path to silence WAV (for audio clips)
+ * @param {((tempClip: LiveAPI) => void) | null} [options.setupAudioClip] - Optional callback to setup audio temp clip
+ */
+function truncateWithTempClip({
+  track,
+  isAudioClip,
+  position,
+  length,
+  silenceWavPath,
+  setupAudioClip = null,
+}) {
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
-      tempClipLength,
-      /** @type {string} */ (context.silenceWavPath),
+      length,
+      silenceWavPath,
     );
     const tempResult = /** @type {string} */ (
       track.call(
         "duplicate_clip_to_arrangement",
         `id ${sessionClip.id}`,
-        newEndTime,
+        position,
       )
     );
     const tempClip = LiveAPI.from(tempResult);
 
-    // Re-apply warping and looping to arrangement clip
-    tempClip.set("warping", 1);
-    tempClip.set("looping", 1);
-    tempClip.set("loop_end", tempClipLength);
+    if (setupAudioClip) {
+      setupAudioClip(tempClip);
+    }
+
     slot.call("delete_clip");
     track.call("delete_clip", `id ${tempClip.id}`);
   } else {
     const tempClipResult = /** @type {string} */ (
-      track.call("create_midi_clip", newEndTime, tempClipLength)
+      track.call("create_midi_clip", position, length)
     );
     const tempClip = LiveAPI.from(tempClipResult);
 
