@@ -24,7 +24,6 @@
   "exclude": [
     "**/*.test.js",
     "**/*-test-helpers.js",
-    "src/**/*.def.js",
     "src/notation/barbeat/parser/barbeat-parser.js",
     "src/notation/modulation/parser/modulation-parser.js"
   ]
