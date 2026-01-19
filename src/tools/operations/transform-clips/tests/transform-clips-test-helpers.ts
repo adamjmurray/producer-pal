@@ -37,7 +37,8 @@ export function setupSessionClipMocks(
       if (this._path === `id ${id}`) return id;
     }
 
-    return this._id;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._id!;
   });
   liveApiPath.mockImplementation(function (this: MockContext) {
     return idToPath[this._id as string] ?? this._path;
@@ -81,8 +82,9 @@ export function setupClipMocks(
     length = 4.0,
   } = opts;
 
-  liveApiId.mockImplementation(function (this: MockContext) {
-    return this._path === `id ${clipId}` ? clipId : this._id;
+  liveApiId.mockImplementation(function (this: MockContext): string {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._path === `id ${clipId}` ? clipId : this._id!;
   });
   liveApiPath.mockImplementation(function (this: MockContext) {
     return this._id === clipId ? path : this._path;

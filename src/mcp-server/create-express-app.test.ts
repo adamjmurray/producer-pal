@@ -7,6 +7,16 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
+// Type for mock Max module with test-specific properties
+type MockMax = typeof Max & {
+  handlers: Map<string, (input: unknown) => void>;
+  mcpResponseHandler: ((requestId: string, ...chunks: string[]) => void) | null;
+  defaultMcpResponseHandler:
+    | ((requestId: string, ...chunks: string[]) => void)
+    | null;
+};
+const mockMax = Max as MockMax;
+
 interface TestState {
   client: Client | null;
   transport: StreamableHTTPClientTransport | null;
@@ -169,7 +179,7 @@ describe("MCP Express App", () => {
       });
 
       // Additional description checks for read-live-set
-      const readLiveSetDesc = toolsByName["ppal-read-live-set"].description;
+      const readLiveSetDesc = toolsByName["ppal-read-live-set"]!.description;
 
       expect(readLiveSetDesc).toContain("global settings");
       expect(readLiveSetDesc).toContain("tracks, scenes, devices");
@@ -233,7 +243,7 @@ describe("MCP Express App", () => {
             // Simulate the response from Max after a short delay
             setTimeout(() => {
               // Call the real handleLiveApiResult with mock data in chunked format
-              Max.defaultMcpResponseHandler(
+              mockMax.defaultMcpResponseHandler!(
                 requestId,
                 JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
                 MAX_ERROR_DELIMITER,
@@ -255,15 +265,13 @@ describe("MCP Express App", () => {
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(Array.isArray(result.content)).toBe(true);
-      expect((result.content[0] as { type: string; text: string }).type).toBe(
-        "text",
-      );
+      const content = result.content as Array<{ type: string; text: string }>;
+
+      expect(Array.isArray(content)).toBe(true);
+      expect(content[0]!.type).toBe("text");
 
       // Parse the JSON response
-      const mockReturnValue = JSON.parse(
-        (result.content[0] as { type: string; text: string }).text,
-      );
+      const mockReturnValue = JSON.parse(content[0]!.text);
 
       // this is hard-coded in our mock response above:
       expect(mockReturnValue).toStrictEqual({});
@@ -286,7 +294,7 @@ describe("MCP Express App", () => {
       setTimeoutForTesting(2);
 
       // Remove the mcp_response handler to cause a timeout on the request calling side of the flow:
-      Max.mcpResponseHandler = null;
+      mockMax.mcpResponseHandler = null;
       // Also replace Max.outlet with a simple mock that doesn't auto-respond
       Max.outlet = vi.fn().mockResolvedValue(undefined);
 
@@ -299,12 +307,12 @@ describe("MCP Express App", () => {
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
-      expect((result.content[0] as { type: string; text: string }).type).toBe(
-        "text",
+      const content = result.content as Array<{ type: string; text: string }>;
+
+      expect(content[0]!.type).toBe("text");
+      expect(content[0]!.text).toContain(
+        "Tool call 'ppal-read-live-set' timed out after 2ms",
       );
-      expect(
-        (result.content[0] as { type: string; text: string }).text,
-      ).toContain("Tool call 'ppal-read-live-set' timed out after 2ms");
     });
 
     it("should handle tool with missing required arguments", async () => {
@@ -313,11 +321,10 @@ describe("MCP Express App", () => {
         name: "delete-scene",
         arguments: {}, // Missing sceneIndex
       });
+      const content = result.content as Array<{ type: string; text: string }>;
 
       expect(result.isError).toBe(true);
-      expect(
-        (result.content[0] as { type: string; text: string }).text,
-      ).toContain("MCP error -32602");
+      expect(content[0]!.text).toContain("MCP error -32602");
     });
 
     it("should handle unknown tool", async () => {
@@ -326,11 +333,10 @@ describe("MCP Express App", () => {
         name: "nonexistent-tool",
         arguments: {},
       });
+      const content = result.content as Array<{ type: string; text: string }>;
 
       expect(result.isError).toBe(true);
-      expect(
-        (result.content[0] as { type: string; text: string }).text,
-      ).toContain("MCP error -32602");
+      expect(content[0]!.text).toContain("MCP error -32602");
     });
 
     it("should return isError: true when Max.outlet rejects", async () => {
@@ -350,16 +356,13 @@ describe("MCP Express App", () => {
           name: "ppal-read-track",
           arguments: { trackIndex: 0 },
         });
+        const content = result.content as Array<{ type: string; text: string }>;
 
         expect(result).toBeDefined();
         expect(result.isError).toBe(true);
         expect(result.content).toBeDefined();
-        expect((result.content[0] as { type: string; text: string }).type).toBe(
-          "text",
-        );
-        expect(
-          (result.content[0] as { type: string; text: string }).text,
-        ).toContain(errorMessage);
+        expect(content[0]!.type).toBe("text");
+        expect(content[0]!.text).toContain(errorMessage);
       } finally {
         // Always restore the original mock
         // eslint-disable-next-line require-atomic-updates -- safe in synchronous finally block
@@ -485,7 +488,7 @@ describe("MCP Express App", () => {
 
     it("should return 403 when chat UI is disabled", async () => {
       // The chatUIEnabled variable is module-level - get the handler and disable it
-      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
         input: unknown,
       ) => void;
 
@@ -516,7 +519,7 @@ describe("MCP Express App", () => {
 
   describe("Handler Registration", () => {
     it("should set chatUIEnabled to true with 1", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
         input: unknown,
       ) => void;
 
@@ -527,7 +530,7 @@ describe("MCP Express App", () => {
     });
 
     it("should set chatUIEnabled to true with 'true'", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
         input: unknown,
       ) => void;
 
@@ -536,7 +539,7 @@ describe("MCP Express App", () => {
     });
 
     it("should set chatUIEnabled to false with 0", () => {
-      const chatUIHandler = Max.handlers.get("chatUIEnabled") as (
+      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
         input: unknown,
       ) => void;
 
@@ -547,7 +550,7 @@ describe("MCP Express App", () => {
     });
 
     it("should set smallModelMode with various inputs", () => {
-      const smallModelHandler = Max.handlers.get("smallModelMode") as (
+      const smallModelHandler = mockMax.handlers.get("smallModelMode") as (
         input: unknown,
       ) => void;
 

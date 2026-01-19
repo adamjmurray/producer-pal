@@ -6,6 +6,7 @@ const mockBridge = {
   stop: vi.fn(),
 };
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("./stdio-http-bridge.js"), () => ({
   StdioHttpBridge: vi.fn(function () {
     return mockBridge;

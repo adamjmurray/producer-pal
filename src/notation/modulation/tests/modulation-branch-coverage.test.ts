@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
 import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.js";
+import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.js";
 import * as console from "#src/shared/v8-max-console.js";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.js";
 
@@ -31,7 +32,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Should still work, just bar and beat will be null
       expect(result.velocity).toBeDefined();
-      expect(result.velocity.value).toBe(50);
+      expect(result.velocity!.value).toBe(50);
     });
 
     it("handles empty bar|beat string from abletonBeatsToBarBeat", () => {
@@ -48,7 +49,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Should still work despite malformed bar|beat
       expect(result.velocity).toBeDefined();
-      expect(result.velocity.value).toBe(30);
+      expect(result.velocity!.value).toBe(30);
     });
   });
 
@@ -67,7 +68,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Should work despite zero duration
       expect(result.velocity).toBeDefined();
-      expect(typeof result.velocity.value).toBe("number");
+      expect(typeof result.velocity!.value).toBe("number");
     });
 
     it("handles ramp with negative time range duration (end < start)", () => {
@@ -84,7 +85,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Should work despite negative duration
       expect(result.velocity).toBeDefined();
-      expect(typeof result.velocity.value).toBe("number");
+      expect(typeof result.velocity!.value).toBe("number");
     });
 
     it("handles ramp with zero duration and speed parameter", () => {
@@ -100,7 +101,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Should handle gracefully with phase = 0
       expect(result.velocity).toBeDefined();
-      expect(typeof result.velocity.value).toBe("number");
+      expect(typeof result.velocity!.value).toBe("number");
     });
   });
 
@@ -110,15 +111,16 @@ describe("Modulation Branch Coverage", () => {
       // and assignmentResult.value will be null/undefined
       const ast = [
         {
-          parameter: "velocity",
-          operator: "set",
+          parameter: "velocity" as const,
+          operator: "set" as const,
           pitchRange: { startPitch: 70, endPitch: 80 }, // Range: C5 to G#5
-          expression: { type: "number", value: 127 },
+          timeRange: null,
+          expression: { type: "number" as const, value: 127 },
         },
       ];
 
       const result = evaluateModulationAST(
-        ast,
+        ast as unknown as ModulationAssignment[],
         {
           position: 0,
           pitch: 60, // C4 - outside the range
@@ -135,20 +137,21 @@ describe("Modulation Branch Coverage", () => {
       // When a note is outside the time range, assignment is skipped
       const ast = [
         {
-          parameter: "velocity",
-          operator: "set",
+          parameter: "velocity" as const,
+          operator: "set" as const,
+          pitchRange: null,
           timeRange: {
             startBar: 2,
             startBeat: 1,
             endBar: 3,
             endBeat: 1,
           },
-          expression: { type: "number", value: 127 },
+          expression: { type: "number" as const, value: 127 },
         },
       ];
 
       const result = evaluateModulationAST(
-        ast,
+        ast as unknown as ModulationAssignment[],
         {
           position: 0,
           bar: 1, // Before the time range starts
@@ -167,15 +170,16 @@ describe("Modulation Branch Coverage", () => {
       // because the assignment was skipped and continues to next iteration
       const ast = [
         {
-          parameter: "velocity",
-          operator: "set",
+          parameter: "velocity" as const,
+          operator: "set" as const,
           pitchRange: { startPitch: 70, endPitch: 80 },
-          expression: { type: "number", value: 127 },
+          timeRange: null,
+          expression: { type: "number" as const, value: 127 },
         },
       ];
 
       const result = evaluateModulationAST(
-        ast,
+        ast as unknown as ModulationAssignment[],
         {
           position: 0,
           pitch: 60, // Outside the pitch range

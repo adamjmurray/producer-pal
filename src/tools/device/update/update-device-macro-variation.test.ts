@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -17,7 +18,7 @@ describe("updateDevice - macroVariation", () => {
     // macroVariation requires RackDevice type
     liveApiType.mockImplementation(() => "RackDevice");
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -28,7 +29,7 @@ describe("updateDevice - macroVariation", () => {
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "live_set tracks 0 devices 0";
@@ -40,7 +41,7 @@ describe("updateDevice - macroVariation", () => {
     });
 
     // Default: rack device with 3 variations, variation 1 selected
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (this._path === "id 123") {
         if (prop === "can_have_chains") return [1];
         if (prop === "variation_count") return [3];
@@ -161,13 +162,18 @@ describe("updateDevice - macroVariation", () => {
   });
 
   it("should set index before executing action for 'load'", () => {
-    const callOrder = [];
+    const callOrder: Array<{
+      method: string;
+      path: string | undefined;
+      prop?: string;
+      fn?: string;
+    }> = [];
 
-    liveApiSet.mockImplementation(function (prop) {
+    liveApiSet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       callOrder.push({ method: "set", path: this._path, prop });
     });
 
-    liveApiCall.mockImplementation(function (method) {
+    liveApiCall.mockImplementation(function (this: MockLiveAPIContext, method) {
       callOrder.push({ method: "call", path: this._path, fn: method });
     });
 

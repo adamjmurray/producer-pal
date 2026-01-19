@@ -2,6 +2,12 @@ import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as logger from "./node-for-max-logger.js";
 
+// Type for mock Max module with test-specific properties
+type MockMax = typeof Max & {
+  handlers: Map<string, (input: unknown) => void>;
+};
+const mockMax = Max as MockMax;
+
 describe("Node for Max Logger", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,8 +59,8 @@ describe("Node for Max Logger", () => {
     });
 
     it("should post when verbose is enabled with 1", () => {
-      // Get the verbose handler from Max.handlers map
-      const verboseHandler = Max.handlers.get("verbose");
+      // Get the verbose handler from mockMax.handlers map
+      const verboseHandler = mockMax.handlers.get("verbose");
 
       expect(verboseHandler).toBeDefined();
 
@@ -70,7 +76,7 @@ describe("Node for Max Logger", () => {
     });
 
     it("should post when verbose is enabled with 'true'", () => {
-      const verboseHandler = Max.handlers.get("verbose");
+      const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!("true");
       logger.info("verbose string true message");
@@ -83,7 +89,7 @@ describe("Node for Max Logger", () => {
     });
 
     it("should not post when verbose is disabled with 0", () => {
-      const verboseHandler = Max.handlers.get("verbose");
+      const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!(0);
       logger.info("should not post");
@@ -92,7 +98,7 @@ describe("Node for Max Logger", () => {
     });
 
     it("should not post when verbose is disabled with false", () => {
-      const verboseHandler = Max.handlers.get("verbose");
+      const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!(false);
       logger.info("should not post");

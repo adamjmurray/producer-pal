@@ -67,7 +67,10 @@ describe("parseBeatsPerBar", () => {
 
     it("throws when timeSigNumerator provided but timeSigDenominator is null", () => {
       expect(() =>
-        parseBeatsPerBar({ timeSigNumerator: 3, timeSigDenominator: null }),
+        parseBeatsPerBar({
+          timeSigNumerator: 3,
+          timeSigDenominator: null as unknown as number,
+        }),
       ).toThrow(
         "Time signature must be specified with both numerator and denominator",
       );
@@ -75,7 +78,10 @@ describe("parseBeatsPerBar", () => {
 
     it("throws when timeSigDenominator provided but timeSigNumerator is null", () => {
       expect(() =>
-        parseBeatsPerBar({ timeSigNumerator: null, timeSigDenominator: 4 }),
+        parseBeatsPerBar({
+          timeSigNumerator: null as unknown as number,
+          timeSigDenominator: 4,
+        }),
       ).toThrow(
         "Time signature must be specified with both numerator and denominator",
       );

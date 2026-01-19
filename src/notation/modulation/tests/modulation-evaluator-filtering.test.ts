@@ -10,7 +10,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("skips modulation for non-matching pitch", () => {
@@ -30,7 +30,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("persists pitch across multiple lines", () => {
@@ -40,8 +40,8 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
-      expect(result.timing.value).toBe(0.05);
+      expect(result.velocity!.value).toBe(10);
+      expect(result.timing!.value).toBe(0.05);
     });
 
     it("resets pitch when specified again", () => {
@@ -53,7 +53,7 @@ C#3 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result1.velocity.value).toBe(10);
+      expect(result1.velocity!.value).toBe(10);
 
       const result2 = evaluateModulation(modString, {
         position: 0,
@@ -61,7 +61,7 @@ C#3 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result2.velocity.value).toBe(20);
+      expect(result2.velocity!.value).toBe(20);
     });
 
     it("applies modulation to pitch within range", () => {
@@ -71,7 +71,7 @@ C#3 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("applies modulation to pitch at range start", () => {
@@ -81,7 +81,7 @@ C#3 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("applies modulation to pitch at range end", () => {
@@ -91,7 +91,7 @@ C#3 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("skips modulation for pitch below range", () => {
@@ -124,8 +124,8 @@ C#3 velocity += 20`;
         },
       );
 
-      expect(result.velocity.value).toBe(10);
-      expect(result.timing.value).toBe(0.05);
+      expect(result.velocity!.value).toBe(10);
+      expect(result.timing!.value).toBe(0.05);
     });
 
     it("updates pitch range when specified again", () => {
@@ -138,7 +138,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result1.velocity.value).toBe(10);
+      expect(result1.velocity!.value).toBe(10);
 
       const result2 = evaluateModulation(modString, {
         position: 0,
@@ -146,7 +146,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result2.velocity.value).toBe(20);
+      expect(result2.velocity!.value).toBe(20);
 
       const result3 = evaluateModulation(modString, {
         position: 0,
@@ -154,7 +154,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result3.velocity.value).toBe(10);
+      expect(result3.velocity!.value).toBe(10);
     });
   });
 
@@ -167,7 +167,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("skips modulation outside time range (before)", () => {
@@ -202,7 +202,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(atStart.velocity.value).toBe(10);
+      expect(atStart.velocity!.value).toBe(10);
 
       const atEnd = evaluateModulation(modString, {
         position: 0,
@@ -211,7 +211,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(atEnd.velocity.value).toBe(10);
+      expect(atEnd.velocity!.value).toBe(10);
     });
   });
 
@@ -225,7 +225,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("skips when pitch matches but time doesn't", () => {
@@ -260,7 +260,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.operator).toBe("add");
+      expect(result.velocity!.operator).toBe("add");
     });
 
     it("returns set operator for = syntax", () => {
@@ -269,7 +269,7 @@ G4-G5 velocity += 20`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.operator).toBe("set");
+      expect(result.velocity!.operator).toBe("set");
     });
   });
 
@@ -293,7 +293,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(60);
+      expect(result.velocity!.value).toBe(60);
     });
 
     it("evaluates note.start variable", () => {
@@ -306,7 +306,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(25);
+      expect(result.velocity!.value).toBe(25);
     });
 
     it("evaluates note.velocity variable", () => {
@@ -319,7 +319,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.duration.value).toBe(1);
+      expect(result.duration!.value).toBe(1);
     });
 
     it("evaluates note.velocityDeviation variable", () => {
@@ -332,7 +332,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(10);
+      expect(result.velocity!.value).toBe(10);
     });
 
     it("evaluates note.duration variable", () => {
@@ -345,7 +345,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.probability.value).toBe(0.5);
+      expect(result.probability!.value).toBe(0.5);
     });
 
     it("evaluates note.probability variable", () => {
@@ -358,7 +358,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(16);
+      expect(result.velocity!.value).toBe(16);
     });
 
     it("allows self-reference: velocity based on note.velocity", () => {
@@ -371,7 +371,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(50);
+      expect(result.velocity!.value).toBe(50);
     });
 
     it("combines variables in arithmetic expressions", () => {
@@ -384,7 +384,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(70);
+      expect(result.velocity!.value).toBe(70);
     });
 
     it("uses variables with functions", () => {
@@ -397,7 +397,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBeCloseTo(100, 5);
+      expect(result.velocity!.value).toBeCloseTo(100, 5);
     });
 
     it("uses variables in complex expressions", () => {
@@ -410,7 +410,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBeCloseTo(47.24, 2);
+      expect(result.velocity!.value).toBeCloseTo(47.24, 2);
     });
 
     it("uses multiple variables in same expression", () => {
@@ -423,7 +423,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.duration.value).toBe(0.4);
+      expect(result.duration!.value).toBe(0.4);
     });
 
     it("uses variables in parenthesized expressions", () => {
@@ -436,7 +436,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(140);
+      expect(result.velocity!.value).toBe(140);
     });
 
     it("uses variables with pitch filtering", () => {
@@ -450,7 +450,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(50);
+      expect(result.velocity!.value).toBe(50);
     });
 
     it("uses variables with time range filtering", () => {
@@ -465,7 +465,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(60);
+      expect(result.velocity!.value).toBe(60);
     });
 
     it("throws error for undefined variable", () => {
@@ -493,7 +493,7 @@ G4-G5 velocity += 20`;
         noteProps,
       );
 
-      expect(result.velocity.value).toBe(50); // ramp at 0.5 phase
+      expect(result.velocity!.value).toBe(50); // ramp at 0.5 phase
     });
 
     it("handles variables in waveform phase offset", () => {
@@ -507,7 +507,10 @@ G4-G5 velocity += 20`;
       );
 
       // cos(phase 0 + offset 0.8)
-      expect(result.velocity.value).toBeCloseTo(Math.cos(2 * Math.PI * 0.8), 5);
+      expect(result.velocity!.value).toBeCloseTo(
+        Math.cos(2 * Math.PI * 0.8),
+        5,
+      );
     });
 
     it("uses variable as waveform period", () => {
@@ -522,7 +525,7 @@ G4-G5 velocity += 20`;
 
       // noteProps.duration = 0.5, so position 0.25 / period 0.5 = phase 0.5
       // cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 5);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 5);
     });
 
     it("uses expression as waveform period", () => {
@@ -537,7 +540,7 @@ G4-G5 velocity += 20`;
 
       // noteProps.duration * 2 = 0.5 * 2 = 1.0
       // position 0.5 / period 1.0 = phase 0.5 → cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 5);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 5);
     });
 
     it("throws error when variable period is <= 0", () => {

@@ -244,7 +244,7 @@ describe("duplicate - track duplication", () => {
         return "id device1";
       }
 
-      return this._id;
+      return this._id!;
     });
 
     const result = duplicate({

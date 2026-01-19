@@ -65,7 +65,7 @@ function createMockLiveAPI(
 
     getProperty(prop: string): string | null {
       if (prop === "name" && trackNameMapping[this.path]) {
-        return trackNameMapping[this.path];
+        return trackNameMapping[this.path]!;
       }
 
       return null;
@@ -121,7 +121,7 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      const result = getMinimalClipInfo(mockClip);
+      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI);
 
       expect(result.id).toBe(clipId);
       expect(result.trackIndex).toBe(2);
@@ -160,7 +160,9 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      const result = getMinimalClipInfo(mockClip, ["trackIndex"]);
+      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
+        "trackIndex",
+      ]);
 
       expect(result.id).toBe(clipId);
       expect(result.trackIndex).toBeUndefined();
@@ -199,7 +201,9 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      const result = getMinimalClipInfo(mockClip, ["arrangementStart"]);
+      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
+        "arrangementStart",
+      ]);
 
       expect(result.id).toBe(clipId);
       expect(result.trackIndex).toBe(2);
@@ -234,7 +238,7 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      const result = getMinimalClipInfo(mockClip);
+      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI);
 
       expect(result.id).toBe(clipId);
       expect(result.trackIndex).toBe(1);
@@ -269,7 +273,9 @@ describe("duplicate-helpers", () => {
           getProperty: liveApiGet,
         };
 
-        const result = getMinimalClipInfo(mockClip, [omitField]);
+        const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
+          omitField,
+        ]);
 
         expect(result.id).toBe(clipId);
         expect(result.trackIndex).toBe(expectedTrackIndex);
@@ -294,7 +300,7 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      expect(() => getMinimalClipInfo(mockClip)).toThrow(
+      expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
         "getMinimalClipInfo failed: could not determine trackIndex for clip",
       );
     });
@@ -316,7 +322,7 @@ describe("duplicate-helpers", () => {
         getProperty: liveApiGet,
       };
 
-      expect(() => getMinimalClipInfo(mockClip)).toThrow(
+      expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
         "getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip",
       );
     });
@@ -373,19 +379,19 @@ describe("duplicate-helpers", () => {
         getProperty: () => {},
       };
       const availableTypes = [
-        { display_name: "Track 1", value: "track1" },
-        { display_name: "Track 2", value: "track2" },
+        { display_name: "Track 1", identifier: "track1" },
+        { display_name: "Track 2", identifier: "track2" },
       ];
 
       const result = findRoutingOptionForDuplicateNames(
-        sourceTrack,
+        sourceTrack as unknown as LiveAPI,
         "Track 1",
         availableTypes,
       );
 
       expect(result).toStrictEqual({
         display_name: "Track 1",
-        value: "track1",
+        identifier: "track1",
       });
     });
 
@@ -394,10 +400,12 @@ describe("duplicate-helpers", () => {
         id: "1",
         getProperty: () => {},
       };
-      const availableTypes = [{ display_name: "Track 2", value: "track2" }];
+      const availableTypes = [
+        { display_name: "Track 2", identifier: "track2" },
+      ];
 
       const result = findRoutingOptionForDuplicateNames(
-        sourceTrack,
+        sourceTrack as unknown as LiveAPI,
         "Track 1",
         availableTypes,
       );
@@ -422,19 +430,22 @@ describe("duplicate-helpers", () => {
       };
 
       const availableTypes = [
-        { display_name: "Drums", value: "drums1" },
-        { display_name: "Drums", value: "drums2" },
-        { display_name: "Bass", value: "bass" },
+        { display_name: "Drums", identifier: "drums1" },
+        { display_name: "Drums", identifier: "drums2" },
+        { display_name: "Bass", identifier: "bass" },
       ];
 
       const result = findRoutingOptionForDuplicateNames(
-        sourceTrack,
+        sourceTrack as unknown as LiveAPI,
         "Drums",
         availableTypes,
       );
 
       // Should return the first "Drums" option since sourceTrack is id1 (first Drums track)
-      expect(result).toStrictEqual({ display_name: "Drums", value: "drums1" });
+      expect(result).toStrictEqual({
+        display_name: "Drums",
+        identifier: "drums1",
+      });
     });
 
     it("finds correct option for second track with duplicate name", () => {
@@ -453,18 +464,21 @@ describe("duplicate-helpers", () => {
       };
 
       const availableTypes = [
-        { display_name: "Drums", value: "drums1" },
-        { display_name: "Drums", value: "drums2" },
+        { display_name: "Drums", identifier: "drums1" },
+        { display_name: "Drums", identifier: "drums2" },
       ];
 
       const result = findRoutingOptionForDuplicateNames(
-        sourceTrack,
+        sourceTrack as unknown as LiveAPI,
         "Drums",
         availableTypes,
       );
 
       // Should return the second "Drums" option since sourceTrack is id2 (second Drums track)
-      expect(result).toStrictEqual({ display_name: "Drums", value: "drums2" });
+      expect(result).toStrictEqual({
+        display_name: "Drums",
+        identifier: "drums2",
+      });
     });
 
     it("returns undefined when source track not found in duplicate list", () => {
@@ -482,12 +496,12 @@ describe("duplicate-helpers", () => {
       };
 
       const availableTypes = [
-        { display_name: "Drums", value: "drums1" },
-        { display_name: "Drums", value: "drums2" },
+        { display_name: "Drums", identifier: "drums1" },
+        { display_name: "Drums", identifier: "drums2" },
       ];
 
       const result = findRoutingOptionForDuplicateNames(
-        sourceTrack,
+        sourceTrack as unknown as LiveAPI,
         "Drums",
         availableTypes,
       );

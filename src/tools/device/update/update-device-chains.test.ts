@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiSet, liveApiType } from "#src/test/mocks/mock-live-api.js";
+import {
+  liveApiSet,
+  liveApiType,
+  type MockLiveAPIContext,
+} from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 
@@ -7,7 +11,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "RackDevice";

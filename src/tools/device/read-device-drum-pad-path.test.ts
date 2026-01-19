@@ -64,8 +64,10 @@ describe("readDevice with drum pad path", () => {
 
     const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
 
-    expect(result.chains).toHaveLength(1);
-    expect(result.chains[0]).toStrictEqual({
+    const chains = result.chains as Record<string, unknown>[];
+
+    expect(chains).toHaveLength(1);
+    expect(chains[0]).toStrictEqual({
       id: "chain-1",
       path: "t1/d0/pC1/c0",
       type: "DrumChain",
@@ -102,9 +104,13 @@ describe("readDevice with drum pad path", () => {
 
     const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
 
-    expect(result.chains).toHaveLength(1);
-    expect(result.chains[0].devices).toHaveLength(1);
-    expect(result.chains[0].devices[0]).toStrictEqual({
+    const chains = result.chains as Array<Record<string, unknown>>;
+
+    expect(chains).toHaveLength(1);
+    const devices = chains[0]!.devices as Array<Record<string, unknown>>;
+
+    expect(devices).toHaveLength(1);
+    expect(devices[0]).toStrictEqual({
       id: "device-1",
       path: "t1/d0/pC1/c0/d0",
       type: "instrument: Simpler",

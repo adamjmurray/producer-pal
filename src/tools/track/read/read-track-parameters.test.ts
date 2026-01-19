@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -17,14 +18,14 @@ import { readTrack } from "./read-track.js";
 describe("readTrack", () => {
   describe("trackId parameter", () => {
     it("reads track by trackId", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 123") {
           return "123";
         }
 
-        return this._id;
+        return this._id!;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 123") {
           return "live_set tracks 2";
         }
@@ -56,14 +57,14 @@ describe("readTrack", () => {
     });
 
     it("reads return track by trackId", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 456") {
           return "456";
         }
 
-        return this._id;
+        return this._id!;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 456") {
           return "live_set return_tracks 1";
         }
@@ -96,14 +97,14 @@ describe("readTrack", () => {
     });
 
     it("reads master track by trackId", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 789") {
           return "789";
         }
 
-        return this._id;
+        return this._id!;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 789") {
           return "live_set master_track";
         }
@@ -149,14 +150,14 @@ describe("readTrack", () => {
     });
 
     it("ignores category when trackId is provided", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 999") {
           return "999";
         }
 
-        return this._id;
+        return this._id!;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 999") {
           return "live_set tracks 0";
         }
@@ -181,7 +182,7 @@ describe("readTrack", () => {
 
   describe("drum-maps include option", () => {
     it("includes drumMap but strips chains when using drum-maps", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
@@ -192,7 +193,7 @@ describe("readTrack", () => {
           case "live_set tracks 0 devices 0 chains 0 devices 0":
             return "kick_device";
           default:
-            return this._id;
+            return this._id!;
         }
       });
 
@@ -250,11 +251,13 @@ describe("readTrack", () => {
       });
 
       // Critical: chains should be stripped
-      expect(result.instrument.chains).toBeUndefined();
+      expect(
+        (result.instrument as Record<string, unknown>).chains,
+      ).toBeUndefined();
     });
 
     it("drum racks don't have main chains even with chains included", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
@@ -265,7 +268,7 @@ describe("readTrack", () => {
           case "live_set tracks 0 devices 0 chains 0 devices 0":
             return "kick_device2";
           default:
-            return this._id;
+            return this._id!;
         }
       });
 
@@ -323,11 +326,13 @@ describe("readTrack", () => {
       });
 
       // Critical: chains should NOT be present on drum racks
-      expect(result.instrument.chains).toBeUndefined();
+      expect(
+        (result.instrument as Record<string, unknown>).chains,
+      ).toBeUndefined();
     });
 
     it("strips chains from all device types when using drum-maps", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
@@ -344,7 +349,7 @@ describe("readTrack", () => {
           case "live_set tracks 0 devices 2 chains 0":
             return "audio_chain";
           default:
-            return this._id;
+            return this._id!;
         }
       });
 
@@ -418,27 +423,33 @@ describe("readTrack", () => {
       });
 
       // All devices should have chains stripped
-      expect(result.midiEffects[0]).toStrictEqual({
+      const midiEffects = result.midiEffects as Record<string, unknown>[];
+
+      expect(midiEffects[0]).toStrictEqual({
         id: "midi_effect_rack",
         type: "midi-effect-rack",
       });
-      expect(result.midiEffects[0].chains).toBeUndefined();
+      expect(midiEffects[0]!.chains).toBeUndefined();
 
       expect(result.instrument).toStrictEqual({
         id: "instrument_rack",
         type: "instrument-rack",
       });
-      expect(result.instrument.chains).toBeUndefined();
+      expect(
+        (result.instrument as Record<string, unknown>).chains,
+      ).toBeUndefined();
 
-      expect(result.audioEffects[0]).toStrictEqual({
+      const audioEffects = result.audioEffects as Record<string, unknown>[];
+
+      expect(audioEffects[0]).toStrictEqual({
         id: "audio_effect_rack",
         type: "audio-effect-rack",
       });
-      expect(result.audioEffects[0].chains).toBeUndefined();
+      expect(audioEffects[0]!.chains).toBeUndefined();
     });
 
     it("uses drum-maps by default (not chains)", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
@@ -447,7 +458,7 @@ describe("readTrack", () => {
           case "live_set tracks 0 devices 0 chains 0":
             return "chain1";
           default:
-            return this._id;
+            return this._id!;
         }
       });
 
@@ -483,7 +494,9 @@ describe("readTrack", () => {
         id: "instrument_rack",
         type: "instrument-rack",
       });
-      expect(result.instrument.chains).toBeUndefined();
+      expect(
+        (result.instrument as Record<string, unknown>).chains,
+      ).toBeUndefined();
     });
 
     it("handles drum-maps with no drum racks gracefully", () => {
@@ -513,7 +526,9 @@ describe("readTrack", () => {
         type: "instrument: Wavetable",
       });
       expect(result.drumMap).toBeUndefined();
-      expect(result.instrument.chains).toBeUndefined();
+      expect(
+        (result.instrument as Record<string, unknown>).chains,
+      ).toBeUndefined();
     });
   });
 });

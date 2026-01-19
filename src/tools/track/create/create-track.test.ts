@@ -29,13 +29,15 @@ describe("createTrack", () => {
     });
 
     // Mock Live API calls to return track IDs
-    liveApiCall.mockImplementation((method, index) => {
+    liveApiCall.mockImplementation((method: string, ...args: unknown[]) => {
+      const index = args[0];
+
       if (method === "create_midi_track") {
-        return ["id", `midi_track_${index}`];
+        return ["id", `midi_track_${String(index)}`];
       }
 
       if (method === "create_audio_track") {
-        return ["id", `audio_track_${index}`];
+        return ["id", `audio_track_${String(index)}`];
       }
 
       if (method === "create_return_track") {
@@ -263,7 +265,7 @@ describe("createTrack", () => {
       "create_midi_track",
       -1,
     );
-    expect(result.trackIndex).toBe(2); // existing tracks count
+    expect((result as { trackIndex: number }).trackIndex).toBe(2); // existing tracks count
   });
 
   it("should throw error when count is less than 1", () => {
@@ -338,12 +340,14 @@ describe("createTrack", () => {
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
-    expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0]).toStrictEqual({
+    const results = arrayResult as Array<{ id: string; trackIndex: number }>;
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toStrictEqual({
       id: "midi_track_1",
       trackIndex: 1,
     });
-    expect(arrayResult[1]).toStrictEqual({
+    expect(results[1]).toStrictEqual({
       id: "midi_track_2",
       trackIndex: 2,
     });

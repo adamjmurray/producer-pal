@@ -11,11 +11,13 @@ import { readTrack } from "./read-track.js";
 
 /**
  * Creates a standard drum rack mock object for testing
- * @param {object} opts - Options
- * @param {string[]} opts.chainIds - Chain children IDs
- * @returns {object} Drum rack mock
+ * @param opts - Options
+ * @param opts.chainIds - Chain children IDs
+ * @returns Drum rack mock
  */
-function createDrumRackMock(opts) {
+function createDrumRackMock(opts: {
+  chainIds: string[];
+}): Record<string, unknown> {
   return {
     name: "Test Drum Rack",
     class_name: "DrumGroupDevice",

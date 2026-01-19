@@ -4,6 +4,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateTrack } from "./update-track.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -11,7 +12,7 @@ import * as console from "#src/shared/v8-max-console.js";
 
 describe("updateTrack - mixer properties", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -29,11 +30,11 @@ describe("updateTrack - mixer properties", () => {
         case "live_set tracks 1 mixer_device panning":
           return "panning_param_2";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "123":
           return "live_set tracks 0";
@@ -234,14 +235,14 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should handle missing mixer device gracefully", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
         case "live_set tracks 0 mixer_device":
           return "id 0"; // Non-existent mixer
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
@@ -283,7 +284,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should update leftPan and rightPan in split mode", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -294,7 +295,7 @@ describe("updateTrack - mixer properties", () => {
         case "live_set tracks 0 mixer_device right_split_stereo":
           return "right_split_param_1";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
@@ -368,7 +369,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should switch mode and update panning in one call", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -379,7 +380,7 @@ describe("updateTrack - mixer properties", () => {
         case "live_set tracks 0 mixer_device right_split_stereo":
           return "right_split_param_1";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 

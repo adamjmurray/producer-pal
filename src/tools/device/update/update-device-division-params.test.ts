@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -16,21 +17,21 @@ describe("updateDevice - division params", () => {
 
     liveApiType.mockImplementation(() => "Device");
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id 123") return "123";
       if (this._path === "id 793") return "793";
 
       return "0";
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id 123") return "live_set tracks 0 devices 0";
 
       return this._path;
     });
 
     // Division param setup: raw values -6 to 0 map to "1/64" to "1"
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (this._path === "id 793") {
         if (prop === "is_quantized") return [0];
         if (prop === "value") return [-3]; // "1/8"
@@ -43,17 +44,21 @@ describe("updateDevice - division params", () => {
       return [0];
     });
 
-    const divisionMap = {
+    const divisionMap: Record<string, string> = {
       "-6": "1/64",
       "-5": "1/32",
       "-4": "1/16",
       "-3": "1/8",
       "-2": "1/4",
       "-1": "1/2",
-      0: "1",
+      "0": "1",
     };
 
-    liveApiCall.mockImplementation(function (method, value) {
+    liveApiCall.mockImplementation(function (
+      this: MockLiveAPIContext,
+      method,
+      value,
+    ) {
       if (method === "str_for_value" && this._path === "id 793") {
         return divisionMap[String(value)] ?? String(value);
       }

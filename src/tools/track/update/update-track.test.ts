@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { MONITORING_STATE } from "#src/tools/constants.js";
 import { updateTrack } from "./update-track.js";
@@ -12,7 +13,7 @@ import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -21,11 +22,11 @@ describe("updateTrack", () => {
         case "id 789":
           return "789";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "123":
           return "live_set tracks 0";
@@ -155,9 +156,11 @@ describe("updateTrack", () => {
   });
 
   it("should throw error when ids is missing", () => {
+    // @ts-expect-error testing invalid input
     expect(() => updateTrack({})).toThrow(
       "updateTrack failed: ids is required",
     );
+    // @ts-expect-error testing invalid input
     expect(() => updateTrack({ name: "Test" })).toThrow(
       "updateTrack failed: ids is required",
     );
@@ -176,7 +179,7 @@ describe("updateTrack", () => {
   });
 
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -487,12 +490,12 @@ describe("updateTrack", () => {
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       // Mock getProperty to return quantized color (different from input)
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (prop: string) {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
 
-        return null;
+        return [];
       });
 
       updateTrack({
@@ -512,12 +515,12 @@ describe("updateTrack", () => {
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       // Mock getProperty to return exact color (same as input)
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (prop: string) {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
 
-        return null;
+        return [];
       });
 
       updateTrack({
@@ -535,12 +538,12 @@ describe("updateTrack", () => {
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       // Mock getProperty to return quantized color
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (prop: string) {
         if (prop === "color") {
           return [1768495]; // #1AFC2F (quantized from #00FF00)
         }
 
-        return null;
+        return [];
       });
 
       updateTrack({

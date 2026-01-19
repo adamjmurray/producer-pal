@@ -4,6 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 import { updateDevice } from "./update-device.js";
@@ -28,7 +29,7 @@ describe("updateDevice with path parameter", () => {
   describe("device paths", () => {
     beforeEach(() => {
       liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 1 devices 0") return "device-456";
         if (this._path === "live_set tracks 1 devices 0 view")
           return "view-456";
@@ -100,7 +101,7 @@ describe("updateDevice with path parameter", () => {
 
   describe("chain paths", () => {
     beforeEach(() => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "chain-123";
         if (this._path === "live_set tracks 1 devices 0 return_chains 0")
@@ -108,7 +109,7 @@ describe("updateDevice with path parameter", () => {
 
         return "0";
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "Chain";
         if (this._path === "live_set tracks 1 devices 0 return_chains 0")
@@ -184,10 +185,32 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("drum pad paths", () => {
+    interface ChainProps {
+      inNote?: number;
+      name?: string;
+      mute?: number;
+      solo?: number;
+      deviceIds?: string[];
+      type?: string;
+    }
+    interface DeviceProps {
+      name?: string;
+    }
+    interface DrumPadMockConfig {
+      deviceId?: string;
+      chainIds?: string[];
+      chainProperties?: Record<string, ChainProps>;
+      deviceProperties?: Record<string, DeviceProps>;
+    }
+
     // Helper functions for drum chain mock property lookups
-    const getChainProperty = (id, prop, chainProperties) => {
+    const getChainProperty = (
+      id: string,
+      prop: string,
+      chainProperties: Record<string, ChainProps>,
+    ) => {
       const chainProps = chainProperties[id] ?? {};
-      const propMap = {
+      const propMap: Record<string, unknown[]> = {
         in_note: [chainProps.inNote ?? 36],
         name: [chainProps.name ?? "Chain"],
         mute: [chainProps.mute ?? 0],
@@ -198,7 +221,11 @@ describe("updateDevice with path parameter", () => {
       return propMap[prop] ?? [];
     };
 
-    const getDeviceProperty = (id, prop, deviceProperties) => {
+    const getDeviceProperty = (
+      id: string,
+      prop: string,
+      deviceProperties: Record<string, DeviceProps>,
+    ) => {
       const devProps = deviceProperties[id] ?? {};
 
       if (prop === "name") return [devProps.name ?? "Device"];
@@ -206,7 +233,7 @@ describe("updateDevice with path parameter", () => {
       return [];
     };
 
-    const setupDrumPadMocks = (config) => {
+    const setupDrumPadMocks = (config: DrumPadMockConfig) => {
       const {
         deviceId = "drum-rack-1",
         chainIds = ["chain-36"],
@@ -214,13 +241,13 @@ describe("updateDevice with path parameter", () => {
         deviceProperties = {},
       } = config;
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 1 devices 0") return deviceId;
 
         return this._id ?? "0";
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         const id = this._id ?? this.id;
 
         if (id?.startsWith("chain-"))
@@ -230,7 +257,7 @@ describe("updateDevice with path parameter", () => {
         return "RackDevice";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         const id = this._id ?? this.id;
 
         if (id === deviceId || this._path?.includes("devices 0")) {
@@ -386,7 +413,7 @@ describe("updateDevice with path parameter", () => {
   describe("multiple comma-separated paths", () => {
     beforeEach(() => {
       liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
         if (this._path === "live_set tracks 0 devices 1") return "device-101";
         if (this._path === "live_set tracks 1 devices 0") return "device-200";
@@ -455,7 +482,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should return single object when only one path valid out of many", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
 
         return "0";
@@ -500,14 +527,14 @@ describe("updateDevice with path parameter", () => {
 
   describe("multiple paths with mixed types", () => {
     it("should update mixed device and chain types", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "chain-200";
 
         return "0";
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 1 devices 0 chains 0")
           return "Chain";
 
@@ -534,7 +561,7 @@ describe("updateDevice with path parameter", () => {
   describe("multiple paths with params", () => {
     beforeEach(() => {
       liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 0 devices 0") return "device-100";
         if (this._path === "live_set tracks 0 devices 0 parameters 5")
           return "param-100-5";
@@ -544,7 +571,7 @@ describe("updateDevice with path parameter", () => {
 
         return "0";
       });
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (prop === "is_quantized") return [0];
 
         return [0];

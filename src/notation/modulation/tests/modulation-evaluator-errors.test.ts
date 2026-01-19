@@ -7,6 +7,7 @@ import {
   evaluateExpression,
   evaluateModulationAST,
 } from "#src/notation/modulation/modulation-evaluator-helpers.js";
+import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.js";
 import { evaluateFunction } from "#src/notation/modulation/modulation-functions.js";
 import * as console from "#src/shared/v8-max-console.js";
 
@@ -38,7 +39,7 @@ describe("Modulation Evaluator Error Handling", () => {
         expect.stringContaining("Failed to parse modulation string"),
       );
       // Notes should be unchanged
-      expect(notes[0].velocity).toBe(100);
+      expect(notes[0]!.velocity).toBe(100);
     });
 
     it("handles completely malformed modulation string", () => {
@@ -55,7 +56,7 @@ describe("Modulation Evaluator Error Handling", () => {
       applyModulations(notes, "{ this is not valid", 4, 4);
 
       expect(console.error).toHaveBeenCalled();
-      expect(notes[0].velocity).toBe(100);
+      expect(notes[0]!.velocity).toBe(100);
     });
   });
 
@@ -97,7 +98,7 @@ describe("Modulation Evaluator Error Handling", () => {
       );
 
       // Should work fine
-      expect(result.velocity.value).toBe(60);
+      expect(result.velocity!.value).toBe(60);
       expect(console.error).not.toHaveBeenCalled();
     });
   });
@@ -174,7 +175,9 @@ describe("Modulation Evaluator Error Handling", () => {
     it("throws error for unknown expression node type", () => {
       expect(() => {
         evaluateExpression(
-          { type: "unknown_type" },
+          { type: "unknown_type" } as unknown as Parameters<
+            typeof evaluateExpression
+          >[0],
           0,
           4,
           4,
@@ -202,18 +205,20 @@ describe("Modulation Evaluator Error Handling", () => {
     it("handles unknown waveform function in AST", () => {
       const ast = [
         {
-          parameter: "velocity",
-          operator: "add",
+          parameter: "velocity" as const,
+          operator: "add" as const,
+          pitchRange: null,
+          timeRange: null,
           expression: {
-            type: "function",
+            type: "function" as const,
             name: "unknown_func",
-            args: [{ type: "period", value: 1, unit: "t" }],
+            args: [{ type: "period" as const, bars: 0, beats: 1 }],
           },
         },
       ];
 
       const result = evaluateModulationAST(
-        ast,
+        ast as unknown as ModulationAssignment[],
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },

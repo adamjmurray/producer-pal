@@ -397,14 +397,19 @@ describe("readTrack", () => {
       });
 
       // Catch-all chain should show up with pitch "*" and note -1
-      expect(result.instrument.drumPads).toHaveLength(1);
-      expect(result.instrument.drumPads[0]).toMatchObject({
+      const instrument = result.instrument as Record<string, unknown>;
+      const drumPads = instrument.drumPads as Array<Record<string, unknown>>;
+
+      expect(drumPads).toHaveLength(1);
+      expect(drumPads[0]).toMatchObject({
         note: -1,
         pitch: "*",
         name: "Nested Rack",
       });
       // Verify the chain has the catch-all path format
-      expect(result.instrument.drumPads[0].chains[0]).toMatchObject({
+      const chains = drumPads[0]!.chains as Array<Record<string, unknown>>;
+
+      expect(chains[0]).toMatchObject({
         id: "catchAllChain",
         name: "Nested Rack",
       });
@@ -458,7 +463,10 @@ describe("readTrack", () => {
       });
 
       // The drum pad should show as muted
-      expect(result.instrument.drumPads[0]).toMatchObject({
+      const instrument2 = result.instrument as Record<string, unknown>;
+      const drumPads2 = instrument2.drumPads as Array<Record<string, unknown>>;
+
+      expect(drumPads2[0]).toMatchObject({
         note: 60,
         pitch: "C3",
         name: "Muted Pad",

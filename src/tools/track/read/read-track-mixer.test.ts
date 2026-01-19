@@ -263,7 +263,11 @@ describe("readTrack - mixer properties", () => {
       }),
     );
     mockLiveApiGet(
-      createSplitPanningMock({ gainDb: -3, leftPan: -1, rightPan: 1 }),
+      createSplitPanningMock({
+        gainDb: -3,
+        leftPan: -1,
+        rightPan: 1,
+      }) as unknown as Record<string, Record<string, unknown>>,
     );
 
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
@@ -283,7 +287,11 @@ describe("readTrack - mixer properties", () => {
       }),
     );
     mockLiveApiGet(
-      createSplitPanningMock({ gainDb: 0, leftPan: 0.25, rightPan: -0.5 }),
+      createSplitPanningMock({
+        gainDb: 0,
+        leftPan: 0.25,
+        rightPan: -0.5,
+      }) as unknown as Record<string, Record<string, unknown>>,
     );
 
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
@@ -301,7 +309,7 @@ describe("readTrack - mixer properties", () => {
       createMixerWithSendsMock({
         sendIds: ["send_1", "send_2"],
         sendValues: [-12.5, -6.0],
-      }),
+      }) as unknown as Record<string, Record<string, unknown>>,
     );
 
     const result = readTrack({
@@ -311,14 +319,21 @@ describe("readTrack - mixer properties", () => {
     });
 
     expect(result).toHaveProperty("sends");
-    expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Delay" });
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends).toHaveLength(2);
+    expect(sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(sends[1]).toStrictEqual({ gainDb: -6.0, return: "Delay" });
   });
 
   it("does not include sends property when track has no sends", () => {
     setupMixerIdMock(createMixerPathIdMap());
-    mockLiveApiGet(createMixerWithSendsMock({ sendIds: [], sendValues: [] }));
+    mockLiveApiGet(
+      createMixerWithSendsMock({
+        sendIds: [],
+        sendValues: [],
+      }) as unknown as Record<string, Record<string, unknown>>,
+    );
 
     const result = readTrack({
       trackIndex: 0,
@@ -373,8 +388,10 @@ describe("readTrack - mixer properties", () => {
     });
 
     expect(result).toHaveProperty("sends");
-    expect(result.sends).toHaveLength(1);
-    expect(result.sends[0]).toStrictEqual({
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends).toHaveLength(1);
+    expect(sends[0]).toStrictEqual({
       gainDb: -10.0,
       return: "FetchedReverb",
     });
@@ -388,7 +405,7 @@ describe("readTrack - mixer properties", () => {
       createMixerWithSendsMock({
         sendIds: ["send_1", "send_2"],
         sendValues: [-12.5, -6.0],
-      }),
+      }) as unknown as Record<string, Record<string, unknown>>,
     );
 
     const result = readTrack({
@@ -401,9 +418,11 @@ describe("readTrack - mixer properties", () => {
       "Send count (2) doesn't match return track count (1)",
     );
     // Still returns sends with fallback for missing name
-    expect(result.sends).toHaveLength(2);
-    expect(result.sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
-    expect(result.sends[1]).toStrictEqual({ gainDb: -6.0, return: "Return 2" });
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends).toHaveLength(2);
+    expect(sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
+    expect(sends[1]).toStrictEqual({ gainDb: -6.0, return: "Return 2" });
 
     consoleSpy.mockRestore();
   });

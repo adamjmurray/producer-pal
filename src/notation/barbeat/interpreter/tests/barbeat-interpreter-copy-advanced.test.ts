@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 import { createNote } from "#src/test/test-data-builders.js";
@@ -167,7 +168,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     });
 
     describe("multi-bar source range tiling: warnings and errors", () => {
-      let consoleErrorSpy;
+      let consoleErrorSpy: MockInstance;
 
       beforeEach(() => {
         consoleErrorSpy = vi
@@ -236,7 +237,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     });
 
     describe("warnings and errors", () => {
-      let consoleErrorSpy;
+      let consoleErrorSpy: MockInstance;
 
       beforeEach(() => {
         consoleErrorSpy = vi

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FunctionNode } from "#src/notation/modulation/parser/modulation-parser.js";
 import * as parser from "#src/notation/modulation/parser/modulation-parser.js";
 
 describe("Modulation Parser - Expressions", () => {
@@ -6,7 +7,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses cos with frequency", () => {
       const result = parser.parse("velocity += cos(1t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "cos",
         args: [{ type: "period", bars: 0, beats: 1 }],
@@ -16,7 +17,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses cos with frequency and phase", () => {
       const result = parser.parse("velocity += cos(1t, 0.5)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "cos",
         args: [{ type: "period", bars: 0, beats: 1 }, 0.5],
@@ -26,7 +27,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses tri with frequency", () => {
       const result = parser.parse("velocity += tri(2t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "tri",
         args: [{ type: "period", bars: 0, beats: 2 }],
@@ -36,7 +37,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses saw with frequency and phase", () => {
       const result = parser.parse("velocity += saw(0.5t, 0.25)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "saw",
         args: [{ type: "period", bars: 0, beats: 0.5 }, 0.25],
@@ -46,7 +47,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses square with frequency", () => {
       const result = parser.parse("velocity += square(4t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 4 }],
@@ -56,7 +57,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses square with frequency and phase", () => {
       const result = parser.parse("velocity += square(1t, 0.25)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 1 }, 0.25],
@@ -66,7 +67,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses square with frequency, phase, and pulseWidth", () => {
       const result = parser.parse("velocity += square(2t, 0, 0.75)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
@@ -76,7 +77,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses noise with no arguments", () => {
       const result = parser.parse("velocity += noise()");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "noise",
         args: [],
@@ -88,7 +89,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses beat-only frequency (1t)", () => {
       const result = parser.parse("velocity += cos(1t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 1,
@@ -98,7 +99,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses beat-only frequency with decimal (0.5t)", () => {
       const result = parser.parse("velocity += cos(0.5t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 0.5,
@@ -108,7 +109,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses beat-only frequency with fraction (1/3t)", () => {
       const result = parser.parse("velocity += cos(1/3t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 1 / 3,
@@ -118,7 +119,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses beat-only frequency with fraction (optional numerator /3t)", () => {
       const result = parser.parse("velocity += cos(/3t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 1 / 3,
@@ -128,7 +129,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses beat-only frequency with fraction (optional numerator /4t)", () => {
       const result = parser.parse("velocity += cos(/4t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 1 / 4,
@@ -138,7 +139,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency (1:0t)", () => {
       const result = parser.parse("velocity += cos(1:0t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 1,
         beats: 0,
@@ -148,7 +149,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency (0:1t)", () => {
       const result = parser.parse("velocity += cos(0:1t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 0,
         beats: 1,
@@ -158,7 +159,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency with decimal beats (2:1.5t)", () => {
       const result = parser.parse("velocity += cos(2:1.5t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 2,
         beats: 1.5,
@@ -168,7 +169,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency with fraction beats (1:1/2t)", () => {
       const result = parser.parse("velocity += cos(1:1/2t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 1,
         beats: 0.5,
@@ -178,7 +179,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency with fraction beats (optional numerator 1:/2t)", () => {
       const result = parser.parse("velocity += cos(1:/2t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 1,
         beats: 0.5,
@@ -188,7 +189,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses bar:beat frequency with fraction beats (optional numerator 2:/3t)", () => {
       const result = parser.parse("velocity += cos(2:/3t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 2,
         beats: 1 / 3,
@@ -198,7 +199,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses large bar:beat frequency (4:0t)", () => {
       const result = parser.parse("velocity += cos(4:0t)");
 
-      expect(result[0].expression.args[0]).toStrictEqual({
+      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "period",
         bars: 4,
         beats: 0,
@@ -210,7 +211,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses addition", () => {
       const result = parser.parse("velocity += 10 + 5");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "add",
         left: 10,
         right: 5,
@@ -220,7 +221,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses subtraction", () => {
       const result = parser.parse("velocity += 10 - 5");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
         left: 10,
         right: 5,
@@ -230,7 +231,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses multiplication", () => {
       const result = parser.parse("velocity += 10 * 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
         left: 10,
         right: 2,
@@ -240,7 +241,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses division", () => {
       const result = parser.parse("velocity += 10 / 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "divide",
         left: 10,
         right: 2,
@@ -250,7 +251,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses multiplication before addition (precedence)", () => {
       const result = parser.parse("velocity += 10 + 5 * 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "add",
         left: 10,
         right: {
@@ -264,7 +265,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses division before subtraction (precedence)", () => {
       const result = parser.parse("velocity += 20 - 10 / 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
         left: 20,
         right: {
@@ -278,7 +279,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses right-to-left for same precedence (addition)", () => {
       const result = parser.parse("velocity += 5 + 3 + 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "add",
         left: 5,
         right: {
@@ -294,7 +295,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses parentheses for grouping", () => {
       const result = parser.parse("velocity += (10 + 5) * 2");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
         left: {
           type: "add",
@@ -308,7 +309,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses nested parentheses", () => {
       const result = parser.parse("velocity += ((10 + 5) * 2) - 3");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
         left: {
           type: "multiply",
@@ -328,7 +329,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses function with arithmetic", () => {
       const result = parser.parse("velocity += 20 * cos(1:0t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
         left: 20,
         right: {
@@ -342,7 +343,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses multiple functions combined", () => {
       const result = parser.parse("velocity += 20 * cos(4:0t) + 10 * noise()");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "add",
         left: {
           type: "multiply",
@@ -368,7 +369,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses unipolar envelope (offset + modulation)", () => {
       const result = parser.parse("velocity += 20 + 20 * cos(2:0t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "add",
         left: 20,
         right: {
@@ -386,7 +387,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses amplitude modulation", () => {
       const result = parser.parse("velocity += 30 * cos(4:0t) * cos(1t)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
         left: 30,
         right: {
@@ -408,7 +409,7 @@ describe("Modulation Parser - Expressions", () => {
     it("parses swing timing with subtraction", () => {
       const result = parser.parse("timing += 0.05 * (cos(1t) - 1)");
 
-      expect(result[0].expression).toStrictEqual({
+      expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
         left: 0.05,
         right: {

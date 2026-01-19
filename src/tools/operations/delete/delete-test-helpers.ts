@@ -34,29 +34,26 @@ export function setupEntityMocks(
     Object.entries(idToPathMap).map(([id, path]) => [path, id]),
   );
 
-  liveApiId.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiId.mockImplementation(function (this: MockContext): string {
     if (this._path && pathToIdMap[this._path]) {
-      return pathToIdMap[this._path];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees value exists after map lookup
+      return pathToIdMap[this._path]!;
     }
 
-    return this._id;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._id!;
   });
 
-  liveApiPath.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiPath.mockImplementation(function (this: MockContext) {
     if (this._id && idToPathMap[this._id]) {
       return idToPathMap[this._id];
     }
 
-    return this._path;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+    return this._path!;
   });
 
-  liveApiType.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiType.mockImplementation(function (this: MockContext) {
     if (this._id && idToPathMap[this._id]) {
       return entityType;
     }
@@ -97,9 +94,7 @@ export function setupDeviceMocks(
       ? { [ids[0] as string]: pathOrMap }
       : pathOrMap;
 
-  liveApiId.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiId.mockImplementation(function (this: MockContext) {
     if (this._path?.startsWith("live_set ") && this._path.includes("devices")) {
       // Path-based lookup returns the device ID
       for (const [id, path] of Object.entries(pathMap)) {
@@ -109,22 +104,20 @@ export function setupDeviceMocks(
       }
     }
 
-    return this._id;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._id!;
   });
 
-  liveApiPath.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiPath.mockImplementation(function (this: MockContext) {
     if (this._id && pathMap[this._id]) {
       return pathMap[this._id];
     }
 
-    return this._path;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+    return this._path!;
   });
 
-  liveApiType.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiType.mockImplementation(function (this: MockContext) {
     if (this._id && ids.includes(this._id)) {
       return type;
     }
@@ -170,29 +163,25 @@ export function setupDrumChainMocks({
 }: DrumChainConfig): void {
   const extraPadPathTyped: Record<string, string> | null = extraPadPath;
 
-  liveApiId.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiId.mockImplementation(function (this: MockContext) {
     if (this._path === devicePath) return drumRackId;
     if (this._path === `id ${chainId}`) return chainId;
 
-    return this._id;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._id!;
   });
 
-  liveApiPath.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiPath.mockImplementation(function (this: MockContext) {
     const id = this._id ?? this.id;
 
     if (id === chainId) return chainPath;
     if (id && extraPadPathTyped?.[id]) return extraPadPathTyped[id];
 
-    return this._path;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+    return this._path!;
   });
 
-  liveApiType.mockImplementation(function (
-    this: MockContext,
-  ): string | undefined {
+  liveApiType.mockImplementation(function (this: MockContext) {
     const id = this._id ?? this.id;
 
     if (id && extraPadPathTyped?.[id]) return "DrumPad";

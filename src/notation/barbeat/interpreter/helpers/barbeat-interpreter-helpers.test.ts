@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { BarCopyNote, NoteEvent } from "#src/notation/types.js";
+import type { InterpreterState } from "./barbeat-interpreter-buffer-helpers.js";
 import {
   clearPitchBuffer,
   trackStateChange,
@@ -24,7 +26,7 @@ describe("barbeat-interpreter-helpers", () => {
         pitchesEmitted: true,
         stateChangedSinceLastPitch: true,
         stateChangedAfterEmission: true,
-      };
+      } as unknown as InterpreterState;
 
       clearPitchBuffer(state);
 
@@ -38,18 +40,20 @@ describe("barbeat-interpreter-helpers", () => {
 
   describe("copyNoteToDestination", () => {
     it("copies note to destination bar and updates events", () => {
-      const sourceNote = {
+      const sourceNote: BarCopyNote = {
         pitch: 60,
+        start_time: 0,
         relativeTime: 1.5,
         duration: 0.5,
         velocity: 100,
         probability: 1.0,
         velocity_deviation: 0,
+        originalBar: 1,
       };
       const destBar = 2;
       const destinationBarStart = 8.0;
-      const events = [];
-      const notesByBar = new Map();
+      const events: NoteEvent[] = [];
+      const notesByBar = new Map<number, BarCopyNote[]>();
 
       copyNoteToDestination(
         sourceNote,
@@ -70,24 +74,26 @@ describe("barbeat-interpreter-helpers", () => {
       });
 
       expect(notesByBar.has(destBar)).toBe(true);
-      expect(notesByBar.get(destBar)).toHaveLength(1);
-      expect(notesByBar.get(destBar)[0].relativeTime).toBe(1.5);
-      expect(notesByBar.get(destBar)[0].originalBar).toBe(2);
+      expect(notesByBar.get(destBar)!).toHaveLength(1);
+      expect(notesByBar.get(destBar)![0]!.relativeTime).toBe(1.5);
+      expect(notesByBar.get(destBar)![0]!.originalBar).toBe(2);
     });
 
     it("appends to existing notes in notesByBar", () => {
-      const sourceNote = {
+      const sourceNote: BarCopyNote = {
         pitch: 64,
+        start_time: 0,
         relativeTime: 0,
         duration: 1.0,
         velocity: 80,
         probability: 1.0,
         velocity_deviation: 10,
+        originalBar: 1,
       };
       const destBar = 1;
       const destinationBarStart = 4.0;
-      const events = [];
-      const notesByBar = new Map();
+      const events: NoteEvent[] = [];
+      const notesByBar = new Map<number, BarCopyNote[]>();
 
       // Add first note
       copyNoteToDestination(
@@ -107,9 +113,9 @@ describe("barbeat-interpreter-helpers", () => {
         notesByBar,
       );
 
-      expect(notesByBar.get(destBar)).toHaveLength(2);
-      expect(notesByBar.get(destBar)[0].pitch).toBe(64);
-      expect(notesByBar.get(destBar)[1].pitch).toBe(67);
+      expect(notesByBar.get(destBar)!).toHaveLength(2);
+      expect(notesByBar.get(destBar)![0]!.pitch).toBe(64);
+      expect(notesByBar.get(destBar)![1]!.pitch).toBe(67);
     });
   });
 
@@ -121,10 +127,10 @@ describe("barbeat-interpreter-helpers", () => {
         stateChangedSinceLastPitch: false,
         stateChangedAfterEmission: false,
         velocity: 100,
-      };
+      } as unknown as InterpreterState & { velocity: number };
 
       trackStateChange(state, (s) => {
-        s.velocity = 80;
+        (s as typeof state).velocity = 80;
       });
 
       expect(state.velocity).toBe(80);
@@ -138,10 +144,10 @@ describe("barbeat-interpreter-helpers", () => {
         stateChangedSinceLastPitch: false,
         stateChangedAfterEmission: false,
         duration: 1.0,
-      };
+      } as unknown as InterpreterState & { duration: number };
 
       trackStateChange(state, (s) => {
-        s.duration = 0.5;
+        (s as typeof state).duration = 0.5;
       });
 
       expect(state.duration).toBe(0.5);
@@ -155,10 +161,10 @@ describe("barbeat-interpreter-helpers", () => {
         stateChangedSinceLastPitch: false,
         stateChangedAfterEmission: false,
         velocity: 100,
-      };
+      } as unknown as InterpreterState & { velocity: number };
 
       trackStateChange(state, (s) => {
-        s.velocity = 90;
+        (s as typeof state).velocity = 90;
       });
 
       expect(state.velocity).toBe(90);
@@ -173,14 +179,14 @@ describe("barbeat-interpreter-helpers", () => {
         pitchGroupStarted: false,
         currentPitches: [{ velocity: 100 }, { velocity: 100 }],
         stateChangedAfterEmission: false,
-      };
+      } as unknown as InterpreterState;
 
       updateBufferedPitches(state, (pitchState) => {
         pitchState.velocity = 80;
       });
 
-      expect(state.currentPitches[0].velocity).toBe(80);
-      expect(state.currentPitches[1].velocity).toBe(80);
+      expect(state.currentPitches[0]!.velocity).toBe(80);
+      expect(state.currentPitches[1]!.velocity).toBe(80);
       expect(state.stateChangedAfterEmission).toBe(true);
     });
 
@@ -189,14 +195,14 @@ describe("barbeat-interpreter-helpers", () => {
         pitchGroupStarted: true,
         currentPitches: [{ velocity: 100 }, { velocity: 100 }],
         stateChangedAfterEmission: false,
-      };
+      } as unknown as InterpreterState;
 
       updateBufferedPitches(state, (pitchState) => {
         pitchState.velocity = 80;
       });
 
-      expect(state.currentPitches[0].velocity).toBe(100);
-      expect(state.currentPitches[1].velocity).toBe(100);
+      expect(state.currentPitches[0]!.velocity).toBe(100);
+      expect(state.currentPitches[1]!.velocity).toBe(100);
       expect(state.stateChangedAfterEmission).toBe(false);
     });
 
@@ -205,7 +211,7 @@ describe("barbeat-interpreter-helpers", () => {
         pitchGroupStarted: false,
         currentPitches: [],
         stateChangedAfterEmission: false,
-      };
+      } as unknown as InterpreterState;
 
       updateBufferedPitches(state, (pitchState) => {
         pitchState.velocity = 80;
@@ -221,7 +227,6 @@ describe("barbeat-interpreter-helpers", () => {
         testRangeCopyFailure({
           element: { source: "previous", destination: { range: [0, 2] } },
           errorContains: "Invalid destination range",
-          bufferState: { inBuffer: false },
         }),
       ).toBe(true);
     });
@@ -231,7 +236,6 @@ describe("barbeat-interpreter-helpers", () => {
         testRangeCopyFailure({
           element: { source: { bar: 0 }, destination: { range: [2, 3] } },
           errorContains: "Cannot copy from bar 0",
-          bufferState: { inBuffer: false },
         }),
       ).toBe(true);
     });
@@ -310,13 +314,20 @@ describe("barbeat-interpreter-helpers", () => {
     });
 
     it("copies notes when source bar has content", () => {
-      const notesByBar = new Map();
+      const notesByBar = new Map<number, BarCopyNote[]>();
 
       notesByBar.set(1, [
-        { pitch: 60, relativeTime: 0, duration: 1, velocity: 100 },
+        {
+          pitch: 60,
+          start_time: 0,
+          relativeTime: 0,
+          duration: 1,
+          velocity: 100,
+          originalBar: 1,
+        },
       ]);
 
-      const events = [];
+      const events: NoteEvent[] = [];
       const element = { source: { bar: 1 }, destination: { bar: 2 } };
 
       const result = handleBarCopySingleDestination(
@@ -333,7 +344,7 @@ describe("barbeat-interpreter-helpers", () => {
         hasExplicitBarNumber: true,
       });
       expect(events).toHaveLength(1);
-      expect(events[0].start_time).toBe(4); // Bar 2 starts at beat 4
+      expect(events[0]!.start_time).toBe(4); // Bar 2 starts at beat 4
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -16,7 +17,7 @@ describe("updateDevice - drum chain moving", () => {
     // Mock drum rack structure
     // Track 0 has a drum rack at device 0
     // The drum rack has chains with different in_note values
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "RackDevice";
       // Match both path formats for chains
       if (this._path?.includes("chains") || this._path?.match(/^id chain-/))
@@ -25,7 +26,7 @@ describe("updateDevice - drum chain moving", () => {
       return "Device";
     });
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "drumrack-id";
       if (this._path === "live_set tracks 0 devices 0 chains 0")
         return "chain-0";
@@ -40,7 +41,7 @@ describe("updateDevice - drum chain moving", () => {
       return "0";
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id chain-0")
         return "live_set tracks 0 devices 0 chains 0";
       if (this._path === "id chain-1")
@@ -51,7 +52,7 @@ describe("updateDevice - drum chain moving", () => {
       return this._path;
     });
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       // Drum rack properties
       if (this._path === "live_set tracks 0 devices 0") {
         if (prop === "can_have_drum_pads") return [1];

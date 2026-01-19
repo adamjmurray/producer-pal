@@ -5,8 +5,8 @@ import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-int
 describe("bar|beat interpretNotation() - core functionality", () => {
   it("returns empty array for empty input", () => {
     expect(interpretNotation("")).toStrictEqual([]);
-    expect(interpretNotation(null)).toStrictEqual([]);
-    expect(interpretNotation()).toStrictEqual([]);
+    expect(interpretNotation(null as unknown as string)).toStrictEqual([]);
+    expect(interpretNotation(undefined as unknown as string)).toStrictEqual([]);
   });
 
   it("parses simple notes with defaults", () => {
@@ -136,12 +136,12 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].pitch).toBe(60);
-    expect(result[0].start_time).toBe(0);
-    expect(result[0].duration).toBeCloseTo(6 + 1 / 3, 10); // 1 bar (4 beats) + 2+1/3 beats = 6+1/3 beats
-    expect(result[0].velocity).toBe(100);
-    expect(result[0].probability).toBe(1.0);
-    expect(result[0].velocity_deviation).toBe(0);
+    expect(result[0]!.pitch).toBe(60);
+    expect(result[0]!.start_time).toBe(0);
+    expect(result[0]!.duration).toBeCloseTo(6 + 1 / 3, 10); // 1 bar (4 beats) + 2+1/3 beats = 6+1/3 beats
+    expect(result[0]!.velocity).toBe(100);
+    expect(result[0]!.probability).toBe(1.0);
+    expect(result[0]!.velocity_deviation).toBe(0);
   });
 
   it("handles beat-only duration with + operator (NEW)", () => {
@@ -163,20 +163,20 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toHaveLength(2);
 
     // First note at 1|2+1/3
-    expect(result[0].pitch).toBe(60);
-    expect(result[0].start_time).toBeCloseTo(1 + 1 / 3, 10); // bar 1, beat 2+1/3
-    expect(result[0].duration).toBe(1);
-    expect(result[0].velocity).toBe(100);
-    expect(result[0].probability).toBe(1.0);
-    expect(result[0].velocity_deviation).toBe(0);
+    expect(result[0]!.pitch).toBe(60);
+    expect(result[0]!.start_time).toBeCloseTo(1 + 1 / 3, 10); // bar 1, beat 2+1/3
+    expect(result[0]!.duration).toBe(1);
+    expect(result[0]!.velocity).toBe(100);
+    expect(result[0]!.probability).toBe(1.0);
+    expect(result[0]!.velocity_deviation).toBe(0);
 
     // Second note at 1|2+3/4
-    expect(result[1].pitch).toBe(62);
-    expect(result[1].start_time).toBe(1.75); // bar 1, beat 2+3/4
-    expect(result[1].duration).toBe(1);
-    expect(result[1].velocity).toBe(100);
-    expect(result[1].probability).toBe(1.0);
-    expect(result[1].velocity_deviation).toBe(0);
+    expect(result[1]!.pitch).toBe(62);
+    expect(result[1]!.start_time).toBe(1.75); // bar 1, beat 2+3/4
+    expect(result[1]!.duration).toBe(1);
+    expect(result[1]!.velocity).toBe(100);
+    expect(result[1]!.probability).toBe(1.0);
+    expect(result[1]!.velocity_deviation).toBe(0);
   });
 
   it("handles mixed duration formats (NEW)", () => {
@@ -185,9 +185,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result[0].duration).toBe(8); // 2 bars = 8 beats
-    expect(result[1].duration).toBe(1.5); // 1.5 beats
-    expect(result[2].duration).toBe(0.75); // 3/4 beats
+    expect(result[0]!.duration).toBe(8); // 2 bars = 8 beats
+    expect(result[1]!.duration).toBe(1.5); // 1.5 beats
+    expect(result[2]!.duration).toBe(0.75); // 3/4 beats
   });
 
   it("handles sub-beat timing", () => {

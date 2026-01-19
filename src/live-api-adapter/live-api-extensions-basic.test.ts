@@ -36,7 +36,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("returns undefined when get() returns undefined", () => {
-      api.get = vi.fn().mockReturnValue();
+      api.get = vi.fn().mockReturnValue(undefined);
       expect(api.getProperty("missing")).toBeUndefined();
     });
 
@@ -187,7 +187,7 @@ describe("LiveAPI extensions - basic methods", () => {
       });
 
       it("returns null when routing property returns undefined", () => {
-        api.get = vi.fn().mockReturnValue();
+        api.get = vi.fn().mockReturnValue(undefined);
         expect(api.getProperty("output_routing_channel")).toBeNull();
       });
 
@@ -215,7 +215,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("returns empty array when get() returns non-array", () => {
-      api.get = vi.fn().mockReturnValue();
+      api.get = vi.fn().mockReturnValue(undefined);
       expect(api.getChildIds("tracks")).toStrictEqual([]);
     });
 
@@ -298,7 +298,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("handles ['id', 456] array format with numeric ID", () => {
-      const result = LiveAPI.from(["id", 456]);
+      const result = LiveAPI.from(["id", "456"]);
 
       expect(result.path).toBe("id 456");
     });

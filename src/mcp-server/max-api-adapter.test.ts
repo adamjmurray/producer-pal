@@ -14,7 +14,9 @@ import "./max-api-adapter.js";
 let timeoutMsHandler: ((input: unknown) => void) | undefined;
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
-).mock.calls.find((call: [string, unknown]) => call[0] === "timeoutMs");
+).mock.calls.find((call: unknown[]) => call[0] === "timeoutMs") as
+  | unknown[]
+  | undefined;
 
 if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1] as (input: unknown) => void;
@@ -42,7 +44,7 @@ function setupPendingRequest(
   Max.outlet = vi.fn().mockResolvedValue(undefined);
   const promise = callLiveApi(tool, args);
   const requestId = (Max.outlet as ReturnType<typeof vi.fn>).mock
-    .calls[0][1] as string;
+    .calls[0]![1] as string;
 
   return { promise, requestId };
 }
@@ -69,7 +71,7 @@ describe("Max API Adapter", () => {
       );
 
       // Get the requestId from the outlet call
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
       const requestId = callArgs[1] as string;
 
       expect(typeof requestId).toBe("string");
@@ -85,7 +87,7 @@ describe("Max API Adapter", () => {
 
       const result = await promise;
 
-      expect(result.content[0].text).toBe("test response");
+      expect(result.content[0]!.text).toBe("test response");
     });
 
     it("should timeout after specified timeout period", async () => {
@@ -118,7 +120,7 @@ describe("Max API Adapter", () => {
       expect(Max.outlet).toHaveBeenCalled();
 
       // Manually trigger response
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
       const requestId = callArgs[1] as string;
 
       handleLiveApiResult(
@@ -225,7 +227,7 @@ describe("Max API Adapter", () => {
       const promise = callLiveApi("test-tool", {});
 
       // Get the request ID from the outlet call
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0];
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
       const requestId = callArgs[1] as string;
 
       // Simulate the response
@@ -359,7 +361,7 @@ describe("Max API Adapter", () => {
 
       // Should resolve with an error response instead of throwing or logging
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain(
+      expect(result.content[0]!.text).toContain(
         "Error parsing tool result from Max",
       );
     });
@@ -420,7 +422,7 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("Missing MAX_ERROR_DELIMITER");
+      expect(result.content[0]!.text).toContain("Missing MAX_ERROR_DELIMITER");
     });
   });
 });

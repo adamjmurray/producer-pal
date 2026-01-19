@@ -184,8 +184,8 @@ describe("transformClips - slicing unlooped clips", () => {
     const duplicateCalls: Array<{ id: string | undefined; position: number }> =
       [];
 
-    liveApiId.mockImplementation(function (this: MockContext) {
-      return this._path === "id clip_45" ? clipId : this._id;
+    liveApiId.mockImplementation(function (this: MockContext): string {
+      return this._path === "id clip_45" ? clipId : this._id!;
     });
     liveApiPath.mockImplementation(function (this: MockContext) {
       if (this._id === clipId) return "live_set tracks 0 arrangement_clips 0";
@@ -194,7 +194,7 @@ describe("transformClips - slicing unlooped clips", () => {
       if (this._id?.startsWith("revealed_")) return "live_set tracks 0 arr 2";
       if (this._id === sessionSlotId) return "live_set tracks 0 clip_slots 0";
 
-      return this._path;
+      return this._path!;
     });
     liveApiType.mockImplementation(function (this: MockContext) {
       return this._id === clipId ? "Clip" : undefined;

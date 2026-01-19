@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.js";
+import type { NoteEvent } from "../types.js";
 import { formatNotation } from "./barbeat-format-notation.js";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.js";
 
@@ -7,7 +8,7 @@ describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
     expect(formatNotation([])).toBe("");
     expect(formatNotation(null)).toBe("");
-    expect(formatNotation()).toBe("");
+    expect(formatNotation(undefined)).toBe("");
   });
 
   it("formats simple notes with defaults", () => {
@@ -15,7 +16,7 @@ describe("bar|beat formatNotation()", () => {
       createNote(),
       createNote({ pitch: 62 }),
       createNote({ pitch: 64 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 D3 E3 1|1");
@@ -26,7 +27,7 @@ describe("bar|beat formatNotation()", () => {
       createNote(),
       createNote({ pitch: 62, start_time: 1 }),
       createNote({ pitch: 64, start_time: 4 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 1|1 D3 1|2 E3 2|1");
@@ -37,7 +38,7 @@ describe("bar|beat formatNotation()", () => {
       createNote({ probability: 0.8 }),
       createNote({ pitch: 62, probability: 0.5 }),
       createNote({ pitch: 64, probability: 0.5 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("p0.8 C3 p0.5 D3 E3 1|1");
@@ -48,7 +49,7 @@ describe("bar|beat formatNotation()", () => {
       createNote({ velocity: 80 }),
       createNote({ pitch: 62, velocity: 120 }),
       createNote({ pitch: 64, velocity: 120 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("v80 C3 v120 D3 E3 1|1");
@@ -59,7 +60,7 @@ describe("bar|beat formatNotation()", () => {
       createNote({ velocity: 80, velocity_deviation: 40 }),
       createNote({ pitch: 62, velocity: 60, velocity_deviation: 40 }),
       createNote({ pitch: 64, velocity: 60, velocity_deviation: 40 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("v80-120 C3 v60-100 D3 E3 1|1");
@@ -70,7 +71,7 @@ describe("bar|beat formatNotation()", () => {
       createNote(),
       createNote({ pitch: 62, velocity: 80, velocity_deviation: 40 }),
       createNote({ pitch: 64, velocity: 90 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 v80-120 D3 v90 E3 1|1");
@@ -81,7 +82,7 @@ describe("bar|beat formatNotation()", () => {
       createNote({ duration: 0.5 }),
       createNote({ pitch: 62, duration: 2.0 }),
       createNote({ pitch: 64, duration: 2.0 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("t0.5 C3 t2 D3 E3 1|1");
@@ -91,21 +92,27 @@ describe("bar|beat formatNotation()", () => {
     const notes = [
       createNote({ start_time: 0.5 }),
       createNote({ pitch: 62, start_time: 1.25 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 1|1.5 D3 1|2.25");
   });
 
   it("handles different time signatures with beatsPerBar option (legacy)", () => {
-    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
+    const notes = [
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
+    ] as NoteEvent[];
     const result = formatNotation(notes, { beatsPerBar: 3 });
 
     expect(result).toBe("C3 1|1 D3 2|1");
   });
 
   it("handles different time signatures with timeSigNumerator/timeSigDenominator", () => {
-    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
+    const notes = [
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
+    ] as NoteEvent[];
     const result = formatNotation(notes, {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
@@ -115,7 +122,10 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
-    const notes = [createNote(), createNote({ pitch: 62, start_time: 3 })];
+    const notes = [
+      createNote(),
+      createNote({ pitch: 62, start_time: 3 }),
+    ] as NoteEvent[];
     const result = formatNotation(notes, {
       beatsPerBar: 4,
       timeSigNumerator: 3,
@@ -127,7 +137,7 @@ describe("bar|beat formatNotation()", () => {
 
   it("throws error when only timeSigNumerator is provided", () => {
     expect(() =>
-      formatNotation([createNote()], { timeSigNumerator: 4 }),
+      formatNotation([createNote()] as NoteEvent[], { timeSigNumerator: 4 }),
     ).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
@@ -135,7 +145,7 @@ describe("bar|beat formatNotation()", () => {
 
   it("throws error when only timeSigDenominator is provided", () => {
     expect(() =>
-      formatNotation([createNote()], { timeSigDenominator: 4 }),
+      formatNotation([createNote()] as NoteEvent[], { timeSigDenominator: 4 }),
     ).toThrow(
       "Time signature must be specified with both numerator and denominator",
     );
@@ -146,7 +156,7 @@ describe("bar|beat formatNotation()", () => {
       createNote(),
       createNote({ pitch: 62, start_time: 1 }),
       createNote({ pitch: 64, start_time: 2 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 1|1 D3 1|2 E3 1|3");
@@ -157,7 +167,7 @@ describe("bar|beat formatNotation()", () => {
       createNote({ pitch: 64 }),
       createNote(),
       createNote({ pitch: 62 }),
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("C3 D3 E3 1|1");
@@ -215,7 +225,7 @@ describe("bar|beat formatNotation()", () => {
         duration: 0.25,
         probability: 0.9,
       }), // Gb1 (hihat)
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe(
@@ -240,15 +250,15 @@ describe("bar|beat formatNotation()", () => {
         velocity: 100,
         velocity_deviation: 20,
       }, // Missing probability
-    ];
+    ] as NoteEvent[];
     const result = formatNotation(notes);
 
     expect(result).toBe("v80 C3 v100 p0.7 D3 v100-120 p1 E3 1|1");
   });
 
   it("throws error for invalid MIDI pitch", () => {
-    expect(() => formatNotation([createNote({ pitch: -1 })])).toThrow(
-      "Invalid MIDI pitch: -1",
-    );
+    expect(() =>
+      formatNotation([createNote({ pitch: -1 })] as NoteEvent[]),
+    ).toThrow("Invalid MIDI pitch: -1");
   });
 });

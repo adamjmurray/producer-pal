@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import {
   createOutputOnlyRoutingMock,
@@ -21,7 +22,7 @@ import { readTrack } from "./read-track.js";
 describe("readTrack", () => {
   describe("wildcard include '*'", () => {
     it("includes all available options when '*' is used", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
@@ -38,11 +39,11 @@ describe("readTrack", () => {
           case "live_set tracks 0 clip_slots 0 clip":
             return "clip1";
           default:
-            return this._id;
+            return this._id!;
         }
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id arr_clip1") {
           return "Clip";
         }
@@ -58,8 +59,7 @@ describe("readTrack", () => {
         if (this._path === "id effect1") {
           return "Device";
         }
-
-        return this._type; // Fall back to default MockLiveAPI logic
+        // Fall back to default MockLiveAPI logic
       });
 
       mockLiveApiGet({
@@ -100,10 +100,10 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
         slot1: {
-          clip: expectedClip("clip1", "session"),
+          clip: expectedClip({ id: "clip1", view: "session" }),
         },
-        clip1: expectedClip("clip1", "session"),
-        arr_clip1: expectedClip("arr_clip1", "arrangement"),
+        clip1: expectedClip({ id: "clip1", view: "session" }),
+        arr_clip1: expectedClip({ id: "arr_clip1", view: "arrangement" }),
       });
 
       // Test with '*' - should include everything
@@ -157,7 +157,7 @@ describe("readTrack", () => {
   describe("category parameter", () => {
     describe("return tracks", () => {
       it("reads return track when category is 'return'", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
           if (this.path === "live_set return_tracks 1") {
             return "return_track_1";
           }
@@ -215,14 +215,14 @@ describe("readTrack", () => {
       });
 
       it("includes routing properties for return tracks when requested", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
           if (this.path === "live_set return_tracks 0") {
             return "return_track_1";
           }
 
           return "id 0";
         });
-        liveApiPath.mockImplementation(function () {
+        liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
           return this._path;
         });
 
@@ -279,7 +279,7 @@ describe("readTrack", () => {
 
     describe("master track", () => {
       it("reads master track when category is 'master'", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
           if (this.path === "live_set master_track") {
             return "master_track";
           }
@@ -349,7 +349,7 @@ describe("readTrack", () => {
       });
 
       it("includes audio effects for master track when requested", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
           switch (this._path) {
             case "live_set master_track":
               return "master_track";
@@ -358,7 +358,7 @@ describe("readTrack", () => {
             case "live_set master_track devices 1":
               return "limiter1";
             default:
-              return this._id;
+              return this._id!;
           }
         });
 

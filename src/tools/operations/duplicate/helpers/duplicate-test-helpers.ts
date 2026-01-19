@@ -163,7 +163,7 @@ export function setupRouteToSourceMock(
     inputRoutingName?: string;
     arm?: number;
   } = {},
-): Record<string, unknown> {
+): Record<string, Record<string, unknown>> {
   const {
     trackName = "Source Track",
     monitoringState = 0,
@@ -186,7 +186,7 @@ export function setupRouteToSourceMock(
   }
 
   return {
-    "live_set tracks 0": sourceTrackMock,
+    "live_set tracks 0": sourceTrackMock as unknown as Record<string, unknown>,
     "live_set tracks 1": {
       available_output_routing_types: [
         { display_name: "Master", identifier: "master_id" },
@@ -250,7 +250,7 @@ export function setupArrangementDuplicationMock(
  */
 export function createStandardMidiClipMock(
   opts: { length?: number; name?: string } = {},
-): object {
+): Record<string, unknown> {
   const { length = 8, name = "Scene Clip" } = opts;
 
   return {

@@ -3,12 +3,13 @@ import {
   liveApiCall,
   liveApiGet,
   liveApiId,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
 // Setup basic device mocks with two parameters
 function setupDeviceMocks() {
-  liveApiId.mockImplementation(function () {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === "id device-123") return "device-123";
     if (this._path === "id param-1") return "param-1";
     if (this._path === "id param-2") return "param-2";
@@ -18,7 +19,7 @@ function setupDeviceMocks() {
 }
 
 // Get device properties for mock
-function getDeviceProps(prop) {
+function getDeviceProps(prop: string) {
   switch (prop) {
     case "name":
       return ["Operator"];
@@ -40,7 +41,7 @@ function getDeviceProps(prop) {
 }
 
 // Get basic param props (for lightweight params)
-function getBasicParamProps(path, prop) {
+function getBasicParamProps(path: string, prop: string) {
   if (path === "id param-1") {
     if (prop === "name") return ["Volume"];
     if (prop === "original_name") return ["Volume"];
@@ -55,7 +56,7 @@ function getBasicParamProps(path, prop) {
 }
 
 // Get full param props (for param-values)
-function getFullParamProps(path, prop) {
+function getFullParamProps(path: string, prop: string) {
   const basic = getBasicParamProps(path, prop);
 
   if (basic.length > 0) return basic;
@@ -112,12 +113,12 @@ describe("readDevice paramSearch filtering", () => {
 
   function setupBasicMocks() {
     setupDeviceMocks();
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (this._path === "id device-123") {
         return getDeviceProps(prop);
       }
 
-      return getBasicParamProps(this._path, prop);
+      return getBasicParamProps(this._path!, prop);
     });
   }
 
@@ -130,8 +131,10 @@ describe("readDevice paramSearch filtering", () => {
       paramSearch: "vol",
     });
 
-    expect(result.parameters).toHaveLength(1);
-    expect(result.parameters[0].name).toBe("Volume");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params).toHaveLength(1);
+    expect(params[0]!.name).toBe("Volume");
   });
 
   it("should be case-insensitive when filtering", () => {
@@ -143,8 +146,10 @@ describe("readDevice paramSearch filtering", () => {
       paramSearch: "FILTER",
     });
 
-    expect(result.parameters).toHaveLength(1);
-    expect(result.parameters[0].name).toBe("Filter Cutoff");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params).toHaveLength(1);
+    expect(params[0]!.name).toBe("Filter Cutoff");
   });
 
   it("should return empty array when no parameters match", () => {
@@ -162,12 +167,12 @@ describe("readDevice paramSearch filtering", () => {
   it("should work with param-values include", () => {
     setupDeviceMocks();
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (this._path === "id device-123") {
         return getDeviceProps(prop);
       }
 
-      const fullProps = getFullParamProps(this._path, prop);
+      const fullProps = getFullParamProps(this._path!, prop);
 
       if (fullProps.length > 0) return fullProps;
 
@@ -179,7 +184,11 @@ describe("readDevice paramSearch filtering", () => {
       return [];
     });
 
-    liveApiCall.mockImplementation(function (method, value) {
+    liveApiCall.mockImplementation(function (
+      this: MockLiveAPIContext,
+      method,
+      value,
+    ) {
       if (method === "str_for_value") {
         if (this._path === "id param-1") {
           if (value === 0) return "-inf dB";
@@ -205,9 +214,11 @@ describe("readDevice paramSearch filtering", () => {
       paramSearch: "vol",
     });
 
-    expect(result.parameters).toHaveLength(1);
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params).toHaveLength(1);
     // New format: parsed value with unit, min/max from label parsing
-    expect(result.parameters[0]).toStrictEqual({
+    expect(params[0]).toStrictEqual({
       id: "param-1",
       name: "Volume",
       value: -6,

@@ -27,7 +27,7 @@ describe("transformClips - slice + shuffle combination", () => {
         return clip2Id;
       }
 
-      return this._id;
+      return this._id!;
     });
 
     liveApiPath.mockImplementation(function (this: MockContext) {

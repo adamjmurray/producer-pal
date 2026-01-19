@@ -180,8 +180,12 @@ describe("readTrack", () => {
         // drumPads: [], // Only included when drum-pads is requested
       });
 
-      expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toStrictEqual({
+      const audioEffects = result.audioEffects as Array<
+        Record<string, unknown>
+      >;
+
+      expect(audioEffects).toHaveLength(1);
+      expect(audioEffects[0]).toStrictEqual({
         id: "device2",
         type: "audio-effect: Reverb",
       });
@@ -310,8 +314,12 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.audioEffects).toHaveLength(1);
-      expect(result.audioEffects[0]).toStrictEqual({
+      const audioEffects2 = result.audioEffects as Array<
+        Record<string, unknown>
+      >;
+
+      expect(audioEffects2).toHaveLength(1);
+      expect(audioEffects2[0]).toStrictEqual({
         id: "fx_rack1",
         type: "audio-effect-rack",
         name: "Master FX",

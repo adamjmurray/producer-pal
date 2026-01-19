@@ -134,7 +134,7 @@ describe("LiveAPI extensions", () => {
     it("should return null for routing property with null raw value", () => {
       const track = LiveAPI.from("live_set tracks 0");
 
-      liveApiGet.mockReturnValue(null);
+      liveApiGet.mockReturnValue([null]);
 
       const channel = track.getProperty("input_routing_channel");
 

@@ -190,8 +190,8 @@ describe("readTrack", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({
         Track: mockTrackProperties({
-          can_be_armed: [0], // Track cannot be armed (group/master/return tracks)
-          current_monitoring_state: [1], // This should not be accessed
+          can_be_armed: 0, // Track cannot be armed (group/master/return tracks)
+          current_monitoring_state: 1, // This should not be accessed
         }),
       });
 

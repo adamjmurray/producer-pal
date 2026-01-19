@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 
 // Helper to create a note with default values
-function note(pitch, start_time, overrides = {}) {
+function note(pitch: number, start_time: number, overrides = {}) {
   return {
     pitch,
     start_time,

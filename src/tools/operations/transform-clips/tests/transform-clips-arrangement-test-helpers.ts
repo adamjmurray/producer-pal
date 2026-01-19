@@ -50,10 +50,14 @@ export function setupNonExistentTrackMocks(trackIndex: number): void {
   liveApiId.mockImplementation(function (this: MockContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "0";
 
-    return this._id;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+    return this._id!;
   });
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (
+    this: MockContext,
+  ): string | undefined {
     // Track doesn't exist - return undefined
+    return undefined;
   });
   liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
     if (this._path === "live_set") {
@@ -81,16 +85,17 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
   liveApiId.mockImplementation(
     /**
      * @this - Mock context
-     * @returns Mock ID or undefined
+     * @returns Mock ID
      */
-    function (this: MockContext): string | undefined {
+    function (this: MockContext): string {
       for (const clip of clips) {
         if (this._path === `id ${clip.id}`) {
           return clip.id;
         }
       }
 
-      return this._id;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+      return this._id!;
     },
   );
 
@@ -106,7 +111,8 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
         return `live_set tracks 0 arrangement_clips ${idx}`;
       }
 
-      return this._path;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+      return this._path!;
     },
   );
 

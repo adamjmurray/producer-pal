@@ -30,9 +30,11 @@ vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
 }));
 
 // Mock arrangement-tiling helpers
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
+    holdingClip: { id: "holding_clip_id" },
   })),
   moveClipFromHolding: vi.fn(
     (_holdingClipId: string, track: { path: string }, _startBeats: number) => {
@@ -56,7 +58,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
         get trackIndex() {
           const match = clipId.match(/tracks (\d+)/);
 
-          return match ? Number.parseInt(match[1]) : null;
+          return match ? Number.parseInt(match[1]!) : null;
         },
       };
     },
@@ -204,7 +206,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      duplicateTrack(0, null, false, true);
+      duplicateTrack(0, undefined, false, true);
 
       // Verify delete_device was called for each device (backwards)
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -235,7 +237,7 @@ describe("duplicate-track-scene-helpers", () => {
         "id slot1": { has_clip: 0 },
       });
 
-      duplicateTrack(0, null, true);
+      duplicateTrack(0, undefined, true);
 
       // Should delete arrangement clips on the track
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -279,7 +281,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       // Should arm source track
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -341,7 +343,7 @@ describe("duplicate-track-scene-helpers", () => {
         ),
       );
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       expect(consoleSpy).not.toHaveBeenCalledWith(
         expect.stringContaining("Armed the source track"),
@@ -361,7 +363,7 @@ describe("duplicate-track-scene-helpers", () => {
         ),
       );
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -386,7 +388,7 @@ describe("duplicate-track-scene-helpers", () => {
         ),
       );
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -415,7 +417,7 @@ describe("duplicate-track-scene-helpers", () => {
         ),
       );
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -443,7 +445,7 @@ describe("duplicate-track-scene-helpers", () => {
         ),
       );
 
-      duplicateTrack(0, null, false, false, true, 0);
+      duplicateTrack(0, undefined, false, false, true, 0);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -463,7 +465,7 @@ describe("duplicate-track-scene-helpers", () => {
         "id slot0": { has_clip: 1 },
       });
 
-      duplicateTrack(0, null, true);
+      duplicateTrack(0, undefined, true);
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: expect.stringContaining("slot0") }),
@@ -509,11 +511,11 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      const result = duplicateTrack(0, null, false); // withoutClips=false (default)
+      const result = duplicateTrack(0, undefined, false); // withoutClips=false (default)
 
       // Should collect arrangement clips
       expect(result.clips.length).toBeGreaterThan(0);
-      expect(result.clips[0].id).toBe(arrClipId);
+      expect(result.clips[0]!.id).toBe(arrClipId);
     });
   });
 
@@ -566,7 +568,7 @@ describe("duplicate-track-scene-helpers", () => {
         "live_set tracks 1 clip_slots 1": { has_clip: 1 },
       });
 
-      const result = duplicateScene(0, null, true);
+      const result = duplicateScene(0, undefined, true);
 
       expect(result.clips).toHaveLength(0);
 
@@ -603,7 +605,15 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       expect(() =>
-        duplicateSceneToArrangement("scene123", 16, null, false, null, 4, 4),
+        duplicateSceneToArrangement(
+          "scene123",
+          16,
+          undefined,
+          false,
+          undefined,
+          4,
+          4,
+        ),
       ).toThrow('duplicate failed: scene with id "scene123" does not exist');
     });
 
@@ -617,7 +627,15 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       expect(() =>
-        duplicateSceneToArrangement("scene123", 16, null, false, null, 4, 4),
+        duplicateSceneToArrangement(
+          "scene123",
+          16,
+          undefined,
+          false,
+          undefined,
+          4,
+          4,
+        ),
       ).toThrow('duplicate failed: no scene index for id "scene123"');
     });
 
@@ -634,9 +652,9 @@ describe("duplicate-track-scene-helpers", () => {
       const result = duplicateSceneToArrangement(
         "scene1",
         16,
-        null,
+        undefined,
         true,
-        null,
+        undefined,
         4,
         4,
       );
@@ -677,7 +695,7 @@ describe("duplicate-track-scene-helpers", () => {
       const result = duplicateSceneToArrangement(
         "scene1",
         16,
-        null,
+        undefined,
         false,
         "2:0", // 8 beats
         4,
@@ -737,7 +755,7 @@ describe("duplicate-track-scene-helpers", () => {
         16,
         "Scene Name",
         false,
-        null,
+        undefined,
         4,
         4,
       );

@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
 
@@ -13,7 +14,7 @@ describe("Modulation Evaluator", () => {
     });
 
     it("returns empty object for null/undefined", () => {
-      const result = evaluateModulation(null, {
+      const result = evaluateModulation(null as unknown as string, {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -52,7 +53,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(15);
+      expect(result.velocity!.value).toBe(15);
     });
 
     it("evaluates subtraction", () => {
@@ -61,7 +62,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(5);
+      expect(result.velocity!.value).toBe(5);
     });
 
     it("evaluates multiplication", () => {
@@ -70,7 +71,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(20);
+      expect(result.velocity!.value).toBe(20);
     });
 
     it("evaluates division", () => {
@@ -79,7 +80,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(5);
+      expect(result.velocity!.value).toBe(5);
     });
 
     it("handles division by zero (returns 0)", () => {
@@ -88,7 +89,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(0);
+      expect(result.velocity!.value).toBe(0);
     });
 
     it("respects operator precedence", () => {
@@ -97,7 +98,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(20); // 10 + (5 * 2)
+      expect(result.velocity!.value).toBe(20); // 10 + (5 * 2)
     });
 
     it("handles parentheses", () => {
@@ -106,7 +107,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(30);
+      expect(result.velocity!.value).toBe(30);
     });
   });
 
@@ -117,7 +118,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(1.0, 10);
     });
 
     it("evaluates cos at position 0.25 (quarter period)", () => {
@@ -126,7 +127,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
 
     it("evaluates cos at position 0.5 (half period)", () => {
@@ -135,7 +136,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(-1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
     it("evaluates cos with phase offset", () => {
@@ -145,7 +146,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // Phase 0 + offset 0.5 = phase 0.5 → cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
     it("evaluates cos with bar:beat frequency (1:0t in 4/4 = 4 beats)", () => {
@@ -155,7 +156,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // position 2 / period 4 = phase 0.5 → cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
     it("evaluates scaled cosine", () => {
@@ -164,7 +165,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(20.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(20.0, 10);
     });
   });
 
@@ -175,7 +176,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(1.0);
+      expect(result.velocity!.value).toBe(1.0);
     });
 
     it("evaluates tri at position 0.25 (quarter period)", () => {
@@ -184,7 +185,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
 
     it("evaluates tri at position 0.5 (half period)", () => {
@@ -193,7 +194,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(-1.0);
+      expect(result.velocity!.value).toBe(-1.0);
     });
 
     it("evaluates tri with phase offset", () => {
@@ -202,7 +203,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(-1.0);
+      expect(result.velocity!.value).toBe(-1.0);
     });
   });
 
@@ -213,7 +214,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(1.0);
+      expect(result.velocity!.value).toBe(1.0);
     });
 
     it("evaluates saw at position 0.5 (half period)", () => {
@@ -222,7 +223,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
 
     it("evaluates saw with phase offset", () => {
@@ -231,7 +232,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
   });
 
@@ -242,7 +243,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(1.0);
+      expect(result.velocity!.value).toBe(1.0);
     });
 
     it("evaluates square at position 0.5 (switches to low)", () => {
@@ -251,7 +252,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(-1.0);
+      expect(result.velocity!.value).toBe(-1.0);
     });
 
     it("evaluates square with custom pulse width", () => {
@@ -260,7 +261,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBe(-1.0);
+      expect(result.velocity!.value).toBe(-1.0);
     });
 
     it("evaluates square with phase offset", () => {
@@ -270,7 +271,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // Phase 0 + offset 0.5 = phase 0.5 → square switches at 0.5
-      expect(result.velocity.value).toBe(-1.0);
+      expect(result.velocity!.value).toBe(-1.0);
     });
   });
 
@@ -282,8 +283,8 @@ describe("Modulation Evaluator", () => {
           timeSig: { numerator: 4, denominator: 4 },
         });
 
-        expect(result.velocity.value).toBeGreaterThanOrEqual(-1.0);
-        expect(result.velocity.value).toBeLessThanOrEqual(1.0);
+        expect(result.velocity!.value).toBeGreaterThanOrEqual(-1.0);
+        expect(result.velocity!.value).toBeLessThanOrEqual(1.0);
       }
     });
 
@@ -293,8 +294,8 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeGreaterThanOrEqual(-10.0);
-      expect(result.velocity.value).toBeLessThanOrEqual(10.0);
+      expect(result.velocity!.value).toBeGreaterThanOrEqual(-10.0);
+      expect(result.velocity!.value).toBeLessThanOrEqual(10.0);
     });
   });
 
@@ -306,7 +307,7 @@ describe("Modulation Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity.value).toBe(0);
+      expect(result.velocity!.value).toBe(0);
     });
 
     it("evaluates ramp at position 2 (halfway through clip)", () => {
@@ -316,7 +317,7 @@ describe("Modulation Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity.value).toBe(0.5);
+      expect(result.velocity!.value).toBe(0.5);
     });
 
     it("evaluates ramp at position 4 (end of clip, wraps to start)", () => {
@@ -327,7 +328,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // Phase 1.0 wraps to 0.0 due to modulo in waveform
-      expect(result.velocity.value).toBe(0);
+      expect(result.velocity!.value).toBe(0);
     });
 
     it("evaluates reverse ramp", () => {
@@ -337,7 +338,7 @@ describe("Modulation Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity.value).toBe(0.5);
+      expect(result.velocity!.value).toBe(0.5);
     });
 
     it("evaluates ramp with speed = 2", () => {
@@ -348,7 +349,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // position 1 out of 4 beats = phase 0.25 * speed 2 = phase 0.5
-      expect(result.velocity.value).toBe(0.5);
+      expect(result.velocity!.value).toBe(0.5);
     });
 
     it("evaluates scaled ramp", () => {
@@ -358,7 +359,7 @@ describe("Modulation Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity.value).toBe(10); // 20 * 0.5
+      expect(result.velocity!.value).toBe(10); // 20 * 0.5
     });
 
     it("evaluates ramp with arbitrary range", () => {
@@ -368,7 +369,7 @@ describe("Modulation Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity.value).toBe(0); // -1 + 2 * 0.5
+      expect(result.velocity!.value).toBe(0); // -1 + 2 * 0.5
     });
 
     it("throws error when start argument is missing", () => {
@@ -419,7 +420,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(40.0, 10); // 20 + 20 * 1.0
+      expect(result.velocity!.value).toBeCloseTo(40.0, 10); // 20 + 20 * 1.0
     });
 
     it("evaluates swing timing (0.05 * (cos(1t) - 1))", () => {
@@ -428,7 +429,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.timing.value).toBeCloseTo(0.0, 10); // 0.05 * (1.0 - 1) = 0
+      expect(result.timing!.value).toBeCloseTo(0.0, 10); // 0.05 * (1.0 - 1) = 0
     });
 
     it("evaluates multiple functions combined", () => {
@@ -437,7 +438,7 @@ describe("Modulation Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(30.0, 10); // 20 * 1.0 + 10
+      expect(result.velocity!.value).toBeCloseTo(30.0, 10); // 20 * 1.0 + 10
     });
 
     it("evaluates amplitude modulation (cos * cos)", () => {
@@ -449,7 +450,7 @@ describe("Modulation Evaluator", () => {
         },
       );
 
-      expect(result.velocity.value).toBeCloseTo(30.0, 10); // 30 * 1.0 * 1.0
+      expect(result.velocity!.value).toBeCloseTo(30.0, 10); // 30 * 1.0 * 1.0
     });
   });
 
@@ -461,7 +462,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // position 1.5 / period 3 = phase 0.5 → cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
     it("evaluates modulation in 6/8", () => {
@@ -471,7 +472,7 @@ describe("Modulation Evaluator", () => {
       });
 
       // position 3 / period 6 = phase 0.5 → cos(0.5) = -1
-      expect(result.velocity.value).toBeCloseTo(-1.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
   });
 
@@ -489,15 +490,15 @@ probability += 0.2 * cos(0:2t)`;
       expect(result).toHaveProperty("velocity");
       expect(result).toHaveProperty("timing");
       expect(result).toHaveProperty("probability");
-      expect(result.velocity.value).toBeCloseTo(20.0, 10);
-      expect(result.timing.value).toBeGreaterThanOrEqual(-0.05);
-      expect(result.timing.value).toBeLessThanOrEqual(0.05);
-      expect(result.probability.value).toBeCloseTo(0.2, 10);
+      expect(result.velocity!.value).toBeCloseTo(20.0, 10);
+      expect(result.timing!.value).toBeGreaterThanOrEqual(-0.05);
+      expect(result.timing!.value).toBeLessThanOrEqual(0.05);
+      expect(result.probability!.value).toBeCloseTo(0.2, 10);
     });
   });
 
   describe("error handling", () => {
-    let consoleErrorSpy;
+    let consoleErrorSpy: MockInstance;
 
     beforeEach(() => {
       consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -531,7 +532,7 @@ timing += 0.05`;
 
       // velocity should be skipped due to error, but timing should work
       expect(result).not.toHaveProperty("velocity");
-      expect(result.timing.value).toBe(0.05);
+      expect(result.timing!.value).toBe(0.05);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("Warning: Failed to evaluate modulation"),
       );
@@ -555,7 +556,7 @@ timing += 0.05`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(20.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(20.0, 10);
     });
 
     it("phase-shifted: velocity += 20 * cos(1:0t, 0.5)", () => {
@@ -564,7 +565,7 @@ timing += 0.05`;
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity.value).toBeCloseTo(-20.0, 10);
+      expect(result.velocity!.value).toBeCloseTo(-20.0, 10);
     });
 
     it("pulse width modulation: velocity += 20 * square(2t, 0, 0.25)", () => {
@@ -576,7 +577,7 @@ timing += 0.05`;
         },
       );
 
-      expect(result.velocity.value).toBe(20.0);
+      expect(result.velocity!.value).toBe(20.0);
     });
 
     it("combined functions: velocity += 20 * cos(4:0t) + 10 * noise()", () => {
@@ -589,8 +590,8 @@ timing += 0.05`;
       );
 
       // cos(0) = 1, so 20 * 1 + 10 * noise() should be between 10 and 30
-      expect(result.velocity.value).toBeGreaterThanOrEqual(10.0);
-      expect(result.velocity.value).toBeLessThanOrEqual(30.0);
+      expect(result.velocity!.value).toBeGreaterThanOrEqual(10.0);
+      expect(result.velocity!.value).toBeLessThanOrEqual(30.0);
     });
   });
 });

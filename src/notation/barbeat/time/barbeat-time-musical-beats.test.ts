@@ -116,9 +116,9 @@ describe("barBeatDurationToMusicalBeats", () => {
     });
 
     it("throws error when time signature numerator is undefined", () => {
-      expect(() => barBeatDurationToMusicalBeats("1:0", undefined, 4)).toThrow(
-        "Time signature numerator required for bar:beat duration",
-      );
+      expect(() =>
+        barBeatDurationToMusicalBeats("1:0", undefined as unknown as number),
+      ).toThrow("Time signature numerator required for bar:beat duration");
     });
   });
 });
@@ -143,13 +143,13 @@ describe("duration function round-trip consistency", () => {
         it(`round-trip consistency for ${beats} Ableton beats`, () => {
           const duration = abletonBeatsToBarBeatDuration(
             beats,
-            timeSig[0],
-            timeSig[1],
+            timeSig[0]!,
+            timeSig[1]!,
           );
           const converted = barBeatDurationToAbletonBeats(
             duration,
-            timeSig[0],
-            timeSig[1],
+            timeSig[0]!,
+            timeSig[1]!,
           );
 
           expect(converted).toBeCloseTo(beats, 10); // High precision due to floating point

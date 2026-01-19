@@ -3,6 +3,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 import {
@@ -98,19 +99,19 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read chain with devices", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       const id = this._id;
 
       if (id === "device-in-chain") return "device-in-chain";
 
       return "chain-with-devices";
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "device-in-chain") return "Device";
 
       return "Chain";
     });
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       const id = this._id;
 
       // Device properties

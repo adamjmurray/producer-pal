@@ -5,13 +5,14 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateTrack } from "./update-track.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack - send properties", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       // For ID-based paths (from getChildren), return the ID portion
       if (this._path?.startsWith("id ")) {
         return this._path.slice(3);
@@ -33,11 +34,11 @@ describe("updateTrack - send properties", () => {
         case "live_set return_tracks 1":
           return "return_B";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "123":
           return "live_set tracks 0";
@@ -246,7 +247,7 @@ describe("updateTrack - send properties", () => {
 
   it("should warn and skip when mixer device does not exist", () => {
     // Override liveApiId to return "0" for mixer path
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 mixer_device") {
         return "0"; // Non-existent
       }
@@ -259,7 +260,7 @@ describe("updateTrack - send properties", () => {
         case "id 123":
           return "123";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 
@@ -293,7 +294,7 @@ describe("updateTrack - send properties", () => {
       },
     });
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path?.startsWith("id ")) {
         return this._path.slice(3);
       }
@@ -312,7 +313,7 @@ describe("updateTrack - send properties", () => {
         case "live_set return_tracks 2":
           return "return_C";
         default:
-          return this._id;
+          return this._id!;
       }
     });
 

@@ -24,30 +24,35 @@ const mockServer = {
 
 const mockTransport = {};
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: vi.fn(function () {
     return mockClient;
   }),
 }));
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(function () {
     return mockTransport;
   }),
 }));
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/server/index.js"), () => ({
   Server: vi.fn(function () {
     return mockServer;
   }),
 }));
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/server/stdio.js"), () => ({
   StdioServerTransport: vi.fn(function () {
     return mockTransport;
   }),
 }));
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
   CallToolRequestSchema: "CallToolRequestSchema",
   ListToolsRequestSchema: "ListToolsRequestSchema",
@@ -73,13 +78,15 @@ const mockMcpServer = {
   },
 };
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/mcp-server/create-mcp-server.js"), () => ({
   createMcpServer: vi.fn(() => mockMcpServer),
 }));
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("zod"), () => ({
   z: {
-    toJSONSchema: vi.fn((schema) => schema), // Pass through for testing
+    toJSONSchema: vi.fn((schema: unknown) => schema), // Pass through for testing
   },
 }));
 
@@ -126,6 +133,8 @@ interface BridgeInternals {
       inputSchema: object;
     }>;
   };
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
   _createSetupErrorResponse: () => {
     content: Array<{ type: string; text: string }>;
     isError: boolean;
@@ -137,8 +146,11 @@ interface BridgeInternals {
   _ensureHttpConnection: () => Promise<void>;
 }
 
+// Cast to BridgeInternals to access private properties in tests
+type TestBridge = BridgeInternals;
+
 describe("StdioHttpBridge", () => {
-  let bridge: StdioHttpBridge & BridgeInternals;
+  let bridge: TestBridge;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -146,7 +158,7 @@ describe("StdioHttpBridge", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     bridge = new StdioHttpBridge(
       "http://localhost:3350/mcp",
-    ) as StdioHttpBridge & BridgeInternals;
+    ) as unknown as TestBridge;
   });
 
   afterEach(() => {
@@ -165,7 +177,7 @@ describe("StdioHttpBridge", () => {
     it("accepts custom URL", () => {
       const customBridge = new StdioHttpBridge(
         "http://localhost:8080/mcp",
-      ) as StdioHttpBridge & BridgeInternals;
+      ) as unknown as TestBridge;
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
     });
@@ -543,7 +555,7 @@ describe("StdioHttpBridge", () => {
       // Create bridge with invalid URL that will cause ERR_INVALID_URL
       const invalidBridge = new StdioHttpBridge(
         "not-a-valid-url",
-      ) as StdioHttpBridge & BridgeInternals;
+      ) as unknown as TestBridge;
 
       mockServer.connect.mockResolvedValue(undefined);
       await invalidBridge.start();

@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "#src/live-api-adapter/live-api-extensions.js";
@@ -17,7 +18,7 @@ describe("updateDevice", () => {
     // Default: all objects are Device type (valid for update)
     liveApiType.mockImplementation(() => "Device");
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -40,7 +41,7 @@ describe("updateDevice", () => {
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "live_set tracks 0 devices 0";
@@ -52,7 +53,7 @@ describe("updateDevice", () => {
     });
 
     // Default mocks for param types
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (prop === "is_quantized") return [0];
       if (prop === "value") return [0.5];
       if (prop === "min") return [0];
@@ -61,7 +62,11 @@ describe("updateDevice", () => {
       return [0];
     });
 
-    liveApiCall.mockImplementation(function (method, value) {
+    liveApiCall.mockImplementation(function (
+      this: MockLiveAPIContext,
+      method,
+      value,
+    ) {
       if (method === "str_for_value") {
         // Default to numeric label
         return String(value);
@@ -268,7 +273,7 @@ describe("updateDevice", () => {
 
   describe("params - enum values", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (this._path === "id 791") {
           if (prop === "is_quantized") return [1];
           if (prop === "value_items") return ["Repitch", "Fade", "Jump"];
@@ -349,7 +354,7 @@ describe("updateDevice", () => {
 
   describe("params - pan values", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (this._path === "id 792") {
           if (prop === "is_quantized") return [0];
           if (prop === "value") return [0.5];
@@ -362,7 +367,10 @@ describe("updateDevice", () => {
         return [0];
       });
 
-      liveApiCall.mockImplementation(function (method) {
+      liveApiCall.mockImplementation(function (
+        this: MockLiveAPIContext,
+        method,
+      ) {
         if (method === "str_for_value" && this._path === "id 792") {
           return "C"; // Pan label indicating center
         }
@@ -422,11 +430,11 @@ describe("updateDevice", () => {
   describe("macroCount", () => {
     beforeEach(() => {
       // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         return this._path === "id 123" ? "RackDevice" : "Device";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (this._path === "id 123") {
           if (prop === "can_have_chains") return [1];
           if (prop === "visible_macro_count") return [4];
@@ -521,7 +529,7 @@ describe("updateDevice", () => {
 
   describe("abCompare", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         // Device with AB Compare support (id 123)
         if (this._path === "id 123" && prop === "can_compare_ab") return [1];
 
@@ -597,7 +605,7 @@ describe("updateDevice", () => {
   describe("toPath - device moving", () => {
     beforeEach(() => {
       // Mock to make containers exist
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         // Source device
         if (this._path === "id 123") return "123";
         // Target containers - return valid IDs
@@ -612,7 +620,7 @@ describe("updateDevice", () => {
         return "valid-id";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
         if (prop === "can_have_drum_pads") return [0];
 

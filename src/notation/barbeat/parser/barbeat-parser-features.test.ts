@@ -10,7 +10,8 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("returns library object when peg$library option is true", () => {
-      const result = parser.parse("C3", { peg$library: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- peg$library is not in public types
+      const result = parser.parse("C3", { peg$library: true } as any);
 
       expect(result).toHaveProperty("peg$result");
       expect(result).toHaveProperty("peg$success", true);
@@ -21,7 +22,8 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("returns library object with throw function on parse failure", () => {
-      const result = parser.parse("X3", { peg$library: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- peg$library result not typed
+      const result = parser.parse("X3", { peg$library: true } as any) as any;
 
       expect(result).toHaveProperty("peg$success", false);
       expect(result).toHaveProperty("peg$throw");
@@ -44,16 +46,17 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("formats errors with custom source", () => {
-      let caughtError;
+      let caughtError: Error | undefined;
 
       try {
         parser.parse("1|1 X3");
       } catch (error) {
-        caughtError = error;
+        caughtError = error as Error;
       }
 
       expect(caughtError).toBeDefined();
-      const formatted = caughtError.format([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- format method exists on peggy errors
+      const formatted = (caughtError as any).format([
         { source: undefined, text: "1|1 X3" },
       ]);
 
@@ -63,16 +66,17 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("handles formatting without source text", () => {
-      let caughtError;
+      let caughtError: Error | undefined;
 
       try {
         parser.parse("1|1 X3", { grammarSource: "test.txt" });
       } catch (error) {
-        caughtError = error;
+        caughtError = error as Error;
       }
 
       expect(caughtError).toBeDefined();
-      const formatted = caughtError.format([]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- format method exists on peggy errors
+      const formatted = (caughtError as any).format([]);
 
       expect(formatted).toContain("at test.txt:1:5");
     });

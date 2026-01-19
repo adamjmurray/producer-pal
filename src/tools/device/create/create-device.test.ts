@@ -4,6 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiPath,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { createDevice } from "./create-device.js";
 
@@ -169,7 +170,11 @@ describe("createDevice", () => {
 
   describe("listing available devices", () => {
     it("should return valid devices list when deviceName is omitted", () => {
-      const result = createDevice({});
+      const result = createDevice({}) as {
+        instruments: string[];
+        midiEffects: string[];
+        audioEffects: string[];
+      };
 
       expect(result.instruments).toContain("Wavetable");
       expect(result.midiEffects).toContain("Arpeggiator");
@@ -177,7 +182,11 @@ describe("createDevice", () => {
     });
 
     it("should return valid devices list without path", () => {
-      const result = createDevice({});
+      const result = createDevice({}) as {
+        instruments: string[];
+        midiEffects: string[];
+        audioEffects: string[];
+      };
 
       expect(result).toHaveProperty("instruments");
       expect(result).toHaveProperty("midiEffects");
@@ -297,7 +306,7 @@ describe("createDevice", () => {
           "insert_device",
           "Compressor",
         );
-        expect(result.deviceId).toBe("device123");
+        expect((result as { deviceId: string }).deviceId).toBe("device123");
       });
 
       it("should create device in chain via path with position", () => {
@@ -363,9 +372,14 @@ describe("createDevice", () => {
 
       it("should throw error when container exists() returns false", () => {
         // Mock track to return valid id but chain container to not exist
-        const originalExists = global.LiveAPI.prototype.exists;
+        const liveAPIGlobal = global as unknown as {
+          LiveAPI: { prototype: { exists: () => boolean } };
+        };
+        const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-        global.LiveAPI.prototype.exists = vi.fn(function () {
+        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
+          this: MockLiveAPIContext,
+        ) {
           // Chains container doesn't exist
           return !this._path?.includes("chains");
         });
@@ -379,13 +393,13 @@ describe("createDevice", () => {
           'createDevice failed: container at path "t0/d0/c0" does not exist',
         );
 
-        global.LiveAPI.prototype.exists = originalExists;
+        liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
       });
 
       it("should throw error when insert_device fails", () => {
         liveApiCall.mockReturnValue(["id", "0"]);
-        liveApiId.mockImplementation(function () {
-          return this._path.includes("id 0") ? "0" : "device123";
+        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+          return this._path?.includes("id 0") ? "0" : "device123";
         });
 
         expect(() =>

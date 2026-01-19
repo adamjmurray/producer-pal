@@ -38,12 +38,13 @@ export function setupSlicingClipBaseMocks(
      * @this - Mock context
      * @returns Mocked ID
      */
-    function (this: MockLiveApiContext): string | undefined {
+    function (this: MockLiveApiContext): string {
       if (this._path === `id ${clipId}`) {
         return clipId;
       }
 
-      return this._id;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+      return this._id!;
     },
   );
 
@@ -62,7 +63,8 @@ export function setupSlicingClipBaseMocks(
         return "live_set tracks 0 arrangement_clips 1";
       }
 
-      return this._path;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+      return this._path!;
     },
   );
 
@@ -359,11 +361,12 @@ export function setupTwoClipBaseMocks(
      * @this - Mock context
      * @returns Mocked ID
      */
-    function (this: MockLiveApiContext): string | undefined {
+    function (this: MockLiveApiContext): string {
       if (this._path === `id ${clip1Id}`) return clip1Id;
       if (this._path === `id ${clip2Id}`) return clip2Id;
 
-      return this._id;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
+      return this._id!;
     },
   );
   liveApiPath.mockImplementation(
@@ -379,7 +382,8 @@ export function setupTwoClipBaseMocks(
         return "live_set tracks 0 arrangement_clips 2";
       }
 
-      return this._path;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
+      return this._path!;
     },
   );
   liveApiType.mockImplementation(

@@ -56,7 +56,9 @@ describe("readDevice param-values include option", () => {
     });
 
     // Quantized params now have value as string and options array
-    expect(result.parameters[0]).toStrictEqual({
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]).toStrictEqual({
       id: "param-1",
       name: "Device On",
       value: "On",
@@ -75,7 +77,9 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result.parameters[0].state).toBe("inactive");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]!.state).toBe("inactive");
   });
 
   it("should always include min and max for numeric parameters", () => {
@@ -98,9 +102,11 @@ describe("readDevice param-values include option", () => {
     });
 
     // min and max should always be included for numeric params
-    expect(result.parameters[0]).toHaveProperty("min", 0);
-    expect(result.parameters[0]).toHaveProperty("max", 48);
-    expect(result.parameters[0].value).toBe(12);
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]).toHaveProperty("min", 0);
+    expect(params[0]).toHaveProperty("max", 48);
+    expect(params[0]!.value).toBe(12);
   });
 
   it("should not include min and max for quantized parameters", () => {
@@ -122,10 +128,12 @@ describe("readDevice param-values include option", () => {
     });
 
     // Quantized params should have options, not min/max
-    expect(result.parameters[0]).not.toHaveProperty("min");
-    expect(result.parameters[0]).not.toHaveProperty("max");
-    expect(result.parameters[0]).toHaveProperty("options");
-    expect(result.parameters[0].value).toBe("Alg 1");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]).not.toHaveProperty("min");
+    expect(params[0]).not.toHaveProperty("max");
+    expect(params[0]).toHaveProperty("options");
+    expect(params[0]!.value).toBe("Alg 1");
   });
 
   it("should parse frequency labels and include unit", () => {
@@ -153,7 +161,9 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result.parameters[0]).toStrictEqual({
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]).toStrictEqual({
       id: "param-1",
       name: "Frequency",
       value: 1000,
@@ -165,9 +175,9 @@ describe("readDevice param-values include option", () => {
 
   /**
    * Setup mocks for automation tests
-   * @param {number} automationState - The automation state value
+   * @param automationState - Automation state value
    */
-  function setupAutomationMocks(automationState) {
+  function setupAutomationMocks(automationState: number) {
     setupDeviceParamMocks({
       param: { automation_state: automationState },
       strForValue: (value) => {
@@ -186,7 +196,9 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result.parameters[0].automation).toBe("active");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]!.automation).toBe("active");
   });
 
   it("should omit automation when 'none'", () => {
@@ -196,7 +208,9 @@ describe("readDevice param-values include option", () => {
       include: ["param-values"],
     });
 
-    expect(result.parameters[0]).not.toHaveProperty("automation");
+    const params = result.parameters as Record<string, unknown>[];
+
+    expect(params[0]).not.toHaveProperty("automation");
   });
 });
 

@@ -6,6 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
@@ -25,7 +26,7 @@ describe("readTrack", () => {
   });
 
   it("returns track information for MIDI tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -101,7 +102,7 @@ describe("readTrack", () => {
   });
 
   it("returns track group information", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
@@ -150,7 +151,7 @@ describe("readTrack", () => {
   });
 
   it("should detect Producer Pal host track", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
@@ -175,7 +176,7 @@ describe("readTrack", () => {
   });
 
   it("should omit instrument property when null for Producer Pal host track", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
@@ -205,7 +206,7 @@ describe("readTrack", () => {
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set tracks 2":
           return "track3";
@@ -260,7 +261,7 @@ describe("readTrack", () => {
   });
 
   it("returns arrangementClips when the track has clips in Arrangement view", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 2":
           return "track3";
@@ -273,7 +274,7 @@ describe("readTrack", () => {
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "arr_clip1":
           return "live_set tracks 2 arrangement_clips 0";
@@ -303,13 +304,15 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result.arrangementClips).toHaveLength(2);
-    expect(result.arrangementClips[0].id).toBe("arr_clip1");
-    expect(result.arrangementClips[1].id).toBe("arr_clip2");
+    const arrangementClips = result.arrangementClips as Array<{ id: string }>;
+
+    expect(arrangementClips).toHaveLength(2);
+    expect(arrangementClips[0]!.id).toBe("arr_clip1");
+    expect(arrangementClips[1]!.id).toBe("arr_clip2");
   });
 
   it("returns session clip count when includeSessionClips is false", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set tracks 2":
           return "track3";
@@ -371,7 +374,7 @@ describe("readTrack", () => {
   });
 
   it("returns arrangement clip count when includeArrangementClips is false", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 2":
           return "track3";
@@ -400,7 +403,7 @@ describe("readTrack", () => {
   });
 
   it("returns arrangement clip count when includeArrangementClips is false (additional test)", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 1":
           return "track2";
