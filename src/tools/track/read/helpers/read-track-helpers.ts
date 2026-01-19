@@ -71,7 +71,7 @@ export function readSessionClips(
           trackIndex,
           sceneIndex,
           ...(include && { include }),
-        }) as ClipResult,
+        }) as unknown as ClipResult,
     )
     .filter((clip) => clip.id != null);
 }
@@ -115,7 +115,7 @@ export function readArrangementClips(
         readClip({
           clipId,
           ...(include && { include }),
-        }) as ClipResult,
+        }) as unknown as ClipResult,
     )
     .filter((clip) => clip.id != null);
 }

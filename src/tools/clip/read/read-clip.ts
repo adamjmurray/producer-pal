@@ -1,3 +1,8 @@
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
+import {
+  abletonBeatsToBarBeat,
+  abletonBeatsToBarBeatDuration,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import {
@@ -16,24 +21,40 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
-import {
-  abletonBeatsToBarBeat,
-  abletonBeatsToBarBeatDuration,
-} from "#src/notation/barbeat/time/barbeat-time.js";
+
+interface ReadClipArgs {
+  trackIndex?: number | null;
+  sceneIndex?: number | null;
+  clipId?: string | null;
+  include?: string[];
+  includeClipNotes?: boolean;
+}
+
+interface WarpMarker {
+  sampleTime: number;
+  beatTime: number;
+}
+
+interface WarpMarkerData {
+  sample_time: number;
+  beat_time: number;
+}
 
 /**
  * Read a MIDI or audio clip from Ableton Live
- * @param {object} args - Arguments for the function
- * @param {number | null} [args.trackIndex] - Track index (0-based)
- * @param {number | null} [args.sceneIndex] - Clip slot index (0-based)
- * @param {string | null} [args.clipId] - Clip ID to directly access any clip
- * @param {string[]} [args.include] - Array of data to include in response
- * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
- * @param {object} _context - Context object (unused)
- * @returns {object} Result object with clip information
+ * @param args - Arguments for the function
+ * @param args.trackIndex - Track index (0-based)
+ * @param args.sceneIndex - Clip slot index (0-based)
+ * @param args.clipId - Clip ID to directly access any clip
+ * @param args.include - Array of data to include in response
+ * @param args.includeClipNotes - Whether to include notes data (legacy parameter)
+ * @param _context - Context object (unused)
+ * @returns Result object with clip information
  */
-export function readClip(args = {}, _context = {}) {
+export function readClip(
+  args: ReadClipArgs = {},
+  _context: Partial<ToolContext> = {},
+): Record<string, unknown> {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
   const { includeClipNotes, includeColor, includeWarpMarkers } =
@@ -46,7 +67,7 @@ export function readClip(args = {}, _context = {}) {
   }
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
-  let clip;
+  let clip: LiveAPI;
 
   if (clipId != null) {
     // Validate the clip ID is actually a clip
@@ -68,26 +89,22 @@ export function readClip(args = {}, _context = {}) {
   }
 
   const isArrangementClip =
-    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
-  const timeSigNumerator = /** @type {number} */ (
-    clip.getProperty("signature_numerator")
-  );
-  const timeSigDenominator = /** @type {number} */ (
-    clip.getProperty("signature_denominator")
-  );
+    (clip.getProperty("is_arrangement_clip") as number) > 0;
+  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
+  const timeSigDenominator = clip.getProperty(
+    "signature_denominator",
+  ) as number;
 
-  const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
-  const lengthBeats = /** @type {number} */ (clip.getProperty("length")); // Live API already gives us the effective length!
+  const isLooping = (clip.getProperty("looping") as number) > 0;
+  const lengthBeats = clip.getProperty("length") as number; // Live API already gives us the effective length!
 
-  const clipName = /** @type {string} */ (clip.getProperty("name"));
+  const clipName = clip.getProperty("name") as string;
 
   // Read boundary properties from Live
-  const startMarkerBeats = /** @type {number} */ (
-    clip.getProperty("start_marker")
-  );
-  const loopStartBeats = /** @type {number} */ (clip.getProperty("loop_start"));
-  const loopEndBeats = /** @type {number} */ (clip.getProperty("loop_end"));
-  const endMarkerBeats = /** @type {number} */ (clip.getProperty("end_marker"));
+  const startMarkerBeats = clip.getProperty("start_marker") as number;
+  const loopStartBeats = clip.getProperty("loop_start") as number;
+  const loopEndBeats = clip.getProperty("loop_end") as number;
+  const endMarkerBeats = clip.getProperty("end_marker") as number;
 
   // Calculate start and end based on looping state
   const { startBeats, endBeats } = getActiveClipBounds(
@@ -126,7 +143,7 @@ export function readClip(args = {}, _context = {}) {
         )
       : null;
 
-  const result = {
+  const result: Record<string, unknown> = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     ...(clipName && { name: clipName }),
@@ -167,38 +184,21 @@ export function readClip(args = {}, _context = {}) {
 }
 
 /**
- * @typedef {object} WarpMarker
- * @property {number} sampleTime - Sample time position
- * @property {number} beatTime - Beat time position
- */
-
-/**
- * @typedef {object} WarpMarkerData
- * @property {number} sample_time - Sample time position
- * @property {number} beat_time - Beat time position
- */
-
-/**
  * Process warp markers for an audio clip
- * @param {LiveAPI} clip - LiveAPI clip object
- * @returns {Array<WarpMarker>|undefined} - Array of warp markers or undefined
+ * @param clip - LiveAPI clip object
+ * @returns Array of warp markers or undefined
  */
-function processWarpMarkers(clip) {
+function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
   try {
-    const warpMarkersJson = /** @type {string} */ (
-      clip.getProperty("warp_markers")
-    );
+    const warpMarkersJson = clip.getProperty("warp_markers") as string;
 
     if (!warpMarkersJson || warpMarkersJson === "") {
       return;
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
-    /**
-     * @param {WarpMarkerData} marker - Raw warp marker data
-     * @returns {WarpMarker} Formatted warp marker
-     */
-    const mapMarker = (marker) => ({
+
+    const mapMarker = (marker: WarpMarkerData): WarpMarker => ({
       sampleTime: marker.sample_time,
       beatTime: marker.beat_time,
     });
@@ -225,51 +225,58 @@ function processWarpMarkers(clip) {
 /**
  * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
  * Only includes properties that are true
- * @param {Record<string, unknown>} result - Result object to add properties to
- * @param {LiveAPI} clip - LiveAPI clip object
+ * @param result - Result object to add properties to
+ * @param clip - LiveAPI clip object
  */
-function addBooleanStateProperties(result, clip) {
-  if (/** @type {number} */ (clip.getProperty("is_playing")) > 0) {
+function addBooleanStateProperties(
+  result: Record<string, unknown>,
+  clip: LiveAPI,
+): void {
+  if ((clip.getProperty("is_playing") as number) > 0) {
     result.playing = true;
   }
 
-  if (/** @type {number} */ (clip.getProperty("is_triggered")) > 0) {
+  if ((clip.getProperty("is_triggered") as number) > 0) {
     result.triggered = true;
   }
 
-  if (/** @type {number} */ (clip.getProperty("is_recording")) > 0) {
+  if ((clip.getProperty("is_recording") as number) > 0) {
     result.recording = true;
   }
 
-  if (/** @type {number} */ (clip.getProperty("is_overdubbing")) > 0) {
+  if ((clip.getProperty("is_overdubbing") as number) > 0) {
     result.overdubbing = true;
   }
 
-  if (/** @type {number} */ (clip.getProperty("muted")) > 0) {
+  if ((clip.getProperty("muted") as number) > 0) {
     result.muted = true;
   }
 }
 
 /**
  * Process MIDI clip specific properties
- * @param {Record<string, unknown>} result - Result object to add properties to
- * @param {LiveAPI} clip - LiveAPI clip object
- * @param {boolean} includeClipNotes - Whether to include formatted notes
- * @param {number} lengthBeats - Clip length in beats
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
+ * @param result - Result object to add properties to
+ * @param clip - LiveAPI clip object
+ * @param includeClipNotes - Whether to include formatted notes
+ * @param lengthBeats - Clip length in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
  */
 function processMidiClip(
-  result,
-  clip,
-  includeClipNotes,
-  lengthBeats,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
-  const notesDictionary = /** @type {string} */ (
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats)
-  );
+  result: Record<string, unknown>,
+  clip: LiveAPI,
+  includeClipNotes: boolean,
+  lengthBeats: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): void {
+  const notesDictionary = clip.call(
+    "get_notes_extended",
+    0,
+    128,
+    0,
+    lengthBeats,
+  ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
   result.noteCount = notes.length;
@@ -283,7 +290,7 @@ function processMidiClip(
 }
 
 /** Mapping of Live API warp modes to friendly names */
-const WARP_MODE_MAPPING = {
+const WARP_MODE_MAPPING: Record<number, string> = {
   [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
   [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
   [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
@@ -295,36 +302,36 @@ const WARP_MODE_MAPPING = {
 
 /**
  * Process audio clip specific properties
- * @param {Record<string, unknown>} result - Result object to add properties to
- * @param {LiveAPI} clip - LiveAPI clip object
- * @param {boolean} includeWarpMarkers - Whether to include warp markers
+ * @param result - Result object to add properties to
+ * @param clip - LiveAPI clip object
+ * @param includeWarpMarkers - Whether to include warp markers
  */
-function processAudioClip(result, clip, includeWarpMarkers) {
-  const liveGain = /** @type {number} */ (clip.getProperty("gain"));
+function processAudioClip(
+  result: Record<string, unknown>,
+  clip: LiveAPI,
+  includeWarpMarkers: boolean,
+): void {
+  const liveGain = clip.getProperty("gain") as number;
 
   result.gainDb = liveGainToDb(liveGain);
 
-  const filePath = /** @type {string | null} */ (clip.getProperty("file_path"));
+  const filePath = clip.getProperty("file_path") as string | null;
 
   if (filePath) {
     result.sampleFile = filePath;
   }
 
-  const pitchCoarse = /** @type {number} */ (clip.getProperty("pitch_coarse"));
-  const pitchFine = /** @type {number} */ (clip.getProperty("pitch_fine"));
+  const pitchCoarse = clip.getProperty("pitch_coarse") as number;
+  const pitchFine = clip.getProperty("pitch_fine") as number;
 
   result.pitchShift = pitchCoarse + pitchFine / 100;
 
-  result.sampleLength = /** @type {number} */ (
-    clip.getProperty("sample_length")
-  );
-  result.sampleRate = /** @type {number} */ (clip.getProperty("sample_rate"));
+  result.sampleLength = clip.getProperty("sample_length") as number;
+  result.sampleRate = clip.getProperty("sample_rate") as number;
 
   // Warping state
-  result.warping = /** @type {number} */ (clip.getProperty("warping")) > 0;
-  const warpModeValue = /** @type {keyof typeof WARP_MODE_MAPPING} */ (
-    clip.getProperty("warp_mode")
-  );
+  result.warping = (clip.getProperty("warping") as number) > 0;
+  const warpModeValue = clip.getProperty("warp_mode") as number;
 
   result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
@@ -340,25 +347,27 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
 /**
  * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
- * @param {Record<string, unknown>} result - Result object to add properties to
- * @param {LiveAPI} clip - LiveAPI clip object
- * @param {boolean} isArrangementClip - Whether clip is in arrangement view
+ * @param result - Result object to add properties to
+ * @param clip - LiveAPI clip object
+ * @param isArrangementClip - Whether clip is in arrangement view
  */
-function addClipLocationProperties(result, clip, isArrangementClip) {
+function addClipLocationProperties(
+  result: Record<string, unknown>,
+  clip: LiveAPI,
+  isArrangementClip: boolean,
+): void {
   if (isArrangementClip) {
     const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = /** @type {number} */ (
-      liveSet.getProperty("signature_numerator")
-    );
-    const songTimeSigDenominator = /** @type {number} */ (
-      liveSet.getProperty("signature_denominator")
-    );
+    const songTimeSigNumerator = liveSet.getProperty(
+      "signature_numerator",
+    ) as number;
+    const songTimeSigDenominator = liveSet.getProperty(
+      "signature_denominator",
+    ) as number;
 
     result.trackIndex = clip.trackIndex;
-    const startTimeBeats = /** @type {number} */ (
-      clip.getProperty("start_time")
-    );
-    const endTimeBeats = /** @type {number} */ (clip.getProperty("end_time"));
+    const startTimeBeats = clip.getProperty("start_time") as number;
+    const endTimeBeats = clip.getProperty("end_time") as number;
 
     result.arrangementStart = abletonBeatsToBarBeat(
       startTimeBeats,
@@ -378,22 +387,22 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
 
 /**
  * Get the active start and end beats based on looping state
- * @param {boolean} isLooping - Whether the clip is looping
- * @param {number} startMarkerBeats - Start marker position in beats
- * @param {number} loopStartBeats - Loop start position in beats
- * @param {number} endMarkerBeats - End marker position in beats
- * @param {number} loopEndBeats - Loop end position in beats
- * @param {number} lengthBeats - Clip length in beats
- * @returns {{startBeats: number, endBeats: number}} - Object with startBeats and endBeats
+ * @param isLooping - Whether the clip is looping
+ * @param startMarkerBeats - Start marker position in beats
+ * @param loopStartBeats - Loop start position in beats
+ * @param endMarkerBeats - End marker position in beats
+ * @param loopEndBeats - Loop end position in beats
+ * @param lengthBeats - Clip length in beats
+ * @returns Object with startBeats and endBeats
  */
 function getActiveClipBounds(
-  isLooping,
-  startMarkerBeats,
-  loopStartBeats,
-  endMarkerBeats,
-  loopEndBeats,
-  lengthBeats,
-) {
+  isLooping: boolean,
+  startMarkerBeats: number,
+  loopStartBeats: number,
+  endMarkerBeats: number,
+  loopEndBeats: number,
+  lengthBeats: number,
+): { startBeats: number; endBeats: number } {
   const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
   const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
 
