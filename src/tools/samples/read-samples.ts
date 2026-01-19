@@ -13,14 +13,30 @@ const AUDIO_EXTENSIONS = new Set([
   ".m4a",
 ]);
 
+interface ReadSamplesArgs {
+  search?: string;
+}
+
+interface ReadSamplesContext {
+  sampleFolder?: string | null;
+}
+
+interface ReadSamplesResult {
+  sampleFolder: string;
+  samples: string[];
+}
+
 /**
  * List audio files from configured sample folder
- * @param {object} args - The parameters
- * @param {string} [args.search] - Optional case-insensitive substring filter on relative paths
- * @param {{ sampleFolder?: string | null }} context - Context containing sampleFolder path
- * @returns {{ sampleFolder: string, samples: string[] }} Sample folder and relative paths
+ * @param args - The parameters
+ * @param args.search - Optional case-insensitive substring filter on relative paths
+ * @param context - Context containing sampleFolder path
+ * @returns Sample folder and relative paths
  */
-export function readSamples({ search } = {}, context = {}) {
+export function readSamples(
+  { search }: ReadSamplesArgs = {},
+  context: ReadSamplesContext = {},
+): ReadSamplesResult {
   if (!context.sampleFolder) {
     throw new Error(
       "A sample folder must first be selected in the Setup tab of the Producer Pal Max for Live device",
@@ -33,8 +49,7 @@ export function readSamples({ search } = {}, context = {}) {
     sampleFolder = `${sampleFolder}/`;
   }
 
-  /** @type {string[]} */
-  const samples = [];
+  const samples: string[] = [];
   const limitReached = { value: false };
   const searchLower = search ? search.toLowerCase() : null;
 
@@ -51,13 +66,20 @@ export function readSamples({ search } = {}, context = {}) {
 
 /**
  * Recursively scan a folder for audio files
- * @param {string} dirPath - Directory path (must end with /)
- * @param {string} baseFolder - Base folder path for relative path calculation
- * @param {string[]} results - Array to append results to
- * @param {{ value: boolean }} limitReached - Flag to track if file limit was reached
- * @param {string|null} searchLower - Lowercase search filter or null
+ * @param dirPath - Directory path (must end with /)
+ * @param baseFolder - Base folder path for relative path calculation
+ * @param results - Array to append results to
+ * @param limitReached - Mutable flag object to track if file limit was reached
+ * @param limitReached.value - Whether the limit has been reached
+ * @param searchLower - Lowercase search filter or null
  */
-function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
+function scanFolder(
+  dirPath: string,
+  baseFolder: string,
+  results: string[],
+  limitReached: { value: boolean },
+  searchLower: string | null,
+): void {
   const f = new Folder(dirPath);
 
   while (!f.end) {
@@ -78,7 +100,7 @@ function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
         limitReached,
         searchLower,
       );
-    } else if (AUDIO_EXTENSIONS.has(f.extension?.toLowerCase())) {
+    } else if (AUDIO_EXTENSIONS.has(f.extension.toLowerCase())) {
       const relativePath = filepath.substring(baseFolder.length);
 
       if (!searchLower || relativePath.toLowerCase().includes(searchLower)) {

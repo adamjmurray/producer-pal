@@ -583,6 +583,22 @@ export default [
     },
   },
 
+  // Max V8 environment globals for tools/samples and tools/workflow (migrated to TypeScript)
+  {
+    files: ["src/tools/samples/*.ts", "src/tools/workflow/*.ts"],
+    languageOptions: {
+      globals: {
+        LiveAPI: "readonly",
+        ToolContext: "readonly",
+        Folder: "readonly",
+        outlet: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
+    },
+  },
+
   // Node.js code
   {
     files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],

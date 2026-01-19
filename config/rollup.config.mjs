@@ -58,7 +58,9 @@ export default [
           if (
             (source.includes("/skills/") ||
               source.includes("/notation/") ||
-              source.includes("/tools/operations/delete/")) &&
+              source.includes("/tools/operations/delete/") ||
+              source.includes("/tools/samples/") ||
+              source.includes("/tools/workflow/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

@@ -1,19 +1,42 @@
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 import { VERSION } from "#src/shared/version.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import {
   skills as basicSkills,
   buildInstructions as buildBasicInstruction,
 } from "#src/skills/basic.js";
 import { buildInstructions, skills } from "#src/skills/standard.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+
+interface LiveSetInfo {
+  name?: unknown;
+  trackCount: number;
+  sceneCount: number;
+  tempo: unknown;
+  timeSignature: string | null;
+  scale?: string;
+}
+
+interface ConnectResult {
+  connected: boolean;
+  producerPalVersion: string;
+  abletonLiveVersion: string;
+  liveSet: LiveSetInfo;
+  $skills?: string;
+  $instructions?: string;
+  messagesForUser?: string;
+  projectNotes?: string;
+}
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety
- * @param {object} [_params] - No parameters used
- * @param {Partial<ToolContext>} [context] - The userContext from main.js
- * @returns {object} Connection status and basic Live Set info
+ * @param _params - No parameters used
+ * @param context - The userContext from main.js
+ * @returns Connection status and basic Live Set info
  */
-export function connect(_params = {}, context = {}) {
+export function connect(
+  _params: object = {},
+  context: Partial<ToolContext> = {},
+): ConnectResult {
   const liveSet = LiveAPI.from("live_set");
   const liveApp = LiveAPI.from("live_app");
 
@@ -21,13 +44,12 @@ export function connect(_params = {}, context = {}) {
   const trackIds = liveSet.getChildIds("tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
-  const abletonLiveVersion = liveApp.call("get_version_string");
+  const abletonLiveVersion = liveApp.call("get_version_string") as string;
 
   // Basic Live info
   const liveSetName = liveSet.getProperty("name");
 
-  /** @type {{ name?: unknown, trackCount: number, sceneCount: number, tempo: unknown, timeSignature: string | null, scale?: string }} */
-  const liveSetInfo = {
+  const liveSetInfo: LiveSetInfo = {
     ...(liveSetName ? { name: liveSetName } : {}),
     trackCount: trackIds.length,
     sceneCount: sceneIds.length,
@@ -35,22 +57,19 @@ export function connect(_params = {}, context = {}) {
     timeSignature: liveSet.timeSignature,
   };
 
-  /** @type {{ connected: boolean, producerPalVersion: string, abletonLiveVersion: unknown, liveSet: typeof liveSetInfo, $skills?: string, $instructions?: string, messagesForUser?: string, projectNotes?: string }} */
-  const result = {
+  const result: ConnectResult = {
     connected: true,
     producerPalVersion: VERSION,
     abletonLiveVersion,
     liveSet: liveSetInfo,
   };
 
-  /** @type {number} */
-  const scaleMode = /** @type {number} */ (liveSet.getProperty("scale_mode"));
+  const scaleMode = liveSet.getProperty("scale_mode") as number;
   const scaleEnabled = scaleMode > 0;
 
   if (scaleEnabled) {
-    const scaleName = liveSet.getProperty("scale_name");
-    /** @type {number} */
-    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
+    const scaleName = liveSet.getProperty("scale_name") as string;
+    const rootNote = liveSet.getProperty("root_note") as number;
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
 
     result.liveSet.scale = `${scaleRoot} ${scaleName}`;
@@ -68,7 +87,7 @@ export function connect(_params = {}, context = {}) {
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
 
-    if (/** @type {number} */ (track.getProperty("has_midi_input")) > 0) {
+    if ((track.getProperty("has_midi_input") as number) > 0) {
       for (const device of track.getChildren("devices")) {
         const deviceType = device.getProperty("type");
 
@@ -91,7 +110,7 @@ To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum
 Ask me to add an instrument, or add one yourself and I can compose MIDI patterns.`);
   }
 
-  if (context?.smallModelMode) {
+  if (context.smallModelMode) {
     result.$skills = basicSkills;
     result.$instructions = buildBasicInstruction(context);
   } else {
@@ -103,7 +122,7 @@ Ask me to add an instrument, or add one yourself and I can compose MIDI patterns
   result.messagesForUser = messages.map((msg) => `* ${msg}`).join("\n");
 
   // Include project notes if enabled
-  if (context?.projectNotes?.enabled && context.projectNotes.content) {
+  if (context.projectNotes?.enabled && context.projectNotes.content) {
     result.projectNotes = context.projectNotes.content;
   }
 

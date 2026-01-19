@@ -1,10 +1,26 @@
+interface MemoryArgs {
+  action?: string;
+  content?: string;
+}
+
+interface MemoryResult {
+  enabled: boolean;
+  writable?: boolean;
+  content?: string;
+}
+
 /**
  * Manages user-defined project context stored in the Max device.
- * @param {{ action?: string, content?: string }} args - The parameters
- * @param {Partial<ToolContext>} [context] - The context object from main.js
- * @returns {{ enabled: boolean, writable?: boolean, content?: string }} Project context information
+ * @param args - The parameters
+ * @param args.action - The action to perform (read or write)
+ * @param args.content - Content to write (required for write action)
+ * @param context - The context object from main.js
+ * @returns Project context information
  */
-export function memory({ action, content } = {}, context = {}) {
+export function memory(
+  { action, content }: MemoryArgs = {},
+  context: Partial<ToolContext> = {},
+): MemoryResult {
   if (!action) {
     throw new Error("Action is required");
   }

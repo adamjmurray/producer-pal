@@ -11,6 +11,8 @@
   "imports": {
     "#webui/*": "./webui/src/*",
     "#src/tools/operations/delete/*.js": "./src/tools/operations/delete/*.ts",
+    "#src/tools/samples/*.js": "./src/tools/samples/*.ts",
+    "#src/tools/workflow/*.js": "./src/tools/workflow/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",

@@ -35,6 +35,8 @@
     "live-api-adapter/*.ts",
     "skills/*.ts",
     "shared/*.ts",
-    "tools/operations/delete/*.ts"
+    "tools/operations/delete/*.ts",
+    "tools/samples/*.ts",
+    "tools/workflow/*.ts"
   ]
 }
