@@ -12,10 +12,17 @@ import {
   setupSessionClipPath,
   setupTimeSignatureDurationMock,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+import type { Mock } from "vitest";
+
+interface MockContext {
+  _id?: string;
+}
 
 /** Mock liveApiId to return session clip path format for clip1 */
-function setupClip1SessionId() {
-  liveApiId.mockImplementation(function () {
+function setupClip1SessionId(): void {
+  (liveApiId as Mock).mockImplementation(function (
+    this: MockContext,
+  ): string | undefined {
     if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
 
     return this._id;
@@ -320,9 +327,9 @@ describe("duplicate - arrangementLength functionality", () => {
     );
 
     expect(result).toMatchObject({
-      id: expect.any(String),
-      trackIndex: expect.any(Number),
-      arrangementStart: expect.any(String),
+      id: expect.any(String) as string,
+      trackIndex: expect.any(Number) as number,
+      arrangementStart: expect.any(String) as string,
     });
   });
 });

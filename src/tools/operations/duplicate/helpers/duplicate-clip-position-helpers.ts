@@ -1,3 +1,4 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
@@ -8,37 +9,36 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.js";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Duplicates a clip to explicit positions
- * @param {string | undefined} destination - Destination for clip duplication (session or arrangement)
- * @param {LiveAPI} object - Live API object to duplicate
- * @param {string} id - ID of the object
- * @param {string | undefined} name - Base name for duplicated clips
- * @param {number | undefined} toTrackIndex - Destination track index
- * @param {string | undefined} toSceneIndex - Comma-separated scene indices for session clips
- * @param {string | undefined} arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param {string | undefined} arrangementLocatorId - Locator ID for arrangement position
- * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
- * @param {string | undefined} arrangementLength - Duration in bar|beat format
- * @param {Partial<ToolContext>} context - Context object with holdingAreaStartBeats
- * @returns {Array<object>} Array of result objects
+ * @param destination - Destination for clip duplication (session or arrangement)
+ * @param object - Live API object to duplicate
+ * @param id - ID of the object
+ * @param name - Base name for duplicated clips
+ * @param toTrackIndex - Destination track index
+ * @param toSceneIndex - Comma-separated scene indices for session clips
+ * @param arrangementStart - Comma-separated bar|beat positions for arrangement
+ * @param arrangementLocatorId - Locator ID for arrangement position
+ * @param arrangementLocatorName - Locator name for arrangement position
+ * @param arrangementLength - Duration in bar|beat format
+ * @param context - Context object with holdingAreaStartBeats
+ * @returns Array of result objects
  */
 export function duplicateClipWithPositions(
-  destination,
-  object,
-  id,
-  name,
-  toTrackIndex,
-  toSceneIndex,
-  arrangementStart,
-  arrangementLocatorId,
-  arrangementLocatorName,
-  arrangementLength,
-  context,
-) {
-  const createdObjects = [];
+  destination: string | undefined,
+  object: LiveAPI,
+  id: string,
+  name: string | undefined,
+  toTrackIndex: number | undefined,
+  toSceneIndex: string | undefined,
+  arrangementStart: string | undefined,
+  arrangementLocatorId: string | undefined,
+  arrangementLocatorName: string | undefined,
+  arrangementLength: string | undefined,
+  context: Partial<ToolContext>,
+): object[] {
+  const createdObjects: object[] = [];
 
   if (destination === "session") {
     const sceneIndices = parseSceneIndexList(toSceneIndex);
@@ -57,7 +57,7 @@ export function duplicateClipWithPositions(
         trackIndex,
         sourceSceneIndex,
         toTrackIndex ?? trackIndex,
-        /** @type {number} */ (sceneIndices[i]),
+        sceneIndices[i] as number,
         objectName,
       );
 
@@ -66,12 +66,12 @@ export function duplicateClipWithPositions(
   } else {
     // Arrangement destination
     const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = /** @type {number} */ (
-      liveSet.getProperty("signature_numerator")
-    );
-    const songTimeSigDenominator = /** @type {number} */ (
-      liveSet.getProperty("signature_denominator")
-    );
+    const songTimeSigNumerator = liveSet.getProperty(
+      "signature_numerator",
+    ) as number;
+    const songTimeSigDenominator = liveSet.getProperty(
+      "signature_denominator",
+    ) as number;
 
     // Resolve positions from locator (single) or bar|beat (multiple)
     const positionsInBeats = resolveClipArrangementPositions(
@@ -87,7 +87,7 @@ export function duplicateClipWithPositions(
       const objectName = buildIndexedName(name, positionsInBeats.length, i);
       const result = duplicateClipToArrangement(
         id,
-        /** @type {number} */ (positionsInBeats[i]),
+        positionsInBeats[i] as number,
         objectName,
         arrangementLength,
         songTimeSigNumerator,
@@ -104,22 +104,22 @@ export function duplicateClipWithPositions(
 
 /**
  * Resolves clip arrangement positions from bar|beat or locator
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {string | undefined} arrangementStart - Comma-separated bar|beat positions
- * @param {string | undefined} arrangementLocatorId - Locator ID for position
- * @param {string | undefined} arrangementLocatorName - Locator name for position
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number[]} Array of positions in beats
+ * @param liveSet - The live_set LiveAPI object
+ * @param arrangementStart - Comma-separated bar|beat positions
+ * @param arrangementLocatorId - Locator ID for position
+ * @param arrangementLocatorName - Locator name for position
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Array of positions in beats
  */
 function resolveClipArrangementPositions(
-  liveSet,
-  arrangementStart,
-  arrangementLocatorId,
-  arrangementLocatorName,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+  liveSet: LiveAPI,
+  arrangementStart: string | undefined,
+  arrangementLocatorId: string | undefined,
+  arrangementLocatorName: string | undefined,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number[] {
   // Locator-based: single position
   if (arrangementLocatorId != null || arrangementLocatorName != null) {
     const locatorBeats = resolveLocatorToBeats(
@@ -134,11 +134,7 @@ function resolveClipArrangementPositions(
   // Bar|beat positions: multiple positions supported
   const positions = parseArrangementStartList(arrangementStart);
 
-  // positions are non-null strings, so barBeatToAbletonBeats always returns number (not null)
-  return positions.map(
-    (pos) =>
-      /** @type {number} */ (
-        barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator)
-      ),
+  return positions.map((pos) =>
+    barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator),
   );
 }

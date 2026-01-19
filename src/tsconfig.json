@@ -42,6 +42,8 @@
     "tools/scene/*.ts",
     "tools/control/*.ts",
     "tools/track/**/*.ts",
-    "tools/device/**/*.ts"
+    "tools/device/**/*.ts",
+    "tools/operations/duplicate/**/*.ts",
+    "notation/**/*.ts"
   ]
 }

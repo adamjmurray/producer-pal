@@ -16,9 +16,15 @@ import {
   duplicateTrack,
 } from "./duplicate-track-scene-helpers.js";
 
+interface MockContext {
+  path: string;
+  _path: string;
+  _id: string;
+}
+
 // Mock updateClip to avoid complex internal logic
 vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
-  updateClip: vi.fn(({ ids }) => {
+  updateClip: vi.fn(({ ids }: { ids: string }) => {
     return [{ id: ids }];
   }),
 }));
@@ -28,31 +34,33 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
   })),
-  moveClipFromHolding: vi.fn((_holdingClipId, track, _startBeats) => {
-    const clipId = `${track.path} arrangement_clips 0`;
+  moveClipFromHolding: vi.fn(
+    (_holdingClipId: string, track: { path: string }, _startBeats: number) => {
+      const clipId = `${track.path} arrangement_clips 0`;
 
-    return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      getProperty: vi.fn((prop) => {
-        if (prop === "is_arrangement_clip") {
-          return 1;
-        }
+      return {
+        id: clipId,
+        path: clipId,
+        set: vi.fn(),
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
 
-        if (prop === "start_time") {
-          return _startBeats;
-        }
+          if (prop === "start_time") {
+            return _startBeats;
+          }
 
-        return null;
-      }),
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
+          return null;
+        }),
+        get trackIndex() {
+          const match = clipId.match(/tracks (\d+)/);
 
-        return match ? Number.parseInt(match[1]) : null;
-      },
-    };
-  }),
+          return match ? Number.parseInt(match[1]) : null;
+        },
+      };
+    },
+  ),
 }));
 
 // Mock getHostTrackIndex
@@ -67,7 +75,7 @@ describe("duplicate-track-scene-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockContext) {
       if (this.path === "live_set") {
         return "id 1";
       }
@@ -75,7 +83,10 @@ describe("duplicate-track-scene-helpers", () => {
       return `id ${Math.random()}`;
     });
 
-    liveApiGet.mockImplementation(function (property) {
+    liveApiGet.mockImplementation(function (
+      this: MockContext,
+      property: string,
+    ) {
       if (this.path === "live_set" && property === "tracks") {
         return ["id", "10", "id", "11", "id", "12"];
       }
@@ -83,14 +94,17 @@ describe("duplicate-track-scene-helpers", () => {
       return [];
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockContext) {
       return this._path;
     });
   });
 
   describe("calculateSceneLength", () => {
     it("should return default minimum length when scene has no clips", () => {
-      liveApiGet.mockImplementation(function (property) {
+      liveApiGet.mockImplementation(function (
+        this: MockContext,
+        property: string,
+      ) {
         if (property === "tracks") {
           return ["id", "10"];
         }
@@ -108,7 +122,10 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return length of longest clip in scene", () => {
-      liveApiGet.mockImplementation(function (property) {
+      liveApiGet.mockImplementation(function (
+        this: MockContext,
+        property: string,
+      ) {
         if (this.path === "live_set" && property === "tracks") {
           return ["id", "10", "id", "11"];
         }
@@ -272,8 +289,25 @@ describe("duplicate-track-scene-helpers", () => {
       );
     });
 
+    interface SourceConfig {
+      arm?: number;
+      input_routing_type: { display_name: string };
+      available_input_routing_types?: Array<{
+        display_name: string;
+        identifier: string;
+      }>;
+    }
+
+    interface OutputRoutingType {
+      display_name: string;
+      identifier: string;
+    }
+
     // Helper to setup routing mock config with JSON-encoded routing properties
-    const routingMock = (sourceConfig, outputRoutingTypes) => ({
+    const routingMock = (
+      sourceConfig: SourceConfig,
+      outputRoutingTypes: OutputRoutingType[],
+    ) => ({
       "live_set tracks 0": {
         name: "Source Track",
         ...sourceConfig,
@@ -440,15 +474,15 @@ describe("duplicate-track-scene-helpers", () => {
     it("should collect arrangement clips when withoutClips is false", () => {
       const arrClipId = "arr_clip_456";
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === arrClipId || this._path?.includes(arrClipId)) {
+      liveApiPath.mockImplementation(function (this: MockContext) {
+        if (this._id === arrClipId || this._path.includes(arrClipId)) {
           return "live_set tracks 1 arrangement_clips 0";
         }
 
         return this._path;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         if (
           this._path === "live_set tracks 1 arrangement_clips 0" ||
           this._id === arrClipId
@@ -564,7 +598,7 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("duplicateSceneToArrangement", () => {
     it("should throw error when scene does not exist", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return "id 0"; // Non-existent
       });
 
@@ -574,11 +608,11 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should throw error when scene has no sceneIndex", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return "id 123";
       });
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockContext) {
         return "some/invalid/path"; // No scenes pattern
       });
 
@@ -629,7 +663,10 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      liveApiCall.mockImplementation(function (method) {
+      liveApiCall.mockImplementation(function (
+        this: MockContext,
+        method: string,
+      ) {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
@@ -667,7 +704,10 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      liveApiCall.mockImplementation(function (method) {
+      liveApiCall.mockImplementation(function (
+        this: MockContext,
+        method: string,
+      ) {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
@@ -677,7 +717,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       const originalGet = liveApiGet.getMockImplementation();
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
         if (
           this._path.includes("arrangement_clips") &&
           prop === "is_arrangement_clip"

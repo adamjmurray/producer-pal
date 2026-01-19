@@ -178,9 +178,9 @@ describe("duplicate - track duplication", () => {
   it.each([
     ["withoutDevices not specified", undefined],
     ["withoutDevices is false", false],
-  ])(
+  ] as const)(
     "should duplicate a track with devices when %s",
-    (_desc, withoutDevices) => {
+    (_desc: string, withoutDevices: boolean | undefined) => {
       setupTrackPath("track1");
 
       mockLiveApiGet({
@@ -212,8 +212,11 @@ describe("duplicate - track duplication", () => {
   );
 
   /** Sets up mocks for Producer Pal device tests with 3 devices on track 1 */
-  function setupProducerPalDeviceMocks() {
-    liveApiPath.mockImplementation(function () {
+  function setupProducerPalDeviceMocks(): void {
+    liveApiPath.mockImplementation(function (this: {
+      _id: string;
+      _path: string;
+    }): string {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
@@ -233,7 +236,10 @@ describe("duplicate - track duplication", () => {
 
   it("should remove Producer Pal device when duplicating host track", () => {
     setupProducerPalDeviceMocks();
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: {
+      _path: string;
+      _id: string;
+    }): string {
       if (this._path === "this_device") {
         return "id device1";
       }
@@ -276,7 +282,7 @@ describe("duplicate - track duplication", () => {
     // Verify delete_device was called 3 times (once for each device)
     // but NOT specifically for Producer Pal before the withoutDevices logic
     const deleteDeviceCalls = liveApiCall.mock.calls.filter(
-      (call) => call[0] === "delete_device",
+      (call: unknown[]) => call[0] === "delete_device",
     );
 
     expect(deleteDeviceCalls).toHaveLength(3);

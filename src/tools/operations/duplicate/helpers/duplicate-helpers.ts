@@ -1,3 +1,7 @@
+import {
+  abletonBeatsToBarBeat,
+  barBeatDurationToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
@@ -5,23 +9,20 @@ import {
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import {
-  abletonBeatsToBarBeat,
-  barBeatDurationToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
- * @param {string} arrangementLength - Length in bar:beat duration format (e.g. "2:0" for exactly two bars)
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number} Length in Ableton beats
+ * @param arrangementLength - Length in bar:beat duration format (e.g. "2:0" for exactly two bars)
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Length in Ableton beats
  */
 export function parseArrangementLength(
-  arrangementLength,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+  arrangementLength: string,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number {
   try {
     const arrangementLengthBeats = barBeatDurationToAbletonBeats(
       arrangementLength,
@@ -53,24 +54,26 @@ export function parseArrangementLength(
   }
 }
 
-/**
- * @typedef {object} MinimalClipInfo
- * @property {string} id - Clip ID
- * @property {number} [trackIndex] - Track index
- * @property {number} [sceneIndex] - Scene index
- * @property {string} [arrangementStart] - Arrangement start in bar|beat format
- * @property {string} [name] - Clip name
- */
+export interface MinimalClipInfo {
+  id: string;
+  trackIndex?: number;
+  sceneIndex?: number;
+  arrangementStart?: string;
+  name?: string;
+}
 
 /**
  * Get minimal clip information for result objects
- * @param {LiveAPI} clip - The clip to get info from
- * @param {Array<string>} [omitFields] - Optional fields to omit from result
- * @returns {MinimalClipInfo} Minimal clip info object
+ * @param clip - The clip to get info from
+ * @param omitFields - Optional fields to omit from result
+ * @returns Minimal clip info object
  */
-export function getMinimalClipInfo(clip, omitFields = []) {
+export function getMinimalClipInfo(
+  clip: LiveAPI,
+  omitFields: string[] = [],
+): MinimalClipInfo {
   const isArrangementClip =
-    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
+    (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (isArrangementClip) {
     const trackIndex = clip.trackIndex;
@@ -81,25 +84,18 @@ export function getMinimalClipInfo(clip, omitFields = []) {
       );
     }
 
-    const arrangementStartBeats = /** @type {number} */ (
-      clip.getProperty("start_time")
-    );
+    const arrangementStartBeats = clip.getProperty("start_time") as number;
     // Convert to bar|beat format using song time signature
     const liveSet = LiveAPI.from("live_set");
-    const timeSigNum = /** @type {number} */ (
-      liveSet.getProperty("signature_numerator")
-    );
-    const timeSigDenom = /** @type {number} */ (
-      liveSet.getProperty("signature_denominator")
-    );
+    const timeSigNum = liveSet.getProperty("signature_numerator") as number;
+    const timeSigDenom = liveSet.getProperty("signature_denominator") as number;
     const arrangementStart = abletonBeatsToBarBeat(
       arrangementStartBeats,
       timeSigNum,
       timeSigDenom,
     );
 
-    /** @type {MinimalClipInfo} */
-    const result = {
+    const result: MinimalClipInfo = {
       id: clip.id,
     };
 
@@ -123,8 +119,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     );
   }
 
-  /** @type {MinimalClipInfo} */
-  const result = {
+  const result: MinimalClipInfo = {
     id: clip.id,
   };
 
@@ -140,35 +135,28 @@ export function getMinimalClipInfo(clip, omitFields = []) {
 }
 
 /**
- * @typedef {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} TilingContext
- */
-
-/**
  * Create clips to fill the specified arrangement length
- * @param {LiveAPI} sourceClip - The source clip to duplicate
- * @param {LiveAPI} track - The track to create clips on
- * @param {number} arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
- * @param {number} arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
- * @param {string} [name] - Optional name for the clips
- * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
- * @param {Partial<ToolContext & TilingContext>} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Array<MinimalClipInfo>} Array of minimal clip info objects
+ * @param sourceClip - The source clip to duplicate
+ * @param track - The track to create clips on
+ * @param arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
+ * @param arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
+ * @param name - Optional name for the clips
+ * @param omitFields - Optional fields to omit from clip info
+ * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns Array of minimal clip info objects
  */
 export function createClipsForLength(
-  sourceClip,
-  track,
-  arrangementStartBeats,
-  arrangementLengthBeats,
-  name,
-  omitFields = [],
-  context = {},
-) {
-  const sourceClipLength = /** @type {number} */ (
-    sourceClip.getProperty("length")
-  );
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  arrangementStartBeats: number,
+  arrangementLengthBeats: number,
+  name?: string,
+  omitFields: string[] = [],
+  context: Partial<ToolContext & TilingContext> = {},
+): MinimalClipInfo[] {
+  const sourceClipLength = sourceClip.getProperty("length") as number;
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
-  /** @type {MinimalClipInfo[]} */
-  const duplicatedClips = [];
+  const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLengthBeats < sourceClipLength) {
     // Case 1: Shortening - use holding area approach (preserves clip data including envelopes)
@@ -182,9 +170,9 @@ export function createClipsForLength(
       sourceClip,
       track,
       arrangementLengthBeats,
-      /** @type {number} */ (context.holdingAreaStartBeats),
+      context.holdingAreaStartBeats as number,
       isMidiClip,
-      /** @type {TilingContext} */ (context),
+      context as TilingContext,
     );
     const newClip = moveClipFromHolding(
       holdingClipId,
@@ -196,13 +184,11 @@ export function createClipsForLength(
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
-    const newClipResult = /** @type {string} */ (
-      track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
-        arrangementStartBeats,
-      )
-    );
+    const newClipResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      arrangementStartBeats,
+    ) as string;
     const newClip = LiveAPI.from(newClipResult);
     const newClipId = newClip.id;
 
@@ -228,32 +214,30 @@ export function createClipsForLength(
 
 /**
  * Lengthens a clip and collects info about resulting clips
- * @param {LiveAPI} sourceClip - Source clip for time signature
- * @param {LiveAPI} track - Track containing the clip
- * @param {string} newClipId - ID of the new clip to lengthen
- * @param {number} targetBeats - Target length in beats
- * @param {string | undefined} name - Optional name
- * @param {string[]} omitFields - Fields to omit from results
- * @param {Partial<ToolContext & TilingContext>} context - Context object
- * @param {MinimalClipInfo[]} duplicatedClips - Array to push results to
+ * @param sourceClip - Source clip for time signature
+ * @param track - Track containing the clip
+ * @param newClipId - ID of the new clip to lengthen
+ * @param targetBeats - Target length in beats
+ * @param name - Optional name
+ * @param omitFields - Fields to omit from results
+ * @param context - Context object
+ * @param duplicatedClips - Array to push results to
  */
 function lengthenClipAndCollectInfo(
-  sourceClip,
-  track,
-  newClipId,
-  targetBeats,
-  name,
-  omitFields,
-  context,
-  duplicatedClips,
-) {
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  newClipId: string,
+  targetBeats: number,
+  name: string | undefined,
+  omitFields: string[],
+  context: Partial<ToolContext & TilingContext>,
+  duplicatedClips: MinimalClipInfo[],
+): void {
   // Convert beats to bar:beat format using clip's time signature
-  const timeSigNum = /** @type {number} */ (
-    sourceClip.getProperty("signature_numerator")
-  );
-  const timeSigDenom = /** @type {number} */ (
-    sourceClip.getProperty("signature_denominator")
-  );
+  const timeSigNum = sourceClip.getProperty("signature_numerator") as number;
+  const timeSigDenom = sourceClip.getProperty(
+    "signature_denominator",
+  ) as number;
   const beatsPerBar = 4 * (timeSigNum / timeSigDenom);
   const bars = Math.floor(targetBeats / beatsPerBar);
   const remainingBeats = targetBeats - bars * beatsPerBar;
@@ -265,9 +249,9 @@ function lengthenClipAndCollectInfo(
   );
 
   // updateClip returns array of clip objects with id property
-  const clipResults = /** @type {{ id: string }[]} */ (
+  const clipResults = (
     Array.isArray(updateResult) ? updateResult : [updateResult]
-  );
+  ) as { id: string }[];
   const arrangementClipIds = track.getChildIds("arrangement_clips");
 
   for (const clipObj of clipResults) {
@@ -283,20 +267,20 @@ function lengthenClipAndCollectInfo(
 
 /**
  * Duplicate a clip slot to another slot
- * @param {number} sourceTrackIndex - Source track index
- * @param {number} sourceSceneIndex - Source scene index
- * @param {number} toTrackIndex - Destination track index
- * @param {number} toSceneIndex - Destination scene index
- * @param {string} [name] - Optional name for the duplicated clip
- * @returns {object} Minimal clip info object
+ * @param sourceTrackIndex - Source track index
+ * @param sourceSceneIndex - Source scene index
+ * @param toTrackIndex - Destination track index
+ * @param toSceneIndex - Destination scene index
+ * @param name - Optional name for the duplicated clip
+ * @returns Minimal clip info object
  */
 export function duplicateClipSlot(
-  sourceTrackIndex,
-  sourceSceneIndex,
-  toTrackIndex,
-  toSceneIndex,
-  name,
-) {
+  sourceTrackIndex: number,
+  sourceSceneIndex: number,
+  toTrackIndex: number,
+  toSceneIndex: number,
+  name?: string,
+): MinimalClipInfo {
   // Get source clip slot
   const sourceClipSlot = LiveAPI.from(
     `live_set tracks ${sourceTrackIndex} clip_slots ${sourceSceneIndex}`,
@@ -343,24 +327,24 @@ export function duplicateClipSlot(
 
 /**
  * Duplicate a clip to the arrangement view
- * @param {string} clipId - Clip ID to duplicate
- * @param {number} arrangementStartBeats - Start position in beats
- * @param {string} [name] - Optional name for the duplicated clip(s)
- * @param {string} [arrangementLength] - Optional length in bar:beat format
- * @param {number} [_songTimeSigNumerator] - Song time signature numerator (unused but kept for API compat)
- * @param {number} [_songTimeSigDenominator] - Song time signature denominator (unused but kept for API compat)
- * @param {Partial<ToolContext & TilingContext>} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {MinimalClipInfo | { trackIndex: number, clips: MinimalClipInfo[] }} Clip info or object with trackIndex and clips array
+ * @param clipId - Clip ID to duplicate
+ * @param arrangementStartBeats - Start position in beats
+ * @param name - Optional name for the duplicated clip(s)
+ * @param arrangementLength - Optional length in bar:beat format
+ * @param _songTimeSigNumerator - Song time signature numerator (unused but kept for API compat)
+ * @param _songTimeSigDenominator - Song time signature denominator (unused but kept for API compat)
+ * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns Clip info or object with trackIndex and clips array
  */
 export function duplicateClipToArrangement(
-  clipId,
-  arrangementStartBeats,
-  name,
-  arrangementLength,
+  clipId: string,
+  arrangementStartBeats: number,
+  name?: string,
+  arrangementLength?: string,
   _songTimeSigNumerator = 4,
   _songTimeSigDenominator = 4,
-  context = {},
-) {
+  context: Partial<ToolContext & TilingContext> = {},
+): MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] } {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
 
@@ -377,16 +361,16 @@ export function duplicateClipToArrangement(
   }
 
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
-  const duplicatedClips = [];
+  const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
     // Use the clip's time signature for duration calculation
-    const clipTimeSigNumerator = /** @type {number} */ (
-      clip.getProperty("signature_numerator")
-    );
-    const clipTimeSigDenominator = /** @type {number} */ (
-      clip.getProperty("signature_denominator")
-    );
+    const clipTimeSigNumerator = clip.getProperty(
+      "signature_numerator",
+    ) as number;
+    const clipTimeSigDenominator = clip.getProperty(
+      "signature_denominator",
+    ) as number;
     const arrangementLengthBeats = parseArrangementLength(
       arrangementLength,
       clipTimeSigNumerator,
@@ -406,13 +390,11 @@ export function duplicateClipToArrangement(
     duplicatedClips.push(...clipsCreated);
   } else {
     // No length specified - use original behavior
-    const newClipResult = /** @type {string} */ (
-      track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${clip.id}`,
-        arrangementStartBeats,
-      )
-    );
+    const newClipResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${clip.id}`,
+      arrangementStartBeats,
+    ) as string;
     const newClip = LiveAPI.from(newClipResult);
 
     newClip.setAll({
@@ -424,7 +406,7 @@ export function duplicateClipToArrangement(
 
   // Return single clip info directly, or clips array with trackIndex for multiple
   if (duplicatedClips.length === 1) {
-    return /** @type {MinimalClipInfo} */ (duplicatedClips[0]);
+    return duplicatedClips[0] as MinimalClipInfo;
   }
 
   return {

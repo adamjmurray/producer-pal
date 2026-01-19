@@ -25,6 +25,9 @@
     "#src/tools/device/*.js": "./src/tools/device/*.ts",
     "#src/tools/device/create/*.js": "./src/tools/device/create/*.ts",
     "#src/tools/device/update/*.js": "./src/tools/device/update/*.ts",
+    "#src/tools/operations/duplicate/*.js": "./src/tools/operations/duplicate/*.ts",
+    "#src/tools/operations/duplicate/helpers/*.js": "./src/tools/operations/duplicate/helpers/*.ts",
+    "#src/tools/operations/duplicate/tests/*.js": "./src/tools/operations/duplicate/tests/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",

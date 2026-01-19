@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Mock } from "vitest";
 import "./duplicate-mocks-test-helpers.js";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
@@ -10,6 +11,11 @@ import {
   setupArrangementDuplicationMock,
   setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+
+interface MockContext {
+  _path?: string;
+  _id?: string;
+}
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {
@@ -113,7 +119,9 @@ describe("duplicate - clip duplication", () => {
 
     it("should throw an error when trying to duplicate an arrangement clip to session", () => {
       // Mock an arrangement clip (has trackIndex but no sceneIndex)
-      liveApiPath.mockImplementation(function () {
+      (liveApiPath as Mock).mockImplementation(function (
+        this: MockContext,
+      ): string | undefined {
         if (this._id === "arrangementClip1") {
           return "live_set tracks 0 arrangement_clips 0";
         }
@@ -190,7 +198,9 @@ describe("duplicate - clip duplication", () => {
 
       let clipCounter = 0;
 
-      liveApiCall.mockImplementation(function (method) {
+      (liveApiCall as Mock).mockImplementation(function (
+        method: string,
+      ): string[] | null {
         if (method === "duplicate_clip_to_arrangement") {
           const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
 
@@ -203,10 +213,10 @@ describe("duplicate - clip duplication", () => {
       });
 
       setupArrangementClipMocks({
-        getStartTime: (path) => {
+        getStartTime: (path: string): number => {
           const match = path.match(/arrangement_clips (\d+)/);
 
-          return match ? 8 + Number.parseInt(match[1]) * 4 : 8;
+          return match ? 8 + Number.parseInt(match[1] as string) * 4 : 8;
         },
       });
 

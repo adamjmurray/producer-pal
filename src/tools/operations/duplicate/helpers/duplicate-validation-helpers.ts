@@ -1,25 +1,25 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Resolves arrangement position from bar|beat or locator
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {string | undefined} arrangementStart - Bar|beat position
- * @param {string | undefined} arrangementLocatorId - Locator ID for position
- * @param {string | undefined} arrangementLocatorName - Locator name for position
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number} Position in beats
+ * @param liveSet - The live_set LiveAPI object
+ * @param arrangementStart - Bar|beat position
+ * @param arrangementLocatorId - Locator ID for position
+ * @param arrangementLocatorName - Locator name for position
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Position in beats
  */
 export function resolveArrangementPosition(
-  liveSet,
-  arrangementStart,
-  arrangementLocatorId,
-  arrangementLocatorName,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
+  liveSet: LiveAPI,
+  arrangementStart: string | undefined,
+  arrangementLocatorId: string | undefined,
+  arrangementLocatorName: string | undefined,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number {
   if (arrangementLocatorId != null || arrangementLocatorName != null) {
     return resolveLocatorToBeats(
       liveSet,
@@ -28,22 +28,24 @@ export function resolveArrangementPosition(
     );
   }
 
-  return /** @type {number} */ (
-    barBeatToAbletonBeats(
-      /** @type {string} */ (arrangementStart),
-      timeSigNumerator,
-      timeSigDenominator,
-    )
+  return barBeatToAbletonBeats(
+    arrangementStart as string,
+    timeSigNumerator,
+    timeSigDenominator,
   );
 }
 
 /**
  * Validates basic input parameters for duplication
- * @param {string} type - Type of object to duplicate
- * @param {string} id - ID of the object to duplicate
- * @param {number} count - Number of duplicates to create
+ * @param type - Type of object to duplicate
+ * @param id - ID of the object to duplicate
+ * @param count - Number of duplicates to create
  */
-export function validateBasicInputs(type, id, count) {
+export function validateBasicInputs(
+  type: string,
+  id: string,
+  count: number,
+): void {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
@@ -67,18 +69,18 @@ export function validateBasicInputs(type, id, count) {
 
 /**
  * Validates and configures route to source parameters
- * @param {string} type - Type of object being duplicated
- * @param {boolean | undefined} routeToSource - Whether to route to source track
- * @param {boolean | undefined} withoutClips - Whether to exclude clips
- * @param {boolean | undefined} withoutDevices - Whether to exclude devices
- * @returns {{ withoutClips: boolean | undefined, withoutDevices: boolean | undefined }} Configured withoutClips and withoutDevices values
+ * @param type - Type of object being duplicated
+ * @param routeToSource - Whether to route to source track
+ * @param withoutClips - Whether to exclude clips
+ * @param withoutDevices - Whether to exclude devices
+ * @returns Configured withoutClips and withoutDevices values
  */
 export function validateAndConfigureRouteToSource(
-  type,
-  routeToSource,
-  withoutClips,
-  withoutDevices,
-) {
+  type: string,
+  routeToSource: boolean | undefined,
+  withoutClips: boolean | undefined,
+  withoutDevices: boolean | undefined,
+): { withoutClips: boolean | undefined; withoutDevices: boolean | undefined } {
   if (!routeToSource) {
     return { withoutClips, withoutDevices };
   }
@@ -107,17 +109,17 @@ export function validateAndConfigureRouteToSource(
 
 /**
  * Validates clip-specific parameters
- * @param {string} type - Type of object being duplicated
- * @param {string | undefined} destination - Destination for clip duplication
- * @param {number | undefined} toTrackIndex - Destination track index
- * @param {string | undefined} toSceneIndex - Destination scene index(es), comma-separated
+ * @param type - Type of object being duplicated
+ * @param destination - Destination for clip duplication
+ * @param toTrackIndex - Destination track index
+ * @param toSceneIndex - Destination scene index(es), comma-separated
  */
 export function validateClipParameters(
-  type,
-  destination,
-  toTrackIndex,
-  toSceneIndex,
-) {
+  type: string,
+  destination: string | undefined,
+  toTrackIndex: number | undefined,
+  toSceneIndex: string | undefined,
+): void {
   if (type !== "clip") {
     return;
   }
@@ -152,10 +154,13 @@ export function validateClipParameters(
 
 /**
  * Validates destination parameter compatibility with object type
- * @param {string} type - Type of object being duplicated
- * @param {string | undefined} destination - Destination for duplication
+ * @param type - Type of object being duplicated
+ * @param destination - Destination for duplication
  */
-export function validateDestinationParameter(type, destination) {
+export function validateDestinationParameter(
+  type: string,
+  destination: string | undefined,
+): void {
   if (destination == null) {
     return; // destination is optional for tracks and scenes
   }
@@ -169,17 +174,17 @@ export function validateDestinationParameter(type, destination) {
 
 /**
  * Validates arrangement-specific parameters
- * @param {string | undefined} destination - Destination for duplication
- * @param {string | undefined} arrangementStart - Start time in bar|beat format
- * @param {string | undefined} arrangementLocatorId - Locator ID for arrangement position
- * @param {string | undefined} arrangementLocatorName - Locator name for arrangement position
+ * @param destination - Destination for duplication
+ * @param arrangementStart - Start time in bar|beat format
+ * @param arrangementLocatorId - Locator ID for arrangement position
+ * @param arrangementLocatorName - Locator name for arrangement position
  */
 export function validateArrangementParameters(
-  destination,
-  arrangementStart,
-  arrangementLocatorId,
-  arrangementLocatorName,
-) {
+  destination: string | undefined,
+  arrangementStart: string | undefined,
+  arrangementLocatorId: string | undefined,
+  arrangementLocatorName: string | undefined,
+): void {
   if (destination !== "arrangement") {
     return;
   }

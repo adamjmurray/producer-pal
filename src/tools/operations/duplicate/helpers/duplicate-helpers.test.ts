@@ -12,15 +12,38 @@ import {
 } from "./duplicate-helpers.js";
 import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
 
+interface TrackNameMapping {
+  [path: string]: string;
+}
+
+interface MockLiveAPIInstance {
+  path: string;
+  _isLiveSet?: boolean;
+  getChildIds: (property: string) => string[];
+  getProperty: (prop: string) => string | null;
+  id: string;
+}
+
+interface MockLiveAPIConstructor {
+  new (path: string): MockLiveAPIInstance;
+  from: (idOrPath: string) => MockLiveAPIInstance;
+}
+
 /**
  * Helper to create a mock LiveAPI class for testing duplicate routing scenarios
- * @param {Array<string>} trackIds - Array of track IDs
- * @param {object} trackNameMapping - Mapping of track paths to names
- * @returns {class} - Mock LiveAPI class
+ * @param trackIds - Array of track IDs
+ * @param trackNameMapping - Mapping of paths to track names
+ * @returns Mock LiveAPI constructor
  */
-function createMockLiveAPI(trackIds, trackNameMapping) {
-  class MockLiveAPI {
-    constructor(path) {
+function createMockLiveAPI(
+  trackIds: string[],
+  trackNameMapping: TrackNameMapping,
+): MockLiveAPIConstructor {
+  class MockLiveAPI implements MockLiveAPIInstance {
+    path: string;
+    _isLiveSet?: boolean;
+
+    constructor(path: string) {
       this.path = path;
 
       if (path === "live_set") {
@@ -28,11 +51,11 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
       }
     }
 
-    static from(idOrPath) {
+    static from(idOrPath: string): MockLiveAPI {
       return new MockLiveAPI(idOrPath);
     }
 
-    getChildIds(property) {
+    getChildIds(property: string): string[] {
       if (this._isLiveSet && property === "tracks") {
         return trackIds;
       }
@@ -40,7 +63,7 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
       return [];
     }
 
-    getProperty(prop) {
+    getProperty(prop: string): string | null {
       if (prop === "name" && trackNameMapping[this.path]) {
         return trackNameMapping[this.path];
       }
@@ -48,7 +71,7 @@ function createMockLiveAPI(trackIds, trackNameMapping) {
       return null;
     }
 
-    get id() {
+    get id(): string {
       return this.path;
     }
   }
@@ -65,7 +88,10 @@ describe("duplicate-helpers", () => {
     it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
       const clipId = "456";
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: {
+        _id: string;
+        _path: string;
+      }) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -105,7 +131,10 @@ describe("duplicate-helpers", () => {
     it("omits trackIndex when specified in omitFields for arrangement clip", () => {
       const clipId = "457";
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: {
+        _id: string;
+        _path: string;
+      }) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -141,7 +170,10 @@ describe("duplicate-helpers", () => {
     it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
       const clipId = "458";
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: {
+        _id: string;
+        _path: string;
+      }) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -177,7 +209,10 @@ describe("duplicate-helpers", () => {
     it("returns id, trackIndex, and sceneIndex for session clip", () => {
       const clipId = "789";
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: {
+        _id: string;
+        _path: string;
+      }) {
         if (this._id === clipId) {
           return `live_set tracks 1 clip_slots 3 clip`;
         }
@@ -372,11 +407,14 @@ describe("duplicate-helpers", () => {
 
     it("finds correct option when multiple tracks have same name", () => {
       // Mock LiveAPI for global access
-      global.LiveAPI = createMockLiveAPI(["id1", "id2", "id3"], {
-        id1: "Drums",
-        id2: "Drums",
-        id3: "Bass",
-      });
+      (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
+        ["id1", "id2", "id3"],
+        {
+          id1: "Drums",
+          id2: "Drums",
+          id3: "Bass",
+        },
+      );
 
       const sourceTrack = {
         id: "id1",
@@ -400,11 +438,14 @@ describe("duplicate-helpers", () => {
     });
 
     it("finds correct option for second track with duplicate name", () => {
-      global.LiveAPI = createMockLiveAPI(["id1", "id2", "id3"], {
-        id1: "Drums",
-        id2: "Drums",
-        id3: "Bass",
-      });
+      (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
+        ["id1", "id2", "id3"],
+        {
+          id1: "Drums",
+          id2: "Drums",
+          id3: "Bass",
+        },
+      );
 
       const sourceTrack = {
         id: "id2",
@@ -427,10 +468,13 @@ describe("duplicate-helpers", () => {
     });
 
     it("returns undefined when source track not found in duplicate list", () => {
-      global.LiveAPI = createMockLiveAPI(["id1", "id2"], {
-        id1: "Drums",
-        id2: "Drums",
-      });
+      (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
+        ["id1", "id2"],
+        {
+          id1: "Drums",
+          id2: "Drums",
+        },
+      );
 
       const sourceTrack = {
         id: "id999", // Non-existent track
@@ -459,7 +503,7 @@ describe("duplicate-helpers", () => {
 
     it("throws error when destination clip slot does not exist", () => {
       // Mock source clip slot exists with clip
-      global.LiveAPI = createClipSlotMockLiveAPI({
+      (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
         sourceExists: true,
         sourceHasClip: true,
         destExists: false,
@@ -477,7 +521,8 @@ describe("duplicate-helpers", () => {
     });
 
     it("throws error when clip does not exist", () => {
-      global.LiveAPI = createArrangementMockLiveAPI({ clipExists: false });
+      (global as Record<string, unknown>).LiveAPI =
+        createArrangementMockLiveAPI({ clipExists: false });
 
       expect(() => duplicateClipToArrangement("nonexistent", 0)).toThrow(
         'duplicate failed: no clip exists for clipId "nonexistent"',
@@ -485,10 +530,11 @@ describe("duplicate-helpers", () => {
     });
 
     it("throws error when clip has no track index", () => {
-      global.LiveAPI = createArrangementMockLiveAPI({
-        clipExists: true,
-        trackIndex: null,
-      });
+      (global as Record<string, unknown>).LiveAPI =
+        createArrangementMockLiveAPI({
+          clipExists: true,
+          trackIndex: null,
+        });
 
       expect(() => duplicateClipToArrangement("clip1", 0)).toThrow(
         'duplicate failed: no track index for clipId "clip1"',
@@ -497,29 +543,49 @@ describe("duplicate-helpers", () => {
   });
 });
 
+interface ClipSlotMockOptions {
+  sourceExists: boolean;
+  sourceHasClip: boolean;
+  destExists: boolean;
+}
+
+interface ClipSlotMockLiveAPIInstance {
+  path: string;
+  exists: () => boolean;
+  getProperty: (prop: string) => boolean | null;
+  id: string;
+}
+
+interface ClipSlotMockLiveAPIConstructor {
+  new (path: string): ClipSlotMockLiveAPIInstance;
+  from: (idOrPath: string) => ClipSlotMockLiveAPIInstance;
+}
+
 /**
  * Helper to create a mock LiveAPI class for clip slot duplication tests
- * @param {object} opts - Options
- * @param {boolean} opts.sourceExists - Whether source clip slot exists
- * @param {boolean} opts.sourceHasClip - Whether source has a clip
- * @param {boolean} opts.destExists - Whether destination clip slot exists
- * @returns {class} - Mock LiveAPI class
+ * @param options - Mock configuration options
+ * @param options.sourceExists - Whether source clip slot exists
+ * @param options.sourceHasClip - Whether source has a clip
+ * @param options.destExists - Whether destination clip slot exists
+ * @returns Mock LiveAPI constructor
  */
 function createClipSlotMockLiveAPI({
   sourceExists,
   sourceHasClip,
   destExists,
-}) {
-  class MockLiveAPI {
-    constructor(path) {
+}: ClipSlotMockOptions): ClipSlotMockLiveAPIConstructor {
+  class MockLiveAPI implements ClipSlotMockLiveAPIInstance {
+    path: string;
+
+    constructor(path: string) {
       this.path = path;
     }
 
-    static from(idOrPath) {
+    static from(idOrPath: string): MockLiveAPI {
       return new MockLiveAPI(idOrPath);
     }
 
-    exists() {
+    exists(): boolean {
       if (this.path.includes("tracks 0 clip_slots 0")) {
         return sourceExists;
       }
@@ -531,7 +597,7 @@ function createClipSlotMockLiveAPI({
       return true;
     }
 
-    getProperty(prop) {
+    getProperty(prop: string): boolean | null {
       if (prop === "has_clip" && this.path.includes("tracks 0 clip_slots 0")) {
         return sourceHasClip;
       }
@@ -539,7 +605,7 @@ function createClipSlotMockLiveAPI({
       return null;
     }
 
-    get id() {
+    get id(): string {
       return this.path.replaceAll(" ", "/");
     }
   }
@@ -547,16 +613,41 @@ function createClipSlotMockLiveAPI({
   return MockLiveAPI;
 }
 
+interface ArrangementMockOptions {
+  clipExists: boolean;
+  trackIndex?: number | null;
+}
+
+interface ArrangementMockLiveAPIInstance {
+  path: string;
+  _path: string;
+  trackIndex?: number | null;
+  exists: () => boolean;
+  id: string;
+}
+
+interface ArrangementMockLiveAPIConstructor {
+  new (path: string): ArrangementMockLiveAPIInstance;
+  from: (idOrPath: string) => ArrangementMockLiveAPIInstance;
+}
+
 /**
  * Helper to create a mock LiveAPI class for arrangement clip duplication tests
- * @param {object} opts - Options
- * @param {boolean} opts.clipExists - Whether the clip exists
- * @param {number | null} [opts.trackIndex] - Track index or null
- * @returns {class} - Mock LiveAPI class
+ * @param options - Mock configuration options
+ * @param options.clipExists - Whether the clip exists
+ * @param options.trackIndex - Track index for the clip
+ * @returns Mock LiveAPI constructor
  */
-function createArrangementMockLiveAPI({ clipExists, trackIndex = 0 }) {
-  class MockLiveAPI {
-    constructor(path) {
+function createArrangementMockLiveAPI({
+  clipExists,
+  trackIndex = 0,
+}: ArrangementMockOptions): ArrangementMockLiveAPIConstructor {
+  class MockLiveAPI implements ArrangementMockLiveAPIInstance {
+    path: string;
+    _path: string;
+    trackIndex?: number | null;
+
+    constructor(path: string) {
       this.path = path;
       this._path = path;
 
@@ -567,11 +658,11 @@ function createArrangementMockLiveAPI({ clipExists, trackIndex = 0 }) {
       }
     }
 
-    static from(idOrPath) {
+    static from(idOrPath: string): MockLiveAPI {
       return new MockLiveAPI(idOrPath);
     }
 
-    exists() {
+    exists(): boolean {
       if (this.path === "clip1" || this.path === "nonexistent") {
         return clipExists;
       }
@@ -579,7 +670,7 @@ function createArrangementMockLiveAPI({ clipExists, trackIndex = 0 }) {
       return true;
     }
 
-    get id() {
+    get id(): string {
       return this.path.replaceAll(" ", "/");
     }
   }
