@@ -94,4 +94,60 @@ describe("LiveAPI extensions", () => {
       expect(track.clipSlotIndex).toBeNull();
     });
   });
+
+  describe("deviceIndex property", () => {
+    it("should extract device index from devices path", () => {
+      const device = LiveAPI.from("live_set tracks 0 devices 2");
+
+      expect(device.deviceIndex).toBe(2);
+    });
+
+    it("should extract last device index from nested devices path", () => {
+      const device = LiveAPI.from(
+        "live_set tracks 0 devices 1 chains 0 devices 3",
+      );
+
+      expect(device.deviceIndex).toBe(3);
+    });
+
+    it("should return null for paths without devices", () => {
+      const track = LiveAPI.from("live_set tracks 0");
+
+      expect(track.deviceIndex).toBeNull();
+    });
+  });
+
+  describe("routing properties", () => {
+    it("should handle input_routing_channel property", () => {
+      const track = LiveAPI.from("live_set tracks 0");
+
+      liveApiGet.mockReturnValue([
+        JSON.stringify({ input_routing_channel: { display_name: "1/2" } }),
+      ]);
+
+      const channel = track.getProperty("input_routing_channel");
+
+      expect(channel).toStrictEqual({ display_name: "1/2" });
+    });
+
+    it("should return null for routing property with null raw value", () => {
+      const track = LiveAPI.from("live_set tracks 0");
+
+      liveApiGet.mockReturnValue(null);
+
+      const channel = track.getProperty("input_routing_channel");
+
+      expect(channel).toBeNull();
+    });
+
+    it("should return null for routing property with invalid JSON", () => {
+      const track = LiveAPI.from("live_set tracks 0");
+
+      liveApiGet.mockReturnValue(["invalid json {"]);
+
+      const channel = track.getProperty("input_routing_channel");
+
+      expect(channel).toBeNull();
+    });
+  });
 });

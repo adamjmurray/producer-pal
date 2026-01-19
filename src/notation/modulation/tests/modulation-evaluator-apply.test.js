@@ -695,4 +695,22 @@ probability += -0.2`;
       expect(notes[0].velocity).toBeCloseTo(100, 5); // 100 * cos(0) = 100 * 1
     });
   });
+
+  describe("undefined property handling", () => {
+    it("handles probability modulation when probability is undefined", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          // probability intentionally omitted
+        },
+      ];
+
+      applyModulations(notes, "probability += -0.3", 4, 4);
+      // When probability is undefined, it defaults to 1.0, so 1.0 + -0.3 = 0.7
+      expect(notes[0].probability).toBe(0.7);
+    });
+  });
 });

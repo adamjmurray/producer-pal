@@ -206,5 +206,18 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads).toHaveLength(1);
       expect(deviceInfo.drumPads[0].note).toBe(36);
     });
+
+    it("should handle invalid in_note values outside MIDI range", () => {
+      // Test with an invalid MIDI note (> 127) that's not the catch-all -1
+      // This exercises the fallback path when midiToNoteName returns null
+      const deviceInfo = setupAndProcess([
+        { inNote: 200, name: "Invalid Note" },
+      ]);
+
+      expect(deviceInfo.drumPads).toHaveLength(1);
+      expect(deviceInfo.drumPads[0].note).toBe(200);
+      // midiToNoteName returns null for invalid MIDI notes
+      expect(deviceInfo.drumPads[0].pitch).toBeNull();
+    });
   });
 });
