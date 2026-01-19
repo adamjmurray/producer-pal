@@ -294,65 +294,64 @@ describe("device-path-helpers", () => {
       expect(result.targetType).toBe("chain");
     });
 
+    // Setup for instrument rack inside drum pad (shared helper):
+    // drum rack → C1 chain → instrument rack → rack chain → device
+    const setupInstrumentRackInDrumPad = () => {
+      const drumRackPath = "live_set tracks 1 devices 0";
+      const drumChainId = "drum-chain-36";
+      const instrRackId = "instr-rack";
+      const rackChainId = "rack-chain";
+      const finalDeviceId = "final-device";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === drumRackPath) return "drum-rack";
+        if (this._path?.startsWith("id ")) return this._path.slice(3);
+
+        return this._id ?? "0";
+      });
+
+      liveApiPath.mockImplementation(function () {
+        return this._path;
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id === drumChainId) return "DrumChain";
+        if (id === rackChainId) return "Chain";
+        if (id === instrRackId) return "InstrumentGroupDevice";
+        if (id === finalDeviceId) return "PluginDevice";
+
+        return "DrumGroupDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        // Drum rack returns C1 chain
+        if (this._path === drumRackPath && prop === "chains")
+          return ["id", drumChainId];
+
+        // Drum chain properties
+        if (id === drumChainId) {
+          if (prop === "in_note") return [36]; // C1
+          if (prop === "devices") return ["id", instrRackId];
+        }
+
+        // Instrument rack returns chain
+        if (id === instrRackId && prop === "chains") return ["id", rackChainId];
+
+        // Rack chain returns device
+        if (id === rackChainId && prop === "devices")
+          return ["id", finalDeviceId];
+
+        return [];
+      });
+
+      return { drumChainId, instrRackId, rackChainId, finalDeviceId };
+    };
+
     describe("arbitrary depth navigation", () => {
-      // Setup for instrument rack inside drum pad:
-      // drum rack → C1 chain → instrument rack → rack chain → device
-      const setupInstrumentRackInDrumPad = () => {
-        const drumRackPath = "live_set tracks 1 devices 0";
-        const drumChainId = "drum-chain-36";
-        const instrRackId = "instr-rack";
-        const rackChainId = "rack-chain";
-        const finalDeviceId = "final-device";
-
-        liveApiId.mockImplementation(function () {
-          if (this._path === drumRackPath) return "drum-rack";
-          if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-          return this._id ?? "0";
-        });
-
-        liveApiPath.mockImplementation(function () {
-          return this._path;
-        });
-
-        liveApiType.mockImplementation(function () {
-          const id = this._id ?? this.id;
-
-          if (id === drumChainId) return "DrumChain";
-          if (id === rackChainId) return "Chain";
-          if (id === instrRackId) return "InstrumentGroupDevice";
-          if (id === finalDeviceId) return "PluginDevice";
-
-          return "DrumGroupDevice";
-        });
-
-        liveApiGet.mockImplementation(function (prop) {
-          const id = this._id ?? this.id;
-
-          // Drum rack returns C1 chain
-          if (this._path === drumRackPath && prop === "chains")
-            return ["id", drumChainId];
-
-          // Drum chain properties
-          if (id === drumChainId) {
-            if (prop === "in_note") return [36]; // C1
-            if (prop === "devices") return ["id", instrRackId];
-          }
-
-          // Instrument rack returns chain
-          if (id === instrRackId && prop === "chains")
-            return ["id", rackChainId];
-
-          // Rack chain returns device
-          if (id === rackChainId && prop === "devices")
-            return ["id", finalDeviceId];
-
-          return [];
-        });
-
-        return { drumChainId, instrRackId, rackChainId, finalDeviceId };
-      };
-
       it("navigates nested racks and handles out of bounds", () => {
         const { rackChainId, finalDeviceId } = setupInstrumentRackInDrumPad();
         const path = "live_set tracks 1 devices 0";
@@ -426,52 +425,13 @@ describe("device-path-helpers", () => {
     });
 
     it("returns null for invalid segment in navigateRemainingSegments", () => {
-      // Setup: drum rack -> C1 chain -> device (instrument rack) -> chain -> device
-      const drumRackPath = "live_set tracks 1 devices 0";
-      const drumChainId = "drum-chain-36";
-      const instrRackId = "instr-rack";
-      const rackChainId = "rack-chain";
-      const finalDeviceId = "final-device";
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === drumRackPath) return "drum-rack";
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
-      });
-
-      liveApiType.mockImplementation(function () {
-        const id = this._id ?? this.id;
-
-        if (id === drumChainId) return "DrumChain";
-        if (id === rackChainId) return "Chain";
-        if (id === instrRackId) return "InstrumentGroupDevice";
-        if (id === finalDeviceId) return "PluginDevice";
-
-        return "DrumGroupDevice";
-      });
-
-      liveApiGet.mockImplementation(function (prop) {
-        const id = this._id ?? this.id;
-
-        if (this._path === drumRackPath && prop === "chains")
-          return ["id", drumChainId];
-
-        if (id === drumChainId) {
-          if (prop === "in_note") return [36];
-          if (prop === "devices") return ["id", instrRackId];
-        }
-
-        if (id === instrRackId && prop === "chains") return ["id", rackChainId];
-        if (id === rackChainId && prop === "devices")
-          return ["id", finalDeviceId];
-
-        return [];
-      });
+      // Reuse the instrument rack setup from above
+      setupInstrumentRackInDrumPad();
+      const path = "live_set tracks 1 devices 0";
 
       // Path: pC1/c0/d0/c0/d0/invalidSegment
       // This navigates through the nested structure and then hits an invalid segment
-      const result = resolveDrumPadFromPath(drumRackPath, "C1", [
+      const result = resolveDrumPadFromPath(path, "C1", [
         "c0",
         "d0",
         "c0",

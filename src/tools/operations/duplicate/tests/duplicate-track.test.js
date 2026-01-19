@@ -175,64 +175,41 @@ describe("duplicate - track duplication", () => {
     );
   });
 
-  it("should duplicate a track with devices by default (withoutDevices not specified)", () => {
-    setupTrackPath("track1");
+  it.each([
+    ["withoutDevices not specified", undefined],
+    ["withoutDevices is false", false],
+  ])(
+    "should duplicate a track with devices when %s",
+    (_desc, withoutDevices) => {
+      setupTrackPath("track1");
 
-    mockLiveApiGet({
-      "live_set tracks 1": {
-        devices: children("device0", "device1"),
-      },
-    });
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1"),
+        },
+      });
 
-    const result = duplicate({
-      type: "track",
-      id: "track1",
-    });
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        ...(withoutDevices !== undefined && { withoutDevices }),
+      });
 
-    expect(result).toStrictEqual(createTrackResult(1));
+      expect(result).toStrictEqual(createTrackResult(1));
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "duplicate_track",
-      0,
-    );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
 
-    // Verify delete_device was NOT called
-    expect(liveApiCall).not.toHaveBeenCalledWith(
-      "delete_device",
-      expect.anything(),
-    );
-  });
-
-  it("should duplicate a track with devices when withoutDevices is false", () => {
-    setupTrackPath("track1");
-
-    mockLiveApiGet({
-      "live_set tracks 1": {
-        devices: children("device0", "device1"),
-      },
-    });
-
-    const result = duplicate({
-      type: "track",
-      id: "track1",
-      withoutDevices: false,
-    });
-
-    expect(result).toStrictEqual(createTrackResult(1));
-
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "duplicate_track",
-      0,
-    );
-
-    // Verify delete_device was NOT called
-    expect(liveApiCall).not.toHaveBeenCalledWith(
-      "delete_device",
-      expect.anything(),
-    );
-  });
+      // Verify delete_device was NOT called
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    },
+  );
 
   it("should remove Producer Pal device when duplicating host track", () => {
     liveApiPath.mockImplementation(function () {

@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, "../..");
+import { projectRoot } from "./meta-test-helpers.js";
 
 // Minimum percentage of blank lines required (5% = 1 blank line per 20 lines)
 const MIN_BLANK_LINE_RATIO = 0.05;
