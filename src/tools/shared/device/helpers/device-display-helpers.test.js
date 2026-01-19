@@ -297,6 +297,36 @@ describe("device-display-helpers", () => {
       call: liveApiCall,
     });
 
+    // Helper to setup liveApiGet mock for parameter tests
+    const setupParamMock = (props) => {
+      const {
+        name = "Param",
+        state = 0,
+        automationState = 0,
+        isQuantized = 0,
+        value = 0.5,
+        min = 0,
+        max = 1,
+        isEnabled = 1,
+        valueItems,
+      } = props;
+
+      liveApiGet.mockImplementation((prop) => {
+        if (prop === "name") return [name];
+        if (prop === "original_name") return [name];
+        if (prop === "state") return [state];
+        if (prop === "automation_state") return [automationState];
+        if (prop === "is_quantized") return [isQuantized];
+        if (prop === "value") return [value];
+        if (prop === "min") return [min];
+        if (prop === "max") return [max];
+        if (prop === "is_enabled") return [isEnabled];
+        if (prop === "value_items" && valueItems) return valueItems;
+
+        return [0];
+      });
+    };
+
     it("reads quantized parameter with value_items", () => {
       const valueItems = ["Off", "On", "Auto"];
 
@@ -398,20 +428,7 @@ describe("device-display-helpers", () => {
     });
 
     it("includes state flag when not active", () => {
-      liveApiGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Cutoff"];
-        if (prop === "original_name") return ["Cutoff"];
-        if (prop === "state") return [1]; // inactive
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.5];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [1];
-
-        return [0];
-      });
-
+      setupParamMock({ name: "Cutoff", state: 1 });
       liveApiCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_6"));
@@ -420,20 +437,7 @@ describe("device-display-helpers", () => {
     });
 
     it("includes automation flag when active", () => {
-      liveApiGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Filter"];
-        if (prop === "original_name") return ["Filter"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [1]; // active automation
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.5];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [1];
-
-        return [0];
-      });
-
+      setupParamMock({ name: "Filter", automationState: 1 });
       liveApiCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_7"));
@@ -442,20 +446,7 @@ describe("device-display-helpers", () => {
     });
 
     it("includes enabled=false when parameter is disabled", () => {
-      liveApiGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Param"];
-        if (prop === "original_name") return ["Param"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.5];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [0]; // disabled
-
-        return [0];
-      });
-
+      setupParamMock({ isEnabled: 0 });
       liveApiCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_8"));
