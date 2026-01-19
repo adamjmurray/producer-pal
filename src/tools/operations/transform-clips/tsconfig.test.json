@@ -7,6 +7,6 @@
     "target": "ES2024",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["./**/*.test.ts", "./**/*-test-helpers.ts", "./**/*.ts"],
+  "include": ["./**/*.test.ts", "./**/*-test-helpers.ts", "./**/*.ts", "../../types/**/*.d.ts"],
   "exclude": []
 }
