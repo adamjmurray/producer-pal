@@ -7,6 +7,7 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 import {
   createMixerPathIdMap,
+  createMixerWithSendsMock,
   createSplitPanningMock,
   setupMixerIdMock,
 } from "./helpers/read-track-test-helpers.js";
@@ -296,33 +297,12 @@ describe("readTrack - mixer properties", () => {
 
   it("includes sends with return track names when requested", () => {
     setupMixerIdMock(createMixerPathIdMap());
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: [],
-        devices: [],
-        mixer_device: children("mixer_1"),
-      },
-      mixer_1: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-        sends: children("send_1", "send_2"),
-        panning_mode: 0,
-      },
-      send_1: {
-        display_value: -12.5,
-      },
-      send_2: {
-        display_value: -6.0,
-      },
-      volume_param_1: {
-        display_value: 0,
-      },
-      panning_param_1: {
-        value: 0,
-      },
-    });
+    mockLiveApiGet(
+      createMixerWithSendsMock({
+        sendIds: ["send_1", "send_2"],
+        sendValues: [-12.5, -6.0],
+      }),
+    );
 
     const result = readTrack({
       trackIndex: 0,
@@ -338,27 +318,7 @@ describe("readTrack - mixer properties", () => {
 
   it("does not include sends property when track has no sends", () => {
     setupMixerIdMock(createMixerPathIdMap());
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: [],
-        devices: [],
-        mixer_device: children("mixer_1"),
-      },
-      mixer_1: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-        sends: [], // Empty sends (MIDI track with no instrument)
-        panning_mode: 0,
-      },
-      volume_param_1: {
-        display_value: 0,
-      },
-      panning_param_1: {
-        value: 0,
-      },
-    });
+    mockLiveApiGet(createMixerWithSendsMock({ sendIds: [], sendValues: [] }));
 
     const result = readTrack({
       trackIndex: 0,
@@ -424,33 +384,12 @@ describe("readTrack - mixer properties", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     setupMixerIdMock(createMixerPathIdMap());
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: [],
-        devices: [],
-        mixer_device: children("mixer_1"),
-      },
-      mixer_1: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-        sends: children("send_1", "send_2"), // 2 sends
-        panning_mode: 0,
-      },
-      send_1: {
-        display_value: -12.5,
-      },
-      send_2: {
-        display_value: -6.0,
-      },
-      volume_param_1: {
-        display_value: 0,
-      },
-      panning_param_1: {
-        value: 0,
-      },
-    });
+    mockLiveApiGet(
+      createMixerWithSendsMock({
+        sendIds: ["send_1", "send_2"],
+        sendValues: [-12.5, -6.0],
+      }),
+    );
 
     const result = readTrack({
       trackIndex: 0,
