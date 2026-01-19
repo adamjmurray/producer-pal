@@ -69,6 +69,7 @@ export default [
               source.includes("/tools/device/") ||
               source.includes("/tools/operations/duplicate/") ||
               source.includes("/tools/clip/update/") ||
+              source.includes("/tools/clip/read/") ||
               source.includes("/tools/clip/create/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
