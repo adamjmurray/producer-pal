@@ -7,6 +7,8 @@ import {
 import {
   parseArrangementLength,
   getMinimalClipInfo,
+  duplicateClipSlot,
+  duplicateClipToArrangement,
 } from "./duplicate-helpers.js";
 import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
 
@@ -449,4 +451,138 @@ describe("duplicate-helpers", () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe("duplicateClipSlot", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("throws error when destination clip slot does not exist", () => {
+      // Mock source clip slot exists with clip
+      global.LiveAPI = createClipSlotMockLiveAPI({
+        sourceExists: true,
+        sourceHasClip: true,
+        destExists: false,
+      });
+
+      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+        "duplicate failed: destination clip slot at track 1, scene 0 does not exist",
+      );
+    });
+  });
+
+  describe("duplicateClipToArrangement", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("throws error when clip does not exist", () => {
+      global.LiveAPI = createArrangementMockLiveAPI({ clipExists: false });
+
+      expect(() => duplicateClipToArrangement("nonexistent", 0)).toThrow(
+        'duplicate failed: no clip exists for clipId "nonexistent"',
+      );
+    });
+
+    it("throws error when clip has no track index", () => {
+      global.LiveAPI = createArrangementMockLiveAPI({
+        clipExists: true,
+        trackIndex: null,
+      });
+
+      expect(() => duplicateClipToArrangement("clip1", 0)).toThrow(
+        'duplicate failed: no track index for clipId "clip1"',
+      );
+    });
+  });
 });
+
+/**
+ * Helper to create a mock LiveAPI class for clip slot duplication tests
+ * @param {object} opts - Options
+ * @param {boolean} opts.sourceExists - Whether source clip slot exists
+ * @param {boolean} opts.sourceHasClip - Whether source has a clip
+ * @param {boolean} opts.destExists - Whether destination clip slot exists
+ * @returns {class} - Mock LiveAPI class
+ */
+function createClipSlotMockLiveAPI({
+  sourceExists,
+  sourceHasClip,
+  destExists,
+}) {
+  class MockLiveAPI {
+    constructor(path) {
+      this.path = path;
+    }
+
+    static from(idOrPath) {
+      return new MockLiveAPI(idOrPath);
+    }
+
+    exists() {
+      if (this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceExists;
+      }
+
+      if (this.path.includes("tracks 1 clip_slots 0")) {
+        return destExists;
+      }
+
+      return true;
+    }
+
+    getProperty(prop) {
+      if (prop === "has_clip" && this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceHasClip;
+      }
+
+      return null;
+    }
+
+    get id() {
+      return this.path.replaceAll(" ", "/");
+    }
+  }
+
+  return MockLiveAPI;
+}
+
+/**
+ * Helper to create a mock LiveAPI class for arrangement clip duplication tests
+ * @param {object} opts - Options
+ * @param {boolean} opts.clipExists - Whether the clip exists
+ * @param {number | null} [opts.trackIndex] - Track index or null
+ * @returns {class} - Mock LiveAPI class
+ */
+function createArrangementMockLiveAPI({ clipExists, trackIndex = 0 }) {
+  class MockLiveAPI {
+    constructor(path) {
+      this.path = path;
+      this._path = path;
+
+      if (path.includes("tracks") && !path.includes("clip")) {
+        this.trackIndex = 0;
+      } else if (clipExists) {
+        this.trackIndex = trackIndex;
+      }
+    }
+
+    static from(idOrPath) {
+      return new MockLiveAPI(idOrPath);
+    }
+
+    exists() {
+      if (this.path === "clip1" || this.path === "nonexistent") {
+        return clipExists;
+      }
+
+      return true;
+    }
+
+    get id() {
+      return this.path.replaceAll(" ", "/");
+    }
+  }
+
+  return MockLiveAPI;
+}

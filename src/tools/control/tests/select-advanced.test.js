@@ -295,6 +295,28 @@ describe("view", () => {
       expect(result).toBeDefined();
     });
 
+    it("handles instrument selection on master track using currently selected track", () => {
+      global.LiveAPI.mockImplementation(
+        createLiveAPIMock({
+          selectedTrack: {
+            category: "master",
+            trackIndex: null,
+            returnTrackIndex: null,
+            id: "id master_track_123",
+            path: "live_set master_track",
+          },
+          trackViewPath: "live_set master_track view",
+        }),
+      );
+
+      // Call select with only instrument: true on master track
+      const result = select({ instrument: true });
+
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set master_track view");
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
+      expect(result).toBeDefined();
+    });
+
     it("validates matching track ID and index are accepted", () => {
       liveApiId.mockReturnValue("id track_id_123");
       liveApiType.mockReturnValue("Track");
