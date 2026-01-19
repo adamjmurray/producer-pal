@@ -46,6 +46,9 @@ const baseRules = {
         "**/tests/**", // Test directories
         "**/*.test.{js,ts,tsx}", // Test files
         "**/*-test-helpers.{js,ts}", // Test helpers
+        // JS files with exports consumed by TypeScript (eslint-plugin-import doesn't track)
+        "src/shared/pitch.js", // intervalsToPitchClasses used by tools/live-set/*.ts
+        "src/tools/constants.js", // VALID_SCALE_NAMES used by tools/live-set/*.ts
       ],
     },
   ],
@@ -592,6 +595,20 @@ export default [
         ToolContext: "readonly",
         Folder: "readonly",
         outlet: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
+    },
+  },
+
+  // Max V8 environment globals for tools/live-set (migrated to TypeScript)
+  {
+    files: ["src/tools/live-set/**/*.ts"],
+    languageOptions: {
+      globals: {
+        LiveAPI: "readonly",
+        ToolContext: "readonly",
       },
     },
     rules: {

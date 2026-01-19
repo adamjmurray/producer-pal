@@ -60,7 +60,8 @@ export default [
               source.includes("/notation/") ||
               source.includes("/tools/operations/delete/") ||
               source.includes("/tools/samples/") ||
-              source.includes("/tools/workflow/")) &&
+              source.includes("/tools/workflow/") ||
+              source.includes("/tools/live-set/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

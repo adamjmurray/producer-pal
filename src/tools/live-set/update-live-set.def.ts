@@ -17,6 +17,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .describe(
         '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
       ),
+
     locatorOperation: z
       .enum(["create", "delete", "rename"])
       .optional()

@@ -5,6 +5,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
   description: `Read Live Set global settings, tracks, scenes, devices, clips.
 Re-read after moves/deletes for updated state.`,
+
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

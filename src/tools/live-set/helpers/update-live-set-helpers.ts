@@ -14,24 +14,28 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
   name.toLowerCase(),
 );
 
-/**
- * @typedef {object} TempClipInfo
- * @property {LiveAPI} track - The track containing the temp clip
- * @property {string} clipId - The clip ID
- * @property {boolean} isMidiTrack - Whether it's a MIDI track
- * @property {LiveAPI} [slot] - The session slot (for audio tracks)
- */
+interface TempClipInfo {
+  track: LiveAPI;
+  clipId: string;
+  isMidiTrack: boolean;
+  slot?: LiveAPI;
+}
 
 /**
  * Extends the song length by creating a temporary clip if needed.
  * Required when creating locators past the current song_length.
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {number} targetBeats - Target position in beats
- * @param {{ silenceWavPath?: string }} context - Context object with silenceWavPath
- * @returns {TempClipInfo|null} Cleanup info or null if no extension needed
+ * @param liveSet - The live_set LiveAPI object
+ * @param targetBeats - Target position in beats
+ * @param context - Context object with silenceWavPath
+ * @param context.silenceWavPath - Path to silence.wav for audio track extension
+ * @returns Cleanup info or null if no extension needed
  */
-export function extendSongIfNeeded(liveSet, targetBeats, context) {
-  const songLength = /** @type {number} */ (liveSet.get("song_length")[0]);
+export function extendSongIfNeeded(
+  liveSet: LiveAPI,
+  targetBeats: number,
+  context: { silenceWavPath?: string },
+): TempClipInfo | null {
+  const songLength = liveSet.get("song_length")[0] as number;
 
   if (targetBeats <= songLength) {
     return null; // No extension needed
@@ -39,22 +43,20 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
   // Find first track (prefer MIDI, fallback to audio)
   const trackIds = liveSet.getChildIds("tracks");
-  let selectedTrack = null;
+  let selectedTrack: LiveAPI | null = null;
   let isMidiTrack = false;
 
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
 
-    if (/** @type {number} */ (track.getProperty("has_midi_input")) > 0) {
+    if ((track.getProperty("has_midi_input") as number) > 0) {
       selectedTrack = track;
       isMidiTrack = true;
       break;
     }
 
     // Keep first audio track as fallback
-    if (!selectedTrack) {
-      selectedTrack = track;
-    }
+    selectedTrack ??= track;
   }
 
   if (!selectedTrack) {
@@ -65,9 +67,11 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
   if (isMidiTrack) {
     // Create temp MIDI clip in arrangement (1 beat minimum)
-    const tempClipResult = /** @type {string} */ (
-      selectedTrack.call("create_midi_clip", targetBeats, 1)
-    );
+    const tempClipResult = selectedTrack.call(
+      "create_midi_clip",
+      targetBeats,
+      1,
+    ) as string;
     const tempClip = LiveAPI.from(tempClipResult);
 
     return { track: selectedTrack, clipId: tempClip.id, isMidiTrack: true };
@@ -86,13 +90,11 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
     context.silenceWavPath,
   );
 
-  const arrangementClipResult = /** @type {string} */ (
-    selectedTrack.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
-      targetBeats,
-    )
-  );
+  const arrangementClipResult = selectedTrack.call(
+    "duplicate_clip_to_arrangement",
+    `id ${sessionClip.id}`,
+    targetBeats,
+  ) as string;
   const arrangementClip = LiveAPI.from(arrangementClipResult);
 
   return {
@@ -105,9 +107,9 @@ export function extendSongIfNeeded(liveSet, targetBeats, context) {
 
 /**
  * Cleans up the temporary clip created by extendSongIfNeeded.
- * @param {TempClipInfo|null} tempClipInfo - Info from extendSongIfNeeded or null
+ * @param tempClipInfo - Info from extendSongIfNeeded or null
  */
-export function cleanupTempClip(tempClipInfo) {
+export function cleanupTempClip(tempClipInfo: TempClipInfo | null): void {
   if (!tempClipInfo) {
     return;
   }
@@ -125,10 +127,13 @@ export function cleanupTempClip(tempClipInfo) {
 
 /**
  * Parses a combined scale string like "C Major" into root note and scale name
- * @param {string} scaleString - Scale in format "Root ScaleName"
- * @returns {{scaleRoot: string, scaleName: string}} Parsed components
+ * @param scaleString - Scale in format "Root ScaleName"
+ * @returns Parsed components
  */
-export function parseScale(scaleString) {
+export function parseScale(scaleString: string): {
+  scaleRoot: string;
+  scaleName: string;
+} {
   const trimmed = scaleString.trim();
   const parts = trimmed.split(/\s+/);
 
@@ -138,7 +143,7 @@ export function parseScale(scaleString) {
     );
   }
 
-  const scaleRoot = /** @type {string} */ (parts[0]);
+  const scaleRoot = parts[0] as string;
   const scaleNameParts = parts.slice(1);
   const scaleName = scaleNameParts.join(" ");
   const scaleRootLower = scaleRoot.toLowerCase();
@@ -162,18 +167,23 @@ export function parseScale(scaleString) {
   }
 
   return {
-    scaleRoot: /** @type {string} */ (VALID_PITCH_CLASS_NAMES[scaleRootIndex]),
-    scaleName: /** @type {string} */ (VALID_SCALE_NAMES[scaleNameIndex]),
+    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex] as string,
+    scaleName: VALID_SCALE_NAMES[scaleNameIndex] as string,
   };
 }
 
 /**
  * Apply tempo to live set, with validation
- * @param {LiveAPI} liveSet - The live_set object
- * @param {number} tempo - Tempo in BPM
- * @param {{ tempo?: number }} result - Result object to update
+ * @param liveSet - The live_set object
+ * @param tempo - Tempo in BPM
+ * @param result - Result object to update
+ * @param result.tempo - Tempo property to set
  */
-export function applyTempo(liveSet, tempo, result) {
+export function applyTempo(
+  liveSet: LiveAPI,
+  tempo: number,
+  result: { tempo?: number },
+): void {
   if (tempo < 20 || tempo > 999) {
     console.error("Warning: tempo must be between 20.0 and 999.0 BPM");
 
@@ -186,11 +196,16 @@ export function applyTempo(liveSet, tempo, result) {
 
 /**
  * Apply scale to live set, with validation
- * @param {LiveAPI} liveSet - The live_set object
- * @param {string} scale - Scale string (e.g., "C Major") or empty string to disable
- * @param {{ scale?: string }} result - Result object to update
+ * @param liveSet - The live_set object
+ * @param scale - Scale string (e.g., "C Major") or empty string to disable
+ * @param result - Result object to update
+ * @param result.scale - Scale property to set
  */
-export function applyScale(liveSet, scale, result) {
+export function applyScale(
+  liveSet: LiveAPI,
+  scale: string,
+  result: { scale?: string },
+): void {
   if (scale === "") {
     liveSet.set("scale_mode", 0);
     result.scale = "";

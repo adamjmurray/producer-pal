@@ -1,3 +1,4 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { intervalsToPitchClasses } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { waitUntil } from "#src/shared/v8-sleep.js";
@@ -13,26 +14,65 @@ import {
   cleanupTempClip,
   extendSongIfNeeded,
 } from "./helpers/update-live-set-helpers.js";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
-/**
- * @typedef {object} UpdateLiveSetArgs
- * @property {number} [tempo] - Set tempo in BPM (20.0-999.0)
- * @property {string} [timeSignature] - Time signature in format "4/4"
- * @property {string} [scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
- * @property {string} [locatorOperation] - Locator operation: "create", "delete", or "rename"
- * @property {string} [locatorId] - Locator ID for delete/rename (e.g., "locator-0")
- * @property {string} [locatorTime] - Bar|beat position for create/delete/rename
- * @property {string} [locatorName] - Name for create/rename, or name filter for delete
- * @property {boolean} [arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
- */
+interface UpdateLiveSetArgs {
+  tempo?: number;
+  timeSignature?: string;
+  scale?: string;
+  locatorOperation?: string;
+  locatorId?: string;
+  locatorTime?: string;
+  locatorName?: string;
+  arrangementFollower?: boolean;
+}
+
+interface LocatorOperationOptions {
+  locatorOperation: string;
+  locatorId?: string;
+  locatorTime?: string;
+  locatorName?: string;
+}
+
+interface CreateLocatorOptions {
+  locatorTime?: string;
+  locatorName?: string;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+}
+
+interface DeleteLocatorOptions {
+  locatorId?: string;
+  locatorTime?: string;
+  locatorName?: string;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+}
+
+interface RenameLocatorOptions {
+  locatorId?: string;
+  locatorTime?: string;
+  locatorName?: string;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+}
+
+// silenceWavPath is available on context at runtime but not declared in ToolContext
+type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
 
 /**
  * Updates Live Set parameters like tempo, time signature, scale, and locators.
  * Note: Scale changes affect currently selected clips and set defaults for new clips.
- * @param {UpdateLiveSetArgs} [args] - The parameters
- * @param {Partial<ToolContext>} [context] - Internal context object with silenceWavPath for audio clips
- * @returns {Promise<Record<string, unknown>>} Updated Live Set information
+ * @param args - The parameters
+ * @param args.tempo - Set tempo in BPM (20.0-999.0)
+ * @param args.timeSignature - Time signature in format "4/4"
+ * @param args.scale - Scale in format "Root ScaleName"
+ * @param args.locatorOperation - Locator operation: "create", "delete", or "rename"
+ * @param args.locatorId - Locator ID for delete/rename
+ * @param args.locatorTime - Bar|beat position for create/delete/rename
+ * @param args.locatorName - Name for create/rename, or name filter for delete
+ * @param args.arrangementFollower - Whether tracks follow arrangement timeline
+ * @param context - Internal context object with silenceWavPath for audio clips
+ * @returns Updated Live Set information
  */
 export async function updateLiveSet(
   {
@@ -44,14 +84,13 @@ export async function updateLiveSet(
     locatorTime,
     locatorName,
     arrangementFollower,
-  } = {},
-  context = {},
-) {
+  }: UpdateLiveSetArgs = {},
+  context: UpdateLiveSetContext = {},
+): Promise<Record<string, unknown>> {
   const liveSet = LiveAPI.from("live_set");
 
   // optimistic result object that only include properties that are actually set
-  /** @type {Record<string, unknown>} */
-  const result = {
+  const result: Record<string, unknown> = {
     id: liveSet.id,
   };
 
@@ -70,11 +109,9 @@ export async function updateLiveSet(
   if (scale != null) {
     applyScale(liveSet, scale, result);
 
-    if (!result.$meta) {
-      result.$meta = [];
-    }
+    result.$meta ??= [];
 
-    /** @type {string[]} */ (result.$meta).push(
+    (result.$meta as string[]).push(
       "Scale applied to selected clips and defaults for new clips.",
     );
   }
@@ -89,10 +126,8 @@ export async function updateLiveSet(
   const shouldIncludeScalePitches = scale != null && scale !== "";
 
   if (shouldIncludeScalePitches) {
-    const rootNote = /** @type {number} */ (liveSet.getProperty("root_note"));
-    const scaleIntervals = /** @type {number[]} */ (
-      liveSet.getProperty("scale_intervals")
-    );
+    const rootNote = liveSet.getProperty("root_note") as number;
+    const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
 
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
@@ -118,12 +153,11 @@ export async function updateLiveSet(
 
 /**
  * Stop playback if currently playing (required for locator modifications)
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @returns {boolean} True if playback was stopped
+ * @param liveSet - The live_set LiveAPI object
+ * @returns True if playback was stopped
  */
-function stopPlaybackIfNeeded(liveSet) {
-  const isPlaying =
-    /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
+function stopPlaybackIfNeeded(liveSet: LiveAPI): boolean {
+  const isPlaying = (liveSet.getProperty("is_playing") as number) > 0;
 
   if (isPlaying) {
     liveSet.call("stop_playing");
@@ -136,19 +170,20 @@ function stopPlaybackIfNeeded(liveSet) {
 }
 
 /**
- * Wait for the playhead position to reach the target time
+ * Wait for the playhead position to reach the target time.
  * This is needed because set_or_delete_cue operates on the actual playhead position,
- * which updates asynchronously after setting current_song_time
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {number} targetBeats - Expected position in beats
- * @returns {Promise<void>}
+ * which updates asynchronously after setting current_song_time.
+ * @param liveSet - The live_set LiveAPI object
+ * @param targetBeats - Expected position in beats
  */
-async function waitForPlayheadPosition(liveSet, targetBeats) {
+async function waitForPlayheadPosition(
+  liveSet: LiveAPI,
+  targetBeats: number,
+): Promise<void> {
   const success = await waitUntil(
     () =>
       Math.abs(
-        /** @type {number} */ (liveSet.getProperty("current_song_time")) -
-          targetBeats,
+        (liveSet.getProperty("current_song_time") as number) - targetBeats,
       ) < 0.001,
     { pollingInterval: 10, maxRetries: 10 },
   );
@@ -162,26 +197,29 @@ async function waitForPlayheadPosition(liveSet, targetBeats) {
 
 /**
  * Handle locator operations (create, delete, rename)
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {object} options - Operation options
- * @param {string} options.locatorOperation - "create", "delete", or "rename"
- * @param {string} [options.locatorId] - Locator ID for delete/rename
- * @param {string} [options.locatorTime] - Bar|beat position
- * @param {string} [options.locatorName] - Name for create/rename or name filter for delete
- * @param {object} context - Context object with silenceWavPath
- * @returns {Promise<object>} Result of the locator operation
+ * @param liveSet - The live_set LiveAPI object
+ * @param options - Operation options
+ * @param options.locatorOperation - "create", "delete", or "rename"
+ * @param options.locatorId - Locator ID for delete/rename
+ * @param options.locatorTime - Bar|beat position
+ * @param options.locatorName - Name for create/rename or name filter for delete
+ * @param context - Context object with silenceWavPath
+ * @returns Result of the locator operation
  */
 async function handleLocatorOperation(
-  liveSet,
-  { locatorOperation, locatorId, locatorTime, locatorName },
-  context,
-) {
-  const timeSigNumerator = /** @type {number} */ (
-    liveSet.getProperty("signature_numerator")
-  );
-  const timeSigDenominator = /** @type {number} */ (
-    liveSet.getProperty("signature_denominator")
-  );
+  liveSet: LiveAPI,
+  {
+    locatorOperation,
+    locatorId,
+    locatorTime,
+    locatorName,
+  }: LocatorOperationOptions,
+  context: UpdateLiveSetContext,
+): Promise<Record<string, unknown>> {
+  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
+  const timeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
 
   switch (locatorOperation) {
     case "create":
@@ -213,20 +251,25 @@ async function handleLocatorOperation(
 
 /**
  * Create a locator at the specified position
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {object} options - Create options
- * @param {string | undefined} options.locatorTime - Bar|beat position for the locator
- * @param {string | undefined} options.locatorName - Optional name for the locator
- * @param {number} options.timeSigNumerator - Time signature numerator
- * @param {number} options.timeSigDenominator - Time signature denominator
- * @param {object} context - Context object with silenceWavPath
- * @returns {Promise<object>} Created locator info
+ * @param liveSet - The live_set LiveAPI object
+ * @param options - Create options
+ * @param options.locatorTime - Bar|beat position for the locator
+ * @param options.locatorName - Optional name for the locator
+ * @param options.timeSigNumerator - Time signature numerator
+ * @param options.timeSigDenominator - Time signature denominator
+ * @param context - Context object with silenceWavPath
+ * @returns Created locator info
  */
 async function createLocator(
-  liveSet,
-  { locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
-  context,
-) {
+  liveSet: LiveAPI,
+  {
+    locatorTime,
+    locatorName,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: CreateLocatorOptions,
+  context: UpdateLiveSetContext,
+): Promise<Record<string, unknown>> {
   if (locatorTime == null) {
     console.error("Warning: locatorTime is required for create operation");
 
@@ -236,8 +279,10 @@ async function createLocator(
     };
   }
 
-  const targetBeats = /** @type {number} */ (
-    barBeatToAbletonBeats(locatorTime, timeSigNumerator, timeSigDenominator)
+  const targetBeats = barBeatToAbletonBeats(
+    locatorTime,
+    timeSigNumerator,
+    timeSigDenominator,
   );
 
   // Check if a locator already exists at this position
@@ -288,19 +333,25 @@ async function createLocator(
 
 /**
  * Delete locator(s) by ID, time, or name
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {object} options - Delete options
- * @param {string} [options.locatorId] - Locator ID to delete
- * @param {string} [options.locatorTime] - Bar|beat position to delete
- * @param {string} [options.locatorName] - Name filter for batch delete
- * @param {number} options.timeSigNumerator - Time signature numerator
- * @param {number} options.timeSigDenominator - Time signature denominator
- * @returns {Promise<object>} Deletion result
+ * @param liveSet - The live_set LiveAPI object
+ * @param options - Delete options
+ * @param options.locatorId - Locator ID to delete
+ * @param options.locatorTime - Bar|beat position to delete
+ * @param options.locatorName - Name filter for batch delete
+ * @param options.timeSigNumerator - Time signature numerator
+ * @param options.timeSigDenominator - Time signature denominator
+ * @returns Deletion result
  */
 async function deleteLocator(
-  liveSet,
-  { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
-) {
+  liveSet: LiveAPI,
+  {
+    locatorId,
+    locatorTime,
+    locatorName,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: DeleteLocatorOptions,
+): Promise<Record<string, unknown>> {
   // Validate that at least one identifier is provided
   if (locatorId == null && locatorTime == null && locatorName == null) {
     console.error(
@@ -348,7 +399,6 @@ async function deleteLocator(
   }
 
   // Delete by ID or time (single locator)
-  /** @type {number} */
   let timeInBeats = 0;
 
   if (locatorId != null) {
@@ -364,15 +414,13 @@ async function deleteLocator(
       };
     }
 
-    timeInBeats = /** @type {number} */ (found.locator.getProperty("time"));
+    timeInBeats = found.locator.getProperty("time") as number;
   } else {
     // locatorTime must be defined here (validated above)
-    timeInBeats = /** @type {number} */ (
-      barBeatToAbletonBeats(
-        /** @type {string} */ (locatorTime),
-        timeSigNumerator,
-        timeSigDenominator,
-      )
+    timeInBeats = barBeatToAbletonBeats(
+      locatorTime as string,
+      timeSigNumerator,
+      timeSigDenominator,
     );
     const found = findLocator(liveSet, { timeInBeats });
 
@@ -404,19 +452,25 @@ async function deleteLocator(
 
 /**
  * Rename a locator by ID or time
- * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {object} options - Rename options
- * @param {string | undefined} options.locatorId - Locator ID to rename
- * @param {string | undefined} options.locatorTime - Bar|beat position to rename
- * @param {string | undefined} options.locatorName - New name for the locator
- * @param {number} options.timeSigNumerator - Time signature numerator
- * @param {number} options.timeSigDenominator - Time signature denominator
- * @returns {object} Rename result
+ * @param liveSet - The live_set LiveAPI object
+ * @param options - Rename options
+ * @param options.locatorId - Locator ID to rename
+ * @param options.locatorTime - Bar|beat position to rename
+ * @param options.locatorName - New name for the locator
+ * @param options.timeSigNumerator - Time signature numerator
+ * @param options.timeSigDenominator - Time signature denominator
+ * @returns Rename result
  */
 function renameLocator(
-  liveSet,
-  { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
-) {
+  liveSet: LiveAPI,
+  {
+    locatorId,
+    locatorTime,
+    locatorName,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: RenameLocatorOptions,
+): Record<string, unknown> {
   if (locatorName == null) {
     console.error("Warning: locatorName is required for rename operation");
 
@@ -451,12 +505,10 @@ function renameLocator(
     }
   } else {
     // locatorTime must be defined here (validated above)
-    const timeInBeats = /** @type {number} */ (
-      barBeatToAbletonBeats(
-        /** @type {string} */ (locatorTime),
-        timeSigNumerator,
-        timeSigDenominator,
-      )
+    const timeInBeats = barBeatToAbletonBeats(
+      locatorTime as string,
+      timeSigNumerator,
+      timeSigDenominator,
     );
 
     found = findLocator(liveSet, { timeInBeats });
