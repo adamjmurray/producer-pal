@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import "./duplicate-mocks-test-helpers.js";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
   liveApiCall,
@@ -9,23 +10,6 @@ import {
   setupArrangementDuplicationMock,
   setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
-
-vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
-  const s = await import("./setup.js");
-
-  return { updateClip: s.updateClipMock };
-});
-vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling.js"),
-  async () => {
-    const s = await import("./setup.js");
-
-    return {
-      createShortenedClipInHolding: s.createShortenedClipInHoldingMock,
-      moveClipFromHolding: s.moveClipFromHoldingMock,
-    };
-  },
-);
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {
