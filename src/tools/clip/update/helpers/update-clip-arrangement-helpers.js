@@ -1,6 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
-import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
 import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
 
 /**
  * Handle moving arrangement clips to a new position
