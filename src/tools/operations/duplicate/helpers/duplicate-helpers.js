@@ -167,6 +167,7 @@ export function createClipsForLength(
     sourceClip.getProperty("length")
   );
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
+  /** @type {MinimalClipInfo[]} */
   const duplicatedClips = [];
 
   if (arrangementLengthBeats < sourceClipLength) {

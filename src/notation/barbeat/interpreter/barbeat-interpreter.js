@@ -33,6 +33,7 @@ import {
  * @typedef {import('./helpers/barbeat-interpreter-buffer-helpers.js').PitchState} PitchState
  * @typedef {import('./helpers/barbeat-interpreter-copy-helpers.js').NoteEvent} NoteEvent
  * @typedef {import('./helpers/barbeat-interpreter-copy-helpers.js').BarCopyNote} BarCopyNote
+ * @typedef {import('./helpers/barbeat-interpreter-pitch-helpers.js').TimeElement} TimeElement
  */
 
 /**
@@ -181,12 +182,16 @@ function processTimePosition(
   events,
   notesByBar,
 ) {
-  const positions = calculatePositions(element, state, beatsPerBar);
+  const positions = calculatePositions(
+    /** @type {TimeElement} */ (element),
+    state,
+    beatsPerBar,
+  );
 
   handlePitchEmission(
     positions,
     state,
-    element,
+    /** @type {TimeElement} */ (element),
     beatsPerBar,
     timeSigDenominator,
     events,

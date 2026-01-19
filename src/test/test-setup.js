@@ -79,7 +79,7 @@ class Max {
     },
   );
 }
-vi.mock(import("max-api"), () => ({ default: Max }));
+vi.mock(import("max-api"), () => /** @type {*} */ ({ default: Max }));
 
 // Export Max so tests can access Max.defaultMcpResponseHandler if needed
 g.Max = Max;

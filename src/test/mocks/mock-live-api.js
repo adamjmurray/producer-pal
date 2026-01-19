@@ -367,11 +367,14 @@ export function mockLiveApiGet(overrides = {}) {
         if (override !== undefined) {
           // optionally support mocking a sequence of return values:
           if (override instanceof MockSequence) {
-            overridesByProp.__callCount__ ??= {};
-            const callIndex = (overridesByProp.__callCount__[prop] ??= 0);
+            const callCounts = /** @type {Record<string, number>} */ (
+              overridesByProp.__callCount__ ??=
+                /** @type {Record<string, number>} */ ({})
+            );
+            const callIndex = (callCounts[prop] ??= 0);
             const value = override[callIndex];
 
-            overridesByProp.__callCount__[prop]++;
+            callCounts[prop]++;
 
             return [value];
           }
