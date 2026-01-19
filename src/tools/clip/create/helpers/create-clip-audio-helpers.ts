@@ -1,5 +1,5 @@
-import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.js";
 
 export interface AudioSessionClipResult {
   clip: LiveAPI;
