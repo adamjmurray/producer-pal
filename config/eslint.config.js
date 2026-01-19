@@ -492,24 +492,8 @@ export default [
         ecmaVersion: 2024,
         sourceType: "module",
         project: [
-          "./src/portal/tsconfig.json",
-          "./src/portal/tsconfig.test.json",
-          "./src/mcp-server/tsconfig.json",
-          "./src/mcp-server/tsconfig.test.json",
-          "./src/live-api-adapter/tsconfig.json",
-          "./src/live-api-adapter/tsconfig.test.json",
-          "./src/skills/tsconfig.json",
-          "./src/skills/tsconfig.test.json",
-          "./src/tools/track/tsconfig.json",
-          "./src/tools/track/tsconfig.test.json",
-          "./src/tools/operations/transform-clips/tsconfig.json",
-          "./src/tools/operations/transform-clips/tsconfig.test.json",
-          "./src/tools/device/tsconfig.json",
-          "./src/tools/device/tsconfig.test.json",
-          "./src/tools/operations/duplicate/tsconfig.json",
-          "./src/tools/operations/duplicate/tsconfig.test.json",
-          "./src/notation/tsconfig.json",
-          "./src/notation/tsconfig.test.json",
+          "./src/tsconfig.typescript.json",
+          "./src/tsconfig.typescript.test.json",
         ],
       },
       globals: {
@@ -519,12 +503,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: [
-            "./src/portal/tsconfig.json",
-            "./src/mcp-server/tsconfig.json",
-            "./src/live-api-adapter/tsconfig.json",
-            "./src/skills/tsconfig.json",
-          ],
+          project: ["./src/tsconfig.typescript.json"],
         },
         node: true,
       },

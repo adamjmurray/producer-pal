@@ -362,9 +362,8 @@ describe("MCP Express App", () => {
         ).toContain(errorMessage);
       } finally {
         // Always restore the original mock
-        if (Max.outlet) {
-          Max.outlet = originalOutlet;
-        }
+        // eslint-disable-next-line require-atomic-updates -- safe in synchronous finally block
+        Max.outlet = originalOutlet;
       }
     });
   });

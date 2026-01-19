@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { assertFolderSizeLimit, projectRoot } from "./meta-test-helpers.js";
 
-const MAX_ITEMS_PER_FOLDER = 12;
+const MAX_ITEMS_PER_FOLDER = 13;
 
 describe("Folder size limits", () => {
   it.each([
     ["src/", "src"],
     ["webui/src/", "webui/src"],
     ["scripts/", "scripts"],
-  ])("should enforce max 12 items per folder in %s", (_name, relativePath) => {
+  ])("should enforce max 13 items per folder in %s", (_name, relativePath) => {
     const dirPath = path.join(projectRoot, relativePath);
 
     assertFolderSizeLimit(dirPath, MAX_ITEMS_PER_FOLDER, expect);

@@ -22,29 +22,11 @@
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.js", "**/*.ts", "types/**/*.d.ts"],
+  "include": ["**/*.js", "types/**/*.d.ts"],
   "exclude": [
     "**/*.test.js",
-    "**/*.test.ts",
     "test/**",
     "**/*-test-helpers.js",
-    "**/*-test-helpers.ts",
-    "**/parser/*-parser.js",
-    "portal/*.ts",
-    "mcp-server/*.ts",
-    "live-api-adapter/*.ts",
-    "skills/*.ts",
-    "shared/*.ts",
-    "tools/operations/delete/*.ts",
-    "tools/samples/*.ts",
-    "tools/workflow/*.ts",
-    "tools/live-set/*.ts",
-    "tools/scene/*.ts",
-    "tools/control/*.ts",
-    "tools/track/**/*.ts",
-    "tools/operations/transform-clips/**/*.ts",
-    "tools/device/**/*.ts",
-    "tools/operations/duplicate/**/*.ts",
-    "notation/**/*.ts"
+    "**/parser/*-parser.js"
   ]
 }

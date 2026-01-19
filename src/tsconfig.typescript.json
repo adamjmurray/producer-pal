@@ -1,12 +1,11 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "checkJs": false,
     "allowJs": true,
     "noEmit": true,
-    "declaration": false,
-    "target": "ES2024"
+    "declaration": false
   },
-  "include": ["**/*.ts", "../../types/max-globals.d.ts"],
+  "include": ["**/*.ts", "types/**/*.d.ts"],
   "exclude": ["**/*.test.ts", "**/*-test-helpers.ts"]
 }
