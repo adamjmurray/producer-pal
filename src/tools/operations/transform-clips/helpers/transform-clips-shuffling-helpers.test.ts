@@ -10,6 +10,12 @@ import {
   performShuffling,
 } from "./transform-clips-shuffling-helpers.js";
 
+interface MockClip {
+  id: string;
+  trackIndex: number;
+  getProperty: (prop: string) => number | null;
+}
+
 describe("transform-clips-shuffling-helpers", () => {
   describe("shuffleArray", () => {
     it("should return array with same elements in different order", () => {
@@ -17,7 +23,7 @@ describe("transform-clips-shuffling-helpers", () => {
       // Use a seeded RNG that produces predictable results
       let seed = 0.5;
 
-      const rng = () => {
+      const rng = (): number => {
         seed = (seed * 9301 + 49297) % 233280;
 
         return seed / 233280;
@@ -32,7 +38,7 @@ describe("transform-clips-shuffling-helpers", () => {
     it("should not modify the original array", () => {
       const array = [1, 2, 3, 4, 5];
       const originalCopy = [...array];
-      const rng = () => 0.5;
+      const rng = (): number => 0.5;
 
       shuffleArray(array, rng);
 
@@ -40,7 +46,7 @@ describe("transform-clips-shuffling-helpers", () => {
     });
 
     it("should handle empty array", () => {
-      const rng = () => 0.5;
+      const rng = (): number => 0.5;
 
       const shuffled = shuffleArray([], rng);
 
@@ -48,7 +54,7 @@ describe("transform-clips-shuffling-helpers", () => {
     });
 
     it("should handle single element array", () => {
-      const rng = () => 0.5;
+      const rng = (): number => 0.5;
 
       const shuffled = shuffleArray([42], rng);
 
@@ -57,8 +63,8 @@ describe("transform-clips-shuffling-helpers", () => {
 
     it("should produce different results with different RNG values", () => {
       const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-      const rng1 = () => 0.1;
-      const rng2 = () => 0.9;
+      const rng1 = (): number => 0.1;
+      const rng2 = (): number => 0.9;
 
       const shuffled1 = shuffleArray(array, rng1);
       const shuffled2 = shuffleArray(array, rng2);
@@ -204,9 +210,9 @@ describe("transform-clips-shuffling-helpers", () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
-      const clips = [];
-      const warnings = new Set();
-      const rng = () => 0.5;
+      const clips: LiveAPI[] = [];
+      const warnings = new Set<string>();
+      const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
       performShuffling([], clips, warnings, rng, context);
@@ -223,11 +229,11 @@ describe("transform-clips-shuffling-helpers", () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
-      const clips = [];
-      const warnings = new Set();
+      const clips: LiveAPI[] = [];
+      const warnings = new Set<string>();
 
       warnings.add("shuffle-no-arrangement");
-      const rng = () => 0.5;
+      const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
       performShuffling([], clips, warnings, rng, context);
@@ -237,22 +243,22 @@ describe("transform-clips-shuffling-helpers", () => {
     });
 
     it("should return early without changes for single clip", () => {
-      const mockClip = {
+      const mockClip: MockClip = {
         id: "clip1",
         trackIndex: 0,
-        getProperty: vi.fn((prop) => {
+        getProperty: vi.fn((prop: string) => {
           if (prop === "start_time") return 0;
           if (prop === "length") return 4;
 
           return null;
         }),
       };
-      const clips = [mockClip];
-      const warnings = new Set();
-      const rng = () => 0.5;
+      const clips = [mockClip as unknown as LiveAPI];
+      const warnings = new Set<string>();
+      const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
-      performShuffling([mockClip], clips, warnings, rng, context);
+      performShuffling([mockClip as unknown as LiveAPI], clips, warnings, rng, context);
 
       // Should not call any LiveAPI methods for single clip
       expect(liveApiCall).not.toHaveBeenCalled();
@@ -260,20 +266,20 @@ describe("transform-clips-shuffling-helpers", () => {
 
     it("should shuffle multiple arrangement clips", () => {
       // Create mock clips with proper structure
-      const mockClip1 = {
+      const mockClip1: MockClip = {
         id: "clip1",
         trackIndex: 0,
-        getProperty: vi.fn((prop) => {
+        getProperty: vi.fn((prop: string) => {
           if (prop === "start_time") return 0;
           if (prop === "length") return 4;
 
           return null;
         }),
       };
-      const mockClip2 = {
+      const mockClip2: MockClip = {
         id: "clip2",
         trackIndex: 0,
-        getProperty: vi.fn((prop) => {
+        getProperty: vi.fn((prop: string) => {
           if (prop === "start_time") return 4;
           if (prop === "length") return 4;
 
@@ -282,7 +288,7 @@ describe("transform-clips-shuffling-helpers", () => {
       };
 
       liveApiCall.mockReturnValue(["id", "tempClip"]);
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: { _path?: string }, prop: string) {
         if (prop === "arrangement_clips") {
           return children("newClip1", "newClip2");
         }
@@ -290,12 +296,12 @@ describe("transform-clips-shuffling-helpers", () => {
         return [];
       });
 
-      const clips = [];
-      const warnings = new Set();
-      const rng = () => 0.5;
+      const clips: LiveAPI[] = [];
+      const warnings = new Set<string>();
+      const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
-      performShuffling([mockClip1, mockClip2], clips, warnings, rng, context);
+      performShuffling([mockClip1 as unknown as LiveAPI, mockClip2 as unknown as LiveAPI], clips, warnings, rng, context);
 
       // Should call duplicate_clip_to_arrangement for each clip
       expect(liveApiCall).toHaveBeenCalledWith(

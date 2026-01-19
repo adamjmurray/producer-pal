@@ -11,16 +11,16 @@ import {
 
 /**
  * Parse transpose values from comma-separated string
- * @param {string | undefined} transposeValues - Comma-separated transpose values
- * @param {number | undefined} transposeMin - Minimum transpose value (warning if used with transposeValues)
- * @param {number | undefined} transposeMax - Maximum transpose value (warning if used with transposeValues)
- * @returns {Array<number>|null} - Array of transpose values or null
+ * @param transposeValues - Comma-separated transpose values
+ * @param transposeMin - Minimum transpose value (warning if used with transposeValues)
+ * @param transposeMax - Maximum transpose value (warning if used with transposeValues)
+ * @returns Array of transpose values or null
  */
 export function parseTransposeValues(
-  transposeValues,
-  transposeMin,
-  transposeMax,
-) {
+  transposeValues?: string,
+  transposeMin?: number,
+  transposeMax?: number,
+): number[] | null {
   if (transposeValues == null) {
     return null;
   }
@@ -40,18 +40,18 @@ export function parseTransposeValues(
 
 /**
  * Get clip IDs from direct list or arrangement track query
- * @param {string | undefined} clipIds - Comma-separated list of clip IDs
- * @param {string | undefined} arrangementTrackIndex - Track index(es) to query for arrangement clips, comma-separated for multiple
- * @param {string | undefined} arrangementStart - Start position in bar|beat format
- * @param {string | undefined} arrangementLength - Length in bar:beat format
- * @returns {Array<string>} - Array of clip IDs
+ * @param clipIds - Comma-separated list of clip IDs
+ * @param arrangementTrackIndex - Track index(es) to query for arrangement clips, comma-separated for multiple
+ * @param arrangementStart - Start position in bar|beat format
+ * @param arrangementLength - Length in bar:beat format
+ * @returns Array of clip IDs
  */
 export function getClipIds(
-  clipIds,
-  arrangementTrackIndex,
-  arrangementStart,
-  arrangementLength,
-) {
+  clipIds?: string,
+  arrangementTrackIndex?: string,
+  arrangementStart?: string,
+  arrangementLength?: string,
+): string[] {
   if (clipIds) {
     return parseCommaSeparatedIds(clipIds);
   }
@@ -64,12 +64,12 @@ export function getClipIds(
 
   const trackIndices = parseCommaSeparatedIndices(arrangementTrackIndex);
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = /** @type {number} */ (
-    liveSet.getProperty("signature_numerator")
-  );
-  const songTimeSigDenominator = /** @type {number} */ (
-    liveSet.getProperty("signature_denominator")
-  );
+  const songTimeSigNumerator = liveSet.getProperty(
+    "signature_numerator",
+  ) as number;
+  const songTimeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
 
   let arrangementStartBeats = 0;
   let arrangementEndBeats = Infinity;
@@ -96,7 +96,7 @@ export function getClipIds(
     arrangementEndBeats = arrangementStartBeats + arrangementLengthBeats;
   }
 
-  const result = [];
+  const result: string[] = [];
 
   for (const trackIndex of trackIndices) {
     const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
@@ -109,9 +109,7 @@ export function getClipIds(
 
     for (const clipId of trackClipIds) {
       const clip = LiveAPI.from(clipId);
-      const clipStartTime = /** @type {number} */ (
-        clip.getProperty("start_time")
-      );
+      const clipStartTime = clip.getProperty("start_time") as number;
 
       if (
         clipStartTime >= arrangementStartBeats &&
@@ -127,10 +125,10 @@ export function getClipIds(
 
 /**
  * Creates a seeded random number generator using Mulberry32 algorithm
- * @param {number} seed - The seed value
- * @returns {function(): number} A function that returns a random number between 0 and 1
+ * @param seed - The seed value
+ * @returns A function that returns a random number between 0 and 1
  */
-export function createSeededRNG(seed) {
+export function createSeededRNG(seed: number): () => number {
   let state = seed;
 
   return function () {
@@ -146,11 +144,15 @@ export function createSeededRNG(seed) {
 
 /**
  * Generates a random number within a range
- * @param {number} min - Minimum value
- * @param {number} max - Maximum value
- * @param {function(): number} rng - Random number generator function
- * @returns {number} Random number between min and max
+ * @param min - Minimum value
+ * @param max - Maximum value
+ * @param rng - Random number generator function
+ * @returns Random number between min and max
  */
-export function randomInRange(min, max, rng) {
+export function randomInRange(
+  min: number,
+  max: number,
+  rng: () => number,
+): number {
   return min + rng() * (max - min);
 }

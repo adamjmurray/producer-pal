@@ -8,12 +8,27 @@ import {
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 import { setupClipMocks } from "./transform-clips-test-helpers.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
+interface TestNote {
+  id: string;
+  pitch: number;
+  start_time: number;
+  duration: number;
+  velocity: number;
+  velocity_deviation: number;
+  probability: number;
+}
+
 /**
  * Creates a default test note with optional property overrides
- * @param {object} overrides - Properties to override on the test note
- * @returns {object} Test note object
+ * @param overrides - Properties to override on the test note
+ * @returns Test note object
  */
-function createTestNote(overrides = {}) {
+function createTestNote(overrides: Partial<TestNote> = {}): TestNote {
   return {
     id: "0",
     pitch: 60,
@@ -28,21 +43,23 @@ function createTestNote(overrides = {}) {
 
 /**
  * Setup liveApiCall mock for capturing modified notes
- * @param {string} clipId - Clip ID to mock
- * @param {object} noteOverrides - Properties to override on the test note
- * @returns {{getCaptured: Function, getAllCaptured: Function}} - Functions to get captured notes
+ * @param clipId - Clip ID to mock
+ * @param noteOverrides - Properties to override on the test note
+ * @returns Functions to get captured notes
  */
-function setupNoteCaptureMock(clipId, noteOverrides = {}) {
-  /** @type {Array<unknown[]>} */
-  const allCaptured = [];
+function setupNoteCaptureMock(
+  clipId: string,
+  noteOverrides: Partial<TestNote> = {},
+): { getCaptured: () => TestNote[] | undefined; getAllCaptured: () => TestNote[][] } {
+  const allCaptured: TestNote[][] = [];
 
-  liveApiCall.mockImplementation(function (method, ..._args) {
+  liveApiCall.mockImplementation(function (this: MockContext, method: string, ..._args: unknown[]) {
     if (this._id === clipId && method === "get_notes_extended") {
       return JSON.stringify({ notes: [createTestNote(noteOverrides)] });
     }
 
     if (this._id === clipId && method === "apply_note_modifications") {
-      allCaptured.push(JSON.parse(_args[0]).notes);
+      allCaptured.push((JSON.parse(_args[0] as string) as { notes: TestNote[] }).notes);
     }
   });
 
@@ -81,9 +98,9 @@ describe("transformClips - modifications", () => {
       isArrangement: true,
     });
     // Add audio-specific props
-    const origGet = liveApiGet.getMockImplementation();
+    const origGet = liveApiGet.getMockImplementation() as (this: MockContext, prop: string) => unknown[];
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (
         this._id === clipId &&
         ["gain", "pitch_coarse", "pitch_fine"].includes(prop)
@@ -131,7 +148,7 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(getCaptured()[0].velocity_deviation).toBe(15);
+    expect(getCaptured()?.[0]?.velocity_deviation).toBe(15);
   });
 
   it("should apply probability modifications to MIDI clip notes", () => {
@@ -146,7 +163,7 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(getCaptured()[0].probability).toBe(0.9);
+    expect(getCaptured()?.[0]?.probability).toBe(0.9);
   });
 
   it("should produce consistent results with same seed", () => {
@@ -188,7 +205,7 @@ describe("transformClips - modifications", () => {
     });
 
     // Should pick one of the discrete values
-    const transposedPitch = getCaptured()[0].pitch;
+    const transposedPitch = getCaptured()?.[0]?.pitch;
 
     expect([48, 60, 72]).toContain(transposedPitch);
   });
@@ -202,9 +219,9 @@ describe("transformClips - modifications", () => {
       isArrangement: true,
     });
     // Add audio pitch props
-    const origGet = liveApiGet.getMockImplementation();
+    const origGet = liveApiGet.getMockImplementation() as (this: MockContext, prop: string) => unknown[];
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (
         this._id === clipId &&
         ["pitch_coarse", "pitch_fine"].includes(prop)

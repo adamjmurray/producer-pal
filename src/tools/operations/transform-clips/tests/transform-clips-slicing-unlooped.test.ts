@@ -16,13 +16,28 @@ import {
   setupUnloopedClipSlicingMocks,
 } from "./transform-clips-slicing-test-helpers.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
+interface SetCall {
+  id: string | undefined;
+  prop: string;
+  value: unknown;
+}
+
+interface DuplicateCall {
+  position: number;
+}
+
 describe("transformClips - slicing unlooped clips", () => {
   it("should slice unlooped MIDI clips via duplication", () => {
     const clipId = "clip_1";
     const { callState } = setupUnloopedClipSlicingMocks(clipId);
-    const setCalls = [];
+    const setCalls: SetCall[] = [];
 
-    liveApiSet.mockImplementation(function (prop, value) {
+    liveApiSet.mockImplementation(function (this: MockContext, prop: string, value: unknown) {
       setCalls.push({ id: this._id, prop, value });
     });
 
@@ -39,7 +54,7 @@ describe("transformClips - slicing unlooped clips", () => {
     expect(callState.duplicateCalls).toHaveLength(3);
 
     // Third duplicate should be at position 4 (second slice)
-    expect(callState.duplicateCalls[2].args[1]).toBe(4);
+    expect(callState.duplicateCalls[2]?.args[1]).toBe(4);
 
     // Should use looping workaround: set looping=1, then set markers, then looping=0
     const loopingCalls = filterLoopingCalls(setCalls);
@@ -57,22 +72,22 @@ describe("transformClips - slicing unlooped clips", () => {
   it("should slice unlooped warped audio clips and reveal hidden content", () => {
     const clipId = "clip_1";
     let callCount = 0;
-    const duplicateCalls = [];
-    const setCalls = [];
+    const duplicateCalls: DuplicateCall[] = [];
+    const setCalls: SetCall[] = [];
 
     setupSlicingClipBaseMocks(clipId, {
       generatedPrefixes: ["holding_", "moved_", "slice_"],
     });
 
     // Setup liveApiGet with warping support for audio clips
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
       }
 
       if (this._id === clipId) {
-        const props = {
+        const props: Record<string, number> = {
           is_midi_clip: 0,
           is_audio_clip: 1,
           is_arrangement_clip: 1,
@@ -99,10 +114,10 @@ describe("transformClips - slicing unlooped clips", () => {
       return [0];
     });
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (this: MockContext, method: string, ...args: unknown[]) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
-        duplicateCalls.push({ position: args[1] });
+        duplicateCalls.push({ position: args[1] as number });
         if (callCount === 1) return ["id", "holding_1"];
         if (callCount === 2) return ["id", "moved_1"];
 
@@ -112,7 +127,7 @@ describe("transformClips - slicing unlooped clips", () => {
       if (method === "create_midi_clip") return ["id", "temp_1"];
     });
 
-    liveApiSet.mockImplementation(function (prop, value) {
+    liveApiSet.mockImplementation(function (this: MockContext, prop: string, value: unknown) {
       setCalls.push({ id: this._id, prop, value });
     });
 
@@ -129,9 +144,9 @@ describe("transformClips - slicing unlooped clips", () => {
     expect(duplicateCalls).toHaveLength(5);
 
     // Slices should be at positions 4, 8, 12
-    expect(duplicateCalls[2].position).toBe(4);
-    expect(duplicateCalls[3].position).toBe(8);
-    expect(duplicateCalls[4].position).toBe(12);
+    expect(duplicateCalls[2]?.position).toBe(4);
+    expect(duplicateCalls[3]?.position).toBe(8);
+    expect(duplicateCalls[4]?.position).toBe(12);
 
     // Should use looping workaround: set looping=1, then set markers, then looping=0
     const loopingCalls = filterLoopingCalls(setCalls);
@@ -154,12 +169,12 @@ describe("transformClips - slicing unlooped clips", () => {
     const sessionSlotId = "session_slot_1";
     const sessionClipId = "session_clip_1";
     let duplicateCallCount = 0;
-    const duplicateCalls = [];
+    const duplicateCalls: Array<{ id: string | undefined; position: number }> = [];
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockContext) {
       return this._path === "id clip_45" ? clipId : this._id;
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockContext) {
       if (this._id === clipId) return "live_set tracks 0 arrangement_clips 0";
       if (this._id?.startsWith("holding_")) return "live_set tracks 0 arr 1";
       if (this._id?.startsWith("moved_")) return "live_set tracks 0 arr 1";
@@ -168,7 +183,7 @@ describe("transformClips - slicing unlooped clips", () => {
 
       return this._path;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockContext) {
       return this._id === clipId ? "Clip" : undefined;
     });
 
@@ -199,10 +214,10 @@ describe("transformClips - slicing unlooped clips", () => {
       "live_set tracks 0": { track_index: 0, clip_slots: [sessionSlotId] },
     });
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (this: MockContext, method: string, ...args: unknown[]) {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
-        const position = args[1];
+        const position = args[1] as number;
 
         duplicateCalls.push({ id: this._id, position });
         if (duplicateCallCount === 1) return ["id", "holding_1"];

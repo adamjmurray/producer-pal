@@ -12,7 +12,7 @@ import {
 describe("transform-clips helpers", () => {
   describe("parseTransposeValues", () => {
     it("returns null when transposeValues is null", () => {
-      expect(parseTransposeValues(null)).toBeNull();
+      expect(parseTransposeValues(undefined)).toBeNull();
     });
 
     it("returns null when transposeValues is undefined", () => {
@@ -241,7 +241,7 @@ describe("transform-clips helpers", () => {
 
     it("handles empty array", () => {
       const rng = createSeededRNG(12345);
-      const input = [];
+      const input: number[] = [];
       const shuffled = shuffleArray(input, rng);
 
       expect(shuffled).toStrictEqual([]);

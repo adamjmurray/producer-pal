@@ -8,6 +8,11 @@ import {
   setupTwoClipBaseMocks,
 } from "./transform-clips-slicing-test-helpers.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
 describe("transformClips - slicing", () => {
   it("should slice looped clips and tile to original length", () => {
     const clipId = "clip_1";
@@ -72,7 +77,7 @@ describe("transformClips - slicing", () => {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
     // Override to be a session clip
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -121,7 +126,7 @@ describe("transformClips - slicing", () => {
     let sliceOperationCount = 0;
 
     setupTwoClipBaseMocks(clip1Id, clip2Id);
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") {
           return [4];
@@ -201,7 +206,7 @@ describe("transformClips - slicing", () => {
 
       return [0];
     });
-    liveApiCall.mockImplementation(function (method) {
+    liveApiCall.mockImplementation(function (this: MockContext, method: string) {
       // Track when we duplicate/move clips (which happens during slicing)
       if (method === "duplicate_clip_to_arrangement") {
         sliceOperationCount++;
@@ -238,11 +243,14 @@ describe("transformClips - slicing", () => {
 
     /**
      * Mock properties for primary clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} id - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param id - Clip ID
+     * @returns Mock property value
      */
-    function mockPrimaryClipProperties(prop, id) {
+    function mockPrimaryClipProperties(
+      prop: string,
+      id: string | undefined,
+    ): number[] | null {
       if (id === clipId) {
         if (prop === "is_midi_clip") return [0];
         if (prop === "is_audio_clip") return [1];
@@ -260,11 +268,14 @@ describe("transformClips - slicing", () => {
 
     /**
      * Mock properties for following clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} id - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param id - Clip ID
+     * @returns Mock property value
      */
-    function mockFollowingClipProperties(prop, id) {
+    function mockFollowingClipProperties(
+      prop: string,
+      id: string | undefined,
+    ): number[] | null {
       if (id === followingClipId) {
         if (prop === "is_midi_clip") return [0];
         if (prop === "is_audio_clip") return [1];
@@ -278,11 +289,14 @@ describe("transformClips - slicing", () => {
 
     /**
      * Mock properties for holding clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} id - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param id - Clip ID
+     * @returns Mock property value
      */
-    function mockHoldingClipProperties(prop, id) {
+    function mockHoldingClipProperties(
+      prop: string,
+      id: string | undefined,
+    ): number[] | null {
       if (id?.startsWith("holding_")) {
         if (prop === "end_time") return [40000 + 3];
         if (prop === "loop_start") return [0.0];
@@ -294,11 +308,14 @@ describe("transformClips - slicing", () => {
 
     /**
      * Mock properties for sliced clip objects
-     * @param {string} prop - Property name to retrieve
-     * @param {string} id - Clip ID
-     * @returns {*} - Mock property value
+     * @param prop - Property name to retrieve
+     * @param id - Clip ID
+     * @returns Mock property value
      */
-    function mockSlicedClipProperties(prop, id) {
+    function mockSlicedClipProperties(
+      prop: string,
+      id: string | undefined,
+    ): number[] | null {
       if (id?.startsWith("moved_") || id?.startsWith("tile_")) {
         if (prop === "loop_start") return [0.0];
         if (prop === "start_marker") return [0.0];
@@ -313,7 +330,7 @@ describe("transformClips - slicing", () => {
       return null;
     }
 
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -321,9 +338,9 @@ describe("transformClips - slicing", () => {
       }
 
       const result =
-        mockPrimaryClipProperties(prop, this._id) ||
-        mockFollowingClipProperties(prop, this._id) ||
-        mockHoldingClipProperties(prop, this._id) ||
+        mockPrimaryClipProperties(prop, this._id) ??
+        mockFollowingClipProperties(prop, this._id) ??
+        mockHoldingClipProperties(prop, this._id) ??
         mockSlicedClipProperties(prop, this._id);
 
       if (result) return result;
@@ -349,7 +366,7 @@ describe("transformClips - slicing", () => {
     });
 
     // Mock liveApiCall for clip operations
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (this: MockContext, method: string, ..._args: unknown[]) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
 

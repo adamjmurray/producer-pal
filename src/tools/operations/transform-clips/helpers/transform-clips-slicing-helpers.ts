@@ -6,33 +6,31 @@ import {
   moveClipFromHolding,
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
-/**
- * @typedef {object} SlicingContext
- * @property {number} holdingAreaStartBeats - Start position for holding area
- * @property {string} [silenceWavPath] - Path to silence WAV file for audio clip operations
- */
+export interface SlicingContext {
+  holdingAreaStartBeats: number;
+  silenceWavPath?: string;
+}
 
 /**
  * Iterate through slice positions and call handler for each
- * @param {LiveAPI} sourceClip - The source clip to slice
- * @param {number} sliceBeats - Slice duration in beats
- * @param {number} currentStartTime - Start time of the original clip
- * @param {number} currentEndTime - End time of the original clip
- * @param {(sliceContentStart: number, sliceContentEnd: number, slicePosition: number) => void} sliceHandler - Handler called for each slice position
+ * @param sourceClip - The source clip to slice
+ * @param sliceBeats - Slice duration in beats
+ * @param currentStartTime - Start time of the original clip
+ * @param currentEndTime - End time of the original clip
+ * @param sliceHandler - Handler called for each slice position
  */
 function iterateSlicePositions(
-  sourceClip,
-  sliceBeats,
-  currentStartTime,
-  currentEndTime,
-  sliceHandler,
-) {
-  const clipStartMarker = /** @type {number} */ (
-    sourceClip.getProperty("start_marker")
-  );
+  sourceClip: LiveAPI,
+  sliceBeats: number,
+  currentStartTime: number,
+  currentEndTime: number,
+  sliceHandler: (sliceContentStart: number, sliceContentEnd: number, slicePosition: number) => void,
+): void {
+  const clipStartMarker = sourceClip.getProperty("start_marker") as number;
   let currentSlicePosition = currentStartTime + sliceBeats;
   let currentContentOffset = sliceBeats;
 
@@ -54,32 +52,30 @@ function iterateSlicePositions(
 /**
  * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
  * Any slices beyond actual note content will simply be empty.
- * @param {LiveAPI} sourceClip - The source clip to duplicate from
- * @param {LiveAPI} track - The track containing the clip
- * @param {number} sliceBeats - Slice duration in beats
- * @param {number} currentStartTime - Start time of the original clip
- * @param {number} currentEndTime - End time of the original clip
+ * @param sourceClip - The source clip to duplicate from
+ * @param track - The track containing the clip
+ * @param sliceBeats - Slice duration in beats
+ * @param currentStartTime - Start time of the original clip
+ * @param currentEndTime - End time of the original clip
  */
 function sliceUnloopedMidiContent(
-  sourceClip,
-  track,
-  sliceBeats,
-  currentStartTime,
-  currentEndTime,
-) {
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  sliceBeats: number,
+  currentStartTime: number,
+  currentEndTime: number,
+): void {
   iterateSlicePositions(
     sourceClip,
     sliceBeats,
     currentStartTime,
     currentEndTime,
     (sliceContentStart, sliceContentEnd, slicePosition) => {
-      const duplicateResult = /** @type {string} */ (
-        track.call(
-          "duplicate_clip_to_arrangement",
-          `id ${sourceClip.id}`,
-          slicePosition,
-        )
-      );
+      const duplicateResult = track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sourceClip.id}`,
+        slicePosition,
+      ) as string;
       const sliceClip = LiveAPI.from(duplicateResult);
 
       setClipMarkersWithLoopingWorkaround(sliceClip, {
@@ -92,21 +88,21 @@ function sliceUnloopedMidiContent(
 
 /**
  * Reveal hidden content in unlooped audio clips by duplicating and setting markers
- * @param {LiveAPI} sourceClip - The source clip to duplicate from
- * @param {LiveAPI} track - The track containing the clip
- * @param {number} sliceBeats - Slice duration in beats
- * @param {number} currentStartTime - Start time of the original clip
- * @param {number} currentEndTime - End time of the original clip
- * @param {SlicingContext} _context - Internal context object
+ * @param sourceClip - The source clip to duplicate from
+ * @param track - The track containing the clip
+ * @param sliceBeats - Slice duration in beats
+ * @param currentStartTime - Start time of the original clip
+ * @param currentEndTime - End time of the original clip
+ * @param _context - Internal context object
  */
 function sliceUnloopedAudioContent(
-  sourceClip,
-  track,
-  sliceBeats,
-  currentStartTime,
-  currentEndTime,
-  _context,
-) {
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  sliceBeats: number,
+  currentStartTime: number,
+  currentEndTime: number,
+  _context: SlicingContext,
+): void {
   iterateSlicePositions(
     sourceClip,
     sliceBeats,
@@ -127,12 +123,16 @@ function sliceUnloopedAudioContent(
 
 /**
  * Prepare slice parameters by converting to Ableton beats
- * @param {string | undefined} slice - Slice duration in bar:beat format
- * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
- * @param {Set<string>} warnings - Set to track warnings already issued
- * @returns {number|null} - Slice duration in beats or null
+ * @param slice - Slice duration in bar:beat format
+ * @param arrangementClips - Array of arrangement clips
+ * @param warnings - Set to track warnings already issued
+ * @returns Slice duration in beats or null
  */
-export function prepareSliceParams(slice, arrangementClips, warnings) {
+export function prepareSliceParams(
+  slice: string | undefined,
+  arrangementClips: LiveAPI[],
+  warnings: Set<string>,
+): number | null {
   if (slice == null) {
     return null;
   }
@@ -147,12 +147,12 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   }
 
   const liveSet = LiveAPI.from("live_set");
-  const songTimeSigNumerator = /** @type {number} */ (
-    liveSet.getProperty("signature_numerator")
-  );
-  const songTimeSigDenominator = /** @type {number} */ (
-    liveSet.getProperty("signature_denominator")
-  );
+  const songTimeSigNumerator = liveSet.getProperty(
+    "signature_numerator",
+  ) as number;
+  const songTimeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
   const sliceBeats = barBeatDurationToAbletonBeats(
     slice,
     songTimeSigNumerator,
@@ -166,36 +166,40 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   return sliceBeats;
 }
 
+interface SlicedClipRange {
+  trackIndex: number;
+  startTime: number;
+  endTime: number;
+}
+
 /**
  * Perform slicing of arrangement clips
- * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
- * @param {number} sliceBeats - Slice duration in Ableton beats
- * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
- * @param {Set<string>} _warnings - Set to track warnings (unused, kept for consistent signature)
- * @param {string} slice - Original slice parameter for error messages
- * @param {SlicingContext} _context - Internal context object
+ * @param arrangementClips - Array of arrangement clips to slice
+ * @param sliceBeats - Slice duration in Ableton beats
+ * @param clips - Array to update with fresh clips after slicing
+ * @param _warnings - Set to track warnings (unused, kept for consistent signature)
+ * @param slice - Original slice parameter for error messages
+ * @param _context - Internal context object
  */
 export function performSlicing(
-  arrangementClips,
-  sliceBeats,
-  clips,
-  _warnings,
-  slice,
-  _context,
-) {
+  arrangementClips: LiveAPI[],
+  sliceBeats: number,
+  clips: LiveAPI[],
+  _warnings: Set<string>,
+  slice: string,
+  _context: SlicingContext,
+): void {
   const holdingAreaStart = _context.holdingAreaStartBeats;
   let totalSlicesCreated = 0;
   // Track position ranges for sliced clips to re-scan after deletion
-  const slicedClipRanges = new Map();
+  const slicedClipRanges = new Map<string, SlicedClipRange>();
 
   for (const clip of arrangementClips) {
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
-    const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
+    const isLooping = (clip.getProperty("looping") as number) > 0;
     // Get current clip arrangement length
-    const currentStartTime = /** @type {number} */ (
-      clip.getProperty("start_time")
-    );
-    const currentEndTime = /** @type {number} */ (clip.getProperty("end_time"));
+    const currentStartTime = clip.getProperty("start_time") as number;
+    const currentEndTime = clip.getProperty("end_time") as number;
     const currentArrangementLength = currentEndTime - currentStartTime;
 
     // Only slice if clip is longer than or equal to slice size
@@ -239,9 +243,7 @@ export function performSlicing(
       sliceBeats,
       holdingAreaStart,
       isMidiClip,
-      /** @type {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} */ (
-        _context
-      ),
+      _context as TilingContext,
     );
 
     // Delete original clip before moving from holding
@@ -264,9 +266,7 @@ export function performSlicing(
           currentStartTime + sliceBeats,
           remainingLength,
           holdingAreaStart,
-          /** @type {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} */ (
-            _context
-          ),
+          _context as TilingContext,
           { adjustPreRoll: true, tileLength: sliceBeats },
         );
       } else if (isMidiClip) {
@@ -304,7 +304,7 @@ export function performSlicing(
     const freshClips = trackClipIds
       .map((id) => LiveAPI.from(id))
       .filter((c) => {
-        const clipStart = /** @type {number} */ (c.getProperty("start_time"));
+        const clipStart = c.getProperty("start_time") as number;
 
         return (
           clipStart >= range.startTime - EPSILON &&
