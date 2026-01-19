@@ -1,4 +1,5 @@
 import * as console from "#src/shared/v8-max-console.js";
+import type { ReadClipResult } from "#src/tools/clip/read/read-clip.js";
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
@@ -58,19 +59,13 @@ interface ReadTrackGenericArgs {
   returnTrackNames?: string[];
 }
 
-interface ClipResult {
-  id: string | null;
-  name?: string;
-  type?: string;
-}
-
 interface SessionClipsResult {
-  sessionClips?: ClipResult[];
+  sessionClips?: ReadClipResult[];
   sessionClipCount?: number;
 }
 
 interface ArrangementClipsResult {
-  arrangementClips?: ClipResult[];
+  arrangementClips?: ReadClipResult[];
   arrangementClipCount?: number;
 }
 
