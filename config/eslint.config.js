@@ -504,6 +504,12 @@ export default [
           "./src/tools/track/tsconfig.test.json",
           "./src/tools/operations/transform-clips/tsconfig.json",
           "./src/tools/operations/transform-clips/tsconfig.test.json",
+          "./src/tools/device/tsconfig.json",
+          "./src/tools/device/tsconfig.test.json",
+          "./src/tools/operations/duplicate/tsconfig.json",
+          "./src/tools/operations/duplicate/tsconfig.test.json",
+          "./src/notation/tsconfig.json",
+          "./src/notation/tsconfig.test.json",
         ],
       },
       globals: {
