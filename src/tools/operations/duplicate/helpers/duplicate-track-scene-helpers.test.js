@@ -8,6 +8,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
+import { setupScenePathFromId } from "./duplicate-test-helpers.js";
 import {
   calculateSceneLength,
   duplicateScene,
@@ -587,14 +588,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return empty clips when withoutClips is true", () => {
-      liveApiPath.mockImplementation(function () {
-        // LiveAPI.from("scene1") creates instance with _path = "scene1"
-        if (this._path === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePathFromId("scene1", 0);
 
       mockLiveApiGet({
         LiveSet: {
@@ -620,14 +614,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use provided arrangementLength", () => {
-      liveApiPath.mockImplementation(function () {
-        // LiveAPI.from("scene1") creates instance with _path = "scene1"
-        if (this._path === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePathFromId("scene1", 0);
 
       mockLiveApiGet({
         LiveSet: {
@@ -665,14 +652,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use calculateSceneLength when arrangementLength is not provided", () => {
-      liveApiPath.mockImplementation(function () {
-        // LiveAPI.from("scene1") creates instance with _path = "scene1"
-        if (this._path === "scene1") {
-          return "live_set scenes 0";
-        }
-
-        return this._path;
-      });
+      setupScenePathFromId("scene1", 0);
 
       mockLiveApiGet({
         LiveSet: {

@@ -50,7 +50,7 @@ export function setupTrackPath(trackId, trackIndex = 0) {
 }
 
 /**
- * Setup liveApiPath mock for scene duplication tests.
+ * Setup liveApiPath mock for scene duplication tests (matches by id).
  * @param {string} sceneId - Scene ID (e.g., "scene1")
  * @param {number} sceneIndex - Scene index (e.g., 0)
  */
@@ -62,6 +62,29 @@ export function setupScenePath(sceneId, sceneIndex = 0) {
      */
     function () {
       if (this._id === sceneId) {
+        return `live_set scenes ${sceneIndex}`;
+      }
+
+      return this._path;
+    },
+  );
+}
+
+/**
+ * Setup liveApiPath mock for scene tests where LiveAPI.from(sceneId) is used.
+ * This handles the case where the instance has _path = sceneId (from LiveAPI.from).
+ * @param {string} sceneId - Scene ID used in LiveAPI.from() (e.g., "scene1")
+ * @param {number} sceneIndex - Scene index (e.g., 0)
+ */
+export function setupScenePathFromId(sceneId, sceneIndex = 0) {
+  liveApiPath.mockImplementation(
+    /**
+     * @this {MockContext}
+     * @returns {string | undefined} Mock ID or undefined
+     */
+    function () {
+      // LiveAPI.from(sceneId) creates instance with _path = sceneId
+      if (this._path === sceneId) {
         return `live_set scenes ${sceneIndex}`;
       }
 

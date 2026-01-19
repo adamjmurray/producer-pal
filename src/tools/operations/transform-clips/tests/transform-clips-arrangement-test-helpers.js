@@ -1,9 +1,60 @@
+import { vi } from "vitest";
 import {
   liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
+
+/**
+ * Setup mocks for testing error scenarios with no clips in arrangement.
+ * @param {number} [trackIndex] - Track index to mock (default: 0)
+ * @returns {import("vitest").SpyInstance} Console error spy
+ */
+export function setupNoClipsInArrangementMocks(trackIndex = 0) {
+  liveApiType.mockImplementation(function () {
+    if (this._path === `live_set tracks ${trackIndex}`) return "Track";
+  });
+  liveApiGet.mockImplementation(function (prop) {
+    if (this._path === "live_set") {
+      if (prop === "signature_numerator") return [4];
+      if (prop === "signature_denominator") return [4];
+    }
+
+    if (
+      this._path === `live_set tracks ${trackIndex}` &&
+      prop === "arrangement_clips"
+    )
+      return [];
+
+    return [0];
+  });
+
+  return vi.spyOn(console, "error");
+}
+
+/**
+ * Setup mocks for testing error scenarios with non-existent track.
+ * @param {number} trackIndex - Track index that doesn't exist
+ */
+export function setupNonExistentTrackMocks(trackIndex) {
+  liveApiId.mockImplementation(function () {
+    if (this._path === `live_set tracks ${trackIndex}`) return "0";
+
+    return this._id;
+  });
+  liveApiType.mockImplementation(function () {
+    // Track doesn't exist - return undefined
+  });
+  liveApiGet.mockImplementation(function (prop) {
+    if (this._path === "live_set") {
+      if (prop === "signature_numerator") return [4];
+      if (prop === "signature_denominator") return [4];
+    }
+
+    return [0];
+  });
+}
 
 /**
  * @typedef {object} MockContext
