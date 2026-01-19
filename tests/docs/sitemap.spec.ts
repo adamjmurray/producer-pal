@@ -32,7 +32,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
 /**
  * Parse sitemap.xml and extract all URLs
  */
-function parseSitemap() {
+function parseSitemap(): string[] {
   const sitemapPath = join(
     process.cwd(),
     "docs",
@@ -51,7 +51,7 @@ function parseSitemap() {
 /**
  * Convert absolute URL to relative path for local testing
  */
-function toRelativePath(absoluteUrl) {
+function toRelativePath(absoluteUrl: string): string {
   const url = new URL(absoluteUrl);
 
   return url.pathname;
@@ -60,7 +60,7 @@ function toRelativePath(absoluteUrl) {
 /**
  * Check if a URL is external
  */
-function isExternalUrl(href) {
+function isExternalUrl(href: string): boolean {
   try {
     const url = new URL(href, "http://localhost");
 
@@ -73,7 +73,7 @@ function isExternalUrl(href) {
 /**
  * Check if external domain is allowed
  */
-function isAllowedExternalDomain(href) {
+function isAllowedExternalDomain(href: string): boolean {
   try {
     const url = new URL(href);
 
@@ -88,7 +88,10 @@ function isAllowedExternalDomain(href) {
 /**
  * Normalize URL for comparison with sitemap
  */
-function normalizeUrlForSitemap(href, baseUrl = "https://producer-pal.org") {
+function normalizeUrlForSitemap(
+  href: string,
+  baseUrl = "https://producer-pal.org",
+): string | null {
   try {
     // Handle hash-only links (same page)
     if (href.startsWith("#")) {
@@ -116,11 +119,11 @@ function normalizeUrlForSitemap(href, baseUrl = "https://producer-pal.org") {
   }
 }
 
-test.describe("Docs Site Sitemap Tests", () => {
-  let sitemapUrls;
-  let consoleErrors = [];
-  let consoleWarnings = [];
+let sitemapUrls: string[] = [];
+let consoleErrors: string[] = [];
+let consoleWarnings: string[] = [];
 
+test.describe("Docs Site Sitemap Tests", () => {
   test.beforeAll(() => {
     sitemapUrls = parseSitemap();
   });
@@ -181,7 +184,7 @@ test.describe("Docs Site Sitemap Tests", () => {
       // Check for navigation links
       const navLinks = await page.locator("nav a").count();
 
-      expect(navLinks).toBeGreaterThan(0, "Page should have navigation links");
+      expect(navLinks).toBeGreaterThan(0);
 
       // Verify no console errors or warnings
       expect(consoleErrors, `Console errors on ${relativePath}`).toEqual([]);
@@ -191,7 +194,7 @@ test.describe("Docs Site Sitemap Tests", () => {
 
       // Get all links on the page
       const links = await page.locator("a[href]").all();
-      const linkValidationErrors = [];
+      const linkValidationErrors: string[] = [];
 
       for (const link of links) {
         const href = await link.getAttribute("href");
