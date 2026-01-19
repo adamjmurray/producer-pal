@@ -105,7 +105,7 @@ See `dev-docs/Architecture.md` for detailed system design and
   short, clear, and focused on the most useful and relevant info.
 
 - **Chat UI builds**: The webui is built with Vite (config in
-  `config/vite.config.mjs`) and outputs a single self-contained
+  `config/vite.config.ts`) and outputs a single self-contained
   `max-for-live-device/chat-ui.html` file. Use `npm run ui:build` to check the
   UI build succeeds.
 
@@ -219,7 +219,7 @@ first:**
   eslint-disable and @ts-expect-error comments. Increasing these limits weakens
   code quality enforcement.
 
-- `config/vitest.config.mjs` (thresholds section) - Test coverage thresholds.
+- `config/vitest.config.ts` (thresholds section) - Test coverage thresholds.
   Lowering these allows coverage to drop.
 
 If a change requires relaxing these limits, ask the user for approval before
