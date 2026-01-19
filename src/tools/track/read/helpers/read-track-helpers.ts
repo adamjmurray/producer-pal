@@ -1,6 +1,9 @@
 import * as console from "#src/shared/v8-max-console.js";
 import { VERSION } from "#src/shared/version.js";
-import { readClip } from "#src/tools/clip/read/read-clip.js";
+import {
+  readClip,
+  type ReadClipResult,
+} from "#src/tools/clip/read/read-clip.js";
 import { STATE } from "#src/tools/constants.js";
 import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.js";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.js";
@@ -8,12 +11,6 @@ import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.js";
-
-interface ClipResult {
-  id: string | null;
-  name?: string;
-  type?: string;
-}
 
 interface MinimalTrackIncludeFlags {
   includeSessionClips: boolean;
@@ -25,9 +22,9 @@ interface MinimalTrackResult {
   id: string | null;
   type: string | null;
   trackIndex: number;
-  sessionClips?: ClipResult[];
+  sessionClips?: ReadClipResult[];
   sessionClipCount?: number;
-  arrangementClips?: ClipResult[];
+  arrangementClips?: ReadClipResult[];
   arrangementClipCount?: number;
 }
 
@@ -62,16 +59,15 @@ export function readSessionClips(
   track: LiveAPI,
   trackIndex: number | null,
   include?: string[],
-): ClipResult[] {
+): ReadClipResult[] {
   return track
     .getChildIds("clip_slots")
-    .map(
-      (_clipSlotId, sceneIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex,
-          ...(include && { include }),
-        }) as unknown as ClipResult,
+    .map((_clipSlotId, sceneIndex) =>
+      readClip({
+        trackIndex,
+        sceneIndex,
+        ...(include && { include }),
+      }),
     )
     .filter((clip) => clip.id != null);
 }
@@ -107,15 +103,14 @@ export function countSessionClips(
 export function readArrangementClips(
   track: LiveAPI,
   include?: string[],
-): ClipResult[] {
+): ReadClipResult[] {
   return track
     .getChildIds("arrangement_clips")
-    .map(
-      (clipId) =>
-        readClip({
-          clipId,
-          ...(include && { include }),
-        }) as unknown as ClipResult,
+    .map((clipId) =>
+      readClip({
+        clipId,
+        ...(include && { include }),
+      }),
     )
     .filter((clip) => clip.id != null);
 }

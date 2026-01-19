@@ -40,6 +40,49 @@ interface WarpMarkerData {
   beat_time: number;
 }
 
+/** Result returned by readClip */
+export interface ReadClipResult {
+  // Core properties
+  id: string | null;
+  type: "midi" | "audio" | null;
+  name?: string | null;
+  view?: "arrangement" | "session";
+  color?: string | null;
+  timeSignature?: string | null;
+  looping?: boolean;
+  start?: string;
+  end?: string;
+  length?: string;
+  firstStart?: string;
+
+  // Boolean state properties (only present when true)
+  playing?: boolean;
+  triggered?: boolean;
+  recording?: boolean;
+  overdubbing?: boolean;
+  muted?: boolean;
+
+  // Location properties
+  trackIndex?: number | null;
+  sceneIndex?: number | null;
+  arrangementStart?: string;
+  arrangementLength?: string;
+
+  // MIDI clip properties
+  noteCount?: number;
+  notes?: string;
+
+  // Audio clip properties
+  gainDb?: number;
+  sampleFile?: string;
+  pitchShift?: number;
+  sampleLength?: number;
+  sampleRate?: number;
+  warping?: boolean;
+  warpMode?: string;
+  warpMarkers?: WarpMarker[];
+}
+
 /**
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
@@ -54,7 +97,7 @@ interface WarpMarkerData {
 export function readClip(
   args: ReadClipArgs = {},
   _context: Partial<ToolContext> = {},
-): Record<string, unknown> {
+): ReadClipResult {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
   const { includeClipNotes, includeColor, includeWarpMarkers } =
@@ -143,7 +186,7 @@ export function readClip(
         )
       : null;
 
-  const result: Record<string, unknown> = {
+  const result: ReadClipResult = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     ...(clipName && { name: clipName }),
@@ -229,7 +272,7 @@ function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
  * @param clip - LiveAPI clip object
  */
 function addBooleanStateProperties(
-  result: Record<string, unknown>,
+  result: ReadClipResult,
   clip: LiveAPI,
 ): void {
   if ((clip.getProperty("is_playing") as number) > 0) {
@@ -263,7 +306,7 @@ function addBooleanStateProperties(
  * @param timeSigDenominator - Time signature denominator
  */
 function processMidiClip(
-  result: Record<string, unknown>,
+  result: ReadClipResult,
   clip: LiveAPI,
   includeClipNotes: boolean,
   lengthBeats: number,
@@ -307,7 +350,7 @@ const WARP_MODE_MAPPING: Record<number, string> = {
  * @param includeWarpMarkers - Whether to include warp markers
  */
 function processAudioClip(
-  result: Record<string, unknown>,
+  result: ReadClipResult,
   clip: LiveAPI,
   includeWarpMarkers: boolean,
 ): void {
@@ -352,7 +395,7 @@ function processAudioClip(
  * @param isArrangementClip - Whether clip is in arrangement view
  */
 function addClipLocationProperties(
-  result: Record<string, unknown>,
+  result: ReadClipResult,
   clip: LiveAPI,
   isArrangementClip: boolean,
 ): void {
