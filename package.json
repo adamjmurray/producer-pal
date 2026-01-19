@@ -64,7 +64,6 @@
     "typecheck:src": "tsc --project src/tsconfig.json",
     "typecheck:scripts": "tsc --project scripts/tsconfig.json",
     "typecheck:webui": "node scripts/validate-typescript-only.ts && tsc --project webui/tsconfig.json && tsc --project tests/webui/tsconfig.json",
-    "typecheck:src:strict": "tsc --project tsconfig.src-strict.json",
     "ui:build": "vite build --config config/vite.config.mjs",
     "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
     "ui:test": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs",

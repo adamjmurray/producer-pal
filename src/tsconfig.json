@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
