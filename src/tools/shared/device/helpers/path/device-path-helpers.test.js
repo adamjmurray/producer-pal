@@ -373,6 +373,18 @@ describe("device-path-helpers", () => {
           "Invalid drum pad note",
         );
       });
+
+      it("throws on invalid track index with 't' prefix", () => {
+        expect(() => resolvePathToLiveApi("tabc/d0")).toThrow(
+          "Invalid track index in path",
+        );
+      });
+
+      it("throws on invalid chain segment (not c, rc, or p prefix)", () => {
+        expect(() => resolvePathToLiveApi("t0/d0/xyz")).toThrow(
+          "Invalid chain segment in path",
+        );
+      });
     });
   });
 
