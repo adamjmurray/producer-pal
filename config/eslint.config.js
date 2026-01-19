@@ -574,9 +574,9 @@ export default [
     },
   },
 
-  // Max V8 environment globals for tools/operations/delete (migrated to TypeScript)
+  // Max V8 environment globals for tools (migrated to TypeScript)
   {
-    files: ["src/tools/operations/delete/*.ts"],
+    files: ["src/tools/**/*.ts"],
     languageOptions: {
       globals: {
         LiveAPI: "readonly",
@@ -588,75 +588,14 @@ export default [
     },
   },
 
-  // Max V8 environment globals for tools/samples and tools/workflow (migrated to TypeScript)
+  // Additional globals for samples and workflow tools
   {
     files: ["src/tools/samples/*.ts", "src/tools/workflow/*.ts"],
     languageOptions: {
       globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
         Folder: "readonly",
         outlet: "readonly",
       },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Max V8 environment globals for tools/live-set (migrated to TypeScript)
-  {
-    files: ["src/tools/live-set/**/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Max V8 environment globals for tools/scene (migrated to TypeScript)
-  {
-    files: ["src/tools/scene/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Max V8 environment globals for tools/control (migrated to TypeScript)
-  {
-    files: ["src/tools/control/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Max V8 environment globals for tools/track (migrated to TypeScript)
-  {
-    files: ["src/tools/track/**/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
     },
   },
 
