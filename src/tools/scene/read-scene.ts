@@ -5,16 +5,41 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 
+interface ReadSceneArgs {
+  sceneIndex?: number;
+  sceneId?: string;
+  include?: string[];
+}
+
+interface ReadSceneResult {
+  id: string | null;
+  name: string | null;
+  sceneIndex: number | null | undefined;
+  color?: string | null;
+  tempo?: unknown;
+  timeSignature?: string | null;
+  triggered?: boolean;
+  clips?: object[];
+  clipCount?: number;
+}
+
+interface ClipResult {
+  id?: string | null;
+}
+
 /**
  * Read comprehensive information about a scene
- * @param {object} args - The parameters
- * @param {number} [args.sceneIndex] - Scene index (0-based)
- * @param {string} [args.sceneId] - Scene ID to directly access any scene
- * @param {string[]} [args.include=[]] - Array of data to include
- * @param {object} _context - Internal context object (unused)
- * @returns {object} Result object with scene information
+ * @param args - The parameters
+ * @param args.sceneIndex - Scene index (0-based)
+ * @param args.sceneId - Scene ID to directly access any scene
+ * @param args.include - Array of data to include
+ * @param _context - Internal context object (unused)
+ * @returns Result object with scene information
  */
-export function readScene(args = {}, _context = {}) {
+export function readScene(
+  args: ReadSceneArgs = {},
+  _context: Partial<ToolContext> = {},
+): ReadSceneResult {
   const { sceneIndex, sceneId } = args;
 
   // Validate parameters
@@ -28,9 +53,8 @@ export function readScene(args = {}, _context = {}) {
   );
   const liveSet = LiveAPI.from(`live_set`);
 
-  let scene;
-  /** @type {number | null | undefined} */
-  let resolvedSceneIndex = sceneIndex;
+  let scene: LiveAPI;
+  let resolvedSceneIndex: number | null | undefined = sceneIndex;
 
   if (sceneId != null) {
     // Use sceneId to access scene directly and validate it's a scene
@@ -50,16 +74,14 @@ export function readScene(args = {}, _context = {}) {
     };
   }
 
-  const isTempoEnabled =
-    /** @type {number} */ (scene.getProperty("tempo_enabled")) > 0;
+  const isTempoEnabled = (scene.getProperty("tempo_enabled") as number) > 0;
   const isTimeSignatureEnabled =
-    /** @type {number} */ (scene.getProperty("time_signature_enabled")) > 0;
+    (scene.getProperty("time_signature_enabled") as number) > 0;
 
-  const sceneName = scene.getProperty("name");
+  const sceneName = scene.getProperty("name") as string | null;
   // resolvedSceneIndex is guaranteed to be a number at this point (either from sceneIndex param or scene.sceneIndex)
-  const sceneNum = /** @type {number} */ (resolvedSceneIndex);
-  /** @type {{ id: string, name: string, sceneIndex: number | null | undefined, color?: string | null, tempo?: unknown, timeSignature?: string | null, triggered?: boolean, clips?: object[], clipCount?: number }} */
-  const result = {
+  const sceneNum = resolvedSceneIndex as number;
+  const result: ReadSceneResult = {
     id: scene.id,
     name: sceneName ? `${sceneName} (${sceneNum + 1})` : `${sceneNum + 1}`,
     sceneIndex: resolvedSceneIndex,
@@ -76,8 +98,7 @@ export function readScene(args = {}, _context = {}) {
   }
 
   // Only include triggered when scene is triggered
-  const isTriggered =
-    /** @type {number} */ (scene.getProperty("is_triggered")) > 0;
+  const isTriggered = (scene.getProperty("is_triggered") as number) > 0;
 
   if (isTriggered) {
     result.triggered = true;
@@ -93,7 +114,7 @@ export function readScene(args = {}, _context = {}) {
           include: args.include,
         }),
       )
-      .filter((/** @type {{ id?: string | null }} */ clip) => clip.id != null);
+      .filter((clip: ClipResult) => clip.id != null);
   } else {
     // When not including full clip details, just return the count
     result.clipCount = liveSet
@@ -105,9 +126,7 @@ export function readScene(args = {}, _context = {}) {
           include: [],
         }),
       )
-      .filter(
-        (/** @type {{ id?: string | null }} */ clip) => clip.id != null,
-      ).length;
+      .filter((clip: ClipResult) => clip.id != null).length;
   }
 
   return result;

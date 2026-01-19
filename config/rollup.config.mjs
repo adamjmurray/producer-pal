@@ -61,7 +61,8 @@ export default [
               source.includes("/tools/operations/delete/") ||
               source.includes("/tools/samples/") ||
               source.includes("/tools/workflow/") ||
-              source.includes("/tools/live-set/")) &&
+              source.includes("/tools/live-set/") ||
+              source.includes("/tools/scene/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

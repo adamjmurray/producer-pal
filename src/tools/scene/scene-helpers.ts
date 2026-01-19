@@ -2,10 +2,13 @@ import { parseTimeSignature } from "#src/tools/shared/utils.js";
 
 /**
  * Applies tempo property to a scene
- * @param {LiveAPI} scene - The LiveAPI scene object
- * @param {number | null | undefined} tempo - Tempo in BPM. -1 disables, other values enable
+ * @param scene - The LiveAPI scene object
+ * @param tempo - Tempo in BPM. -1 disables, other values enable
  */
-export function applyTempoProperty(scene, tempo) {
+export function applyTempoProperty(
+  scene: LiveAPI,
+  tempo: number | null | undefined,
+): void {
   if (tempo === -1) {
     scene.set("tempo_enabled", false);
   } else if (tempo != null) {
@@ -16,10 +19,13 @@ export function applyTempoProperty(scene, tempo) {
 
 /**
  * Applies time signature property to a scene
- * @param {LiveAPI} scene - The LiveAPI scene object
- * @param {string | null | undefined} timeSignature - Time signature. "disabled" disables, other values enable
+ * @param scene - The LiveAPI scene object
+ * @param timeSignature - Time signature. "disabled" disables, other values enable
  */
-export function applyTimeSignatureProperty(scene, timeSignature) {
+export function applyTimeSignatureProperty(
+  scene: LiveAPI,
+  timeSignature: string | null | undefined,
+): void {
   if (timeSignature === "disabled") {
     scene.set("time_signature_enabled", false);
   } else if (timeSignature != null) {

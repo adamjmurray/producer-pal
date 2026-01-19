@@ -9,21 +9,33 @@ import {
   applyTimeSignatureProperty,
 } from "./scene-helpers.js";
 
-/**
- * @typedef {object} UpdateSceneResult
- * @property {string} id - The scene ID
- */
+interface UpdateSceneResult {
+  id: string;
+}
+
+interface UpdateSceneArgs {
+  ids?: string;
+  name?: string;
+  color?: string;
+  tempo?: number | null;
+  timeSignature?: string | null;
+}
 
 /**
  * Updates properties of existing scenes
- * @param {{ ids?: string, name?: string, color?: string, tempo?: number | null, timeSignature?: string | null }} [args] - The scene parameters
- * @param {object} [_context] - Internal context object (unused)
- * @returns {UpdateSceneResult | UpdateSceneResult[]} Single scene object or array of scene objects
+ * @param args - The scene parameters
+ * @param args.ids - Comma-separated scene IDs to update
+ * @param args.name - Name for the scenes
+ * @param args.color - Color for the scenes (CSS format: hex)
+ * @param args.tempo - Tempo in BPM. Pass -1 to disable.
+ * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
+ * @param _context - Internal context object (unused)
+ * @returns Single scene object or array of scene objects
  */
 export function updateScene(
-  { ids, name, color, tempo, timeSignature } = {},
-  _context = {},
-) {
+  { ids, name, color, tempo, timeSignature }: UpdateSceneArgs = {},
+  _context: Partial<ToolContext> = {},
+): UpdateSceneResult | UpdateSceneResult[] {
   if (!ids) {
     throw new Error("updateScene failed: ids is required");
   }
@@ -36,7 +48,7 @@ export function updateScene(
     skipInvalid: true,
   });
 
-  const updatedScenes = [];
+  const updatedScenes: UpdateSceneResult[] = [];
 
   for (const scene of scenes) {
     // Update properties if provided
@@ -58,7 +70,7 @@ export function updateScene(
     });
   }
 
-  return /** @type {UpdateSceneResult | UpdateSceneResult[]} */ (
-    unwrapSingleResult(updatedScenes)
-  );
+  return unwrapSingleResult(updatedScenes) as
+    | UpdateSceneResult
+    | UpdateSceneResult[];
 }

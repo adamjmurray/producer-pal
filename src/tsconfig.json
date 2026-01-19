@@ -38,6 +38,7 @@
     "tools/operations/delete/*.ts",
     "tools/samples/*.ts",
     "tools/workflow/*.ts",
-    "tools/live-set/*.ts"
+    "tools/live-set/*.ts",
+    "tools/scene/*.ts"
   ]
 }

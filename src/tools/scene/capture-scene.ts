@@ -1,18 +1,30 @@
-/**
- * @typedef {object} CaptureSceneResult
- * @property {string} id - Scene ID
- * @property {number} sceneIndex - Scene index
- * @property {Array<{id: string, trackIndex: number}>} clips - Captured clips
- */
+interface CapturedClip {
+  id: string;
+  trackIndex: number;
+}
+
+interface CaptureSceneResult {
+  id: string;
+  sceneIndex: number;
+  clips: CapturedClip[];
+}
+
+interface CaptureSceneArgs {
+  sceneIndex?: number;
+  name?: string;
+}
 
 /**
  * Captures the currently playing clips into a new scene
- * @param {object} args - The parameters
- * @param {number} [args.sceneIndex] - Optional scene index to select before capturing
- * @param {string} [args.name] - Optional name for the captured scene
- * @returns {CaptureSceneResult} Result object with information about the captured scene
+ * @param args - The parameters
+ * @param args.sceneIndex - Optional scene index to select before capturing
+ * @param args.name - Optional name for the captured scene
+ * @returns Result object with information about the captured scene
  */
-export function captureScene({ sceneIndex, name } = {}) {
+export function captureScene({
+  sceneIndex,
+  name,
+}: CaptureSceneArgs = {}): CaptureSceneResult {
   const liveSet = LiveAPI.from("live_set");
   const appView = LiveAPI.from("live_set view");
 
@@ -43,7 +55,7 @@ export function captureScene({ sceneIndex, name } = {}) {
   }
 
   // Collect captured clips
-  const clips = [];
+  const clips: CapturedClip[] = [];
   const trackIds = liveSet.getChildIds("tracks");
 
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
