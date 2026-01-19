@@ -137,7 +137,7 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  lint-and-typecheck:
+  lint:
     runs-on: ubuntu-latest
 
     permissions:
@@ -154,6 +154,21 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: npm ci
 
       - name: Type check
         run: npm run typecheck
@@ -331,7 +346,8 @@ jobs:
     needs:
       [
         build-verification,
-        lint-and-typecheck,
+        lint,
+        typecheck,
         unit-tests,
         playwright-tests,
         code-hygiene,
@@ -368,7 +384,8 @@ jobs:
 
             // Check job statuses
             const jobs = {
-              'Lint & Typecheck': '${{ needs.lint-and-typecheck.result }}',
+              'Lint': '${{ needs.lint.result }}',
+              'Typecheck': '${{ needs.typecheck.result }}',
               'Code Hygiene': '${{ needs.code-hygiene.result }}',
               'Unit Tests': '${{ needs.unit-tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
@@ -397,7 +414,8 @@ jobs:
               '|-----|--------|',
               `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
               `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
-              `| Lint & Typecheck | ${icon(jobs['Lint & Typecheck'])} ${jobs['Lint & Typecheck']} |`,
+              `| Lint | ${icon(jobs['Lint'])} ${jobs['Lint']} |`,
+              `| Typecheck | ${icon(jobs['Typecheck'])} ${jobs['Typecheck']} |`,
               `| Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
               `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
