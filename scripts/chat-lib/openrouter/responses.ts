@@ -43,6 +43,12 @@ interface SessionContext {
   options: ChatOptions;
 }
 
+/**
+ * Makes a fetch request to the OpenRouter Responses API
+ *
+ * @param body - Request body to send
+ * @returns Fetch response
+ */
 async function fetchResponses(body: ResponsesRequestBody): Promise<Response> {
   const response = await fetch(OPENROUTER_RESPONSES_URL, {
     method: "POST",
@@ -107,6 +113,13 @@ export async function runOpenRouterResponses(
   }
 }
 
+/**
+ * Sends a message in the Responses API session
+ *
+ * @param ctx - Session context with conversation and tools
+ * @param input - User input text
+ * @param turnCount - Current conversation turn number
+ */
 async function sendMessageResponses(
   ctx: SessionContext,
   input: string,
@@ -124,6 +137,12 @@ async function sendMessageResponses(
   }
 }
 
+/**
+ * Builds the Responses API request body from context
+ *
+ * @param ctx - Session context with conversation and options
+ * @returns Request body for the Responses API
+ */
 function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   const { conversation, model, tools, options } = ctx;
   const body: ResponsesRequestBody = { model, input: conversation, tools };
@@ -140,6 +159,12 @@ function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   return body;
 }
 
+/**
+ * Handles non-streaming response from Responses API
+ *
+ * @param ctx - Session context
+ * @returns Whether to continue with tool calls
+ */
 async function handleResponsesNonStreaming(
   ctx: SessionContext,
 ): Promise<boolean> {
@@ -162,6 +187,12 @@ async function handleResponsesNonStreaming(
   return await processResponsesOutput(ctx, data.output);
 }
 
+/**
+ * Handles streaming response from Responses API
+ *
+ * @param ctx - Session context
+ * @returns Whether to continue with tool calls
+ */
 async function handleResponsesStreaming(ctx: SessionContext): Promise<boolean> {
   const { options } = ctx;
   const body = { ...buildResponsesRequestBody(ctx), stream: true };
@@ -204,6 +235,13 @@ async function handleResponsesStreaming(ctx: SessionContext): Promise<boolean> {
   return false;
 }
 
+/**
+ * Reads and parses an SSE stream from the Responses API
+ *
+ * @param reader - Stream reader for response body
+ * @param options - Chat options for debug logging
+ * @param state - Stream state to update
+ */
 async function readSseStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: ChatOptions,
@@ -244,6 +282,12 @@ async function readSseStream(
   }
 }
 
+/**
+ * Processes a single stream event and updates state
+ *
+ * @param event - Stream event to process
+ * @param state - Stream state to update
+ */
 function processResponsesStreamEvent(
   event: ResponsesStreamEvent,
   state: ResponsesStreamState,
@@ -284,6 +328,13 @@ function processResponsesStreamEvent(
   }
 }
 
+/**
+ * Handles accumulated function calls from streaming
+ *
+ * @param ctx - Session context with MCP client
+ * @param state - Stream state with function calls
+ * @returns True to continue the response loop
+ */
 async function handleResponsesFunctionCalls(
   ctx: SessionContext,
   state: ResponsesStreamState,
@@ -302,6 +353,14 @@ async function handleResponsesFunctionCalls(
   return true;
 }
 
+/**
+ * Executes a tool call and adds result to conversation
+ *
+ * @param ctx - Session context with MCP client
+ * @param callId - Unique call identifier
+ * @param name - Tool name to call
+ * @param argsJson - JSON-encoded arguments
+ */
 async function executeResponsesToolCall(
   ctx: SessionContext,
   callId: string,
@@ -341,6 +400,13 @@ async function executeResponsesToolCall(
   }
 }
 
+/**
+ * Processes non-streaming output items
+ *
+ * @param ctx - Session context with MCP client
+ * @param output - Output items to process
+ * @returns Whether function calls were made
+ */
 async function processResponsesOutput(
   ctx: SessionContext,
   output: ResponsesOutputItem[],

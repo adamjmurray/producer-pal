@@ -59,6 +59,12 @@ export function writeThoughtText(text: string, state: StreamState): void {
   }
 }
 
+/**
+ * Processes reasoning detail items and writes to stdout
+ *
+ * @param details - Array of reasoning details
+ * @param state - Stream state to update
+ */
 function processReasoningDetails(
   details: ReasoningDetail[],
   state: StreamState,
@@ -72,6 +78,12 @@ function processReasoningDetails(
   }
 }
 
+/**
+ * Processes content text and writes to stdout
+ *
+ * @param content - Text content to process
+ * @param state - Stream state to update
+ */
 function processContent(content: string, state: StreamState): void {
   if (state.inThought) {
     process.stdout.write(endThought());
@@ -89,6 +101,12 @@ interface StreamToolCallDelta {
   function?: { name?: string; arguments?: string };
 }
 
+/**
+ * Processes tool call delta updates
+ *
+ * @param toolCalls - Array of tool call deltas
+ * @param state - Stream state to update
+ */
 function processToolCallDeltas(
   toolCalls: StreamToolCallDelta[],
   state: StreamState,

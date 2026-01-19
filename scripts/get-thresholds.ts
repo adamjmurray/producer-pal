@@ -30,6 +30,11 @@ interface DuplicationThresholds {
   scripts: number;
 }
 
+/**
+ * Reads coverage thresholds from vitest config
+ *
+ * @returns Coverage threshold values
+ */
 async function getCoverageThresholds(): Promise<CoverageThresholds> {
   const vitestConfig = await readFile(
     join(configDir, "vitest.config.mjs"),
@@ -64,6 +69,11 @@ async function getCoverageThresholds(): Promise<CoverageThresholds> {
   };
 }
 
+/**
+ * Reads duplication thresholds from jscpd config files
+ *
+ * @returns Duplication threshold values
+ */
 async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
   const [srcConfig, testsConfig, scriptsConfig] = await Promise.all([
     readFile(join(configDir, ".jscpd.json"), "utf-8").then(JSON.parse),
