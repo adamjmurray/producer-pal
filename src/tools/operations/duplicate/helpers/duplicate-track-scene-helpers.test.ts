@@ -466,7 +466,7 @@ describe("duplicate-track-scene-helpers", () => {
       const arrClipId = "arr_clip_456";
 
       liveApiPath.mockImplementation(function (this: MockContext) {
-        if (this._id === arrClipId || this._path?.includes(arrClipId)) {
+        if (this._id === arrClipId || this._path.includes(arrClipId)) {
           return "live_set tracks 1 arrangement_clips 0";
         }
 

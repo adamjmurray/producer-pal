@@ -19,18 +19,21 @@ interface TrackNameMapping {
 interface MockLiveAPIInstance {
   path: string;
   _isLiveSet?: boolean;
-  getChildIds(property: string): string[];
-  getProperty(prop: string): string | null;
+  getChildIds: (property: string) => string[];
+  getProperty: (prop: string) => string | null;
   id: string;
 }
 
 interface MockLiveAPIConstructor {
   new (path: string): MockLiveAPIInstance;
-  from(idOrPath: string): MockLiveAPIInstance;
+  from: (idOrPath: string) => MockLiveAPIInstance;
 }
 
 /**
  * Helper to create a mock LiveAPI class for testing duplicate routing scenarios
+ * @param trackIds - Array of track IDs
+ * @param trackNameMapping - Mapping of paths to track names
+ * @returns Mock LiveAPI constructor
  */
 function createMockLiveAPI(
   trackIds: string[],
@@ -550,18 +553,23 @@ interface ClipSlotMockOptions {
 
 interface ClipSlotMockLiveAPIInstance {
   path: string;
-  exists(): boolean;
-  getProperty(prop: string): boolean | null;
+  exists: () => boolean;
+  getProperty: (prop: string) => boolean | null;
   id: string;
 }
 
 interface ClipSlotMockLiveAPIConstructor {
   new (path: string): ClipSlotMockLiveAPIInstance;
-  from(idOrPath: string): ClipSlotMockLiveAPIInstance;
+  from: (idOrPath: string) => ClipSlotMockLiveAPIInstance;
 }
 
 /**
  * Helper to create a mock LiveAPI class for clip slot duplication tests
+ * @param options - Mock configuration options
+ * @param options.sourceExists - Whether source clip slot exists
+ * @param options.sourceHasClip - Whether source has a clip
+ * @param options.destExists - Whether destination clip slot exists
+ * @returns Mock LiveAPI constructor
  */
 function createClipSlotMockLiveAPI({
   sourceExists,
@@ -616,17 +624,21 @@ interface ArrangementMockLiveAPIInstance {
   path: string;
   _path: string;
   trackIndex?: number | null;
-  exists(): boolean;
+  exists: () => boolean;
   id: string;
 }
 
 interface ArrangementMockLiveAPIConstructor {
   new (path: string): ArrangementMockLiveAPIInstance;
-  from(idOrPath: string): ArrangementMockLiveAPIInstance;
+  from: (idOrPath: string) => ArrangementMockLiveAPIInstance;
 }
 
 /**
  * Helper to create a mock LiveAPI class for arrangement clip duplication tests
+ * @param options - Mock configuration options
+ * @param options.clipExists - Whether the clip exists
+ * @param options.trackIndex - Track index for the clip
+ * @returns Mock LiveAPI constructor
  */
 function createArrangementMockLiveAPI({
   clipExists,

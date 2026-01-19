@@ -86,6 +86,7 @@ export function setupScenePathFromId(sceneId: string, sceneIndex = 0): void {
  * Setup arrangement clip mocks for scene-to-arrangement tests.
  * Extends existing liveApiPath and liveApiGet mocks to handle arrangement clips.
  * @param opts - Options
+ * @param opts.getStartTime - Function to get start time for a path
  */
 export function setupArrangementClipMocks(
   opts: { getStartTime?: (path: string) => number } = {},
@@ -149,6 +150,10 @@ interface SourceTrackMock {
 /**
  * Setup mock for routeToSource track tests.
  * @param opts - Options
+ * @param opts.trackName - Track name
+ * @param opts.monitoringState - Monitoring state value
+ * @param opts.inputRoutingName - Input routing name
+ * @param opts.arm - Arm state
  * @returns Mock data keyed by track path
  */
 export function setupRouteToSourceMock(
@@ -213,6 +218,8 @@ export function setupSessionClipPath(
  * Setup liveApiCall mock for arrangement clip duplication.
  * Handles duplicate_clip_to_arrangement and get_notes_extended methods.
  * @param opts - Options
+ * @param opts.returnClipId - Clip ID to return
+ * @param opts.includeNotes - Whether to include notes
  */
 export function setupArrangementDuplicationMock(
   opts: { returnClipId?: string; includeNotes?: boolean } = {},
@@ -237,6 +244,8 @@ export function setupArrangementDuplicationMock(
 /**
  * Returns mock data for a standard MIDI clip used in scene duplication tests.
  * @param opts - Options
+ * @param opts.length - Clip length
+ * @param opts.name - Clip name
  * @returns Mock data object for the clip
  */
 export function createStandardMidiClipMock(
@@ -326,6 +335,8 @@ interface TimeSignatureMockContext extends MockContext {
 /**
  * Setup mock for time signature duration conversion tests.
  * @param opts - Options
+ * @param opts.clipId - Clip ID
+ * @param opts.clipPath - Clip path
  */
 export function setupTimeSignatureDurationMock(
   opts: { clipId?: string; clipPath?: string } = {},
