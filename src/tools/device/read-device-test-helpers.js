@@ -249,7 +249,7 @@ export function setupDeviceParamMocks(config = {}) {
 
       if (this._path === PARAM_PATH) {
         if (prop === "value_items" && paramProps.value_items) {
-          return paramProps.value_items;
+          return /** @type {unknown[]} */ (paramProps.value_items);
         }
 
         return paramProps[prop] != null ? [paramProps[prop]] : [];

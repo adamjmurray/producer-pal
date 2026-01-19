@@ -34,7 +34,7 @@ const TEST_FILE_PATTERNS = [
   ".test.js",
   ".test.ts",
   ".test.tsx",
-  ".test-helpers.js",
+  "-test-helpers.js",
 ];
 
 /**
