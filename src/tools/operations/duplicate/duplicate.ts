@@ -1,3 +1,4 @@
+import { select } from "#src/tools/control/select.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.js";
@@ -15,7 +16,6 @@ import {
   validateDestinationParameter,
   validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.js";
-import { select } from "#src/tools/control/select.js";
 
 interface DuplicateArgs {
   type: string;
@@ -54,6 +54,7 @@ interface DuplicateParams {
  * @param context - Context object
  * @returns Result object(s)
  */
+// eslint-disable-next-line jsdoc/require-param -- destructured params typed via DuplicateArgs interface
 export function duplicate(
   {
     type,

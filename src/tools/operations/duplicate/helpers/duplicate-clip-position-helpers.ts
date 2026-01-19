@@ -1,3 +1,4 @@
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { buildIndexedName } from "#src/tools/shared/utils.js";
 import {
@@ -8,7 +9,6 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.js";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Duplicates a clip to explicit positions
@@ -134,9 +134,7 @@ function resolveClipArrangementPositions(
   // Bar|beat positions: multiple positions supported
   const positions = parseArrangementStartList(arrangementStart);
 
-  // positions are non-null strings, so barBeatToAbletonBeats always returns number (not null)
-  return positions.map(
-    (pos) =>
-      barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator) as number,
+  return positions.map((pos) =>
+    barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator),
   );
 }

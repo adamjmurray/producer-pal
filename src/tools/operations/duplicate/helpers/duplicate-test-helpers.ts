@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 // Import for use in helper functions below
 import {
   liveApiCall,
@@ -5,7 +6,6 @@ import {
   liveApiPath,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
-import type { Mock } from "vitest";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {

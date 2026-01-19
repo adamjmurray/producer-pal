@@ -1,6 +1,7 @@
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
   getMinimalClipInfo,
   createClipsForLength,
@@ -9,7 +10,6 @@ import {
 import type { MinimalClipInfo } from "./duplicate-helpers.js";
 import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
 import type { RoutingType } from "./duplicate-routing-helpers.js";
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Remove the Producer Pal device from a duplicated track if it was the host track
