@@ -1,13 +1,13 @@
 import {
-  validateAndParseArrangementParams,
-  emitArrangementWarnings,
-} from "#src/tools/clip/helpers/clip-result-helpers.js";
-import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
+import {
+  validateAndParseArrangementParams,
+  emitArrangementWarnings,
+} from "#src/tools/clip/helpers/clip-result-helpers.js";
 
 /**
  * @typedef {object} UpdateClipArgs

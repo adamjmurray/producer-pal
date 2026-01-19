@@ -1,39 +1,41 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
-import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
-/**
- * @typedef {object} MidiNote
- * @property {number} pitch
- * @property {number} start_time
- * @property {number} duration
- * @property {number} velocity
- */
+export interface MidiNote {
+  pitch: number;
+  start_time: number;
+  duration: number;
+  velocity: number;
+}
 
-/**
- * @typedef {object} ArrangementParams
- * @property {number | null} songTimeSigNumerator
- * @property {number | null} songTimeSigDenominator
- * @property {number | null} arrangementStartBeats
- * @property {number | null} arrangementLengthBeats
- */
+export interface ArrangementParams {
+  songTimeSigNumerator: number | null;
+  songTimeSigDenominator: number | null;
+  arrangementStartBeats: number | null;
+  arrangementLengthBeats: number | null;
+}
+
+export interface ClipResult {
+  id: string;
+  noteCount?: number;
+}
 
 /**
  * Validate and parse arrangement parameters
- * @param {string} [arrangementStart] - Bar|beat position for arrangement clip start
- * @param {string} [arrangementLength] - Bar:beat duration for arrangement span
- * @returns {ArrangementParams} Parsed parameters
+ * @param arrangementStart - Bar|beat position for arrangement clip start
+ * @param arrangementLength - Bar:beat duration for arrangement span
+ * @returns Parsed parameters
  */
 export function validateAndParseArrangementParams(
-  arrangementStart,
-  arrangementLength,
-) {
-  /** @type {ArrangementParams} */
-  const result = {
+  arrangementStart?: string,
+  arrangementLength?: string,
+): ArrangementParams {
+  const result: ArrangementParams = {
     songTimeSigNumerator: null,
     songTimeSigDenominator: null,
     arrangementStartBeats: null,
@@ -76,20 +78,16 @@ export function validateAndParseArrangementParams(
 }
 
 /**
- * @typedef {object} ClipResult
- * @property {string} id
- * @property {number} [noteCount]
- */
-
-/**
  * Build clip result object with optional noteCount
- * @param {string} clipId - The clip ID
- * @param {number|null} noteCount - Optional final note count
- * @returns {ClipResult} Result object with id and optionally noteCount
+ * @param clipId - The clip ID
+ * @param noteCount - Optional final note count
+ * @returns Result object with id and optionally noteCount
  */
-export function buildClipResultObject(clipId, noteCount) {
-  /** @type {ClipResult} */
-  const result = { id: clipId };
+export function buildClipResultObject(
+  clipId: string,
+  noteCount: number | null,
+): ClipResult {
+  const result: ClipResult = { id: clipId };
 
   if (noteCount != null) {
     result.noteCount = noteCount;
@@ -100,13 +98,13 @@ export function buildClipResultObject(clipId, noteCount) {
 
 /**
  * Emit warnings for clips moved to same track position
- * @param {number|null} arrangementStartBeats - Whether arrangement start was set
- * @param {Map<number, number>} tracksWithMovedClips - Map of trackIndex to clip count
+ * @param arrangementStartBeats - Whether arrangement start was set
+ * @param tracksWithMovedClips - Map of trackIndex to clip count
  */
 export function emitArrangementWarnings(
-  arrangementStartBeats,
-  tracksWithMovedClips,
-) {
+  arrangementStartBeats: number | null,
+  tracksWithMovedClips: Map<number, number>,
+): void {
   if (arrangementStartBeats == null) {
     return;
   }
@@ -122,18 +120,18 @@ export function emitArrangementWarnings(
 
 /**
  * Prepare a session clip slot, auto-creating scenes if needed
- * @param {number} trackIndex - Track index (0-based)
- * @param {number} sceneIndex - Target scene index (0-based)
- * @param {LiveAPI} liveSet - LiveAPI liveSet object
- * @param {number} maxAutoCreatedScenes - Maximum number of scenes allowed
- * @returns {LiveAPI} The clip slot ready for clip creation
+ * @param trackIndex - Track index (0-based)
+ * @param sceneIndex - Target scene index (0-based)
+ * @param liveSet - LiveAPI liveSet object
+ * @param maxAutoCreatedScenes - Maximum number of scenes allowed
+ * @returns The clip slot ready for clip creation
  */
 export function prepareSessionClipSlot(
-  trackIndex,
-  sceneIndex,
-  liveSet,
-  maxAutoCreatedScenes,
-) {
+  trackIndex: number,
+  sceneIndex: number,
+  liveSet: LiveAPI,
+  maxAutoCreatedScenes: number,
+): LiveAPI {
   if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
       `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
