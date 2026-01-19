@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  liveApiGet,
-  liveApiId,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
-import { setupArrangementClipMocks } from "./transform-clips-arrangement-test-helpers.js";
+  setupArrangementClipMocks,
+  setupNoClipsInArrangementMocks,
+  setupNonExistentTrackMocks,
+} from "./transform-clips-arrangement-test-helpers.js";
 import { setupClipMocks } from "./transform-clips-test-helpers.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
 
@@ -60,30 +59,7 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should warn when no clips found in arrangement range", () => {
-    liveApiType.mockImplementation(function () {
-      if (this._path === "live_set tracks 0") {
-        return "Track";
-      }
-    });
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "live_set") {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-
-        if (prop === "signature_denominator") {
-          return [4];
-        }
-      }
-
-      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
-        return []; // No clips
-      }
-
-      return [0];
-    });
-
-    const consoleErrorSpy = vi.spyOn(console, "error");
+    const consoleErrorSpy = setupNoClipsInArrangementMocks(0);
 
     const result = transformClips({
       arrangementTrackIndex: "0",
@@ -99,24 +75,7 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should throw error when arrangementLength is zero", () => {
-    liveApiType.mockImplementation(function () {
-      if (this._path === "live_set tracks 0") {
-        return "Track";
-      }
-    });
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "live_set") {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-
-        if (prop === "signature_denominator") {
-          return [4];
-        }
-      }
-
-      return [0];
-    });
+    setupNoClipsInArrangementMocks(0);
 
     expect(() =>
       transformClips({
@@ -129,29 +88,7 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should throw error when track does not exist", () => {
-    liveApiId.mockImplementation(function () {
-      if (this._path === "live_set tracks 99") {
-        return "0"; // Non-existent
-      }
-
-      return this._id;
-    });
-    liveApiType.mockImplementation(function () {
-      // Track doesn't exist - return undefined
-    });
-    liveApiGet.mockImplementation(function (prop) {
-      if (this._path === "live_set") {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-
-        if (prop === "signature_denominator") {
-          return [4];
-        }
-      }
-
-      return [0];
-    });
+    setupNonExistentTrackMocks(99);
 
     expect(() =>
       transformClips({
