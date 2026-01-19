@@ -47,7 +47,13 @@ interface AudioParams {
  */
 export function applyAudioParams(
   clip: LiveAPI,
-  { gainDbMin, gainDbMax, transposeMin, transposeMax, transposeValuesArray }: AudioParams,
+  {
+    gainDbMin,
+    gainDbMax,
+    transposeMin,
+    transposeMax,
+    transposeValuesArray,
+  }: AudioParams,
   rng: () => number,
 ): void {
   // Apply gain (additive in dB space)
@@ -64,8 +70,9 @@ export function applyAudioParams(
   // Apply transpose (pitch shift)
   if (transposeValuesArray != null) {
     // Pick from discrete values
-    const transposeOffset =
-      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)] as number;
+    const transposeOffset = transposeValuesArray[
+      Math.floor(rng() * transposeValuesArray.length)
+    ] as number;
 
     const currentPitchCoarse = clip.getProperty("pitch_coarse") as number;
     const currentPitchFine = clip.getProperty("pitch_fine") as number;
@@ -134,8 +141,9 @@ function applyTranspose(
 
   if (transposeValuesArray != null) {
     // Pick from discrete values
-    const transposeOffset =
-      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)] as number;
+    const transposeOffset = transposeValuesArray[
+      Math.floor(rng() * transposeValuesArray.length)
+    ] as number;
 
     note.pitch = Math.max(
       0,

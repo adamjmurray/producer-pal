@@ -37,7 +37,11 @@ describe("transformClips - slicing unlooped clips", () => {
     const { callState } = setupUnloopedClipSlicingMocks(clipId);
     const setCalls: SetCall[] = [];
 
-    liveApiSet.mockImplementation(function (this: MockContext, prop: string, value: unknown) {
+    liveApiSet.mockImplementation(function (
+      this: MockContext,
+      prop: string,
+      value: unknown,
+    ) {
       setCalls.push({ id: this._id, prop, value });
     });
 
@@ -114,7 +118,11 @@ describe("transformClips - slicing unlooped clips", () => {
       return [0];
     });
 
-    liveApiCall.mockImplementation(function (this: MockContext, method: string, ...args: unknown[]) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
         duplicateCalls.push({ position: args[1] as number });
@@ -127,7 +135,11 @@ describe("transformClips - slicing unlooped clips", () => {
       if (method === "create_midi_clip") return ["id", "temp_1"];
     });
 
-    liveApiSet.mockImplementation(function (this: MockContext, prop: string, value: unknown) {
+    liveApiSet.mockImplementation(function (
+      this: MockContext,
+      prop: string,
+      value: unknown,
+    ) {
       setCalls.push({ id: this._id, prop, value });
     });
 
@@ -169,7 +181,8 @@ describe("transformClips - slicing unlooped clips", () => {
     const sessionSlotId = "session_slot_1";
     const sessionClipId = "session_clip_1";
     let duplicateCallCount = 0;
-    const duplicateCalls: Array<{ id: string | undefined; position: number }> = [];
+    const duplicateCalls: Array<{ id: string | undefined; position: number }> =
+      [];
 
     liveApiId.mockImplementation(function (this: MockContext) {
       return this._path === "id clip_45" ? clipId : this._id;
@@ -214,7 +227,11 @@ describe("transformClips - slicing unlooped clips", () => {
       "live_set tracks 0": { track_index: 0, clip_slots: [sessionSlotId] },
     });
 
-    liveApiCall.mockImplementation(function (this: MockContext, method: string, ...args: unknown[]) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
         const position = args[1] as number;

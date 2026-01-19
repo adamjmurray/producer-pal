@@ -244,7 +244,11 @@ export function createSlicingCallMock(
     tilePrefix = "tile_",
   } = opts;
 
-  const state: SlicingCallState = { callCount: 0, duplicateCalls: [], setCalls: [] };
+  const state: SlicingCallState = {
+    callCount: 0,
+    duplicateCalls: [],
+    setCalls: [],
+  };
 
   liveApiCall.mockImplementation(
     /**

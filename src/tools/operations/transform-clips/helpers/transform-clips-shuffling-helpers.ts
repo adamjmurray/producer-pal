@@ -85,7 +85,11 @@ export function performShuffling(
     // Delete original
     track.call("delete_clip", `id ${clip.id}`);
 
-    return { tempClip, track, targetPosition: targetPositions[index] as number };
+    return {
+      tempClip,
+      track,
+      targetPosition: targetPositions[index] as number,
+    };
   });
 
   // Move clips from holding area to shuffled positions

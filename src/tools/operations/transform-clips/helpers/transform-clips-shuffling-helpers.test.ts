@@ -258,7 +258,13 @@ describe("transform-clips-shuffling-helpers", () => {
       const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
-      performShuffling([mockClip as unknown as LiveAPI], clips, warnings, rng, context);
+      performShuffling(
+        [mockClip as unknown as LiveAPI],
+        clips,
+        warnings,
+        rng,
+        context,
+      );
 
       // Should not call any LiveAPI methods for single clip
       expect(liveApiCall).not.toHaveBeenCalled();
@@ -288,7 +294,10 @@ describe("transform-clips-shuffling-helpers", () => {
       };
 
       liveApiCall.mockReturnValue(["id", "tempClip"]);
-      liveApiGet.mockImplementation(function (this: { _path?: string }, prop: string) {
+      liveApiGet.mockImplementation(function (
+        this: { _path?: string },
+        prop: string,
+      ) {
         if (prop === "arrangement_clips") {
           return children("newClip1", "newClip2");
         }
@@ -301,7 +310,13 @@ describe("transform-clips-shuffling-helpers", () => {
       const rng = (): number => 0.5;
       const context = { holdingAreaStartBeats: 1000 };
 
-      performShuffling([mockClip1 as unknown as LiveAPI, mockClip2 as unknown as LiveAPI], clips, warnings, rng, context);
+      performShuffling(
+        [mockClip1 as unknown as LiveAPI, mockClip2 as unknown as LiveAPI],
+        clips,
+        warnings,
+        rng,
+        context,
+      );
 
       // Should call duplicate_clip_to_arrangement for each clip
       expect(liveApiCall).toHaveBeenCalledWith(

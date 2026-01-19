@@ -178,7 +178,11 @@ describe("transformClips - slice + shuffle combination", () => {
       return [null];
     });
 
-    liveApiCall.mockImplementation(function (this: MockContext, method: string, ...args: unknown[]) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
         const position = args[1] as number;
         const idCounter = Date.now() + Math.random();

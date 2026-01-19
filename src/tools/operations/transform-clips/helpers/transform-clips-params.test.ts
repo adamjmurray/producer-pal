@@ -42,7 +42,11 @@ describe("transform-clips-params", () => {
       };
       const rng = createTestRng([0.5]);
 
-      applyAudioParams(clip as unknown as LiveAPI, { gainDbMin: -6, gainDbMax: 6 }, rng);
+      applyAudioParams(
+        clip as unknown as LiveAPI,
+        { gainDbMin: -6, gainDbMax: 6 },
+        rng,
+      );
 
       expect(clip.getProperty).toHaveBeenCalledWith("gain");
       expect(clip.set).toHaveBeenCalledWith("gain", expect.any(Number));
@@ -56,7 +60,11 @@ describe("transform-clips-params", () => {
       // RNG returns 1.0 which will pick max value of 50
       const rng = createTestRng([1.0]);
 
-      applyAudioParams(clip as unknown as LiveAPI, { gainDbMin: 40, gainDbMax: 50 }, rng);
+      applyAudioParams(
+        clip as unknown as LiveAPI,
+        { gainDbMin: 40, gainDbMax: 50 },
+        rng,
+      );
 
       expect(clip.set).toHaveBeenCalledWith("gain", expect.any(Number));
     });
@@ -68,7 +76,11 @@ describe("transform-clips-params", () => {
       };
       const rng = createTestRng([0]); // Will pick first value
 
-      applyAudioParams(clip as unknown as LiveAPI, { transposeValuesArray: [7, 12] }, rng);
+      applyAudioParams(
+        clip as unknown as LiveAPI,
+        { transposeValuesArray: [7, 12] },
+        rng,
+      );
 
       expect(clip.set).toHaveBeenCalledWith("pitch_coarse", 7);
       expect(clip.set).toHaveBeenCalledWith("pitch_fine", 0);
@@ -81,7 +93,11 @@ describe("transform-clips-params", () => {
       };
       const rng = createTestRng([0.5]); // Will pick middle of range
 
-      applyAudioParams(clip as unknown as LiveAPI, { transposeMin: 0, transposeMax: 12 }, rng);
+      applyAudioParams(
+        clip as unknown as LiveAPI,
+        { transposeMin: 0, transposeMax: 12 },
+        rng,
+      );
 
       expect(clip.set).toHaveBeenCalledWith("pitch_coarse", 6);
       expect(clip.set).toHaveBeenCalledWith("pitch_fine", 0);
@@ -99,7 +115,11 @@ describe("transform-clips-params", () => {
       };
       const rng = createTestRng([0.5]);
 
-      applyAudioParams(clip as unknown as LiveAPI, { transposeMin: 0, transposeMax: 2 }, rng);
+      applyAudioParams(
+        clip as unknown as LiveAPI,
+        { transposeMin: 0, transposeMax: 2 },
+        rng,
+      );
 
       // Current pitch is 3.5, offset is 1, new pitch is 4.5
       expect(clip.set).toHaveBeenCalledWith("pitch_coarse", 4);
@@ -124,7 +144,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip([]);
       const rng = createTestRng();
 
-      applyMidiParams(clip as unknown as LiveAPI, { velocityMin: -10, velocityMax: 10 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { velocityMin: -10, velocityMax: 10 },
+        rng,
+      );
 
       // Should call get_notes_extended but not apply_note_modifications
       expect(clip.call).toHaveBeenCalledTimes(1);
@@ -142,7 +166,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([0.5]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { velocityMin: -20, velocityMax: 20 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { velocityMin: -20, velocityMax: 20 },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",
@@ -155,7 +183,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([0]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { transposeValuesArray: [12] }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { transposeValuesArray: [12] },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",
@@ -168,7 +200,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([0.5]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { transposeMin: 0, transposeMax: 12 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { transposeMin: 0, transposeMax: 12 },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",
@@ -181,7 +217,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([1.0]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { transposeMin: 10, transposeMax: 20 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { transposeMin: 10, transposeMax: 20 },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",
@@ -194,7 +234,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([0.5]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { durationMin: 0.5, durationMax: 1.5 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { durationMin: 0.5, durationMax: 1.5 },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",
@@ -233,7 +277,11 @@ describe("transform-clips-params", () => {
       const clip = createMockMidiClip(notes);
       const rng = createTestRng([0]);
 
-      applyMidiParams(clip as unknown as LiveAPI, { velocityMin: -50, velocityMax: -50 }, rng);
+      applyMidiParams(
+        clip as unknown as LiveAPI,
+        { velocityMin: -50, velocityMax: -50 },
+        rng,
+      );
 
       expect(clip.call).toHaveBeenCalledWith(
         "apply_note_modifications",

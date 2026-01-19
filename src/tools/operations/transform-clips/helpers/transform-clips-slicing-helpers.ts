@@ -28,7 +28,11 @@ function iterateSlicePositions(
   sliceBeats: number,
   currentStartTime: number,
   currentEndTime: number,
-  sliceHandler: (sliceContentStart: number, sliceContentEnd: number, slicePosition: number) => void,
+  sliceHandler: (
+    sliceContentStart: number,
+    sliceContentEnd: number,
+    slicePosition: number,
+  ) => void,
 ): void {
   const clipStartMarker = sourceClip.getProperty("start_marker") as number;
   let currentSlicePosition = currentStartTime + sliceBeats;

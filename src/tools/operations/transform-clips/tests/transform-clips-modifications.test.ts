@@ -50,16 +50,25 @@ function createTestNote(overrides: Partial<TestNote> = {}): TestNote {
 function setupNoteCaptureMock(
   clipId: string,
   noteOverrides: Partial<TestNote> = {},
-): { getCaptured: () => TestNote[] | undefined; getAllCaptured: () => TestNote[][] } {
+): {
+  getCaptured: () => TestNote[] | undefined;
+  getAllCaptured: () => TestNote[][];
+} {
   const allCaptured: TestNote[][] = [];
 
-  liveApiCall.mockImplementation(function (this: MockContext, method: string, ..._args: unknown[]) {
+  liveApiCall.mockImplementation(function (
+    this: MockContext,
+    method: string,
+    ..._args: unknown[]
+  ) {
     if (this._id === clipId && method === "get_notes_extended") {
       return JSON.stringify({ notes: [createTestNote(noteOverrides)] });
     }
 
     if (this._id === clipId && method === "apply_note_modifications") {
-      allCaptured.push((JSON.parse(_args[0] as string) as { notes: TestNote[] }).notes);
+      allCaptured.push(
+        (JSON.parse(_args[0] as string) as { notes: TestNote[] }).notes,
+      );
     }
   });
 
@@ -98,7 +107,10 @@ describe("transformClips - modifications", () => {
       isArrangement: true,
     });
     // Add audio-specific props
-    const origGet = liveApiGet.getMockImplementation() as (this: MockContext, prop: string) => unknown[];
+    const origGet = liveApiGet.getMockImplementation() as (
+      this: MockContext,
+      prop: string,
+    ) => unknown[];
 
     liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (
@@ -219,7 +231,10 @@ describe("transformClips - modifications", () => {
       isArrangement: true,
     });
     // Add audio pitch props
-    const origGet = liveApiGet.getMockImplementation() as (this: MockContext, prop: string) => unknown[];
+    const origGet = liveApiGet.getMockImplementation() as (
+      this: MockContext,
+      prop: string,
+    ) => unknown[];
 
     liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
       if (

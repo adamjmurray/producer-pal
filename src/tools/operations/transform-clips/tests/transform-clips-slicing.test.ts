@@ -206,7 +206,10 @@ describe("transformClips - slicing", () => {
 
       return [0];
     });
-    liveApiCall.mockImplementation(function (this: MockContext, method: string) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       // Track when we duplicate/move clips (which happens during slicing)
       if (method === "duplicate_clip_to_arrangement") {
         sliceOperationCount++;
@@ -366,7 +369,11 @@ describe("transformClips - slicing", () => {
     });
 
     // Mock liveApiCall for clip operations
-    liveApiCall.mockImplementation(function (this: MockContext, method: string, ..._args: unknown[]) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ..._args: unknown[]
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
 

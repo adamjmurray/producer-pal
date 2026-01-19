@@ -4,12 +4,15 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 
 export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   title: "Transform Clips",
+
   description:
     "Slice clips into repeating segments, shuffle arrangement positions, and/or randomize parameters for multiple clips efficiently",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,
   },
+
   inputSchema: {
     clipIds: z
       .string()
@@ -40,6 +43,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
         `bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (max ${MAX_SLICES} slices total)`,
       ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
+
     // Audio clip parameters
     gainDbMin: z
       .number()
@@ -53,6 +57,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .max(24)
       .optional()
       .describe("max gain offset in dB to add (audio clips)"),
+
     // Transpose parameters (audio and MIDI clips)
     transposeMin: z
       .number()
@@ -72,6 +77,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .describe(
         "comma-separated semitone values to randomly pick from (audio/MIDI clips, ignores transposeMin/transposeMax)",
       ),
+
     // MIDI clip parameters - randomized
     velocityMin: z
       .number()
@@ -99,6 +105,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .max(100)
       .optional()
       .describe("max duration multiplier (MIDI clips)"),
+
     // MIDI clip properties - set to specific values
     velocityRange: z
       .number()
@@ -115,6 +122,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .describe("probability offset to add (MIDI clips)"),
     seed: z.number().int().optional().describe("RNG seed for reproducibility"),
   },
+
   smallModelModeConfig: {
     toolDescription: "Randomize velocity and probability for MIDI clips",
     excludeParams: [
