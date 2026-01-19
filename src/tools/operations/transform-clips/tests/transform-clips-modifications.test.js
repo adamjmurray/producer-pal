@@ -3,42 +3,10 @@ import {
   liveApiCall,
   liveApiGet,
   liveApiId,
-  liveApiPath,
   liveApiSet,
-  liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
-
-// [transform-clips-modifications] Setup mocks for clip tests
-function setupClipMocks(clipId, opts = {}) {
-  const {
-    path = "live_set tracks 0 clip_slots 0 clip",
-    isMidi = true,
-    isArr = false,
-    length = 4.0,
-  } = opts;
-
-  liveApiId.mockImplementation(function () {
-    return this._path === `id ${clipId}` ? clipId : this._id;
-  });
-  liveApiPath.mockImplementation(function () {
-    return this._id === clipId ? path : this._path;
-  });
-  liveApiType.mockImplementation(function () {
-    return this._id === clipId ? "Clip" : undefined;
-  });
-  liveApiGet.mockImplementation(function (prop) {
-    if (this._id !== clipId) return [0];
-    const props = {
-      is_midi_clip: [isMidi ? 1 : 0],
-      is_audio_clip: [isMidi ? 0 : 1],
-      is_arrangement_clip: [isArr ? 1 : 0],
-      length: [length],
-    };
-
-    return props[prop] ?? [0];
-  });
-}
+import { setupClipMocks } from "./transform-clips-test-helpers.js";
 
 /**
  * Setup liveApiCall mock for capturing modified notes
@@ -101,7 +69,7 @@ describe("transformClips - modifications", () => {
     setupClipMocks(clipId, {
       path: "live_set tracks 0 arrangement_clips 0",
       isMidi: false,
-      isArr: true,
+      isArrangement: true,
     });
     // Add audio-specific props
     const origGet = liveApiGet.getMockImplementation();
@@ -250,7 +218,7 @@ describe("transformClips - modifications", () => {
     setupClipMocks(clipId, {
       path: "live_set tracks 0 arrangement_clips 0",
       isMidi: false,
-      isArr: true,
+      isArrangement: true,
     });
     // Add audio pitch props
     const origGet = liveApiGet.getMockImplementation();

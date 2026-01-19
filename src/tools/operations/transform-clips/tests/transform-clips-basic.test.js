@@ -6,33 +6,7 @@ import {
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
-
-// [transform-clips-basic] Setup mocks for a simple MIDI clip
-function setupSimpleMidiClipMocks(
-  clipId,
-  clipPath = "live_set tracks 0 clip_slots 0 clip",
-) {
-  liveApiId.mockImplementation(function () {
-    return this._path === `id ${clipId}` ? clipId : this._id;
-  });
-  liveApiPath.mockImplementation(function () {
-    return this._id === clipId ? clipPath : this._path;
-  });
-  liveApiType.mockImplementation(function () {
-    return this._id === clipId ? "Clip" : undefined;
-  });
-  liveApiGet.mockImplementation(function (prop) {
-    if (this._id !== clipId) return [0];
-    const props = {
-      is_midi_clip: [1],
-      is_audio_clip: [0],
-      is_arrangement_clip: [0],
-      length: [4.0],
-    };
-
-    return props[prop] ?? [0];
-  });
-}
+import { setupClipMocks } from "./transform-clips-test-helpers.js";
 
 describe("transformClips - basic", () => {
   it("should throw error when clipIds and arrangementTrackIndex are missing", () => {
@@ -47,7 +21,7 @@ describe("transformClips - basic", () => {
   it("should return clipIds and seed when provided valid clips", () => {
     const clipId = "clip_1";
 
-    setupSimpleMidiClipMocks(clipId);
+    setupClipMocks(clipId);
 
     const result = transformClips({ clipIds: clipId, seed: 12345 });
 
@@ -57,7 +31,7 @@ describe("transformClips - basic", () => {
   it("should generate seed from Date.now() when not provided", () => {
     const clipId = "clip_1";
 
-    setupSimpleMidiClipMocks(clipId);
+    setupClipMocks(clipId);
 
     const result = transformClips({ clipIds: clipId });
 

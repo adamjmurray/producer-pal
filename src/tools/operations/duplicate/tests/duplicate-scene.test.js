@@ -10,23 +10,19 @@ import {
   setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
-// Shared mocks - see duplicate-test-helpers.js for implementations
 vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
-  const { updateClipMock } =
-    await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
+  const s = await import("./setup.js");
 
-  return { updateClip: updateClipMock };
+  return { updateClip: s.updateClipMock };
 });
-
 vi.mock(
   import("#src/tools/shared/arrangement/arrangement-tiling.js"),
   async () => {
-    const { createShortenedClipInHoldingMock, moveClipFromHoldingMock } =
-      await import("#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js");
+    const s = await import("./setup.js");
 
     return {
-      createShortenedClipInHolding: createShortenedClipInHoldingMock,
-      moveClipFromHolding: moveClipFromHoldingMock,
+      createShortenedClipInHolding: s.createShortenedClipInHoldingMock,
+      moveClipFromHolding: s.moveClipFromHoldingMock,
     };
   },
 );
