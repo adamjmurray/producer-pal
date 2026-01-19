@@ -1,3 +1,4 @@
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
@@ -9,46 +10,80 @@ import {
   validateLocatorOrTime,
 } from "./playback-helpers.js";
 import { select } from "./select.js";
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
 
-/**
- * @typedef {object} PlaybackState
- * @property {boolean} isPlaying - Whether playback is active
- * @property {number} currentTimeBeats - Current position in beats
- */
+interface PlaybackState {
+  isPlaying: boolean;
+  currentTimeBeats: number;
+}
 
-/**
- * @typedef {object} PlaybackActionParams
- * @property {string} [startTime] - Start time in bar|beat format
- * @property {number | null} [startTimeBeats] - Start time in beats
- * @property {boolean} useLocatorStart - Whether start came from locator
- * @property {boolean} autoFollow - Whether tracks follow arrangement
- * @property {number} [sceneIndex] - Scene index for session operations
- * @property {string} [clipIds] - Clip IDs for session operations
- */
+interface PlaybackActionParams {
+  startTime?: string;
+  startTimeBeats?: number | null;
+  useLocatorStart: boolean;
+  autoFollow: boolean;
+  sceneIndex?: number;
+  clipIds?: string;
+}
+
+interface PlaybackArgs {
+  action?: string;
+  startTime?: string;
+  startLocatorId?: string;
+  startLocatorName?: string;
+  loop?: boolean;
+  loopStart?: string;
+  loopStartLocatorId?: string;
+  loopStartLocatorName?: string;
+  loopEnd?: string;
+  loopEndLocatorId?: string;
+  loopEndLocatorName?: string;
+  autoFollow?: boolean;
+  sceneIndex?: number;
+  clipIds?: string;
+  switchView?: boolean;
+}
+
+interface PlaybackResult {
+  playing: boolean;
+  currentTime: string;
+  arrangementLoop?: { start: string; end: string };
+  arrangementFollowerTrackIds?: string;
+}
+
+interface BuildPlaybackResultParams {
+  isPlaying: boolean;
+  currentTime: string;
+  loop?: boolean;
+  loopStart?: string;
+  loopEnd?: string;
+  currentLoopStart: string;
+  currentLoopEnd: string;
+  liveSet: LiveAPI;
+  arrangementFollowerTrackIds: string;
+}
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
- * @param {object} [args] - The parameters
- * @param {string} [args.action] - Action to perform
- * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
- * @param {string} [args.startLocatorId] - Locator ID for start position (mutually exclusive with startTime)
- * @param {string} [args.startLocatorName] - Locator name for start position (mutually exclusive with startTime)
- * @param {boolean} [args.loop] - Enable/disable arrangement loop
- * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
- * @param {string} [args.loopStartLocatorId] - Locator ID for loop start (mutually exclusive with loopStart)
- * @param {string} [args.loopStartLocatorName] - Locator name for loop start (mutually exclusive with loopStart)
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
- * @param {string} [args.loopEndLocatorId] - Locator ID for loop end (mutually exclusive with loopEnd)
- * @param {string} [args.loopEndLocatorName] - Locator name for loop end (mutually exclusive with loopEnd)
- * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
- * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
- * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
- * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
- * @param {object} _context - Context from main (unused)
- * @returns {object} Result with transport state
+ * @param args - The parameters
+ * @param args.action - Action to perform
+ * @param args.startTime - Position in bar|beat format
+ * @param args.startLocatorId - Locator ID for start position
+ * @param args.startLocatorName - Locator name for start position
+ * @param args.loop - Enable/disable arrangement loop
+ * @param args.loopStart - Loop start position in bar|beat format
+ * @param args.loopStartLocatorId - Locator ID for loop start
+ * @param args.loopStartLocatorName - Locator name for loop start
+ * @param args.loopEnd - Loop end position in bar|beat format
+ * @param args.loopEndLocatorId - Locator ID for loop end
+ * @param args.loopEndLocatorName - Locator name for loop end
+ * @param args.autoFollow - Whether all tracks should automatically follow the arrangement
+ * @param args.sceneIndex - Scene index for Session view operations
+ * @param args.clipIds - Comma-separated clip IDs for Session view operations
+ * @param args.switchView - Automatically switch to the appropriate view
+ * @param _context - Context from main (unused)
+ * @returns Result with transport state
  */
 export function playback(
   {
@@ -67,9 +102,9 @@ export function playback(
     sceneIndex,
     clipIds,
     switchView,
-  } = {},
-  _context = {},
-) {
+  }: PlaybackArgs = {},
+  _context: Partial<ToolContext> = {},
+): PlaybackResult {
   if (!action) {
     throw new Error("playback failed: action is required");
   }
@@ -97,12 +132,12 @@ export function playback(
   const liveSet = LiveAPI.from("live_set");
 
   // Get song time signature for bar|beat conversions
-  const songTimeSigNumerator = /** @type {number} */ (
-    liveSet.getProperty("signature_numerator")
-  );
-  const songTimeSigDenominator = /** @type {number} */ (
-    liveSet.getProperty("signature_denominator")
-  );
+  const songTimeSigNumerator = liveSet.getProperty(
+    "signature_numerator",
+  ) as number;
+  const songTimeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
 
   // Resolve start time from bar|beat or locator
   const { startTimeBeats, useLocatorStart } = resolveStartTime(
@@ -135,13 +170,10 @@ export function playback(
 
   // Default result values that will be overridden by specific actions
   // (for optimistic results to avoid a sleep() for playback state updates)
-  let isPlaying = /** @type {number} */ (liveSet.getProperty("is_playing")) > 0;
-  let currentTimeBeats = /** @type {number} */ (
-    liveSet.getProperty("current_song_time")
-  );
+  let isPlaying = (liveSet.getProperty("is_playing") as number) > 0;
+  let currentTimeBeats = liveSet.getProperty("current_song_time") as number;
 
-  /** @type {PlaybackState} */
-  const playbackState = handlePlaybackAction(
+  const playbackState: PlaybackState = handlePlaybackAction(
     action,
     liveSet,
     {
@@ -191,10 +223,10 @@ export function playback(
 
 /**
  * Handle view switching if requested
- * @param {string} action - The playback action
- * @param {boolean} [switchView] - Whether to switch view
+ * @param action - The playback action
+ * @param switchView - Whether to switch view
  */
-function handleViewSwitch(action, switchView) {
+function handleViewSwitch(action: string, switchView?: boolean): void {
   if (!switchView) return;
 
   if (action === "play-arrangement") {
@@ -206,17 +238,17 @@ function handleViewSwitch(action, switchView) {
 
 /**
  * Build the playback result object
- * @param {object} params - Result parameters
- * @param {boolean} params.isPlaying - Whether playback is active
- * @param {string} params.currentTime - Current time in bar|beat format
- * @param {boolean} [params.loop] - Loop enabled state
- * @param {string} [params.loopStart] - Loop start in bar|beat format
- * @param {string} [params.loopEnd] - Loop end in bar|beat format
- * @param {string} params.currentLoopStart - Current loop start
- * @param {string} params.currentLoopEnd - Current loop end
- * @param {LiveAPI} params.liveSet - The live_set LiveAPI object
- * @param {string} params.arrangementFollowerTrackIds - Track IDs following arrangement
- * @returns {object} Playback result
+ * @param params - Result parameters
+ * @param params.isPlaying - Whether playback is active
+ * @param params.currentTime - Current time in bar|beat format
+ * @param params.loop - Loop enabled state
+ * @param params.loopStart - Loop start in bar|beat format
+ * @param params.loopEnd - Loop end in bar|beat format
+ * @param params.currentLoopStart - Current loop start
+ * @param params.currentLoopEnd - Current loop end
+ * @param params.liveSet - The live_set LiveAPI object
+ * @param params.arrangementFollowerTrackIds - Track IDs following arrangement
+ * @returns Playback result
  */
 function buildPlaybackResult({
   isPlaying,
@@ -228,15 +260,13 @@ function buildPlaybackResult({
   currentLoopEnd,
   liveSet,
   arrangementFollowerTrackIds,
-}) {
-  /** @type {{ playing: boolean, currentTime: string, arrangementLoop?: { start: string, end: string }, arrangementFollowerTrackIds?: string }} */
-  const result = {
+}: BuildPlaybackResultParams): PlaybackResult {
+  const result: PlaybackResult = {
     playing: isPlaying,
     currentTime,
   };
 
-  const loopEnabled =
-    loop ?? /** @type {number} */ (liveSet.getProperty("loop")) > 0;
+  const loopEnabled = loop ?? (liveSet.getProperty("loop") as number) > 0;
 
   if (loopEnabled) {
     result.arrangementLoop = {
@@ -253,26 +283,28 @@ function buildPlaybackResult({
 /**
  * Handle playing the arrangement view
  *
- * @param {LiveAPI} liveSet - LiveAPI instance for live_set
- * @param {string | undefined} startTime - Start time in bar|beat format
- * @param {number | null | undefined} startTimeBeats - Start time in beats (from time or locator)
- * @param {boolean} useLocatorStart - Whether start position came from a locator
- * @param {boolean} autoFollow - Whether tracks should follow arrangement
- * @param {PlaybackState} _state - Current playback state (unused)
- * @returns {PlaybackState} Updated playback state
+ * @param liveSet - LiveAPI instance for live_set
+ * @param startTime - Start time in bar|beat format
+ * @param startTimeBeats - Start time in beats (from time or locator)
+ * @param useLocatorStart - Whether start position came from a locator
+ * @param autoFollow - Whether tracks should follow arrangement
+ * @param _state - Current playback state (unused)
+ * @returns Updated playback state
  */
 function handlePlayArrangement(
-  liveSet,
-  startTime,
-  startTimeBeats,
-  useLocatorStart,
-  autoFollow,
-  _state,
-) {
+  liveSet: LiveAPI,
+  startTime: string | undefined,
+  startTimeBeats: number | null | undefined,
+  useLocatorStart: boolean,
+  autoFollow: boolean,
+  _state: PlaybackState,
+): PlaybackState {
+  let resolvedStartTimeBeats = startTimeBeats;
+
   // Default to position 0 if no start position specified (time or locator)
   if (startTime == null && !useLocatorStart) {
     liveSet.set("start_time", 0);
-    startTimeBeats = 0;
+    resolvedStartTimeBeats = 0;
   }
 
   // Handle autoFollow for arrangement playback
@@ -284,18 +316,21 @@ function handlePlayArrangement(
 
   return {
     isPlaying: true,
-    currentTimeBeats: startTimeBeats ?? 0,
+    currentTimeBeats: resolvedStartTimeBeats ?? 0,
   };
 }
 
 /**
  * Handle playing a scene in session view
  *
- * @param {number | undefined} sceneIndex - Scene index to play
- * @param {PlaybackState} state - Current playback state
- * @returns {PlaybackState} Updated playback state
+ * @param sceneIndex - Scene index to play
+ * @param state - Current playback state
+ * @returns Updated playback state
  */
-function handlePlayScene(sceneIndex, state) {
+function handlePlayScene(
+  sceneIndex: number | undefined,
+  state: PlaybackState,
+): PlaybackState {
   if (sceneIndex == null) {
     throw new Error(
       `playback failed: sceneIndex is required for action "play-scene"`,
@@ -321,12 +356,16 @@ function handlePlayScene(sceneIndex, state) {
 /**
  * Handle playing specific session clips
  *
- * @param {LiveAPI} liveSet - LiveAPI instance for live_set
- * @param {string | undefined} clipIds - Comma-separated clip IDs
- * @param {PlaybackState} state - Current playback state
- * @returns {PlaybackState} Updated playback state
+ * @param liveSet - LiveAPI instance for live_set
+ * @param clipIds - Comma-separated clip IDs
+ * @param state - Current playback state
+ * @returns Updated playback state
  */
-function handlePlaySessionClips(liveSet, clipIds, state) {
+function handlePlaySessionClips(
+  liveSet: LiveAPI,
+  clipIds: string | undefined,
+  state: PlaybackState,
+): PlaybackState {
   if (!clipIds) {
     throw new Error(
       `playback failed: clipIds is required for action "play-session-clips"`,
@@ -379,11 +418,14 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
 /**
  * Handle stopping specific session clips
  *
- * @param {string | undefined} clipIds - Comma-separated clip IDs
- * @param {PlaybackState} state - Current playback state
- * @returns {PlaybackState} Updated playback state
+ * @param clipIds - Comma-separated clip IDs
+ * @param state - Current playback state
+ * @returns Updated playback state
  */
-function handleStopSessionClips(clipIds, state) {
+function handleStopSessionClips(
+  clipIds: string | undefined,
+  state: PlaybackState,
+): PlaybackState {
   if (!clipIds) {
     throw new Error(
       `playback failed: clipIds is required for action "stop-session-clips"`,
@@ -394,7 +436,7 @@ function handleStopSessionClips(clipIds, state) {
   const stopClips = validateIdTypes(stopClipIdList, "clip", "playback", {
     skipInvalid: true,
   });
-  const tracksToStop = new Set();
+  const tracksToStop = new Set<string>();
 
   for (const clip of stopClips) {
     // Extract track index from clip and add to set to avoid duplicate calls
@@ -430,13 +472,18 @@ function handleStopSessionClips(clipIds, state) {
 /**
  * Route to appropriate handler based on playback action
  *
- * @param {string} action - Playback action to perform
- * @param {LiveAPI} liveSet - LiveAPI instance for live_set
- * @param {PlaybackActionParams} params - Action parameters
- * @param {PlaybackState} state - Current playback state
- * @returns {PlaybackState} Updated playback state
+ * @param action - Playback action to perform
+ * @param liveSet - LiveAPI instance for live_set
+ * @param params - Action parameters
+ * @param state - Current playback state
+ * @returns Updated playback state
  */
-function handlePlaybackAction(action, liveSet, params, state) {
+function handlePlaybackAction(
+  action: string,
+  liveSet: LiveAPI,
+  params: PlaybackActionParams,
+  state: PlaybackState,
+): PlaybackState {
   const {
     startTime,
     startTimeBeats,

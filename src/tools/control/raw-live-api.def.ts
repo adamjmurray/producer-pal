@@ -11,10 +11,12 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
     "Convenience shortcuts: get (calls get method), set (calls set method), call (calls call method), goto (calls goto method), info (gets info property), getProperty (calls getProperty extension), getChildIds (calls getChildIds extension), exists (calls exists extension), getColor (calls getColor extension), setColor (calls setColor extension). " +
     "NOTE: When running multiple operations, Live API warnings appear at the end without indicating which operation triggered them. For debugging warnings, run operations individually. " +
     "DEVELOPMENT ONLY - not available in production builds.",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
     path: z
       .string()

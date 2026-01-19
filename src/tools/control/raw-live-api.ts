@@ -2,8 +2,59 @@ import { errorMessage } from "#src/shared/error-utils.js";
 
 const MAX_OPERATIONS = 50;
 
-/** @type {Record<string, { property?: boolean, method?: boolean, valueDefined?: boolean, valueTruthy?: boolean }>} */
-const OPERATION_REQUIREMENTS = {
+type OperationType =
+  | "get_property"
+  | "set_property"
+  | "call_method"
+  | "get"
+  | "set"
+  | "call"
+  | "goto"
+  | "info"
+  | "getProperty"
+  | "getChildIds"
+  | "exists"
+  | "getColor"
+  | "setColor";
+
+interface OperationRequirements {
+  property?: boolean;
+  method?: boolean;
+  valueDefined?: boolean;
+  valueTruthy?: boolean;
+}
+
+interface OperationErrorMessages {
+  property?: string;
+  method?: string;
+  value?: string;
+}
+
+interface RawApiOperation {
+  type: OperationType;
+  property?: string;
+  method?: string;
+  value?: unknown;
+  args?: unknown[];
+}
+
+interface RawLiveApiArgs {
+  path?: string;
+  operations: RawApiOperation[];
+}
+
+interface OperationResult {
+  operation: RawApiOperation;
+  result: unknown;
+}
+
+interface RawLiveApiResult {
+  path?: string;
+  id: string;
+  results: OperationResult[];
+}
+
+const OPERATION_REQUIREMENTS: Record<OperationType, OperationRequirements> = {
   get_property: { property: true },
   set_property: { property: true, valueDefined: true },
   call_method: { method: true },
@@ -19,43 +70,37 @@ const OPERATION_REQUIREMENTS = {
   setColor: { valueTruthy: true },
 };
 
-/** @type {Record<string, { property?: string, method?: string, value?: string }>} */
-const OPERATION_ERROR_MESSAGES = {
-  get_property: { property: "get_property operation requires property" },
-  set_property: {
-    property: "set_property operation requires property",
-    value: "set_property operation requires value",
-  },
-  call_method: { method: "call_method operation requires method" },
-  get: { property: "get operation requires property" },
-  set: {
-    property: "set operation requires property",
-    value: "set operation requires value",
-  },
-  call: { method: "call operation requires method" },
-  goto: { value: "goto operation requires value (path)" },
-  getProperty: { property: "getProperty operation requires property" },
-  getChildIds: {
-    property: "getChildIds operation requires property (child type)",
-  },
-  setColor: { value: "setColor operation requires value (color)" },
-};
-
-/**
- * @typedef {object} RawApiOperation
- * @property {string} type - The operation type
- * @property {string} [property] - Property name for property operations
- * @property {string} [method] - Method name for method operations
- * @property {*} [value] - Value for set/goto operations
- * @property {Array<*>} [args] - Arguments for call operations
- */
+const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
+  {
+    get_property: { property: "get_property operation requires property" },
+    set_property: {
+      property: "set_property operation requires property",
+      value: "set_property operation requires value",
+    },
+    call_method: { method: "call_method operation requires method" },
+    get: { property: "get operation requires property" },
+    set: {
+      property: "set operation requires property",
+      value: "set operation requires value",
+    },
+    call: { method: "call operation requires method" },
+    goto: { value: "goto operation requires value (path)" },
+    info: {},
+    getProperty: { property: "getProperty operation requires property" },
+    getChildIds: {
+      property: "getChildIds operation requires property (child type)",
+    },
+    exists: {},
+    getColor: {},
+    setColor: { value: "setColor operation requires value (color)" },
+  };
 
 /**
  * Validates operation parameters based on operation type
- * @param {RawApiOperation} operation - The operation object
- * @throws {Error} If required parameters are missing
+ * @param operation - The operation object
+ * @throws If required parameters are missing
  */
-function validateOperationParameters(operation) {
+function validateOperationParameters(operation: RawApiOperation): void {
   const { type, property, method, value } = operation;
 
   if (!(type in OPERATION_REQUIREMENTS)) {
@@ -64,11 +109,8 @@ function validateOperationParameters(operation) {
     );
   }
 
-  const requirements =
-    /** @type {NonNullable<typeof OPERATION_REQUIREMENTS[typeof type]>} */ (
-      OPERATION_REQUIREMENTS[type]
-    );
-  const messages = OPERATION_ERROR_MESSAGES[type] || {};
+  const requirements = OPERATION_REQUIREMENTS[type];
+  const messages = OPERATION_ERROR_MESSAGES[type];
 
   if (requirements.property && !property) {
     throw new Error(messages.property);
@@ -89,22 +131,20 @@ function validateOperationParameters(operation) {
 
 /**
  * Executes a single operation on the LiveAPI instance
- * @param {LiveAPI} api - The LiveAPI instance
- * @param {RawApiOperation} operation - The operation to execute
- * @returns {*} The result of the operation
+ * @param api - The LiveAPI instance
+ * @param operation - The operation to execute
+ * @returns The result of the operation
  */
-function executeOperation(api, operation) {
+function executeOperation(api: LiveAPI, operation: RawApiOperation): unknown {
   const { type } = operation;
 
   // Property and method are validated by validateOperationParameters
-  const property = /** @type {string} */ (operation.property);
-  const method = /** @type {string} */ (operation.method);
+  const property = operation.property as string;
+  const method = operation.method as string;
 
   switch (type) {
     case "get_property":
-      return /** @type {Record<string, unknown>} */ (
-        /** @type {unknown} */ (api)
-      )[property];
+      return (api as unknown as Record<string, unknown>)[property];
 
     case "set_property":
       api.set(property, operation.value);
@@ -112,10 +152,8 @@ function executeOperation(api, operation) {
       return operation.value;
 
     case "call_method": {
-      const args = operation.args || [];
-      const methodFn = /** @type {Record<string, unknown>} */ (
-        /** @type {unknown} */ (api)
-      )[method];
+      const args = operation.args ?? [];
+      const methodFn = (api as unknown as Record<string, unknown>)[method];
 
       if (typeof methodFn !== "function") {
         throw new Error(`Method "${method}" not found on LiveAPI object`);
@@ -131,13 +169,13 @@ function executeOperation(api, operation) {
       return api.set(property, operation.value);
 
     case "call": {
-      const callArgs = operation.args || [];
+      const callArgs = (operation.args ?? []) as (string | number | boolean)[];
 
       return api.call(method, ...callArgs);
     }
 
     case "goto":
-      return api.goto(operation.value);
+      return api.goto(operation.value as string);
 
     case "info":
       return api.info;
@@ -155,20 +193,25 @@ function executeOperation(api, operation) {
       return api.getColor();
 
     case "setColor":
-      return api.setColor(operation.value);
+      return api.setColor(operation.value as string);
 
     default:
-      throw new Error(`Unknown operation type: ${type}`);
+      throw new Error(`Unknown operation type: ${type as string}`);
   }
 }
 
 /**
  * Provides direct, low-level access to the Live API for research, development, and debugging
- * @param {{ path?: string, operations: RawApiOperation[] }} args - The parameters
- * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {{ path?: string, id: string, results: Array<{ operation: RawApiOperation, result: * }> }} Result object with path, id, and operation results
+ * @param args - The parameters
+ * @param args.path - Optional LiveAPI path
+ * @param args.operations - Array of operations to execute
+ * @param _context - Internal context object (unused)
+ * @returns Result object with path, id, and operation results
  */
-export function rawLiveApi({ path, operations }, _context = {}) {
+export function rawLiveApi(
+  { path, operations }: RawLiveApiArgs,
+  _context: Partial<ToolContext> = {},
+): RawLiveApiResult {
   if (!Array.isArray(operations)) {
     throw new Error("operations must be an array");
   }
@@ -181,10 +224,10 @@ export function rawLiveApi({ path, operations }, _context = {}) {
 
   const defaultPath = "live_set";
   const api = LiveAPI.from(path ?? defaultPath);
-  const results = [];
+  const results: OperationResult[] = [];
 
   for (const operation of operations) {
-    let result;
+    let result: unknown;
 
     try {
       validateOperationParameters(operation);

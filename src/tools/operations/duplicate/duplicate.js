@@ -1,4 +1,3 @@
-import { select } from "#src/tools/control/select.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.js";
@@ -16,6 +15,7 @@ import {
   validateDestinationParameter,
   validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.js";
+import { select } from "#src/tools/control/select.js";
 
 /**
  * @typedef {object} DuplicateArgs
@@ -252,7 +252,7 @@ function duplicateTrackOrSceneWithCount(
  * Determines the target view based on destination and type
  * @param {string | undefined} destination - Destination for duplication
  * @param {string} type - Type of object being duplicated
- * @returns {string | null} Target view or null
+ * @returns {"session" | "arrangement" | null} Target view or null
  */
 function determineTargetView(destination, type) {
   if (destination === "arrangement") {

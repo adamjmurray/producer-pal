@@ -5,22 +5,37 @@ import {
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 
-/**
- * @typedef {object} LiveSetConfig
- * @property {number} [numerator=4] - Time signature numerator
- * @property {number} [denominator=4] - Time signature denominator
- * @property {number} [loop=0] - Loop enabled (0 or 1)
- * @property {number} [loopStart=0] - Loop start in beats
- * @property {number} [loopLength=4] - Loop length in beats
- * @property {unknown[]} [tracks=[]] - Track IDs
- */
+interface LiveSetConfig {
+  numerator?: number;
+  denominator?: number;
+  loop?: number;
+  loopStart?: number;
+  loopLength?: number;
+  tracks?: unknown[];
+}
+
+interface CuePoint {
+  id: string;
+  time: number;
+  name: string;
+}
+
+interface SetupCuePointMocksOptions {
+  cuePoints: CuePoint[];
+  liveSet?: LiveSetConfig;
+}
+
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
 
 /**
  * Setup mock for a clip that exists but has no track/scene info in its path
- * @param {string} clipId - The clip ID to mock
+ * @param clipId - The clip ID to mock
  */
-export function setupClipWithNoTrackPath(clipId) {
-  liveApiPath.mockImplementation(function () {
+export function setupClipWithNoTrackPath(clipId: string): void {
+  liveApiPath.mockImplementation(function (this: MockContext) {
     if (this._id === clipId) {
       return "some_invalid_path"; // No track info in path
     }
@@ -28,7 +43,7 @@ export function setupClipWithNoTrackPath(clipId) {
     return this._path;
   });
 
-  liveApiId.mockImplementation(function () {
+  liveApiId.mockImplementation(function (this: MockContext) {
     if (this._id === clipId) {
       return `id ${clipId}`;
     }
@@ -36,7 +51,7 @@ export function setupClipWithNoTrackPath(clipId) {
     return "id 1";
   });
 
-  liveApiType.mockImplementation(function () {
+  liveApiType.mockImplementation(function (this: MockContext) {
     if (this._id === clipId) {
       return "Clip";
     }
@@ -47,11 +62,14 @@ export function setupClipWithNoTrackPath(clipId) {
 
 /**
  * Setup mocks for playback tests with cue points
- * @param {object} options - Configuration options
- * @param {Array<{id: string, time: number, name: string}>} options.cuePoints - Cue point definitions
- * @param {LiveSetConfig} [options.liveSet] - Live set properties (defaults to 4/4, no loop)
+ * @param options - Configuration options
+ * @param options.cuePoints - Cue point definitions
+ * @param options.liveSet - Live set properties
  */
-export function setupCuePointMocks({ cuePoints, liveSet = {} }) {
+export function setupCuePointMocks({
+  cuePoints,
+  liveSet = {},
+}: SetupCuePointMocksOptions): void {
   const {
     numerator = 4,
     denominator = 4,

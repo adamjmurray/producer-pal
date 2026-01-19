@@ -39,6 +39,7 @@
     "tools/samples/*.ts",
     "tools/workflow/*.ts",
     "tools/live-set/*.ts",
-    "tools/scene/*.ts"
+    "tools/scene/*.ts",
+    "tools/control/*.ts"
   ]
 }

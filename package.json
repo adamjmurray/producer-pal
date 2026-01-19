@@ -15,6 +15,7 @@
     "#src/tools/workflow/*.js": "./src/tools/workflow/*.ts",
     "#src/tools/live-set/*.js": "./src/tools/live-set/*.ts",
     "#src/tools/scene/*.js": "./src/tools/scene/*.ts",
+    "#src/tools/control/*.js": "./src/tools/control/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",

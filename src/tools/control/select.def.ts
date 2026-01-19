@@ -4,10 +4,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Selection Controls",
   description: "Read selection/view state (no args), or update it",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,
   },
+
   inputSchema: {
     view: z.enum(["session", "arrangement"]).optional().describe("main view"),
     trackId: z

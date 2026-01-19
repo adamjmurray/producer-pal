@@ -1,6 +1,5 @@
 import { errorMessage } from "#src/shared/error-utils.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { select } from "#src/tools/control/select.js";
 import {
   parseTimeSignature,
   unwrapSingleResult,
@@ -18,12 +17,13 @@ import {
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
+import { select } from "#src/tools/control/select.js";
 
 /** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
 
 /**
  * @typedef {object} CreateClipArgs
- * @property {string} view - View for the clip ('Session' or 'Arrangement')
+ * @property {"session" | "arrangement"} view - View for the clip
  * @property {number} trackIndex - Track index (0-based)
  * @property {string | null} [sceneIndex] - Scene index(es), comma-separated for multiple
  * @property {string | null} [arrangementStart] - Bar|beat position(s), comma-separated

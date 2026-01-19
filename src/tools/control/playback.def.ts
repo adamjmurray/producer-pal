@@ -4,10 +4,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback Controls",
   description: "Control playback of the arrangement and session scenes/clips",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
     action: z
       .enum([
@@ -80,6 +82,7 @@ stop: session and arrangement`,
       .default(false)
       .describe("auto-switch view?"),
   },
+
   smallModelModeConfig: {
     excludeParams: [
       "startLocatorId",

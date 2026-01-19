@@ -117,6 +117,7 @@ const TEST_FILE_PATTERNS = [
   ".test.ts",
   ".test.tsx",
   "-test-helpers.js",
+  "-test-helpers.ts",
 ];
 
 /**
