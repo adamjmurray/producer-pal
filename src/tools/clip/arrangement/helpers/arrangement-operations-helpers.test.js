@@ -7,6 +7,11 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import {
+  createMockClip,
+  setupArrangementClipPath,
+  setupArrangementMocks,
+} from "./arrangement-operations-test-helpers.js";
+import {
   handleArrangementLengthening,
   handleArrangementShortening,
 } from "./arrangement-operations-helpers.js";
@@ -20,32 +25,8 @@ describe("arrangement-operations-helpers", () => {
     it("should throw error when trackIndex is null", () => {
       // Mock clip that returns null for trackIndex (path doesn't have tracks pattern)
       liveApiPath.mockReturnValue("live_set");
-
-      mockLiveApiGet({
-        123: {
-          looping: 1,
-          loop_start: 0,
-          loop_end: 8,
-          start_marker: 0,
-          end_marker: 8,
-        },
-      });
-
-      const mockClip = {
-        id: "123",
-        getProperty: vi.fn((prop) => {
-          const props = {
-            looping: 1,
-            loop_start: 0,
-            loop_end: 8,
-            start_marker: 0,
-            end_marker: 8,
-          };
-
-          return props[prop];
-        }),
-        trackIndex: null, // Key: trackIndex is null
-      };
+      mockLiveApiGet({ 123: {} });
+      const mockClip = createMockClip({ id: "123", trackIndex: null });
 
       expect(() =>
         handleArrangementLengthening({
@@ -61,46 +42,15 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
-      const trackIndex = 0;
+      const clipProps = { start_marker: 4 }; // totalContentLength = 8-4 = 4
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
+      setupArrangementMocks({ clipProps });
 
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          looping: 1,
-          loop_start: 0,
-          loop_end: 8,
-          start_marker: 4, // Note: start_marker is 4, so totalContentLength = 8-4 = 4
-          end_marker: 8,
-        },
-      });
-
-      // Mock tileClipToRange to avoid complex setup
       const mockTileClipToRange = vi
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
 
-      const mockClip = {
-        id: "789",
-        getProperty: vi.fn((prop) => {
-          const props = {
-            looping: 1,
-            loop_start: 0,
-            loop_end: 8,
-            start_marker: 4,
-            end_marker: 8,
-          };
-
-          return props[prop];
-        }),
-        trackIndex,
-      };
+      const mockClip = createMockClip({ props: clipProps });
 
       // currentArrangementLength (8) > totalContentLength (4) triggers the shortening-then-tiling branch
       const result = handleArrangementLengthening({
@@ -121,39 +71,21 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should handle audio clip shortening with createAudioClipInSession in createLoopeClipTiles", () => {
-      const trackIndex = 0;
       const sessionClipId = "session-123";
       const arrangementClipId = "arr-456";
+      const clipProps = { start_marker: 4 };
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-
-        return this._path;
+      setupArrangementMocks({
+        clipProps,
+        extraMocks: { [sessionClipId]: {}, [arrangementClipId]: {} },
       });
 
-      mockLiveApiGet({
-        789: {
-          looping: 1,
-          loop_start: 0,
-          loop_end: 8,
-          start_marker: 4,
-          end_marker: 8,
-        },
-        [sessionClipId]: {},
-        [arrangementClipId]: {},
-      });
-
-      // Mock createAudioClipInSession
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
         .mockReturnValue({
           clip: { id: sessionClipId },
           slot: { call: vi.fn() },
         });
-
-      // Mock tileClipToRange
       const mockTileClipToRange = vi
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
@@ -164,21 +96,7 @@ describe("arrangement-operations-helpers", () => {
         }
       });
 
-      const mockClip = {
-        id: "789",
-        getProperty: vi.fn((prop) => {
-          const props = {
-            looping: 1,
-            loop_start: 0,
-            loop_end: 8,
-            start_marker: 4,
-            end_marker: 8,
-          };
-
-          return props[prop];
-        }),
-        trackIndex,
-      };
+      const mockClip = createMockClip({ props: clipProps });
 
       handleArrangementLengthening({
         clip: mockClip,
@@ -198,46 +116,15 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should expose hidden content when arrangementLengthBeats < clipLength for looped clips", () => {
-      const trackIndex = 0;
+      const clipProps = { loop_end: 16, end_marker: 16 }; // clipLength = 16
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
+      setupArrangementMocks({ clipProps });
 
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          looping: 1,
-          loop_start: 0,
-          loop_end: 16, // clipLength = 16 (loop_end - loop_start)
-          start_marker: 0,
-          end_marker: 16,
-        },
-      });
-
-      // Mock tileClipToRange
       const mockTileClipToRange = vi
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
 
-      const mockClip = {
-        id: "789",
-        getProperty: vi.fn((prop) => {
-          const props = {
-            looping: 1,
-            loop_start: 0,
-            loop_end: 16,
-            start_marker: 0,
-            end_marker: 16,
-          };
-
-          return props[prop];
-        }),
-        trackIndex,
-      };
+      const mockClip = createMockClip({ props: clipProps });
 
       // arrangementLengthBeats (12) < clipLength (16) triggers hidden content exposure
       const result = handleArrangementLengthening({
@@ -271,45 +158,15 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should tile looped clip when currentArrangementLength < totalContentLength", () => {
-      const trackIndex = 0;
+      const clipProps = { start_marker: 2 }; // totalContentLength = 8 - 2 = 6
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          looping: 1,
-          loop_start: 0,
-          loop_end: 8, // clipLength = 8
-          start_marker: 2, // totalContentLength = loop_end - start_marker = 8 - 2 = 6
-          end_marker: 8,
-        },
-      });
+      setupArrangementMocks({ clipProps });
 
       const mockTileClipToRange = vi
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
 
-      const mockClip = {
-        id: "789",
-        getProperty: vi.fn((prop) => {
-          const props = {
-            looping: 1,
-            loop_start: 0,
-            loop_end: 8,
-            start_marker: 2,
-            end_marker: 8,
-          };
-
-          return props[prop];
-        }),
-        trackIndex,
-      };
+      const mockClip = createMockClip({ props: clipProps });
 
       // arrangementLengthBeats (16) > clipLength (8)
       // currentArrangementLength (4) < totalContentLength (6)
@@ -347,14 +204,9 @@ describe("arrangement-operations-helpers", () => {
     it("should throw error when trackIndex is null", () => {
       liveApiPath.mockReturnValue("live_set");
 
-      const mockClip = {
-        id: "456",
-        trackIndex: null,
-      };
-
       expect(() =>
         handleArrangementShortening({
-          clip: mockClip,
+          clip: { id: "456", trackIndex: null },
           isAudioClip: false,
           arrangementLengthBeats: 4,
           currentStartTime: 0,
@@ -365,19 +217,11 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should shorten audio clip using createAudioClipInSession", () => {
-      const trackIndex = 0;
       const sessionClipId = "session-123";
       const arrangementClipId = "arr-456";
 
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
+      setupArrangementClipPath("789");
 
-        return this._path;
-      });
-
-      // Mock createAudioClipInSession
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
         .mockReturnValue({
@@ -390,16 +234,10 @@ describe("arrangement-operations-helpers", () => {
           return `id ${arrangementClipId}`;
         }
       });
-
       liveApiSet.mockImplementation(() => {});
 
-      const mockClip = {
-        id: "789",
-        trackIndex,
-      };
-
       handleArrangementShortening({
-        clip: mockClip,
+        clip: { id: "789", trackIndex: 0 },
         isAudioClip: true, // Audio clip
         arrangementLengthBeats: 4,
         currentStartTime: 0,
@@ -423,15 +261,7 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should shorten midi clip using create_midi_clip", () => {
-      const trackIndex = 0;
-
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-
-        return this._path;
-      });
+      setupArrangementClipPath("789");
 
       liveApiCall.mockImplementation((method) => {
         if (method === "create_midi_clip") {
@@ -439,13 +269,8 @@ describe("arrangement-operations-helpers", () => {
         }
       });
 
-      const mockClip = {
-        id: "789",
-        trackIndex,
-      };
-
       handleArrangementShortening({
-        clip: mockClip,
+        clip: { id: "789", trackIndex: 0 },
         isAudioClip: false, // MIDI clip
         arrangementLengthBeats: 4,
         currentStartTime: 0,

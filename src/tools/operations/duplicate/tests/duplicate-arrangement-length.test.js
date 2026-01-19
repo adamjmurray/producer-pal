@@ -13,6 +13,15 @@ import {
   setupTimeSignatureDurationMock,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
 
+/** Mock liveApiId to return session clip path format for clip1 */
+function setupClip1SessionId() {
+  liveApiId.mockImplementation(function () {
+    if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
+
+    return this._id;
+  });
+}
+
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", () => {
     setupSessionClipPath("clip1");
@@ -60,12 +69,7 @@ describe("duplicate - arrangementLength functionality", () => {
     setupSessionClipPath("clip1");
     setupArrangementDuplicationMock();
     setupArrangementClipMocks();
-
-    liveApiId.mockImplementation(function () {
-      if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
-
-      return this._id;
-    });
+    setupClip1SessionId();
 
     mockLiveApiGet({
       clip1: {
@@ -120,12 +124,7 @@ describe("duplicate - arrangementLength functionality", () => {
     setupSessionClipPath("clip1");
     setupArrangementDuplicationMock({ includeNotes: false });
     setupArrangementClipMocks();
-
-    liveApiId.mockImplementation(function () {
-      if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
-
-      return this._id;
-    });
+    setupClip1SessionId();
 
     mockLiveApiGet({
       clip1: {

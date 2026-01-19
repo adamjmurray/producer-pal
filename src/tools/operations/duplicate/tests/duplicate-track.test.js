@@ -211,7 +211,8 @@ describe("duplicate - track duplication", () => {
     },
   );
 
-  it("should remove Producer Pal device when duplicating host track", () => {
+  /** Sets up mocks for Producer Pal device tests with 3 devices on track 1 */
+  function setupProducerPalDeviceMocks() {
     liveApiPath.mockImplementation(function () {
       if (this._id === "track1") {
         return "live_set tracks 0";
@@ -223,20 +224,21 @@ describe("duplicate - track duplication", () => {
 
       return this._path;
     });
+    mockLiveApiGet({
+      "live_set tracks 1": {
+        devices: children("device0", "device1", "device2"),
+      },
+    });
+  }
 
+  it("should remove Producer Pal device when duplicating host track", () => {
+    setupProducerPalDeviceMocks();
     liveApiId.mockImplementation(function () {
       if (this._path === "this_device") {
         return "id device1";
       }
 
       return this._id;
-    });
-
-    // Mock track with devices including Producer Pal device
-    mockLiveApiGet({
-      "live_set tracks 1": {
-        devices: children("device0", "device1", "device2"),
-      },
     });
 
     const result = duplicate({
@@ -261,24 +263,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should not remove Producer Pal device when withoutDevices is true", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") {
-        return "live_set tracks 0";
-      }
-
-      if (this._id === "this_device") {
-        return "live_set tracks 0 devices 1";
-      }
-
-      return this._path;
-    });
-
-    // Mock track with devices
-    mockLiveApiGet({
-      "live_set tracks 1": {
-        devices: children("device0", "device1", "device2"),
-      },
-    });
+    setupProducerPalDeviceMocks();
 
     const result = duplicate({
       type: "track",
