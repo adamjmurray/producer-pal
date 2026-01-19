@@ -1,3 +1,6 @@
+/// <reference path="../types/live-api.d.ts" />
+/// <reference path="../types/max-globals.d.ts" />
+/* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.js";
 
@@ -35,15 +38,7 @@ import { updateTrack } from "#src/tools/track/update/update-track.js";
 import { connect } from "#src/tools/workflow/connect.js";
 import { memory } from "#src/tools/workflow/memory.js";
 
-/**
- * @type {{
- *   projectNotes: { enabled: boolean; writable: boolean; content: string };
- *   smallModelMode: boolean;
- *   sampleFolder: string | null;
- *   holdingAreaStartBeats?: number;
- * }}
- */
-const context = {
+const context: ToolContext = {
   projectNotes: {
     enabled: false,
     writable: false,
@@ -59,12 +54,10 @@ const context = {
  * This ensures holding area is always just past actual content,
  * avoiding permanent song_length bloat from hardcoded positions.
  */
-function initHoldingArea() {
+function initHoldingArea(): void {
   const liveSet = LiveAPI.from("live_set");
 
-  context.holdingAreaStartBeats = /** @type {number} */ (
-    liveSet.get("song_length")[0]
-  );
+  context.holdingAreaStartBeats = liveSet.get("song_length")[0] as number;
 }
 
 /*
@@ -72,66 +65,55 @@ function initHoldingArea() {
 Use the `(args) => toolFunction(args, context)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
-/** @type {Record<string, (args: unknown) => unknown>} */
-const tools = {
-  "ppal-connect": (args) => connect(/** @type {any} */ (args), context),
-  "ppal-read-live-set": (args) =>
-    readLiveSet(/** @type {any} */ (args), context),
-  "ppal-update-live-set": (args) =>
-    updateLiveSet(/** @type {any} */ (args), context),
-  "ppal-create-track": (args) =>
-    createTrack(/** @type {any} */ (args), context),
-  "ppal-read-track": (args) => readTrack(/** @type {any} */ (args), context),
-  "ppal-update-track": (args) =>
-    updateTrack(/** @type {any} */ (args), context),
-  "ppal-create-scene": (args) =>
-    createScene(/** @type {any} */ (args), context),
-  "ppal-read-scene": (args) => readScene(/** @type {any} */ (args), context),
-  "ppal-update-scene": (args) =>
-    updateScene(/** @type {any} */ (args), context),
-  "ppal-create-clip": (args) => createClip(/** @type {any} */ (args), context),
-  "ppal-read-clip": (args) => readClip(/** @type {any} */ (args), context),
+const tools: Record<string, (args: unknown) => unknown> = {
+  "ppal-connect": (args) => connect(args as any, context),
+  "ppal-read-live-set": (args) => readLiveSet(args as any, context),
+  "ppal-update-live-set": (args) => updateLiveSet(args as any, context),
+  "ppal-create-track": (args) => createTrack(args as any, context),
+  "ppal-read-track": (args) => readTrack(args as any, context),
+  "ppal-update-track": (args) => updateTrack(args as any, context),
+  "ppal-create-scene": (args) => createScene(args as any, context),
+  "ppal-read-scene": (args) => readScene(args as any, context),
+  "ppal-update-scene": (args) => updateScene(args as any, context),
+  "ppal-create-clip": (args) => createClip(args as any, context),
+  "ppal-read-clip": (args) => readClip(args as any, context),
   "ppal-update-clip": (args) => {
     initHoldingArea();
 
-    return updateClip(/** @type {any} */ (args), context);
+    return updateClip(args as any, context);
   },
   "ppal-transform-clips": (args) => {
     initHoldingArea();
 
-    return transformClips(/** @type {any} */ (args), context);
+    return transformClips(args as any, context);
   },
-  "ppal-create-device": (args) =>
-    createDevice(/** @type {any} */ (args), context),
-  "ppal-read-device": (args) => readDevice(/** @type {any} */ (args), context),
-  "ppal-update-device": (args) =>
-    updateDevice(/** @type {any} */ (args), context),
-  "ppal-playback": (args) => playback(/** @type {any} */ (args), context),
-  "ppal-select": (args) => select(/** @type {any} */ (args), context),
-  "ppal-delete": (args) => deleteObject(/** @type {any} */ (args), context),
+  "ppal-create-device": (args) => createDevice(args as any, context),
+  "ppal-read-device": (args) => readDevice(args as any, context),
+  "ppal-update-device": (args) => updateDevice(args as any, context),
+  "ppal-playback": (args) => playback(args as any, context),
+  "ppal-select": (args) => select(args as any, context),
+  "ppal-delete": (args) => deleteObject(args as any, context),
   "ppal-duplicate": (args) => {
     initHoldingArea();
 
-    return duplicate(/** @type {any} */ (args), context);
+    return duplicate(args as any, context);
   },
-  "ppal-memory": (args) => memory(/** @type {any} */ (args), context),
-  "ppal-read-samples": (args) =>
-    readSamples(/** @type {any} */ (args), context),
+  "ppal-memory": (args) => memory(args as any, context),
+  "ppal-read-samples": (args) => readSamples(args as any, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["ppal-raw-live-api"] = (args) =>
-    rawLiveApi(/** @type {any} */ (args), context);
+  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args as any, context);
 }
 
 /**
  * Call a tool by name with the given arguments
  *
- * @param {string} toolName - Name of the tool to call
- * @param {object} args - Arguments to pass to the tool
- * @returns {unknown} Tool execution result
+ * @param toolName - Name of the tool to call
+ * @param args - Arguments to pass to the tool
+ * @returns Tool execution result
  */
-function callTool(toolName, args) {
+function callTool(toolName: string, args: object): unknown {
   const tool = tools[toolName];
 
   if (!tool) {
@@ -146,66 +128,66 @@ let isCompactOutputEnabled = true;
 /**
  * Enable or disable compact output format
  *
- * @param {boolean} enabled - Whether to enable compact output
+ * @param enabled - Whether to enable compact output
  */
-export function compactOutput(enabled) {
+export function compactOutput(enabled: boolean): void {
   isCompactOutputEnabled = Boolean(enabled);
 }
 
 /**
  * Enable or disable small model mode
  *
- * @param {boolean} enabled - Whether to enable small model mode
+ * @param enabled - Whether to enable small model mode
  */
-export function smallModelMode(enabled) {
+export function smallModelMode(enabled: boolean): void {
   context.smallModelMode = Boolean(enabled);
 }
 
 /**
  * Enable or disable project notes feature
  *
- * @param {boolean} enabled - Whether to enable project notes
+ * @param enabled - Whether to enable project notes
  */
-export function projectNotesEnabled(enabled) {
+export function projectNotesEnabled(enabled: boolean): void {
   context.projectNotes.enabled = Boolean(enabled);
 }
 
 /**
  * Set whether project notes are writable
  *
- * @param {boolean} writable - Whether project notes should be writable
+ * @param writable - Whether project notes should be writable
  */
-export function projectNotesWritable(writable) {
+export function projectNotesWritable(writable: boolean): void {
   context.projectNotes.writable = Boolean(writable);
 }
 
 /**
  * Set the project notes content
  *
- * @param {string} _text - Unused parameter (needed for integration with the Max patch)
- * @param {string} content - Project notes content
+ * @param _text - Unused parameter (needed for integration with the Max patch)
+ * @param content - Project notes content
  */
-export function projectNotes(_text, content) {
+export function projectNotes(_text: string, content: string | undefined): void {
   context.projectNotes.content = content ?? "";
 }
 
 /**
  * Set the sample folder path
  *
- * @param {string} _text - Unused parameter (needed for integration with the Max patch)
- * @param {string} path - Sample folder path
+ * @param _text - Unused parameter (needed for integration with the Max patch)
+ * @param path - Sample folder path
  */
-export function sampleFolder(_text, path) {
+export function sampleFolder(_text: string, path: string): void {
   context.sampleFolder = path || null;
 }
 
 /**
  * Send a response back to the MCP server
  *
- * @param {string} requestId - Request identifier
- * @param {object} result - Result object to send
+ * @param requestId - Request identifier
+ * @param result - Result object to send
  */
-function sendResponse(requestId, result) {
+function sendResponse(requestId: string, result: object): void {
   const jsonString = JSON.stringify(result);
 
   // Calculate required chunks
@@ -243,12 +225,17 @@ function sendResponse(requestId, result) {
 /**
  * Handle MCP request from Node for Max
  *
- * @param {string} requestId - Request identifier
- * @param {string} tool - Tool name to execute
- * @param {string} argsJSON - JSON string of arguments
- * @param {string} contextJSON - JSON string of context
+ * @param requestId - Request identifier
+ * @param tool - Tool name to execute
+ * @param argsJSON - JSON string of arguments
+ * @param contextJSON - JSON string of context
  */
-export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
+export async function mcp_request(
+  requestId: string,
+  tool: string,
+  argsJSON: string,
+  contextJSON: string | null | undefined,
+): Promise<void> {
   let result;
 
   try {
@@ -276,7 +263,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
-      const output = /** @type {object} */ (await callTool(tool, args));
+      const output = (await callTool(tool, args)) as object;
 
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,

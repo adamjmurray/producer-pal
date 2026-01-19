@@ -1,9 +1,10 @@
+/// <reference path="../types/live-api.d.ts" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.js";
 import "./live-api-extensions.js";
 
 describe("LiveAPI extensions - setter methods", () => {
-  let api;
+  let api: LiveAPI;
 
   beforeEach(() => {
     api = LiveAPI.from("live_set");

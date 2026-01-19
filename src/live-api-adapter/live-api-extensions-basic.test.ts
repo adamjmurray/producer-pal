@@ -1,9 +1,10 @@
+/// <reference path="../types/live-api.d.ts" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI, liveApiId } from "#src/test/mocks/mock-live-api.js";
 import "./live-api-extensions.js";
 
 describe("LiveAPI extensions - basic methods", () => {
-  let api;
+  let api: LiveAPI;
 
   beforeEach(() => {
     api = LiveAPI.from("live_set");
@@ -236,9 +237,9 @@ describe("LiveAPI extensions - basic methods", () => {
 
       expect(children).toHaveLength(2);
       expect(children[0]).toBeInstanceOf(LiveAPI);
-      expect(children[0].path).toBe("id 1");
+      expect(children[0]!.path).toBe("id 1");
       expect(children[1]).toBeInstanceOf(LiveAPI);
-      expect(children[1].path).toBe("id 2");
+      expect(children[1]!.path).toBe("id 2");
     });
 
     it("returns empty array when no children", () => {
@@ -309,7 +310,8 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("throws error for array with wrong length", () => {
-      expect(() => LiveAPI.from(["id"])).toThrow("Invalid array format");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input
+      expect(() => LiveAPI.from(["id"] as any)).toThrow("Invalid array format");
     });
 
     it("throws error for array where first element is not 'id'", () => {

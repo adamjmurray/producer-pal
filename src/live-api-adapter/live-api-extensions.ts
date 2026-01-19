@@ -1,18 +1,24 @@
+/// <reference path="../types/live-api.d.ts" />
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
+/* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
-   * @param {string|number|Array<string|number>} idOrPath - ID number/string, full path, or ["id", "123"] array
-   * @returns {LiveAPI} New LiveAPI instance
+   * @param idOrPath - ID number/string, full path, or ["id", "123"] array
+   * @returns New LiveAPI instance
    */
-  LiveAPI.from = function (idOrPath) {
+  LiveAPI.from = function (
+    idOrPath: string | number | [string, string | number],
+  ): LiveAPI {
     // Handle array format ["id", "123"] from Live API calls
     if (Array.isArray(idOrPath)) {
-      if (idOrPath.length === 2 && idOrPath[0] === "id") {
-        return new LiveAPI(`id ${idOrPath[1]}`);
+      // Runtime check for malformed arrays (type says 2 elements, but check anyway)
+      const arr = idOrPath as unknown[];
+      if (arr.length === 2 && arr[0] === "id") {
+        return new LiveAPI(`id ${String(arr[1])}`);
       }
       throw new Error(
-        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`,
+        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${String(idOrPath)}]`,
       );
     }
 
@@ -24,19 +30,22 @@ if (typeof LiveAPI !== "undefined") {
     }
     return new LiveAPI(idOrPath);
   };
-  LiveAPI.prototype.exists = function () {
+  LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // id can be "id 0", "0", or 0 (number) when object doesn't exist
-    const id = /** @type {string | number} */ (this.id);
+    const id = this.id as string | number;
 
     return id !== "id 0" && id !== "0" && id !== 0;
   };
 
   /**
    * Get a Live API property value with type-appropriate handling
-   * @param {string} property - Property name to get
-   * @returns {unknown} Property value
+   * @param property - Property name to get
+   * @returns Property value
    */
-  LiveAPI.prototype.getProperty = function (property) {
+  LiveAPI.prototype.getProperty = function (
+    this: LiveAPI,
+    property: string,
+  ): unknown {
     switch (property) {
       case "scale_intervals":
       case "available_warp_modes":
@@ -49,10 +58,10 @@ if (typeof LiveAPI !== "undefined") {
       case "input_routing_type":
       case "output_routing_channel":
       case "output_routing_type": {
-        const rawValue = this.get(property);
-        if (rawValue && rawValue[0]) {
+        const rawValue = this.get(property) as unknown[] | undefined;
+        if (rawValue?.[0]) {
           try {
-            const parsed = JSON.parse(/** @type {string} */ (rawValue[0]));
+            const parsed = JSON.parse(rawValue[0] as string);
 
             return parsed[property];
           } catch {
@@ -62,19 +71,25 @@ if (typeof LiveAPI !== "undefined") {
 
         return null;
       }
-      default:
-        return this.get(property)?.[0];
+      default: {
+        const result = this.get(property) as unknown[] | undefined;
+        return result?.[0];
+      }
     }
   };
 
   /**
    * Set a Live API property with type-appropriate handling
-   * @param {string} property - Property name to set
-   * @param {unknown} value - Property value to set
-   * @returns {void}
+   * @param property - Property name to set
+   * @param value - Property value to set
+   * @returns void
    */
-  LiveAPI.prototype.setProperty = function (property, value) {
-    const val = /** @type {any} */ (value);
+  LiveAPI.prototype.setProperty = function (
+    this: LiveAPI,
+    property: string,
+    value: unknown,
+  ): void {
+    const val = value as any;
 
     switch (property) {
       case "input_routing_type":
@@ -104,20 +119,23 @@ if (typeof LiveAPI !== "undefined") {
 
   /**
    * Get child object IDs for a named collection
-   * @param {string} name - Collection name to query
-   * @returns {string[]} Array of child IDs in "id X" format
+   * @param name - Collection name to query
+   * @returns Array of child IDs in "id X" format
    */
-  LiveAPI.prototype.getChildIds = function (name) {
+  LiveAPI.prototype.getChildIds = function (
+    this: LiveAPI,
+    name: string,
+  ): string[] {
     const idArray = this.get(name);
 
     if (!Array.isArray(idArray)) {
       return [];
     }
 
-    const children = [];
+    const children: string[] = [];
     for (let i = 0; i < idArray.length; i += 2) {
       if (idArray[i] === "id") {
-        children.push(`id ${idArray[i + 1]}`);
+        children.push(`id ${String(idArray[i + 1])}`);
       }
     }
     return children;
@@ -125,17 +143,18 @@ if (typeof LiveAPI !== "undefined") {
 
   /**
    * Get child LiveAPI instances for a named collection
-   * @param {string} name - Collection name to query
-   * @returns {LiveAPI[]} Array of child LiveAPI instances
+   * @param name - Collection name to query
+   * @returns Array of child LiveAPI instances
    */
-  LiveAPI.prototype.getChildren = function (name) {
+  LiveAPI.prototype.getChildren = function (
+    this: LiveAPI,
+    name: string,
+  ): LiveAPI[] {
     return this.getChildIds(name).map((id) => new LiveAPI(id));
   };
 
-  LiveAPI.prototype.getColor = function () {
-    const colorValue = /** @type {number | undefined} */ (
-      this.getProperty("color")
-    );
+  LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {
+    const colorValue = this.getProperty("color") as number | undefined;
     if (colorValue === undefined) {
       return null;
     }
@@ -154,9 +173,12 @@ if (typeof LiveAPI !== "undefined") {
 
   /**
    * Set color from CSS hex format
-   * @param {string} cssColor - Color in "#RRGGBB" format
+   * @param cssColor - Color in "#RRGGBB" format
    */
-  LiveAPI.prototype.setColor = function (cssColor) {
+  LiveAPI.prototype.setColor = function (
+    this: LiveAPI,
+    cssColor: string,
+  ): void {
     if (!cssColor.startsWith("#") || cssColor.length !== 7) {
       throw new Error(`Invalid color format: must be "#RRGGBB"`);
     }
@@ -177,15 +199,18 @@ if (typeof LiveAPI !== "undefined") {
 
   /**
    * Set multiple properties at once
-   * @param {Record<string, unknown>} properties - Properties to set
+   * @param properties - Properties to set
    */
-  LiveAPI.prototype.setAll = function (properties) {
+  LiveAPI.prototype.setAll = function (
+    this: LiveAPI,
+    properties: Record<string, unknown>,
+  ): void {
     for (const [property, value] of Object.entries(properties)) {
       if (value != null) {
         if (property === "color") {
-          this.setColor(/** @type {string} */ (value));
+          this.setColor(value as string);
         } else {
-          this.set(property, /** @type {any} */ (value));
+          this.set(property, value as any);
         }
       }
     }
@@ -194,7 +219,7 @@ if (typeof LiveAPI !== "undefined") {
   // Index extraction getters (only define if not already defined)
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackIndex")) {
     Object.defineProperty(LiveAPI.prototype, "trackIndex", {
-      get: function () {
+      get: function (this: LiveAPI) {
         const match = this.path.match(/live_set tracks (\d+)/);
         return match ? Number(match[1]) : null;
       },
@@ -206,7 +231,7 @@ if (typeof LiveAPI !== "undefined") {
     !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "returnTrackIndex")
   ) {
     Object.defineProperty(LiveAPI.prototype, "returnTrackIndex", {
-      get: function () {
+      get: function (this: LiveAPI) {
         const match = this.path.match(/live_set return_tracks (\d+)/);
         return match ? Number(match[1]) : null;
       },
@@ -216,7 +241,7 @@ if (typeof LiveAPI !== "undefined") {
   // Track category extension
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "category")) {
     Object.defineProperty(LiveAPI.prototype, "category", {
-      get: function () {
+      get: function (this: LiveAPI) {
         if (this.path.includes("live_set tracks")) {
           return "regular";
         } else if (this.path.includes("live_set return_tracks")) {
@@ -231,7 +256,7 @@ if (typeof LiveAPI !== "undefined") {
 
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "sceneIndex")) {
     Object.defineProperty(LiveAPI.prototype, "sceneIndex", {
-      get: function () {
+      get: function (this: LiveAPI) {
         // Try scene path first
         let match = this.path.match(/live_set scenes (\d+)/);
         if (match) {
@@ -249,7 +274,7 @@ if (typeof LiveAPI !== "undefined") {
     !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "clipSlotIndex")
   ) {
     Object.defineProperty(LiveAPI.prototype, "clipSlotIndex", {
-      get: function () {
+      get: function (this: LiveAPI) {
         // Try clip_slots path first
         let match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
         if (match) {
@@ -266,10 +291,11 @@ if (typeof LiveAPI !== "undefined") {
   // Device index extension - matches LAST "devices X" for nested rack support
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
     Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
-      get: function () {
+      get: function (this: LiveAPI) {
         const matches = this.path.match(/devices (\d+)/g);
-        if (!matches) return null;
-        const lastMatch = matches.at(-1).match(/devices (\d+)/);
+        if (!matches || matches.length === 0) return null;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above guarantees element exists
+        const lastMatch = matches.at(-1)!.match(/devices (\d+)/);
         return lastMatch ? Number(lastMatch[1]) : null;
       },
     });
@@ -279,7 +305,7 @@ if (typeof LiveAPI !== "undefined") {
     !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "timeSignature")
   ) {
     Object.defineProperty(LiveAPI.prototype, "timeSignature", {
-      get: function () {
+      get: function (this: LiveAPI) {
         // Different Live API object types use different property names for time signature
         const objectType = this.type;
         let numeratorProp, denominatorProp;
@@ -295,11 +321,11 @@ if (typeof LiveAPI !== "undefined") {
             break;
         }
 
-        const numerator = this.getProperty(numeratorProp);
-        const denominator = this.getProperty(denominatorProp);
+        const numerator = this.getProperty(numeratorProp) as number | null;
+        const denominator = this.getProperty(denominatorProp) as number | null;
 
         if (numerator != null && denominator != null) {
-          return `${numerator}/${denominator}`;
+          return `${String(numerator)}/${String(denominator)}`;
         }
 
         return null;

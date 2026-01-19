@@ -1,3 +1,4 @@
+/// <reference path="../types/live-api.d.ts" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiGet } from "#src/test/mocks/mock-live-api.js";
 import "./live-api-extensions.js";

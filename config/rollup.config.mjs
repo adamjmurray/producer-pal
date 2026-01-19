@@ -44,7 +44,7 @@ const addLicenseHeader = (options = {}) => ({
 
 export default [
   {
-    input: join(rootDir, "src/live-api-adapter/live-api-adapter.js"),
+    input: join(rootDir, "src/live-api-adapter/live-api-adapter.ts"),
     output: {
       file: join(rootDir, "max-for-live-device/live-api-adapter.js"),
       format: "es",
@@ -58,6 +58,11 @@ export default [
           process.env.ENABLE_RAW_LIVE_API,
         ),
         preventAssignment: true,
+      }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2024",
+        tsconfig: join(rootDir, "src/live-api-adapter/tsconfig.json"),
       }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),

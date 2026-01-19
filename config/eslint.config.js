@@ -493,6 +493,8 @@ export default [
           "./src/portal/tsconfig.test.json",
           "./src/mcp-server/tsconfig.json",
           "./src/mcp-server/tsconfig.test.json",
+          "./src/live-api-adapter/tsconfig.json",
+          "./src/live-api-adapter/tsconfig.test.json",
         ],
       },
       globals: {
@@ -505,6 +507,7 @@ export default [
           project: [
             "./src/portal/tsconfig.json",
             "./src/mcp-server/tsconfig.json",
+            "./src/live-api-adapter/tsconfig.json",
           ],
         },
         node: true,
@@ -527,6 +530,26 @@ export default [
       ...unicornRules,
       ...jsdocRules,
       ...tsOnlyRules,
+    },
+  },
+
+  // Max V8 environment globals for live-api-adapter
+  {
+    files: ["src/live-api-adapter/*.ts"],
+    languageOptions: {
+      globals: {
+        LiveAPI: "readonly",
+        outlet: "readonly",
+        post: "readonly",
+        error: "readonly",
+        ToolContext: "readonly",
+        Dict: "readonly",
+        Task: "readonly",
+        Folder: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
     },
   },
 

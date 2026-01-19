@@ -29,6 +29,7 @@
     "**/*-test-helpers.js",
     "**/parser/*-parser.js",
     "portal/*.ts",
-    "mcp-server/*.ts"
+    "mcp-server/*.ts",
+    "live-api-adapter/*.ts"
   ]
 }

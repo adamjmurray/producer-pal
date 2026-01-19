@@ -1,9 +1,10 @@
+/// <reference path="../types/live-api.d.ts" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.js";
 import "./live-api-extensions.js";
 
 describe("LiveAPI extensions - color methods", () => {
-  let api;
+  let api: LiveAPI;
 
   beforeEach(() => {
     api = LiveAPI.from("live_set");
@@ -101,7 +102,7 @@ describe("LiveAPI extensions - color methods", () => {
 
       expect(cssColor).toBe("#FF0000");
 
-      api.setColor(cssColor);
+      api.setColor(cssColor!);
       expect(api.set).toHaveBeenCalledWith("color", originalColor);
     });
   });
