@@ -1,6 +1,6 @@
 import * as console from "#src/shared/v8-max-console.js";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.js";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
 
 /**
  * Duplicate a device using the track duplication workaround.
@@ -79,10 +79,7 @@ export function duplicateDevice(
   const deviceId = tempDevice.id;
 
   // 10. Calculate the temp track's current index (may have shifted if device moved before it)
-  const currentTempTrackIndex = recalculateTempTrackIndex(
-    tempTrackIndex,
-    adjustedDestination,
-  );
+  const currentTempTrackIndex = recalculateTempTrackIndex(tempTrackIndex);
 
   // 11. Delete the temporary track
   liveSet.call("delete_track", currentTempTrackIndex);
@@ -185,16 +182,10 @@ function adjustTrackIndicesForTempTrack(
 
 /**
  * Recalculate the temp track's index after the device has been moved.
- * If the device was moved to a track before the temp track, indices shift.
+ * Device movement doesn't create/delete tracks, so temp track index is stable.
  * @param originalTempTrackIndex - Original index of the temp track (sourceTrackIndex + 1)
- * @param _destination - The destination path the device was moved to (unused - kept for API clarity)
  * @returns Current index of the temp track
  */
-function recalculateTempTrackIndex(
-  originalTempTrackIndex: number,
-  _destination: string,
-): number {
-  // Device movement doesn't create/delete tracks, so temp track index is stable
-  // The temp track is always at originalTempTrackIndex after the duplicate_track call
+function recalculateTempTrackIndex(originalTempTrackIndex: number): number {
   return originalTempTrackIndex;
 }
