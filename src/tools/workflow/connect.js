@@ -1,11 +1,11 @@
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
 import { VERSION } from "#src/shared/version.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import {
   skills as basicSkills,
   buildInstructions as buildBasicInstruction,
 } from "#src/skills/basic.js";
 import { buildInstructions, skills } from "#src/skills/standard.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety

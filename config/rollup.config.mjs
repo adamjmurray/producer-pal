@@ -52,6 +52,13 @@ export default [
     plugins: [
       alias({
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
+        customResolver: (source) => {
+          // Resolve .js imports to .ts files in skills directory
+          if (source.includes("/skills/") && source.endsWith(".js")) {
+            return source.replace(/\.js$/, ".ts");
+          }
+          return null;
+        },
       }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
@@ -63,6 +70,11 @@ export default [
         include: /\.[jt]sx?$/,
         target: "es2024",
         tsconfig: join(rootDir, "src/live-api-adapter/tsconfig.json"),
+      }),
+      resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
+        preferBuiltins: true,
+        browser: false,
       }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),

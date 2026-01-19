@@ -39,7 +39,7 @@ Create MIDI clips using the bar|beat notation syntax:
 - Parameters (v/t/p) and pitch persist until changed
 - copying bars:
   - **Bar copying MERGES** - target bars keep existing notes; use v0 to remove unwanted notes
-  - @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
+  - @N= copies previous bar to N; @N=M copies bar M; @N-M=P copies bar P to range N-M
   - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
   - @N-M=P-Q tiles bars P-Q across range N-M (repeating multi-bar patterns)
   - @clear clears the copy buffer for advanced layering use cases
@@ -190,7 +190,7 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 \`arrangementStart\` moves clips in the timeline. \`arrangementLength\` expands or reduces visible playback region.
 
-Note: Any operation that moves a clip causes the clip ID to change. 
+Note: Any operation that moves a clip causes the clip ID to change.
 Most operations return the new IDs.
 Re-read the Set or Track to see the new IDs.
 
@@ -216,19 +216,21 @@ Example sequence (move three clips forward one bar):
 
 /**
  * Generate initialization instructions based on context
- * @param {Partial<ToolContext>} [context] - The userContext from main.js
- * @returns {string} Instructions for completing Producer Pal initialization
+ * @param context - The userContext from main.js
+ * @returns Instructions for completing Producer Pal initialization
  */
-export function buildInstructions(context) {
+export function buildInstructions(context?: Partial<ToolContext>): string {
+  const projectNotes = context?.projectNotes;
+
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
       "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
       "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(context?.projectNotes?.content
+      ...(projectNotes?.content
         ? [
             `* Summarize the project notes, ${
-              context?.projectNotes?.writable
+              projectNotes.writable
                 ? "mention you can update the project notes, "
                 : ""
             }and verify you will follow instructions in project notes (if any).`,

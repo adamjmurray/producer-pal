@@ -61,7 +61,7 @@
     "release": "node scripts/prepare-release.ts",
     "tc": "npm run typecheck",
     "typecheck": "npm run typecheck:src --silent && npm run typecheck:scripts --silent && npm run typecheck:webui --silent",
-    "typecheck:src": "tsc --project src/tsconfig.json && tsc --project src/portal/tsconfig.json && tsc --project src/mcp-server/tsconfig.json && tsc --project src/live-api-adapter/tsconfig.json",
+    "typecheck:src": "tsc --project src/tsconfig.json && tsc --project src/portal/tsconfig.json && tsc --project src/mcp-server/tsconfig.json && tsc --project src/live-api-adapter/tsconfig.json && tsc --project src/skills/tsconfig.json",
     "typecheck:scripts": "tsc --project scripts/tsconfig.json",
     "typecheck:webui": "node scripts/validate-typescript-only.ts && tsc --project webui/tsconfig.json && tsc --project tests/webui/tsconfig.json",
     "ui:build": "vite build --config config/vite.config.ts",

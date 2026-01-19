@@ -62,18 +62,20 @@ Gb1 2|1.5,2.5,3.5,4.5 # hats on bar 2, off-beats
 
 /**
  * Generate initialization instructions based on context
- * @param {Partial<ToolContext>} [context] - The userContext from main.js
- * @returns {string} Instructions for completing Producer Pal initialization
+ * @param context - The userContext from main.js
+ * @returns Instructions for completing Producer Pal initialization
  */
-export function buildInstructions(context) {
+export function buildInstructions(context?: Partial<ToolContext>): string {
+  const projectNotes = context?.projectNotes;
+
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
       "* Summarize the Live Set",
-      ...(context?.projectNotes?.content
+      ...(projectNotes?.content
         ? [
             `* Summarize the project notes${
-              context?.projectNotes?.writable
+              projectNotes.writable
                 ? ", and mention you can update the project notes"
                 : ""
             }`,

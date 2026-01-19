@@ -495,6 +495,8 @@ export default [
           "./src/mcp-server/tsconfig.test.json",
           "./src/live-api-adapter/tsconfig.json",
           "./src/live-api-adapter/tsconfig.test.json",
+          "./src/skills/tsconfig.json",
+          "./src/skills/tsconfig.test.json",
         ],
       },
       globals: {
@@ -508,6 +510,7 @@ export default [
             "./src/portal/tsconfig.json",
             "./src/mcp-server/tsconfig.json",
             "./src/live-api-adapter/tsconfig.json",
+            "./src/skills/tsconfig.json",
           ],
         },
         node: true,
@@ -546,6 +549,19 @@ export default [
         Dict: "readonly",
         Task: "readonly",
         Folder: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
+    },
+  },
+
+  // ToolContext global for skills (ambient type from max-globals.d.ts)
+  {
+    files: ["src/skills/*.ts"],
+    languageOptions: {
+      globals: {
+        ToolContext: "readonly",
       },
     },
     rules: {

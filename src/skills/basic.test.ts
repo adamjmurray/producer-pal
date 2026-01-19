@@ -15,6 +15,7 @@ describe("buildInstructions", () => {
   it("includes project notes summary when notes exist", () => {
     const context = {
       projectNotes: {
+        enabled: true,
         content: "This is a test project",
         writable: false,
       },
@@ -29,6 +30,7 @@ describe("buildInstructions", () => {
   it("mentions project notes are writable when applicable", () => {
     const context = {
       projectNotes: {
+        enabled: true,
         content: "This is a test project",
         writable: true,
       },
@@ -42,6 +44,7 @@ describe("buildInstructions", () => {
   it("excludes project notes section when content is empty", () => {
     const context = {
       projectNotes: {
+        enabled: true,
         content: "",
         writable: true,
       },
@@ -52,9 +55,11 @@ describe("buildInstructions", () => {
   });
 
   it("excludes project notes section when content is null", () => {
+    // Test null content handling (runtime value may be null despite type)
     const context = {
       projectNotes: {
-        content: null,
+        enabled: true,
+        content: null as unknown as string,
         writable: true,
       },
     };

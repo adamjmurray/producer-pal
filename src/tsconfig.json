@@ -30,6 +30,7 @@
     "**/parser/*-parser.js",
     "portal/*.ts",
     "mcp-server/*.ts",
-    "live-api-adapter/*.ts"
+    "live-api-adapter/*.ts",
+    "skills/*.ts"
   ]
 }
