@@ -307,7 +307,10 @@ describe("readClip", () => {
       },
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: {
+      _id: string;
+      _path: string;
+    }) {
       if (this._id === "session_clip_id") {
         return "live_set tracks 2 clip_slots 4 clip";
       }
@@ -345,7 +348,10 @@ describe("readClip", () => {
       },
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: {
+      _id: string;
+      _path: string;
+    }) {
       if (this._id === "arrangement_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
@@ -353,7 +359,10 @@ describe("readClip", () => {
       return this._path;
     });
 
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: {
+      _id: string;
+      _type: string;
+    }) {
       if (this._id === "arrangement_clip_id") {
         return "Clip";
       }

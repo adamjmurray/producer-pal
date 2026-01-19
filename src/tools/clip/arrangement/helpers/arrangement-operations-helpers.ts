@@ -2,56 +2,74 @@ import {
   createAudioClipInSession,
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.js";
 
-/**
- * @typedef {object} ArrangementContext
- * @property {number} [holdingAreaStartBeats] - Start position of holding area
- * @property {string} [silenceWavPath] - Path to silence WAV file (required for audio clips)
- */
+export interface ArrangementContext {
+  holdingAreaStartBeats?: number;
+  silenceWavPath?: string;
+}
 
-/**
- * @typedef {import("#src/tools/shared/arrangement/arrangement-tiling.js").TilingContext} TilingContext
- */
+export interface ClipIdResult {
+  id: string;
+}
 
-/**
- * @typedef {object} ClipIdResult
- * @property {string} id - Clip ID
- */
+interface TileWithContextOptions {
+  adjustPreRoll: boolean;
+  startOffset?: number;
+  tileLength?: number;
+}
 
 /**
  * Wrapper for tileClipToRange with type casts for ArrangementContext
- * @param {LiveAPI} clip - Source clip
- * @param {LiveAPI} track - Track to tile on
- * @param {number} position - Start position
- * @param {number} length - Length to tile
- * @param {ArrangementContext} ctx - Context with holding area info
- * @param {object} options - Tiling options
- * @returns {Array<ClipIdResult>} Array of tiled clip info
+ * @param clip - Source clip
+ * @param track - Track to tile on
+ * @param position - Start position
+ * @param length - Length to tile
+ * @param ctx - Context with holding area info
+ * @param options - Tiling options
+ * @returns Array of tiled clip info
  */
-function tileWithContext(clip, track, position, length, ctx, options) {
+function tileWithContext(
+  clip: LiveAPI,
+  track: LiveAPI,
+  position: number,
+  length: number,
+  ctx: ArrangementContext,
+  options: TileWithContextOptions,
+): ClipIdResult[] {
   return tileClipToRange(
     clip,
     track,
     position,
     length,
-    /** @type {number} */ (ctx.holdingAreaStartBeats),
-    /** @type {TilingContext} */ (ctx),
+    ctx.holdingAreaStartBeats as number,
+    ctx as TilingContext,
     options,
   );
 }
 
+interface HandleArrangementLengtheningArgs {
+  clip: LiveAPI;
+  isAudioClip: boolean;
+  arrangementLengthBeats: number;
+  currentArrangementLength: number;
+  currentStartTime: number;
+  currentEndTime: number;
+  context: ArrangementContext;
+}
+
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure
- * @param {object} options - Parameters object
- * @param {LiveAPI} options.clip - The LiveAPI clip object to lengthen
- * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
- * @param {number} options.arrangementLengthBeats - Target length in beats
- * @param {number} options.currentArrangementLength - Current length in beats
- * @param {number} options.currentStartTime - Current start time in beats
- * @param {number} options.currentEndTime - Current end time in beats
- * @param {ArrangementContext} options.context - Tool execution context with holding area info
- * @returns {Array<ClipIdResult>} - Array of updated clip info
+ * @param options - Parameters object
+ * @param options.clip - The LiveAPI clip object to lengthen
+ * @param options.isAudioClip - Whether the clip is an audio clip
+ * @param options.arrangementLengthBeats - Target length in beats
+ * @param options.currentArrangementLength - Current length in beats
+ * @param options.currentStartTime - Current start time in beats
+ * @param options.currentEndTime - Current end time in beats
+ * @param options.context - Tool execution context with holding area info
+ * @returns Array of updated clip info
  */
 export function handleArrangementLengthening({
   clip,
@@ -61,17 +79,14 @@ export function handleArrangementLengthening({
   currentStartTime,
   currentEndTime,
   context,
-}) {
-  /** @type {Array<ClipIdResult>} */
-  const updatedClips = [];
+}: HandleArrangementLengtheningArgs): ClipIdResult[] {
+  const updatedClips: ClipIdResult[] = [];
 
-  const isLooping = /** @type {number} */ (clip.getProperty("looping")) > 0;
-  const clipLoopStart = /** @type {number} */ (clip.getProperty("loop_start"));
-  const clipLoopEnd = /** @type {number} */ (clip.getProperty("loop_end"));
-  const clipStartMarker = /** @type {number} */ (
-    clip.getProperty("start_marker")
-  );
-  const clipEndMarker = /** @type {number} */ (clip.getProperty("end_marker"));
+  const isLooping = (clip.getProperty("looping") as number) > 0;
+  const clipLoopStart = clip.getProperty("loop_start") as number;
+  const clipLoopEnd = clip.getProperty("loop_end") as number;
+  const clipStartMarker = clip.getProperty("start_marker") as number;
+  const clipEndMarker = clip.getProperty("end_marker") as number;
 
   // For unlooped clips, use end_marker - start_marker (actual playback length)
   // For looped clips, use loop region
@@ -148,20 +163,33 @@ export function handleArrangementLengthening({
   return updatedClips;
 }
 
+interface CreateLoopedClipTilesArgs {
+  clip: LiveAPI;
+  isAudioClip: boolean;
+  arrangementLengthBeats: number;
+  currentArrangementLength: number;
+  currentStartTime: number;
+  currentEndTime: number;
+  totalContentLength: number;
+  currentOffset: number;
+  track: LiveAPI;
+  context: ArrangementContext;
+}
+
 /**
  * Create tiles for looped clips
- * @param {object} options - Parameters object
- * @param {LiveAPI} options.clip - The LiveAPI clip object
- * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
- * @param {number} options.arrangementLengthBeats - Target length in beats
- * @param {number} options.currentArrangementLength - Current length in beats
- * @param {number} options.currentStartTime - Current start time in beats
- * @param {number} options.currentEndTime - Current end time in beats
- * @param {number} options.totalContentLength - Total content length in beats
- * @param {number} options.currentOffset - Current offset from loop start
- * @param {LiveAPI} options.track - The LiveAPI track object
- * @param {ArrangementContext} options.context - Tool execution context
- * @returns {Array<ClipIdResult>} - Array of tiled clip info
+ * @param options - Parameters object
+ * @param options.clip - The LiveAPI clip object
+ * @param options.isAudioClip - Whether the clip is an audio clip
+ * @param options.arrangementLengthBeats - Target length in beats
+ * @param options.currentArrangementLength - Current length in beats
+ * @param options.currentStartTime - Current start time in beats
+ * @param options.currentEndTime - Current end time in beats
+ * @param options.totalContentLength - Total content length in beats
+ * @param options.currentOffset - Current offset from loop start
+ * @param options.track - The LiveAPI track object
+ * @param options.context - Tool execution context
+ * @returns Array of tiled clip info
  */
 function createLoopeClipTiles({
   clip,
@@ -174,9 +202,8 @@ function createLoopeClipTiles({
   currentOffset,
   track,
   context,
-}) {
-  /** @type {Array<ClipIdResult>} */
-  const updatedClips = [];
+}: CreateLoopedClipTilesArgs): ClipIdResult[] {
+  const updatedClips: ClipIdResult[] = [];
 
   // If clip not showing full content, tile with start_marker offsets
   if (currentArrangementLength < totalContentLength) {
@@ -217,7 +244,7 @@ function createLoopeClipTiles({
       isAudioClip,
       position: newEndTime,
       length: tempClipLength,
-      silenceWavPath: /** @type {string} */ (context.silenceWavPath),
+      silenceWavPath: context.silenceWavPath as string,
     });
 
     newEndTime = currentStartTime + totalContentLength;
@@ -260,15 +287,24 @@ function createLoopeClipTiles({
   return updatedClips;
 }
 
+interface HandleArrangementShorteningArgs {
+  clip: LiveAPI;
+  isAudioClip: boolean;
+  arrangementLengthBeats: number;
+  currentStartTime: number;
+  currentEndTime: number;
+  context: ArrangementContext;
+}
+
 /**
  * Handle arrangement clip shortening
- * @param {object} options - Parameters object
- * @param {LiveAPI} options.clip - The LiveAPI clip object to shorten
- * @param {boolean} options.isAudioClip - Whether the clip is an audio clip
- * @param {number} options.arrangementLengthBeats - Target length in beats
- * @param {number} options.currentStartTime - Current start time in beats
- * @param {number} options.currentEndTime - Current end time in beats
- * @param {ArrangementContext} options.context - Tool execution context
+ * @param options - Parameters object
+ * @param options.clip - The LiveAPI clip object to shorten
+ * @param options.isAudioClip - Whether the clip is an audio clip
+ * @param options.arrangementLengthBeats - Target length in beats
+ * @param options.currentStartTime - Current start time in beats
+ * @param options.currentEndTime - Current end time in beats
+ * @param options.context - Tool execution context
  */
 export function handleArrangementShortening({
   clip,
@@ -277,7 +313,7 @@ export function handleArrangementShortening({
   currentStartTime,
   currentEndTime,
   context,
-}) {
+}: HandleArrangementShorteningArgs): void {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
 
@@ -305,8 +341,8 @@ export function handleArrangementShortening({
     isAudioClip,
     position: newEndTime,
     length: tempClipLength,
-    silenceWavPath: /** @type {string} */ (context.silenceWavPath),
-    setupAudioClip: (tempClip) => {
+    silenceWavPath: context.silenceWavPath as string,
+    setupAudioClip: (tempClip: LiveAPI) => {
       // Re-apply warping and looping to arrangement clip
       tempClip.set("warping", 1);
       tempClip.set("looping", 1);
@@ -315,15 +351,24 @@ export function handleArrangementShortening({
   });
 }
 
+interface TruncateWithTempClipArgs {
+  track: LiveAPI;
+  isAudioClip: boolean;
+  position: number;
+  length: number;
+  silenceWavPath: string;
+  setupAudioClip?: ((tempClip: LiveAPI) => void) | null;
+}
+
 /**
  * Creates and immediately deletes a temporary clip to truncate arrangement clips
- * @param {object} options - Truncation options
- * @param {LiveAPI} options.track - Track to create temp clip on
- * @param {boolean} options.isAudioClip - Whether to create audio or MIDI clip
- * @param {number} options.position - Position for temp clip
- * @param {number} options.length - Length of temp clip
- * @param {string} options.silenceWavPath - Path to silence WAV (for audio clips)
- * @param {((tempClip: LiveAPI) => void) | null} [options.setupAudioClip] - Optional callback to setup audio temp clip
+ * @param options - Truncation options
+ * @param options.track - Track to create temp clip on
+ * @param options.isAudioClip - Whether to create audio or MIDI clip
+ * @param options.position - Position for temp clip
+ * @param options.length - Length of temp clip
+ * @param options.silenceWavPath - Path to silence WAV (for audio clips)
+ * @param options.setupAudioClip - Optional callback to setup audio temp clip
  */
 function truncateWithTempClip({
   track,
@@ -332,20 +377,18 @@ function truncateWithTempClip({
   length,
   silenceWavPath,
   setupAudioClip = null,
-}) {
+}: TruncateWithTempClipArgs): void {
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
       length,
       silenceWavPath,
     );
-    const tempResult = /** @type {string} */ (
-      track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        position,
-      )
-    );
+    const tempResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sessionClip.id}`,
+      position,
+    ) as string;
     const tempClip = LiveAPI.from(tempResult);
 
     if (setupAudioClip) {
@@ -355,9 +398,11 @@ function truncateWithTempClip({
     slot.call("delete_clip");
     track.call("delete_clip", `id ${tempClip.id}`);
   } else {
-    const tempClipResult = /** @type {string} */ (
-      track.call("create_midi_clip", position, length)
-    );
+    const tempClipResult = track.call(
+      "create_midi_clip",
+      position,
+      length,
+    ) as string;
     const tempClip = LiveAPI.from(tempClipResult);
 
     track.call("delete_clip", `id ${tempClip.id}`);

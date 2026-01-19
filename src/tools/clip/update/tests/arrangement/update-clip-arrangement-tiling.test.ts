@@ -121,7 +121,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
         mockLiveApiGet({
           [id]: {
-            end_time: (args[1] || 0) + 4.0,
+            end_time: (args[1] ?? 0) + 4.0,
           },
         });
 
@@ -232,9 +232,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     liveApiSet.mockImplementation(function (prop, value) {
       const clipId = this._id;
 
-      if (!setCallsByClip[clipId]) {
-        setCallsByClip[clipId] = {};
-      }
+      setCallsByClip[clipId] ??= {};
 
       setCallsByClip[clipId][prop] = value;
     });

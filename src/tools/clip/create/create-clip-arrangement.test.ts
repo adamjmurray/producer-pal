@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiId,
@@ -23,7 +23,10 @@ describe("createClip - arrangement view", () => {
       return null;
     });
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: {
+      _path: string;
+      _id: string;
+    }) {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
@@ -75,7 +78,10 @@ describe("createClip - arrangement view", () => {
       return null;
     });
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: {
+      _path: string;
+      _id: string;
+    }) {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
@@ -155,7 +161,7 @@ describe("createClip - arrangement view", () => {
     // Mock the clip to not exist after creation
     const originalExists = global.LiveAPI.prototype.exists;
 
-    global.LiveAPI.prototype.exists = vi.fn(function () {
+    global.LiveAPI.prototype.exists = vi.fn(function (this: { _path: string }) {
       // Track exists, but clip doesn't
       return this._path === "live_set tracks 0";
     });
