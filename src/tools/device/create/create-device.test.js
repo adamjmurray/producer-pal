@@ -395,6 +395,18 @@ describe("createDevice", () => {
           }),
         ).toThrow('could not insert "Compressor" at end in path "t0/d0/c0"');
       });
+
+      it("should throw error with position when insert_device returns falsy deviceId", () => {
+        // Return undefined as deviceId to trigger the null branch
+        liveApiCall.mockReturnValue(["id", undefined]);
+
+        expect(() =>
+          createDevice({
+            path: "t0/d1",
+            deviceName: "EQ Eight",
+          }),
+        ).toThrow('could not insert "EQ Eight" at position 1 in path "t0/d1"');
+      });
     });
   });
 });
