@@ -86,16 +86,16 @@ describe("createClip - advanced features", () => {
       trackIndex: 0,
       sceneIndex: 0,
     });
-    expect(singleResult.length).toBeUndefined();
+    expect((singleResult as { length?: unknown }).length).toBeUndefined();
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0]).toStrictEqual({
+    expect((arrayResult as object[])[0]).toStrictEqual({
       id: expect.any(String),
       trackIndex: 0,
       sceneIndex: 1,
     });
-    expect(arrayResult[1]).toStrictEqual({
+    expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
       trackIndex: 0,
       sceneIndex: 2,
@@ -233,7 +233,10 @@ describe("createClip - advanced features", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "id arrangement_clip") {
           return "arrangement_clip";
         }
