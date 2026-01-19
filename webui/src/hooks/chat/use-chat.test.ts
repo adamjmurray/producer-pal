@@ -681,5 +681,48 @@ describe("useChat", () => {
       // First call should have original message, retry should have "continue"
       expect(receivedMessages).toStrictEqual(["Hello", "continue"]);
     });
+
+    it("cancels retry when stopResponse is called during retry delay", async () => {
+      // Create an adapter that always throws rate limit errors
+      const alwaysRateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          // eslint-disable-next-line require-yield -- Throws before yielding to test error handling
+          client.sendMessage = async function* (
+            _message: string,
+            _signal: AbortSignal,
+          ) {
+            throw new Error("Resource has been exhausted");
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: alwaysRateLimitAdapter }),
+      );
+
+      // Start send but don't await - it will enter retry delay
+      const sendPromise = act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Give time for the rate limit to be detected and retry delay to start
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Stop the response while in retry delay
+      await act(async () => {
+        result.current.stopResponse();
+      });
+
+      // Wait for send to complete (should exit due to abort)
+      await sendPromise;
+
+      expect(result.current.isAssistantResponding).toBe(false);
+      expect(result.current.rateLimitState).toBeNull();
+    });
   });
 });

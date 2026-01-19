@@ -1,5 +1,21 @@
 import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.js";
 
+/** @typedef {import('#src/tools/clip/helpers/clip-result-helpers.js').MidiNote} MidiNote */
+
+/**
+ * @typedef {object} ClipPropertiesToSet
+ * @property {number} start_marker
+ * @property {number} loop_start
+ * @property {number} loop_end
+ * @property {number} end_marker
+ * @property {number} [playing_position]
+ * @property {string} [name]
+ * @property {string} [color]
+ * @property {number} [looping]
+ * @property {number} [signature_numerator]
+ * @property {number} [signature_denominator]
+ */
+
 /**
  * Builds the properties object to set on a clip
  * @param {number | null} startBeats - Loop start position in beats
@@ -11,7 +27,7 @@ import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbea
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @param {number} clipLength - Default clip length in beats (used when endBeats not specified)
- * @returns {object} - Clip properties to set
+ * @returns {ClipPropertiesToSet} - Clip properties to set
  */
 export function buildClipProperties(
   startBeats,
@@ -24,11 +40,15 @@ export function buildClipProperties(
   timeSigDenominator,
   clipLength,
 ) {
-  const propsToSet = {};
+  /** @type {ClipPropertiesToSet} */
+  const propsToSet = {
+    start_marker: startBeats ?? 0,
+    loop_start: startBeats ?? 0,
+    loop_end: 0,
+    end_marker: 0,
+  };
 
-  // Set start_marker and loop_start
-  propsToSet.start_marker = startBeats ?? 0;
-  propsToSet.loop_start = startBeats ?? 0;
+  // Set start_marker and loop_start is handled above
 
   // Set loop_end and end_marker
   // Use clipLength as default when endBeats not specified
@@ -65,19 +85,29 @@ export function buildClipProperties(
 }
 
 /**
+ * @typedef {object} ClipResultObject
+ * @property {string} id
+ * @property {number} trackIndex
+ * @property {number} [sceneIndex]
+ * @property {string | null} [arrangementStart]
+ * @property {number} [noteCount]
+ * @property {string} [length]
+ */
+
+/**
  * Builds the result object for a created clip
- * @param {object} clip - LiveAPI clip object
+ * @param {LiveAPI} clip - LiveAPI clip object
  * @param {number} trackIndex - Track index
  * @param {string} view - View type (session or arrangement)
  * @param {number | undefined} sceneIndex - Scene index for session clips
  * @param {string | null} arrangementStart - Arrangement start in bar|beat format (explicit position)
  * @param {string | null} notationString - Original notation string
- * @param {Array} notes - Array of MIDI notes
+ * @param {Array<MidiNote>} notes - Array of MIDI notes
  * @param {string | null} length - Original length parameter
  * @param {number} timeSigNumerator - Clip time signature numerator
  * @param {number} timeSigDenominator - Clip time signature denominator
  * @param {string | null} sampleFile - Audio file path (for audio clips)
- * @returns {object} - Clip result object
+ * @returns {ClipResultObject} - Clip result object
  */
 export function buildClipResult(
   clip,
@@ -92,6 +122,7 @@ export function buildClipResult(
   timeSigDenominator,
   sampleFile,
 ) {
+  /** @type {ClipResultObject} */
   const clipResult = {
     id: clip.id,
     trackIndex,
@@ -110,7 +141,9 @@ export function buildClipResult(
 
     // Include calculated length if it wasn't provided as input parameter
     if (length == null) {
-      const actualClipLength = clip.getProperty("length");
+      const actualClipLength = /** @type {number} */ (
+        clip.getProperty("length")
+      );
 
       clipResult.length = abletonBeatsToBarBeatDuration(
         actualClipLength,
@@ -122,7 +155,7 @@ export function buildClipResult(
 
   // For audio clips: include actual clip length from Live API
   if (sampleFile) {
-    const actualClipLength = clip.getProperty("length");
+    const actualClipLength = /** @type {number} */ (clip.getProperty("length"));
 
     clipResult.length = abletonBeatsToBarBeatDuration(
       actualClipLength,

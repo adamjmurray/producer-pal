@@ -32,18 +32,24 @@ export const mockTrackProperties = (overrides = {}) => ({
 
 /**
  * Setup liveApiId mock with a path-to-ID mapping
- * @param {object} pathIdMap - Mapping of paths to IDs
+ * @param {Record<string, string>} pathIdMap - Mapping of paths to IDs
  * @param {string} [defaultId="id 0"] - Default ID for unmatched paths
  */
 export function setupMixerIdMock(pathIdMap, defaultId = "id 0") {
-  liveApiId.mockImplementation(function () {
-    // Handle ID-based paths (from getChildren)
-    if (this.path?.startsWith("id ")) {
-      return this.path.slice(3);
-    }
+  liveApiId.mockImplementation(
+    /**
+     * @this {{path: string}}
+     * @returns {string} The ID for the path
+     */
+    function () {
+      // Handle ID-based paths (from getChildren)
+      if (this.path?.startsWith("id ")) {
+        return this.path.slice(3);
+      }
 
-    return pathIdMap[this.path] ?? defaultId;
-  });
+      return pathIdMap[this.path] ?? defaultId;
+    },
+  );
 }
 
 /**

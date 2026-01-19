@@ -1,6 +1,22 @@
 import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.js";
 
 /**
+ * @typedef {object} MidiNote
+ * @property {number} pitch - MIDI note number (0-127)
+ * @property {number} velocity - Note velocity (1-127)
+ * @property {number} duration - Note duration in beats
+ * @property {number} [velocity_deviation] - Velocity deviation offset
+ * @property {number} [probability] - Note probability (0-1)
+ */
+
+/**
+ * @typedef {object} TransposeParams
+ * @property {Array<number>} [transposeValuesArray] - Parsed transpose values
+ * @property {number} [transposeMin] - Minimum transpose offset
+ * @property {number} [transposeMax] - Maximum transpose offset
+ */
+
+/**
  * Generates a random number within a range
  * @param {number} min - Minimum value
  * @param {number} max - Maximum value
@@ -13,7 +29,7 @@ function randomInRange(min, max, rng) {
 
 /**
  * Apply audio parameters to a clip
- * @param {object} clip - The clip to modify
+ * @param {LiveAPI} clip - The clip to modify
  * @param {object} params - Audio parameters
  * @param {number} [params.gainDbMin] - Min gain offset in dB
  * @param {number} [params.gainDbMax] - Max gain offset in dB
@@ -30,7 +46,7 @@ export function applyAudioParams(
 ) {
   // Apply gain (additive in dB space)
   if (gainDbMin != null && gainDbMax != null) {
-    const currentLiveGain = clip.getProperty("gain");
+    const currentLiveGain = /** @type {number} */ (clip.getProperty("gain"));
     const currentGainDb = liveGainToDb(currentLiveGain);
     const gainDbOffset = randomInRange(gainDbMin, gainDbMax, rng);
     const newGainDb = Math.max(-70, Math.min(24, currentGainDb + gainDbOffset));
@@ -45,8 +61,12 @@ export function applyAudioParams(
     const transposeOffset =
       transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
 
-    const currentPitchCoarse = clip.getProperty("pitch_coarse");
-    const currentPitchFine = clip.getProperty("pitch_fine");
+    const currentPitchCoarse = /** @type {number} */ (
+      clip.getProperty("pitch_coarse")
+    );
+    const currentPitchFine = /** @type {number} */ (
+      clip.getProperty("pitch_fine")
+    );
     const currentPitch = currentPitchCoarse + currentPitchFine / 100;
 
     const newPitch = currentPitch + transposeOffset;
@@ -58,8 +78,12 @@ export function applyAudioParams(
     clip.set("pitch_fine", pitchFine);
   } else if (transposeMin != null && transposeMax != null) {
     // Random range
-    const currentPitchCoarse = clip.getProperty("pitch_coarse");
-    const currentPitchFine = clip.getProperty("pitch_fine");
+    const currentPitchCoarse = /** @type {number} */ (
+      clip.getProperty("pitch_coarse")
+    );
+    const currentPitchFine = /** @type {number} */ (
+      clip.getProperty("pitch_fine")
+    );
     const currentPitch = currentPitchCoarse + currentPitchFine / 100;
 
     const transposeOffset = randomInRange(transposeMin, transposeMax, rng);
@@ -75,7 +99,7 @@ export function applyAudioParams(
 
 /**
  * Apply velocity offset to a note
- * @param {object} note - The note object to modify
+ * @param {MidiNote} note - The note object to modify
  * @param {number | undefined} velocityMin - Minimum velocity offset
  * @param {number | undefined} velocityMax - Maximum velocity offset
  * @param {function(): number} rng - Random number generator function
@@ -94,8 +118,8 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
 
 /**
  * Apply transpose to a note
- * @param {object} note - The note object to modify
- * @param {object} transposeParams - Transpose parameters
+ * @param {MidiNote} note - The note object to modify
+ * @param {TransposeParams} transposeParams - Transpose parameters
  * @param {function(): number} rng - Random number generator function
  */
 function applyTranspose(note, transposeParams, rng) {
@@ -122,7 +146,7 @@ function applyTranspose(note, transposeParams, rng) {
 
 /**
  * Apply duration multiplier to a note
- * @param {object} note - The note object to modify
+ * @param {MidiNote} note - The note object to modify
  * @param {number | undefined} durationMin - Minimum duration multiplier
  * @param {number | undefined} durationMax - Maximum duration multiplier
  * @param {function(): number} rng - Random number generator function
@@ -139,7 +163,7 @@ function applyDurationMultiplier(note, durationMin, durationMax, rng) {
 
 /**
  * Apply velocity deviation offset to a note
- * @param {object} note - The note object to modify
+ * @param {MidiNote} note - The note object to modify
  * @param {number | undefined} velocityRange - Velocity deviation range
  */
 function applyVelocityDeviation(note, velocityRange) {
@@ -157,7 +181,7 @@ function applyVelocityDeviation(note, velocityRange) {
 
 /**
  * Apply probability offset to a note
- * @param {object} note - The note object to modify
+ * @param {MidiNote} note - The note object to modify
  * @param {number | undefined} probability - Probability offset value
  */
 function applyProbabilityOffset(note, probability) {
@@ -175,7 +199,7 @@ function applyProbabilityOffset(note, probability) {
 
 /**
  * Apply MIDI parameters to a clip's notes
- * @param {object} clip - The MIDI clip to modify
+ * @param {LiveAPI} clip - The MIDI clip to modify
  * @param {object} params - MIDI parameters
  * @param {number} [params.velocityMin] - Min velocity offset
  * @param {number} [params.velocityMax] - Max velocity offset
@@ -206,12 +230,8 @@ export function applyMidiParams(
   const lengthBeats = clip.getProperty("length");
 
   // Read notes
-  const notesDictionary = clip.call(
-    "get_notes_extended",
-    0,
-    128,
-    0,
-    lengthBeats,
+  const notesDictionary = /** @type {string} */ (
+    clip.call("get_notes_extended", 0, 128, 0, lengthBeats)
   );
   const notesData = JSON.parse(notesDictionary);
   const notes = notesData.notes;

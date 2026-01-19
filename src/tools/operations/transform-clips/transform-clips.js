@@ -12,6 +12,8 @@ import {
   performSlicing,
 } from "./helpers/transform-clips-slicing-helpers.js";
 
+/** @typedef {import("./helpers/transform-clips-slicing-helpers.js").SlicingContext} SlicingContext */
+
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
  * @param {object} args - The parameters
@@ -33,7 +35,7 @@ import {
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
  * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
  * @param {number} [args.seed] - RNG seed for reproducibility
- * @param {object} context - Internal context object with holdingAreaStartBeats
+ * @param {Partial<SlicingContext>} [context] - Internal context object with holdingAreaStartBeats and silenceWavPath
  * @returns {object} Result with clipIds and seed
  */
 export function transformClips(
@@ -115,7 +117,7 @@ export function transformClips(
       clips,
       warnings,
       slice,
-      context,
+      /** @type {SlicingContext} */ (context),
     );
     // After slicing, re-filter arrangement clips to get fresh objects
     // (the clips array was modified by splice operations during re-scanning)
@@ -131,7 +133,13 @@ export function transformClips(
 
   // Shuffle clip positions if requested
   if (shuffleOrder) {
-    performShuffling(arrangementClips, clips, warnings, rng, context);
+    performShuffling(
+      arrangementClips,
+      clips,
+      warnings,
+      rng,
+      /** @type {{ holdingAreaStartBeats: number }} */ (context),
+    );
   }
 
   // Apply randomization to each clip

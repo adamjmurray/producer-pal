@@ -307,6 +307,23 @@ describe("view", () => {
       // Result reflects actual readViewState(), which returns default (no track selected)
       expect(result).toStrictEqual(expectViewState());
     });
+
+    it("skips track selection when category is invalid", () => {
+      // Using an invalid category should cause buildTrackPath to return null
+      // and skip the track selection
+      const result = select({
+        // @ts-expect-error Testing invalid category
+        category: "invalid_category",
+        trackIndex: 2,
+      });
+
+      // Should not set selected_track since buildTrackPath returns null
+      expect(liveApiSet).not.toHaveBeenCalledWith(
+        "selected_track",
+        expect.anything(),
+      );
+      expect(result).toStrictEqual(expectViewState());
+    });
   });
 
   describe("read functionality (no arguments)", () => {
