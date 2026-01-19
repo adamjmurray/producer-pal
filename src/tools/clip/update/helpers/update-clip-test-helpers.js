@@ -8,6 +8,28 @@ import {
 } from "#src/test/mocks/mock-live-api.js";
 
 /**
+ * Creates a standard MIDI note object for testing.
+ * @param {number} pitch - MIDI pitch (e.g., 60 = C3)
+ * @param {number} [startTime=0] - Start time in beats
+ * @param {object} [opts] - Additional note properties
+ * @param {number} [opts.duration=1] - Note duration in beats
+ * @param {number} [opts.velocity=100] - Note velocity (0-127)
+ * @param {number} [opts.probability=1] - Note probability (0-1)
+ * @param {number} [opts.velocityDeviation=0] - Velocity deviation (-127 to 127)
+ * @returns {object} Note object for Live API
+ */
+export function note(pitch, startTime = 0, opts = {}) {
+  return {
+    pitch,
+    start_time: startTime,
+    duration: opts.duration ?? 1,
+    velocity: opts.velocity ?? 100,
+    probability: opts.probability ?? 1,
+    velocity_deviation: opts.velocityDeviation ?? 0,
+  };
+}
+
+/**
  * @typedef {object} MockContext
  * @property {string} [_path] - Live API path
  * @property {string} [_id] - Live API ID

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.js";
 import {
+  note,
   setupAudioClipMock,
   setupMidiClipMock,
   setupMocks,
@@ -35,30 +36,9 @@ describe("updateClip - Advanced note operations", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // C3 at 1|1 - should be deleted
-            {
-              pitch: 62,
-              start_time: 1,
-              duration: 1,
-              velocity: 80,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // D3 at 1|2 - should remain
-            {
-              pitch: 64,
-              start_time: 0,
-              duration: 1,
-              velocity: 90,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // E3 at 1|1 - should remain
+            note(60, 0), // C3 at 1|1 - should be deleted
+            note(62, 1, { velocity: 80 }), // D3 at 1|2 - should remain
+            note(64, 0, { velocity: 90 }), // E3 at 1|1 - should remain
           ],
         });
       }
@@ -99,30 +79,13 @@ describe("updateClip - Advanced note operations", () => {
 
     expect(addNewNotesCall).toBeDefined();
     expect(addNewNotesCall[1].notes).toHaveLength(3);
-    expect(addNewNotesCall[1].notes).toContainEqual({
-      pitch: 62,
-      start_time: 1,
-      duration: 1,
-      velocity: 80,
-      probability: 1,
-      velocity_deviation: 0,
-    }); // D3 at 1|2
-    expect(addNewNotesCall[1].notes).toContainEqual({
-      pitch: 64,
-      start_time: 0,
-      duration: 1,
-      velocity: 90,
-      probability: 1,
-      velocity_deviation: 0,
-    }); // E3 at 1|1
-    expect(addNewNotesCall[1].notes).toContainEqual({
-      pitch: 65,
-      start_time: 0,
-      duration: 1,
-      velocity: 100,
-      probability: 1,
-      velocity_deviation: 0,
-    }); // New F3 note
+    expect(addNewNotesCall[1].notes).toContainEqual(
+      note(62, 1, { velocity: 80 }),
+    ); // D3 at 1|2
+    expect(addNewNotesCall[1].notes).toContainEqual(
+      note(64, 0, { velocity: 90 }),
+    ); // E3 at 1|1
+    expect(addNewNotesCall[1].notes).toContainEqual(note(65, 0)); // New F3 note
 
     expect(result).toStrictEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
@@ -134,16 +97,7 @@ describe("updateClip - Advanced note operations", () => {
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
-          notes: [
-            {
-              pitch: 62,
-              start_time: 1,
-              duration: 1,
-              velocity: 80,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // D3 at 1|2 - no match
-          ],
+          notes: [note(62, 1, { velocity: 80 })], // D3 at 1|2 - no match
         });
       }
 
@@ -176,18 +130,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 62,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          }, // Original note preserved
-        ],
-      },
+      { notes: [note(62, 1, { velocity: 80 })] }, // Original note preserved
     );
   });
 
@@ -197,9 +140,7 @@ describe("updateClip - Advanced note operations", () => {
     // Mock existing notes
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [],
-        });
+        return JSON.stringify({ notes: [] });
       }
 
       return {};
@@ -231,18 +172,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-        ],
-      },
+      { notes: [note(60, 0)] },
     );
   });
 
@@ -251,22 +181,8 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
     const existingNotes = [
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 100,
-        probability: 1,
-        velocity_deviation: 0,
-      }, // C3 at 1|1
-      {
-        pitch: 64,
-        start_time: 1,
-        duration: 1,
-        velocity: 80,
-        probability: 1,
-        velocity_deviation: 0,
-      }, // E3 at 1|2
+      note(60, 0), // C3 at 1|1
+      note(64, 1, { velocity: 80 }), // E3 at 1|2
     ];
     let addedNotes = existingNotes;
 
@@ -274,9 +190,7 @@ describe("updateClip - Advanced note operations", () => {
       if (method === "add_new_notes") {
         addedNotes = args[0]?.notes || [];
       } else if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: addedNotes,
-        });
+        return JSON.stringify({ notes: addedNotes });
       }
 
       return {};
@@ -295,39 +209,11 @@ describe("updateClip - Advanced note operations", () => {
       {
         notes: [
           // Existing notes in bar 1
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 64,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          note(60, 0),
+          note(64, 1, { velocity: 80 }),
           // Copied to bar 2 (starts at beat 4)
-          {
-            pitch: 60,
-            start_time: 4,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 64,
-            start_time: 5,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          note(60, 4),
+          note(64, 5, { velocity: 80 }),
         ],
       },
     );
@@ -349,7 +235,7 @@ describe("updateClip - Advanced note operations", () => {
         const startBeat = args[2] || 0;
         const endBeat = args[3] || Infinity;
         const notesInRange = allAddedNotes.filter(
-          (note) => note.start_time >= startBeat && note.start_time < endBeat,
+          (n) => n.start_time >= startBeat && n.start_time < endBeat,
         );
 
         return JSON.stringify({ notes: notesInRange });
@@ -391,22 +277,8 @@ describe("updateClip - Advanced note operations", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // C3 at 1|1
-            {
-              pitch: 64,
-              start_time: 1,
-              duration: 1,
-              velocity: 80,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // E3 at 1|2
+            note(60, 0), // C3 at 1|1
+            note(64, 1, { velocity: 80 }), // E3 at 1|2
           ],
         });
       }
@@ -427,23 +299,9 @@ describe("updateClip - Advanced note operations", () => {
       {
         notes: [
           // E3 remains in bar 1 (C3 deleted)
-          {
-            pitch: 64,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          note(64, 1, { velocity: 80 }),
           // E3 copied to bar 2 (beat 5)
-          {
-            pitch: 64,
-            start_time: 5,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          },
+          note(64, 5, { velocity: 80 }),
         ],
       },
     );
