@@ -13,24 +13,60 @@ import {
 } from "#src/tools/shared/utils.js";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
+interface RoutingParams {
+  inputRoutingTypeId?: string;
+  inputRoutingChannelId?: string;
+  outputRoutingTypeId?: string;
+  outputRoutingChannelId?: string;
+}
+
+interface MixerParams {
+  gainDb?: number;
+  pan?: number;
+  panningMode?: string;
+  leftPan?: number;
+  rightPan?: number;
+}
+
+interface UpdateTrackArgs {
+  ids: string;
+  name?: string;
+  color?: string;
+  gainDb?: number;
+  pan?: number;
+  panningMode?: string;
+  leftPan?: number;
+  rightPan?: number;
+  mute?: boolean;
+  solo?: boolean;
+  arm?: boolean;
+  inputRoutingTypeId?: string;
+  inputRoutingChannelId?: string;
+  outputRoutingTypeId?: string;
+  outputRoutingChannelId?: string;
+  monitoringState?: string;
+  arrangementFollower?: boolean;
+  sendGainDb?: number;
+  sendReturn?: string;
+}
+
+interface UpdateTrackResult {
+  id: string;
+}
+
 /**
  * Apply routing properties to a track
- * @param {LiveAPI} track - Track object
- * @param {object} params - Routing properties
- * @param {string | undefined} params.inputRoutingTypeId - Input routing type ID
- * @param {string | undefined} params.inputRoutingChannelId - Input routing channel ID
- * @param {string | undefined} params.outputRoutingTypeId - Output routing type ID
- * @param {string | undefined} params.outputRoutingChannelId - Output routing channel ID
+ * @param track - Track object
+ * @param params - Routing properties
  */
-function applyRoutingProperties(
-  track,
-  {
+function applyRoutingProperties(track: LiveAPI, params: RoutingParams): void {
+  const {
     inputRoutingTypeId,
     inputRoutingChannelId,
     outputRoutingTypeId,
     outputRoutingChannelId,
-  },
-) {
+  } = params;
+
   if (inputRoutingTypeId != null) {
     track.setProperty("input_routing_type", {
       identifier: Number(inputRoutingTypeId),
@@ -58,15 +94,18 @@ function applyRoutingProperties(
 
 /**
  * Apply monitoring state to a track
- * @param {LiveAPI} track - Track object
- * @param {string | undefined} monitoringState - Monitoring state value (in, auto, off)
+ * @param track - Track object
+ * @param monitoringState - Monitoring state value (in, auto, off)
  */
-function applyMonitoringState(track, monitoringState) {
+function applyMonitoringState(
+  track: LiveAPI,
+  monitoringState: string | undefined,
+): void {
   if (monitoringState == null) {
     return;
   }
 
-  const monitoringValue = {
+  const monitoringValue: number | undefined = {
     [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
     [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
     [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
@@ -85,11 +124,15 @@ function applyMonitoringState(track, monitoringState) {
 
 /**
  * Apply send properties to a track
- * @param {LiveAPI} track - Track object
- * @param {number | undefined} sendGainDb - Send gain in dB (-70 to 0)
- * @param {string | undefined} sendReturn - Return track name (exact or letter prefix)
+ * @param track - Track object
+ * @param sendGainDb - Send gain in dB (-70 to 0)
+ * @param sendReturn - Return track name (exact or letter prefix)
  */
-function applySendProperties(track, sendGainDb, sendReturn) {
+function applySendProperties(
+  track: LiveAPI,
+  sendGainDb: number | undefined,
+  sendReturn: string | undefined,
+): void {
   // Validate both params provided together
   if ((sendGainDb != null) !== (sendReturn != null)) {
     console.error("Warning: sendGainDb and sendReturn must both be specified");
@@ -127,7 +170,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 
   for (let i = 0; i < returnTrackIds.length; i++) {
     const rt = LiveAPI.from(`live_set return_tracks ${i}`);
-    const name = /** @type {string} */ (rt.getProperty("name"));
+    const name = rt.getProperty("name") as string;
 
     // Match exact name or single-letter prefix
     if (name === sendReturn || name.startsWith(sendReturn + "-")) {
@@ -159,12 +202,17 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 
 /**
  * Apply stereo panning and warn about invalid params
- * @param {LiveAPI} mixer - Mixer device object
- * @param {number | undefined} pan - Pan value
- * @param {number | undefined} leftPan - Left pan value
- * @param {number | undefined} rightPan - Right pan value
+ * @param mixer - Mixer device object
+ * @param pan - Pan value
+ * @param leftPan - Left pan value
+ * @param rightPan - Right pan value
  */
-function applyStereoPan(mixer, pan, leftPan, rightPan) {
+function applyStereoPan(
+  mixer: LiveAPI,
+  pan: number | undefined,
+  leftPan: number | undefined,
+  rightPan: number | undefined,
+): void {
   if (pan != null) {
     const panning = LiveAPI.from(mixer.path + " panning");
 
@@ -183,12 +231,17 @@ function applyStereoPan(mixer, pan, leftPan, rightPan) {
 
 /**
  * Apply split panning and warn about invalid params
- * @param {LiveAPI} mixer - Mixer device object
- * @param {number | undefined} pan - Pan value
- * @param {number | undefined} leftPan - Left pan value
- * @param {number | undefined} rightPan - Right pan value
+ * @param mixer - Mixer device object
+ * @param pan - Pan value
+ * @param leftPan - Left pan value
+ * @param rightPan - Right pan value
  */
-function applySplitPan(mixer, pan, leftPan, rightPan) {
+function applySplitPan(
+  mixer: LiveAPI,
+  pan: number | undefined,
+  leftPan: number | undefined,
+  rightPan: number | undefined,
+): void {
   if (leftPan != null) {
     const leftSplit = LiveAPI.from(mixer.path + " left_split_stereo");
 
@@ -215,18 +268,12 @@ function applySplitPan(mixer, pan, leftPan, rightPan) {
 
 /**
  * Apply mixer properties (gain and panning) to a track
- * @param {LiveAPI} track - Track object
- * @param {object} params - Mixer properties
- * @param {number | undefined} params.gainDb - Track gain in dB (-70 to 6)
- * @param {number | undefined} params.pan - Pan position in stereo mode (-1 to 1)
- * @param {string | undefined} params.panningMode - Panning mode ("stereo" or "split")
- * @param {number | undefined} params.leftPan - Left channel pan in split mode (-1 to 1)
- * @param {number | undefined} params.rightPan - Right channel pan in split mode (-1 to 1)
+ * @param track - Track object
+ * @param params - Mixer properties
  */
-function applyMixerProperties(
-  track,
-  { gainDb, pan, panningMode, leftPan, rightPan },
-) {
+function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
+  const { gainDb, pan, panningMode, leftPan, rightPan } = params;
+
   const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
@@ -254,8 +301,7 @@ function applyMixerProperties(
   }
 
   // Determine effective mode for validation
-  const effectiveMode =
-    panningMode != null ? panningMode : currentIsSplit ? "split" : "stereo";
+  const effectiveMode = panningMode ?? (currentIsSplit ? "split" : "stereo");
 
   // Handle panning based on effective mode
   if (effectiveMode === "stereo") {
@@ -266,38 +312,29 @@ function applyMixerProperties(
 }
 
 /**
- * @typedef {object} UpdateTrackArgs
- * @property {string} ids - Track ID or comma-separated list of track IDs to update
- * @property {string} [name] - Optional track name
- * @property {string} [color] - Optional track color (CSS format: hex)
- * @property {number} [gainDb] - Optional track gain in dB (-70 to 6)
- * @property {number} [pan] - Optional pan position in stereo mode (-1 to 1)
- * @property {string} [panningMode] - Optional panning mode ('stereo' or 'split')
- * @property {number} [leftPan] - Optional left channel pan in split mode (-1 to 1)
- * @property {number} [rightPan] - Optional right channel pan in split mode (-1 to 1)
- * @property {boolean} [mute] - Optional mute state
- * @property {boolean} [solo] - Optional solo state
- * @property {boolean} [arm] - Optional arm state
- * @property {string} [inputRoutingTypeId] - Optional input routing type identifier
- * @property {string} [inputRoutingChannelId] - Optional input routing channel identifier
- * @property {string} [outputRoutingTypeId] - Optional output routing type identifier
- * @property {string} [outputRoutingChannelId] - Optional output routing channel identifier
- * @property {string} [monitoringState] - Optional monitoring state ('in', 'auto', 'off')
- * @property {boolean} [arrangementFollower] - Whether the track should follow the arrangement timeline
- * @property {number} [sendGainDb] - Optional send gain in dB (-70 to 0), requires sendReturn
- * @property {string} [sendReturn] - Optional return track name (exact or letter prefix), requires sendGainDb
- */
-
-/**
- * @typedef {object} UpdateTrackResult
- * @property {string} id - Track ID
- */
-
-/**
  * Updates properties of existing tracks
- * @param {UpdateTrackArgs} args - The track parameters
- * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {UpdateTrackResult | UpdateTrackResult[]} Single track object or array of track objects
+ * @param args - The track parameters
+ * @param args.ids - Track ID or comma-separated list of track IDs to update
+ * @param args.name - Optional track name
+ * @param args.color - Optional track color (CSS format: hex)
+ * @param args.gainDb - Optional track gain in dB (-70 to 6)
+ * @param args.pan - Optional pan position in stereo mode (-1 to 1)
+ * @param args.panningMode - Optional panning mode ('stereo' or 'split')
+ * @param args.leftPan - Optional left channel pan in split mode (-1 to 1)
+ * @param args.rightPan - Optional right channel pan in split mode (-1 to 1)
+ * @param args.mute - Optional mute state
+ * @param args.solo - Optional solo state
+ * @param args.arm - Optional arm state
+ * @param args.inputRoutingTypeId - Optional input routing type identifier
+ * @param args.inputRoutingChannelId - Optional input routing channel identifier
+ * @param args.outputRoutingTypeId - Optional output routing type identifier
+ * @param args.outputRoutingChannelId - Optional output routing channel identifier
+ * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
+ * @param args.arrangementFollower - Whether the track should follow the arrangement timeline
+ * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
+ * @param args.sendReturn - Optional return track name (exact or letter prefix), requires sendGainDb
+ * @param _context - Internal context object (unused)
+ * @returns Single track object or array of track objects
  */
 export function updateTrack(
   {
@@ -320,9 +357,9 @@ export function updateTrack(
     arrangementFollower,
     sendGainDb,
     sendReturn,
-  },
-  _context = {},
-) {
+  }: UpdateTrackArgs,
+  _context: Partial<ToolContext> = {},
+): UpdateTrackResult | UpdateTrackResult[] {
   if (!ids) {
     throw new Error("updateTrack failed: ids is required");
   }
@@ -335,7 +372,7 @@ export function updateTrack(
     skipInvalid: true,
   });
 
-  const updatedTracks = [];
+  const updatedTracks: UpdateTrackResult[] = [];
 
   for (const track of tracks) {
     track.setAll({
@@ -393,7 +430,7 @@ export function updateTrack(
     });
   }
 
-  return /** @type {UpdateTrackResult | UpdateTrackResult[]} */ (
-    unwrapSingleResult(updatedTracks)
-  );
+  return unwrapSingleResult(updatedTracks) as
+    | UpdateTrackResult
+    | UpdateTrackResult[];
 }

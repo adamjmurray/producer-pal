@@ -5,10 +5,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
   description: "Update track(s)",
+
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
   inputSchema: {
     ids: z.string().describe("comma-separated track ID(s) to update"),
     name: z.string().optional().describe("name, ideally unique"),
@@ -39,6 +41,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     mute: z.boolean().optional().describe("muted?"),
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
+
     inputRoutingTypeId: z
       .string()
       .optional()
@@ -56,7 +59,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .optional()
       .describe("from availableOutputRoutingChannels"),
     monitoringState: z
-      .enum(Object.values(MONITORING_STATE))
+      .enum(Object.values(MONITORING_STATE) as [string, ...string[]])
       .optional()
       .describe("input monitoring"),
     arrangementFollower: z
@@ -76,6 +79,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         'return track: exact name (e.g., "A-Reverb") or letter (e.g., "A")',
       ),
   },
+
   smallModelModeConfig: {
     excludeParams: [
       "panningMode",

@@ -63,7 +63,8 @@ export default [
               source.includes("/tools/workflow/") ||
               source.includes("/tools/live-set/") ||
               source.includes("/tools/scene/") ||
-              source.includes("/tools/control/")) &&
+              source.includes("/tools/control/") ||
+              source.includes("/tools/track/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

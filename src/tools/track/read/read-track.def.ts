@@ -4,10 +4,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
   description: `Read track settings, clips, devices.`,
+
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
+
   inputSchema: {
     trackId: z
       .string()

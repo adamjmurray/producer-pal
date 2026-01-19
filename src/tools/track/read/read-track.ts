@@ -5,6 +5,7 @@ import {
   getDrumMap,
   readDevice,
 } from "#src/tools/shared/device/device-reader.js";
+import type { DeviceWithDrumPads } from "#src/tools/shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
@@ -26,22 +27,63 @@ import {
   readSessionClips,
 } from "./helpers/read-track-helpers.js";
 
-/**
- * @typedef {object} ReadTrackArgs
- * @property {number} [trackIndex] - Track index (0-based)
- * @property {string} [trackId] - Track ID
- * @property {string} [category] - Track category: "regular", "return", or "master"
- * @property {string[]} [returnTrackNames] - Array of return track names for sends
- * @property {string[]} [include] - Array of data to include in the response
- */
+interface ReadTrackArgs {
+  trackIndex?: number;
+  trackId?: string;
+  category?: string;
+  returnTrackNames?: string[];
+  include?: string[];
+}
+
+interface CategorizedDevices {
+  midiEffects: DeviceWithDrumPads[];
+  instrument: DeviceWithDrumPads | null;
+  audioEffects: DeviceWithDrumPads[];
+}
+
+interface DeviceProcessingConfig {
+  includeMidiEffects: boolean;
+  includeInstruments: boolean;
+  includeAudioEffects: boolean;
+  includeDrumMaps: boolean;
+  includeRackChains: boolean;
+  isProducerPalHost: boolean;
+}
+
+interface ReadTrackGenericArgs {
+  track: LiveAPI;
+  trackIndex: number | null;
+  category?: string;
+  include?: string[];
+  returnTrackNames?: string[];
+}
+
+interface ClipResult {
+  id: string | null;
+  name?: string;
+  type?: string;
+}
+
+interface SessionClipsResult {
+  sessionClips?: ClipResult[];
+  sessionClipCount?: number;
+}
+
+interface ArrangementClipsResult {
+  arrangementClips?: ClipResult[];
+  arrangementClipCount?: number;
+}
 
 /**
  * Read comprehensive information about a track
- * @param {ReadTrackArgs} args - The parameters
- * @param {Partial<ToolContext>} _context - Internal context object (unused)
- * @returns {object} Track information
+ * @param args - The parameters
+ * @param _context - Internal context object (unused)
+ * @returns Track information
  */
-export function readTrack(args = {}, _context = {}) {
+export function readTrack(
+  args: ReadTrackArgs = {},
+  _context: Partial<ToolContext> = {},
+): Record<string, unknown> {
   const { trackIndex, trackId, category = "regular", returnTrackNames } = args;
 
   // Validate parameters
@@ -49,20 +91,19 @@ export function readTrack(args = {}, _context = {}) {
     throw new Error("Either trackId or trackIndex must be provided");
   }
 
-  let track;
-  /** @type {number | null | undefined} */
-  let resolvedTrackIndex = trackIndex;
+  let track: LiveAPI;
+  let resolvedTrackIndex: number | null | undefined = trackIndex;
   let resolvedCategory = category;
 
   if (trackId != null) {
     // Use trackId to access track directly and validate it's a track
     track = validateIdType(trackId, "track", "readTrack");
     // Determine track category and index from the track's path
-    resolvedCategory = /** @type {string} */ (track.category ?? "regular");
+    resolvedCategory = (track.category as string | undefined) ?? "regular";
     resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
   } else {
     // Construct the appropriate Live API path based on track category
-    let trackPath;
+    let trackPath: string;
 
     if (category === "regular") {
       trackPath = `live_set tracks ${trackIndex}`;
@@ -82,31 +123,29 @@ export function readTrack(args = {}, _context = {}) {
   return readTrackGeneric({
     track,
     trackIndex:
-      resolvedCategory === "master"
-        ? null
-        : /** @type {number | null} */ (resolvedTrackIndex ?? null),
+      resolvedCategory === "master" ? null : (resolvedTrackIndex ?? null),
     category: resolvedCategory,
-    include: /** @type {string[] | undefined} */ (args.include),
+    include: args.include,
     returnTrackNames,
   });
 }
 
 /**
  * Process session clips for a track
- * @param {LiveAPI} track - Track object
- * @param {string} category - Track category (regular, return, or master)
- * @param {number | null} trackIndex - Track index
- * @param {boolean} includeSessionClips - Whether to include full session clip details
- * @param {Array<string> | undefined} include - Include array for nested reads
- * @returns {object} - Object with session clips data
+ * @param track - Track object
+ * @param category - Track category (regular, return, or master)
+ * @param trackIndex - Track index
+ * @param includeSessionClips - Whether to include full session clip details
+ * @param include - Include array for nested reads
+ * @returns Object with session clips data
  */
 function processSessionClips(
-  track,
-  category,
-  trackIndex,
-  includeSessionClips,
-  include,
-) {
+  track: LiveAPI,
+  category: string,
+  trackIndex: number | null,
+  includeSessionClips: boolean,
+  include: string[] | undefined,
+): SessionClipsResult {
   if (category !== "regular") {
     return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
   }
@@ -120,20 +159,20 @@ function processSessionClips(
 
 /**
  * Process arrangement clips for a track
- * @param {LiveAPI} track - Track object
- * @param {boolean} isGroup - Whether the track is a group
- * @param {string} category - Track category (regular, return, or master)
- * @param {boolean} includeArrangementClips - Whether to include full arrangement clip details
- * @param {Array<string> | undefined} include - Include array for nested reads
- * @returns {object} Object with arrangementClips array or arrangementClipCount
+ * @param track - Track object
+ * @param isGroup - Whether the track is a group
+ * @param category - Track category (regular, return, or master)
+ * @param includeArrangementClips - Whether to include full arrangement clip details
+ * @param include - Include array for nested reads
+ * @returns Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(
-  track,
-  isGroup,
-  category,
-  includeArrangementClips,
-  include,
-) {
+  track: LiveAPI,
+  isGroup: boolean,
+  category: string,
+  includeArrangementClips: boolean,
+  include: string[] | undefined,
+): ArrangementClipsResult {
   if (isGroup || category === "return" || category === "master") {
     return includeArrangementClips
       ? { arrangementClips: [] }
@@ -148,33 +187,15 @@ function processArrangementClips(
 }
 
 /**
- * @typedef {import('#src/tools/shared/device/device-reader.js').DeviceWithDrumPads} DeviceWithDrumPads
- */
-
-/**
- * @typedef {object} CategorizedDevices
- * @property {DeviceWithDrumPads[]} midiEffects - MIDI effect devices
- * @property {DeviceWithDrumPads | null} instrument - Instrument device (or null if none)
- * @property {DeviceWithDrumPads[]} audioEffects - Audio effect devices
- */
-
-/**
- * @typedef {object} DeviceProcessingConfig
- * @property {boolean} includeMidiEffects - Whether to include MIDI effects
- * @property {boolean} includeInstruments - Whether to include instruments
- * @property {boolean} includeAudioEffects - Whether to include audio effects
- * @property {boolean} includeDrumMaps - Whether to include drum maps
- * @property {boolean} includeRackChains - Whether to include rack chains
- * @property {boolean} isProducerPalHost - Whether this is the Producer Pal host track
- */
-
-/**
  * Process and categorize track devices
- * @param {CategorizedDevices} categorizedDevices - Object containing categorized device arrays
- * @param {DeviceProcessingConfig} config - Configuration object with device processing flags
- * @returns {object} Object with processed device arrays and optional drum map
+ * @param categorizedDevices - Object containing categorized device arrays
+ * @param config - Configuration object with device processing flags
+ * @returns Object with processed device arrays and optional drum map
  */
-function processDevices(categorizedDevices, config) {
+function processDevices(
+  categorizedDevices: CategorizedDevices,
+  config: DeviceProcessingConfig,
+): Record<string, unknown> {
   const {
     includeMidiEffects,
     includeInstruments,
@@ -184,7 +205,7 @@ function processDevices(categorizedDevices, config) {
     isProducerPalHost,
   } = config;
 
-  const result = {};
+  const result: Record<string, unknown> = {};
   const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
 
   if (includeMidiEffects) {
@@ -228,13 +249,13 @@ function processDevices(categorizedDevices, config) {
 /**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
- * @param {object} args - The parameters
- * @param {LiveAPI} args.track - LiveAPI track object
- * @param {number|null} args.trackIndex - Track index (null for master track)
- * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
- * @param {Array<string>} [args.include] - Array of data to include in the response
- * @param {Array<string>} [args.returnTrackNames] - Array of return track names for sends
- * @returns {object} Track information including clips, devices, routing, and state
+ * @param args - The parameters
+ * @param args.track - LiveAPI track object
+ * @param args.trackIndex - Track index (null for master track)
+ * @param args.category - Track category: "regular", "return", or "master"
+ * @param args.include - Array of data to include in the response
+ * @param args.returnTrackNames - Array of return track names for sends
+ * @returns Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
   track,
@@ -242,7 +263,7 @@ export function readTrackGeneric({
   category = "regular",
   include,
   returnTrackNames,
-}) {
+}: ReadTrackGenericArgs): Record<string, unknown> {
   const {
     includeDrumPads,
     includeDrumMaps,
@@ -264,19 +285,16 @@ export function readTrackGeneric({
   }
 
   const groupId = track.get("group_track")[1];
-  const isMidiTrack =
-    /** @type {number} */ (track.getProperty("has_midi_input")) > 0;
+  const isMidiTrack = (track.getProperty("has_midi_input") as number) > 0;
   const isProducerPalHost =
     category === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
   // Check track capabilities to avoid warnings
-  const canBeArmed =
-    /** @type {number} */ (track.getProperty("can_be_armed")) > 0;
-  const isGroup = /** @type {number} */ (track.getProperty("is_foldable")) > 0;
+  const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
+  const isGroup = (track.getProperty("is_foldable") as number) > 0;
 
-  /** @type {Record<string, unknown>} */
-  const result = {
+  const result: Record<string, unknown> = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
@@ -292,7 +310,7 @@ export function readTrackGeneric({
   }
 
   if (groupId) {
-    result.groupId = `${groupId}`;
+    result.groupId = String(groupId);
   }
 
   addCategoryIndex(result, category, trackIndex);
@@ -362,33 +380,28 @@ export function readTrackGeneric({
 
 /**
  * Categorize devices into MIDI effects, instruments, and audio effects
- * @param {LiveAPI[]} devices - Array of Live API device objects
- * @param {boolean} includeDrumPads - Whether to include drum pad chains
- * @param {boolean} includeRackChains - Whether to include chains in rack devices
- * @param {boolean} includeReturnChains - Whether to include return chains in rack devices
- * @returns {CategorizedDevices} Object with midiEffects, instrument, and audioEffects arrays
+ * @param devices - Array of Live API device objects
+ * @param includeDrumPads - Whether to include drum pad chains
+ * @param includeRackChains - Whether to include chains in rack devices
+ * @param includeReturnChains - Whether to include return chains in rack devices
+ * @returns Object with midiEffects, instrument, and audioEffects arrays
  */
 function categorizeDevices(
-  devices,
+  devices: LiveAPI[],
   includeDrumPads = false,
   includeRackChains = true,
   includeReturnChains = false,
-) {
-  /** @type {DeviceWithDrumPads[]} */
-  const midiEffects = [];
-  /** @type {DeviceWithDrumPads[]} */
-  const instruments = [];
-  /** @type {DeviceWithDrumPads[]} */
-  const audioEffects = [];
+): CategorizedDevices {
+  const midiEffects: DeviceWithDrumPads[] = [];
+  const instruments: DeviceWithDrumPads[] = [];
+  const audioEffects: DeviceWithDrumPads[] = [];
 
   for (const device of devices) {
-    const processedDevice = /** @type {DeviceWithDrumPads} */ (
-      readDevice(device, {
-        includeChains: includeRackChains,
-        includeReturnChains,
-        includeDrumPads,
-      })
-    );
+    const processedDevice = readDevice(device, {
+      includeChains: includeRackChains,
+      includeReturnChains,
+      includeDrumPads,
+    }) as DeviceWithDrumPads;
 
     // Use processed device type for proper rack categorization
     const deviceType = processedDevice.type;
@@ -426,17 +439,14 @@ function categorizeDevices(
   };
 }
 
-// Helper function to strip chains from device objects
 /**
  * Removes chains property from a device object
- * @param {object & { chains?: unknown }} device - Device object to strip chains from
- * @returns {object} Device object without chains property
+ * @param device - Device object to strip chains from
+ * @returns Device object without chains property
  */
-function stripChains(device) {
-  if (!device || typeof device !== "object") {
-    return device;
-  }
-
+function stripChains<T extends { chains?: unknown }>(
+  device: T,
+): Omit<T, "chains"> {
   const { chains: _chains, ...rest } = device;
 
   return rest;

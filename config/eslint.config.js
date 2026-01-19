@@ -500,6 +500,8 @@ export default [
           "./src/live-api-adapter/tsconfig.test.json",
           "./src/skills/tsconfig.json",
           "./src/skills/tsconfig.test.json",
+          "./src/tools/track/tsconfig.json",
+          "./src/tools/track/tsconfig.test.json",
         ],
       },
       globals: {
@@ -633,6 +635,20 @@ export default [
   // Max V8 environment globals for tools/control (migrated to TypeScript)
   {
     files: ["src/tools/control/*.ts"],
+    languageOptions: {
+      globals: {
+        LiveAPI: "readonly",
+        ToolContext: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
+    },
+  },
+
+  // Max V8 environment globals for tools/track (migrated to TypeScript)
+  {
+    files: ["src/tools/track/**/*.ts"],
     languageOptions: {
       globals: {
         LiveAPI: "readonly",

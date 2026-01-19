@@ -5,19 +5,50 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.js";
 
-/**
- * @typedef {{ display_name: string, identifier: string | number }} RoutingInfo
- */
+interface RoutingInfo {
+  display_name: string;
+  identifier: string | number;
+}
+
+interface InputRoutingResult {
+  name: string;
+  inputId: string;
+}
+
+interface OutputRoutingResult {
+  name: string;
+  outputId: string;
+}
+
+interface CurrentRoutingResult {
+  inputRoutingType: InputRoutingResult | null;
+  inputRoutingChannel: InputRoutingResult | null;
+  outputRoutingType: OutputRoutingResult | null;
+  outputRoutingChannel: OutputRoutingResult | null;
+  monitoringState?: string;
+}
+
+interface AvailableRoutingResult {
+  availableInputRoutingTypes: InputRoutingResult[];
+  availableInputRoutingChannels: InputRoutingResult[];
+  availableOutputRoutingTypes: OutputRoutingResult[];
+  availableOutputRoutingChannels: OutputRoutingResult[];
+}
 
 /**
  * Process current routing settings for a track
- * @param {LiveAPI} track - Track object
- * @param {string} category - Track category (regular, return, or master)
- * @param {boolean} isGroup - Whether the track is a group track
- * @param {boolean} canBeArmed - Whether the track can be armed
- * @returns {object} - Current routing settings
+ * @param track - Track object
+ * @param category - Track category (regular, return, or master)
+ * @param isGroup - Whether the track is a group track
+ * @param canBeArmed - Whether the track can be armed
+ * @returns Current routing settings
  */
-export function processCurrentRouting(track, category, isGroup, canBeArmed) {
+export function processCurrentRouting(
+  track: LiveAPI,
+  category: string,
+  isGroup: boolean,
+  canBeArmed: boolean,
+): Partial<CurrentRoutingResult> {
   if (category === "master") {
     return {
       inputRoutingType: null,
@@ -27,13 +58,12 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     };
   }
 
-  /** @type {Record<string, unknown>} */
-  const result = {};
+  const result: Partial<CurrentRoutingResult> = {};
 
   if (!isGroup && category === "regular") {
-    const inputType = /** @type {RoutingInfo | null} */ (
-      track.getProperty("input_routing_type")
-    );
+    const inputType = track.getProperty(
+      "input_routing_type",
+    ) as RoutingInfo | null;
 
     result.inputRoutingType = inputType
       ? {
@@ -42,9 +72,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
         }
       : null;
 
-    const inputChannel = /** @type {RoutingInfo | null} */ (
-      track.getProperty("input_routing_channel")
-    );
+    const inputChannel = track.getProperty(
+      "input_routing_channel",
+    ) as RoutingInfo | null;
 
     result.inputRoutingChannel = inputChannel
       ? {
@@ -57,9 +87,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     result.inputRoutingChannel = null;
   }
 
-  const outputType = /** @type {RoutingInfo | null} */ (
-    track.getProperty("output_routing_type")
-  );
+  const outputType = track.getProperty(
+    "output_routing_type",
+  ) as RoutingInfo | null;
 
   result.outputRoutingType = outputType
     ? {
@@ -68,9 +98,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
       }
     : null;
 
-  const outputChannel = /** @type {RoutingInfo | null} */ (
-    track.getProperty("output_routing_channel")
-  );
+  const outputChannel = track.getProperty(
+    "output_routing_channel",
+  ) as RoutingInfo | null;
 
   result.outputRoutingChannel = outputChannel
     ? {
@@ -80,9 +110,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     : null;
 
   if (canBeArmed) {
-    const monitoringStateValue = /** @type {number} */ (
-      track.getProperty("current_monitoring_state")
-    );
+    const monitoringStateValue = track.getProperty(
+      "current_monitoring_state",
+    ) as number;
 
     result.monitoringState =
       {
@@ -97,12 +127,16 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
 
 /**
  * Process available routing options for a track
- * @param {LiveAPI} track - Track object
- * @param {string} category - Track category (regular, return, or master)
- * @param {boolean} isGroup - Whether the track is a group track
- * @returns {object} - Available routing options
+ * @param track - Track object
+ * @param category - Track category (regular, return, or master)
+ * @param isGroup - Whether the track is a group track
+ * @returns Available routing options
  */
-export function processAvailableRouting(track, category, isGroup) {
+export function processAvailableRouting(
+  track: LiveAPI,
+  category: string,
+  isGroup: boolean,
+): Partial<AvailableRoutingResult> {
   if (category === "master") {
     return {
       availableInputRoutingTypes: [],
@@ -112,22 +146,21 @@ export function processAvailableRouting(track, category, isGroup) {
     };
   }
 
-  /** @type {Record<string, unknown>} */
-  const result = {};
+  const result: Partial<AvailableRoutingResult> = {};
 
   if (!isGroup && category === "regular") {
-    const availableInputTypes = /** @type {RoutingInfo[]} */ (
-      track.getProperty("available_input_routing_types") || []
-    );
+    const availableInputTypes = (track.getProperty(
+      "available_input_routing_types",
+    ) ?? []) as RoutingInfo[];
 
     result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
       name: type.display_name,
       inputId: String(type.identifier),
     }));
 
-    const availableInputChannels = /** @type {RoutingInfo[]} */ (
-      track.getProperty("available_input_routing_channels") || []
-    );
+    const availableInputChannels = (track.getProperty(
+      "available_input_routing_channels",
+    ) ?? []) as RoutingInfo[];
 
     result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
       name: ch.display_name,
@@ -138,18 +171,18 @@ export function processAvailableRouting(track, category, isGroup) {
     result.availableInputRoutingChannels = [];
   }
 
-  const availableOutputTypes = /** @type {RoutingInfo[]} */ (
-    track.getProperty("available_output_routing_types") || []
-  );
+  const availableOutputTypes = (track.getProperty(
+    "available_output_routing_types",
+  ) ?? []) as RoutingInfo[];
 
   result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
     name: type.display_name,
     outputId: String(type.identifier),
   }));
 
-  const availableOutputChannels = /** @type {RoutingInfo[]} */ (
-    track.getProperty("available_output_routing_channels") || []
-  );
+  const availableOutputChannels = (track.getProperty(
+    "available_output_routing_channels",
+  ) ?? []) as RoutingInfo[];
 
   result.availableOutputRoutingChannels = availableOutputChannels.map((ch) => ({
     name: ch.display_name,

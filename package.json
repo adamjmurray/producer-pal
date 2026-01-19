@@ -16,6 +16,12 @@
     "#src/tools/live-set/*.js": "./src/tools/live-set/*.ts",
     "#src/tools/scene/*.js": "./src/tools/scene/*.ts",
     "#src/tools/control/*.js": "./src/tools/control/*.ts",
+    "#src/tools/track/*.js": "./src/tools/track/*.ts",
+    "#src/tools/track/create/*.js": "./src/tools/track/create/*.ts",
+    "#src/tools/track/read/*.js": "./src/tools/track/read/*.ts",
+    "#src/tools/track/read/helpers/*.js": "./src/tools/track/read/helpers/*.ts",
+    "#src/tools/track/update/*.js": "./src/tools/track/update/*.ts",
+    "#src/tools/track/helpers/*.js": "./src/tools/track/helpers/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",
