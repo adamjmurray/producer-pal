@@ -7,8 +7,8 @@ import {
 import {
   parseArrangementLength,
   getMinimalClipInfo,
-  findRoutingOptionForDuplicateNames,
 } from "./duplicate-helpers.js";
+import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
 
 /**
  * Helper to create a mock LiveAPI class for testing duplicate routing scenarios

@@ -71,7 +71,7 @@ export function validateBasicInputs(type, id, count) {
  * @param {boolean | undefined} routeToSource - Whether to route to source track
  * @param {boolean | undefined} withoutClips - Whether to exclude clips
  * @param {boolean | undefined} withoutDevices - Whether to exclude devices
- * @returns {object} Configured withoutClips and withoutDevices values
+ * @returns {{ withoutClips: boolean | undefined, withoutDevices: boolean | undefined }} Configured withoutClips and withoutDevices values
  */
 export function validateAndConfigureRouteToSource(
   type,
