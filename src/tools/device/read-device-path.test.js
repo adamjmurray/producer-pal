@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 import { readDevice } from "./read-device.js";
+import {
+  setupBasicDeviceMock,
+  setupChainMock,
+} from "./read-device-test-helpers.js";
 
 describe("readDevice with path parameter", () => {
   beforeEach(() => {
@@ -25,28 +28,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read device by path", () => {
-    liveApiId.mockImplementation(function () {
-      return "device-456";
+    setupBasicDeviceMock({
+      id: "device-456",
+      class_display_name: "Operator",
+      type: 1,
     });
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Operator"];
-        case "class_display_name":
-          return ["Operator"];
-        case "type":
-          return [1]; // instrument
-        case "can_have_chains":
-          return [0];
-        case "can_have_drum_pads":
-          return [0];
-        case "is_active":
-          return [1];
-        default:
-          return [];
-      }
-    });
-
     const result = readDevice({ path: "t1/d0" });
 
     expect(result).toStrictEqual({
@@ -67,34 +53,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read chain by path with id property", () => {
-    liveApiId.mockImplementation(function () {
-      return "chain-789";
-    });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Chain 1"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "choke_group":
-          return [0]; // no choke group
-        case "color":
-          return []; // undefined - no color
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
+    setupChainMock({ id: "chain-789", name: "Chain 1" });
     const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
@@ -107,34 +66,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read chain with color property", () => {
-    liveApiId.mockImplementation(function () {
-      return "chain-with-color";
+    setupChainMock({
+      id: "chain-with-color",
+      name: "Colored Chain",
+      color: 0xff5500,
     });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Colored Chain"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "choke_group":
-          return [0];
-        case "color":
-          return [0xff5500]; // orange color (255*65536 + 85*256 + 0)
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
     const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
@@ -148,32 +84,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read chain with green color property", () => {
-    liveApiId.mockImplementation(function () {
-      return "chain-123";
-    });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Test Chain"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "color":
-          return [0x00ff00]; // green color
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
+    setupChainMock({ id: "chain-123", name: "Test Chain", color: 0x00ff00 });
     const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
@@ -256,32 +167,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should omit chokeGroup for regular chains (not DrumChain type)", () => {
-    liveApiId.mockImplementation(function () {
-      return "chain-no-choke";
-    });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Regular Chain"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "color":
-          return []; // undefined - no color
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
+    setupChainMock({ id: "chain-no-choke", name: "Regular Chain" });
     const result = readDevice({ path: "t1/d0/c0" });
 
     // Regular chains (type: "Chain") don't have chokeGroup - only DrumChain type does
@@ -300,34 +186,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read return chain by path with enriched properties", () => {
-    liveApiId.mockImplementation(function () {
-      return "return-chain-101";
+    setupChainMock({
+      id: "return-chain-101",
+      name: "Return A",
+      color: 0x0088ff,
     });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Return A"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "choke_group":
-          return [0]; // return chains don't have choke groups
-        case "color":
-          return [0x0088ff]; // blue color
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
     const result = readDevice({ path: "t1/d0/rc0" });
 
     expect(result).toStrictEqual({
@@ -341,34 +204,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read muted chain by path with enriched properties", () => {
-    liveApiId.mockImplementation(function () {
-      return "chain-muted";
-    });
-    liveApiType.mockReturnValue("Chain");
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Muted Chain"];
-        case "mute":
-          return [1]; // muted
-        case "solo":
-          return [0];
-        case "choke_group":
-          return [0];
-        case "color":
-          return []; // undefined - no color
-        default:
-          return [];
-      }
-    });
-    liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "getChildren" && args[0] === "devices") {
-        return [];
-      }
-
-      return [];
-    });
-
+    setupChainMock({ id: "chain-muted", name: "Muted Chain", mute: 1 });
     const result = readDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
@@ -394,28 +230,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read device from return track by path", () => {
-    liveApiId.mockImplementation(function () {
-      return "return-device-123";
+    setupBasicDeviceMock({
+      id: "return-device-123",
+      class_display_name: "Reverb",
+      type: 2,
     });
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Reverb"];
-        case "class_display_name":
-          return ["Reverb"];
-        case "type":
-          return [2]; // audio effect
-        case "can_have_chains":
-          return [0];
-        case "can_have_drum_pads":
-          return [0];
-        case "is_active":
-          return [1];
-        default:
-          return [];
-      }
-    });
-
     const result = readDevice({ path: "rt0/d0" });
 
     expect(result).toStrictEqual({
@@ -426,28 +245,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read device from master track by path", () => {
-    liveApiId.mockImplementation(function () {
-      return "master-device-123";
+    setupBasicDeviceMock({
+      id: "master-device-123",
+      class_display_name: "Limiter",
+      type: 2,
     });
-    liveApiGet.mockImplementation(function (prop) {
-      switch (prop) {
-        case "name":
-          return ["Limiter"];
-        case "class_display_name":
-          return ["Limiter"];
-        case "type":
-          return [2]; // audio effect
-        case "can_have_chains":
-          return [0];
-        case "can_have_drum_pads":
-          return [0];
-        case "is_active":
-          return [1];
-        default:
-          return [];
-      }
-    });
-
     const result = readDevice({ path: "mt/d0" });
 
     expect(result).toStrictEqual({

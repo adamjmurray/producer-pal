@@ -277,3 +277,175 @@ export function setupDeviceParamMocks(config = {}) {
     );
   }
 }
+
+/**
+ * @typedef {object} BasicDeviceConfig
+ * @property {string} [id] - Device ID (default: "device-123")
+ * @property {string} [name] - Device name (default: same as class_display_name)
+ * @property {string} [class_display_name] - Class display name (default: "Operator")
+ * @property {number} [type] - Device type: 1=instrument, 2=audio effect, 4=midi effect
+ * @property {number} [can_have_chains] - Whether device can have chains (0 or 1)
+ * @property {number} [can_have_drum_pads] - Whether device can have drum pads (0 or 1)
+ * @property {number} [is_active] - Whether device is active (0=deactivated, 1=active)
+ * @property {number} [is_collapsed] - Whether device view is collapsed (0 or 1)
+ * @property {string} [sample] - Sample file path for Simpler devices
+ * @property {string[]} [chainIds] - Chain IDs for rack devices
+ */
+
+/**
+ * Setup mocks for basic device tests. Reduces boilerplate for simple device property tests.
+ * @param {BasicDeviceConfig} [config] - Device configuration
+ */
+export function setupBasicDeviceMock(config = {}) {
+  const {
+    id = "device-123",
+    name,
+    class_display_name = "Operator",
+    type = 1,
+    can_have_chains = 0,
+    can_have_drum_pads = 0,
+    is_active = 1,
+    is_collapsed,
+    sample,
+    chainIds = [],
+  } = config;
+
+  const deviceName = name ?? class_display_name;
+  const hasView = is_collapsed !== undefined;
+  const hasSample = sample !== undefined;
+
+  liveApiId.mockImplementation(
+    /**
+     * @this {{_path?: string}}
+     * @returns {string} The mock ID
+     */
+    function () {
+      if (this._path === `id ${id}`) return id;
+      if (hasView && this._path === `id ${id} view`) return `view-${id}`;
+      if (hasSample && this._path === "id sample-obj") return "sample-obj";
+
+      return id;
+    },
+  );
+
+  liveApiGet.mockImplementation(
+    /**
+     * @this {{_path?: string}}
+     * @param {string} prop - The property name
+     * @returns {unknown[]} The mock property value
+     */
+    function (prop) {
+      // Handle view properties for collapsed state
+      if (hasView && this._path === `id ${id} view`) {
+        if (prop === "is_collapsed") return [is_collapsed];
+
+        return [];
+      }
+
+      // Handle sample properties for Simpler
+      if (hasSample && this._path === "id sample-obj") {
+        if (prop === "file_path") return [sample];
+
+        return [];
+      }
+
+      // Handle device properties
+      switch (prop) {
+        case "name":
+          return [deviceName];
+        case "class_display_name":
+          return [class_display_name];
+        case "type":
+          return [type];
+        case "can_have_chains":
+          return [can_have_chains];
+        case "can_have_drum_pads":
+          return [can_have_drum_pads];
+        case "is_active":
+          return [is_active];
+        case "sample":
+          return hasSample ? ["id", "sample-obj"] : [];
+        case "parameters":
+          return [];
+        default:
+          return [];
+      }
+    },
+  );
+
+  // Mock getChildren for rack devices
+  if (can_have_chains === 1 || chainIds.length > 0) {
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "getChildren") {
+        const childType = args[0];
+
+        if (childType === "chains" || childType === "return_chains") {
+          return chainIds.flatMap((c) => ["id", c]);
+        }
+
+        if (childType === "drum_pads") return [];
+      }
+
+      return [];
+    });
+  }
+}
+
+/**
+ * @typedef {object} ChainMockConfig
+ * @property {string} [id] - Chain ID (default: "chain-123")
+ * @property {string} [name] - Chain name
+ * @property {number} [mute] - Muted state (0 or 1)
+ * @property {number} [solo] - Solo state (0 or 1)
+ * @property {number} [color] - Color value (number, e.g. 0xFF5500)
+ * @property {string[]} [deviceIds] - Device IDs in the chain
+ */
+
+/**
+ * Setup mocks for chain reading tests. Reduces boilerplate for chain property tests.
+ * @param {ChainMockConfig} [config] - Chain configuration
+ */
+export function setupChainMock(config = {}) {
+  const {
+    id = "chain-123",
+    name = "Chain",
+    mute = 0,
+    solo = 0,
+    color,
+    deviceIds = [],
+  } = config;
+
+  liveApiId.mockReturnValue(id);
+  liveApiType.mockReturnValue("Chain");
+
+  liveApiGet.mockImplementation(
+    /**
+     * @param {string} prop - The property name
+     * @returns {unknown[]} The mock property value
+     */
+    function (prop) {
+      switch (prop) {
+        case "name":
+          return [name];
+        case "mute":
+          return [mute];
+        case "solo":
+          return [solo];
+        case "color":
+          return color !== undefined ? [color] : [];
+        case "devices":
+          return deviceIds.flatMap((d) => ["id", d]);
+        default:
+          return [];
+      }
+    },
+  );
+
+  liveApiCall.mockImplementation(function (method, ...args) {
+    if (method === "getChildren" && args[0] === "devices") {
+      return deviceIds.flatMap((d) => ["id", d]);
+    }
+
+    return [];
+  });
+}
