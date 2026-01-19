@@ -5,9 +5,44 @@ import {
   liveApiType,
 } from "#src/test/mocks/mock-live-api.js";
 
-// Helper functions for mock property lookup
+/**
+ * @typedef {object} PadProps
+ * @property {number} [note] - Note number
+ * @property {string} [name] - Pad name
+ * @property {number} [mute] - Muted state
+ * @property {number} [solo] - Solo state
+ * @property {string[]} [chainIds] - Chain IDs
+ */
+
+/**
+ * @typedef {object} ChainProps
+ * @property {string} [name] - Chain name
+ * @property {number} [mute] - Muted state
+ * @property {number} [solo] - Solo state
+ * @property {number} [choke_group] - Choke group
+ * @property {number} [out_note] - Output note
+ * @property {number} [color] - Color value
+ * @property {string[]} [deviceIds] - Device IDs
+ * @property {string} [type] - Chain type (e.g., "DrumChain")
+ */
+
+/**
+ * @typedef {object} DeviceProps
+ * @property {string} [name] - Device name
+ * @property {string} [class_display_name] - Display name
+ * @property {number} [type] - Device type
+ */
+
+/**
+ * Get pad property from mock map
+ * @param {string} id - Pad ID
+ * @param {string} prop - Property name
+ * @param {Record<string, PadProps>} padProperties - Pad properties by ID
+ * @returns {unknown[] | undefined} - Property value
+ */
 const getPadProperty = (id, prop, padProperties) => {
   const padProps = padProperties[id] ?? {};
+  /** @type {Record<string, unknown[]>} */
   const propMap = {
     note: [padProps.note ?? 36],
     name: [padProps.name ?? "Kick"],
@@ -19,8 +54,16 @@ const getPadProperty = (id, prop, padProperties) => {
   return propMap[prop];
 };
 
+/**
+ * Get chain property from mock map
+ * @param {string} id - Chain ID
+ * @param {string} prop - Property name
+ * @param {Record<string, ChainProps>} chainProperties - Chain properties by ID
+ * @returns {unknown[] | undefined} - Property value
+ */
 const getChainProperty = (id, prop, chainProperties) => {
   const chainProps = chainProperties[id] ?? {};
+  /** @type {Record<string, unknown[]>} */
   const propMap = {
     name: [chainProps.name ?? "Chain"],
     mute: [chainProps.mute ?? 0],
@@ -35,8 +78,16 @@ const getChainProperty = (id, prop, chainProperties) => {
   return propMap[prop];
 };
 
+/**
+ * Get device property from mock map
+ * @param {string} id - Device ID
+ * @param {string} prop - Property name
+ * @param {Record<string, DeviceProps>} deviceProperties - Device properties by ID
+ * @returns {unknown[] | undefined} - Property value
+ */
 const getDeviceProperty = (id, prop, deviceProperties) => {
   const devProps = deviceProperties[id] ?? {};
+  /** @type {Record<string, unknown[]>} */
   const propMap = {
     name: [devProps.name ?? "Device"],
     class_display_name: [devProps.class_display_name ?? "Device"],
@@ -55,9 +106,9 @@ const getDeviceProperty = (id, prop, deviceProperties) => {
  * @param {object} config - Configuration for the mocks
  * @param {string} [config.deviceId] - Device ID (default: "drum-rack-1")
  * @param {string[]} [config.padIds] - Pad IDs (default: ["pad-36"])
- * @param {object} [config.padProperties] - Pad properties by ID
- * @param {object} [config.chainProperties] - Chain properties by ID
- * @param {object} [config.deviceProperties] - Device properties by ID
+ * @param {Record<string, PadProps>} [config.padProperties] - Pad properties by ID
+ * @param {Record<string, ChainProps>} [config.chainProperties] - Chain properties by ID
+ * @param {Record<string, DeviceProps>} [config.deviceProperties] - Device properties by ID
  */
 export function setupDrumPadMocks(config) {
   const {
@@ -68,39 +119,59 @@ export function setupDrumPadMocks(config) {
     deviceProperties = {},
   } = config;
 
-  liveApiId.mockImplementation(function () {
-    if (this._path === "live_set tracks 1 devices 0") return deviceId;
+  liveApiId.mockImplementation(
+    /**
+     * @this {{_path?: string, _id?: string}}
+     * @returns {string} The mock ID
+     */
+    function () {
+      if (this._path === "live_set tracks 1 devices 0") return deviceId;
 
-    return this._id ?? "0";
-  });
+      return this._id ?? "0";
+    },
+  );
 
   // Mock chain type - chains in drum pads are DrumChain type
-  liveApiType.mockImplementation(function () {
-    const id = this._id ?? this.id;
+  liveApiType.mockImplementation(
+    /**
+     * @this {{_id?: string, id?: string}}
+     * @returns {string | undefined} The mock type
+     */
+    function () {
+      const id = this._id ?? this.id;
 
-    if (id?.startsWith("chain-")) {
-      return chainProperties[id]?.type ?? "DrumChain";
-    }
+      if (id?.startsWith("chain-")) {
+        return chainProperties[id]?.type ?? "DrumChain";
+      }
 
-    // Let default mock handle other types
-  });
+      // Let default mock handle other types
+    },
+  );
 
-  liveApiGet.mockImplementation(function (prop) {
-    const id = this._id ?? this.id;
+  liveApiGet.mockImplementation(
+    /**
+     * @this {{_id?: string, id?: string, _path?: string}}
+     * @param {string} prop - The property name
+     * @returns {unknown[]} The mock property value
+     */
+    function (prop) {
+      const id = this._id ?? this.id;
 
-    if (id === deviceId || this._path?.includes("devices 0")) {
-      if (prop === "can_have_drum_pads") return [1];
-      if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
-    }
+      if (id === deviceId || this._path?.includes("devices 0")) {
+        if (prop === "can_have_drum_pads") return [1];
+        if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
+      }
 
-    if (id?.startsWith("pad-")) return getPadProperty(id, prop, padProperties);
-    if (id?.startsWith("chain-"))
-      return getChainProperty(id, prop, chainProperties);
-    if (id?.startsWith("device-"))
-      return getDeviceProperty(id, prop, deviceProperties);
+      if (id?.startsWith("pad-"))
+        return getPadProperty(id, prop, padProperties) ?? [];
+      if (id?.startsWith("chain-"))
+        return getChainProperty(id, prop, chainProperties) ?? [];
+      if (id?.startsWith("device-"))
+        return getDeviceProperty(id, prop, deviceProperties) ?? [];
 
-    return [];
-  });
+      return [];
+    },
+  );
 }
 
 // Mock path constants for param tests
@@ -133,49 +204,76 @@ const DEFAULT_PARAM_PROPS = {
 };
 
 /**
+ * @typedef {object} DeviceParamConfig
+ * @property {Partial<typeof DEFAULT_DEVICE_PROPS>} [device] - Device properties (merged with defaults)
+ * @property {Partial<typeof DEFAULT_PARAM_PROPS> & {value_items?: unknown[]}} [param] - Param properties
+ * @property {(value: unknown) => unknown} [strForValue] - Custom str_for_value handler
+ */
+
+/**
  * Setup mocks for device parameter tests.
- * @param {object} config - Configuration for the mocks
- * @param {object} [config.device] - Device properties (merged with defaults)
- * @param {object} [config.param] - Param properties (merged with defaults)
- * @param {function} [config.strForValue] - Custom str_for_value handler
+ * @param {DeviceParamConfig} [config] - Configuration for the mocks
  */
 export function setupDeviceParamMocks(config = {}) {
   const { device = {}, param = {}, strForValue } = config;
+  /** @type {Record<string, unknown>} */
   const deviceProps = { ...DEFAULT_DEVICE_PROPS, ...device };
+  /** @type {Record<string, unknown>} */
   const paramProps = { ...DEFAULT_PARAM_PROPS, ...param };
 
-  liveApiId.mockImplementation(function () {
-    if (this._path === DEVICE_PATH) return "device-123";
-    if (this._path === PARAM_PATH) return "param-1";
+  liveApiId.mockImplementation(
+    /**
+     * @this {{_path?: string}}
+     * @returns {string} The mock ID
+     */
+    function () {
+      if (this._path === DEVICE_PATH) return "device-123";
+      if (this._path === PARAM_PATH) return "param-1";
 
-    return "0";
-  });
+      return "0";
+    },
+  );
 
-  liveApiGet.mockImplementation(function (prop) {
-    if (this._path === DEVICE_PATH) {
-      if (prop === "parameters") return ["id", "param-1"];
+  liveApiGet.mockImplementation(
+    /**
+     * @this {{_path?: string}}
+     * @param {string} prop - The property name
+     * @returns {unknown[]} The mock property value
+     */
+    function (prop) {
+      if (this._path === DEVICE_PATH) {
+        if (prop === "parameters") return ["id", "param-1"];
 
-      return deviceProps[prop] != null ? [deviceProps[prop]] : [];
-    }
-
-    if (this._path === PARAM_PATH) {
-      if (prop === "value_items" && paramProps.value_items) {
-        return paramProps.value_items;
+        return deviceProps[prop] != null ? [deviceProps[prop]] : [];
       }
 
-      return paramProps[prop] != null ? [paramProps[prop]] : [];
-    }
+      if (this._path === PARAM_PATH) {
+        if (prop === "value_items" && paramProps.value_items) {
+          return paramProps.value_items;
+        }
 
-    return [];
-  });
-
-  if (strForValue) {
-    liveApiCall.mockImplementation(function (method, value) {
-      if (this._path === PARAM_PATH && method === "str_for_value") {
-        return strForValue(value);
+        return paramProps[prop] != null ? [paramProps[prop]] : [];
       }
 
       return [];
-    });
+    },
+  );
+
+  if (strForValue) {
+    liveApiCall.mockImplementation(
+      /**
+       * @this {{_path?: string}}
+       * @param {string} method - The method name
+       * @param {unknown} value - The value argument
+       * @returns {unknown} The mock result
+       */
+      function (method, value) {
+        if (this._path === PARAM_PATH && method === "str_for_value") {
+          return strForValue(value);
+        }
+
+        return [];
+      },
+    );
   }
 }
