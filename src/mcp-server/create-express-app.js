@@ -139,12 +139,12 @@ export function createExpressApp() {
   app.use(
     "/chat",
     /**
-     * @param {import("express").Request} req - Express request
+     * @param {import("express").Request} _req - Express request (unused)
      * @param {import("express").Response} res - Express response
      * @param {import("express").NextFunction} next - Next middleware
      * @returns {void}
      */
-    (req, res, next) => {
+    (_req, res, next) => {
       if (!chatUIEnabled) {
         res.status(403).send("Chat UI is disabled");
 

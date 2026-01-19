@@ -200,10 +200,10 @@ function deleteDeviceObject(id, object) {
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param {string} id - The object ID
+ * @param {string} _id - The object ID (unused, kept for consistent signature)
  * @param {LiveAPI} object - The object to delete
  */
-function deleteDrumPadObject(id, object) {
+function deleteDrumPadObject(_id, object) {
   const drumPad = LiveAPI.from(`id ${object.id}`);
 
   drumPad.call("delete_all_chains");

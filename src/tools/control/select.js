@@ -355,7 +355,7 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
-    const _deviceAPI = validateIdType(deviceId, "device", "select");
+    validateIdType(deviceId, "device", "select");
     const songView = LiveAPI.from("live_set view");
     // Ensure proper "id X" format for select_device call
     const deviceIdStr = deviceId.toString();

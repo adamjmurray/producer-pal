@@ -171,7 +171,7 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
  * @param {number} sliceBeats - Slice duration in Ableton beats
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
- * @param {Set<string>} warnings - Set to track warnings already issued
+ * @param {Set<string>} _warnings - Set to track warnings (unused, kept for consistent signature)
  * @param {string} slice - Original slice parameter for error messages
  * @param {SlicingContext} _context - Internal context object
  */
@@ -179,7 +179,7 @@ export function performSlicing(
   arrangementClips,
   sliceBeats,
   clips,
-  warnings,
+  _warnings,
   slice,
   _context,
 ) {

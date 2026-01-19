@@ -169,7 +169,7 @@ export function readClip(args = {}, _context = {}) {
 /**
  * Process warp markers for an audio clip
  * @param {object} clip - LiveAPI clip object
- * @returns {Array|undefined} - Array of warp markers or undefined
+ * @returns {Array<{sampleTime: number, beatTime: number}>|undefined} - Array of warp markers or undefined
  */
 function processWarpMarkers(clip) {
   try {
@@ -180,7 +180,9 @@ function processWarpMarkers(clip) {
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
-    const mapMarker = (marker) => ({
+    const mapMarker = (
+      /** @type {{sample_time: number, beat_time: number}} */ marker,
+    ) => ({
       sampleTime: marker.sample_time,
       beatTime: marker.beat_time,
     });

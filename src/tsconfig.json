@@ -13,8 +13,19 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["**/*.js", "types/**/*.d.ts"],
-  "exclude": ["**/*.test.js", "test/**", "**/*-test-helpers.js"]
+  "exclude": [
+    "**/*.test.js",
+    "test/**",
+    "**/*-test-helpers.js",
+    "**/parser/*-parser.js"
+  ]
 }
