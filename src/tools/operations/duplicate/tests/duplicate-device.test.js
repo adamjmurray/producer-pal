@@ -210,4 +210,32 @@ describe("duplicate - device duplication", () => {
       "r0/d0",
     );
   });
+
+  it("should throw error for invalid device path without device segment", () => {
+    // Path with track but no device segment - triggers extractDevicePathWithinTrack error
+    setupDeviceDuplicationMocks("device1", "live_set tracks 0");
+
+    expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
+      "cannot extract device path",
+    );
+  });
+
+  it("should handle device path ending with chain segment (not device)", () => {
+    // When extractDevicePath returns a path that ends with a chain (not device),
+    // it should use the fallback of returning the simplified path as-is
+    // This tests the "return simplifiedPath" fallback in calculateDefaultDestination
+    setupDeviceDuplicationMocks(
+      "device1",
+      "live_set tracks 0 devices 0 chains 0",
+    );
+
+    const result = duplicate({ type: "device", id: "device1" });
+
+    expect(result).toBeDefined();
+    // When last segment is "c0" (not "d"), use the simplified path as destination
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t0/d0/c0",
+    );
+  });
 });
