@@ -219,9 +219,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
   });
 
   describe("error handling", () => {
-    it("should throw error for non-existent locator ID", () => {
+    /** Helper to set up common mocks for error handling tests */
+    function setupErrorHandlingMocks() {
       setupScenePath("scene1");
-
       mockLiveApiGet({
         LiveSet: {
           tracks: children("track0"),
@@ -235,6 +235,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
         },
         cue0: { time: 0, name: "Intro" },
       });
+    }
+
+    it("should throw error for non-existent locator ID", () => {
+      setupErrorHandlingMocks();
 
       expect(() =>
         duplicate({
@@ -247,21 +251,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error for non-existent locator name", () => {
-      setupScenePath("scene1");
-
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-          cue_points: children("cue0"),
-        },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
-          signature_numerator: 4,
-          signature_denominator: 4,
-        },
-        cue0: { time: 0, name: "Intro" },
-      });
+      setupErrorHandlingMocks();
 
       expect(() =>
         duplicate({

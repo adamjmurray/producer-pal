@@ -1,4 +1,9 @@
 import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
+import {
+  children,
+  liveApiCall,
+  liveApiGet,
+} from "#src/test/mocks/mock-live-api.js";
 
 interface LocatorLiveSetConfig {
   numerator?: number;
@@ -35,4 +40,49 @@ export function setupLocatorMocks({
   }
 
   setupCuePointMocksBase({ cuePoints, liveSetProps });
+}
+
+interface LocatorCreationConfig {
+  time?: number;
+  isPlaying?: number;
+  songLength?: number;
+}
+
+/**
+ * Setup mocks for locator creation tests with tracking.
+ * Returns a tracker object to check if locator was created.
+ * @param config - Configuration options
+ * @param config.time - Cue point time in beats
+ * @param config.isPlaying - Playing state (0 or 1)
+ * @param config.songLength - Song length in beats
+ * @returns Tracker object
+ */
+export function setupLocatorCreationMocks(config: LocatorCreationConfig = {}): {
+  getCreated: () => boolean;
+} {
+  const { time = 0, isPlaying = 0, songLength = 1000 } = config;
+  let locatorCreated = false;
+
+  liveApiGet.mockImplementation(function (prop) {
+    if (prop === "signature_numerator") return [4];
+    if (prop === "signature_denominator") return [4];
+    if (prop === "is_playing") return [isPlaying];
+    if (prop === "song_length") return [songLength];
+
+    if (prop === "cue_points") {
+      return locatorCreated ? children("new_cue") : children();
+    }
+
+    if (prop === "time") return [time];
+
+    return [0];
+  });
+
+  liveApiCall.mockImplementation(function (method) {
+    if (method === "set_or_delete_cue") {
+      locatorCreated = true;
+    }
+  });
+
+  return { getCreated: () => locatorCreated };
 }
