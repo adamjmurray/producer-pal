@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -9,38 +9,47 @@ import { transformClips } from "#src/tools/operations/transform-clips/transform-
 import { setupClipMocks } from "./transform-clips-test-helpers.js";
 
 /**
+ * Creates a default test note with optional property overrides
+ * @param {object} overrides - Properties to override on the test note
+ * @returns {object} Test note object
+ */
+function createTestNote(overrides = {}) {
+  return {
+    id: "0",
+    pitch: 60,
+    start_time: 0.0,
+    duration: 1.0,
+    velocity: 100,
+    velocity_deviation: 0,
+    probability: 1.0,
+    ...overrides,
+  };
+}
+
+/**
  * Setup liveApiCall mock for capturing modified notes
  * @param {string} clipId - Clip ID to mock
  * @param {object} noteOverrides - Properties to override on the test note
- * @returns {function} - Function that returns captured notes array
+ * @returns {{getCaptured: Function, getAllCaptured: Function}} - Functions to get captured notes
  */
 function setupNoteCaptureMock(clipId, noteOverrides = {}) {
-  let capturedNotes;
+  /** @type {Array<unknown[]>} */
+  const allCaptured = [];
 
   liveApiCall.mockImplementation(function (method, ..._args) {
     if (this._id === clipId && method === "get_notes_extended") {
-      return JSON.stringify({
-        notes: [
-          {
-            id: "0",
-            pitch: 60,
-            start_time: 0.0,
-            duration: 1.0,
-            velocity: 100,
-            velocity_deviation: 0,
-            probability: 1.0,
-            ...noteOverrides,
-          },
-        ],
-      });
+      return JSON.stringify({ notes: [createTestNote(noteOverrides)] });
     }
 
     if (this._id === clipId && method === "apply_note_modifications") {
-      capturedNotes = JSON.parse(_args[0]).notes;
+      allCaptured.push(JSON.parse(_args[0]).notes);
     }
   });
 
-  return () => capturedNotes;
+  return {
+    getCaptured: () => allCaptured.at(-1),
+    getAllCaptured: () => allCaptured,
+  };
 }
 
 describe("transformClips - modifications", () => {
@@ -112,7 +121,7 @@ describe("transformClips - modifications", () => {
     const clipId = "clip_1";
 
     setupClipMocks(clipId);
-    const getCapturedNotes = setupNoteCaptureMock(clipId, {
+    const { getCaptured } = setupNoteCaptureMock(clipId, {
       velocity_deviation: 10,
     });
 
@@ -122,14 +131,14 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(getCapturedNotes()[0].velocity_deviation).toBe(15);
+    expect(getCaptured()[0].velocity_deviation).toBe(15);
   });
 
   it("should apply probability modifications to MIDI clip notes", () => {
     const clipId = "clip_1";
 
     setupClipMocks(clipId);
-    const getCapturedNotes = setupNoteCaptureMock(clipId, { probability: 0.8 });
+    const { getCaptured } = setupNoteCaptureMock(clipId, { probability: 0.8 });
 
     transformClips({
       clipIds: clipId,
@@ -137,44 +146,14 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(getCapturedNotes()[0].probability).toBe(0.9);
+    expect(getCaptured()[0].probability).toBe(0.9);
   });
 
   it("should produce consistent results with same seed", () => {
     const clipId = "clip_1";
 
     setupClipMocks(clipId);
-
-    let capturedNotes1;
-    let capturedNotes2;
-
-    liveApiCall.mockImplementation(function (method, ..._args) {
-      if (this._id === clipId && method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              id: "0",
-              pitch: 60,
-              start_time: 0.0,
-              duration: 1.0,
-              velocity: 100,
-              velocity_deviation: 0,
-              probability: 1.0,
-            },
-          ],
-        });
-      }
-
-      if (this._id === clipId && method === "apply_note_modifications") {
-        const notes = JSON.parse(_args[0]).notes;
-
-        if (!capturedNotes1) {
-          capturedNotes1 = notes;
-        } else {
-          capturedNotes2 = notes;
-        }
-      }
-    });
+    const { getAllCaptured } = setupNoteCaptureMock(clipId);
 
     // Run twice with same seed
     transformClips({
@@ -190,6 +169,8 @@ describe("transformClips - modifications", () => {
       seed: 99999,
     });
 
+    const [capturedNotes1, capturedNotes2] = getAllCaptured();
+
     // Should produce identical results
     expect(capturedNotes1).toStrictEqual(capturedNotes2);
   });
@@ -198,7 +179,7 @@ describe("transformClips - modifications", () => {
     const clipId = "clip_1";
 
     setupClipMocks(clipId);
-    const getCapturedNotes = setupNoteCaptureMock(clipId);
+    const { getCaptured } = setupNoteCaptureMock(clipId);
 
     transformClips({
       clipIds: clipId,
@@ -207,7 +188,7 @@ describe("transformClips - modifications", () => {
     });
 
     // Should pick one of the discrete values
-    const transposedPitch = getCapturedNotes()[0].pitch;
+    const transposedPitch = getCaptured()[0].pitch;
 
     expect([48, 60, 72]).toContain(transposedPitch);
   });
