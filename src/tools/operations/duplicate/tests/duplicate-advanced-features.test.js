@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "./duplicate-mocks-test-helpers.js";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
 import {
