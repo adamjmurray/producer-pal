@@ -446,6 +446,11 @@ describe("device-path-helpers", () => {
       );
     });
 
+    it("throws on path starting with /", () => {
+      expect(() => resolveInsertionPath("/t0")).toThrow("Invalid path: /t0");
+      expect(() => resolveInsertionPath("/")).toThrow("Invalid path: /");
+    });
+
     it("throws on invalid track segment for single-segment paths", () => {
       // Single segment paths that don't match mt/rt*/t* prefixes
       // Note: "track0" starts with "t" so it's handled by the t* branch

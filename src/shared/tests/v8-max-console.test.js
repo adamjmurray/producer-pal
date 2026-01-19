@@ -108,6 +108,26 @@ describe("v8-max-console", () => {
       log(instance);
       expect(consoleLogSpy).toHaveBeenCalledWith('CustomClass{"prop":"value"}');
     });
+
+    it("logs Max Dict objects when Dict global is defined", () => {
+      // Create a mock Dict class to simulate Max's Dict
+      class Dict {
+        name = "testDict";
+        stringify() {
+          return '{\n"key": "value"\n}';
+        }
+      }
+
+      globalThis.Dict = Dict;
+      const dictInstance = new Dict();
+
+      log(dictInstance);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Dict("testDict") { "key": "value" }',
+      );
+
+      delete globalThis.Dict;
+    });
   });
 
   describe("error", () => {
