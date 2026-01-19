@@ -68,12 +68,19 @@ export function validateAndParseArrangementParams(
 }
 
 /**
+ * @typedef {object} ClipResult
+ * @property {string} id
+ * @property {number} [noteCount]
+ */
+
+/**
  * Build clip result object with optional noteCount
  * @param {string} clipId - The clip ID
  * @param {number|null} noteCount - Optional final note count
- * @returns {object} Result object with id and optionally noteCount
+ * @returns {ClipResult} Result object with id and optionally noteCount
  */
 export function buildClipResultObject(clipId, noteCount) {
+  /** @type {ClipResult} */
   const result = { id: clipId };
 
   if (noteCount != null) {
@@ -86,7 +93,7 @@ export function buildClipResultObject(clipId, noteCount) {
 /**
  * Emit warnings for clips moved to same track position
  * @param {number|null} arrangementStartBeats - Whether arrangement start was set
- * @param {Map} tracksWithMovedClips - Map of trackIndex to clip count
+ * @param {Map<number, number>} tracksWithMovedClips - Map of trackIndex to clip count
  */
 export function emitArrangementWarnings(
   arrangementStartBeats,

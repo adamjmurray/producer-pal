@@ -72,13 +72,13 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
  * Reveals hidden content in an unwarped audio clip using session holding area technique.
  * Creates a temp warped/looped clip, sets markers, then restores unwarp/unloop state.
  * ONLY used for unlooped + unwarped + audio clips with hidden content.
- * @param {object} sourceClip - The source clip to get audio file from
- * @param {object} track - The track to work with
+ * @param {LiveAPI} sourceClip - The source clip to get audio file from
+ * @param {LiveAPI} track - The track to work with
  * @param {number} newStartMarker - Start marker for revealed content
  * @param {number} newEndMarker - End marker for revealed content
  * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {object} _context - Context object with paths (unused)
- * @returns {object} The revealed clip in arrangement
+ * @param {Partial<ToolContext>} _context - Context object with paths (unused)
+ * @returns {LiveAPI} The revealed clip in arrangement
  */
 function revealUnwarpedAudioContent(
   sourceClip,
@@ -88,7 +88,7 @@ function revealUnwarpedAudioContent(
   targetPosition,
   _context,
 ) {
-  const filePath = sourceClip.getProperty("file_path");
+  const filePath = /** @type {string} */ (sourceClip.getProperty("file_path"));
 
   console.error(
     `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
@@ -107,10 +107,12 @@ function revealUnwarpedAudioContent(
   tempClip.set("start_marker", newStartMarker);
 
   // Duplicate to arrangement WHILE STILL WARPED (preserves markers)
-  const result = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${tempClip.id}`,
-    targetPosition,
+  const result = /** @type {string} */ (
+    track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${tempClip.id}`,
+      targetPosition,
+    )
   );
   const revealedClip = LiveAPI.from(result);
 
@@ -133,13 +135,15 @@ function revealUnwarpedAudioContent(
       createAudioClipInSession(
         track,
         targetLengthBeats,
-        sourceClip.getProperty("file_path"),
+        /** @type {string} */ (sourceClip.getProperty("file_path")),
       );
 
-    const tempShortenerResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${tempShortenerClip.id}`,
-      revealedClipEndTime,
+    const tempShortenerResult = /** @type {string} */ (
+      track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${tempShortenerClip.id}`,
+        revealedClipEndTime,
+      )
     );
 
     const tempShortener = LiveAPI.from(tempShortenerResult);
@@ -156,13 +160,13 @@ function revealUnwarpedAudioContent(
 /**
  * Reveals audio content at a target position with specific markers.
  * Handles both warped (looping workaround) and unwarped (session holding area) clips.
- * @param {object} sourceClip - The source clip to duplicate from
- * @param {object} track - The track to work with
+ * @param {LiveAPI} sourceClip - The source clip to duplicate from
+ * @param {LiveAPI} track - The track to work with
  * @param {number} newStartMarker - Start marker for revealed content
  * @param {number} newEndMarker - End marker for revealed content
  * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {object} _context - Context object
- * @returns {object} The revealed clip in arrangement
+ * @param {Partial<ToolContext>} _context - Context object
+ * @returns {LiveAPI} The revealed clip in arrangement
  */
 export function revealAudioContentAtPosition(
   sourceClip,
@@ -176,10 +180,12 @@ export function revealAudioContentAtPosition(
 
   if (isWarped) {
     // Warped: duplicate and use looping workaround
-    const duplicateResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
-      targetPosition,
+    const duplicateResult = /** @type {string} */ (
+      track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sourceClip.id}`,
+        targetPosition,
+      )
     );
     const revealedClip = LiveAPI.from(duplicateResult);
 
