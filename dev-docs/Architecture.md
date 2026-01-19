@@ -139,7 +139,7 @@ imports all tool definitions from `src/tools/**/*.def.js`.
 Core logic for each operation. Each tool is a pure function that transforms
 requests into Live API calls.
 
-### 4. Live API Adapter (`src/live-api-adapter/live-api-adapter.js`)
+### 4. Live API Adapter (`src/live-api-adapter/live-api-adapter.ts`)
 
 V8 JavaScript that receives messages from Node.js and calls Live API. Entry
 point for the V8 Max object.
@@ -170,7 +170,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 
 ### V8 Bundle
 
-- **Entry:** `src/live-api-adapter/live-api-adapter.js`
+- **Entry:** `src/live-api-adapter/live-api-adapter.ts`
 - **Output:** `max-for-live-device/live-api-adapter.js`
 - **Target:** V8 engine (Max v8 object)
 - **Dependencies:** None (uses Max built-ins)

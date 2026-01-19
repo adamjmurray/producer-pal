@@ -39,7 +39,7 @@ const baseRules = {
       unusedExports: true, // Report exports not imported anywhere
       // Entry points not imported by other modules (external entry points):
       ignoreExports: [
-        "**/live-api-adapter.js", // Max for Live V8 entry point
+        "**/live-api-adapter.ts", // Max for Live V8 entry point
         "**/producer-pal-portal.{js,ts}", // MCP stdio-to-http portal entry point
         "webui/src/main.tsx", // Chat UI entry point
         "**/test/**", // Test utilities and mocks

@@ -5,7 +5,7 @@
 - **React Components**: PascalCase matching the component name (e.g.,
   `ChatHeader.tsx`, `ModelSelector.tsx`)
 - **All other files**: kebab-case (e.g., `use-gemini-chat.ts` in webui,
-  `merge-messages.js`, `live-api-adapter.js` in core)
+  `merge-messages.js`, `live-api-adapter.ts` in core)
 
 This applies throughout the codebase including hooks, utilities, configuration,
 tests, and modules.

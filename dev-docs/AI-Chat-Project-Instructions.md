@@ -32,7 +32,7 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 ## Architecture Overview
 
 - **MCP Server** (`src/mcp-server/mcp-server.js`): Runs in Node for Max
-- **V8 Code** (`src/live-api-adapter/live-api-adapter.js`): Runs in Max v8
+- **V8 Code** (`src/live-api-adapter/live-api-adapter.ts`): Runs in Max v8
   object, calls Live API
 - **Producer Pal Portal** (`src/portal/producer-pal-portal.js`): Adapts the MCP
   the stdio transport to the streaming http transport

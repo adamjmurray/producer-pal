@@ -38,7 +38,7 @@ Portal script → Max for Live Device (MCP Server) → Live API
 Key entry points:
 
 - MCP Server: `src/mcp-server/mcp-server.js`
-- Max V8 code: `src/live-api-adapter/live-api-adapter.js`
+- Max V8 code: `src/live-api-adapter/live-api-adapter.ts`
 - Portal: `src/portal/producer-pal-portal.js`
 - Chat UI: `webui/src/main.tsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
@@ -50,7 +50,7 @@ See `dev-docs/Architecture.md` for detailed system design and
 ## Critical Coding Rules
 
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
-  other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.js`)
+  other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
 
 - **Function organization**: In files that export functions, the first exported
   function should be the main function named after the file (e.g.,
