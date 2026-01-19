@@ -3,6 +3,10 @@
  */
 import { children, liveApiId } from "#src/test/mocks/mock-live-api.js";
 
+// Constants to avoid duplicate string errors
+const HAS_MIDI_INPUT = "has_midi_input";
+const TEST_TRACK_NAME = "Test Track";
+
 interface PathIdMap {
   [path: string]: string;
 }
@@ -88,6 +92,28 @@ interface RoutingMockOverrides {
   [key: string]: unknown;
 }
 
+interface MixerWithSendsMockOptions {
+  sendIds?: string[];
+  sendValues?: number[];
+  gainDb?: number;
+  pan?: number;
+}
+
+interface DrumChainMockOptions {
+  inNote: number;
+  name: string;
+  deviceId?: string;
+  color?: number;
+  mute?: boolean;
+  solo?: boolean;
+  mutedViaSolo?: boolean;
+}
+
+interface SimpleInstrumentMockOptions {
+  name?: string;
+  className?: string;
+}
+
 /**
  * Setup liveApiId mock for device tests with a path-to-ID mapping.
  * Falls back to this._id for unmatched paths.
@@ -111,8 +137,8 @@ export function setupDevicePathIdMock(pathIdMap: PathIdMap): void {
 export const mockTrackProperties = (
   overrides: MockTrackOverrides = {},
 ): MockTrackOverrides => ({
-  name: "Test Track",
-  has_midi_input: 1,
+  name: TEST_TRACK_NAME,
+  [HAS_MIDI_INPUT]: 1,
   color: 0,
   mute: 0,
   solo: 0,
@@ -199,8 +225,8 @@ export function createSplitPanningMock(
 
   return {
     Track: {
-      has_midi_input: 1,
-      name: "Test Track",
+      [HAS_MIDI_INPUT]: 1,
+      name: TEST_TRACK_NAME,
       clip_slots: [],
       devices: [],
       mixer_device: children("mixer_1"),
@@ -257,5 +283,113 @@ export function createRoutingMockProperties(
       '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
     ],
     ...overrides,
+  };
+}
+
+/**
+ * Creates mock data for mixer with sends test
+ * @param opts - Options for the mock
+ * @returns Mock data object for mockLiveApiGet
+ */
+export function createMixerWithSendsMock(
+  opts: MixerWithSendsMockOptions = {},
+): Record<string, unknown> {
+  const { sendIds = [], sendValues = [], gainDb = 0, pan = 0 } = opts;
+
+  const result: Record<string, unknown> = {
+    Track: {
+      [HAS_MIDI_INPUT]: 1,
+      name: TEST_TRACK_NAME,
+      clip_slots: [],
+      devices: [],
+      mixer_device: children("mixer_1"),
+    },
+    mixer_1: {
+      volume: children("volume_param_1"),
+      panning: children("panning_param_1"),
+      sends: sendIds.length > 0 ? children(...sendIds) : [],
+      panning_mode: 0,
+    },
+    volume_param_1: {
+      display_value: gainDb,
+    },
+    panning_param_1: {
+      value: pan,
+    },
+  };
+
+  // Add send parameter values
+  for (const [index, sendId] of sendIds.entries()) {
+    result[sendId] = {
+      display_value: sendValues[index] ?? 0,
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Creates mock data for drum rack chain with optional instrument
+ * @param opts - Options for the drum chain
+ * @returns Chain mock data
+ */
+export function createDrumChainMock(opts: DrumChainMockOptions): {
+  in_note: number;
+  name: string;
+  color: number;
+  mute: number;
+  muted_via_solo: number;
+  solo: number;
+  devices: unknown[];
+} {
+  const {
+    inNote,
+    name,
+    deviceId,
+    color = 0,
+    mute = false,
+    solo = false,
+    mutedViaSolo = false,
+  } = opts;
+
+  return {
+    in_note: inNote,
+    name,
+    color,
+    mute: mute ? 1 : 0,
+    muted_via_solo: mutedViaSolo ? 1 : 0,
+    solo: solo ? 1 : 0,
+    devices: deviceId ? children(deviceId) : [],
+  };
+}
+
+/**
+ * Creates mock data for a simple instrument device
+ * @param opts - Options for the device
+ * @returns Device mock data
+ */
+export function createSimpleInstrumentMock(
+  opts: SimpleInstrumentMockOptions = {},
+): {
+  name: string;
+  class_name: string;
+  class_display_name: string;
+  type: number;
+  is_active: number;
+  can_have_chains: number;
+  can_have_drum_pads: number;
+} {
+  const { name = "Simpler", className = "Simpler" } = opts;
+  // Import dynamically to avoid circular dependency
+  const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
+
+  return {
+    name,
+    class_name: className,
+    class_display_name: className,
+    type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    is_active: 1,
+    can_have_chains: 0,
+    can_have_drum_pads: 0,
   };
 }

@@ -5,6 +5,8 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.js";
 import {
+  createDrumChainMock,
+  createSimpleInstrumentMock,
   mockTrackProperties,
   setupDevicePathIdMock,
 } from "./helpers/read-track-test-helpers.js";
@@ -175,9 +177,7 @@ describe("readTrack", () => {
       });
 
       mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drum_rack"),
-        }),
+        Track: mockTrackProperties({ devices: children("drum_rack") }),
         drum_rack: {
           name: "My Drums",
           class_name: "DrumGroupDevice",
@@ -186,45 +186,25 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          chains: children("kick_chain", "snare_chain"), // Chains with in_note
+          chains: children("kick_chain", "snare_chain"),
           return_chains: [],
         },
-        kick_chain: {
-          in_note: 36, // C1 - chains use in_note
+        kick_chain: createDrumChainMock({
+          inNote: 36,
           name: "Kick",
           color: 16711680,
-          mute: 0,
-          muted_via_solo: 1,
-          solo: 0,
-          devices: children("kick_device"),
-        },
-        snare_chain: {
-          in_note: 38, // D1
+          mutedViaSolo: true,
+          deviceId: "kick_device",
+        }),
+        snare_chain: createDrumChainMock({
+          inNote: 38,
           name: "Snare",
           color: 65280,
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 1,
-          devices: children("snare_device"),
-        },
-        kick_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        snare_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+          solo: true,
+          deviceId: "snare_device",
+        }),
+        kick_device: createSimpleInstrumentMock(),
+        snare_device: createSimpleInstrumentMock(),
       });
 
       const result = readTrack({
