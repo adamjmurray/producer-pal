@@ -201,6 +201,7 @@ jobs:
       - name: Check code duplication
         id: summary
         run: |
+          set -o pipefail
           npm run duplication 2>&1 | tee duplication-output.txt
 
           # Extract duplication thresholds from config
