@@ -9,7 +9,7 @@ export interface MidiNote {
 }
 
 interface TransposeParams {
-  transposeValuesArray?: number[];
+  transposeValuesArray?: number[] | null;
   transposeMin?: number;
   transposeMax?: number;
 }
