@@ -25,7 +25,7 @@ describe("readClip", () => {
       },
     });
 
-    liveApiCall.mockImplementation((method) => {
+    liveApiCall.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -238,7 +238,7 @@ describe("readClip", () => {
       },
     });
 
-    liveApiCall.mockImplementation((method) => {
+    liveApiCall.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -298,7 +298,7 @@ describe("readClip", () => {
   });
 
   it("reads G8 (MIDI note 127) correctly by calling Live API with pitch range 0-128", () => {
-    liveApiCall.mockImplementation(function (method) {
+    liveApiCall.mockImplementation(function (method: string) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [

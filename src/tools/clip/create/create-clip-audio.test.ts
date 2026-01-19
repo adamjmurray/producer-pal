@@ -37,7 +37,10 @@ describe("createClip - audio clips", () => {
         Clip: { length: 16 }, // Mock audio file length (4 bars in 4/4)
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -76,7 +79,10 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -131,7 +137,10 @@ describe("createClip - audio clips", () => {
       });
 
       // Mock clip IDs based on path
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -193,7 +202,10 @@ describe("createClip - audio clips", () => {
 
       let clipIndex = 0;
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path.includes("clip_slots")) {
           return `audio_clip_0_${clipIndex++}`;
         }
@@ -270,7 +282,10 @@ describe("createClip - audio clips", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
@@ -316,7 +331,10 @@ describe("createClip - audio clips", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "id arrangement_audio_clip") {
           return "arrangement_audio_clip";
         }
@@ -369,7 +387,10 @@ describe("createClip - audio clips", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path?: string;
+        _id: string;
+      }) {
         // Handle "id arrangement_audio_clip_N" paths (from LiveAPI.from())
         if (this._path?.startsWith("id arrangement_audio_clip_")) {
           return this._path.replace("id ", "");
@@ -494,7 +515,10 @@ describe("createClip - audio clips", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         // Track exists
         if (this._path === "live_set tracks 0") {
           return "track_0_id";
@@ -532,7 +556,10 @@ describe("createClip - audio clips", () => {
         Clip: { length: 12.5 }, // Irregular audio length
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -557,7 +584,10 @@ describe("createClip - audio clips", () => {
     });
 
     it("should report same length for multiple clips from same sample", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -613,7 +643,10 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }
@@ -647,7 +680,10 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: {
+        _path: string;
+        _id: string;
+      }) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
         }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
@@ -13,7 +13,10 @@ import { createClip } from "./create-clip.js";
 
 describe("createClip - session view", () => {
   it("should create a single clip with notes", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: {
+      _path: string;
+      _id: string;
+    }) {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip_0_0";
@@ -144,7 +147,9 @@ describe("createClip - session view", () => {
     // Mock scene to not exist
     const originalExists = global.LiveAPI.prototype.exists;
 
-    global.LiveAPI.prototype.exists = vi.fn(function () {
+    global.LiveAPI.prototype.exists = vi.fn(function (this: {
+      _path?: string;
+    }) {
       // Scene does not exist
       return !this._path?.startsWith("live_set scenes");
     });
@@ -188,7 +193,10 @@ describe("createClip - session view", () => {
   });
 
   it("should create multiple clips at specified scene indices", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: {
+      _path: string;
+      _id: string;
+    }) {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 1 clip":
           return "clip_0_1";

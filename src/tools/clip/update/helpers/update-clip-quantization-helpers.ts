@@ -2,9 +2,8 @@ import * as console from "#src/shared/v8-max-console.js";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
- * @type {Record<string, number>}
  */
-export const QUANTIZE_GRID = {
+export const QUANTIZE_GRID: Record<string, number> = {
   "1/4": 1,
   "1/8": 2,
   "1/8T": 3,
@@ -15,25 +14,36 @@ export const QUANTIZE_GRID = {
   "1/32": 8,
 };
 
+interface QuantizationOptions {
+  /** Quantization strength 0-1 */
+  quantize?: number;
+  /** Note grid value */
+  quantizeGrid?: string;
+  /** Swing amount 0-1 (default: 0) */
+  quantizeSwing?: number;
+  /** Limit to specific pitch (optional) */
+  quantizePitch?: number;
+}
+
 /**
  * Handle quantization for MIDI clips
- * @param {LiveAPI} clip - The clip to quantize
- * @param {object} options - Quantization options
- * @param {number | undefined} options.quantize - Quantization strength 0-1
- * @param {string | undefined} options.quantizeGrid - Note grid value
- * @param {number | undefined} options.quantizeSwing - Swing amount 0-1 (default: 0)
- * @param {number | undefined} options.quantizePitch - Limit to specific pitch (optional)
+ * @param clip - The clip to quantize
+ * @param options - Quantization options
+ * @param options.quantize - Quantization strength 0-1
+ * @param options.quantizeGrid - Note grid value
+ * @param options.quantizeSwing - Swing amount 0-1 (default: 0)
+ * @param options.quantizePitch - Limit to specific pitch (optional)
  */
 export function handleQuantization(
-  clip,
-  { quantize, quantizeGrid, quantizeSwing, quantizePitch },
-) {
+  clip: LiveAPI,
+  { quantize, quantizeGrid, quantizeSwing, quantizePitch }: QuantizationOptions,
+): void {
   if (quantize == null) {
     return;
   }
 
   // Warn and skip for audio clips
-  if (/** @type {number} */ (clip.getProperty("is_midi_clip")) <= 0) {
+  if ((clip.getProperty("is_midi_clip") as number) <= 0) {
     console.error(
       `Warning: quantize parameter ignored for audio clip (id ${clip.id})`,
     );

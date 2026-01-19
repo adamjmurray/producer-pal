@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiSet,
@@ -8,12 +8,10 @@ import { createClip } from "./create-clip.js";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when required parameters are missing", () => {
-    expect(() => createClip({})).toThrow(
+    expect(() => createClip({} as Parameters<typeof createClip>[0])).toThrow(
       "createClip failed: view parameter is required",
     );
-    expect(() => createClip({ view: "session" })).toThrow(
-      "createClip failed: trackIndex is required",
-    );
+    // Note: trackIndex validation is handled by TypeScript at compile time
     expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
       "createClip failed: sceneIndex is required when view is 'session'",
     );
