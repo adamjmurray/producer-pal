@@ -6,7 +6,7 @@ import * as console from "#src/shared/v8-max-console.js";
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after shuffling
  * @param {Set<string>} warnings - Set to track warnings already issued
  * @param {function(): number} rng - Random number generator function
- * @param {object} context - Context object with holdingAreaStartBeats
+ * @param {{ holdingAreaStartBeats: number }} context - Context object with holdingAreaStartBeats
  */
 export function performShuffling(
   arrangementClips,
@@ -36,6 +36,7 @@ export function performShuffling(
   );
 
   // Calculate gaps between consecutive clips (preserves original spacing pattern)
+  /** @type {number[]} */
   const gaps = [];
 
   for (let i = 0; i < sortedClips.length - 1; i++) {
@@ -133,6 +134,7 @@ export function shuffleArray(array, rng) {
  */
 export function calculateShufflePositions(sortedClipInfo, shuffledIndices) {
   // Calculate gaps between consecutive clips in original order
+  /** @type {number[]} */
   const gaps = [];
 
   for (let i = 0; i < sortedClipInfo.length - 1; i++) {

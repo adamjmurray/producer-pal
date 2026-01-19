@@ -90,6 +90,7 @@ export function updateClip(
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
+  /** @type {Array<object>} */
   const updatedClips = [];
 
   // Track which tracks have multiple clips being moved (for overlap warning)
@@ -131,5 +132,7 @@ export function updateClip(
   // Emit warning if multiple clips from same track were moved to same position
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
-  return unwrapSingleResult(updatedClips);
+  return /** @type {object | Array<object>} */ (
+    unwrapSingleResult(updatedClips)
+  );
 }

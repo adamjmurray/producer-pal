@@ -20,11 +20,15 @@
     "src/tools/workflow/**/*.js",
     "src/tools/live-set/**/*.js",
     "src/tools/samples/**/*.js",
+    "src/tools/operations/transform-clips/**/*.js",
+    "src/tools/operations/delete/**/*.js",
+    "src/tools/clip/update/**/*.js",
+    "src/tools/clip/create/**/*.js",
+    "src/tools/clip/helpers/**/*.js",
     "src/types/**/*.d.ts"
   ],
   "exclude": [
     "**/*.test.js",
-    "src/**/*.def.js",
     "src/notation/barbeat/parser/barbeat-parser.js",
     "src/notation/modulation/parser/modulation-parser.js"
   ]

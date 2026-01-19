@@ -17,6 +17,14 @@ import {
 import { handleQuantization } from "./update-clip-quantization-helpers.js";
 
 /**
+ * @typedef {object} BeatPositions
+ * @property {number | null} startBeats
+ * @property {number | null} endBeats
+ * @property {number | null} firstStartBeats
+ * @property {number | null} startMarkerBeats
+ */
+
+/**
  * Calculate beat positions from bar|beat notation
  * @param {object} args - Calculation arguments
  * @param {string} [args.start] - Start position in bar|beat notation
@@ -26,7 +34,7 @@ import { handleQuantization } from "./update-clip-quantization-helpers.js";
  * @param {number} args.timeSigDenominator - Time signature denominator
  * @param {LiveAPI} args.clip - The clip to read defaults from
  * @param {boolean} args.isLooping - Whether clip is looping
- * @returns {{startBeats, endBeats, firstStartBeats, startMarkerBeats}} Beat positions
+ * @returns {BeatPositions} Beat positions
  */
 function calculateBeatPositions({
   start,
@@ -111,9 +119,22 @@ function calculateBeatPositions({
 }
 
 /**
+ * @typedef {object} ClipPropsToSet
+ * @property {string} [name]
+ * @property {string} [color]
+ * @property {number | null} [signature_numerator]
+ * @property {number | null} [signature_denominator]
+ * @property {boolean} [looping]
+ * @property {number} [loop_start]
+ * @property {number} [loop_end]
+ * @property {number} [start_marker]
+ * @property {number} [end_marker]
+ */
+
+/**
  * Add loop-related properties in correct order to avoid Live API errors.
  * Order: loop_end (if expanding) → loop_start → start_marker → loop_end (normal)
- * @param {object} propsToSet - Properties object to modify
+ * @param {ClipPropsToSet} propsToSet - Properties object to modify
  * @param {boolean} setEndFirst - Whether to set loop_end before loop_start
  * @param {number | null} startBeats - Start position in beats
  * @param {number | null} endBeats - End position in beats
@@ -163,7 +184,7 @@ function addLoopProperties(
  * @param {number|null} args.startBeats - Start position in beats
  * @param {number|null} args.endBeats - End position in beats
  * @param {number|null} args.currentLoopEnd - Current loop end position in beats
- * @returns {object} Properties object ready for clip.setAll()
+ * @returns {ClipPropsToSet} Properties object ready for clip.setAll()
  */
 function buildClipPropertiesToSet({
   name,
@@ -188,6 +209,7 @@ function buildClipPropertiesToSet({
       ? startBeats >= currentLoopEnd
       : false;
 
+  /** @type {ClipPropsToSet} */
   const propsToSet = {
     name: name,
     color: color,
@@ -347,9 +369,9 @@ function getTimeSignature(timeSignature, clip) {
  * @param {number} [params.quantizePitch] - Limit quantization to specific pitch
  * @param {number | null} [params.arrangementLengthBeats] - Arrangement length in beats
  * @param {number | null} [params.arrangementStartBeats] - Arrangement start in beats
- * @param {object} params.context - Context object
- * @param {Array} params.updatedClips - Array to collect updated clips
- * @param {Map} params.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {Partial<ToolContext>} params.context - Context object
+ * @param {Array<object>} params.updatedClips - Array to collect updated clips
+ * @param {Map<number, number>} params.tracksWithMovedClips - Map of tracks with moved clips
  */
 export function processSingleClipUpdate(params) {
   const {
