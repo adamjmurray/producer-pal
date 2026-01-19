@@ -5,6 +5,7 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.js";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
@@ -13,13 +14,31 @@ import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 
+interface DeleteResult {
+  id: string;
+  type: string;
+  deleted: boolean;
+}
+
+interface DeleteArgs {
+  ids?: string;
+  path?: string;
+  type: string;
+}
+
 /**
  * Deletes objects by ids and/or paths
- * @param {{ ids?: string, path?: string, type: string }} args - The parameters
- * @param {Partial<ToolContext>} [_context] - Internal context object (unused)
- * @returns {{ id: string, type: string, deleted: boolean } | Array<{ id: string, type: string, deleted: boolean }>} Result object(s) with success information
+ * @param args - The parameters
+ * @param args.ids - Comma-separated list of object IDs
+ * @param args.path - Comma-separated paths for device/drum-pad
+ * @param args.type - Type of objects to delete
+ * @param _context - Internal context object (unused)
+ * @returns Result object(s) with success information
  */
-export function deleteObject({ ids, path, type }, _context = {}) {
+export function deleteObject(
+  { ids, path, type }: DeleteArgs,
+  _context: Partial<ToolContext> = {},
+): DeleteResult | DeleteResult[] {
   if (!type) {
     throw new Error("delete failed: type is required");
   }
@@ -52,7 +71,7 @@ export function deleteObject({ ids, path, type }, _context = {}) {
     throw new Error("delete failed: ids or path is required");
   }
 
-  const deletedObjects = [];
+  const deletedObjects: DeleteResult[] = [];
 
   // Validate all objects exist and are the correct type before deleting any
   const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
@@ -80,17 +99,15 @@ export function deleteObject({ ids, path, type }, _context = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  return /** @type {{ id: string, type: string, deleted: boolean } | Array<{ id: string, type: string, deleted: boolean }>} */ (
-    unwrapSingleResult(deletedObjects)
-  );
+  return unwrapSingleResult(deletedObjects) as DeleteResult | DeleteResult[];
 }
 
 /**
  * Deletes a track by its index
- * @param {string} id - The object ID
- * @param {LiveAPI} object - The object to delete
+ * @param id - The object ID
+ * @param object - The object to delete
  */
-function deleteTrackObject(id, object) {
+function deleteTrackObject(id: string, object: LiveAPI): void {
   // Check for return track first
   const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
 
@@ -127,10 +144,10 @@ function deleteTrackObject(id, object) {
 
 /**
  * Deletes a scene by its index
- * @param {string} id - The object ID
- * @param {LiveAPI} object - The object to delete
+ * @param id - The object ID
+ * @param object - The object to delete
  */
-function deleteSceneObject(id, object) {
+function deleteSceneObject(id: string, object: LiveAPI): void {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
 
   if (Number.isNaN(sceneIndex)) {
@@ -146,10 +163,10 @@ function deleteSceneObject(id, object) {
 
 /**
  * Deletes a clip by its track and clip ID
- * @param {string} id - The object ID
- * @param {LiveAPI} object - The object to delete
+ * @param id - The object ID
+ * @param object - The object to delete
  */
-function deleteClipObject(id, object) {
+function deleteClipObject(id: string, object: LiveAPI): void {
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {
@@ -165,10 +182,10 @@ function deleteClipObject(id, object) {
 
 /**
  * Deletes a device by its ID via the parent (track or chain)
- * @param {string} id - The object ID
- * @param {LiveAPI} object - The object to delete
+ * @param id - The object ID
+ * @param object - The object to delete
  */
-function deleteDeviceObject(id, object) {
+function deleteDeviceObject(id: string, object: LiveAPI): void {
   // Find the LAST "devices X" in the path to handle nested devices
   // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
   const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
@@ -179,13 +196,12 @@ function deleteDeviceObject(id, object) {
     );
   }
 
-  const lastMatch = /** @type {RegExpMatchArray} */ (deviceMatches.at(-1));
+  // We know deviceMatches has at least one element from the check above
+  const lastMatch = deviceMatches.at(-1) as RegExpExecArray;
   const deviceIndex = Number(lastMatch[1]);
 
   // Parent path is everything before the last "devices X"
-  const parentPath = object.path
-    .substring(0, /** @type {number} */ (lastMatch.index))
-    .trim();
+  const parentPath = object.path.substring(0, lastMatch.index).trim();
 
   if (!parentPath) {
     throw new Error(
@@ -200,10 +216,10 @@ function deleteDeviceObject(id, object) {
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param {string} _id - The object ID (unused, kept for consistent signature)
- * @param {LiveAPI} object - The object to delete
+ * @param _id - The object ID (unused, kept for consistent signature)
+ * @param object - The object to delete
  */
-function deleteDrumPadObject(_id, object) {
+function deleteDrumPadObject(_id: string, object: LiveAPI): void {
   const drumPad = LiveAPI.from(`id ${object.id}`);
 
   drumPad.call("delete_all_chains");
@@ -211,11 +227,11 @@ function deleteDrumPadObject(_id, object) {
 
 /**
  * Deletes an object based on its type
- * @param {string} type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
- * @param {string} id - The object ID
- * @param {LiveAPI} object - The object to delete
+ * @param type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
+ * @param id - The object ID
+ * @param object - The object to delete
  */
-function deleteObjectByType(type, id, object) {
+function deleteObjectByType(type: string, id: string, object: LiveAPI): void {
   if (type === "track") {
     deleteTrackObject(id, object);
   } else if (type === "scene") {
@@ -231,12 +247,12 @@ function deleteObjectByType(type, id, object) {
 
 /**
  * Resolves paths to their IDs for device or drum-pad types
- * @param {string[]} paths - Array of paths to resolve
- * @param {string} type - The target type ("device" or "drum-pad")
- * @returns {string[]} Array of resolved IDs
+ * @param paths - Array of paths to resolve
+ * @param type - The target type ("device" or "drum-pad")
+ * @returns Array of resolved IDs
  */
-function resolvePathsToIds(paths, type) {
-  const ids = [];
+function resolvePathsToIds(paths: string[], type: string): string[] {
+  const ids: string[] = [];
 
   for (const targetPath of paths) {
     try {
@@ -256,12 +272,16 @@ function resolvePathsToIds(paths, type) {
 
 /**
  * Resolves a single path resolution result to an ID
- * @param {import("#src/tools/shared/device/helpers/path/device-path-to-live-api.js").ResolvedPath} resolved - Result from resolvePathToLiveApi
- * @param {string} targetPath - Original path for error messages
- * @param {string} type - The target type ("device" or "drum-pad")
- * @returns {string|null} The resolved ID or null
+ * @param resolved - Result from resolvePathToLiveApi
+ * @param targetPath - Original path for error messages
+ * @param type - The target type ("device" or "drum-pad")
+ * @returns The resolved ID or null
  */
-function resolvePathToId(resolved, targetPath, type) {
+function resolvePathToId(
+  resolved: ResolvedPath,
+  targetPath: string,
+  type: string,
+): string | null {
   // For drum-pad type, only accept drum-pad paths (no nested navigation)
   if (type === "drum-pad") {
     if (resolved.targetType !== "drum-pad") {
@@ -275,7 +295,7 @@ function resolvePathToId(resolved, targetPath, type) {
     // Use shared helper to get just the drum pad (no remaining segments)
     const result = resolveDrumPadFromPath(
       resolved.liveApiPath,
-      /** @type {string} */ (resolved.drumPadNote),
+      resolved.drumPadNote as string,
       [], // Ignore remaining segments for drum-pad deletion
     );
 
@@ -306,11 +326,11 @@ function resolvePathToId(resolved, targetPath, type) {
     // Device nested inside a drum pad (path like 1/0/pC1/0/0)
     if (
       resolved.targetType === "drum-pad" &&
-      resolved.remainingSegments?.length >= 2
+      resolved.remainingSegments.length >= 2
     ) {
       const result = resolveDrumPadFromPath(
         resolved.liveApiPath,
-        /** @type {string} */ (resolved.drumPadNote),
+        resolved.drumPadNote as string,
         resolved.remainingSegments,
       );
 

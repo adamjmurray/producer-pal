@@ -569,6 +569,20 @@ export default [
     },
   },
 
+  // Max V8 environment globals for tools/operations/delete (migrated to TypeScript)
+  {
+    files: ["src/tools/operations/delete/*.ts"],
+    languageOptions: {
+      globals: {
+        LiveAPI: "readonly",
+        ToolContext: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
+    },
+  },
+
   // Node.js code
   {
     files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],

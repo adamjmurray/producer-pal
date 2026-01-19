@@ -34,6 +34,7 @@
     "mcp-server/*.ts",
     "live-api-adapter/*.ts",
     "skills/*.ts",
-    "shared/*.ts"
+    "shared/*.ts",
+    "tools/operations/delete/*.ts"
   ]
 }

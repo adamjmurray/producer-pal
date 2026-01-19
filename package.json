@@ -10,6 +10,7 @@
   "type": "module",
   "imports": {
     "#webui/*": "./webui/src/*",
+    "#src/tools/operations/delete/*.js": "./src/tools/operations/delete/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",
