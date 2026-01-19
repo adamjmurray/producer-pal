@@ -4,6 +4,27 @@
 import { children, liveApiId } from "#src/test/mocks/mock-live-api.js";
 
 /**
+ * Setup liveApiId mock for device tests with a path-to-ID mapping.
+ * Falls back to this._id for unmatched paths.
+ * @param {Record<string, string>} pathIdMap - Mapping of paths to IDs
+ */
+export function setupDevicePathIdMock(pathIdMap) {
+  liveApiId.mockImplementation(
+    /**
+     * @this {{_path: string, _id: string}}
+     * @returns {string} The ID for the path
+     */
+    function () {
+      if (this._path && pathIdMap[this._path]) {
+        return pathIdMap[this._path];
+      }
+
+      return this._id;
+    },
+  );
+}
+
+/**
  * Creates a mock track object with default properties
  * @param {object} overrides - Properties to override the defaults
  * @returns {object} Mock track properties

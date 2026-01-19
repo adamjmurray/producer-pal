@@ -22,6 +22,37 @@ export const nullCopyResult = {
 };
 
 /**
+ * Internal helper to test copy failure for either range or single destination handlers.
+ * @param {Function} handler - The handler function to call
+ * @param {object} element - The copy element with source and destination
+ * @param {string} errorContains - Substring that error message should contain
+ * @param {Map} notesByBar - Notes map
+ * @param {object} bufferState - Buffer state
+ * @returns {true} Returns true after assertions pass
+ */
+function testCopyFailureWithHandler(
+  handler,
+  element,
+  errorContains,
+  notesByBar,
+  bufferState,
+) {
+  const consoleErrorSpy = vi
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  const result = handler(element, 4, 4, notesByBar, [], bufferState);
+
+  expect(result).toStrictEqual(nullCopyResult);
+  expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect.stringContaining(errorContains),
+  );
+  consoleErrorSpy.mockRestore();
+
+  return true;
+}
+
+/**
  * Runs a test for handleBarCopyRangeDestination that expects a null result with an error message.
  * Returns true after all assertions pass.
  * @param {object} options - Test options
@@ -37,26 +68,13 @@ export function testRangeCopyFailure({
   notesByBar = new Map(),
   bufferState = defaultBufferState,
 }) {
-  const consoleErrorSpy = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  const result = handleBarCopyRangeDestination(
+  return testCopyFailureWithHandler(
+    handleBarCopyRangeDestination,
     element,
-    4, // beatsPerBar
-    4, // timeSigDenominator
+    errorContains,
     notesByBar,
-    [],
     bufferState,
   );
-
-  expect(result).toStrictEqual(nullCopyResult);
-  expect(consoleErrorSpy).toHaveBeenCalledWith(
-    expect.stringContaining(errorContains),
-  );
-  consoleErrorSpy.mockRestore();
-
-  return true;
 }
 
 /**
@@ -75,26 +93,13 @@ export function testSingleCopyFailure({
   notesByBar = new Map(),
   bufferState = defaultBufferState,
 }) {
-  const consoleErrorSpy = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  const result = handleBarCopySingleDestination(
+  return testCopyFailureWithHandler(
+    handleBarCopySingleDestination,
     element,
-    4, // beatsPerBar
-    4, // timeSigDenominator
+    errorContains,
     notesByBar,
-    [],
     bufferState,
   );
-
-  expect(result).toStrictEqual(nullCopyResult);
-  expect(consoleErrorSpy).toHaveBeenCalledWith(
-    expect.stringContaining(errorContains),
-  );
-  consoleErrorSpy.mockRestore();
-
-  return true;
 }
 
 /**

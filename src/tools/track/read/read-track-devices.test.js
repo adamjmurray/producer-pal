@@ -9,7 +9,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
+import {
+  mockTrackProperties,
+  setupDevicePathIdMock,
+} from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
@@ -30,13 +33,7 @@ describe("readTrack", () => {
     });
 
     it("categorizes devices correctly", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-
-        return this._id;
-      });
+      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
       mockLiveApiGet({
         Track: mockTrackProperties({
           devices: children("device1", "device2", "device3"),
@@ -108,13 +105,7 @@ describe("readTrack", () => {
     });
 
     it("correctly identifies drum rack devices", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-
-        return this._id;
-      });
+      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
       mockLiveApiGet({
         Track: mockTrackProperties({
           devices: children("device1"),
@@ -143,13 +134,7 @@ describe("readTrack", () => {
     });
 
     it("includes all device categories when explicitly requested", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-
-        return this._id;
-      });
+      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
       mockLiveApiGet({
         Track: mockTrackProperties({
           devices: children("device1", "device2"),
@@ -203,19 +188,11 @@ describe("readTrack", () => {
     });
 
     it("includes nested devices from instrument rack chains", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "rack1";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "nested_device1";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "rack1",
+        "live_set tracks 0 devices 0 chains 0": "chain1",
+        "live_set tracks 0 devices 0 chains 0 devices 0": "nested_device1",
       });
 
       mockLiveApiGet({
@@ -280,19 +257,11 @@ describe("readTrack", () => {
     });
 
     it("includes nested devices from audio effect rack chains", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "fx_rack1";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "nested_effect1";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "fx_rack1",
+        "live_set tracks 0 devices 0 chains 0": "chain1",
+        "live_set tracks 0 devices 0 chains 0 devices 0": "nested_effect1",
       });
 
       mockLiveApiGet({
@@ -365,23 +334,15 @@ describe("readTrack", () => {
     });
 
     it("handles deeply nested racks", () => {
-      liveApiId.mockImplementation(function () {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "outer_rack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "outer_chain";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "inner_rack";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
-            return "inner_chain";
-          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0":
-            return "deep_device";
-          default:
-            return this._id;
-        }
+      setupDevicePathIdMock({
+        "live_set tracks 0": "track1",
+        "live_set tracks 0 devices 0": "outer_rack",
+        "live_set tracks 0 devices 0 chains 0": "outer_chain",
+        "live_set tracks 0 devices 0 chains 0 devices 0": "inner_rack",
+        "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
+          "inner_chain",
+        "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0":
+          "deep_device",
       });
 
       mockLiveApiGet({
