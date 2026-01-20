@@ -9,6 +9,7 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "./create-clip.ts";
+import { setupAudioArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
   describe("validation", () => {
@@ -263,27 +264,7 @@ describe("createClip - audio clips", () => {
 
   describe("arrangement view", () => {
     it("should create audio clip in arrangement view", () => {
-      liveApiCall.mockImplementation((method, ..._args) => {
-        if (method === "create_audio_clip") {
-          return ["id", "arrangement_audio_clip"];
-        }
-
-        return null;
-      });
-
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id arrangement_audio_clip") {
-          return "arrangement_audio_clip";
-        }
-
-        return this._id;
-      });
-
-      mockLiveApiGet({
-        Track: { exists: () => true },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-        "id arrangement_audio_clip": { length: 8 }, // Mock by clip ID
-      });
+      setupAudioArrangementClipMocks();
 
       const result = createClip({
         view: "arrangement",
@@ -309,27 +290,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should create audio clip with name and color in arrangement", () => {
-      liveApiCall.mockImplementation((method, ..._args) => {
-        if (method === "create_audio_clip") {
-          return ["id", "arrangement_audio_clip"];
-        }
-
-        return null;
-      });
-
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id arrangement_audio_clip") {
-          return "arrangement_audio_clip";
-        }
-
-        return this._id;
-      });
-
-      mockLiveApiGet({
-        Track: { exists: () => true },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-        "id arrangement_audio_clip": { length: 16 }, // Mock by clip ID
-      });
+      setupAudioArrangementClipMocks({ clipLength: 16 });
 
       const result = createClip({
         view: "arrangement",

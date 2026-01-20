@@ -1,39 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupRoutingTestMocks } from "./update-live-set-test-helpers.ts";
 
 describe("readLiveSet - routing", () => {
   it("includes routing information in tracks when includeRoutings is true", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Routing Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        ...createSimpleRoutingMock(),
-      },
-    });
+    setupRoutingTestMocks({ trackProps: createSimpleRoutingMock() });
 
     const result = readLiveSet({
       include: ["regular-tracks", "instruments", "chains", "routings"],
@@ -60,29 +32,7 @@ describe("readLiveSet - routing", () => {
   });
 
   it("excludes routing information from tracks when includeRoutings is false", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Routing Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-      },
-    });
+    setupRoutingTestMocks();
 
     const result = readLiveSet({
       include: ["regular-tracks", "instruments", "chains"],

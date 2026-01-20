@@ -12,7 +12,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import {
+  mockTrackProperties,
+  setupDrumRackMocks,
+} from "./helpers/read-track-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
@@ -182,50 +185,7 @@ describe("readTrack", () => {
 
   describe("drum-maps include option", () => {
     it("includes drumMap but strips chains when using drum-maps", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "drumrack1";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "kick_device";
-          default:
-            return this._id!;
-        }
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drumrack1"),
-        }),
-        drumrack1: {
-          name: "Test Drum Rack",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("chain1"), // Chains directly on drum rack with in_note
-          return_chains: [],
-        },
-        chain1: {
-          in_note: 60, // C3 - chains use in_note
-          name: "Test Kick",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("kick_device"),
-        },
-        kick_device: {
-          name: "Kick Instrument",
-          class_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        },
-      });
+      setupDrumRackMocks();
 
       const result = readTrack({
         trackIndex: 0,
@@ -257,50 +217,7 @@ describe("readTrack", () => {
     });
 
     it("drum racks don't have main chains even with chains included", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "drumrack1";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 0 devices 0":
-            return "kick_device2";
-          default:
-            return this._id!;
-        }
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("drumrack1"),
-        }),
-        drumrack1: {
-          name: "Test Drum Rack",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("chain1"), // Chains directly on drum rack with in_note
-          return_chains: [],
-        },
-        chain1: {
-          in_note: 60, // C3 - chains use in_note
-          name: "Test Kick",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("kick_device2"),
-        },
-        kick_device2: {
-          name: "Kick Instrument",
-          class_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        },
-      });
+      setupDrumRackMocks({ kickDeviceId: "kick_device2" });
 
       const result = readTrack({
         trackIndex: 0,
