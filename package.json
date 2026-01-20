@@ -41,7 +41,7 @@
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",
     "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
-    "lint": "echo 'Linting...' && eslint --config config/eslint.config.js . && echo 'No lint violations.\n'",
+    "lint": "echo 'Linting...' && eslint --config config/eslint.config.js --concurrency=auto . && echo 'No lint violations.\n'",
     "lint:fix": "npm run lint -- --fix",
     "duplication": "npm run duplication:src --silent && npm run duplication:tests --silent && npm run duplication:scripts --silent",
     "duplication:src": "printf 'Source ' && jscpd -s -c config/.jscpd.json",
