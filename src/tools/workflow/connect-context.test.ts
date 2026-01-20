@@ -12,13 +12,14 @@ vi.mock(
 );
 
 describe("connect", () => {
-  it("includes project notes when context is provided and enabled", () => {
+  it("includes project notes when enabled (read-only)", () => {
     setupConnectMocks({ liveSetName: "Project with Notes" });
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context = {
+    const context: Partial<ToolContext> = {
       projectNotes: {
         enabled: true,
+        writable: false,
         content: "Working on a house track with heavy bass",
       },
     };
@@ -32,13 +33,16 @@ describe("connect", () => {
     expect(result.$instructions).toContain(
       "follow instructions in project notes",
     );
+    expect(result.$instructions).not.toContain(
+      "mention you can update the project notes",
+    );
   });
 
-  it("notes when project notes are writable", () => {
+  it("includes project notes when writable", () => {
     setupConnectMocks({ liveSetName: "Project with Notes" });
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context = {
+    const context: Partial<ToolContext> = {
       projectNotes: {
         enabled: true,
         writable: true,
@@ -62,11 +66,12 @@ describe("connect", () => {
 
   it("excludes project notes when context is disabled", () => {
     setupConnectMocks({ liveSetName: "Project without Notes" });
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context = {
+    const context: Partial<ToolContext> = {
       projectNotes: {
         enabled: false,
+        writable: false,
         content: "Should not be included",
       },
     };
@@ -78,7 +83,7 @@ describe("connect", () => {
 
   it("handles missing context gracefully", () => {
     setupConnectMocks({ liveSetName: "No Context Project" });
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 
@@ -87,7 +92,7 @@ describe("connect", () => {
 
   it("returns standard skills and instructions by default", () => {
     setupConnectMocks();
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 
@@ -100,9 +105,9 @@ describe("connect", () => {
 
   it("returns basic skills and instructions when smallModelMode is enabled", () => {
     setupConnectMocks({ liveSetName: "Small Model Project" });
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context = {
+    const context: Partial<ToolContext> = {
       smallModelMode: true,
     };
 
@@ -116,7 +121,7 @@ describe("connect", () => {
 
   it("standard skills include advanced features that basic skills omit", () => {
     setupConnectMocks();
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const standardResult = connect({}, {});
     const basicResult = connect({}, { smallModelMode: true });
@@ -140,7 +145,7 @@ describe("connect", () => {
 
   it("standard instructions include ppal-read-live-set call", () => {
     setupConnectMocks();
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const standardResult = connect({}, {});
     const basicResult = connect({}, { smallModelMode: true });

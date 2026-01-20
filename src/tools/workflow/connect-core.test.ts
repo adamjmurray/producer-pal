@@ -6,6 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
@@ -19,20 +20,44 @@ vi.mock(
   }),
 );
 
-function setupBasicMocks(version = "12.2", idMap = {}) {
-  liveApiId.mockImplementation(function () {
-    return idMap[this._path] ?? this._id;
+function setupBasicMocks(version = "12.2", idMap: Record<string, string> = {}) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
+    return idMap[this._path ?? ""] ?? this._id ?? "";
   });
-  liveApiPath.mockImplementation(function () {
-    return this._path;
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext): string {
+    return this._path ?? "";
   });
-  liveApiCall.mockImplementation(function (method) {
+  liveApiCall.mockImplementation(function (
+    this: MockLiveAPIContext,
+    method: string,
+  ): string | null {
     return method === "get_version_string" ? version : null;
   });
 }
 
-function createLiveSetConfig(overrides = {}) {
-  return {
+interface LiveSetConfigOverrides {
+  name?: string;
+  tempo?: number;
+  signature_numerator?: number;
+  signature_denominator?: number;
+  is_playing?: number;
+  tracks?: string[];
+  scenes?: string[];
+  liveSetExtra?: Record<string, unknown>;
+  view?: string;
+  extra?: Record<string, Record<string, unknown>>;
+}
+
+interface LiveSetConfig {
+  LiveSet: Record<string, unknown>;
+  AppView: Record<string, unknown>;
+  [key: string]: Record<string, unknown>;
+}
+
+function createLiveSetConfig(
+  overrides: LiveSetConfigOverrides = {},
+): LiveSetConfig {
+  const result: LiveSetConfig = {
     LiveSet: {
       name: overrides.name ?? "Test Project",
       tempo: overrides.tempo ?? 120,
@@ -46,8 +71,13 @@ function createLiveSetConfig(overrides = {}) {
     AppView: {
       focused_document_view: overrides.view ?? "Session",
     },
-    ...overrides.extra,
   };
+
+  if (overrides.extra) {
+    Object.assign(result, overrides.extra);
+  }
+
+  return result;
 }
 
 describe("connect", () => {
@@ -120,7 +150,7 @@ describe("connect", () => {
         extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
       }),
     );
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 
@@ -150,7 +180,7 @@ describe("connect", () => {
         },
       }),
     );
-    getHostTrackIndex.mockReturnValue(1);
+    vi.mocked(getHostTrackIndex).mockReturnValue(1);
 
     const result = connect();
 
@@ -177,7 +207,7 @@ describe("connect", () => {
         },
       }),
     );
-    getHostTrackIndex.mockReturnValue(1);
+    vi.mocked(getHostTrackIndex).mockReturnValue(1);
 
     const result = connect();
 
@@ -199,7 +229,7 @@ describe("connect", () => {
         extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
       }),
     );
-    getHostTrackIndex.mockReturnValue(null);
+    vi.mocked(getHostTrackIndex).mockReturnValue(null);
 
     const result = connect();
 
@@ -214,7 +244,7 @@ describe("connect", () => {
   it("handles empty Live Set correctly", () => {
     setupBasicMocks("12.2", { live_set: "live_set_id" });
     mockLiveApiGet(createLiveSetConfig({ name: "Empty Live Set" }));
-    getHostTrackIndex.mockReturnValue(null);
+    vi.mocked(getHostTrackIndex).mockReturnValue(null);
 
     const result = connect();
 
@@ -235,7 +265,7 @@ describe("connect", () => {
         liveSetExtra: { scale_mode: 1, scale_name: "Minor", root_note: 3 },
       }),
     );
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     expect(connect().liveSet.scale).toBe("Eb Minor");
   });
@@ -248,7 +278,7 @@ describe("connect", () => {
         liveSetExtra: { scale_mode: 0, scale_name: "Major", root_note: 0 },
       }),
     );
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     expect(connect().liveSet.scale).toBeUndefined();
   });
@@ -256,7 +286,7 @@ describe("connect", () => {
   it("omits name property when Live Set name is empty string", () => {
     setupBasicMocks();
     mockLiveApiGet(createLiveSetConfig({ name: "" }));
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 
@@ -287,7 +317,7 @@ describe("connect", () => {
         },
       }),
     );
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 
@@ -317,7 +347,7 @@ describe("connect", () => {
         },
       }),
     );
-    getHostTrackIndex.mockReturnValue(0);
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
 

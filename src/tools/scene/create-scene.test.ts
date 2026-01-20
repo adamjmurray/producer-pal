@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   children,
   liveApiCall,
@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 import { createScene } from "./create-scene.js";
@@ -254,8 +255,13 @@ describe("createScene", () => {
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0]).toStrictEqual({ id: "scene1", sceneIndex: 1 });
-    expect(arrayResult[1]).toStrictEqual({ id: "scene1", sceneIndex: 2 });
+    const arrayResultArr = arrayResult as Array<{
+      id: string;
+      sceneIndex: number;
+    }>;
+
+    expect(arrayResultArr[0]).toStrictEqual({ id: "scene1", sceneIndex: 1 });
+    expect(arrayResultArr[1]).toStrictEqual({ id: "scene1", sceneIndex: 2 });
   });
 
   it("should handle single scene name without incrementing", () => {
@@ -286,10 +292,10 @@ describe("createScene", () => {
   describe("capture mode", () => {
     beforeEach(() => {
       // Reset liveApiId to use default path-based ID generation for capture tests
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         return this._id;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set view selected_scene") {
           return "live_set scenes 1";
         }
@@ -401,7 +407,7 @@ describe("createScene", () => {
     });
 
     it("should return clips when capturing with existing clips", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
         if (this._path === "live_set tracks 1 clip_slots 2 clip") {
           return "0";
@@ -448,7 +454,7 @@ describe("createScene", () => {
 
     it("should switch to session view when capturing scenes with switchView=true", () => {
       // Mock the selected scene path for capture functionality
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set view selected_scene") {
           return "live_set scenes 1";
         }

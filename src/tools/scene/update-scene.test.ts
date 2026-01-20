@@ -5,26 +5,17 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  setupStandardIdMock,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateScene } from "./update-scene.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateScene", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function () {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id 456":
-          return "456";
-        case "id 789":
-          return "789";
-        default:
-          return this._id;
-      }
-    });
+    setupStandardIdMock();
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "123":
           return "live_set scenes 0";
@@ -215,7 +206,7 @@ describe("updateScene", () => {
   });
 
   it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";

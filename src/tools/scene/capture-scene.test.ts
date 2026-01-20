@@ -5,12 +5,13 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { captureScene } from "./capture-scene.js";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set view selected_scene") {
         return "live_set scenes 1";
       }
@@ -37,7 +38,7 @@ describe("captureScene", () => {
   });
 
   it("should select a scene before capturing if sceneIndex is provided", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set view selected_scene") {
         return "live_set scenes 2";
       }
@@ -70,7 +71,7 @@ describe("captureScene", () => {
   });
 
   it("should set the scene name when provided", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set view selected_scene") {
         return "live_set scenes 1";
       }
@@ -109,14 +110,14 @@ describe("captureScene", () => {
   });
 
   it("should return captured clips with their IDs and track indices", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set view selected_scene") {
         return "live_set scenes 0";
       }
 
       return this._path;
     });
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
       if (this._path === "live_set tracks 1 clip_slots 1 clip") {
         return "0";

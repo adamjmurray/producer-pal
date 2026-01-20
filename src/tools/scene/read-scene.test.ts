@@ -5,27 +5,30 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readScene } from "./read-scene.js";
+
+// Helper to create default Scene mock config
+const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({
+  name: "",
+  color: 0,
+  is_empty: 0,
+  is_triggered: 0,
+  tempo: 120,
+  tempo_enabled: 1,
+  time_signature_numerator: 4,
+  time_signature_denominator: 4,
+  time_signature_enabled: 1,
+  ...overrides,
+});
 
 describe("readScene", () => {
   it("returns scene information when a valid scene exists", () => {
     liveApiId.mockReturnValue("scene1");
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children(),
-      },
-      Scene: {
-        name: "Test Scene",
-        color: 16711680, // Red
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
+      LiveSet: { tracks: children() },
+      Scene: defaultSceneConfig({ name: "Test Scene", color: 16711680 }),
     });
 
     const result = readScene({ sceneIndex: 0 });
@@ -55,20 +58,18 @@ describe("readScene", () => {
   it("handles disabled tempo and time signature", () => {
     liveApiId.mockReturnValue("scene2");
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children(),
-      },
-      Scene: {
+      LiveSet: { tracks: children() },
+      Scene: defaultSceneConfig({
         name: "Scene with Disabled Properties",
-        color: 65280, // Green
+        color: 65280,
         is_empty: 1,
         is_triggered: 1,
-        tempo: -1, // -1 indicates disabled tempo
+        tempo: -1,
         tempo_enabled: 0,
-        time_signature_numerator: -1, // -1 indicates disabled time signature
+        time_signature_numerator: -1,
         time_signature_denominator: -1,
         time_signature_enabled: 0,
-      },
+      }),
     });
 
     const result = readScene({ sceneIndex: 1 });
@@ -85,20 +86,8 @@ describe("readScene", () => {
   it("handles unnamed scenes by showing just the scene number", () => {
     liveApiId.mockReturnValue("scene3");
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children(),
-      },
-      Scene: {
-        name: "",
-        color: 0,
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
+      LiveSet: { tracks: children() },
+      Scene: defaultSceneConfig(),
     });
 
     const result = readScene({ sceneIndex: 2 });
@@ -114,7 +103,7 @@ describe("readScene", () => {
   });
 
   it("returns clipCount when not including clip details", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -132,20 +121,11 @@ describe("readScene", () => {
     });
 
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children("track1", "track2", "track3"),
-      },
-      Scene: {
+      LiveSet: { tracks: children("track1", "track2", "track3") },
+      Scene: defaultSceneConfig({
         name: "Scene with 2 Clips",
         color: 16711680,
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
+      }),
     });
 
     const result = readScene({ sceneIndex: 0 });
@@ -161,7 +141,7 @@ describe("readScene", () => {
   });
 
   it("includes clip information when includeClips is true", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -177,20 +157,8 @@ describe("readScene", () => {
     });
 
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children("track1", "track2"),
-      },
-      Scene: {
-        name: "Scene with Clips",
-        color: 16711680,
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
+      LiveSet: { tracks: children("track1", "track2") },
+      Scene: defaultSceneConfig({ name: "Scene with Clips", color: 16711680 }),
     });
 
     const result = readScene({
@@ -218,7 +186,7 @@ describe("readScene", () => {
   });
 
   it("includes all available options when '*' is used", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -234,20 +202,13 @@ describe("readScene", () => {
     });
 
     mockLiveApiGet({
-      LiveSet: {
-        tracks: children("track1", "track2"),
-      },
-      Scene: {
+      LiveSet: { tracks: children("track1", "track2") },
+      Scene: defaultSceneConfig({
         name: "Wildcard Test Scene",
         color: 65280,
-        is_empty: 0,
-        is_triggered: 0,
         tempo: 140,
-        tempo_enabled: 1,
         time_signature_numerator: 3,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
+      }),
     });
 
     // Test with '*' - should include everything
@@ -281,7 +242,7 @@ describe("readScene", () => {
 
   describe("sceneId parameter", () => {
     it("reads scene by sceneId", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "id 123":
             return "123";
@@ -291,7 +252,7 @@ describe("readScene", () => {
             return this._id;
         }
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 123") {
           return "live_set scenes 5";
         }
@@ -300,20 +261,14 @@ describe("readScene", () => {
       });
 
       mockLiveApiGet({
-        "live_set scenes 5": {
+        "live_set scenes 5": defaultSceneConfig({
           name: "Scene by ID",
-          color: 255, // Blue
-          is_empty: 0,
+          color: 255,
           is_triggered: 1,
           tempo: 128,
-          tempo_enabled: 1,
           time_signature_numerator: 3,
-          time_signature_denominator: 4,
-          time_signature_enabled: 1,
-        },
-        LiveSet: {
-          tracks: children(),
-        },
+        }),
+        LiveSet: { tracks: children() },
       });
 
       const result = readScene({ sceneId: "123" });
@@ -330,7 +285,7 @@ describe("readScene", () => {
     });
 
     it("includes clips when reading scene by sceneId", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "id 456":
             return "456";
@@ -344,7 +299,7 @@ describe("readScene", () => {
             return this._id;
         }
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 456") {
           return "live_set scenes 2";
         }
@@ -353,20 +308,12 @@ describe("readScene", () => {
       });
 
       mockLiveApiGet({
-        "live_set scenes 2": {
+        "live_set scenes 2": defaultSceneConfig({
           name: "Scene with Clips by ID",
-          color: 16776960, // Yellow
-          is_empty: 0,
-          is_triggered: 0,
+          color: 16776960,
           tempo: 110,
-          tempo_enabled: 1,
-          time_signature_numerator: 4,
-          time_signature_denominator: 4,
-          time_signature_enabled: 1,
-        },
-        LiveSet: {
-          tracks: children("track1", "track2"),
-        },
+        }),
+        LiveSet: { tracks: children("track1", "track2") },
       });
 
       const result = readScene({
@@ -408,7 +355,7 @@ describe("readScene", () => {
     });
 
     it("prioritizes sceneId over sceneIndex when both provided", () => {
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         switch (this._path) {
           case "id 789":
             return "789";
@@ -418,7 +365,7 @@ describe("readScene", () => {
             return this._id;
         }
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id 789") {
           return "live_set scenes 7";
         }

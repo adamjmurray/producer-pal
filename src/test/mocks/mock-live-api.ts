@@ -524,3 +524,23 @@ export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
 export function children(...childIds: string[]): string[] {
   return childIds.flatMap((id) => ["id", id]);
 }
+
+/**
+ * Setup standard ID mock for common update/read tests.
+ * Maps "id X" paths to return just "X" for IDs 123, 456, 789.
+ * Falls back to default MockLiveAPI behavior for other paths.
+ */
+export function setupStandardIdMock(): void {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+    switch (this._path) {
+      case "id 123":
+        return "123";
+      case "id 456":
+        return "456";
+      case "id 789":
+        return "789";
+      default:
+        return this._id;
+    }
+  });
+}

@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  setupStandardIdMock,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { MONITORING_STATE } from "#src/tools/constants.js";
@@ -13,18 +14,7 @@ import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id 456":
-          return "456";
-        case "id 789":
-          return "789";
-        default:
-          return this._id!;
-      }
-    });
+    setupStandardIdMock();
 
     liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
