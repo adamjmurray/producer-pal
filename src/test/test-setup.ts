@@ -74,6 +74,7 @@ class Max {
     },
   );
 }
+// eslint-disable-next-line vitest/prefer-import-in-mock -- max-api is an external module with strict types that would require comprehensive mock
 vi.mock("max-api", () => ({ default: Max }));
 
 // Export Max so tests can access Max.defaultMcpResponseHandler if needed

@@ -19,7 +19,7 @@ export default defineConfig({
       "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
-        "../src/test/mocks/mock-chat-ui-html.js",
+        "../src/test/mocks/mock-chat-ui-html.ts",
       ),
     },
   },

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "checkJs": false,
     "noEmit": true,
-    "target": "ES2022",
+    "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
@@ -19,5 +19,5 @@
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.ts", "../src/**/*.js", "../src/types/**/*.d.ts"]
+  "include": ["**/*.ts", "../src/types/**/*.d.ts"]
 }

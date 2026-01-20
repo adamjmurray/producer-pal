@@ -248,30 +248,6 @@ const unicornRules = {
   "unicorn/explicit-length-check": "error", // Require explicit .length > 0
 };
 
-const jsOnlyRules = {
-  "no-unused-vars": [
-    // Unused variables (allow _prefixed to signal intentional)
-    "error",
-    {
-      argsIgnorePattern: "^_",
-      varsIgnorePattern: "^_",
-      caughtErrorsIgnorePattern: "^_",
-    },
-  ],
-
-  // Error Handling (TS has better type-aware version)
-  "no-throw-literal": "error", // Only throw Error objects, not strings/numbers
-
-  // Object Access (TS has type-aware version)
-  "dot-notation": "error", // Use obj.key not obj['key'] when possible
-
-  // Security (TS has type-aware version)
-  "no-implied-eval": "error", // Prevents setTimeout/setInterval with strings
-
-  // Variable Shadowing (TS has type-aware version)
-  "no-shadow": "error", // Prevents var x shadowing outer x
-};
-
 const tsOnlyRules = {
   "@typescript-eslint/no-unused-vars": [
     // Unused variables (allow _prefixed to signal intentional)
@@ -347,50 +323,13 @@ export default [
     ],
   },
 
-  // All JavaScript files (any directory)
-  {
-    files: ["{src,webui,tests}/**/*.{js,mjs}"],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-    },
-    plugins: {
-      "@stylistic": stylistic,
-      "@eslint-community/eslint-comments": eslintComments,
-      import: importPlugin,
-      sonarjs,
-      jsdoc,
-      unicorn,
-    },
-    settings: {
-      "import/resolver": {
-        alias: {
-          map: [
-            ["#webui", "./webui/src"],
-            ["#src", "./src"],
-          ],
-          extensions: [".js", ".mjs", ".ts", ".tsx"],
-        },
-        node: true,
-      },
-    },
-    rules: {
-      ...js.configs.recommended.rules,
-      ...baseRules,
-      ...sonarCoreRules,
-      ...unicornRules,
-      ...jsOnlyRules,
-      ...jsdocRules,
-    },
-  },
-
   // WebUI TypeScript files
   {
     files: ["webui/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
         project: "./webui/tsconfig.json", // Explicit path for type-aware rules
@@ -429,7 +368,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
         project: ["./scripts/tsconfig.json"],
       },
@@ -551,7 +490,7 @@ export default [
   {
     files: ["tests/docs/**/*.{js,mjs}"],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2024,
       sourceType: "module",
       globals: {
         ...globals.node,
@@ -579,7 +518,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
         project: "./tests/webui/tsconfig.json",
       },
@@ -737,7 +676,7 @@ export default [
 
   // Test files - relax some rules
   {
-    files: ["**/*.test.{js,ts,tsx}", "**/test-setup.js"],
+    files: ["**/*.test.{js,ts,tsx}", "**/test-setup.ts"],
     plugins: {
       vitest: vitestPlugin,
     },
@@ -791,7 +730,6 @@ export default [
       "webui/**/*.tsx",
     ],
     ignores: [
-      "**/*.test.js",
       "**/*.test.ts",
       "**/*.test.tsx",
       "src/tools/shared/gain-lookup-table.ts", // Auto-generated data
@@ -809,7 +747,6 @@ export default [
   },
   {
     files: [
-      "**/*.test.js",
       "**/*.test.ts",
       "**/*.test.tsx",
       "**/*-test-case.ts", // Test data fixtures

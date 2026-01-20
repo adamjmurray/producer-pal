@@ -4,10 +4,9 @@
   "ignore": [
     "**/node_modules/**",
     "**/barbeat-parser.js",
-    "**/*.test.js",
+    "**/modulation-parser.js",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/*-test-helpers.js",
     "**/*-test-helpers.ts",
     "**/*-test-case.ts",
     "**/test-cases/**",
