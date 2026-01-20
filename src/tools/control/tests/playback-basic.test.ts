@@ -14,6 +14,7 @@ import { playback } from "#src/tools/control/playback.ts";
 import {
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
+  setupMultiClipMocks,
 } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
@@ -190,34 +191,7 @@ describe("transport", () => {
   });
 
   it("should handle play-session-clips action with multiple clips", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
-
-    // Mock the clips to be paths that resolve to different tracks/scenes
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      if (this._path === "clip2") {
-        return "live_set tracks 1 clip_slots 1 clip";
-      }
-
-      if (this._path === "clip3") {
-        return "live_set tracks 2 clip_slots 2 clip";
-      }
-
-      return this._path;
-    });
+    setupMultiClipMocks();
 
     playback({
       action: "play-session-clips",
@@ -242,34 +216,7 @@ describe("transport", () => {
   });
 
   it("should handle whitespace in clipIds", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
-
-    // Mock the clips to be paths that resolve to different tracks/scenes
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      if (this._path === "clip2") {
-        return "live_set tracks 1 clip_slots 1 clip";
-      }
-
-      if (this._path === "clip3") {
-        return "live_set tracks 2 clip_slots 2 clip";
-      }
-
-      return this._path;
-    });
+    setupMultiClipMocks();
 
     playback({
       action: "play-session-clips",
