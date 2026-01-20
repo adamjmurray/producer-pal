@@ -1,0 +1,120 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  polyfillToReversed,
+  polyfillToSorted,
+  polyfillToSpliced,
+  polyfillWith,
+} from "./es2023-array.ts";
+
+describe("ES2023 array polyfills", () => {
+  describe("polyfillToSorted", () => {
+    it("should sort without mutating original array", () => {
+      const arr = [3, 1, 2];
+      const sorted = polyfillToSorted(arr);
+
+      expect(sorted).toStrictEqual([1, 2, 3]);
+      expect(arr).toStrictEqual([3, 1, 2]); // Original unchanged
+    });
+
+    it("should accept a compare function", () => {
+      const arr = [1, 2, 3];
+      const sorted = polyfillToSorted(arr, (a, b) => b - a);
+
+      expect(sorted).toStrictEqual([3, 2, 1]);
+    });
+
+    it("should return a new array instance", () => {
+      const arr = [1, 2, 3];
+      const sorted = polyfillToSorted(arr);
+
+      expect(sorted).not.toBe(arr);
+    });
+  });
+
+  describe("polyfillToReversed", () => {
+    it("should reverse without mutating original array", () => {
+      const arr = [1, 2, 3];
+      const reversed = polyfillToReversed(arr);
+
+      expect(reversed).toStrictEqual([3, 2, 1]);
+      expect(arr).toStrictEqual([1, 2, 3]); // Original unchanged
+    });
+
+    it("should return a new array instance", () => {
+      const arr = [1, 2, 3];
+      const reversed = polyfillToReversed(arr);
+
+      expect(reversed).not.toBe(arr);
+    });
+  });
+
+  describe("polyfillToSpliced", () => {
+    it("should remove elements without mutating original", () => {
+      const arr = [1, 2, 3, 4, 5];
+      const spliced = polyfillToSpliced(arr, 1, 2);
+
+      expect(spliced).toStrictEqual([1, 4, 5]);
+      expect(arr).toStrictEqual([1, 2, 3, 4, 5]); // Original unchanged
+    });
+
+    it("should insert elements", () => {
+      const arr = [1, 2, 5];
+      const spliced = polyfillToSpliced(arr, 2, 0, 3, 4);
+
+      expect(spliced).toStrictEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("should replace elements", () => {
+      const arr = [1, 2, 3];
+      const spliced = polyfillToSpliced(arr, 1, 1, 99);
+
+      expect(spliced).toStrictEqual([1, 99, 3]);
+    });
+
+    it("should handle missing deleteCount", () => {
+      const arr = [1, 2, 3, 4, 5];
+      const spliced = polyfillToSpliced(arr, 2);
+
+      expect(spliced).toStrictEqual([1, 2]);
+    });
+
+    it("should return a new array instance", () => {
+      const arr = [1, 2, 3];
+      const spliced = polyfillToSpliced(arr, 0, 0);
+
+      expect(spliced).not.toBe(arr);
+    });
+  });
+
+  describe("polyfillWith", () => {
+    it("should replace element at index without mutating original", () => {
+      const arr = [1, 2, 3];
+      const result = polyfillWith(arr, 1, 99);
+
+      expect(result).toStrictEqual([1, 99, 3]);
+      expect(arr).toStrictEqual([1, 2, 3]); // Original unchanged
+    });
+
+    it("should handle negative indices", () => {
+      const arr = [1, 2, 3];
+      const result = polyfillWith(arr, -1, 99);
+
+      expect(result).toStrictEqual([1, 2, 99]);
+    });
+
+    it("should throw RangeError for out of bounds index", () => {
+      const arr = [1, 2, 3];
+
+      expect(() => polyfillWith(arr, 5, 99)).toThrow(RangeError);
+      expect(() => polyfillWith(arr, -5, 99)).toThrow(RangeError);
+    });
+
+    it("should return a new array instance", () => {
+      const arr = [1, 2, 3];
+      const result = polyfillWith(arr, 0, 1);
+
+      expect(result).not.toBe(arr);
+    });
+  });
+});

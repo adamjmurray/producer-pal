@@ -2,6 +2,7 @@
 /// <reference path="../types/max-globals.d.ts" />
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.ts";
+import "#src/polyfills/es2023-array.ts";
 
 import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 import {
