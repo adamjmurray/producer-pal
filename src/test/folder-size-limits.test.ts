@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
-import { assertFolderSizeLimit, projectRoot } from "./meta-test-helpers.ts";
+import {
+  assertFolderSizeLimit,
+  projectRoot,
+} from "./helpers/meta-test-helpers.ts";
 
-const MAX_ITEMS_PER_FOLDER = 13;
+const MAX_ITEMS_PER_FOLDER = 12;
 
 describe("Folder size limits", () => {
   it.each([

@@ -1,4 +1,4 @@
-import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.ts";
+import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
   children,
   liveApiCall,

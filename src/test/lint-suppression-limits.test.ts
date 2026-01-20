@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertPatternLimit } from "./meta-test-helpers.ts";
+import { assertPatternLimit } from "./helpers/meta-test-helpers.ts";
 
 type TreeLimits = Record<string, number>;
 
