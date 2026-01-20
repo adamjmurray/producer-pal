@@ -4,25 +4,30 @@ import { assertPatternLimit } from "./helpers/meta-test-helpers.ts";
 type TreeLimits = Record<string, number>;
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
+// "srcTests" checks test files in src/ (vs "src" which excludes test files)
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
-  src: 8, // Increased for TypeScript migrations (cross-language import resolution)
+  src: 6,
+  srcTests: 34,
   scripts: 0,
   webui: 1,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
+  srcTests: 19,
   scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
   webui: 0,
 };
 
+// TODO: This looks to be enforced by eslint, so we can probably safely simplify and remove it here
 const TS_NOCHECK_LIMITS: TreeLimits = {
   src: 0,
+  srcTests: 3, // This test file's pattern definitions
   scripts: 0,
   webui: 0,
 };
 
-const SOURCE_TREES = Object.keys(ESLINT_DISABLE_LIMITS);
+const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 
 interface SuppressionConfig {
   pattern: RegExp;
@@ -52,15 +57,12 @@ const SUPPRESSION_CONFIGS: Record<string, SuppressionConfig> = {
 };
 
 describe("Lint suppression limits", () => {
-  // Test files are excluded because they have relaxed ESLint rules per config
-  // and often need suppressions for mocking patterns (vi.mock, partial implementations)
-
   for (const [name, config] of Object.entries(SUPPRESSION_CONFIGS)) {
-    describe(`${name} comments (excluding test files)`, () => {
-      for (const tree of SOURCE_TREES) {
+    describe(`${name} comments`, () => {
+      for (const tree of TREES) {
         const limit = config.limits[tree]!;
 
-        it(`should have at most ${limit} ${name} comments in ${tree}/`, () => {
+        it(`should have at most ${limit} ${name} comments in ${tree}`, () => {
           assertPatternLimit(
             tree,
             config.pattern,

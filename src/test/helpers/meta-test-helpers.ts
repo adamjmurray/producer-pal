@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /** Project root directory */
-export const projectRoot: string = path.resolve(__dirname, "../..");
+export const projectRoot: string = path.resolve(__dirname, "../../..");
 
 interface OversizedFolder {
   path: string;
@@ -175,8 +175,36 @@ export function findSourceFiles(
 }
 
 /**
+ * Recursively find all test files in a directory
+ * @param dirPath - Directory to scan
+ * @returns Array of test file paths
+ */
+export function findTestFiles(dirPath: string): string[] {
+  const results: string[] = [];
+
+  if (!fs.existsSync(dirPath)) return results;
+
+  const items = fs.readdirSync(dirPath);
+
+  for (const item of items) {
+    if (item === "node_modules") continue;
+
+    const fullPath = path.join(dirPath, item);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      results.push(...findTestFiles(fullPath));
+    } else if (SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item)) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+/**
  * Assert that pattern occurrences don't exceed limits
- * @param tree - Tree name (e.g., "src", "webui")
+ * @param tree - Tree name (e.g., "src", "srcTests", "webui")
  * @param pattern - Pattern to match
  * @param limit - Maximum allowed occurrences
  * @param errorSuffix - Message suffix for failures
@@ -189,15 +217,20 @@ export function assertPatternLimit(
   errorSuffix: string,
   expect: ExpectStatic,
 ): void {
-  const treePath = path.join(projectRoot, tree);
-  const files = findSourceFiles(treePath, true); // excludeTests=true
+  // "srcTests" checks only test files in src/
+  const isTestTree = tree.endsWith("Tests");
+  const dirName = isTestTree ? tree.slice(0, -5) : tree;
+  const treePath = path.join(projectRoot, dirName);
+  const files = isTestTree
+    ? findTestFiles(treePath)
+    : findSourceFiles(treePath, true); // excludeTests=true for source trees
   const matches = countPatternOccurrences(files, pattern);
 
   if (matches.length > limit) {
     const details = matches.map((m) => `  - ${m.file}:${m.line}`).join("\n");
 
     expect.fail(
-      `Found ${matches.length} ${pattern.source} in ${tree}/ (max: ${limit}):\n${details}\n\n${errorSuffix}`,
+      `Found ${matches.length} ${pattern.source} in ${tree} (max: ${limit}):\n${details}\n\n${errorSuffix}`,
     );
   }
 }
