@@ -97,7 +97,7 @@
     "duplication:tests": "printf 'Tests ' && jscpd -s -c config/.jscpd-tests.json",
     "duplication:scripts": "printf 'Scripts ' && jscpd -s -c config/.jscpd-scripts.json",
     "duplication:verbose": "jscpd -c config/.jscpd.json && jscpd -c config/.jscpd-tests.json && jscpd -c config/.jscpd-scripts.json",
-    "loc": "cloc --vcs=git config dev-docs claude-desktop-extension max-for-live-device npm scripts src tests webui docs",
+    "loc": "cloc --vcs=git",
     "knowledge-base": "npm run test:coverage && node scripts/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "kb:chatgpt": "npm run knowledge-base -- --concat",
