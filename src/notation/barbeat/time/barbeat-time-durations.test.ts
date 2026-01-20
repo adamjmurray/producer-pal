@@ -3,7 +3,7 @@ import {
   abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
-} from "./barbeat-time.js";
+} from "./barbeat-time.ts";
 
 describe("timeSigToAbletonBeatsPerBar", () => {
   it("converts time signatures to Ableton beats per bar", () => {

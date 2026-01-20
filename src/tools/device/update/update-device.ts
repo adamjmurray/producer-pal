@@ -1,15 +1,15 @@
-import { errorMessage } from "#src/shared/error-utils.js";
-import { noteNameToMidi } from "#src/shared/pitch.js";
-import * as console from "#src/shared/v8-max-console.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/utils.ts";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
@@ -18,8 +18,8 @@ import {
   updateCollapsedState,
   updateMacroCount,
   updateMacroVariation,
-} from "./update-device-helpers.js";
-import { wrapDevicesInRack } from "./update-device-wrap-helpers.js";
+} from "./update-device-helpers.ts";
+import { wrapDevicesInRack } from "./update-device-wrap-helpers.ts";
 
 // ============================================================================
 // Type detection helpers

@@ -7,14 +7,14 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { setupScenePathFromId } from "./duplicate-test-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { setupScenePathFromId } from "./duplicate-test-helpers.ts";
 import {
   calculateSceneLength,
   duplicateScene,
   duplicateSceneToArrangement,
   duplicateTrack,
-} from "./duplicate-track-scene-helpers.js";
+} from "./duplicate-track-scene-helpers.ts";
 
 interface MockContext {
   path: string;
@@ -24,7 +24,7 @@ interface MockContext {
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
+vi.mock(import("#src/tools/clip/update/update-clip.ts"), () => ({
   updateClip: vi.fn(({ ids }: { ids: string }) => {
     return [{ id: ids }];
   }),
@@ -32,7 +32,7 @@ vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
 
 // Mock arrangement-tiling helpers
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
+vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
     holdingClip: { id: "holding_clip_id" },
@@ -68,7 +68,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 
 // Mock getHostTrackIndex
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
   () => ({
     getHostTrackIndex: vi.fn(() => 0),
   }),

@@ -3,17 +3,17 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "#src/tools/constants.js";
+} from "#src/tools/constants.ts";
 import {
   mockTrackProperties,
   setupDevicePathIdMock,
-} from "./helpers/read-track-test-helpers.js";
-import { readTrack } from "./read-track.js";
+} from "./helpers/read-track-test-helpers.ts";
+import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
   describe("devices", () => {

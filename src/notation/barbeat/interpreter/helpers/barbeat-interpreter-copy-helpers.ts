@@ -1,10 +1,10 @@
-import * as console from "#src/shared/v8-max-console.js";
-import type { NoteEvent, BarCopyNote } from "../../../types.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import type { NoteEvent, BarCopyNote } from "../../../types.ts";
 import {
   validateBufferedState,
   type BufferState,
   type BarCopyResult,
-} from "./barbeat-interpreter-buffer-helpers.js";
+} from "./barbeat-interpreter-buffer-helpers.ts";
 
 export interface BarCopyElement {
   destination: { bar?: number; range?: [number, number] };

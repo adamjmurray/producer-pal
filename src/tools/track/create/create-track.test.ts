@@ -5,12 +5,12 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
-import { createTrack } from "./create-track.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
+import { createTrack } from "./create-track.ts";
 
-vi.mock(import("#src/shared/v8-max-console.js"), () => ({
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   log: vi.fn(),
   error: vi.fn(),
 }));

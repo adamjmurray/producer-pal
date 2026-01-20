@@ -1,13 +1,13 @@
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/utils.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-} from "./scene-helpers.js";
+} from "./scene-helpers.ts";
 
 interface UpdateSceneResult {
   id: string;

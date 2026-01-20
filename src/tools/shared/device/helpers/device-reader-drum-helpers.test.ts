@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { STATE } from "#src/tools/constants.js";
+import { STATE } from "#src/tools/constants.ts";
 import {
   processDrumPads,
   updateDrumPadSoloStates,
-} from "./device-reader-drum-helpers.js";
+} from "./device-reader-drum-helpers.ts";
 
 // Mock device-path-helpers
-vi.mock(import("./path/device-path-helpers.js"), () => ({
+vi.mock(import("./path/device-path-helpers.ts"), () => ({
   extractDevicePath: vi.fn((path) => path),
 }));
 
 // Mock device-state-helpers
-vi.mock(import("./device-state-helpers.js"), () => ({
+vi.mock(import("./device-state-helpers.ts"), () => ({
   buildChainInfo: vi.fn((chain, options) => ({
     id: chain._id,
     name: chain.getProperty("name"),

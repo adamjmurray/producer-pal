@@ -2,14 +2,14 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyModulations,
   evaluateModulation,
-} from "#src/notation/modulation/modulation-evaluator.js";
+} from "#src/notation/modulation/modulation-evaluator.ts";
 import {
   evaluateExpression,
   evaluateModulationAST,
-} from "#src/notation/modulation/modulation-evaluator-helpers.js";
+} from "#src/notation/modulation/modulation-evaluator-helpers.ts";
 import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.js";
-import { evaluateFunction } from "#src/notation/modulation/modulation-functions.js";
-import * as console from "#src/shared/v8-max-console.js";
+import { evaluateFunction } from "#src/notation/modulation/modulation-functions.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 describe("Modulation Evaluator Error Handling", () => {
   beforeEach(() => {

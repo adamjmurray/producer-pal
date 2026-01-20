@@ -1,4 +1,4 @@
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 

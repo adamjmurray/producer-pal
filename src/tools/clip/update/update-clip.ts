@@ -1,13 +1,13 @@
 import {
   validateAndParseArrangementParams,
   emitArrangementWarnings,
-} from "#src/tools/clip/helpers/clip-result-helpers.js";
+} from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
-import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
+} from "#src/tools/shared/utils.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { processSingleClipUpdate } from "./helpers/update-clip-helpers.ts";
 
 interface UpdateClipArgs {
   /** Clip ID or comma-separated list of clip IDs to update */

@@ -1,6 +1,6 @@
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getArrangementFollowerTrackIds,
   getCurrentLoopState,
@@ -8,8 +8,8 @@ import {
   resolveLoopStart,
   resolveStartTime,
   validateLocatorOrTime,
-} from "./playback-helpers.js";
-import { select } from "./select.js";
+} from "./playback-helpers.ts";
+import { select } from "./select.ts";
 
 interface PlaybackState {
   isPlaying: boolean;

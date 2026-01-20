@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
-import { setupConnectMocks } from "./connect-test-helpers.js";
-import { connect } from "./connect.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { setupConnectMocks } from "./connect-test-helpers.ts";
+import { connect } from "./connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
   () => ({
     getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
   }),

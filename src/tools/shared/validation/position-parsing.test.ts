@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseArrangementStartList,
   parseSceneIndexList,
-} from "./position-parsing.js";
+} from "./position-parsing.ts";
 
 describe("parseSceneIndexList", () => {
   it("should parse a single index", () => {

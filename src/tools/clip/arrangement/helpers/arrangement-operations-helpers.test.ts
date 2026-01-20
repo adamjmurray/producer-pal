@@ -4,17 +4,17 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
   setupArrangementClipPath,
   setupArrangementMocks,
-} from "./arrangement-operations-test-helpers.js";
+} from "./arrangement-operations-test-helpers.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
-} from "./arrangement-operations-helpers.js";
+} from "./arrangement-operations-helpers.ts";
 
 describe("arrangement-operations-helpers", () => {
   beforeEach(() => {

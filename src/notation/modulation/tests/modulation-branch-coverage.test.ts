@@ -1,9 +1,9 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
-import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.js";
+import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
+import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.ts";
 import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.js";
-import * as console from "#src/shared/v8-max-console.js";
-import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 
 describe("Modulation Branch Coverage", () => {
   beforeEach(() => {

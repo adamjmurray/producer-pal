@@ -26,13 +26,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: [
-      "src/**/*.test.js",
-      "src/**/*.test.ts",
-      "webui/**/*.test.ts",
-      "webui/**/*.test.tsx",
-    ],
-    setupFiles: ["src/test/test-setup.js"],
+    include: ["src/**/*.test.ts", "webui/**/*.test.ts", "webui/**/*.test.tsx"],
+    setupFiles: ["src/test/test-setup.ts"],
     clearMocks: true,
     restoreMocks: true,
     execArgv,
@@ -67,21 +62,21 @@ export default defineConfig({
 
         // peggy grammars and generated parsers
         "**/*.peggy",
-        "**/*-parser.{js,ts}",
+        "**/*-parser.js",
 
         // test helper functions
-        "**/*-test-helpers.{js,ts}",
+        "**/*-test-helpers.ts",
 
         // type definition only files (no executable code)
-        "src/notation/types.js",
+        "src/notation/types.ts",
 
         // ignore the bundle entry scripts:
-        "src/live-api-adapter/live-api-adapter.{js,ts}",
-        "src/mcp-server/mcp-server.{js,ts}",
-        "src/portal/producer-pal-portal.{js,ts}",
+        "src/live-api-adapter/live-api-adapter.ts",
+        "src/mcp-server/mcp-server.ts",
+        "src/portal/producer-pal-portal.ts",
 
         // ignore loggers:
-        "src/portal/file-logger.{js,ts}",
+        "src/portal/file-logger.ts",
 
         // ignore test mocks:
         "src/test/mocks/**",

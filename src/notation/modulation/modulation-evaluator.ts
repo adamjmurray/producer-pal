@@ -1,13 +1,13 @@
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import type { NoteEvent } from "../types.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import type { NoteEvent } from "../types.ts";
 import {
   evaluateModulationAST,
   type NoteContext,
   type NoteProperties,
   type ModulationResult,
-} from "./modulation-evaluator-helpers.js";
+} from "./modulation-evaluator-helpers.ts";
 import * as parser from "./parser/modulation-parser.js";
 
 /**

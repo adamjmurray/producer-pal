@@ -1,4 +1,4 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -8,10 +8,10 @@ import {
   LIVE_API_WARP_MODE_TEXTURE,
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
-} from "#src/tools/constants.js";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
+} from "#src/tools/constants.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
+import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 // This approach is flawed. The warp marker algorithm does not work correctly in some cases.
 // Leaving here for reference. Determining actual end for non-warped clips via sample rate/length seems correct

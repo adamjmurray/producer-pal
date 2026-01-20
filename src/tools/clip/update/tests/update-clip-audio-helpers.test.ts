@@ -3,13 +3,13 @@ import {
   liveApiCall,
   liveApiGet,
   liveApiSet,
-} from "#src/test/mocks/mock-live-api.js";
-import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   handleWarpMarkerOperation,
   revealAudioContentAtPosition,
   setAudioParameters,
-} from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
+} from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;

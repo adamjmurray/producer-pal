@@ -3,7 +3,7 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
-import { liveApiPath, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
+import { liveApiPath, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 
 interface ClipProps {
   looping?: number;

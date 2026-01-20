@@ -1,10 +1,10 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
-import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.ts";
 
 export interface MidiNote {
   pitch: number;

@@ -4,8 +4,8 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { createClip } from "./create-clip.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createClip } from "./create-clip.ts";
 
 describe("createClip - advanced features", () => {
   it("should set time signature when provided", () => {

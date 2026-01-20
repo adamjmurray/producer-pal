@@ -1,19 +1,19 @@
-import { noteNameToMidi } from "#src/shared/pitch.js";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   autoCreateDrumPadChains,
   resolveContainerWithAutoCreate,
-} from "#src/tools/shared/device/helpers/device-chain-creation-helpers.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
-import { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
-import { resolvePathToLiveApi } from "./device-path-to-live-api.js";
+} from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
+import { resolveDrumPadFromPath } from "./device-drumpad-navigation.ts";
+import { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
 
 // Re-export all functions for backwards compatibility
-export { extractDevicePath } from "./device-path-builders.js";
-export { buildChainPath } from "./device-path-builders.js";
-export { buildReturnChainPath } from "./device-path-builders.js";
-export { buildDrumPadPath } from "./device-path-builders.js";
-export { resolvePathToLiveApi } from "./device-path-to-live-api.js";
-export { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
+export { extractDevicePath } from "./device-path-builders.ts";
+export { buildChainPath } from "./device-path-builders.ts";
+export { buildReturnChainPath } from "./device-path-builders.ts";
+export { buildDrumPadPath } from "./device-path-builders.ts";
+export { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
+export { resolveDrumPadFromPath } from "./device-drumpad-navigation.ts";
 
 export interface InsertionPathResolution {
   container: LiveAPI | null;

@@ -4,9 +4,9 @@ import {
   liveApiId,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 describe("readLiveSet - routing", () => {
   it("includes routing information in tracks when includeRoutings is true", () => {

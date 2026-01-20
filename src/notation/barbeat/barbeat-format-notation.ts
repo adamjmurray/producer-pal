@@ -1,12 +1,12 @@
-import { midiToNoteName } from "#src/shared/pitch.js";
-import type { NoteEvent } from "../types.js";
+import { midiToNoteName } from "#src/shared/pitch.ts";
+import type { NoteEvent } from "../types.ts";
 import {
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-} from "./barbeat-config.js";
-import { parseBeatsPerBar } from "./time/barbeat-time.js";
+} from "./barbeat-config.ts";
+import { parseBeatsPerBar } from "./time/barbeat-time.ts";
 
 interface TimeGroup {
   bar: number;

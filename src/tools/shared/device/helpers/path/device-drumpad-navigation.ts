@@ -1,5 +1,5 @@
-import { noteNameToMidi } from "#src/shared/pitch.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 

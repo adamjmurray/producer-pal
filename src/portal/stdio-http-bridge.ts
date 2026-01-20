@@ -8,11 +8,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { ZodTypeAny } from "zod";
-import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.js";
-import { createMcpServer } from "#src/mcp-server/create-mcp-server.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
-import { logger } from "./file-logger.js";
+import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org";
 

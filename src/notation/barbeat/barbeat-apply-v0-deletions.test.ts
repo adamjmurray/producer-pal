@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyV0Deletions } from "./barbeat-apply-v0-deletions.js";
+import { applyV0Deletions } from "./barbeat-apply-v0-deletions.ts";
 
 describe("applyV0Deletions()", () => {
   it("returns empty array for empty input", () => {

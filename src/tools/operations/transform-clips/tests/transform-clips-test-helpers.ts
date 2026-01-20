@@ -3,7 +3,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 interface SessionClipMockOptions {
   isMidi?: boolean;

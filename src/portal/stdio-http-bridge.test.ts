@@ -79,7 +79,7 @@ const mockMcpServer = {
 };
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("#src/mcp-server/create-mcp-server.js"), () => ({
+vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
   createMcpServer: vi.fn(() => mockMcpServer),
 }));
 
@@ -90,7 +90,7 @@ vi.mock(import("zod"), () => ({
   },
 }));
 
-vi.mock(import("./file-logger.js"), () => ({
+vi.mock(import("./file-logger.ts"), () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -99,8 +99,8 @@ vi.mock(import("./file-logger.js"), () => ({
 }));
 
 // Import the class after mocking
-import { logger } from "./file-logger.js";
-import { StdioHttpBridge } from "./stdio-http-bridge.js";
+import { logger } from "./file-logger.ts";
+import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 /**
  * Get a registered handler from mockServer.setRequestHandler calls

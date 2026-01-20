@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId } from "#src/test/mocks/mock-live-api.js";
-import { readDevice } from "./read-device.js";
-import { setupBasicDeviceMock } from "./read-device-test-helpers.js";
+import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
+import { readDevice } from "./read-device.ts";
+import { setupBasicDeviceMock } from "./read-device-test-helpers.ts";
 
 describe("readDevice", () => {
   beforeEach(() => {

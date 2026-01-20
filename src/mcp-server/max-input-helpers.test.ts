@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMaxBoolean } from "./max-input-helpers.js";
+import { parseMaxBoolean } from "./max-input-helpers.ts";
 
 describe("max-input-helpers", () => {
   describe("parseMaxBoolean", () => {

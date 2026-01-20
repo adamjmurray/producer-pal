@@ -491,10 +491,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2024,
         sourceType: "module",
-        project: [
-          "./src/tsconfig.typescript.json",
-          "./src/tsconfig.typescript.test.json",
-        ],
+        project: ["./src/tsconfig.json"],
       },
       globals: {
         ...globals.node,
@@ -503,7 +500,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: ["./src/tsconfig.typescript.json"],
+          project: ["./src/tsconfig.json"],
         },
         node: true,
       },
@@ -725,17 +722,21 @@ export default [
     },
   },
 
-  // Require extensions for src (unbundled Node.js execution)
+  // Require .ts extensions for src TypeScript imports
+  // Parser files (.js) are exempt since they're generated JavaScript
   {
-    files: ["src/**/*.{js,mjs}"],
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/**/parser/*.ts", // Parser test files import .js files
+      "src/**/interpreter/*.ts", // Interpreter imports parser
+      "src/**/modulation/**/*.ts", // Modulation files import parser (includes tests/)
+    ],
     rules: {
-      // Node.js ESM requires explicit file extensions for relative imports.
-      // See: https://nodejs.org/api/esm.html#import-specifiers
       "import/extensions": [
         "error",
         "always",
         {
-          js: "always",
+          ts: "always",
           ignorePackages: true,
         },
       ],

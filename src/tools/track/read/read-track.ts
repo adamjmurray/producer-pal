@@ -1,17 +1,17 @@
-import * as console from "#src/shared/v8-max-console.js";
-import type { ReadClipResult } from "#src/tools/clip/read/read-clip.js";
-import { DEVICE_TYPE } from "#src/tools/constants.js";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import type { ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
+import { DEVICE_TYPE } from "#src/tools/constants.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   getDrumMap,
   readDevice,
-} from "#src/tools/shared/device/device-reader.js";
-import type { DeviceWithDrumPads } from "#src/tools/shared/device/device-reader.js";
+} from "#src/tools/shared/device/device-reader.ts";
+import type { DeviceWithDrumPads } from "#src/tools/shared/device/device-reader.ts";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "#src/tools/shared/tool-framework/include-params.js";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   addCategoryIndex,
   addOptionalBooleanProperties,
@@ -26,7 +26,7 @@ import {
   readArrangementClips,
   readMixerProperties,
   readSessionClips,
-} from "./helpers/read-track-helpers.js";
+} from "./helpers/read-track-helpers.ts";
 
 interface ReadTrackArgs {
   trackIndex?: number;

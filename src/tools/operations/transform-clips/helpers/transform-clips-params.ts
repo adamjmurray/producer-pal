@@ -1,4 +1,4 @@
-import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.js";
+import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 
 export interface MidiNote {
   pitch: number;

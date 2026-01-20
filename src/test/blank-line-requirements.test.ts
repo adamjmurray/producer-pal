@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { projectRoot } from "./meta-test-helpers.js";
+import { projectRoot } from "./meta-test-helpers.ts";
 
 // Minimum percentage of blank lines required (5% = 1 blank line per 20 lines)
 const MIN_BLANK_LINE_RATIO = 0.05;

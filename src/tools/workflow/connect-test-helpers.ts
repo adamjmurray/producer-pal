@@ -3,7 +3,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 interface SetupConnectMocksOptions {
   liveSetName?: string;

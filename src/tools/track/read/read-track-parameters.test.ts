@@ -6,14 +6,14 @@ import {
   liveApiType,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "#src/tools/constants.js";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
-import { readTrack } from "./read-track.js";
+} from "#src/tools/constants.ts";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
   describe("trackId parameter", () => {

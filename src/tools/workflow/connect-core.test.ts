@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { VERSION } from "#src/shared/version.js";
+import { VERSION } from "#src/shared/version.ts";
 import {
   children,
   liveApiCall,
@@ -7,14 +7,14 @@ import {
   liveApiPath,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
-import { connect } from "./connect.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { connect } from "./connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.js"),
+  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
   () => ({
     getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
   }),

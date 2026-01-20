@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 interface NoteOptions {
   /** Note duration in beats */

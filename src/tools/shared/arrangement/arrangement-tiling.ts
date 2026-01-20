@@ -4,7 +4,7 @@
  * arrangement clips using the holding area technique.
  */
 
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */

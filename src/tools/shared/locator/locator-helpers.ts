@@ -1,5 +1,5 @@
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export interface LocatorInfo {
   id: string;

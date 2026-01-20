@@ -1,11 +1,11 @@
-import { DEVICE_TYPE } from "#src/tools/constants.js";
-import { readParameter, readParameterBasic } from "./device-display-helpers.js";
-import { processDrumPads } from "./device-reader-drum-helpers.js";
-import { buildChainInfo } from "./device-state-helpers.js";
+import { DEVICE_TYPE } from "#src/tools/constants.ts";
+import { readParameter, readParameterBasic } from "./device-display-helpers.ts";
+import { processDrumPads } from "./device-reader-drum-helpers.ts";
+import { buildChainInfo } from "./device-state-helpers.ts";
 import {
   buildChainPath,
   buildReturnChainPath,
-} from "./path/device-path-helpers.js";
+} from "./path/device-path-helpers.ts";
 
 // Re-export for external use
 export { buildChainInfo };

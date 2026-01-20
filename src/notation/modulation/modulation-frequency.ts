@@ -1,4 +1,4 @@
-import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import { barBeatDurationToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 
 export interface PeriodObject {
   type: "period";

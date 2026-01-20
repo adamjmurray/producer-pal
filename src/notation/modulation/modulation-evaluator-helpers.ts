@@ -1,7 +1,7 @@
-import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { evaluateFunction } from "./modulation-functions.js";
+import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { evaluateFunction } from "./modulation-functions.ts";
 import type {
   ExpressionNode,
   ModulationAssignment,

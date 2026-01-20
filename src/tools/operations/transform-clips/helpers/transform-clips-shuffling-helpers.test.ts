@@ -3,12 +3,12 @@ import {
   children,
   liveApiCall,
   liveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   shuffleArray,
   calculateShufflePositions,
   performShuffling,
-} from "./transform-clips-shuffling-helpers.js";
+} from "./transform-clips-shuffling-helpers.ts";
 
 interface MockClip {
   id: string;

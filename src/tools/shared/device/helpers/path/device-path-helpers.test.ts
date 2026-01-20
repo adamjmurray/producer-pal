@@ -4,8 +4,8 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   extractDevicePath,
   buildChainPath,
@@ -13,7 +13,7 @@ import {
   buildDrumPadPath,
   resolvePathToLiveApi,
   resolveInsertionPath,
-} from "./device-path-helpers.js";
+} from "./device-path-helpers.ts";
 
 interface MockLiveApiContext {
   _path?: string;

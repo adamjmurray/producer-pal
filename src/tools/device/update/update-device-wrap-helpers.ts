@@ -1,14 +1,14 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+} from "#src/tools/constants.ts";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   assertDefined,
   parseCommaSeparatedIds,
-} from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/utils.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 

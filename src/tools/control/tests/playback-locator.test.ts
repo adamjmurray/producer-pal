@@ -4,10 +4,10 @@ import {
   liveApiId,
   liveApiSet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { playback } from "#src/tools/control/playback.js";
-import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.js";
-import { setupCuePointMocks } from "./playback-test-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { playback } from "#src/tools/control/playback.ts";
+import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
+import { setupCuePointMocks } from "./playback-test-helpers.ts";
 
 describe("playback - locator support", () => {
   beforeEach(() => {

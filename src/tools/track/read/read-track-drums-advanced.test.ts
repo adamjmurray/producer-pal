@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { children, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+import { children, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   createDrumChainMock,
   createSimpleInstrumentMock,
   mockTrackProperties,
   setupDevicePathIdMock,
-} from "./helpers/read-track-test-helpers.js";
-import { readTrack } from "./read-track.js";
+} from "./helpers/read-track-test-helpers.ts";
+import { readTrack } from "./read-track.ts";
 
 /**
  * Creates a standard drum rack mock object for testing

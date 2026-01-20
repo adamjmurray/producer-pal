@@ -1,28 +1,28 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   liveApiCall,
   liveApiId,
   liveApiSet,
   setupDeviceDuplicationMocks,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
 
 // Mock moveDeviceToPath to track calls
-vi.mock(import("#src/tools/device/update/update-device-helpers.js"), () => ({
+vi.mock(import("#src/tools/device/update/update-device-helpers.ts"), () => ({
   moveDeviceToPath: vi.fn(),
 }));
 
 // Mock console.error to capture warnings
-vi.mock(import("#src/shared/v8-max-console.js"), () => ({
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   error: vi.fn(),
   log: vi.fn(),
   warn: vi.fn(),
 }));
 
 // Import the mocks after vi.mock
-import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/update-device-helpers.js";
-import * as consoleMock from "#src/shared/v8-max-console.js";
+import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/update-device-helpers.ts";
+import * as consoleMock from "#src/shared/v8-max-console.ts";
 
 interface MockContext {
   _path?: string;

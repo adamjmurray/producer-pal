@@ -1,5 +1,5 @@
-import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;

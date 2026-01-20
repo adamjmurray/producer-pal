@@ -7,9 +7,9 @@ import {
   liveApiSet,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
-import { createScene } from "./create-scene.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { createScene } from "./create-scene.ts";
 
 describe("createScene", () => {
   beforeEach(() => {

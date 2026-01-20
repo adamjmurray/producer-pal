@@ -4,9 +4,9 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "#src/test/mocks/mock-live-api.js";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
-import { setupClipMocks } from "./transform-clips-test-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
+import { setupClipMocks } from "./transform-clips-test-helpers.ts";
 
 interface MockContext {
   _id?: string;

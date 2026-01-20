@@ -1,6 +1,6 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 /**
  * Resolves arrangement position from bar|beat or locator

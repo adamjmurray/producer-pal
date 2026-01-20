@@ -1,6 +1,6 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as logger from "./node-for-max-logger.js";
+import * as logger from "./node-for-max-logger.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {

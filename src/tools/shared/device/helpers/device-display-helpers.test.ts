@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.js";
+import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
   AUTOMATION_STATE_MAP,
   PARAM_STATE_MAP,
@@ -10,7 +10,7 @@ import {
   parseLabel,
   readParameter,
   readParameterBasic,
-} from "./device-display-helpers.js";
+} from "./device-display-helpers.ts";
 
 describe("device-display-helpers", () => {
   describe("parseLabel", () => {

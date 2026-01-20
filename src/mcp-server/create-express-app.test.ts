@@ -4,8 +4,8 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
-import { setTimeoutForTesting } from "./max-api-adapter.js";
+import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { setTimeoutForTesting } from "./max-api-adapter.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -55,7 +55,7 @@ describe("MCP Express App", () => {
     process.env.ENABLE_RAW_LIVE_API = "true";
 
     // Import and start the server first
-    const { createExpressApp } = await import("./create-express-app.js");
+    const { createExpressApp } = await import("./create-express-app.ts");
 
     const app = createExpressApp();
     const port = await new Promise<number>((resolve) => {
@@ -80,7 +80,7 @@ describe("MCP Express App", () => {
       vi.resetModules();
 
       // Re-import the module to trigger handler registration
-      await import("./create-express-app.js");
+      await import("./create-express-app.ts");
 
       expect(Max.addHandler).toHaveBeenCalledWith(
         "mcp_response",
@@ -440,7 +440,7 @@ describe("MCP Express App", () => {
 
   describe("Configuration Options", () => {
     it("should create app successfully without configuration options", async () => {
-      const { createExpressApp } = await import("./create-express-app.js");
+      const { createExpressApp } = await import("./create-express-app.ts");
       const app = createExpressApp();
 
       expect(app).toBeDefined();
@@ -495,7 +495,7 @@ describe("MCP Express App", () => {
       chatUIHandler(0);
 
       // Create a new app instance to use the updated chatUIEnabled value
-      const { createExpressApp } = await import("./create-express-app.js");
+      const { createExpressApp } = await import("./create-express-app.ts");
       const testApp = createExpressApp();
       const testServer = await new Promise<Server>((resolve) => {
         const s = testApp.listen(0, () => resolve(s));

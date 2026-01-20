@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.js";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
+import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import {
   setupLoopedClipSlicingMocks,
   setupSlicingClipBaseMocks,
   setupSlicingClipGetMock,
   setupTwoClipBaseMocks,
-} from "./transform-clips-slicing-test-helpers.js";
+} from "./transform-clips-slicing-test-helpers.ts";
 
 interface MockContext {
   _id?: string;

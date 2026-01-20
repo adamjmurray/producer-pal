@@ -1,16 +1,16 @@
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
-import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.js";
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/utils.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 
 const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
 

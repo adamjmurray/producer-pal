@@ -1,6 +1,6 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.js";
-import { assertDefined, buildIndexedName } from "#src/tools/shared/utils.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
+import { assertDefined, buildIndexedName } from "#src/tools/shared/utils.ts";
 
 interface CreateTrackArgs {
   trackIndex?: number;

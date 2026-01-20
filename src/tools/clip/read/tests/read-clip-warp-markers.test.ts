@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
-import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { readClip } from "#src/tools/clip/read/read-clip.ts";
 
 describe("readClip - warp markers", () => {
   it("reads warp markers with direct array format", () => {

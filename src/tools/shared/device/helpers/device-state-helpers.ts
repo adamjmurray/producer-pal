@@ -1,5 +1,5 @@
-import { midiToNoteName } from "#src/shared/pitch.js";
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
+import { midiToNoteName } from "#src/shared/pitch.ts";
+import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 
 export interface BuildChainInfoOptions {
   path?: string | null;

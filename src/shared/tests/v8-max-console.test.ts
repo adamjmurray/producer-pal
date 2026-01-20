@@ -7,7 +7,7 @@ import {
   vi,
   type MockInstance,
 } from "vitest";
-import { error, log, warn } from "#src/shared/v8-max-console.js";
+import { error, log, warn } from "#src/shared/v8-max-console.ts";
 
 const g = globalThis as Record<string, unknown>;
 

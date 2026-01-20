@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createNote } from "#src/test/test-data-builders.js";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { createNote } from "#src/test/test-data-builders.ts";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - comment support", () => {
   it("handles line comments with //", () => {

@@ -5,13 +5,13 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { readClip } from "#src/tools/clip/read/read-clip.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
   setupMidiClipMock,
   setupNotesMock,
-} from "./read-clip-test-helpers.js";
+} from "./read-clip-test-helpers.ts";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {

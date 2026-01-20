@@ -52,47 +52,6 @@ export default [
     plugins: [
       alias({
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
-        customResolver: (source) => {
-          // Resolve .js imports to .ts files in TypeScript-migrated directories
-          // but exclude Peggy-generated parser files (*-parser.js)
-          if (
-            (source.includes("/skills/") ||
-              source.includes("/notation/") ||
-              source.includes("/tools/operations/delete/") ||
-              source.includes("/tools/samples/") ||
-              source.includes("/tools/workflow/") ||
-              source.includes("/tools/live-set/") ||
-              source.includes("/tools/scene/") ||
-              source.includes("/tools/control/") ||
-              source.includes("/tools/track/") ||
-              source.includes("/tools/operations/transform-clips/") ||
-              source.includes("/tools/device/") ||
-              source.includes("/tools/operations/duplicate/") ||
-              source.includes("/tools/clip/helpers/") ||
-              source.includes("/tools/clip/arrangement/") ||
-              source.includes("/tools/clip/update/") ||
-              source.includes("/tools/clip/read/") ||
-              source.includes("/tools/clip/create/") ||
-              source.includes("/tools/shared/validation/") ||
-              source.includes("/tools/shared/locator/") ||
-              source.includes("/tools/shared/arrangement/") ||
-              source.includes("/tools/shared/gain-lookup-table") ||
-              source.includes("/tools/shared/gain-utils") ||
-              source.includes("/tools/shared/color-verification-helpers") ||
-              source.includes("/tools/shared/utils") ||
-              source.includes("/tools/shared/clip-marker-helpers") ||
-              source.includes("/tools/shared/live-set-helpers") ||
-              source.includes("/tools/shared/tool-framework/") ||
-              source.includes("/tools/constants") ||
-              source.includes("/tools/shared/device/") ||
-              source.includes("/shared/")) &&
-            source.endsWith(".js") &&
-            !source.endsWith("-parser.js")
-          ) {
-            return source.replace(/\.js$/, ".ts");
-          }
-          return null;
-        },
       }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
@@ -103,7 +62,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2024",
-        tsconfig: join(rootDir, "src/live-api-adapter/tsconfig.json"),
+        tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       resolve({
         extensions: [".mjs", ".js", ".json", ".node", ".ts"],
@@ -140,7 +99,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2024",
-        tsconfig: join(rootDir, "src/mcp-server/tsconfig.json"),
+        tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       resolve({
@@ -177,7 +136,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2024",
-        tsconfig: join(rootDir, "src/portal/tsconfig.json"),
+        tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       resolve({
         extensions: [".mjs", ".js", ".json", ".node", ".ts"],

@@ -8,9 +8,9 @@ export {
   Location,
   SyntaxError,
   StartRules,
-} from "../../peggy-parser-types.js";
+} from "../../peggy-parser-types.ts";
 
-import type { ParseOptions } from "../../peggy-parser-types.js";
+import type { ParseOptions } from "../../peggy-parser-types.ts";
 
 /** Repeat pattern for beats */
 export interface RepeatPattern {

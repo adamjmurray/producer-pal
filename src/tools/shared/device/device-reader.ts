@@ -1,12 +1,12 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "#src/tools/constants.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
+} from "#src/tools/constants.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   isRedundantDeviceClassName,
   processDeviceChains,
@@ -14,8 +14,8 @@ import {
   readDeviceParameters,
   readMacroVariations,
   type ProcessChainsOptions,
-} from "./helpers/device-reader-helpers.js";
-import { extractDevicePath } from "./helpers/path/device-path-helpers.js";
+} from "./helpers/device-reader-helpers.ts";
+import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
 
 export interface ReadDeviceOptions {
   includeChains?: boolean;

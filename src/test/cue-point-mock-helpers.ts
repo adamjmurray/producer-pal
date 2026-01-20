@@ -1,4 +1,4 @@
-import { children, liveApiGet } from "#src/test/mocks/mock-live-api.js";
+import { children, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
 
 interface CuePoint {
   id: string;

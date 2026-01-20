@@ -1,41 +1,41 @@
 /// <reference path="../types/live-api.d.ts" />
 /// <reference path="../types/max-globals.d.ts" />
 // Entry point for the tool implementations with direct Live API access
-import "./live-api-extensions.js";
+import "./live-api-extensions.ts";
 
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.js";
+import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "#src/shared/mcp-response-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { VERSION } from "#src/shared/version.js";
-import { createClip } from "#src/tools/clip/create/create-clip.js";
-import { readClip } from "#src/tools/clip/read/read-clip.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
-import { playback } from "#src/tools/control/playback.js";
-import { rawLiveApi } from "#src/tools/control/raw-live-api.js";
-import { select } from "#src/tools/control/select.js";
-import { createDevice } from "#src/tools/device/create/create-device.js";
-import { readDevice } from "#src/tools/device/read-device.js";
-import { updateDevice } from "#src/tools/device/update/update-device.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
-import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
-import { deleteObject } from "#src/tools/operations/delete/delete.js";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
-import { readSamples } from "#src/tools/samples/read-samples.js";
-import { createScene } from "#src/tools/scene/create-scene.js";
-import { readScene } from "#src/tools/scene/read-scene.js";
-import { updateScene } from "#src/tools/scene/update-scene.js";
-import { createTrack } from "#src/tools/track/create/create-track.js";
-import { readTrack } from "#src/tools/track/read/read-track.js";
-import { updateTrack } from "#src/tools/track/update/update-track.js";
-import { connect } from "#src/tools/workflow/connect.js";
-import { memory } from "#src/tools/workflow/memory.js";
+} from "#src/shared/mcp-response-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { VERSION } from "#src/shared/version.ts";
+import { createClip } from "#src/tools/clip/create/create-clip.ts";
+import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { playback } from "#src/tools/control/playback.ts";
+import { rawLiveApi } from "#src/tools/control/raw-live-api.ts";
+import { select } from "#src/tools/control/select.ts";
+import { createDevice } from "#src/tools/device/create/create-device.ts";
+import { readDevice } from "#src/tools/device/read-device.ts";
+import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
+import { deleteObject } from "#src/tools/operations/delete/delete.ts";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
+import { readSamples } from "#src/tools/samples/read-samples.ts";
+import { createScene } from "#src/tools/scene/create-scene.ts";
+import { readScene } from "#src/tools/scene/read-scene.ts";
+import { updateScene } from "#src/tools/scene/update-scene.ts";
+import { createTrack } from "#src/tools/track/create/create-track.ts";
+import { readTrack } from "#src/tools/track/read/read-track.ts";
+import { updateTrack } from "#src/tools/track/update/update-track.ts";
+import { connect } from "#src/tools/workflow/connect.ts";
+import { memory } from "#src/tools/workflow/memory.ts";
 
 const context: ToolContext = {
   projectNotes: {

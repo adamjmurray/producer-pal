@@ -1,13 +1,13 @@
 import { expect, vi } from "vitest";
-import type { BarCopyNote, NoteEvent } from "#src/notation/types.js";
+import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
 import type {
   BufferState,
   PitchState,
-} from "./barbeat-interpreter-buffer-helpers.js";
+} from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
-} from "./barbeat-interpreter-copy-helpers.js";
+} from "./barbeat-interpreter-copy-helpers.ts";
 
 type BarCopyElement = Parameters<typeof handleBarCopySingleDestination>[0];
 type CopyHandler = typeof handleBarCopySingleDestination;

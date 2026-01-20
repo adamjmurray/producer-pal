@@ -5,9 +5,9 @@ import {
   liveApiSet,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import "#src/live-api-adapter/live-api-extensions.js";
-import { updateDevice } from "./update-device.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
+import { updateDevice } from "./update-device.ts";
 
 describe("updateDevice with path parameter", () => {
   beforeEach(() => {

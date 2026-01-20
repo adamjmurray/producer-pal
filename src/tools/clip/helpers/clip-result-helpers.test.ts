@@ -3,10 +3,10 @@ import {
   buildClipResultObject,
   emitArrangementWarnings,
   validateAndParseArrangementParams,
-} from "./clip-result-helpers.js";
+} from "./clip-result-helpers.ts";
 
 // Mock dependencies
-vi.mock(import("#src/notation/barbeat/time/barbeat-time.js"), () => ({
+vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
   barBeatToAbletonBeats: vi.fn((pos) => {
     // Simple mock: "1|1" = 0, "2|1" = 4
     if (pos === "1|1") return 0;
@@ -25,19 +25,19 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.js"), () => ({
   }),
 }));
 
-vi.mock(import("#src/tools/shared/live-set-helpers.js"), () => ({
+vi.mock(import("#src/tools/shared/live-set-helpers.ts"), () => ({
   parseSongTimeSignature: vi.fn(() => ({
     numerator: 4,
     denominator: 4,
   })),
 }));
 
-vi.mock(import("#src/shared/v8-max-console.js"), () => ({
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   error: vi.fn(),
   log: vi.fn(),
 }));
 
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 
 describe("clip-result-helpers", () => {
   beforeEach(() => {

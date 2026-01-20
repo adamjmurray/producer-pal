@@ -1,16 +1,16 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { VERSION } from "#src/shared/version.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { VERSION } from "#src/shared/version.ts";
 import {
   readClip,
   type ReadClipResult,
-} from "#src/tools/clip/read/read-clip.js";
-import { STATE } from "#src/tools/constants.js";
-import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.js";
-import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.js";
+} from "#src/tools/clip/read/read-clip.ts";
+import { STATE } from "#src/tools/constants.ts";
+import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.ts";
+import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
-} from "#src/tools/track/helpers/track-routing-helpers.js";
+} from "#src/tools/track/helpers/track-routing-helpers.ts";
 
 interface MinimalTrackIncludeFlags {
   includeSessionClips: boolean;

@@ -1,19 +1,19 @@
-import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.js";
+import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
 import {
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-} from "#src/notation/barbeat/barbeat-config.js";
+} from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.js";
 import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.js";
 import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import * as console from "#src/shared/v8-max-console.js";
-import type { NoteEvent, BarCopyNote } from "../../types.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import type { NoteEvent, BarCopyNote } from "../../types.ts";
 import {
   applyBarCopyResult,
   extractBufferState,
@@ -21,18 +21,18 @@ import {
   validateBufferedState,
   type InterpreterState,
   type PitchState,
-} from "./helpers/barbeat-interpreter-buffer-helpers.js";
+} from "./helpers/barbeat-interpreter-buffer-helpers.ts";
 import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
   handleClearBuffer,
   type BarCopyElement,
-} from "./helpers/barbeat-interpreter-copy-helpers.js";
+} from "./helpers/barbeat-interpreter-copy-helpers.ts";
 import {
   calculatePositions,
   handlePitchEmission,
   type TimeElement,
-} from "./helpers/barbeat-interpreter-pitch-helpers.js";
+} from "./helpers/barbeat-interpreter-pitch-helpers.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { memory } from "./memory.js";
+import { memory } from "./memory.ts";
 
 describe("memory", () => {
   let context: Partial<ToolContext>;

@@ -6,10 +6,10 @@ import {
   liveApiSet,
   mockLiveApiGet,
   MockSequence,
-} from "#src/test/mocks/mock-live-api.js";
-import { createNote } from "#src/test/test-data-builders.js";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
-import { createClip } from "./create-clip.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createNote } from "#src/test/test-data-builders.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { createClip } from "./create-clip.ts";
 
 describe("createClip - session view", () => {
   it("should create a single clip with notes", () => {

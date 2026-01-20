@@ -7,10 +7,10 @@ import {
   liveApiSet,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
-import { select } from "#src/tools/control/select.js";
-import { setupSelectMocks, expectViewState } from "./select-test-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
+import { select } from "#src/tools/control/select.ts";
+import { setupSelectMocks, expectViewState } from "./select-test-helpers.ts";
 
 // Type-safe way to access global LiveAPI
 const g = globalThis as Record<string, unknown>;
@@ -56,7 +56,7 @@ g.LiveAPI = vi.fn(function () {
 }) as unknown;
 
 // Mock utility functions
-vi.mock(import("#src/tools/shared/utils.js"), async () => ({
+vi.mock(import("#src/tools/shared/utils.ts"), async () => ({
   toLiveApiView: vi.fn((view: string) => {
     const viewMap: Record<string, string> = {
       session: "Session",

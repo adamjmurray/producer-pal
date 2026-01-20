@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   LiveAPI as MockLiveAPI,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { getLocatorId, resolveLocatorToBeats } from "./locator-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { getLocatorId, resolveLocatorToBeats } from "./locator-helpers.ts";
 
 // Make the mock LiveAPI globally available
 // @ts-expect-error - assigning mock to global

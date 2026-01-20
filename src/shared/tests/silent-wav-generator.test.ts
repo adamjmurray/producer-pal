@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   ensureSilenceWav,
   SILENCE_WAV,
-} from "#src/shared/silent-wav-generator.js";
+} from "#src/shared/silent-wav-generator.ts";
 
 describe("silent-wav-generator", () => {
   describe("ensureSilenceWav", () => {

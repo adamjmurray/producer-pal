@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.js";
+import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 
 describe("toCompactJSLiteral - Primitives", () => {
   it("converts strings to JSON-quoted format", () => {

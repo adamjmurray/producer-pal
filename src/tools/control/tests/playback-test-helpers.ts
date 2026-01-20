@@ -1,10 +1,10 @@
-import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.js";
+import { setupCuePointMocksBase } from "#src/test/cue-point-mock-helpers.ts";
 import {
   liveApiId,
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 interface LiveSetConfig {
   numerator?: number;

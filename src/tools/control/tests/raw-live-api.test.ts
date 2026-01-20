@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LiveAPI } from "#src/test/mocks/mock-live-api.js";
+import type { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   liveApiCall,
   liveApiGet,
@@ -7,11 +7,11 @@ import {
   liveApiPath,
   liveApiSet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   rawLiveApi,
   type RawApiOperation,
-} from "#src/tools/control/raw-live-api.js";
+} from "#src/tools/control/raw-live-api.ts";
 
 // Type-safe way to access global LiveAPI
 const g = globalThis as Record<string, unknown>;

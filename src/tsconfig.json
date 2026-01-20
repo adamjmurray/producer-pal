@@ -4,12 +4,13 @@
     "paths": {
       "#src/*": ["./*"]
     },
-    "checkJs": true,
+    "checkJs": false,
     "noEmit": true,
     "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true,
@@ -22,11 +23,6 @@
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.js", "types/**/*.d.ts"],
-  "exclude": [
-    "**/*.test.js",
-    "test/**",
-    "**/*-test-helpers.js",
-    "**/parser/*-parser.js"
-  ]
+  "include": ["**/*.ts", "types/**/*.d.ts"],
+  "exclude": []
 }

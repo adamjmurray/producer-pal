@@ -3,8 +3,8 @@ import {
   liveApiCall,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { createClip } from "./create-clip.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createClip } from "./create-clip.ts";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when required parameters are missing", () => {

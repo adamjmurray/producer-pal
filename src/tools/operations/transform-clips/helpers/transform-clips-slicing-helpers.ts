@@ -1,14 +1,14 @@
-import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
-import { MAX_SLICES } from "#src/tools/constants.js";
+import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
+import { MAX_SLICES } from "#src/tools/constants.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
   tileClipToRange,
-} from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
 
 export interface SlicingContext {
   holdingAreaStartBeats: number;

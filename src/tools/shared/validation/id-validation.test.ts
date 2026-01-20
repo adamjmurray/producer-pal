@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId, liveApiType } from "#src/test/mocks/mock-live-api.js";
-import { validateIdType, validateIdTypes } from "./id-validation.js";
+import { liveApiId, liveApiType } from "#src/test/mocks/mock-live-api.ts";
+import { validateIdType, validateIdTypes } from "./id-validation.ts";
 
 // Type for mock LiveAPI context
 interface MockContext {

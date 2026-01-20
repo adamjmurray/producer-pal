@@ -3,13 +3,13 @@ import {
   cleanupTempClip,
   extendSongIfNeeded,
   parseScale,
-} from "./update-live-set-helpers.js";
+} from "./update-live-set-helpers.ts";
 
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
+vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
   createAudioClipInSession: vi.fn(),
 }));
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
 const g = globalThis as Record<string, unknown>;
 

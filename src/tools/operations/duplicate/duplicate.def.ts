@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
+import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate Track/Scene/Clip/Device",

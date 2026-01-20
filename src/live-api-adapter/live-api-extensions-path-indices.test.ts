@@ -1,7 +1,7 @@
 /// <reference path="../types/live-api.d.ts" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LiveAPI } from "#src/test/mocks/mock-live-api.js";
-import "./live-api-extensions.js";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import "./live-api-extensions.ts";
 
 describe("LiveAPI extensions - path index extensions", () => {
   beforeEach(() => {

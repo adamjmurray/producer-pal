@@ -4,12 +4,12 @@ import {
   liveApiId,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { readDevice } from "./read-device.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readDevice } from "./read-device.ts";
 import {
   setupBasicDeviceMock,
   setupChainMock,
-} from "./read-device-test-helpers.js";
+} from "./read-device-test-helpers.ts";
 
 describe("readDevice with path parameter", () => {
   beforeEach(() => {

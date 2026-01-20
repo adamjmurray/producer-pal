@@ -5,10 +5,10 @@ import {
   liveApiSet,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { updateTrack } from "./update-track.js";
-import "#src/live-api-adapter/live-api-extensions.js";
-import * as console from "#src/shared/v8-max-console.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { updateTrack } from "./update-track.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 describe("updateTrack - mixer properties", () => {
   beforeEach(() => {

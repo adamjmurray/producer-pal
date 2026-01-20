@@ -1,20 +1,20 @@
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
-import { handleArrangementOperations } from "./update-clip-arrangement-helpers.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
   setAudioParameters,
   handleWarpMarkerOperation,
-} from "./update-clip-audio-helpers.js";
-import { handleQuantization } from "./update-clip-quantization-helpers.js";
+} from "./update-clip-audio-helpers.ts";
+import { handleQuantization } from "./update-clip-quantization-helpers.ts";
 
 interface ClipResult {
   id: string;

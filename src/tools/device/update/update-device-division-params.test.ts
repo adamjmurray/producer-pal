@@ -7,9 +7,9 @@ import {
   liveApiSet,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { updateDevice } from "./update-device.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { updateDevice } from "./update-device.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - division params", () => {
   beforeEach(() => {

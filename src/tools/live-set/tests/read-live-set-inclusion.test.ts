@@ -6,9 +6,9 @@ import {
   liveApiPath,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 describe("readLiveSet - inclusion", () => {
   it("returns sceneCount when includeScenes is false", () => {

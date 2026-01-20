@@ -1,19 +1,19 @@
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
-} from "#src/shared/pitch.js";
-import { readScene } from "#src/tools/scene/read-scene.js";
-import { readLocators } from "#src/tools/shared/locator/locator-helpers.js";
+} from "#src/shared/pitch.ts";
+import { readScene } from "#src/tools/scene/read-scene.ts";
+import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   includeArrayFromFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
-} from "#src/tools/shared/tool-framework/include-params.js";
-import { readTrackMinimal } from "#src/tools/track/read/helpers/read-track-helpers.js";
+} from "#src/tools/shared/tool-framework/include-params.ts";
+import { readTrackMinimal } from "#src/tools/track/read/helpers/read-track-helpers.ts";
 import {
   readTrack,
   readTrackGeneric,
-} from "#src/tools/track/read/read-track.js";
+} from "#src/tools/track/read/read-track.ts";
 
 interface ReadLiveSetArgs {
   include?: string[];

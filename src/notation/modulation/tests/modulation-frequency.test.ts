@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseFrequency,
   type PeriodObject,
-} from "#src/notation/modulation/modulation-frequency.js";
+} from "#src/notation/modulation/modulation-frequency.ts";
 
 describe("Modulation Period Parser", () => {
   describe("beat-only periods in 4/4", () => {

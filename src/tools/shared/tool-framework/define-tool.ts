@@ -1,8 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
-import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.js";
+import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };

@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
-import type { BarCopyNote, NoteEvent } from "#src/notation/types.js";
-import type { InterpreterState } from "./barbeat-interpreter-buffer-helpers.js";
+import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
+import type { InterpreterState } from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   clearPitchBuffer,
   trackStateChange,
   updateBufferedPitches,
-} from "./barbeat-interpreter-buffer-helpers.js";
+} from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   copyNoteToDestination,
   handleBarCopySingleDestination,
-} from "./barbeat-interpreter-copy-helpers.js";
+} from "./barbeat-interpreter-copy-helpers.ts";
 import {
   defaultBufferState,
   testRangeCopyFailure,
   testSingleCopyFailure,
   testSingleCopyNullResult,
-} from "./barbeat-interpreter-test-helpers.js";
+} from "./barbeat-interpreter-test-helpers.ts";
 
 describe("barbeat-interpreter-helpers", () => {
   describe("clearPitchBuffer", () => {

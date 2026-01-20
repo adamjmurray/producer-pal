@@ -1,10 +1,10 @@
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -14,13 +14,13 @@ import {
   LIVE_API_WARP_MODE_TEXTURE,
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
-} from "#src/tools/constants.js";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.js";
+} from "#src/tools/constants.ts";
+import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
-} from "#src/tools/shared/tool-framework/include-params.js";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadClipArgs {
   trackIndex?: number | null;

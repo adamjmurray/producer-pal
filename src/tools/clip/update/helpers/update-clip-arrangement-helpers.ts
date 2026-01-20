@@ -1,6 +1,6 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.js";
-import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
+import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 interface ClipResult {
   id: string;

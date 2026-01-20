@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readDevice } from "./read-device.js";
-import { setupDrumPadMocks } from "./read-device-test-helpers.js";
+import { readDevice } from "./read-device.ts";
+import { setupDrumPadMocks } from "./read-device-test-helpers.ts";
 
 describe("readDevice with drum pad path", () => {
   beforeEach(() => {

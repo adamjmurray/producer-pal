@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   mockContext,
   setupAudioArrangementTest,
   assertSourceClipEndMarker,
   assertDuplicateClipCalled,
   assertRevealedClipMarkers,
-} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties
 // are unreliable for detecting hidden audio content, we changed the behavior to

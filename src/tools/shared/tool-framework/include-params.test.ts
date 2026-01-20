@@ -6,7 +6,7 @@ import {
   READ_TRACK_DEFAULTS,
   READ_SCENE_DEFAULTS,
   READ_CLIP_DEFAULTS,
-} from "./include-params.js";
+} from "./include-params.ts";
 
 describe("parseIncludeArray", () => {
   it("returns all defaults when include is undefined", () => {

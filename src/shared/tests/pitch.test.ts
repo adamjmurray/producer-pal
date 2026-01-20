@@ -10,7 +10,7 @@ import {
   numberToPitchClass,
   midiToNoteName,
   noteNameToMidi,
-} from "#src/shared/pitch.js";
+} from "#src/shared/pitch.ts";
 
 describe("PITCH_CLASS_NAMES", () => {
   it("has 12 pitch classes", () => {

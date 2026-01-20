@@ -1,6 +1,6 @@
-import { errorMessage } from "#src/shared/error-utils.js";
-import { logger } from "./file-logger.js";
-import { StdioHttpBridge } from "./stdio-http-bridge.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import { logger } from "./file-logger.ts";
+import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 // Main execution function
 const mcpServerOrigin =

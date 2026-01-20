@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import "./duplicate-mocks-test-helpers.js";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
+import "./duplicate-mocks-test-helpers.ts";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
   createStandardMidiClipMock,
@@ -10,7 +10,7 @@ import {
   setupArrangementDuplicationMock,
   setupScenePath,
   setupSessionClipPath,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {

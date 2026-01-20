@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiPath } from "#src/test/mocks/mock-live-api.js";
-import { getHostTrackIndex } from "./get-host-track-index.js";
+import { liveApiPath } from "#src/test/mocks/mock-live-api.ts";
+import { getHostTrackIndex } from "./get-host-track-index.ts";
 
 const g = globalThis as Record<string, unknown>;
 

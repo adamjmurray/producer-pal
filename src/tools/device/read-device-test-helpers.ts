@@ -3,7 +3,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 interface PadProps {
   note?: number;

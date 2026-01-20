@@ -6,12 +6,12 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   resolveDrumPadFromPath,
   resolveInsertionPath,
-} from "./device-path-helpers.js";
+} from "./device-path-helpers.ts";
 
 // Type for mock LiveAPI instance context
 interface MockLiveApiContext {

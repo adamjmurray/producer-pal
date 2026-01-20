@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiPath,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { createDevice } from "./create-device.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createDevice } from "./create-device.ts";
 
 describe("createDevice", () => {
   beforeEach(() => {

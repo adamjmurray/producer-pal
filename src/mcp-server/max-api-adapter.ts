@@ -2,13 +2,13 @@
 
 import crypto from "node:crypto";
 import Max from "max-api";
-import { errorMessage } from "#src/shared/error-utils.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
-} from "#src/shared/mcp-response-utils.js";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.js";
-import * as console from "./node-for-max-logger.js";
+} from "#src/shared/mcp-response-utils.ts";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import * as console from "./node-for-max-logger.ts";
 
 interface McpResponseContent {
   type: string;

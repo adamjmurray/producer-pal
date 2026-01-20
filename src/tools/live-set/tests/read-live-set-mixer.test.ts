@@ -4,8 +4,8 @@ import {
   liveApiId,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 // Helper to set up mocks for a single track with mixer properties
 function setupSingleTrackMixerMock({

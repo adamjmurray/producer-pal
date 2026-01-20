@@ -1,9 +1,9 @@
-import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
-} from "#src/tools/shared/tool-framework/include-params.js";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;

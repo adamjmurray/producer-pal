@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VERSION } from "#src/shared/version.js";
+import { VERSION } from "#src/shared/version.ts";
 import {
   children,
   expectedClip,
@@ -7,9 +7,9 @@ import {
   liveApiPath,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
-import { readTrack } from "./read-track.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
   it("returns null values when the track does not exist", () => {

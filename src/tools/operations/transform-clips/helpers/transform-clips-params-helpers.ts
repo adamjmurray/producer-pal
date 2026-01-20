@@ -1,5 +1,5 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { applyAudioParams, applyMidiParams } from "./transform-clips-params.ts";
 
 /**
  * Check if any audio transformation parameters are specified

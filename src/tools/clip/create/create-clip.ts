@@ -1,24 +1,24 @@
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import {
   barBeatToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.js";
-import { select } from "#src/tools/control/select.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   parseTimeSignature,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/utils.ts";
 import {
   buildClipName,
   convertTimingParameters,
   parseArrangementStartList,
   parseSceneIndexList,
   processClipIteration,
-} from "./helpers/create-clip-helpers.js";
+} from "./helpers/create-clip-helpers.ts";
 
 export interface CreateClipArgs {
   /** View for the clip */

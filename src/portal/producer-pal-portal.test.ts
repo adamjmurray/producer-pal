@@ -7,20 +7,20 @@ const mockBridge = {
 };
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("./stdio-http-bridge.js"), () => ({
+vi.mock(import("./stdio-http-bridge.ts"), () => ({
   StdioHttpBridge: vi.fn(function () {
     return mockBridge;
   }),
 }));
 
 // Import after mocking
-import { StdioHttpBridge } from "./stdio-http-bridge.js";
+import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 describe("producer-pal-portal", () => {
   describe("module execution", () => {
     it("creates StdioHttpBridge instance and calls start", async () => {
       // Trigger one dynamic import to verify basic behavior
-      await import("./producer-pal-portal.js");
+      await import("./producer-pal-portal.ts");
 
       expect(StdioHttpBridge).toHaveBeenCalled();
       expect(mockBridge.start).toHaveBeenCalled();

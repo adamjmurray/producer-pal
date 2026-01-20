@@ -3,14 +3,14 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   parseArrangementLength,
   getMinimalClipInfo,
   duplicateClipSlot,
   duplicateClipToArrangement,
-} from "./duplicate-helpers.js";
-import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.js";
+} from "./duplicate-helpers.ts";
+import { findRoutingOptionForDuplicateNames } from "./duplicate-routing-helpers.ts";
 
 interface TrackNameMapping {
   [path: string]: string;

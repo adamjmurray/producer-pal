@@ -1,6 +1,6 @@
 import { beforeEach, vi } from "vitest";
-import "./expect-extensions.js";
-import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.js";
+import "./expect-extensions.ts";
+import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
 import {
   LiveAPI,
   liveApiCall,
@@ -8,14 +8,14 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "./mocks/mock-live-api.js";
-import { Task } from "./mocks/mock-task.js";
+} from "./mocks/mock-live-api.ts";
+import { Task } from "./mocks/mock-task.ts";
 
 const g = globalThis as Record<string, unknown>;
 
 g.LiveAPI = LiveAPI;
 g.Folder = Folder;
-await import("#src/live-api-adapter/live-api-extensions.js");
+await import("#src/live-api-adapter/live-api-extensions.ts");
 
 g.Task = Task;
 g.outlet = vi.fn();

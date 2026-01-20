@@ -9,12 +9,12 @@ import {
   LiveAPI,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { playback } from "#src/tools/control/playback.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { playback } from "#src/tools/control/playback.ts";
 import {
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
-} from "./playback-test-helpers.js";
+} from "./playback-test-helpers.ts";
 
 describe("transport", () => {
   beforeEach(() => {

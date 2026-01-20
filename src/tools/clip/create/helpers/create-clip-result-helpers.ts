@@ -1,5 +1,5 @@
-import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.js";
-import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.js";
+import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 export interface ClipPropertiesToSet {
   [key: string]: unknown;

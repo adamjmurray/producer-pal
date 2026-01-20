@@ -1,9 +1,9 @@
 import {
   createAudioClipInSession,
   tileClipToRange,
-} from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
 export interface ArrangementContext {
   holdingAreaStartBeats?: number;

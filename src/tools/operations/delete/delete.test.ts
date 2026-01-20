@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   liveApiCall,
   liveApiId,
   liveApiPath,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.js";
-import { deleteObject } from "./delete.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
+import { deleteObject } from "./delete.ts";
 
 describe("deleteObject", () => {
   it("should delete a single track when type is 'track'", () => {

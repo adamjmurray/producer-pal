@@ -1,17 +1,17 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
-} from "#src/tools/constants.js";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+} from "#src/tools/constants.ts";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   assertDefined,
   parseCommaSeparatedIds,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/utils.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 
 interface RoutingParams {
   inputRoutingTypeId?: string;

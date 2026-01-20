@@ -1,7 +1,7 @@
 /**
  * Test helper functions for read-clip tests
  */
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
+import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 
 interface TestNote {
   note_id?: number;

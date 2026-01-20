@@ -1,9 +1,9 @@
 import type {
   TimeRange,
   NoteProperties,
-} from "./modulation-evaluator-helpers.js";
-import { parseFrequency, type PeriodObject } from "./modulation-frequency.js";
-import * as waveforms from "./modulation-waveforms.js";
+} from "./modulation-evaluator-helpers.ts";
+import { parseFrequency, type PeriodObject } from "./modulation-frequency.ts";
+import * as waveforms from "./modulation-waveforms.ts";
 import type { ExpressionNode } from "./parser/modulation-parser.js";
 
 export type EvaluateExpressionFn = (

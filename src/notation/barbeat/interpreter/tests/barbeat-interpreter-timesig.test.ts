@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createNote } from "#src/test/test-data-builders.js";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { createNote } from "#src/test/test-data-builders.ts";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - time signatures", () => {
   it("supports different time signatures via the beatsPerBar option (legacy)", () => {

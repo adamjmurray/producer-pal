@@ -6,8 +6,8 @@ import {
   liveApiPath,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { readScene } from "./read-scene.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readScene } from "./read-scene.ts";
 
 // Helper to create default Scene mock config
 const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({

@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 
 interface MockContext {
   _id?: string;

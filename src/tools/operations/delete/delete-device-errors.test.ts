@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   children,
   liveApiGet,
   liveApiId,
   liveApiType,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { deleteObject } from "./delete.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { deleteObject } from "./delete.ts";
 
 describe("deleteObject device path error cases", () => {
   beforeEach(() => {

@@ -1,19 +1,19 @@
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
-import { intervalsToPitchClasses } from "#src/shared/pitch.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { waitUntil } from "#src/shared/v8-sleep.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { waitUntil } from "#src/shared/v8-sleep.ts";
 import {
   findLocator,
   findLocatorsByName,
   getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.js";
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/locator/locator-helpers.ts";
+import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 import {
   applyScale,
   applyTempo,
   cleanupTempClip,
   extendSongIfNeeded,
-} from "./helpers/update-live-set-helpers.js";
+} from "./helpers/update-live-set-helpers.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;

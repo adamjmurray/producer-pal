@@ -1,10 +1,10 @@
 import {
   VALID_PITCH_CLASS_NAMES,
   pitchClassToNumber,
-} from "#src/shared/pitch.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { VALID_SCALE_NAMES } from "#src/tools/constants.js";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+} from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>

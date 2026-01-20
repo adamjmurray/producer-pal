@@ -6,8 +6,8 @@ import {
   liveApiSet,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { captureScene } from "./capture-scene.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { captureScene } from "./capture-scene.ts";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {

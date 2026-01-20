@@ -1,15 +1,15 @@
 import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats

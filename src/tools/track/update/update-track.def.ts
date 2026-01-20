@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { MONITORING_STATE } from "#src/tools/constants.js";
-import { defineTool } from "#src/tools/shared/tool-framework/define-tool.js";
+import { MONITORING_STATE } from "#src/tools/constants.ts";
+import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",

@@ -1,4 +1,4 @@
-import { errorMessage } from "#src/shared/error-utils.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
 
 const MAX_OPERATIONS = 50;
 

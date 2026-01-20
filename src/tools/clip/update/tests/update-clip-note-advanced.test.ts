@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.js";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
   note,
   setupAudioClipMock,
   setupMidiClipMock,
   setupMocks,
-} from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 interface MockContext {
   id?: string;

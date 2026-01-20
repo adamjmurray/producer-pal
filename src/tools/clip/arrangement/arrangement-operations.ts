@@ -1,12 +1,12 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
-} from "./helpers/arrangement-operations-helpers.js";
+} from "./helpers/arrangement-operations-helpers.ts";
 import type {
   ArrangementContext,
   ClipIdResult,
-} from "./helpers/arrangement-operations-helpers.js";
+} from "./helpers/arrangement-operations-helpers.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;

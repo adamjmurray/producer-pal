@@ -1,12 +1,12 @@
-import { midiToNoteName } from "#src/shared/pitch.js";
-import { STATE } from "#src/tools/constants.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { midiToNoteName } from "#src/shared/pitch.ts";
+import { STATE } from "#src/tools/constants.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   buildChainInfo,
   hasInstrumentInDevices,
   type DeviceInfo,
-} from "./device-state-helpers.js";
-import { extractDevicePath } from "./path/device-path-helpers.js";
+} from "./device-state-helpers.ts";
+import { extractDevicePath } from "./path/device-path-helpers.ts";
 
 export interface DrumChainOptions {
   includeDrumPads: boolean;

@@ -6,14 +6,14 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
-import { select } from "#src/tools/control/select.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   setupSelectMocks,
   getDefaultViewState,
   expectViewState,
   type SelectMocks,
-} from "./select-test-helpers.js";
+} from "./select-test-helpers.ts";
 
 // Type-safe way to access global LiveAPI
 const g = globalThis as Record<string, unknown>;
@@ -67,7 +67,7 @@ function createNonExistentMock(mockId: string) {
 }
 
 // Mock utility functions
-vi.mock(import("#src/tools/shared/utils.js"), async () => ({
+vi.mock(import("#src/tools/shared/utils.ts"), async () => ({
   toLiveApiView: vi.fn((view: string) => {
     const viewMap: Record<string, string> = {
       session: "Session",

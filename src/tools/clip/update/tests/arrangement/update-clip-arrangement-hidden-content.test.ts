@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
-import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
+import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", () => {

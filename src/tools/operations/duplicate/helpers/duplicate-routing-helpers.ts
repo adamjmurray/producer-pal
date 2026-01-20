@@ -1,4 +1,4 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 
 export interface RoutingType {
   display_name: string;

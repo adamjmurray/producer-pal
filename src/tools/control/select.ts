@@ -1,6 +1,6 @@
-import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
-import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.js";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
+import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 const MASTER_TRACK_PATH = "live_set master_track";
 

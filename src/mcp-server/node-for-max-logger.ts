@@ -1,5 +1,5 @@
 import Max from "max-api";
-import { parseMaxBoolean } from "./max-input-helpers.js";
+import { parseMaxBoolean } from "./max-input-helpers.ts";
 
 const now = (): string => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 

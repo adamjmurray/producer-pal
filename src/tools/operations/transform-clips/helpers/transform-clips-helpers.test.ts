@@ -3,11 +3,11 @@ import {
   createSeededRNG,
   parseTransposeValues,
   randomInRange,
-} from "./transform-clips-helpers.js";
+} from "./transform-clips-helpers.ts";
 import {
   calculateShufflePositions,
   shuffleArray,
-} from "./transform-clips-shuffling-helpers.js";
+} from "./transform-clips-shuffling-helpers.ts";
 
 describe("transform-clips helpers", () => {
   describe("parseTransposeValues", () => {

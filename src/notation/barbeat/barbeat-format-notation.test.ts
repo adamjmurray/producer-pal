@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createNote } from "#src/test/test-data-builders.js";
-import type { NoteEvent } from "../types.js";
-import { formatNotation } from "./barbeat-format-notation.js";
-import { interpretNotation } from "./interpreter/barbeat-interpreter.js";
+import { createNote } from "#src/test/test-data-builders.ts";
+import type { NoteEvent } from "../types.ts";
+import { formatNotation } from "./barbeat-format-notation.ts";
+import { interpretNotation } from "./interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {

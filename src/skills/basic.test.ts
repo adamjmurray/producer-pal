@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInstructions } from "./basic.js";
+import { buildInstructions } from "./basic.ts";
 
 describe("buildInstructions", () => {
   it("includes basic instructions without project notes", () => {

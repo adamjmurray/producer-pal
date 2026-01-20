@@ -1,4 +1,4 @@
-import { parseTimeSignature } from "#src/tools/shared/utils.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 
 /**
  * Applies tempo property to a scene

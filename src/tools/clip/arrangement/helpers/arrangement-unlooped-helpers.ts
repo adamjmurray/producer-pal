@@ -1,14 +1,14 @@
-import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.js";
-import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
+} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
 import type {
   ArrangementContext,
   ClipIdResult,
-} from "./arrangement-operations-helpers.js";
+} from "./arrangement-operations-helpers.ts";
 
 const EPSILON = 0.001;
 

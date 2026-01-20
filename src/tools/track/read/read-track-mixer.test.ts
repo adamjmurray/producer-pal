@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   createMixerPathIdMap,
   createMixerWithSendsMock,
   createSplitPanningMock,
   setupMixerIdMock,
-} from "./helpers/read-track-test-helpers.js";
-import { readTrack } from "./read-track.js";
+} from "./helpers/read-track-test-helpers.ts";
+import { readTrack } from "./read-track.ts";
 
 describe("readTrack - mixer properties", () => {
   it("excludes mixer properties by default", () => {

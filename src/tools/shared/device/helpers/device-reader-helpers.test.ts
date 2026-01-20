@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
-import { updateDrumPadSoloStates } from "./device-reader-drum-helpers.js";
+import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import { updateDrumPadSoloStates } from "./device-reader-drum-helpers.ts";
 
 // Types for tests (not exported from source modules)
 interface DeviceInfo {
@@ -29,12 +29,12 @@ import {
   readMacroVariations,
   readABCompare,
   processDeviceChains,
-} from "./device-reader-helpers.js";
+} from "./device-reader-helpers.ts";
 import {
   computeState,
   isInstrumentDevice,
   hasInstrumentInDevices,
-} from "./device-state-helpers.js";
+} from "./device-state-helpers.ts";
 
 // Helper types used in tests
 type ChainOverrides = {

@@ -1,20 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.js";
-import "#src/live-api-adapter/live-api-extensions.js";
-import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
+import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "#src/tools/constants.js";
+} from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
   getDrumMap,
   getDeviceType,
   readDevice,
-} from "./device-reader.js";
+} from "./device-reader.ts";
 
 vi.mocked(MockLiveAPI);
 

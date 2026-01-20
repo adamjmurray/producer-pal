@@ -1,8 +1,8 @@
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { VERSION } from "#src/shared/version.js";
-import { createExpressApp } from "./create-express-app.js";
-import * as console from "./node-for-max-logger.js";
+import { VERSION } from "#src/shared/version.ts";
+import { createExpressApp } from "./create-express-app.ts";
+import * as console from "./node-for-max-logger.ts";
 
 interface ServerError extends Error {
   code?: string;

@@ -1,4 +1,4 @@
-import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.js";
+import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
 
 interface BeatsPerBarOptions {
   beatsPerBar?: number;

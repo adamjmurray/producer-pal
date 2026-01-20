@@ -6,8 +6,8 @@ import {
   liveApiType,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 describe("readLiveSet - clips", () => {
   it("passes clip loading parameters to readTrack", () => {

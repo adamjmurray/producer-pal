@@ -1,10 +1,10 @@
-import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.js";
-import * as console from "#src/shared/v8-max-console.js";
+import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   isDivisionLabel,
   isPanLabel,
-} from "#src/tools/shared/device/helpers/device-display-helpers.js";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
+} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 
 // ============================================================================
 // Device move helpers

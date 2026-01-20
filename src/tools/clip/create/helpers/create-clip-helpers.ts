@@ -1,24 +1,24 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
-import * as console from "#src/shared/v8-max-console.js";
-import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.js";
-import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.js";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
-import { buildIndexedName } from "#src/tools/shared/utils.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
   parseSceneIndexList as parseSceneIndexListBase,
   parseArrangementStartList,
-} from "#src/tools/shared/validation/position-parsing.js";
+} from "#src/tools/shared/validation/position-parsing.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
-} from "./create-clip-audio-helpers.js";
+} from "./create-clip-audio-helpers.ts";
 import {
   buildClipProperties,
   buildClipResult,
-} from "./create-clip-result-helpers.js";
+} from "./create-clip-result-helpers.ts";
 
 // Re-export for use by create-clip.js
 export { parseArrangementStartList };

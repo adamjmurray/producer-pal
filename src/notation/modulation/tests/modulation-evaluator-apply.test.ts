@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { NoteEvent } from "#src/notation/types.js";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
+import type { NoteEvent } from "#src/notation/types.ts";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
 
 describe("applyModulations", () => {
   describe("basic functionality", () => {

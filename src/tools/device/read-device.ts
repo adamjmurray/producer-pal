@@ -1,13 +1,13 @@
-import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.js";
-import { STATE } from "#src/tools/constants.js";
+import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { STATE } from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
-} from "#src/tools/shared/device/device-reader.js";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.js";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/device/device-reader.ts";
+import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)

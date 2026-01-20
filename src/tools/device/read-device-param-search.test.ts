@@ -4,8 +4,8 @@ import {
   liveApiGet,
   liveApiId,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { readDevice } from "./read-device.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { readDevice } from "./read-device.ts";
 
 // Setup basic device mocks with two parameters
 function setupDeviceMocks() {

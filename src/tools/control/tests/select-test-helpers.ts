@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 // Type for the mock LiveAPI constructor (used in tests)
 type MockLiveAPIInstance = {

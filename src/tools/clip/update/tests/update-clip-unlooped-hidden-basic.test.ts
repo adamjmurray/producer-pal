@@ -4,9 +4,9 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 interface MockContext {
   _id?: string;

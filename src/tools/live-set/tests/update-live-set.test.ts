@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiSet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";

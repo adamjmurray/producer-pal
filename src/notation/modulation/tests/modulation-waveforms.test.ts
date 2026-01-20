@@ -6,7 +6,7 @@ import {
   square,
   noise,
   ramp,
-} from "#src/notation/modulation/modulation-waveforms.js";
+} from "#src/notation/modulation/modulation-waveforms.ts";
 
 describe("Modulation Waveforms", () => {
   describe("cos()", () => {

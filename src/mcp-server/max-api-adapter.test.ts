@@ -1,14 +1,14 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.js";
+import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
   setTimeoutForTesting,
-} from "./max-api-adapter.js";
+} from "./max-api-adapter.ts";
 
 // Make sure the module's handler is registered
-import "./max-api-adapter.js";
+import "./max-api-adapter.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;

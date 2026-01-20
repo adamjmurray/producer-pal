@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall } from "#src/test/mocks/mock-live-api.js";
-import { setupDeviceParamMocks } from "./read-device-test-helpers.js";
-import { readDevice } from "./read-device.js";
+import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
+import { setupDeviceParamMocks } from "./read-device-test-helpers.ts";
+import { readDevice } from "./read-device.ts";
 
 describe("readDevice param-values include option", () => {
   beforeEach(() => {

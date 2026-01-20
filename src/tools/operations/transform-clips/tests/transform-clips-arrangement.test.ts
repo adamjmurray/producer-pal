@@ -3,9 +3,9 @@ import {
   setupArrangementClipMocks,
   setupNoClipsInArrangementMocks,
   setupNonExistentTrackMocks,
-} from "./transform-clips-arrangement-test-helpers.js";
-import { setupClipMocks } from "./transform-clips-test-helpers.js";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
+} from "./transform-clips-arrangement-test-helpers.ts";
+import { setupClipMocks } from "./transform-clips-test-helpers.ts";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 
 describe("transformClips - arrangement", () => {
   it("should accept arrangementTrackIndex with arrangementStart/Length instead of clipIds", () => {

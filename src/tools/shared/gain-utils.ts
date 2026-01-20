@@ -8,7 +8,7 @@
  * @module gain-utils
  */
 
-import { LOOKUP_TABLE, type LookupEntry } from "./gain-lookup-table.js";
+import { LOOKUP_TABLE, type LookupEntry } from "./gain-lookup-table.ts";
 
 /**
  * Converts Ableton Live's normalized gain parameter (0-1) to decibels (dB).

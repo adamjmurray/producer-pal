@@ -4,10 +4,10 @@ import {
   liveApiId,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {

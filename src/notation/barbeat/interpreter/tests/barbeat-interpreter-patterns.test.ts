@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createNote } from "#src/test/test-data-builders.js";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { createNote } from "#src/test/test-data-builders.ts";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - pattern features", () => {
   describe("repeat patterns (x{times}@{step})", () => {

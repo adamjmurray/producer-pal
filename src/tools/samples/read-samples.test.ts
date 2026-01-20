@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type FolderEntry,
   mockFolderStructure,
-} from "#src/test/mocks/mock-folder.js";
-import { readSamples } from "./read-samples.js";
+} from "#src/test/mocks/mock-folder.ts";
+import { readSamples } from "./read-samples.ts";
 
 describe("readSamples", () => {
   let context: { sampleFolder: string | null };

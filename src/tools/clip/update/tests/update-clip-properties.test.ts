@@ -5,10 +5,10 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
-import { updateClip } from "#src/tools/clip/update/update-clip.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 
 interface MockContext {
   _path?: string;
@@ -208,7 +208,7 @@ describe("updateClip - Properties and ID handling", () => {
 
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       mockLiveApiGet({
@@ -244,7 +244,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       mockLiveApiGet({
@@ -278,7 +278,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "error");
 
       mockLiveApiGet({

@@ -4,11 +4,11 @@ import type { Request, Response, NextFunction, Express } from "express";
 import express from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import { errorMessage } from "#src/shared/error-utils.js";
-import { createMcpServer } from "./create-mcp-server.js";
-import { callLiveApi } from "./max-api-adapter.js";
-import { parseMaxBoolean } from "./max-input-helpers.js";
-import * as console from "./node-for-max-logger.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import { createMcpServer } from "./create-mcp-server.ts";
+import { callLiveApi } from "./max-api-adapter.ts";
+import { parseMaxBoolean } from "./max-input-helpers.ts";
+import * as console from "./node-for-max-logger.ts";
 
 let chatUIEnabled = true; // default
 

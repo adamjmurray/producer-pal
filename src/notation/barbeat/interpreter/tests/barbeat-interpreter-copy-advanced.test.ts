@@ -1,7 +1,7 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
-import { createNote } from "#src/test/test-data-builders.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { createNote } from "#src/test/test-data-builders.ts";
 
 describe("bar|beat interpretNotation() - advanced bar copy", () => {
   describe("bar copy", () => {

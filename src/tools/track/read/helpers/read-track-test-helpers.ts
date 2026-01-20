@@ -1,7 +1,7 @@
 /**
  * Test helper functions for read-track tests
  */
-import { children, liveApiId } from "#src/test/mocks/mock-live-api.js";
+import { children, liveApiId } from "#src/test/mocks/mock-live-api.ts";
 
 // Constants to avoid duplicate string errors
 const HAS_MIDI_INPUT = "has_midi_input";

@@ -1,13 +1,13 @@
-import { select } from "#src/tools/control/select.js";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
-import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
-import { duplicateDevice } from "./helpers/duplicate-device-helpers.js";
+import { select } from "#src/tools/control/select.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
+import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
   calculateSceneLength,
   duplicateSceneToArrangement,
-} from "./helpers/duplicate-track-scene-helpers.js";
+} from "./helpers/duplicate-track-scene-helpers.ts";
 import {
   resolveArrangementPosition,
   validateBasicInputs,
@@ -15,7 +15,7 @@ import {
   validateClipParameters,
   validateDestinationParameter,
   validateArrangementParameters,
-} from "./helpers/duplicate-validation-helpers.js";
+} from "./helpers/duplicate-validation-helpers.ts";
 
 interface DuplicateArgs {
   type: string;

@@ -1,5 +1,5 @@
-import { errorMessage } from "#src/shared/error-utils.js";
-import * as console from "#src/shared/v8-max-console.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 /**
  * Verifies if a color was quantized by Live's palette and emits warning if changed.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiPath } from "#src/test/mocks/mock-live-api.js";
-import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
+import { liveApiCall, liveApiPath } from "#src/test/mocks/mock-live-api.ts";
+import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.ts";
 
 interface MockPathContext {
   _id?: string;

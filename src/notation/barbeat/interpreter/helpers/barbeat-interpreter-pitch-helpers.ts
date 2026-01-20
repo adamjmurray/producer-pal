@@ -1,11 +1,11 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { assertDefined } from "#src/tools/shared/utils.js";
-import type { NoteEvent, BarCopyNote } from "../../../types.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
+import type { NoteEvent, BarCopyNote } from "../../../types.ts";
 import type {
   PitchState,
   InterpreterState,
   TimePosition,
-} from "./barbeat-interpreter-buffer-helpers.js";
+} from "./barbeat-interpreter-buffer-helpers.ts";
 
 export interface RepeatPattern {
   start: number;

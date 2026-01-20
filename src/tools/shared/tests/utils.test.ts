@@ -9,7 +9,7 @@ import {
   setAllNonNull,
   toLiveApiView,
   withoutNulls,
-} from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/utils.ts";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {

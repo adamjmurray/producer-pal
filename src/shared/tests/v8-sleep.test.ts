@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { waitUntil } from "#src/shared/v8-sleep.js";
+import { waitUntil } from "#src/shared/v8-sleep.ts";
 
 const g = globalThis as Record<string, unknown>;
 

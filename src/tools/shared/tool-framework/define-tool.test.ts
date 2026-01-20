@@ -5,7 +5,7 @@ import {
   coerceArgsToSchema,
   defineTool,
   getExpectedPrimitiveType,
-} from "./define-tool.js";
+} from "./define-tool.ts";
 
 // Helper to create mock server with proper typing
 function createMockServer() {

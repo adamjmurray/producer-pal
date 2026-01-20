@@ -1,8 +1,8 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 
-vi.mock(import("#src/shared/v8-max-console.js"), () => ({
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   error: vi.fn(),
 }));
 

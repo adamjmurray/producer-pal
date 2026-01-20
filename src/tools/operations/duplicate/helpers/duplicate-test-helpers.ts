@@ -5,7 +5,7 @@ import {
   liveApiGet,
   liveApiPath,
   liveApiType,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 // Re-export mock utilities from mock-live-api for convenience
 export {
@@ -17,7 +17,7 @@ export {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.js";
+} from "#src/test/mocks/mock-live-api.ts";
 
 /** Default arrangement clip path for testing */
 const DEFAULT_ARRANGEMENT_CLIP = "live_set tracks 0 arrangement_clips 0";

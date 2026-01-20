@@ -1,4 +1,4 @@
-import type { NoteEvent } from "../types.js";
+import type { NoteEvent } from "../types.ts";
 
 /**
  * Apply v0 (velocity 0) deletions to notes in serial order.

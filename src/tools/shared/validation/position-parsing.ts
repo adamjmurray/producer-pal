@@ -1,7 +1,7 @@
 import {
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
-} from "#src/tools/shared/utils.js";
+} from "#src/tools/shared/utils.ts";
 
 /**
  * Parses a comma-separated string of scene indices into an array of integers

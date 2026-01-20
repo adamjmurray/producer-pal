@@ -1,6 +1,6 @@
 import type { MockInstance } from "vitest";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.js";
+import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
 
 describe("Modulation Evaluator", () => {
   describe("basic structure", () => {

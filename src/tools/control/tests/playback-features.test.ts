@@ -7,9 +7,9 @@ import {
   liveApiType,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { playback } from "#src/tools/control/playback.js";
-import { setupDefaultTimeSignature } from "./playback-test-helpers.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { playback } from "#src/tools/control/playback.ts";
+import { setupDefaultTimeSignature } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
   beforeEach(() => {

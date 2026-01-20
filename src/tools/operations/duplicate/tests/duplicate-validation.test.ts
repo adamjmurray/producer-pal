@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import "./duplicate-mocks-test-helpers.js";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.js";
+import "./duplicate-mocks-test-helpers.ts";
+import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   liveApiId,
   liveApiPath,
   liveApiType,
   setupSessionClipPath,
   setupTrackPath,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.js";
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
 
 interface MockContext {

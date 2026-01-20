@@ -1,11 +1,11 @@
-import { PITCH_CLASS_NAMES } from "#src/shared/pitch.js";
-import { VERSION } from "#src/shared/version.js";
+import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import { VERSION } from "#src/shared/version.ts";
 import {
   skills as basicSkills,
   buildInstructions as buildBasicInstruction,
-} from "#src/skills/basic.js";
-import { buildInstructions, skills } from "#src/skills/standard.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
+} from "#src/skills/basic.ts";
+import { buildInstructions, skills } from "#src/skills/standard.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 
 interface LiveSetInfo {
   name?: unknown;

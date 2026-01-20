@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
-import type { MidiNote } from "./transform-clips-params.js";
+import { applyAudioParams, applyMidiParams } from "./transform-clips-params.ts";
+import type { MidiNote } from "./transform-clips-params.ts";
 
 // Simple seeded RNG for deterministic tests
 function createTestRng(sequence: number[] = [0.5]): () => number {

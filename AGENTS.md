@@ -59,14 +59,14 @@ See `dev-docs/Architecture.md` for detailed system design and
   exported function(s). This improves code readability and makes it immediately
   clear what the primary purpose of each file is.
 
-- **Import extensions**: Code in `src/` and `scripts/` directories runs
-  unbundled in Node.js and must ALWAYS include `.js` file extensions in relative
-  imports (e.g., `import foo from './bar.js'`), as required by the Node.js ESM
-  loader. Code in `webui/` is bundled and must NEVER use file extensions in
-  relative imports (e.g., `import foo from './bar'`).
+- **Import extensions**: Code in `src/` must include `.ts` file extensions in
+  imports matching the actual file type (e.g., `import foo from './bar.ts'`).
+  Exception: Peggy-generated parser files use `.js` (e.g., `barbeat-parser.js`).
+  Code in `webui/` is bundled and must NEVER use file extensions in relative
+  imports (e.g., `import foo from './bar'`).
 
 - **Path aliases**: Use `#src/` for src imports (e.g.,
-  `import foo from '#src/shared/utils.js'`) and `#webui/` for webui imports
+  `import foo from '#src/shared/utils.ts'`) and `#webui/` for webui imports
   (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
   package subpath imports configured in package.json `"imports"` field. The `#`
   prefix is required by Node.js for unbundled execution (build scripts, CLI

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { filterSchemaForSmallModel } from "./filter-schema.js";
+import { filterSchemaForSmallModel } from "./filter-schema.ts";
 
 describe("filterSchemaForSmallModel", () => {
   it("should remove specified parameters from schema", () => {

@@ -6,9 +6,9 @@ import {
   liveApiSet,
   mockLiveApiGet,
   type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.js";
-import { updateTrack } from "./update-track.js";
-import "#src/live-api-adapter/live-api-extensions.js";
+} from "#src/test/mocks/mock-live-api.ts";
+import { updateTrack } from "./update-track.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateTrack - send properties", () => {
   beforeEach(() => {

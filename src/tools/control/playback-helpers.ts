@@ -1,11 +1,11 @@
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.js";
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   findLocator,
   findLocatorsByName,
-} from "#src/tools/shared/locator/locator-helpers.js";
+} from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
   startBeats: number;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.js";
+import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import {
   setupClipMocks,
   setupSessionClipMocks,
-} from "./transform-clips-test-helpers.js";
+} from "./transform-clips-test-helpers.ts";
 
 describe("transformClips - basic", () => {
   it("should throw error when clipIds and arrangementTrackIndex are missing", () => {

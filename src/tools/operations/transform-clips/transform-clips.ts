@@ -1,17 +1,17 @@
-import * as console from "#src/shared/v8-max-console.js";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
+import * as console from "#src/shared/v8-max-console.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseTransposeValues,
   getClipIds,
   createSeededRNG,
-} from "./helpers/transform-clips-helpers.js";
-import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.js";
-import { performShuffling } from "./helpers/transform-clips-shuffling-helpers.js";
+} from "./helpers/transform-clips-helpers.ts";
+import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.ts";
+import { performShuffling } from "./helpers/transform-clips-shuffling-helpers.ts";
 import {
   prepareSliceParams,
   performSlicing,
-} from "./helpers/transform-clips-slicing-helpers.js";
-import type { SlicingContext } from "./helpers/transform-clips-slicing-helpers.js";
+} from "./helpers/transform-clips-slicing-helpers.ts";
+import type { SlicingContext } from "./helpers/transform-clips-slicing-helpers.ts";
 
 interface TransformClipsArgs {
   clipIds?: string;

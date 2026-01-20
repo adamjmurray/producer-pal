@@ -2,7 +2,7 @@
  * Helpers for auto-creating chains when resolving container paths
  */
 
-import { assertDefined } from "#src/tools/shared/utils.js";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 // Maximum chains that can be auto-created to prevent runaway creation
 const MAX_AUTO_CREATE_CHAINS = 16;

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, LiveAPI } from "#src/test/mocks/mock-live-api.js";
+import { liveApiCall, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   handleQuantization,
   QUANTIZE_GRID,
-} from "#src/tools/clip/update/helpers/update-clip-quantization-helpers.js";
+} from "#src/tools/clip/update/helpers/update-clip-quantization-helpers.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;

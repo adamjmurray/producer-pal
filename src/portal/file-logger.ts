@@ -1,7 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { errorMessage } from "#src/shared/error-utils.js";
+import { errorMessage } from "#src/shared/error-utils.ts";
 
 // Check logging environment variables
 const enableLogging = process.env.ENABLE_LOGGING === "true";

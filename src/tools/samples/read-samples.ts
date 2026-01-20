@@ -1,4 +1,4 @@
-import * as console from "#src/shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.ts";
 
 const MAX_SAMPLE_FILES = 1000;
 
