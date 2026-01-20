@@ -1,6 +1,15 @@
 import { vi } from "vitest";
 
-export class MockSequence extends Array {}
+/** Context available in mockImplementation callbacks for LiveAPI mocks */
+export interface MockLiveAPIContext {
+  _path?: string;
+  _id?: string;
+  path?: string;
+  id?: string;
+  type?: string;
+}
+
+export class MockSequence extends Array<unknown> {}
 
 export const liveApiId = vi.fn();
 export const liveApiPath = vi.fn();
@@ -10,8 +19,13 @@ export const liveApiSet = vi.fn();
 export const liveApiCall = vi.fn();
 
 export class LiveAPI {
-  /** @param {string} [path] - Live API path */
-  constructor(path) {
+  _path?: string;
+  _id?: string;
+  get: typeof liveApiGet;
+  set: typeof liveApiSet;
+  call: typeof liveApiCall;
+
+  constructor(path?: string) {
     this._path = path;
     this.get = liveApiGet;
     this.set = liveApiSet;
@@ -23,10 +37,10 @@ export class LiveAPI {
 
   /**
    * Create LiveAPI from id or path
-   * @param {string | string[] | number} idOrPath - ID or path
-   * @returns {LiveAPI} - LiveAPI instance
+   * @param idOrPath - ID or path
+   * @returns LiveAPI instance
    */
-  static from(idOrPath) {
+  static from(idOrPath: string | string[] | number): LiveAPI {
     // Handle array format ["id", "123"] from Live API calls
     if (Array.isArray(idOrPath)) {
       if (idOrPath.length === 2 && idOrPath[0] === "id") {
@@ -34,7 +48,7 @@ export class LiveAPI {
       }
 
       throw new Error(
-        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`,
+        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${String(idOrPath)}]`,
       );
     }
 
@@ -48,40 +62,39 @@ export class LiveAPI {
     return new LiveAPI(idOrPath);
   }
 
-  exists() {
+  exists(): boolean {
     return this.id !== "id 0" && this.id !== "0";
   }
 
-  get id() {
-    return liveApiId.apply(this) ?? this._id;
+  get id(): string {
+    return (liveApiId.apply(this) as string | undefined) ?? this._id ?? "";
   }
 
-  get path() {
-    return liveApiPath.apply(this) ?? this._path;
+  get path(): string {
+    return (liveApiPath.apply(this) as string | undefined) ?? this._path ?? "";
   }
 
-  get unquotedpath() {
+  get unquotedpath(): string {
     return this.path;
   }
 
   /**
    * Get child IDs by property name
-   * @param {string} name - Property name
-   * @returns {string[]} - Array of child IDs
+   * @param name - Property name
+   * @returns Array of child IDs
    */
-  getChildIds(name) {
-    const idArray = this.get(name);
+  getChildIds(name: string): string[] {
+    const idArray = this.get(name) as unknown[];
 
     if (!Array.isArray(idArray)) {
       return [];
     }
 
-    /** @type {string[]} */
-    const ids = [];
+    const ids: string[] = [];
 
     for (let i = 0; i < idArray.length; i += 2) {
       if (idArray[i] === "id") {
-        ids.push(`id ${idArray[i + 1]}`);
+        ids.push(`id ${String(idArray[i + 1])}`);
       }
     }
 
@@ -90,24 +103,26 @@ export class LiveAPI {
 
   /**
    * Get children by property name
-   * @param {string} name - Property name
-   * @returns {LiveAPI[]} - Array of LiveAPI instances
+   * @param name - Property name
+   * @returns Array of LiveAPI instances
    */
-  getChildren(name) {
+  getChildren(name: string): LiveAPI[] {
     return this.getChildIds(name).map((id) => new LiveAPI(id));
   }
 
   /**
    * Get property value
-   * @param {string} property - Property name
-   * @returns {unknown} - Property value
+   * @param property - Property name
+   * @returns Property value
    */
-  getProperty(property) {
-    return this.get(property)?.[0];
+  getProperty(property: string): unknown {
+    const result = this.get(property) as unknown[];
+
+    return result[0];
   }
 
-  get type() {
-    const mockedType = liveApiType.apply(this);
+  get type(): string {
+    const mockedType = liveApiType.apply(this) as string | undefined;
 
     if (mockedType !== undefined) {
       return mockedType;
@@ -150,20 +165,34 @@ export class LiveAPI {
     }
 
     // Default chain type for paths like "id chain1" or paths containing "chains"
-    if (this.path?.includes("chain") || this._id?.includes("chain")) {
+    if (this.path.includes("chain") || this._id?.includes("chain")) {
       return "Chain";
     }
 
     return `TODO: Unknown type for path: "${this.path}"`;
   }
+
+  // Extension properties/methods added by live-api-extensions.js at runtime
+  // These are stubs for TypeScript - actual implementations come from the extension
+  declare trackIndex: number | null;
+  declare returnTrackIndex: number | null;
+  declare category: "regular" | "return" | "master" | null;
+  declare sceneIndex: number | null;
+  declare clipSlotIndex: number | null;
+  declare deviceIndex: number | null;
+  declare timeSignature: string | null;
+  declare getColor: () => string | null;
+  declare setColor: (cssColor: string) => void;
+  declare setProperty: (property: string, value: unknown) => void;
+  declare setAll: (properties: Record<string, unknown>) => void;
 }
 
 /**
  * Get mock property value for LiveSet objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getLiveSetProperty(prop) {
+function getLiveSetProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "tracks":
       return children("track1", "track2");
@@ -180,10 +209,10 @@ function getLiveSetProperty(prop) {
 
 /**
  * Get mock property value for AppView objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getAppViewProperty(prop) {
+function getAppViewProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "focused_document_view":
       return ["Session"];
@@ -194,10 +223,10 @@ function getAppViewProperty(prop) {
 
 /**
  * Get mock property value for Track objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getTrackProperty(prop) {
+function getTrackProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "has_midi_input":
       return [1];
@@ -234,10 +263,10 @@ function getTrackProperty(prop) {
 
 /**
  * Get mock property value for Scene objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getSceneProperty(prop) {
+function getSceneProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "name":
       return ["Test Scene"];
@@ -250,10 +279,10 @@ function getSceneProperty(prop) {
 
 /**
  * Get mock property value for ClipSlot objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getClipSlotProperty(prop) {
+function getClipSlotProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "has_clip":
       return [1];
@@ -264,10 +293,10 @@ function getClipSlotProperty(prop) {
 
 /**
  * Get mock property value for Clip objects
- * @param {string} prop - Property name to retrieve
- * @returns {*} - Mock property value
+ * @param prop - Property name to retrieve
+ * @returns Mock property value
  */
-function getClipProperty(prop) {
+function getClipProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "name":
       return ["Test Clip"];
@@ -306,12 +335,16 @@ function getClipProperty(prop) {
 
 /**
  * Get mock property value based on Live API object type
- * @param {string} type - Live API object type (LiveSet, Track, Scene, etc.)
- * @param {string} prop - Property name to retrieve
- * @param {string} _path - Object path (currently unused but kept for API consistency)
- * @returns {*} - Mock property value
+ * @param type - Live API object type (LiveSet, Track, Scene, etc.)
+ * @param prop - Property name to retrieve
+ * @param _path - Object path (currently unused but kept for API consistency)
+ * @returns Mock property value
  */
-function getPropertyByType(type, prop, _path) {
+function getPropertyByType(
+  type: string,
+  prop: string,
+  _path: string,
+): unknown[] | null {
   switch (type) {
     case "LiveSet":
       return getLiveSetProperty(prop);
@@ -343,55 +376,69 @@ function getPropertyByType(type, prop, _path) {
   }
 }
 
-/**
- * Mock the LiveAPI.get() method with optional custom overrides
- * @param {Record<string, Record<string, unknown>>} overrides - Property overrides by object id/path/type
- */
-export function mockLiveApiGet(overrides = {}) {
-  liveApiGet.mockImplementation(
-    /**
-     * Mock implementation for LiveAPI.get
-     * @this {{id: string, path: string, type: string}}
-     * @param {string} prop - Property name
-     * @returns {unknown[]} - Property value as array
-     */
-    function (prop) {
-      const overridesByProp =
-        /** @type {Record<string, unknown> | undefined} */ (
-          overrides[this.id] ?? overrides[this.path] ?? overrides[this.type]
-        );
-
-      if (overridesByProp != null) {
-        const override = overridesByProp[prop];
-
-        if (override !== undefined) {
-          // optionally support mocking a sequence of return values:
-          if (override instanceof MockSequence) {
-            const callCounts = /** @type {Record<string, number>} */ (
-              overridesByProp.__callCount__ ??=
-                /** @type {Record<string, number>} */ ({})
-            );
-            const callIndex = (callCounts[prop] ??= 0);
-            const value = override[callIndex];
-
-            callCounts[prop]++;
-
-            return [value];
-          }
-
-          // or non-arrays always return the constant value for multiple calls to LiveAPI.get():
-          return Array.isArray(override) ? override : [override];
-        }
-      }
-
-      const result = getPropertyByType(this.type, prop, this.path);
-
-      return result ?? [0];
-    },
-  );
+interface MockOverrides {
+  [key: string]: Record<string, unknown> & {
+    __callCount__?: Record<string, number>;
+  };
 }
 
-export const expectedTrack = (overrides = {}) => ({
+/**
+ * Mock the LiveAPI.get() method with optional custom overrides
+ * @param overrides - Property overrides by object id/path/type
+ */
+export function mockLiveApiGet(overrides: MockOverrides = {}): void {
+  liveApiGet.mockImplementation(function (
+    this: { id: string; path: string; type: string },
+    prop: string,
+  ) {
+    const overridesByProp =
+      overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
+
+    if (overridesByProp != null) {
+      const override = overridesByProp[prop];
+
+      if (override !== undefined) {
+        // optionally support mocking a sequence of return values:
+        if (override instanceof MockSequence) {
+          const callCounts = (overridesByProp.__callCount__ ??= {});
+          const callIndex = (callCounts[prop] ??= 0);
+          const value = override[callIndex];
+
+          callCounts[prop]++;
+
+          return [value];
+        }
+
+        // or non-arrays always return the constant value for multiple calls to LiveAPI.get():
+        return Array.isArray(override) ? override : [override];
+      }
+    }
+
+    const result = getPropertyByType(this.type, prop, this.path);
+
+    return result ?? [0];
+  });
+}
+
+interface TrackOverrides {
+  id?: string;
+  type?: string;
+  name?: string;
+  trackIndex?: number;
+  color?: string;
+  isArmed?: boolean;
+  arrangementFollower?: boolean;
+  playingSlotIndex?: number;
+  firedSlotIndex?: number;
+  arrangementClips?: unknown[];
+  sessionClips?: unknown[];
+  instrument?: unknown;
+  [key: string]: unknown;
+}
+
+export const expectedTrack = (
+  overrides: TrackOverrides = {},
+): TrackOverrides => ({
   id: "1",
   type: "midi",
   name: "Test Track",
@@ -407,7 +454,20 @@ export const expectedTrack = (overrides = {}) => ({
   ...overrides,
 });
 
-export const expectedScene = (overrides = {}) => ({
+interface SceneOverrides {
+  id?: string;
+  name?: string;
+  sceneIndex?: number;
+  color?: string;
+  isEmpty?: boolean;
+  tempo?: string;
+  timeSignature?: string;
+  [key: string]: unknown;
+}
+
+export const expectedScene = (
+  overrides: SceneOverrides = {},
+): SceneOverrides => ({
   id: "1",
   name: "Test Scene",
   sceneIndex: 0,
@@ -418,8 +478,26 @@ export const expectedScene = (overrides = {}) => ({
   ...overrides,
 });
 
+interface ClipOverrides {
+  id?: string;
+  type?: string;
+  view?: string;
+  trackIndex?: number;
+  sceneIndex?: number;
+  name?: string;
+  color?: string;
+  timeSignature?: string;
+  looping?: boolean;
+  start?: string;
+  end?: string;
+  length?: string;
+  noteCount?: number;
+  notes?: string;
+  [key: string]: unknown;
+}
+
 // For use with the default behavior in mockLiveApiGet() above
-export const expectedClip = (overrides = {}) => ({
+export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",
   view: "session",
@@ -440,9 +518,9 @@ export const expectedClip = (overrides = {}) => ({
 
 /**
  * Create Live API children array format from child IDs
- * @param {...string} childIds - Child object IDs to format as Live API array
- * @returns {string[]} - Formatted Live API children array
+ * @param childIds - Child object IDs to format as Live API array
+ * @returns Formatted Live API children array
  */
-export function children(...childIds) {
+export function children(...childIds: string[]): string[] {
   return childIds.flatMap((id) => ["id", id]);
 }

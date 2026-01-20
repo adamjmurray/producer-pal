@@ -1,15 +1,16 @@
 import { vi } from "vitest";
 
-/**
- * @typedef {{name: string, type: "file"|"fold", extension?: string}} FolderEntry
- */
+export interface FolderEntry {
+  name: string;
+  type: "file" | "fold";
+  extension?: string;
+}
 
-/** @type {Record<string, FolderEntry[]>} */
-let mockFileSystem = {};
+let mockFileSystem: Record<string, FolderEntry[]> = {};
 
 /**
  * Configure the mock file system for Folder testing
- * @param {Record<string, FolderEntry[]>} structure - Object mapping directory paths to arrays of entries
+ * @param structure - Object mapping directory paths to arrays of entries
  *
  * @example
  * mockFolderStructure({
@@ -23,14 +24,16 @@ let mockFileSystem = {};
  *   ],
  * });
  */
-export function mockFolderStructure(structure) {
+export function mockFolderStructure(
+  structure: Record<string, FolderEntry[]>,
+): void {
   mockFileSystem = structure;
 }
 
 /**
  * Clear the mock file system
  */
-export function clearMockFolderStructure() {
+export function clearMockFolderStructure(): void {
   mockFileSystem = {};
 }
 
@@ -38,58 +41,54 @@ export function clearMockFolderStructure() {
  * Mock Folder class that simulates v8 Max Folder API
  */
 export class Folder {
-  /** @param {string} path - Folder path */
-  constructor(path) {
+  private _path: string;
+  private _entries: FolderEntry[];
+  private _index: number;
+  private _closed: boolean;
+
+  constructor(path: string) {
     this._path = path;
     this._entries = mockFileSystem[path] ?? [];
     this._index = 0;
     this._closed = false;
   }
 
-  get pathname() {
+  get pathname(): string {
     return this._path;
   }
 
-  get filename() {
-    if (this._index >= this._entries.length) {
-      return "";
-    }
+  get filename(): string {
+    const entry = this._entries[this._index];
 
-    return this._entries[this._index].name;
+    return entry?.name ?? "";
   }
 
-  get filetype() {
-    if (this._index >= this._entries.length) {
-      return "";
-    }
+  get filetype(): string {
+    const entry = this._entries[this._index];
 
-    return this._entries[this._index].type;
+    return entry?.type ?? "";
   }
 
-  get extension() {
-    if (this._index >= this._entries.length) {
-      return "";
-    }
+  get extension(): string {
+    const entry = this._entries[this._index];
 
-    return this._entries[this._index].extension ?? "";
+    return entry?.extension ?? "";
   }
 
-  get end() {
+  get end(): boolean {
     return this._index >= this._entries.length;
   }
 
-  next() {
+  next(): void {
     if (!this._closed && this._index < this._entries.length) {
       this._index++;
     }
   }
 
-  close() {
+  close(): void {
     this._closed = true;
   }
 }
 
 // Spy versions for assertion testing
-export const folderConstructor = vi.fn(
-  (/** @type {string} */ path) => new Folder(path),
-);
+export const folderConstructor = vi.fn((path: string) => new Folder(path));

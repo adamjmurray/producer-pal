@@ -11,7 +11,7 @@ import {
 } from "./mocks/mock-live-api.js";
 import { Task } from "./mocks/mock-task.js";
 
-const g = /** @type {any} */ (globalThis);
+const g = globalThis as Record<string, unknown>;
 
 g.LiveAPI = LiveAPI;
 g.Folder = Folder;
@@ -20,7 +20,7 @@ await import("#src/live-api-adapter/live-api-extensions.js");
 g.Task = Task;
 g.outlet = vi.fn();
 
-/** @typedef {(requestId: string, response: string) => void} McpResponseHandler */
+type McpResponseHandler = (requestId: string, response: string) => void;
 
 class Max {
   static post = vi.fn();
@@ -31,38 +31,31 @@ class Max {
     ERROR: "error",
   };
 
-  /** @type {McpResponseHandler | null} */
-  static mcpResponseHandler = null;
-  /** @type {McpResponseHandler | null} */
-  static defaultMcpResponseHandler = null; // Store the default handler
-  /** @type {Map<string, Function>} */
-  static handlers = new Map(); // Store all handlers
+  static mcpResponseHandler: McpResponseHandler | null = null;
+  static defaultMcpResponseHandler: McpResponseHandler | null = null; // Store the default handler
+  static handlers: Map<string, (...args: unknown[]) => unknown> = new Map(); // Store all handlers
 
   static addHandler = vi.fn(
-    (/** @type {string} */ message, /** @type {Function} */ handler) => {
+    (message: string, handler: (...args: unknown[]) => unknown) => {
       // Store all handlers in a map for tests to access
       Max.handlers.set(message, handler);
 
       if (message === "mcp_response") {
-        Max.mcpResponseHandler = /** @type {McpResponseHandler} */ (handler);
+        Max.mcpResponseHandler = handler as McpResponseHandler;
 
         // Save the first handler registered (from createExpressApp) as the default
-        if (!Max.defaultMcpResponseHandler && handler) {
-          Max.defaultMcpResponseHandler = /** @type {McpResponseHandler} */ (
-            handler
-          );
-        }
+        Max.defaultMcpResponseHandler ??= handler as McpResponseHandler;
       }
     },
   );
 
   static outlet = vi.fn(
     (
-      /** @type {string} */ message,
-      /** @type {string} */ requestId,
-      /** @type {string} */ _tool,
-      /** @type {string} */ _argsJSON,
-    ) => {
+      message: string,
+      requestId: string,
+      _tool: string,
+      _argsJSON: string,
+    ): Promise<void> => {
       if (message === "mcp_request" && Max.mcpResponseHandler) {
         const handler = Max.mcpResponseHandler;
 
@@ -81,7 +74,7 @@ class Max {
     },
   );
 }
-vi.mock(import("max-api"), () => /** @type {*} */ ({ default: Max }));
+vi.mock("max-api", () => ({ default: Max }));
 
 // Export Max so tests can access Max.defaultMcpResponseHandler if needed
 g.Max = Max;
@@ -104,7 +97,7 @@ beforeEach(() => {
   liveApiPath.mockImplementation(() => {});
   liveApiType.mockImplementation(() => {});
 
-  liveApiCall.mockImplementation(function (/** @type {string} */ method) {
+  liveApiCall.mockImplementation(function (method: string) {
     switch (method) {
       case "get_version_string":
         return "12.2";

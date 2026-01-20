@@ -3,13 +3,28 @@
  * Used by both read-track and read-live-set tests.
  */
 
+interface RoutingMockProperties {
+  available_input_routing_channels?: string[];
+  available_input_routing_types?: string[];
+  available_output_routing_channels?: string[];
+  available_output_routing_types?: string[];
+  input_routing_channel?: string[];
+  input_routing_type?: string[];
+  output_routing_channel?: string[];
+  output_routing_type?: string[];
+  current_monitoring_state?: number[];
+  [key: string]: unknown;
+}
+
 /**
  * Creates minimal routing mock properties with a single channel per type.
  * Use for tests that just need valid routing data without complex scenarios.
- * @param {object} [overrides] - Properties to override the defaults
- * @returns {object} Routing properties for track mocks
+ * @param overrides - Properties to override the defaults
+ * @returns Routing properties for track mocks
  */
-export function createSimpleRoutingMock(overrides = {}) {
+export function createSimpleRoutingMock(
+  overrides: RoutingMockProperties = {},
+): RoutingMockProperties {
   return {
     available_input_routing_channels: [
       '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}]}',
@@ -43,10 +58,12 @@ export function createSimpleRoutingMock(overrides = {}) {
 
 /**
  * Creates output-only routing mock properties for group/return/master tracks.
- * @param {object} [overrides] - Properties to override the defaults
- * @returns {object} Output routing properties
+ * @param overrides - Properties to override the defaults
+ * @returns Output routing properties
  */
-export function createOutputOnlyRoutingMock(overrides = {}) {
+export function createOutputOnlyRoutingMock(
+  overrides: RoutingMockProperties = {},
+): RoutingMockProperties {
   return {
     available_output_routing_channels: [
       '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',

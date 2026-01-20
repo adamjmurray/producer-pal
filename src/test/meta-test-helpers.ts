@@ -1,28 +1,34 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ExpectStatic } from "vitest";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/** @type {string} Project root directory */
-export const projectRoot = path.resolve(__dirname, "../..");
+/** Project root directory */
+export const projectRoot: string = path.resolve(__dirname, "../..");
+
+interface OversizedFolder {
+  path: string;
+  count: number;
+}
 
 /**
  * Recursively find folders exceeding an item limit
- * @param {string} dirPath - Directory to scan
- * @param {string[]} excludeDirs - Directory names to exclude
- * @param {number} maxItems - Maximum items allowed per folder
- * @param {Set<string>} [ignoreItems] - Items to ignore in count
- * @returns {Array<{path: string, count: number}>} Folders over limit
+ * @param dirPath - Directory to scan
+ * @param excludeDirs - Directory names to exclude
+ * @param maxItems - Maximum items allowed per folder
+ * @param ignoreItems - Items to ignore in count
+ * @returns Folders over limit
  */
 export function findOversizedFolders(
-  dirPath,
-  excludeDirs,
-  maxItems,
-  ignoreItems = new Set([".DS_Store"]),
-) {
-  const results = [];
+  dirPath: string,
+  excludeDirs: string[],
+  maxItems: number,
+  ignoreItems: Set<string> = new Set([".DS_Store"]),
+): OversizedFolder[] {
+  const results: OversizedFolder[] = [];
   const items = fs
     .readdirSync(dirPath)
     .filter((item) => !ignoreItems.has(item));
@@ -51,11 +57,15 @@ export function findOversizedFolders(
 
 /**
  * Assert that no folders exceed the item limit, with a detailed failure message
- * @param {string} dirPath - Directory to check
- * @param {number} maxItems - Maximum items allowed
- * @param {typeof import("vitest").expect} expect - Vitest expect function
+ * @param dirPath - Directory to check
+ * @param maxItems - Maximum items allowed
+ * @param expect - Vitest expect function
  */
-export function assertFolderSizeLimit(dirPath, maxItems, expect) {
+export function assertFolderSizeLimit(
+  dirPath: string,
+  maxItems: number,
+  expect: ExpectStatic,
+): void {
   if (!fs.existsSync(dirPath)) return;
 
   const oversized = findOversizedFolders(dirPath, ["node_modules"], maxItems);
@@ -72,21 +82,23 @@ export function assertFolderSizeLimit(dirPath, maxItems, expect) {
   }
 }
 
-/**
- * @typedef {object} SuppressionLimitConfig
- * @property {RegExp} pattern - Pattern to match
- * @property {Record<string, number>} limits - Per-tree limits
- * @property {string} errorSuffix - Message to show on failure
- */
+interface PatternMatch {
+  file: string;
+  line: number;
+  match: string;
+}
 
 /**
  * Count pattern occurrences in files and return matches
- * @param {string[]} files - Files to search
- * @param {RegExp} pattern - Pattern to match
- * @returns {Array<{file: string, line: number, match: string}>} Matches found
+ * @param files - Files to search
+ * @param pattern - Pattern to match
+ * @returns Matches found
  */
-export function countPatternOccurrences(files, pattern) {
-  const matches = [];
+export function countPatternOccurrences(
+  files: string[],
+  pattern: RegExp,
+): PatternMatch[] {
+  const matches: PatternMatch[] = [];
 
   for (const file of files) {
     const content = fs.readFileSync(file, "utf8");
@@ -95,7 +107,7 @@ export function countPatternOccurrences(files, pattern) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      if (pattern.test(line)) {
+      if (line && pattern.test(line)) {
         matches.push({
           file: path.relative(projectRoot, file),
           line: i + 1,
@@ -108,11 +120,11 @@ export function countPatternOccurrences(files, pattern) {
   return matches;
 }
 
-/** @type {Set<string>} Source file extensions */
-const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".ts", ".tsx"]);
+/** Source file extensions */
+const SOURCE_EXTENSIONS: Set<string> = new Set([".js", ".mjs", ".ts", ".tsx"]);
 
-/** @type {string[]} Test file patterns */
-const TEST_FILE_PATTERNS = [
+/** Test file patterns */
+const TEST_FILE_PATTERNS: string[] = [
   ".test.js",
   ".test.ts",
   ".test.tsx",
@@ -122,21 +134,24 @@ const TEST_FILE_PATTERNS = [
 
 /**
  * Checks if a filename is a test file based on patterns
- * @param {string} filename - File name to check
- * @returns {boolean} True if it's a test file
+ * @param filename - File name to check
+ * @returns True if it's a test file
  */
-export function isTestFile(filename) {
+export function isTestFile(filename: string): boolean {
   return TEST_FILE_PATTERNS.some((pattern) => filename.endsWith(pattern));
 }
 
 /**
  * Recursively find all source files in a directory
- * @param {string} dirPath - Directory to scan
- * @param {boolean} [excludeTests] - Whether to exclude test files
- * @returns {string[]} Array of file paths
+ * @param dirPath - Directory to scan
+ * @param excludeTests - Whether to exclude test files
+ * @returns Array of file paths
  */
-export function findSourceFiles(dirPath, excludeTests = false) {
-  const results = [];
+export function findSourceFiles(
+  dirPath: string,
+  excludeTests: boolean = false,
+): string[] {
+  const results: string[] = [];
 
   if (!fs.existsSync(dirPath)) return results;
 
@@ -161,13 +176,19 @@ export function findSourceFiles(dirPath, excludeTests = false) {
 
 /**
  * Assert that pattern occurrences don't exceed limits
- * @param {string} tree - Tree name (e.g., "src", "webui")
- * @param {RegExp} pattern - Pattern to match
- * @param {number} limit - Maximum allowed occurrences
- * @param {string} errorSuffix - Message suffix for failures
- * @param {typeof import("vitest").expect} expect - Vitest expect function
+ * @param tree - Tree name (e.g., "src", "webui")
+ * @param pattern - Pattern to match
+ * @param limit - Maximum allowed occurrences
+ * @param errorSuffix - Message suffix for failures
+ * @param expect - Vitest expect function
  */
-export function assertPatternLimit(tree, pattern, limit, errorSuffix, expect) {
+export function assertPatternLimit(
+  tree: string,
+  pattern: RegExp,
+  limit: number,
+  errorSuffix: string,
+  expect: ExpectStatic,
+): void {
   const treePath = path.join(projectRoot, tree);
   const files = findSourceFiles(treePath, true); // excludeTests=true
   const matches = countPatternOccurrences(files, pattern);

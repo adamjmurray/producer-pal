@@ -57,6 +57,8 @@
     "#src/tools/shared/live-set-helpers.js": "./src/tools/shared/live-set-helpers.ts",
     "#src/tools/constants.js": "./src/tools/constants.ts",
     "#src/shared/*.js": "./src/shared/*.ts",
+    "#src/test/*.js": "./src/test/*.ts",
+    "#src/test/mocks/*.js": "./src/test/mocks/*.ts",
     "#src/*": "./src/*"
   },
   "author": "Adam Murray",

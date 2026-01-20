@@ -2,24 +2,40 @@ import { expect } from "vitest";
 
 /**
  * JSON stringify for inspection
- * @param {unknown} obj - Object to inspect
- * @returns {string} - JSON string
+ * @param obj - Object to inspect
+ * @returns JSON string
  */
-const inspect = (obj) => JSON.stringify(obj, null, 2);
+const inspect = (obj: unknown): string => JSON.stringify(obj, null, 2);
 const EXPECTED_MOCK_FUNCTION_MSG = "Expected a mock function";
+
+interface MatcherResult {
+  pass: boolean;
+  message: () => string;
+}
+
+interface MockFunction {
+  mock: {
+    calls: unknown[][];
+    contexts: unknown[];
+  };
+}
 
 expect.extend({
   /**
    * Assert mock was called with specific this context and args
-   * @param {unknown} received - Mock function to check
-   * @param {unknown} expectedThis - Expected this context
-   * @param {unknown[]} expectedArgs - Expected arguments
-   * @returns {{pass: boolean, message: () => string}} - Matcher result
+   * @param received - Mock function to check
+   * @param expectedThis - Expected this context
+   * @param expectedArgs - Expected arguments
+   * @returns Matcher result
    */
-  toHaveBeenCalledWithThis(received, expectedThis, ...expectedArgs) {
-    const rec = /** @type {any} */ (received);
+  toHaveBeenCalledWithThis(
+    received: unknown,
+    expectedThis: unknown,
+    ...expectedArgs: unknown[]
+  ): MatcherResult {
+    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
 
-    if (typeof rec !== "function" || !rec.mock) {
+    if (typeof rec !== "function" || !("mock" in rec)) {
       return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
 
@@ -32,16 +48,14 @@ expect.extend({
       };
     }
 
-    const hasMatchingCall = calls.some(
-      (/** @type {unknown[]} */ call, /** @type {number} */ index) => {
-        const context = contexts[index];
+    const hasMatchingCall = calls.some((call, index) => {
+      const context = contexts[index];
 
-        const contextMatches = this.equals(context, expectedThis);
-        const argsMatch = this.equals(call, expectedArgs);
+      const contextMatches = this.equals(context, expectedThis);
+      const argsMatch = this.equals(call, expectedArgs);
 
-        return contextMatches && argsMatch;
-      },
-    );
+      return contextMatches && argsMatch;
+    });
 
     if (hasMatchingCall) {
       return {
@@ -62,15 +76,13 @@ expect.extend({
           `  Args: ${inspect(expectedArgs)}\n\n` +
           `But it was called with:\n` +
           calls
-            .map(
-              (/** @type {unknown[]} */ call, /** @type {number} */ index) => {
-                return (
-                  `  Call ${index + 1}:\n` +
-                  `    Context: ${inspect(contexts[index])}\n` +
-                  `    Args: ${inspect(call)}`
-                );
-              },
-            )
+            .map((call, index) => {
+              return (
+                `  Call ${index + 1}:\n` +
+                `    Context: ${inspect(contexts[index])}\n` +
+                `    Args: ${inspect(call)}`
+              );
+            })
             .join("\n")
         );
       },
@@ -79,21 +91,21 @@ expect.extend({
 
   /**
    * Assert mock's nth call had specific this context and args
-   * @param {unknown} received - Mock function to check
-   * @param {unknown} nthCall - Call number (1-indexed)
-   * @param {unknown} expectedThis - Expected this context
-   * @param {unknown[]} expectedArgs - Expected arguments
-   * @returns {{pass: boolean, message: () => string}} - Matcher result
+   * @param received - Mock function to check
+   * @param nthCall - Call number (1-indexed)
+   * @param expectedThis - Expected this context
+   * @param expectedArgs - Expected arguments
+   * @returns Matcher result
    */
   toHaveBeenNthCalledWithThis(
-    received,
-    nthCall,
-    expectedThis,
-    ...expectedArgs
-  ) {
-    const rec = /** @type {any} */ (received);
+    received: unknown,
+    nthCall: unknown,
+    expectedThis: unknown,
+    ...expectedArgs: unknown[]
+  ): MatcherResult {
+    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
 
-    if (typeof rec !== "function" || !rec.mock) {
+    if (typeof rec !== "function" || !("mock" in rec)) {
       return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
 
@@ -145,15 +157,19 @@ expect.extend({
 
   /**
    * Assert mock was called exactly once with specific this context and args
-   * @param {unknown} received - Mock function to check
-   * @param {unknown} expectedThis - Expected this context
-   * @param {unknown[]} expectedArgs - Expected arguments
-   * @returns {{pass: boolean, message: () => string}} - Matcher result
+   * @param received - Mock function to check
+   * @param expectedThis - Expected this context
+   * @param expectedArgs - Expected arguments
+   * @returns Matcher result
    */
-  toHaveBeenCalledExactlyOnceWithThis(received, expectedThis, ...expectedArgs) {
-    const rec = /** @type {any} */ (received);
+  toHaveBeenCalledExactlyOnceWithThis(
+    received: unknown,
+    expectedThis: unknown,
+    ...expectedArgs: unknown[]
+  ): MatcherResult {
+    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
 
-    if (typeof rec !== "function" || !rec.mock) {
+    if (typeof rec !== "function" || !("mock" in rec)) {
       return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
 
@@ -173,15 +189,13 @@ expect.extend({
         message: () =>
           `Expected mock function to have been called exactly once, but it was called ${calls.length} times:\n` +
           calls
-            .map(
-              (/** @type {unknown[]} */ call, /** @type {number} */ index) => {
-                return (
-                  `  Call ${index + 1}:\n` +
-                  `    Context: ${inspect(contexts[index])}\n` +
-                  `    Args: ${inspect(call)}`
-                );
-              },
-            )
+            .map((call, index) => {
+              return (
+                `  Call ${index + 1}:\n` +
+                `    Context: ${inspect(contexts[index])}\n` +
+                `    Args: ${inspect(call)}`
+              );
+            })
             .join("\n"),
       };
     }
