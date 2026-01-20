@@ -1,10 +1,14 @@
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-
-const MASTER_TRACK_PATH = "live_set master_track";
-
-type TrackCategory = "regular" | "return" | "master";
+import {
+  updateDeviceSelection,
+  updateHighlightedClipSlot,
+  updateSceneSelection,
+  updateTrackSelection,
+  validateParameters,
+} from "./select-helpers.ts";
+import type { TrackCategory } from "./select-helpers.ts";
 
 interface SelectArgs {
   view?: "session" | "arrangement";
@@ -20,17 +24,6 @@ interface SelectArgs {
   detailView?: "clip" | "device" | "none";
   showLoop?: boolean;
   showBrowser?: boolean;
-}
-
-interface TrackSelectionResult {
-  selectedTrackId?: string;
-  selectedCategory?: string;
-  selectedTrackIndex?: number;
-}
-
-interface SceneSelectionResult {
-  selectedSceneId?: string;
-  selectedSceneIndex?: number;
 }
 
 interface SelectedTrackObject {
@@ -52,41 +45,6 @@ interface ViewState {
     sceneIndex: number | null;
   };
   selectedClipSlot: { trackIndex: number; sceneIndex: number } | null;
-}
-
-interface ValidateParametersOptions {
-  trackId?: string;
-  category?: TrackCategory;
-  trackIndex?: number;
-  sceneId?: string;
-  sceneIndex?: number;
-  deviceId?: string;
-  instrument?: boolean;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
-}
-
-interface UpdateTrackSelectionOptions {
-  songView: LiveAPI;
-  trackId?: string;
-  category?: TrackCategory;
-  trackIndex?: number;
-}
-
-interface UpdateSceneSelectionOptions {
-  songView: LiveAPI;
-  sceneId?: string;
-  sceneIndex?: number;
-}
-
-interface UpdateDeviceSelectionOptions {
-  deviceId?: string;
-  instrument?: boolean;
-  trackSelectionResult: TrackSelectionResult;
-}
-
-interface UpdateHighlightedClipSlotOptions {
-  songView: LiveAPI;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
 }
 
 /**
@@ -244,274 +202,6 @@ export function select(
 
   // Get current view state after applying updates
   return readViewState();
-}
-
-/**
- * Build track path string based on category and index
- *
- * @param category - Track category ('regular', 'return', or 'master')
- * @param trackIndex - Track index (0-based)
- * @returns Track path string or null if invalid category
- */
-function buildTrackPath(
-  category?: string | null,
-  trackIndex?: number | null,
-): string | null {
-  const finalCategory = category ?? "regular";
-
-  if (finalCategory === "regular") {
-    return `live_set tracks ${trackIndex}`;
-  }
-
-  if (finalCategory === "return") {
-    return `live_set return_tracks ${trackIndex}`;
-  }
-
-  if (finalCategory === "master") {
-    return MASTER_TRACK_PATH;
-  }
-
-  return null;
-}
-
-/**
- * Validate selection parameters for conflicts
- *
- * @param options - Parameters object
- * @param options.trackId - Track ID
- * @param options.category - Track category
- * @param options.trackIndex - Track index
- * @param options.sceneId - Scene ID
- * @param options.sceneIndex - Scene index
- * @param options.deviceId - Device ID
- * @param options.instrument - Instrument selection flag
- * @param options.clipSlot - Clip slot coordinates
- */
-function validateParameters({
-  trackId,
-  category,
-  trackIndex,
-  sceneId,
-  sceneIndex,
-  deviceId,
-  instrument,
-  clipSlot: _clipSlot,
-}: ValidateParametersOptions): void {
-  // Track selection validation
-  if (category === "master" && trackIndex != null) {
-    throw new Error(
-      "trackIndex should not be provided when category is 'master'",
-    );
-  }
-
-  // Device selection validation
-  if (deviceId != null && instrument != null) {
-    throw new Error("cannot specify both deviceId and instrument");
-  }
-
-  // Cross-validation for track ID vs index (requires Live API calls)
-  if (trackId != null && trackIndex != null) {
-    const trackPath = buildTrackPath(category, trackIndex);
-
-    if (trackPath) {
-      const trackAPI = LiveAPI.from(trackPath);
-
-      if (trackAPI.exists() && trackAPI.id !== trackId) {
-        throw new Error("trackId and trackIndex refer to different tracks");
-      }
-    }
-  }
-
-  // Cross-validation for scene ID vs index
-  if (sceneId != null && sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
-
-    if (sceneAPI.exists() && sceneAPI.id !== sceneId) {
-      throw new Error("sceneId and sceneIndex refer to different scenes");
-    }
-  }
-}
-
-/**
- * Update track selection in Live
- *
- * @param options - Selection parameters
- * @param options.songView - LiveAPI instance for live_set view
- * @param options.trackId - Track ID to select
- * @param options.category - Track category
- * @param options.trackIndex - Track index
- * @returns Selection result with track info
- */
-function updateTrackSelection({
-  songView,
-  trackId,
-  category,
-  trackIndex,
-}: UpdateTrackSelectionOptions): TrackSelectionResult {
-  const result: TrackSelectionResult = {};
-
-  // Determine track selection approach
-  let trackAPI: LiveAPI | null = null;
-  let finalTrackId = trackId;
-
-  if (trackId != null) {
-    // Select by ID and validate it's a track
-    trackAPI = validateIdType(trackId, "track", "select");
-    songView.setProperty("selected_track", trackAPI.id);
-    result.selectedTrackId = trackId;
-
-    if (category != null) {
-      result.selectedCategory = category;
-    }
-
-    if (trackIndex != null) {
-      result.selectedTrackIndex = trackIndex;
-    }
-  } else if (category != null || trackIndex != null) {
-    // Select by category/index
-    const finalCategory = category ?? "regular";
-    const trackPath = buildTrackPath(category, trackIndex);
-
-    if (trackPath) {
-      trackAPI = LiveAPI.from(trackPath);
-
-      if (trackAPI.exists()) {
-        finalTrackId = trackAPI.id;
-        songView.setProperty("selected_track", trackAPI.id);
-        result.selectedTrackId = finalTrackId;
-        result.selectedCategory = finalCategory;
-
-        if (finalCategory !== "master" && trackIndex != null) {
-          result.selectedTrackIndex = trackIndex;
-        }
-      }
-    }
-  }
-
-  return result;
-}
-
-/**
- * Update scene selection in Live
- *
- * @param options - Selection parameters
- * @param options.songView - LiveAPI instance for live_set view
- * @param options.sceneId - Scene ID to select
- * @param options.sceneIndex - Scene index
- * @returns Selection result with scene info
- */
-function updateSceneSelection({
-  songView,
-  sceneId,
-  sceneIndex,
-}: UpdateSceneSelectionOptions): SceneSelectionResult {
-  const result: SceneSelectionResult = {};
-
-  if (sceneId != null) {
-    // Select by ID and validate it's a scene
-    const sceneAPI = validateIdType(sceneId, "scene", "select");
-
-    songView.setProperty("selected_scene", sceneAPI.id);
-    result.selectedSceneId = sceneId;
-
-    if (sceneIndex != null) {
-      result.selectedSceneIndex = sceneIndex;
-    }
-  } else if (sceneIndex != null) {
-    // Select by index
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
-
-    if (sceneAPI.exists()) {
-      const finalSceneId = sceneAPI.id;
-
-      songView.setProperty("selected_scene", sceneAPI.id);
-      result.selectedSceneId = finalSceneId;
-      result.selectedSceneIndex = sceneIndex;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Update device selection in Live
- *
- * @param options - Selection parameters
- * @param options.deviceId - Device ID to select
- * @param options.instrument - Whether to select instrument
- * @param options.trackSelectionResult - Previous track selection result
- */
-function updateDeviceSelection({
-  deviceId,
-  instrument,
-  trackSelectionResult,
-}: UpdateDeviceSelectionOptions): void {
-  if (deviceId != null) {
-    // Select specific device by ID and validate it's a device
-    validateIdType(deviceId, "device", "select");
-    const songView = LiveAPI.from("live_set view");
-    // Ensure proper "id X" format for select_device call
-    const deviceIdStr = deviceId.toString();
-    const deviceIdForApi = deviceIdStr.startsWith("id ")
-      ? deviceIdStr
-      : `id ${deviceIdStr}`;
-
-    songView.call("select_device", deviceIdForApi);
-  } else if (instrument === true) {
-    // Select instrument on the currently selected or specified track
-    let trackPath = buildTrackPath(
-      trackSelectionResult.selectedCategory,
-      trackSelectionResult.selectedTrackIndex,
-    );
-
-    if (!trackPath) {
-      // Use currently selected track
-      const selectedTrackAPI = LiveAPI.from("live_set view selected_track");
-
-      if (selectedTrackAPI.exists()) {
-        const category = selectedTrackAPI.category;
-        const trackIndex =
-          category === "return"
-            ? selectedTrackAPI.returnTrackIndex
-            : selectedTrackAPI.trackIndex;
-
-        trackPath = buildTrackPath(category, trackIndex);
-      }
-    }
-
-    if (trackPath) {
-      // Use the track view's select_instrument function
-      const trackView = LiveAPI.from(`${trackPath} view`);
-
-      if (trackView.exists()) {
-        trackView.call("select_instrument");
-      }
-    }
-  }
-}
-
-/**
- * Update highlighted clip slot in Live
- *
- * @param options - Selection parameters
- * @param options.songView - LiveAPI instance for live_set view
- * @param options.clipSlot - Clip slot coordinates
- */
-function updateHighlightedClipSlot({
-  songView,
-  clipSlot,
-}: UpdateHighlightedClipSlotOptions): void {
-  if (clipSlot != null) {
-    // Set by indices
-    const { trackIndex, sceneIndex } = clipSlot;
-    const clipSlotAPI = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
-    );
-
-    if (clipSlotAPI.exists()) {
-      songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
-    }
-  }
 }
 
 /**

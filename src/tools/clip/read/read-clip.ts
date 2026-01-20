@@ -3,24 +3,17 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import {
-  LIVE_API_WARP_MODE_BEATS,
-  LIVE_API_WARP_MODE_COMPLEX,
-  LIVE_API_WARP_MODE_PRO,
-  LIVE_API_WARP_MODE_REPITCH,
-  LIVE_API_WARP_MODE_REX,
-  LIVE_API_WARP_MODE_TEXTURE,
-  LIVE_API_WARP_MODE_TONES,
-  WARP_MODE,
-} from "#src/tools/constants.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  processWarpMarkers,
+  WARP_MODE_MAPPING,
+} from "./helpers/read-clip-helpers.ts";
 
 interface ReadClipArgs {
   trackIndex?: number | null;
@@ -33,11 +26,6 @@ interface ReadClipArgs {
 interface WarpMarker {
   sampleTime: number;
   beatTime: number;
-}
-
-interface WarpMarkerData {
-  sample_time: number;
-  beat_time: number;
 }
 
 /** Result returned by readClip */
@@ -227,45 +215,6 @@ export function readClip(
 }
 
 /**
- * Process warp markers for an audio clip
- * @param clip - LiveAPI clip object
- * @returns Array of warp markers or undefined
- */
-function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
-  try {
-    const warpMarkersJson = clip.getProperty("warp_markers") as string;
-
-    if (!warpMarkersJson || warpMarkersJson === "") {
-      return;
-    }
-
-    const warpMarkersData = JSON.parse(warpMarkersJson);
-
-    const mapMarker = (marker: WarpMarkerData): WarpMarker => ({
-      sampleTime: marker.sample_time,
-      beatTime: marker.beat_time,
-    });
-
-    // Handle both possible structures: direct array or nested in warp_markers property
-    if (Array.isArray(warpMarkersData)) {
-      return warpMarkersData.map(mapMarker);
-    }
-
-    if (
-      warpMarkersData.warp_markers &&
-      Array.isArray(warpMarkersData.warp_markers)
-    ) {
-      return warpMarkersData.warp_markers.map(mapMarker);
-    }
-  } catch (error) {
-    // Fail gracefully - clip might not support warp markers or format might be unexpected
-    console.error(
-      `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
-    );
-  }
-}
-
-/**
  * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
  * Only includes properties that are true
  * @param result - Result object to add properties to
@@ -331,17 +280,6 @@ function processMidiClip(
     });
   }
 }
-
-/** Mapping of Live API warp modes to friendly names */
-const WARP_MODE_MAPPING: Record<number, string> = {
-  [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
-  [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
-  [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
-  [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
-  [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
-  [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
-  [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
-};
 
 /**
  * Process audio clip specific properties

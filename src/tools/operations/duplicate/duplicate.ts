@@ -1,7 +1,10 @@
-import { select } from "#src/tools/control/select.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
+import {
+  generateObjectName,
+  switchViewIfRequested,
+} from "./helpers/duplicate-misc-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
@@ -176,33 +179,6 @@ export function duplicate(
 }
 
 /**
- * Generates a name for a duplicated object
- * @param baseName - Base name for the object
- * @param count - Total number of duplicates
- * @param index - Current duplicate index
- * @returns Generated name or undefined
- */
-function generateObjectName(
-  baseName: string | undefined,
-  count: number,
-  index: number,
-): string | undefined {
-  if (baseName == null) {
-    return;
-  }
-
-  if (count === 1) {
-    return baseName;
-  }
-
-  if (index === 0) {
-    return baseName;
-  }
-
-  return `${baseName} ${index + 1}`;
-}
-
-/**
  * Duplicates a track or scene using count-based iteration
  * @param type - Type of object (track or scene)
  * @param destination - Destination for duplication
@@ -265,49 +241,6 @@ function duplicateTrackOrSceneWithCount(
   }
 
   return createdObjects;
-}
-
-/**
- * Determines the target view based on destination and type
- * @param destination - Destination for duplication
- * @param type - Type of object being duplicated
- * @returns Target view or null
- */
-function determineTargetView(
-  destination: string | undefined,
-  type: string,
-): "session" | "arrangement" | null {
-  if (destination === "arrangement") {
-    return "arrangement";
-  }
-
-  if (destination === "session" || type === "track" || type === "scene") {
-    return "session";
-  }
-
-  return null;
-}
-
-/**
- * Switches to the appropriate view if requested
- * @param switchView - Whether to switch view
- * @param destination - Destination for duplication
- * @param type - Type of object being duplicated
- */
-function switchViewIfRequested(
-  switchView: boolean | undefined,
-  destination: string | undefined,
-  type: string,
-): void {
-  if (!switchView) {
-    return;
-  }
-
-  const targetView = determineTargetView(destination, type);
-
-  if (targetView) {
-    select({ view: targetView });
-  }
 }
 
 /**

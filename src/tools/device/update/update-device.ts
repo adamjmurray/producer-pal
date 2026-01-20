@@ -19,65 +19,14 @@ import {
   updateMacroCount,
   updateMacroVariation,
 } from "./update-device-helpers.ts";
+import {
+  isChainType,
+  isDeviceType,
+  isRackDevice,
+  isValidUpdateType,
+  warnIfSet,
+} from "./update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./update-device-wrap-helpers.ts";
-
-// ============================================================================
-// Type detection helpers
-// ============================================================================
-
-/**
- * Check if type is updatable (device, chain, or drum pad)
- * @param type - Live object type
- * @returns True if type is updatable
- */
-function isValidUpdateType(type: string): boolean {
-  return (
-    type.endsWith("Device") || type.endsWith("Chain") || type === "DrumPad"
-  );
-}
-
-/**
- * Check if type is a device type
- * @param type - Live object type
- * @returns True if type ends with Device
- */
-function isDeviceType(type: string): boolean {
-  return type.endsWith("Device");
-}
-
-/**
- * Check if type is a rack device
- * @param type - Live object type
- * @returns True if type is RackDevice
- */
-function isRackDevice(type: string): boolean {
-  return type === "RackDevice";
-}
-
-/**
- * Check if type is a chain type
- * @param type - Live object type
- * @returns True if type ends with Chain
- */
-function isChainType(type: string): boolean {
-  return type.endsWith("Chain");
-}
-
-/**
- * Warn if parameter is set but not applicable to this type
- * @param paramName - Parameter name
- * @param value - Parameter value
- * @param type - Live object type
- */
-function warnIfSet(paramName: string, value: unknown, type: string): void {
-  if (value != null) {
-    console.error(`updateDevice: '${paramName}' not applicable to ${type}`);
-  }
-}
-
-// ============================================================================
-// Main export
-// ============================================================================
 
 interface UpdateProperties {
   toPath?: string;
@@ -155,7 +104,6 @@ export function updateDevice(
 ): Record<string, unknown> | Record<string, unknown>[] | null {
   validateExclusiveParams(ids, path, "ids", "path");
 
-  // Handle wrapInRack separately (creates rack and moves devices into it)
   if (wrapInRack) {
     return wrapDevicesInRack({ ids, path, toPath, name }) as Record<
       string,
@@ -179,7 +127,6 @@ export function updateDevice(
     mappedPitch,
   };
 
-  // Use path-based or ID-based resolution
   if (path) {
     return updateMultipleTargets(
       parseCommaSeparatedIds(path),
@@ -196,10 +143,6 @@ export function updateDevice(
     updateOptions,
   );
 }
-
-// ============================================================================
-// Target resolution helpers
-// ============================================================================
 
 /**
  * Update multiple targets with common logic for path/ID resolution
@@ -252,10 +195,6 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
   return target.exists() ? { target } : null;
 }
 
-// ============================================================================
-// Path resolution
-// ============================================================================
-
 /**
  * Safely resolve a path to a Live API target, catching errors
  * @param path - Device/chain/drum-pad path
@@ -280,17 +219,11 @@ function resolvePathToTarget(path: string): ResolvedTarget | null {
   const resolved = resolvePathToLiveApi(path);
 
   switch (resolved.targetType) {
-    case "device": {
-      const target = resolveDeviceTarget(resolved.liveApiPath);
+    case "device": // fallthrough
+    case "chain": // fallthrough
 
-      return target ? { target } : null;
-    }
-
-    case "chain":
-
-    // fallthrough
     case "return-chain": {
-      const target = resolveChainTarget(resolved.liveApiPath);
+      const target = resolveTargetFromPath(resolved.liveApiPath);
 
       return target ? { target } : null;
     }
@@ -324,30 +257,15 @@ function resolvePathToTarget(path: string): ResolvedTarget | null {
 }
 
 /**
- * Resolve a device from Live API path
+ * Resolve device or chain target from Live API path
  * @param liveApiPath - Live API canonical path
  * @returns LiveAPI object or null if not found
  */
-function resolveDeviceTarget(liveApiPath: string): LiveAPI | null {
-  const device = LiveAPI.from(liveApiPath);
+function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
+  const target = LiveAPI.from(liveApiPath);
 
-  return device.exists() ? device : null;
+  return target.exists() ? target : null;
 }
-
-/**
- * Resolve a chain from Live API path
- * @param liveApiPath - Live API canonical path
- * @returns LiveAPI object or null if not found
- */
-function resolveChainTarget(liveApiPath: string): LiveAPI | null {
-  const chain = LiveAPI.from(liveApiPath);
-
-  return chain.exists() ? chain : null;
-}
-
-// ============================================================================
-// Target update logic
-// ============================================================================
 
 /**
  * Update a single target (device, chain, or drum pad)
