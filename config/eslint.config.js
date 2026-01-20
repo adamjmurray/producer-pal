@@ -418,6 +418,7 @@ export default [
       ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
+      "no-undef": "off", // TypeScript handles undefined variable checks
     },
   },
 
@@ -460,6 +461,7 @@ export default [
       ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
+      "no-undef": "off", // TypeScript handles undefined variable checks
     },
   },
 
@@ -522,64 +524,15 @@ export default [
       ...unicornRules,
       ...jsdocRules,
       ...tsOnlyRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
     },
   },
 
-  // Max V8 environment globals for live-api-adapter
+  // Allow triple-slash references for live-api-adapter (uses Max V8 type declarations)
   {
     files: ["src/live-api-adapter/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        outlet: "readonly",
-        post: "readonly",
-        error: "readonly",
-        ToolContext: "readonly",
-        Dict: "readonly",
-        Task: "readonly",
-        Folder: "readonly",
-      },
-    },
     rules: {
       "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // ToolContext global for skills (ambient type from max-globals.d.ts)
-  {
-    files: ["src/skills/*.ts"],
-    languageOptions: {
-      globals: {
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Max V8 environment globals for tools (migrated to TypeScript)
-  {
-    files: ["src/tools/**/*.ts"],
-    languageOptions: {
-      globals: {
-        LiveAPI: "readonly",
-        ToolContext: "readonly",
-      },
-    },
-    rules: {
-      "@typescript-eslint/triple-slash-reference": "off",
-    },
-  },
-
-  // Additional globals for samples and workflow tools
-  {
-    files: ["src/tools/samples/*.ts", "src/tools/workflow/*.ts"],
-    languageOptions: {
-      globals: {
-        Folder: "readonly",
-        outlet: "readonly",
-      },
     },
   },
 
@@ -698,30 +651,6 @@ export default [
     },
   },
 
-  // Max for Live / Live API rules
-  {
-    files: ["src/**/*.js"],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-        // Max/MSP V8 globals
-        LiveAPI: "readonly",
-        Folder: "readonly",
-        outlet: "readonly",
-        post: "readonly",
-        Dict: "readonly",
-        Task: "readonly",
-        // Vitest globals
-        describe: "readonly",
-        it: "readonly",
-        expect: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-        vi: "readonly",
-      },
-    },
-  },
-
   // Require .ts extensions for src TypeScript imports
   // Parser files (.js) are exempt since they're generated JavaScript
   {
@@ -761,45 +690,6 @@ export default [
         {
           selector: "ImportExpression[source.value=/^\\.\\./]",
           message: "Use path alias (#webui/*) instead of ../ imports",
-        },
-      ],
-    },
-  },
-
-  // Enforce path aliases for parent directory imports in src files
-  {
-    files: ["src/**/*.js"],
-    rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "ImportDeclaration[source.value=/^\\.\\./]",
-          message: "Use path alias (#src/*) instead of ../ imports",
-        },
-        {
-          selector: "ImportExpression[source.value=/^\\.\\./]",
-          message: "Use path alias (#src/*) instead of ../ imports",
-        },
-      ],
-    },
-  },
-
-  // Enforce LiveAPI.from() over new LiveAPI() for safer ID handling
-  // LiveAPI.from() properly handles raw IDs (prefixes with "id ") while
-  // new LiveAPI() requires already-prefixed IDs or full paths
-  {
-    files: ["src/**/*.js"],
-    ignores: [
-      "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
-      "src/test/mocks/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
-    ],
-    rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "NewExpression[callee.name='LiveAPI']",
-          message:
-            "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
         },
       ],
     },
