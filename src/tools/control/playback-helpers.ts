@@ -263,3 +263,77 @@ export function getArrangementFollowerTrackIds(liveSet: LiveAPI): string {
     .map((trackId) => trackId.replace("id ", ""))
     .join(",");
 }
+
+export interface PlaybackState {
+  isPlaying: boolean;
+  currentTimeBeats: number;
+}
+
+/**
+ * Handle playing the arrangement view
+ * @param liveSet - LiveAPI instance for live_set
+ * @param startTime - Start time in bar|beat format
+ * @param startTimeBeats - Start time in beats (from time or locator)
+ * @param useLocatorStart - Whether start position came from a locator
+ * @param autoFollow - Whether tracks should follow arrangement
+ * @param _state - Current playback state (unused)
+ * @returns Updated playback state
+ */
+export function handlePlayArrangement(
+  liveSet: LiveAPI,
+  startTime: string | undefined,
+  startTimeBeats: number | null | undefined,
+  useLocatorStart: boolean,
+  autoFollow: boolean,
+  _state: PlaybackState,
+): PlaybackState {
+  let resolvedStartTimeBeats = startTimeBeats;
+
+  if (startTime == null && !useLocatorStart) {
+    liveSet.set("start_time", 0);
+    resolvedStartTimeBeats = 0;
+  }
+
+  if (autoFollow) {
+    liveSet.set("back_to_arranger", 0);
+  }
+
+  liveSet.call("start_playing");
+
+  return {
+    isPlaying: true,
+    currentTimeBeats: resolvedStartTimeBeats ?? 0,
+  };
+}
+
+/**
+ * Handle playing a scene in session view
+ * @param sceneIndex - Scene index to play
+ * @param state - Current playback state
+ * @returns Updated playback state
+ */
+export function handlePlayScene(
+  sceneIndex: number | undefined,
+  state: PlaybackState,
+): PlaybackState {
+  if (sceneIndex == null) {
+    throw new Error(
+      `playback failed: sceneIndex is required for action "play-scene"`,
+    );
+  }
+
+  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+
+  if (!scene.exists()) {
+    throw new Error(
+      `playback failed: scene at index ${sceneIndex} does not exist`,
+    );
+  }
+
+  scene.call("fire");
+
+  return {
+    isPlaying: true,
+    currentTimeBeats: state.currentTimeBeats,
+  };
+}
