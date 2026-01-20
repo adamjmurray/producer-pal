@@ -4,6 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
 
@@ -18,7 +19,10 @@ describe("updateLiveSet", () => {
     mockRootNote = 0; // Reset to C for each test
 
     // Mock scale_intervals and root_note for tests that need it
-    liveApiGet.mockImplementation(function (property) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      property,
+    ) {
       if (property === "scale_intervals") {
         return [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
       }
@@ -31,7 +35,11 @@ describe("updateLiveSet", () => {
     });
 
     // Mock the set method to update our mock root note
-    liveApiSet.mockImplementation(function (property, value) {
+    liveApiSet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      property,
+      value,
+    ) {
       if (property === "root_note") {
         mockRootNote = value;
       }

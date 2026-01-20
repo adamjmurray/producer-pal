@@ -3,12 +3,19 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 // Helper to set up mocks for a single track with mixer properties
-function setupSingleTrackMixerMock({ displayValue, panValue }) {
-  liveApiId.mockImplementation(function () {
+function setupSingleTrackMixerMock({
+  displayValue,
+  panValue,
+}: {
+  displayValue: number;
+  panValue: number;
+}) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === "live_set") return "live_set_id";
     if (this._path === "live_set tracks 0") return "track1";
     if (this._path === "live_set tracks 0 mixer_device") return "mixer_1";
@@ -50,7 +57,9 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toStrictEqual(
+    const tracks = result.tracks as unknown[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: -6,
@@ -60,7 +69,7 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("excludes mixer properties from tracks when mixer is not included", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -91,12 +100,14 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks"],
     });
 
-    expect(result.tracks[0]).not.toHaveProperty("gainDb");
-    expect(result.tracks[0]).not.toHaveProperty("pan");
+    const tracks = result.tracks as unknown[];
+
+    expect(tracks[0]).not.toHaveProperty("gainDb");
+    expect(tracks[0]).not.toHaveProperty("pan");
   });
 
   it("includes mixer properties in return tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -149,7 +160,9 @@ describe("readLiveSet - mixer properties", () => {
       include: ["return-tracks", "mixer"],
     });
 
-    expect(result.returnTracks[0]).toStrictEqual(
+    const returnTracks = result.returnTracks as unknown[];
+
+    expect(returnTracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Return Track",
         gainDb: -3,
@@ -159,7 +172,7 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties in master track", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -227,7 +240,9 @@ describe("readLiveSet - mixer properties", () => {
       include: ["*"],
     });
 
-    expect(result.tracks[0]).toStrictEqual(
+    const tracks = result.tracks as unknown[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         gainDb: 2,
@@ -237,7 +252,7 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties in multiple tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -315,14 +330,16 @@ describe("readLiveSet - mixer properties", () => {
       include: ["regular-tracks", "mixer"],
     });
 
-    expect(result.tracks[0]).toStrictEqual(
+    const tracks = result.tracks as unknown[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Track 1",
         gainDb: -6,
         pan: 0.5,
       }),
     );
-    expect(result.tracks[1]).toStrictEqual(
+    expect(tracks[1]).toStrictEqual(
       expect.objectContaining({
         name: "Track 2",
         gainDb: -12,

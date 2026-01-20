@@ -2,7 +2,7 @@ import { errorMessage } from "#src/shared/error-utils.js";
 
 const MAX_OPERATIONS = 50;
 
-type OperationType =
+export type OperationType =
   | "get_property"
   | "set_property"
   | "call_method"
@@ -30,7 +30,7 @@ interface OperationErrorMessages {
   value?: string;
 }
 
-interface RawApiOperation {
+export interface RawApiOperation {
   type: OperationType;
   property?: string;
   method?: string;

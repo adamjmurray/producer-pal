@@ -5,13 +5,14 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - inclusion", () => {
   it("returns sceneCount when includeScenes is false", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -52,10 +53,10 @@ describe("readLiveSet - inclusion", () => {
   });
 
   it("returns minimal data when include is an empty array", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       return this._path;
     });
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       return this._id ?? "test_id";
     });
 
@@ -103,7 +104,7 @@ describe("readLiveSet - inclusion", () => {
   });
 
   it("uses drum-maps by default and strips chains", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set":
           return "live_set";
@@ -186,12 +187,17 @@ describe("readLiveSet - inclusion", () => {
     const result = readLiveSet();
 
     // Should have drumMap on the track
-    expect(result.tracks[0].drumMap).toStrictEqual({
+    const tracks = result.tracks as {
+      drumMap: Record<string, string>;
+      instrument: { id: string; name: string; type: string; chains?: unknown };
+    }[];
+
+    expect(tracks[0]!.drumMap).toStrictEqual({
       C3: "Test Kick",
     });
 
     // Should have instrument but NO chains (proving drum-maps is default, not chains)
-    expect(result.tracks[0].instrument).toStrictEqual({
+    expect(tracks[0]!.instrument).toStrictEqual({
       id: "drumrack1",
       name: "Test Drum Rack",
       type: "drum-rack",
@@ -204,11 +210,11 @@ describe("readLiveSet - inclusion", () => {
     });
 
     // Critical: chains should be stripped due to drum-maps default
-    expect(result.tracks[0].instrument.chains).toBeUndefined();
+    expect(tracks[0]!.instrument.chains).toBeUndefined();
   });
 
   it("omits name property when Live Set name is empty string", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set";
       }

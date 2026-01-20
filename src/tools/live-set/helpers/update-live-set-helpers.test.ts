@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
   cleanupTempClip,
   extendSongIfNeeded,
@@ -11,6 +11,8 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.js"), () => ({
 
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
+const g = globalThis as Record<string, unknown>;
+
 describe("update-live-set-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -20,7 +22,7 @@ describe("update-live-set-helpers", () => {
     it("should return null if targetBeats is within song_length", () => {
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([1000]), // song_length = 1000
-      };
+      } as unknown as LiveAPI;
 
       const result = extendSongIfNeeded(mockLiveSet, 500, {});
 
@@ -32,7 +34,7 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([100]), // song_length = 100
         getChildIds: vi.fn().mockReturnValue([]),
-      };
+      } as unknown as LiveAPI;
 
       expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
         "Cannot create locator past song end: no tracks available to extend song",
@@ -46,7 +48,7 @@ describe("update-live-set-helpers", () => {
       };
       const mockTempClip = { id: "999" };
 
-      globalThis.LiveAPI = {
+      g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
           if (id === "track-1") return mockMidiTrack;
           if (id === "id 999") return mockTempClip;
@@ -58,7 +60,7 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([100]),
         getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      };
+      } as unknown as LiveAPI;
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {});
 
@@ -83,12 +85,12 @@ describe("update-live-set-helpers", () => {
       const mockSlot = { call: vi.fn() };
       const mockArrangementClip = { id: "888" };
 
-      createAudioClipInSession.mockReturnValue({
+      (createAudioClipInSession as Mock).mockReturnValue({
         clip: mockSessionClip,
         slot: mockSlot,
       });
 
-      globalThis.LiveAPI = {
+      g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
           if (id === "track-1") return mockAudioTrack;
           if (id === "id 888") return mockArrangementClip;
@@ -100,7 +102,7 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([100]),
         getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      };
+      } as unknown as LiveAPI;
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {
         silenceWavPath: "/path/to/silence.wav",
@@ -129,14 +131,14 @@ describe("update-live-set-helpers", () => {
         getProperty: vi.fn().mockReturnValue(0), // has_midi_input = 0 (audio)
       };
 
-      globalThis.LiveAPI = {
+      g.LiveAPI = {
         from: vi.fn().mockReturnValue(mockAudioTrack),
       };
 
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([100]),
         getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      };
+      } as unknown as LiveAPI;
 
       expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
         "Cannot create locator past song end: no MIDI tracks and silenceWavPath not available",
@@ -153,7 +155,7 @@ describe("update-live-set-helpers", () => {
       };
       const mockTempClip = { id: "999" };
 
-      globalThis.LiveAPI = {
+      g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
           if (id === "audio-track") return mockAudioTrack;
           if (id === "midi-track") return mockMidiTrack;
@@ -166,13 +168,13 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = {
         get: vi.fn().mockReturnValue([100]),
         getChildIds: vi.fn().mockReturnValue(["audio-track", "midi-track"]),
-      };
+      } as unknown as LiveAPI;
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {});
 
       // Should use MIDI track even though audio was first
-      expect(result.isMidiTrack).toBe(true);
-      expect(result.track).toBe(mockMidiTrack);
+      expect(result!.isMidiTrack).toBe(true);
+      expect(result!.track).toBe(mockMidiTrack);
     });
   });
 
@@ -182,14 +184,14 @@ describe("update-live-set-helpers", () => {
       expect(() => cleanupTempClip(null)).not.toThrow();
     });
 
-    it("should do nothing if tempClipInfo is undefined", () => {
-      // Should not throw
-      expect(() => cleanupTempClip()).not.toThrow();
+    it("should do nothing if tempClipInfo is undefined (pass as null)", () => {
+      // Should not throw - Note: function signature only accepts null, not undefined
+      expect(() => cleanupTempClip(null)).not.toThrow();
     });
 
     it("should delete MIDI clip from arrangement", () => {
       const mockCall = vi.fn();
-      const mockTrack = { call: mockCall };
+      const mockTrack = { call: mockCall } as unknown as LiveAPI;
 
       cleanupTempClip({
         track: mockTrack,
@@ -203,8 +205,8 @@ describe("update-live-set-helpers", () => {
     it("should delete audio clip from both arrangement and session", () => {
       const mockTrackCall = vi.fn();
       const mockSlotCall = vi.fn();
-      const mockTrack = { call: mockTrackCall };
-      const mockSlot = { call: mockSlotCall };
+      const mockTrack = { call: mockTrackCall } as unknown as LiveAPI;
+      const mockSlot = { call: mockSlotCall } as unknown as LiveAPI;
 
       cleanupTempClip({
         track: mockTrack,
@@ -219,13 +221,13 @@ describe("update-live-set-helpers", () => {
 
     it("should handle audio clip without slot gracefully", () => {
       const mockCall = vi.fn();
-      const mockTrack = { call: mockCall };
+      const mockTrack = { call: mockCall } as unknown as LiveAPI;
 
       cleanupTempClip({
         track: mockTrack,
         clipId: "789",
         isMidiTrack: false,
-        slot: null,
+        slot: undefined,
       });
 
       expect(mockCall).toHaveBeenCalledWith("delete_clip", "id 789");

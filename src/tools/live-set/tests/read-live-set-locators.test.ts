@@ -3,12 +3,13 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - locators", () => {
   it("should not include locators by default", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
 
       return this._id;
@@ -33,7 +34,7 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should include locators when requested", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
       if (this._path === "id cue2") return "cue2";
@@ -71,7 +72,7 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should handle empty locators array", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
 
       return this._id;
@@ -96,7 +97,7 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should format locator times correctly in different time signatures", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
 
@@ -128,7 +129,7 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should include locators with wildcard include", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
 

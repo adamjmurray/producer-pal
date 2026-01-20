@@ -57,7 +57,7 @@ interface MockTrackAPI {
   _path: string;
 }
 
-interface SelectMocks {
+export interface SelectMocks {
   mockAppView: MockAppView;
   mockSongView: MockSongView;
   mockTrackAPI: MockTrackAPI;

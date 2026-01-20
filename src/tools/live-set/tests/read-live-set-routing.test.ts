@@ -3,13 +3,14 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - routing", () => {
   it("includes routing information in tracks when includeRoutings is true", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -38,7 +39,9 @@ describe("readLiveSet - routing", () => {
       include: ["regular-tracks", "instruments", "chains", "routings"],
     });
 
-    expect(result.tracks[0]).toStrictEqual(
+    const tracks = result.tracks as Record<string, unknown>[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
         inputRoutingChannel: { name: "In 1", inputId: "1" },
@@ -50,18 +53,14 @@ describe("readLiveSet - routing", () => {
     );
 
     // Verify that available routing properties are NOT included (read-live-set doesn't support them)
-    expect(result.tracks[0]).not.toHaveProperty(
-      "availableInputRoutingChannels",
-    );
-    expect(result.tracks[0]).not.toHaveProperty("availableInputRoutingTypes");
-    expect(result.tracks[0]).not.toHaveProperty(
-      "availableOutputRoutingChannels",
-    );
-    expect(result.tracks[0]).not.toHaveProperty("availableOutputRoutingTypes");
+    expect(tracks[0]).not.toHaveProperty("availableInputRoutingChannels");
+    expect(tracks[0]).not.toHaveProperty("availableInputRoutingTypes");
+    expect(tracks[0]).not.toHaveProperty("availableOutputRoutingChannels");
+    expect(tracks[0]).not.toHaveProperty("availableOutputRoutingTypes");
   });
 
   it("excludes routing information from tracks when includeRoutings is false", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -89,20 +88,22 @@ describe("readLiveSet - routing", () => {
       include: ["regular-tracks", "instruments", "chains"],
     });
 
-    expect(result.tracks[0]).toStrictEqual(
+    const tracks = result.tracks as Record<string, unknown>[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Test Track",
       }),
     );
     // Verify routing properties are not present
-    expect(result.tracks[0].availableInputRoutingChannels).toBeUndefined();
-    expect(result.tracks[0].availableInputRoutingTypes).toBeUndefined();
-    expect(result.tracks[0].availableOutputRoutingChannels).toBeUndefined();
-    expect(result.tracks[0].availableOutputRoutingTypes).toBeUndefined();
-    expect(result.tracks[0].inputRoutingChannel).toBeUndefined();
-    expect(result.tracks[0].inputRoutingType).toBeUndefined();
-    expect(result.tracks[0].outputRoutingChannel).toBeUndefined();
-    expect(result.tracks[0].outputRoutingType).toBeUndefined();
-    expect(result.tracks[0].monitoringState).toBeUndefined();
+    expect(tracks[0]!.availableInputRoutingChannels).toBeUndefined();
+    expect(tracks[0]!.availableInputRoutingTypes).toBeUndefined();
+    expect(tracks[0]!.availableOutputRoutingChannels).toBeUndefined();
+    expect(tracks[0]!.availableOutputRoutingTypes).toBeUndefined();
+    expect(tracks[0]!.inputRoutingChannel).toBeUndefined();
+    expect(tracks[0]!.inputRoutingType).toBeUndefined();
+    expect(tracks[0]!.outputRoutingChannel).toBeUndefined();
+    expect(tracks[0]!.outputRoutingType).toBeUndefined();
+    expect(tracks[0]!.monitoringState).toBeUndefined();
   });
 });

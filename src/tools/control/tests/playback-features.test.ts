@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   children,
   liveApiCall,
@@ -6,6 +6,7 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 import { setupDefaultTimeSignature } from "./playback-test-helpers.js";
@@ -176,7 +177,7 @@ describe("transport", () => {
           focused_document_view: "Session",
         },
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set") {
           return "LiveSet";
         }
@@ -193,7 +194,7 @@ describe("transport", () => {
           return "Track";
         }
 
-        return this._type; // Fall back to default MockLiveAPI logic
+        // Fall back to default MockLiveAPI logic (returns undefined)
       });
 
       playback({
@@ -217,7 +218,7 @@ describe("transport", () => {
       });
 
       // Mock clip path resolution
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
         }

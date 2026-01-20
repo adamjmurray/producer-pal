@@ -3,6 +3,7 @@ import {
   liveApiCall,
   liveApiId,
   liveApiSet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.js";
@@ -10,7 +11,7 @@ import { setupCuePointMocks } from "./playback-test-helpers.js";
 
 describe("playback - locator support", () => {
   beforeEach(() => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
       if (this._path === "id cue2") return "cue2";
@@ -301,7 +302,7 @@ describe("playback - locator support", () => {
 
   describe("resolveLocatorToBeats", () => {
     it("should return null when no locator is specified", () => {
-      const mockLiveSet = {};
+      const mockLiveSet = {} as unknown as globalThis.LiveAPI;
       const result = resolveLocatorToBeats(
         mockLiveSet,
         { locatorId: undefined, locatorName: undefined },

@@ -5,12 +5,13 @@ import {
   liveApiId,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - clips", () => {
   it("passes clip loading parameters to readTrack", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -53,12 +54,17 @@ describe("readLiveSet - clips", () => {
     });
 
     // When session-clips and arrangement-clips are not in include, we get counts instead of arrays
-    expect(result.tracks[0].sessionClipCount).toBe(1);
-    expect(result.tracks[0].arrangementClipCount).toBe(1);
+    const tracks = result.tracks as {
+      sessionClipCount: number;
+      arrangementClipCount: number;
+    }[];
+
+    expect(tracks[0]!.sessionClipCount).toBe(1);
+    expect(tracks[0]!.arrangementClipCount).toBe(1);
   });
 
   it("uses default parameter values when no arguments provided", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -99,15 +105,20 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet();
 
     // Verify default behavior: clip counts only (defaults have session-clips and arrangement-clips false)
-    expect(result.tracks[0].sessionClipCount).toBe(1);
-    expect(result.tracks[0].arrangementClipCount).toBe(1);
+    const tracks = result.tracks as {
+      sessionClipCount: number;
+      arrangementClipCount: number;
+    }[];
+
+    expect(tracks[0]!.sessionClipCount).toBe(1);
+    expect(tracks[0]!.arrangementClipCount).toBe(1);
 
     // Verify expensive Live API calls were not made due to default minimal behavior
     expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
   });
 
   it("auto-includes minimal track info when session-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -150,10 +161,21 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["session-clips"] });
 
     // Should include tracks array with minimal info
-    expect(result.tracks).toBeDefined();
-    expect(result.tracks).toHaveLength(1);
+    const tracks = result.tracks as {
+      id: string;
+      type: string;
+      trackIndex: number;
+      name?: string;
+      arrangementFollower?: boolean;
+      sessionClips?: { id: string }[];
+      arrangementClipCount?: number;
+      arrangementClips?: unknown[];
+    }[];
 
-    const track = result.tracks[0];
+    expect(tracks).toBeDefined();
+    expect(tracks).toHaveLength(1);
+
+    const track = tracks[0]!;
 
     // Minimal track info: id, type, trackIndex
     expect(track.id).toBe("track1");
@@ -167,7 +189,7 @@ describe("readLiveSet - clips", () => {
     // Should include session clips array when session-clips requested
     expect(track.sessionClips).toBeDefined();
     expect(track.sessionClips).toHaveLength(1);
-    expect(track.sessionClips[0].id).toBe("clip1");
+    expect(track.sessionClips![0]!.id).toBe("clip1");
 
     // Should include arrangement clip count (not array)
     expect(track.arrangementClipCount).toBe(1);
@@ -175,7 +197,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when arrangement-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -190,7 +212,7 @@ describe("readLiveSet - clips", () => {
       }
     });
 
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
@@ -223,7 +245,16 @@ describe("readLiveSet - clips", () => {
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
-    const track = result.tracks[0];
+    const tracks = result.tracks as {
+      id: string;
+      type: string;
+      trackIndex: number;
+      name?: string;
+      arrangementClips?: { id: string }[];
+      sessionClipCount?: number;
+      sessionClips?: unknown[];
+    }[];
+    const track = tracks[0]!;
 
     expect(track.id).toBe("track1");
     expect(track.type).toBe("audio");
@@ -235,7 +266,7 @@ describe("readLiveSet - clips", () => {
     // Should include arrangement clips array when arrangement-clips requested
     expect(track.arrangementClips).toBeDefined();
     expect(track.arrangementClips).toHaveLength(1);
-    expect(track.arrangementClips[0].id).toBe("arr_clip1");
+    expect(track.arrangementClips![0]!.id).toBe("arr_clip1");
 
     // Should include session clip count (not array)
     expect(track.sessionClipCount).toBe(0);
@@ -243,7 +274,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when all-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -262,7 +293,7 @@ describe("readLiveSet - clips", () => {
       }
     });
 
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
         return "Clip";
       }
@@ -303,7 +334,14 @@ describe("readLiveSet - clips", () => {
 
     const result = readLiveSet({ include: ["all-clips"] });
 
-    const track = result.tracks[0];
+    const tracks = result.tracks as {
+      id: string;
+      type: string;
+      trackIndex: number;
+      sessionClips?: unknown[];
+      arrangementClips?: unknown[];
+    }[];
+    const track = tracks[0]!;
 
     expect(track.id).toBe("track1");
     expect(track.type).toBe("midi");
@@ -317,7 +355,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("uses full track info when regular-tracks explicitly included with clips", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -361,7 +399,14 @@ describe("readLiveSet - clips", () => {
       include: ["regular-tracks", "session-clips"],
     });
 
-    const track = result.tracks[0];
+    const tracks = result.tracks as {
+      id: string;
+      type: string;
+      trackIndex: number;
+      name: string;
+      arrangementFollower: boolean;
+    }[];
+    const track = tracks[0]!;
 
     // Should include full track properties
     expect(track.id).toBe("track1");
@@ -372,7 +417,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns null values for non-existent track in minimal mode", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -394,15 +439,21 @@ describe("readLiveSet - clips", () => {
     const result = readLiveSet({ include: ["session-clips"] });
 
     // Track should have null id and type when it doesn't exist
-    expect(result.tracks).toBeDefined();
-    expect(result.tracks).toHaveLength(1);
-    expect(result.tracks[0].id).toBeNull();
-    expect(result.tracks[0].type).toBeNull();
-    expect(result.tracks[0].trackIndex).toBe(0);
+    const tracks = result.tracks as {
+      id: string | null;
+      type: string | null;
+      trackIndex: number;
+    }[];
+
+    expect(tracks).toBeDefined();
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0]!.id).toBeNull();
+    expect(tracks[0]!.type).toBeNull();
+    expect(tracks[0]!.trackIndex).toBe(0);
   });
 
   it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -430,7 +481,13 @@ describe("readLiveSet - clips", () => {
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
-    const track = result.tracks[0];
+    const tracks = result.tracks as {
+      id: string;
+      trackIndex: number;
+      arrangementClips: unknown[];
+      sessionClipCount: number;
+    }[];
+    const track = tracks[0]!;
 
     expect(track.id).toBe("group_track");
     expect(track.trackIndex).toBe(0);
@@ -442,7 +499,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns zero count for arrangement clips on group tracks when counting", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -471,7 +528,11 @@ describe("readLiveSet - clips", () => {
     // Without arrangement-clips, should get count instead of array
     const result = readLiveSet({ include: ["session-clips"] });
 
-    const track = result.tracks[0];
+    const tracks = result.tracks as {
+      arrangementClipCount: number;
+      arrangementClips?: unknown[];
+    }[];
+    const track = tracks[0]!;
 
     expect(track.arrangementClipCount).toBe(0);
     expect(track.arrangementClips).toBeUndefined();

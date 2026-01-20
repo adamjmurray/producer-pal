@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
@@ -8,6 +8,7 @@ import {
   liveApiType,
   LiveAPI,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { playback } from "#src/tools/control/playback.js";
 import {
@@ -158,7 +159,7 @@ describe("transport", () => {
     });
 
     // Mock the clip to be a path that resolves to track 0, scene 0
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -202,7 +203,7 @@ describe("transport", () => {
     });
 
     // Mock the clips to be paths that resolve to different tracks/scenes
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -254,7 +255,7 @@ describe("transport", () => {
     });
 
     // Mock the clips to be paths that resolve to different tracks/scenes
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -316,7 +317,7 @@ describe("transport", () => {
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
     // Mock a clip that exists but its slot doesn't
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 99 clip_slots 0 clip"; // Track 99 doesn't exist
       }
@@ -324,7 +325,7 @@ describe("transport", () => {
       return this._path;
     });
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 99 clip_slots 0") {
         return "id 0"; // This makes the clip slot not exist
       }
@@ -357,7 +358,7 @@ describe("transport", () => {
         back_to_arranger: 0, // 0 means following arrangement
       },
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "LiveSet";
       }
@@ -370,7 +371,7 @@ describe("transport", () => {
         return "Track";
       }
 
-      return this._type; // Fall back to default MockLiveAPI logic
+      return this.type; // Fall back to default MockLiveAPI logic
     });
 
     const result = playback({
@@ -422,7 +423,7 @@ describe("transport", () => {
     });
 
     // Mock the clip to be a path that resolves to track 0
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -460,7 +461,7 @@ describe("transport", () => {
     });
 
     // Mock the clips to be paths that resolve to different tracks
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -544,7 +545,7 @@ describe("transport", () => {
     });
 
     // Mock the clip to resolve to a valid track path
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
       }
@@ -553,11 +554,14 @@ describe("transport", () => {
     });
 
     // Mock track to not exist
-    const originalExists = global.LiveAPI.prototype.exists;
+    const g = globalThis as Record<string, unknown>;
+    const originalExists = (g.LiveAPI as typeof LiveAPI).prototype.exists;
 
-    global.LiveAPI.prototype.exists = vi.fn(function () {
+    (g.LiveAPI as typeof LiveAPI).prototype.exists = vi.fn(function (
+      this: MockLiveAPIContext,
+    ) {
       return !this._path?.startsWith("live_set tracks");
-    });
+    }) as unknown as () => boolean;
 
     expect(() =>
       playback({
@@ -568,7 +572,7 @@ describe("transport", () => {
       "playback stop-session-clips action failed: track for clip path does not exist",
     );
 
-    global.LiveAPI.prototype.exists = originalExists;
+    (g.LiveAPI as typeof LiveAPI).prototype.exists = originalExists;
   });
 
   it("should handle stop-all-clips action", () => {

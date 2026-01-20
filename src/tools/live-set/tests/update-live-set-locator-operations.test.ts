@@ -5,6 +5,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.js";
 import {
@@ -170,7 +171,7 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should delete all locators by name", async () => {
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];

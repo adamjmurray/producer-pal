@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
   LiveAPI,
   liveApiCall,
@@ -6,36 +6,78 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.js";
 import { select } from "#src/tools/control/select.js";
 import { setupSelectMocks, expectViewState } from "./select-test-helpers.js";
 
+// Type-safe way to access global LiveAPI
+const g = globalThis as Record<string, unknown>;
+
+// Interface for track overrides in createLiveAPIMock
+interface TrackOverrides {
+  exists?: boolean;
+  category?: string;
+  trackIndex?: number | null;
+  returnTrackIndex?: number | null;
+  id?: string;
+  path?: string;
+}
+
+// Interface for overrides parameter in createLiveAPIMock
+interface MockOverrides {
+  selectedTrack?: TrackOverrides;
+  trackViewPath?: string;
+}
+
+// Interface for mock LiveAPI instance
+interface MockLiveAPIInstance {
+  path: string;
+  _path: string;
+  exists: Mock;
+  set: Mock;
+  call: Mock;
+  get: Mock;
+  getProperty: Mock;
+  setProperty: Mock;
+  category?: string;
+  trackIndex?: number | null;
+  returnTrackIndex?: number | null;
+  id?: string;
+}
+
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);
 
 // Set up global LiveAPI
-global.LiveAPI = vi.fn(function () {
+g.LiveAPI = vi.fn(function () {
   // Will be overridden by mockImplementation in beforeEach
-});
+}) as unknown;
 
 // Mock utility functions
-vi.mock(import("#src/tools/shared/utils.js"), () => ({
-  toLiveApiView: vi.fn((view) => {
-    const viewMap = { session: 1, arrangement: 2 };
+vi.mock(import("#src/tools/shared/utils.js"), async () => ({
+  toLiveApiView: vi.fn((view: string) => {
+    const viewMap: Record<string, string> = {
+      session: "Session",
+      arrangement: "Arranger",
+    };
 
-    return viewMap[view] || 1;
+    return viewMap[view] ?? "Session";
   }),
-  fromLiveApiView: vi.fn((view) => {
-    const viewMap = { 1: "session", 2: "arrangement" };
+  fromLiveApiView: vi.fn((liveApiView: string) => {
+    const viewMap: Record<string, string> = {
+      Session: "session",
+      Arranger: "arrangement",
+    };
 
-    return viewMap[view] || "session";
+    return viewMap[liveApiView] ?? "session";
   }),
 }));
 
 describe("view", () => {
-  let mockAppView;
-  let mockSongView;
+  let mockAppView: ReturnType<typeof setupSelectMocks>["mockAppView"];
+  let mockSongView: ReturnType<typeof setupSelectMocks>["mockSongView"];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,8 +88,8 @@ describe("view", () => {
   });
 
   // Helper to create a customized LiveAPI mock implementation
-  function createLiveAPIMock(overrides = {}) {
-    return function (path) {
+  function createLiveAPIMock(overrides: MockOverrides = {}) {
+    return function (this: MockLiveAPIInstance, path: string) {
       this.path = path;
       this._path = path;
       this.exists = vi.fn().mockReturnValue(true);
@@ -55,16 +97,18 @@ describe("view", () => {
       this.call = liveApiCall;
       this.get = liveApiGet;
       this.getProperty = vi.fn();
-      this.setProperty = vi.fn((property, value) => this.set(property, value));
+      this.setProperty = vi.fn((property: string, value: unknown) =>
+        this.set(property, value),
+      );
 
       if (path === "live_app view") {
         Object.assign(this, mockAppView);
-        this.getProperty.mockReturnValue(1);
+        this.getProperty.mockReturnValue("Session"); // Session view
         this.call.mockReturnValue(0);
       } else if (path === "live_set view") {
         Object.assign(this, mockSongView);
       } else if (path === "live_set view selected_track") {
-        const trackOverrides = overrides.selectedTrack || {};
+        const trackOverrides = overrides.selectedTrack ?? {};
 
         this.exists.mockReturnValue(trackOverrides.exists ?? true);
         this.category = trackOverrides.category ?? "regular";
@@ -83,7 +127,7 @@ describe("view", () => {
       }
 
       Object.defineProperty(this, "id", {
-        get: function () {
+        get: function (this: MockLiveAPIContext) {
           return liveApiId.apply(this);
         },
       });
@@ -224,7 +268,7 @@ describe("view", () => {
       });
 
       // Verify all operations were called
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", 2);
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
       expect(liveApiCall).toHaveBeenCalledWith(
         "focus_view",
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
@@ -245,8 +289,10 @@ describe("view", () => {
         instrument: true,
       });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set return_tracks 2");
-      expect(global.LiveAPI).toHaveBeenCalledWith(
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith(
+        "live_set return_tracks 2",
+      );
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith(
         "live_set return_tracks 2 view",
       );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
@@ -255,7 +301,7 @@ describe("view", () => {
     });
 
     it("handles instrument selection using currently selected track when no category/index provided", () => {
-      global.LiveAPI.mockImplementation(
+      (g.LiveAPI as Mock).mockImplementation(
         createLiveAPIMock({ trackViewPath: "live_set tracks 3 view" }),
       );
 
@@ -263,16 +309,16 @@ describe("view", () => {
       const result = select({ instrument: true });
 
       // Should have called select_instrument on the currently selected track's view
-      expect(global.LiveAPI).toHaveBeenCalledWith(
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith(
         "live_set view selected_track",
       );
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 3 view");
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith("live_set tracks 3 view");
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result).toBeDefined();
     });
 
     it("handles instrument selection on return track using currently selected track", () => {
-      global.LiveAPI.mockImplementation(
+      (g.LiveAPI as Mock).mockImplementation(
         createLiveAPIMock({
           selectedTrack: {
             category: "return",
@@ -288,7 +334,7 @@ describe("view", () => {
       // Call select with only instrument: true on a return track
       const result = select({ instrument: true });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith(
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith(
         "live_set return_tracks 1 view",
       );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
@@ -296,7 +342,7 @@ describe("view", () => {
     });
 
     it("handles instrument selection on master track using currently selected track", () => {
-      global.LiveAPI.mockImplementation(
+      (g.LiveAPI as Mock).mockImplementation(
         createLiveAPIMock({
           selectedTrack: {
             category: "master",
@@ -312,7 +358,9 @@ describe("view", () => {
       // Call select with only instrument: true on master track
       const result = select({ instrument: true });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set master_track view");
+      expect(g.LiveAPI as Mock).toHaveBeenCalledWith(
+        "live_set master_track view",
+      );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result).toBeDefined();
     });
@@ -349,11 +397,23 @@ describe("view", () => {
   });
 
   describe("read functionality (no arguments)", () => {
-    let readAppView,
-      readSelectedTrack,
-      readSelectedScene,
-      readDetailClip,
-      readHighlightedSlot;
+    let readAppView: { getProperty: Mock; call: Mock };
+    let readSelectedTrack: {
+      exists: Mock;
+      trackIndex: number | null;
+      returnTrackIndex: number | null;
+      category: string;
+      id: string;
+      path: string;
+    };
+    let readSelectedScene: { exists: Mock; sceneIndex: number; id: string };
+    let readDetailClip: { exists: Mock; id: string };
+    let readHighlightedSlot: {
+      exists: Mock;
+      id: string;
+      trackIndex: number;
+      sceneIndex: number;
+    };
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -388,7 +448,7 @@ describe("view", () => {
       };
 
       // Mock LiveAPI constructor to return appropriate instances
-      global.LiveAPI.mockImplementation(function (path) {
+      (g.LiveAPI as Mock).mockImplementation(function (path: string) {
         return (() => {
           if (path === "live_app view") {
             return readAppView;
@@ -439,7 +499,7 @@ describe("view", () => {
 
     it("reads basic view state with session view when no arguments", () => {
       // Setup
-      readAppView.getProperty.mockReturnValue(1); // Session view
+      readAppView.getProperty.mockReturnValue("Session"); // Session view
       readAppView.call.mockReturnValue(0); // No detail views or browser visible
       readSelectedTrack.exists.mockReturnValue(true);
       readSelectedScene.exists.mockReturnValue(true);
@@ -474,8 +534,8 @@ describe("view", () => {
 
     it("reads view state with arrangement view and detail clip view", () => {
       // Setup
-      readAppView.getProperty.mockReturnValue(2); // Arrangement view
-      readAppView.call.mockImplementation((method, view) => {
+      readAppView.getProperty.mockReturnValue("Arranger"); // Arrangement view
+      readAppView.call.mockImplementation((method: string, view: string) => {
         if (
           method === "is_view_visible" &&
           view === LIVE_API_VIEW_NAMES.DETAIL_CLIP
@@ -514,8 +574,8 @@ describe("view", () => {
 
     it("reads view state with device detail view visible", () => {
       // Setup
-      readAppView.getProperty.mockReturnValue(1); // Session view
-      readAppView.call.mockImplementation((method, view) => {
+      readAppView.getProperty.mockReturnValue("Session"); // Session view
+      readAppView.call.mockImplementation((method: string, view: string) => {
         // Return 0 for DETAIL_CLIP, 1 for DETAIL_DEVICE_CHAIN
         if (
           method === "is_view_visible" &&
@@ -555,7 +615,7 @@ describe("view", () => {
 
     it("reads view state with return track selected showing returnTrackIndex", () => {
       // Setup
-      readAppView.getProperty.mockReturnValue(1); // Session view
+      readAppView.getProperty.mockReturnValue("Session"); // Session view
       readAppView.call.mockReturnValue(0); // No detail views or browser visible
       readSelectedTrack.exists.mockReturnValue(true);
       readSelectedTrack.category = "return";
@@ -568,7 +628,7 @@ describe("view", () => {
       readHighlightedSlot.exists.mockReturnValue(false);
 
       // Mock LiveAPI to return return track view
-      global.LiveAPI.mockImplementation(function (path) {
+      (g.LiveAPI as Mock).mockImplementation(function (path: string) {
         if (path === "live_app view") {
           return readAppView;
         }
@@ -612,7 +672,7 @@ describe("view", () => {
 
     it("handles null values when nothing is selected", () => {
       // Setup
-      readAppView.getProperty.mockReturnValue(2); // Arrangement view
+      readAppView.getProperty.mockReturnValue("Arranger"); // Arrangement view
       readAppView.call.mockReturnValue(0); // No detail views or browser visible
       readSelectedTrack.exists.mockReturnValue(false);
       readSelectedScene.exists.mockReturnValue(false);

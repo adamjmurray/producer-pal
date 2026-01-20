@@ -7,6 +7,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -16,7 +17,7 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - basic reading", () => {
   it("returns live set information including tracks and scenes", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -51,7 +52,7 @@ describe("readLiveSet - basic reading", () => {
       }
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set view selected_track":
           return "live_set tracks 0"; // Return path of the selected track
@@ -231,7 +232,7 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("handles when no tracks or scenes exist", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this.path === "live_set") {
         return "live_set";
       }
@@ -239,7 +240,7 @@ describe("readLiveSet - basic reading", () => {
       return "id 0"; // All selection objects return non-existent IDs
     });
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       return this._path;
     });
 
@@ -285,7 +286,7 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("includes device information across multiple tracks with includeDrumPads", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -382,7 +383,7 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("excludes drum rack devices by default", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set") {
         return "live_set_id";
       }
@@ -479,20 +480,25 @@ describe("readLiveSet - basic reading", () => {
     });
 
     // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
-    expect(result.tracks[0].instrument).toStrictEqual(
+    const tracks = result.tracks as {
+      instrument: unknown;
+      audioEffects: unknown[];
+    }[];
+
+    expect(tracks[0]!.instrument).toStrictEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
         // drumPads: expect.any(Array), // Only included when drum-pads is requested
       }),
     );
-    expect(result.tracks[0].audioEffects).toStrictEqual([
+    expect(tracks[0]!.audioEffects).toStrictEqual([
       expect.objectContaining({
         type: "audio-effect: Reverb",
       }),
     ]);
     // Drum rack device should be present (drumPads hidden)
-    const drumRack = result.tracks[0].instrument;
+    const drumRack = tracks[0]!.instrument;
 
     expect(drumRack).toBeDefined();
     // drumPads hidden - drumMap provides the critical pitch-name mapping

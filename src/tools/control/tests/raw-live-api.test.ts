@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LiveAPI } from "#src/test/mocks/mock-live-api.js";
 import {
   liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiSet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
-import { rawLiveApi } from "#src/tools/control/raw-live-api.js";
+import {
+  rawLiveApi,
+  type RawApiOperation,
+} from "#src/tools/control/raw-live-api.js";
+
+// Type-safe way to access global LiveAPI
+const g = globalThis as Record<string, unknown>;
 
 describe("rawLiveApi", () => {
   beforeEach(() => {
@@ -23,27 +31,44 @@ describe("rawLiveApi", () => {
     });
 
     // Mock LiveAPI extensions that get added to instances
-    global.LiveAPI.prototype.getProperty = vi.fn(function (property) {
+    (g.LiveAPI as typeof LiveAPI).prototype.getProperty = vi.fn(function (
+      this: MockLiveAPIContext & { get: (prop: string) => unknown },
+      property: string,
+    ) {
       const result = this.get(property);
 
       return Array.isArray(result) ? result[0] : result;
-    });
+    }) as (property: string) => unknown;
 
-    global.LiveAPI.prototype.getChildIds = vi.fn((childType) => {
-      if (!childType) {
-        throw new Error("Missing child type");
-      }
+    (g.LiveAPI as typeof LiveAPI).prototype.getChildIds = vi.fn(
+      (childType: string) => {
+        if (!childType) {
+          throw new Error("Missing child type");
+        }
 
-      return [`id_${childType}_1`, `id_${childType}_2`];
-    });
+        return [`id_${childType}_1`, `id_${childType}_2`];
+      },
+    ) as (name: string) => string[];
 
-    global.LiveAPI.prototype.exists = vi.fn(() => true);
+    (g.LiveAPI as typeof LiveAPI).prototype.exists = vi.fn(
+      () => true,
+    ) as () => boolean;
 
-    global.LiveAPI.prototype.getColor = vi.fn(() => "#FF0000");
+    (g.LiveAPI as typeof LiveAPI).prototype.getColor = vi.fn(
+      () => "#FF0000",
+    ) as () => string;
 
-    global.LiveAPI.prototype.setColor = vi.fn((color) => color);
+    (g.LiveAPI as typeof LiveAPI).prototype.setColor = vi.fn(
+      (color: string) => color,
+    ) as (color: string) => string;
 
-    global.LiveAPI.prototype.goto = vi.fn(function (path) {
+    // goto is not on the mock LiveAPI type, so cast to assign it
+    (
+      (g.LiveAPI as typeof LiveAPI).prototype as unknown as Record<
+        string,
+        unknown
+      >
+    ).goto = vi.fn(function (this: MockLiveAPIContext, path: string) {
       this._path = path;
       this._id = path.replaceAll(/\s+/g, "/");
 
@@ -53,13 +78,17 @@ describe("rawLiveApi", () => {
 
   describe("input validation", () => {
     it("should throw error if operations is not an array", () => {
-      expect(() => rawLiveApi({ operations: "not-array" })).toThrow(
-        "operations must be an array",
-      );
+      expect(() =>
+        rawLiveApi({ operations: "not-array" } as unknown as Parameters<
+          typeof rawLiveApi
+        >[0]),
+      ).toThrow("operations must be an array");
     });
 
     it("should throw error if operations array exceeds 50 operations", () => {
-      const operations = Array(51).fill({ type: "info" });
+      const operations = Array(51).fill({
+        type: "info",
+      }) as RawApiOperation[];
 
       expect(() => rawLiveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
@@ -67,9 +96,11 @@ describe("rawLiveApi", () => {
     });
 
     it("should throw error for unknown operation type", () => {
-      expect(() => rawLiveApi({ operations: [{ type: "unknown" }] })).toThrow(
-        "Unknown operation type: unknown",
-      );
+      expect(() =>
+        rawLiveApi({
+          operations: [{ type: "unknown" }],
+        } as unknown as Parameters<typeof rawLiveApi>[0]),
+      ).toThrow("Unknown operation type: unknown");
     });
   });
 
@@ -82,8 +113,8 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].operation.type).toBe("get_property");
-      expect(result.results[0].result).toBe("test-id");
+      expect(result.results[0]!.operation.type).toBe("get_property");
+      expect(result.results[0]!.result).toBe("test-id");
     });
 
     it("should throw error for get_property without property", () => {
@@ -100,8 +131,8 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].operation.type).toBe("set_property");
-      expect(result.results[0].result).toBe(140);
+      expect(result.results[0]!.operation.type).toBe("set_property");
+      expect(result.results[0]!.result).toBe(140);
     });
 
     it("should throw error for set_property without property", () => {
@@ -128,8 +159,8 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].operation.type).toBe("call_method");
-      expect(result.results[0].result).toStrictEqual([120]);
+      expect(result.results[0]!.operation.type).toBe("call_method");
+      expect(result.results[0]!.result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -161,7 +192,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toStrictEqual([120]);
+      expect(result.results[0]!.result).toStrictEqual([120]);
       expect(liveApiGet).toHaveBeenCalledWith("tempo");
     });
 
@@ -181,7 +212,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe(1);
+      expect(result.results[0]!.result).toBe(1);
       expect(liveApiSet).toHaveBeenCalledWith("tempo", 130);
     });
 
@@ -207,7 +238,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe("001.01.01.000");
+      expect(result.results[0]!.result).toBe("001.01.01.000");
       expect(liveApiCall).toHaveBeenCalledWith("get_current_beats_song_time");
     });
 
@@ -225,7 +256,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe(1);
+      expect(result.results[0]!.result).toBe(1);
       expect(result.path).toBe("live_set tracks 0");
     });
 
@@ -240,7 +271,7 @@ describe("rawLiveApi", () => {
     it("should handle info operation", () => {
       const mockInfo = "Mock LiveAPI info";
 
-      Object.defineProperty(global.LiveAPI.prototype, "info", {
+      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
         get: () => mockInfo,
         configurable: true,
       });
@@ -250,7 +281,7 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe(mockInfo);
+      expect(result.results[0]!.result).toBe(mockInfo);
     });
   });
 
@@ -263,8 +294,10 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe("Test Track");
-      expect(global.LiveAPI.prototype.getProperty).toHaveBeenCalledWith("name");
+      expect(result.results[0]!.result).toBe("Test Track");
+      expect(
+        (g.LiveAPI as typeof LiveAPI).prototype.getProperty,
+      ).toHaveBeenCalledWith("name");
     });
 
     it("should throw error for getProperty without property", () => {
@@ -281,13 +314,13 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toStrictEqual([
+      expect(result.results[0]!.result).toStrictEqual([
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
-      expect(global.LiveAPI.prototype.getChildIds).toHaveBeenCalledWith(
-        "clip_slots",
-      );
+      expect(
+        (g.LiveAPI as typeof LiveAPI).prototype.getChildIds,
+      ).toHaveBeenCalledWith("clip_slots");
     });
 
     it("should throw error for getChildIds without property", () => {
@@ -304,8 +337,8 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe(true);
-      expect(global.LiveAPI.prototype.exists).toHaveBeenCalled();
+      expect(result.results[0]!.result).toBe(true);
+      expect((g.LiveAPI as typeof LiveAPI).prototype.exists).toHaveBeenCalled();
     });
 
     it("should handle getColor operation", () => {
@@ -314,8 +347,10 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe("#FF0000");
-      expect(global.LiveAPI.prototype.getColor).toHaveBeenCalled();
+      expect(result.results[0]!.result).toBe("#FF0000");
+      expect(
+        (g.LiveAPI as typeof LiveAPI).prototype.getColor,
+      ).toHaveBeenCalled();
     });
 
     it("should handle setColor operation", () => {
@@ -324,8 +359,10 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].result).toBe("#00FF00");
-      expect(global.LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00");
+      expect(result.results[0]!.result).toBe("#00FF00");
+      expect(
+        (g.LiveAPI as typeof LiveAPI).prototype.setColor,
+      ).toHaveBeenCalledWith("#00FF00");
     });
 
     it("should throw error for setColor without value", () => {
@@ -363,7 +400,7 @@ describe("rawLiveApi", () => {
     it("should handle multiple operations sequentially", () => {
       liveApiId.mockReturnValue("test-id");
       liveApiGet.mockReturnValueOnce([120]);
-      Object.defineProperty(global.LiveAPI.prototype, "info", {
+      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
         get: () => "Mock info",
         configurable: true,
       });
@@ -377,9 +414,9 @@ describe("rawLiveApi", () => {
       });
 
       expect(result.results).toHaveLength(3);
-      expect(result.results[0].operation.type).toBe("get_property");
-      expect(result.results[1].operation.type).toBe("get");
-      expect(result.results[2].operation.type).toBe("info");
+      expect(result.results[0]!.operation.type).toBe("get_property");
+      expect(result.results[1]!.operation.type).toBe("get");
+      expect(result.results[2]!.operation.type).toBe("info");
     });
 
     it("should return operation details with each result", () => {
@@ -389,11 +426,11 @@ describe("rawLiveApi", () => {
         operations: [{ type: "get", property: "tempo" }],
       });
 
-      expect(result.results[0].operation).toStrictEqual({
+      expect(result.results[0]!.operation).toStrictEqual({
         type: "get",
         property: "tempo",
       });
-      expect(result.results[0].result).toStrictEqual([120]);
+      expect(result.results[0]!.result).toStrictEqual([120]);
     });
   });
 
@@ -401,7 +438,7 @@ describe("rawLiveApi", () => {
     it("should return path, id, and results", () => {
       liveApiPath.mockReturnValue("live_set");
       liveApiId.mockReturnValue("1");
-      Object.defineProperty(global.LiveAPI.prototype, "info", {
+      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
         get: () => "Mock LiveAPI info",
         configurable: true,
       });
@@ -429,7 +466,7 @@ describe("rawLiveApi", () => {
       expect(() =>
         rawLiveApi({
           operations: [{ type: "unknown_operation" }],
-        }),
+        } as unknown as Parameters<typeof rawLiveApi>[0]),
       ).toThrow("Unknown operation type: unknown_operation");
     });
   });

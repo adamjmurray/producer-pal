@@ -3,6 +3,7 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.js";
@@ -10,7 +11,7 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.js";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -135,7 +136,7 @@ describe("readLiveSet - track types", () => {
   });
 
   it("includes all available options when '*' is used", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
           return "live_set_id";
@@ -241,7 +242,9 @@ describe("readLiveSet - track types", () => {
     );
 
     // Verify track has all expected properties
-    expect(resultWildcard.tracks[0]).toStrictEqual(
+    const tracks = resultWildcard.tracks as unknown[];
+
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         instrument: expect.any(Object),
         inputRoutingChannel: expect.any(Object),
