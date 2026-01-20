@@ -10,6 +10,11 @@ import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-help
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 import "#src/live-api-adapter/live-api-extensions.js";
 
+interface MockContext {
+  _path?: string;
+  _id?: string;
+}
+
 describe("updateClip - Properties and ID handling", () => {
   beforeEach(() => {
     setupMocks();
@@ -90,7 +95,7 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockContext) {
       switch (this._path) {
         case "id 123":
           return "123";

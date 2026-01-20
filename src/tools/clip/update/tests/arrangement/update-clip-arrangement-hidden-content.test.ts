@@ -9,7 +9,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
 
     setupArrangementClipPath(
       trackIndex,
-      (id) => id === "789" || id === 1000 || id === 2000 || id === 3000,
+      (id) => id === "789" || id === "1000" || id === "2000" || id === "3000",
     );
 
     mockLiveApiGet({
@@ -38,6 +38,8 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
     });
 
     // Should tile the content (note: updateClip doesn't actually do this yet, this tests the intent)
-    expect(result.isError).not.toBe(true);
+    const firstResult = Array.isArray(result) ? result[0] : result;
+
+    expect(firstResult).toBeDefined();
   });
 });

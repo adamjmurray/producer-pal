@@ -36,12 +36,17 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Mock existing notes, then return added notes on subsequent calls
-    let addedNotes = [];
+    let addedNotes: unknown[] = [];
     const existingNotes = [createNote()];
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes ?? [];
+        const arg = args[0] as { notes?: unknown[] } | undefined;
+
+        addedNotes = arg?.notes ?? [];
       } else if (method === "get_notes_extended") {
         // First call returns existing notes, subsequent calls return added notes
         if (addedNotes.length === 0) {

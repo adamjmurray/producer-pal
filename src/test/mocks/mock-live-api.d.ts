@@ -17,10 +17,10 @@ export type LiveAPIMockFn<
 
 export class MockSequence extends Array<unknown> {}
 
-export const liveApiId: LiveAPIMockFn<[], string>;
+export const liveApiId: LiveAPIMockFn<[], string | undefined>;
 export const liveApiPath: LiveAPIMockFn<[], string | undefined>;
 export const liveApiType: LiveAPIMockFn<[], string | undefined>;
-export const liveApiGet: LiveAPIMockFn<[string], unknown[]>;
+export const liveApiGet: LiveAPIMockFn<[string], unknown[] | null>;
 export const liveApiSet: LiveAPIMockFn<[string, unknown], void>;
 export const liveApiCall: LiveAPIMockFn<[string, ...unknown[]], unknown>;
 
@@ -109,3 +109,50 @@ export function expectedClip(overrides?: Record<string, unknown>): {
 
 /** Create Live API children array format from child IDs */
 export function children(...childIds: string[]): string[];
+
+/**
+ * Type for the mock LiveAPI instance returned by the constructor.
+ */
+interface MockLiveAPIInstance {
+  _path?: string;
+  _id?: string;
+  path?: string | null;
+  id?: string | null;
+  exists: Mock;
+  set: Mock;
+  call: Mock;
+  get: Mock;
+  getProperty: Mock;
+  setProperty: Mock;
+  trackIndex?: number | null;
+  returnTrackIndex?: number | null;
+  category?: string | null;
+  sceneIndex?: number | null;
+  type?: string;
+}
+
+/**
+ * Type for the mock LiveAPI constructor with static methods and prototype.
+ */
+type MockLiveAPIConstructor = Mock<(path?: string) => MockLiveAPIInstance> & {
+  from: Mock;
+  prototype: {
+    exists: Mock;
+  };
+};
+
+/**
+ * Mock LiveAPI constructor for tests.
+ * Extends the Node.js global with a mockable LiveAPI class.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var LiveAPI: MockLiveAPIConstructor;
+
+  // Also extend NodeJS.Global for compatibility
+  namespace NodeJS {
+    interface Global {
+      LiveAPI: MockLiveAPIConstructor;
+    }
+  }
+}

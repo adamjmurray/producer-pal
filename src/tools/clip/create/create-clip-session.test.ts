@@ -145,9 +145,11 @@ describe("createClip - session view", () => {
     });
 
     // Mock scene to not exist
-    const originalExists = global.LiveAPI.prototype.exists;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing mock LiveAPI on global
+    const liveAPIGlobal = global as any;
+    const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-    global.LiveAPI.prototype.exists = vi.fn(function (this: {
+    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
       _path?: string;
     }) {
       // Scene does not exist
@@ -166,7 +168,7 @@ describe("createClip - session view", () => {
       'createClip auto="play-scene" failed: scene at sceneIndex=0 does not exist',
     );
 
-    global.LiveAPI.prototype.exists = originalExists;
+    liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
   });
 
   it("should throw error for invalid auto value", () => {

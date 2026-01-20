@@ -14,6 +14,11 @@ import {
   assertRevealedClipMarkers,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties
 // are unreliable for detecting hidden audio content, we changed the behavior to
 // always attempt to extend audio clips to the target length, letting Live fill
@@ -80,7 +85,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     const revealedClipId = "802";
     const sceneIndex = 0;
 
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockContext) {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
@@ -153,7 +158,10 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       },
     });
 
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "create_audio_clip") return ["id", tempSessionClipId];
       if (method === "duplicate_clip_to_arrangement")
         return ["id", revealedClipId];
@@ -230,8 +238,11 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     const movedClipId = "901";
     const revealedClipId = "902";
 
-    liveApiPath.mockImplementation(function () {
-      if ([clipId, movedClipId, revealedClipId].includes(this._id)) {
+    liveApiPath.mockImplementation(function (this: MockContext) {
+      if (
+        this._id &&
+        [clipId, movedClipId, revealedClipId].includes(this._id)
+      ) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
 
@@ -290,7 +301,10 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     let duplicateCallCount = 0;
 
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCallCount++;
 

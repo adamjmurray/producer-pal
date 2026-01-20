@@ -108,14 +108,16 @@ export function setupMocks(): void {
   liveApiCall.mockImplementation(function (
     this: MockContext,
     method: string,
-    ...args: Array<{ notes?: unknown[] }>
+    ...args: unknown[]
   ) {
     const id = this.id ?? this._id;
 
     if (method === "add_new_notes") {
       // Store the notes for this clip ID
+      const firstArg = args[0] as { notes?: unknown[] } | undefined;
+
       if (id) {
-        addedNotesByClipId[id] = args[0]?.notes ?? [];
+        addedNotesByClipId[id] = firstArg?.notes ?? [];
       }
     } else if (method === "get_notes_extended") {
       // Return the notes that were previously added for this clip
@@ -308,7 +310,6 @@ export function assertSourceClipEndMarker(
   clipId: string,
   expectedEndMarker: number,
 ): void {
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(
     expect.objectContaining({ id: clipId }),
     "end_marker",
@@ -345,17 +346,11 @@ export function assertRevealedClipMarkers(
 ): void {
   const ctx = expect.objectContaining({ id: clipId });
 
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 1);
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_end", endMarker);
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_start", startMarker);
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "end_marker", endMarker);
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "start_marker", startMarker);
-  // @ts-expect-error - custom vitest matcher from expect-extensions.js
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 0);
 }
 
@@ -469,6 +464,7 @@ export function setupAudioArrangementTest({
     endMarker: targetEndMarker,
   });
 
-  mockLiveApiGet({ ...sourceMock, ...revealedMock });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- merging typed mock objects
+  mockLiveApiGet({ ...sourceMock, ...revealedMock } as any);
   setupDuplicateClipMock(revealedClipId);
 }

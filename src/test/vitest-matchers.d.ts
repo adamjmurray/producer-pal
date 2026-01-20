@@ -18,5 +18,10 @@ declare module "vitest" {
       expectedThis: unknown,
       ...expectedArgs: unknown[]
     ): T;
+    /**
+     * Check the length property (overload for bar:beat format strings).
+     * Used for clip length assertions like "1:0" (1 bar, 0 beats).
+     */
+    toHaveLength(expected: number | string): T;
   }
 }

@@ -8,6 +8,12 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
+interface MockContext {
+  id?: string;
+  _id?: string;
+  _path?: string;
+}
+
 describe("updateClip - Advanced note operations", () => {
   beforeEach(() => {
     setupMocks();
@@ -32,7 +38,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock("123");
 
     // Mock existing notes in the clip
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -75,17 +84,15 @@ describe("updateClip - Advanced note operations", () => {
     // Should add back filtered existing notes plus new regular notes
     const addNewNotesCall = liveApiCall.mock.calls.find(
       (call) => call[0] === "add_new_notes",
-    );
+    ) as unknown[] | undefined;
 
     expect(addNewNotesCall).toBeDefined();
-    expect(addNewNotesCall[1].notes).toHaveLength(3);
-    expect(addNewNotesCall[1].notes).toContainEqual(
-      note(62, 1, { velocity: 80 }),
-    ); // D3 at 1|2
-    expect(addNewNotesCall[1].notes).toContainEqual(
-      note(64, 0, { velocity: 90 }),
-    ); // E3 at 1|1
-    expect(addNewNotesCall[1].notes).toContainEqual(note(65, 0)); // New F3 note
+    const notesArg = addNewNotesCall![1] as { notes: unknown[] };
+
+    expect(notesArg.notes).toHaveLength(3);
+    expect(notesArg.notes).toContainEqual(note(62, 1, { velocity: 80 })); // D3 at 1|2
+    expect(notesArg.notes).toContainEqual(note(64, 0, { velocity: 90 })); // E3 at 1|1
+    expect(notesArg.notes).toContainEqual(note(65, 0)); // New F3 note
 
     expect(result).toStrictEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
@@ -94,7 +101,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock("123");
 
     // Mock existing notes that don't match the v0 note
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [note(62, 1, { velocity: 80 })], // D3 at 1|2 - no match
@@ -138,7 +148,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock("123");
 
     // Mock existing notes
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] });
       }
@@ -186,9 +199,15 @@ describe("updateClip - Advanced note operations", () => {
     ];
     let addedNotes = existingNotes;
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes ?? [];
+        const arg = args[0] as { notes?: typeof existingNotes } | undefined;
+
+        addedNotes = arg?.notes ?? [];
       } else if (method === "get_notes_extended") {
         return JSON.stringify({ notes: addedNotes });
       }
@@ -225,15 +244,21 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock("123", { length: 8 }); // 2 bars
 
     // Mock to track added notes and return subset based on length parameter
-    let allAddedNotes = [];
+    let allAddedNotes: Array<{ start_time: number }> = [];
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "add_new_notes") {
-        allAddedNotes = args[0]?.notes ?? [];
+        const arg = args[0] as { notes?: typeof allAddedNotes } | undefined;
+
+        allAddedNotes = arg?.notes ?? [];
       } else if (method === "get_notes_extended") {
         // First call returns empty (replace mode), second call filters by length
-        const startBeat = args[2] ?? 0;
-        const endBeat = args[3] ?? Infinity;
+        const startBeat = (args[2] as number | undefined) ?? 0;
+        const endBeat = (args[3] as number | undefined) ?? Infinity;
         const notesInRange = allAddedNotes.filter(
           (n) => n.start_time >= startBeat && n.start_time < endBeat,
         );
@@ -273,7 +298,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock("123");
 
     // Mock existing notes in bar 1
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    liveApiCall.mockImplementation(function (
+      this: MockContext,
+      method: string,
+    ) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [

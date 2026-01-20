@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiCall, liveApiPath } from "#src/test/mocks/mock-live-api.js";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
 
+interface MockPathContext {
+  _id?: string;
+  _path?: string;
+}
+
 describe("update-clip-arrangement-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,7 +32,7 @@ describe("update-clip-arrangement-helpers", () => {
       const tracksWithMovedClips = new Map();
 
       const result = handleArrangementStartOperation({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 16,
         tracksWithMovedClips,
       });
@@ -59,7 +64,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       // Should not throw, just warn and return original clip id
       const result = handleArrangementStartOperation({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 16,
         tracksWithMovedClips,
       });
@@ -71,7 +76,7 @@ describe("update-clip-arrangement-helpers", () => {
       const trackIndex = 2;
       const newClipId = "999";
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockPathContext) {
         if (this._id === "789") {
           return "live_set tracks 2 arrangement_clips 0";
         }
@@ -100,7 +105,7 @@ describe("update-clip-arrangement-helpers", () => {
       const tracksWithMovedClips = new Map();
 
       const result = handleArrangementStartOperation({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 32,
         tracksWithMovedClips,
       });
@@ -143,7 +148,7 @@ describe("update-clip-arrangement-helpers", () => {
       const tracksWithMovedClips = new Map([[trackIndex, 2]]);
 
       handleArrangementStartOperation({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 64,
         tracksWithMovedClips,
       });

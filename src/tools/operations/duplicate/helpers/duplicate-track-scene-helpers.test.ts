@@ -23,6 +23,7 @@ interface MockContext {
 }
 
 // Mock updateClip to avoid complex internal logic
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/tools/clip/update/update-clip.js"), () => ({
   updateClip: vi.fn(({ ids }: { ids: string }) => {
     return [{ id: ids }];

@@ -12,6 +12,11 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
     setupMocks();
@@ -20,7 +25,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should tile clip with exact multiples (no remainder) - extends existing", () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === 1000);
+    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
 
     mockLiveApiGet({
       789: {
@@ -87,7 +92,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should handle insufficient content by tiling what exists", () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === 1000);
+    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
 
     mockLiveApiGet({
       789: {
@@ -121,7 +126,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
         mockLiveApiGet({
           [id]: {
-            end_time: (args[1] ?? 0) + 4.0,
+            end_time: (Number(args[1]) || 0) + 4.0,
           },
         });
 
@@ -227,10 +232,14 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Track set() calls on created clips
-    const setCallsByClip = {};
+    const setCallsByClip: Record<string, Record<string, unknown>> = {};
 
-    liveApiSet.mockImplementation(function (prop, value) {
-      const clipId = this._id;
+    liveApiSet.mockImplementation(function (
+      this: MockContext,
+      prop: string,
+      value: unknown,
+    ) {
+      const clipId = this._id ?? "";
 
       setCallsByClip[clipId] ??= {};
 
@@ -267,9 +276,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     //         tileStartMarker = loop_start + (5 % clipLength) = 1 + (5 % 3) = 1 + 2 = 3
     // Tile 2: startOffset = 5 + 3 = 8
     //         tileStartMarker = loop_start + (8 % clipLength) = 1 + (8 % 3) = 1 + 2 = 3
-    expect(setCallsByClip["1000"].start_marker).toBe(3.0);
-    expect(setCallsByClip["1001"].start_marker).toBe(3.0);
-    expect(setCallsByClip["1002"].start_marker).toBe(3.0);
+    expect(setCallsByClip["1000"]!.start_marker).toBe(3.0);
+    expect(setCallsByClip["1001"]!.start_marker).toBe(3.0);
+    expect(setCallsByClip["1002"]!.start_marker).toBe(3.0);
 
     expect(result).toStrictEqual([
       { id: "789" },
@@ -283,7 +292,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const trackIndex = 0;
 
     // Override liveApiId for this test to handle new clip IDs
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockContext) {
       if (this._path === "id 1000" || this._id === "1000") {
         return "1000";
       }
@@ -300,9 +309,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       (id) =>
         id === "789" ||
         id === "1000" ||
-        id === 1000 ||
+        id === "1000" ||
         id === "1001" ||
-        id === 1001,
+        id === "1001",
     );
 
     mockLiveApiGet({

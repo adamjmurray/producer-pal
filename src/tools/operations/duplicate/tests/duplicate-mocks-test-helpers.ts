@@ -2,6 +2,7 @@
 // Import this file at the top of each test file to set up the mocks.
 import { vi } from "vitest";
 
+// @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/tools/clip/update/update-clip.js"), async () => {
   const s = await import("./setup.js");
 

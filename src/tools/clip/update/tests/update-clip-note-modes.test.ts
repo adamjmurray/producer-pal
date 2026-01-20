@@ -16,7 +16,7 @@ const DEFAULT_C3_NOTE = {
 };
 
 function expectNoteReplaceAndAddCalls(
-  clipId,
+  clipId: string,
   expectedNotes = [DEFAULT_C3_NOTE],
 ) {
   expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -117,11 +117,16 @@ describe("updateClip - Note update modes", () => {
     setupMidiClipMock("123");
 
     // Mock empty existing notes, then return added notes on subsequent calls
-    let addedNotes = [];
+    let addedNotes: unknown[] = [];
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (
+      method: string,
+      ...args: unknown[]
+    ) {
       if (method === "add_new_notes") {
-        addedNotes = args[0]?.notes ?? [];
+        const arg = args[0] as { notes?: unknown[] } | undefined;
+
+        addedNotes = arg?.notes ?? [];
       } else if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: addedNotes,

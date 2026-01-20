@@ -8,17 +8,30 @@ import {
 import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.js";
 import { updateClip } from "#src/tools/clip/update/update-clip.js";
 
+interface MockContext {
+  _id?: string;
+  _path?: string;
+}
+
+interface SetupMocksOptions {
+  clipId: string;
+  tileIds: string[];
+  trackIndex?: number;
+  clipProps: Record<string, unknown>;
+  tileProps: Record<string, unknown>;
+}
+
 function setupUnloopedTilingMocks({
   clipId,
   tileIds,
   trackIndex = 0,
   clipProps,
   tileProps,
-}) {
+}: SetupMocksOptions) {
   const counter = { count: 0 };
 
-  liveApiPath.mockImplementation(function () {
-    if (this._id === clipId || tileIds.includes(this._id)) {
+  liveApiPath.mockImplementation(function (this: MockContext) {
+    if (this._id === clipId || tileIds.includes(this._id ?? "")) {
       return `live_set tracks ${trackIndex} arrangement_clips 0`;
     }
 
@@ -49,7 +62,7 @@ function setupUnloopedTilingMocks({
     [`live_set tracks ${trackIndex}`]: { arrangement_clips: ["id", clipId] },
   });
 
-  liveApiCall.mockImplementation(function (method) {
+  liveApiCall.mockImplementation(function (this: MockContext, method: string) {
     if (method === "duplicate_clip_to_arrangement") {
       return `id ${tileIds[counter.count++]}`;
     }
@@ -176,7 +189,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     expect(result).toHaveLength(7);
-    expect(result[0]).toStrictEqual({ id: clipId });
+    expect((result as { id: string }[])[0]).toStrictEqual({ id: clipId });
   });
 
   it("should handle start_marker offset correctly when tiling", () => {
@@ -236,8 +249,10 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     // Note: 824 is consumed by holding area, 825 is the final partial tile
-    expect(result).toHaveLength(5);
-    expect(result[0]).toStrictEqual({ id: clipId });
-    expect(result[4]).toStrictEqual({ id: "825" });
+    const resultArray = result as { id: string }[];
+
+    expect(resultArray).toHaveLength(5);
+    expect(resultArray[0]).toStrictEqual({ id: clipId });
+    expect(resultArray[4]).toStrictEqual({ id: "825" });
   });
 });

@@ -159,9 +159,13 @@ describe("createClip - arrangement view", () => {
     liveApiCall.mockReturnValue("id 999");
 
     // Mock the clip to not exist after creation
-    const originalExists = global.LiveAPI.prototype.exists;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing mock LiveAPI on global
+    const liveAPIGlobal = global as any;
+    const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-    global.LiveAPI.prototype.exists = vi.fn(function (this: { _path: string }) {
+    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
+      _path: string;
+    }) {
       // Track exists, but clip doesn't
       return this._path === "live_set tracks 0";
     });
@@ -177,6 +181,6 @@ describe("createClip - arrangement view", () => {
     // Should return empty array (no clips created)
     expect(result).toStrictEqual([]);
 
-    global.LiveAPI.prototype.exists = originalExists;
+    liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
   });
 });

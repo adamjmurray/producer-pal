@@ -11,8 +11,13 @@ import {
   setAudioParameters,
 } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
+type MockClip = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
+type MockTrack = any;
+
 describe("setAudioParameters", () => {
-  let mockClip;
+  let mockClip: MockClip;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,8 +32,8 @@ describe("setAudioParameters", () => {
 
     // Uses lookup table - 0 dB corresponds to ~0.4 in Live's gain range
     expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
-    expect(liveApiSet.mock.calls[0][1]).toBeGreaterThan(0.3);
-    expect(liveApiSet.mock.calls[0][1]).toBeLessThan(0.5);
+    expect(liveApiSet.mock.calls[0]![1]).toBeGreaterThan(0.3);
+    expect(liveApiSet.mock.calls[0]![1]).toBeLessThan(0.5);
   });
 
   it("should set gain for negative dB values", () => {
@@ -36,8 +41,8 @@ describe("setAudioParameters", () => {
 
     // Uses lookup table for conversion
     expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
-    expect(liveApiSet.mock.calls[0][1]).toBeGreaterThan(0);
-    expect(liveApiSet.mock.calls[0][1]).toBeLessThan(0.4);
+    expect(liveApiSet.mock.calls[0]![1]).toBeGreaterThan(0);
+    expect(liveApiSet.mock.calls[0]![1]).toBeLessThan(0.4);
   });
 
   it("should set pitchShift with coarse and fine values", () => {
@@ -145,7 +150,7 @@ describe("setAudioParameters", () => {
 });
 
 describe("handleWarpMarkerOperation", () => {
-  let mockClip;
+  let mockClip: MockClip;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -170,7 +175,7 @@ describe("handleWarpMarkerOperation", () => {
     mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
 
     // Should not throw, just warn and return early
-    handleWarpMarkerOperation(mockClip, "add", null, 44100);
+    handleWarpMarkerOperation(mockClip, "add", undefined, 44100);
 
     expect(liveApiCall).not.toHaveBeenCalled();
   });
@@ -190,7 +195,7 @@ describe("handleWarpMarkerOperation", () => {
     });
 
     it("should add warp marker without sample time", () => {
-      handleWarpMarkerOperation(mockClip, "add", 4.0, null);
+      handleWarpMarkerOperation(mockClip, "add", 4.0, undefined);
 
       expect(liveApiCall).toHaveBeenCalledWith("add_warp_marker", {
         beat_time: 4.0,
@@ -205,19 +210,19 @@ describe("handleWarpMarkerOperation", () => {
 
     it("should warn and skip when warpDistance is not provided", () => {
       // Should not throw, just warn and return early
-      handleWarpMarkerOperation(mockClip, "move", 4.0, null, null);
+      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
 
       expect(liveApiCall).not.toHaveBeenCalled();
     });
 
     it("should move warp marker by specified distance", () => {
-      handleWarpMarkerOperation(mockClip, "move", 4.0, null, 0.5);
+      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, 0.5);
 
       expect(liveApiCall).toHaveBeenCalledWith("move_warp_marker", 4.0, 0.5);
     });
 
     it("should move warp marker with negative distance", () => {
-      handleWarpMarkerOperation(mockClip, "move", 8.0, null, -1.0);
+      handleWarpMarkerOperation(mockClip, "move", 8.0, undefined, -1.0);
 
       expect(liveApiCall).toHaveBeenCalledWith("move_warp_marker", 8.0, -1.0);
     });
@@ -242,7 +247,7 @@ describe("revealAudioContentAtPosition", () => {
   });
 
   it("should handle warped clips with looping workaround", () => {
-    const sourceClip = {
+    const sourceClip: MockClip = {
       id: "source-123",
       getProperty: vi.fn((prop) => {
         if (prop === "warping") return 1;
@@ -251,7 +256,7 @@ describe("revealAudioContentAtPosition", () => {
       }),
     };
 
-    const mockTrack = {
+    const mockTrack: MockTrack = {
       call: liveApiCall,
     };
 
@@ -287,7 +292,7 @@ describe("revealAudioContentAtPosition", () => {
   });
 
   it("should handle unwarped clips with session holding area", () => {
-    const sourceClip = {
+    const sourceClip: MockClip = {
       id: "source-123",
       getProperty: vi.fn((prop) => {
         if (prop === "warping") return 0; // Unwarped
@@ -297,7 +302,7 @@ describe("revealAudioContentAtPosition", () => {
       }),
     };
 
-    const mockTrack = {
+    const mockTrack: MockTrack = {
       call: liveApiCall,
     };
 
@@ -308,13 +313,13 @@ describe("revealAudioContentAtPosition", () => {
     const mockCreateAudioClip = vi
       .spyOn(arrangementTiling, "createAudioClipInSession")
       .mockReturnValue({
-        clip: { id: sessionClipId, set: vi.fn() },
-        slot: { call: vi.fn() },
+        clip: { id: sessionClipId, set: vi.fn() } as unknown as LiveAPI,
+        slot: { call: vi.fn() } as unknown as LiveAPI,
       });
 
     liveApiCall.mockReturnValue(`id ${revealedClipId}`);
-    liveApiGet.mockImplementation(function (prop) {
-      if (prop === "end_time") return 24; // Within expected bounds
+    liveApiGet.mockImplementation(function (prop: string) {
+      if (prop === "end_time") return [24]; // Within expected bounds
 
       return null;
     });
@@ -341,7 +346,7 @@ describe("revealAudioContentAtPosition", () => {
   });
 
   it("should shorten revealed clip when it is longer than expected", () => {
-    const sourceClip = {
+    const sourceClip: MockClip = {
       id: "source-123",
       getProperty: vi.fn((prop) => {
         if (prop === "warping") return 0; // Unwarped
@@ -351,7 +356,7 @@ describe("revealAudioContentAtPosition", () => {
       }),
     };
 
-    const mockTrack = {
+    const mockTrack: MockTrack = {
       call: liveApiCall,
     };
 
@@ -363,8 +368,8 @@ describe("revealAudioContentAtPosition", () => {
     const mockCreateAudioClip = vi
       .spyOn(arrangementTiling, "createAudioClipInSession")
       .mockReturnValue({
-        clip: { id: sessionClipId, set: vi.fn() },
-        slot: { call: vi.fn() },
+        clip: { id: sessionClipId, set: vi.fn() } as unknown as LiveAPI,
+        slot: { call: vi.fn() } as unknown as LiveAPI,
       });
 
     let callCount = 0;
@@ -384,7 +389,7 @@ describe("revealAudioContentAtPosition", () => {
     // Make the revealed clip longer than expected to trigger shortening
     // targetPosition (16) + targetLengthBeats (8) = 24
     // revealedClipEndTime = 30 > expectedEndTime (24) + EPSILON
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (prop: string) {
       // getProperty calls get()?.[0], so return array
       if (prop === "end_time") return [30]; // Longer than expected (24)
 

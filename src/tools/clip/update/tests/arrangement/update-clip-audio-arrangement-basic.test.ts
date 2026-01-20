@@ -37,24 +37,29 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
   it.each(testCases)(
     "should extend to target length (clip %s: %s)",
     (clipId, revealedClipId, sourceEndTime, name) => {
+      const cId = clipId as string;
+      const rId = revealedClipId as string;
+      const endTime = sourceEndTime as number;
+      const clipName = name as string;
+
       setupAudioArrangementTest({
         trackIndex: 0,
-        clipId,
-        revealedClipId,
-        sourceEndTime,
+        clipId: cId,
+        revealedClipId: rId,
+        sourceEndTime: endTime,
         targetLength: 14.0,
-        name,
+        name: clipName,
       });
 
       const result = updateClip(
-        { ids: clipId, arrangementLength: "3:2" },
+        { ids: cId, arrangementLength: "3:2" },
         mockContext,
       );
 
-      assertSourceClipEndMarker(clipId, 14.0);
-      assertDuplicateClipCalled(clipId, sourceEndTime);
-      assertRevealedClipMarkers(revealedClipId, sourceEndTime, 14.0);
-      expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+      assertSourceClipEndMarker(cId, 14.0);
+      assertDuplicateClipCalled(cId, endTime);
+      assertRevealedClipMarkers(rId, endTime, 14.0);
+      expect(result).toStrictEqual([{ id: cId }, { id: rId }]);
     },
   );
 });

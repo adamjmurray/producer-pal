@@ -5,6 +5,11 @@ import {
   QUANTIZE_GRID,
 } from "#src/tools/clip/update/helpers/update-clip-quantization-helpers.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
+type MockClip = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
+type MockLiveSet = any;
+
 describe("QUANTIZE_GRID", () => {
   it("should map 1/4 to grid value 1", () => {
     expect(QUANTIZE_GRID["1/4"]).toBe(1);
@@ -40,8 +45,8 @@ describe("QUANTIZE_GRID", () => {
 });
 
 describe("handleQuantization", () => {
-  let mockClip;
-  let mockLiveSet;
+  let mockClip: MockClip;
+  let mockLiveSet: MockLiveSet;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,7 +63,7 @@ describe("handleQuantization", () => {
       }
 
       // For other paths, return a minimal mock
-      return { path };
+      return { path } as unknown as LiveAPI;
     });
 
     mockClip = {
@@ -69,13 +74,13 @@ describe("handleQuantization", () => {
     liveApiCall.mockReturnValue(["id", 0]);
   });
 
-  it("should do nothing when quantize is null", () => {
-    handleQuantization(mockClip, { quantize: null, quantizeGrid: "1/16" });
+  it("should do nothing when quantize is undefined", () => {
+    handleQuantization(mockClip, { quantize: undefined, quantizeGrid: "1/16" });
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should do nothing when quantize is undefined", () => {
+  it("should do nothing when quantize is not provided", () => {
     handleQuantization(mockClip, { quantizeGrid: "1/16" });
 
     expect(mockClip.call).not.toHaveBeenCalled();

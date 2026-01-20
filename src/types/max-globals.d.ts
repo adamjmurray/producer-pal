@@ -16,6 +16,7 @@ interface ToolContext {
   smallModelMode: boolean;
   sampleFolder: string | null;
   holdingAreaStartBeats?: number;
+  silenceWavPath?: string;
 }
 
 /**
@@ -76,33 +77,4 @@ declare class Folder {
   next(): void;
   /** Close the folder handle */
   close(): void;
-}
-
-/**
- * Mock LiveAPI constructor for tests.
- * Extends the Node.js global with a mockable LiveAPI class.
- */
-declare namespace globalThis {
-  // eslint-disable-next-line no-var
-  var LiveAPI: import("vitest").Mock<
-    (path?: string) => {
-      _path?: string;
-      _id?: string;
-      path?: string | null;
-      id?: string | null;
-      exists: import("vitest").Mock;
-      set: import("vitest").Mock;
-      call: import("vitest").Mock;
-      get: import("vitest").Mock;
-      getProperty: import("vitest").Mock;
-      setProperty: import("vitest").Mock;
-      trackIndex?: number | null;
-      returnTrackIndex?: number | null;
-      category?: string | null;
-      sceneIndex?: number | null;
-      type?: string;
-    }
-  > & {
-    from: import("vitest").Mock;
-  };
 }
