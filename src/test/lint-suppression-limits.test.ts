@@ -14,7 +14,7 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
-  srcTests: 19,
+  srcTests: 16,
   scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
   webui: 0,
 };

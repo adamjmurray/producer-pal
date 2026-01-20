@@ -171,8 +171,11 @@ describe("deleteObject", () => {
   it("should throw an error when type arg is missing", () => {
     const expectedError = "delete failed: type is required";
 
-    // @ts-expect-error testing missing required type parameter
-    expect(() => deleteObject({ ids: "clip_1" })).toThrow(expectedError);
+    expect(() =>
+      deleteObject({ ids: "clip_1" } as unknown as Parameters<
+        typeof deleteObject
+      >[0]),
+    ).toThrow(expectedError);
   });
 
   it("should throw an error when type arg is invalid", () => {
