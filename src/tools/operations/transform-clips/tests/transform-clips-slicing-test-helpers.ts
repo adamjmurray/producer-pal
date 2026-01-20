@@ -43,8 +43,7 @@ export function setupSlicingClipBaseMocks(
         return clipId;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
-      return this._id!;
+      return this._id ?? "";
     },
   );
 
@@ -63,8 +62,7 @@ export function setupSlicingClipBaseMocks(
         return "live_set tracks 0 arrangement_clips 1";
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
-      return this._path!;
+      return this._path;
     },
   );
 
@@ -365,8 +363,7 @@ export function setupTwoClipBaseMocks(
       if (this._path === `id ${clip1Id}`) return clip1Id;
       if (this._path === `id ${clip2Id}`) return clip2Id;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
-      return this._id!;
+      return this._id ?? "";
     },
   );
   liveApiPath.mockImplementation(
@@ -382,8 +379,7 @@ export function setupTwoClipBaseMocks(
         return "live_set tracks 0 arrangement_clips 2";
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
-      return this._path!;
+      return this._path;
     },
   );
   liveApiType.mockImplementation(

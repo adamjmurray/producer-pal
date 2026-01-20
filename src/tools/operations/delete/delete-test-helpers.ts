@@ -35,22 +35,23 @@ export function setupEntityMocks(
   );
 
   liveApiId.mockImplementation(function (this: MockContext): string {
-    if (this._path && pathToIdMap[this._path]) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees value exists after map lookup
-      return pathToIdMap[this._path]!;
+    const pathLookup = this._path ? pathToIdMap[this._path] : undefined;
+
+    if (pathLookup) {
+      return pathLookup;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
-    return this._id!;
+    return this._id ?? "";
   });
 
   liveApiPath.mockImplementation(function (this: MockContext) {
-    if (this._id && idToPathMap[this._id]) {
-      return idToPathMap[this._id];
+    const idLookup = this._id ? idToPathMap[this._id] : undefined;
+
+    if (idLookup) {
+      return idLookup;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
-    return this._path!;
+    return this._path ?? "";
   });
 
   liveApiType.mockImplementation(function (this: MockContext) {
@@ -104,17 +105,17 @@ export function setupDeviceMocks(
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
-    return this._id!;
+    return this._id ?? "";
   });
 
   liveApiPath.mockImplementation(function (this: MockContext) {
-    if (this._id && pathMap[this._id]) {
-      return pathMap[this._id];
+    const idLookup = this._id ? pathMap[this._id] : undefined;
+
+    if (idLookup) {
+      return idLookup;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
-    return this._path!;
+    return this._path ?? "";
   });
 
   liveApiType.mockImplementation(function (this: MockContext) {
@@ -167,8 +168,7 @@ export function setupDrumChainMocks({
     if (this._path === devicePath) return drumRackId;
     if (this._path === `id ${chainId}`) return chainId;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _id set
-    return this._id!;
+    return this._id ?? "";
   });
 
   liveApiPath.mockImplementation(function (this: MockContext) {
@@ -177,8 +177,7 @@ export function setupDrumChainMocks({
     if (id === chainId) return chainPath;
     if (id && extraPadPathTyped?.[id]) return extraPadPathTyped[id];
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test mock always has _path set
-    return this._path!;
+    return this._path ?? "";
   });
 
   liveApiType.mockImplementation(function (this: MockContext) {
