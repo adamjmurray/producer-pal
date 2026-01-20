@@ -1,6 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 import { updateDrumPadSoloStates } from "./device-reader-drum-helpers.js";
+
+// Types for tests (not exported from source modules)
+interface DeviceInfo {
+  type: string;
+  chains?: { devices?: DeviceInfo[] }[];
+}
+interface DrumPadInfo {
+  note: number;
+  pitch: string;
+  name?: string;
+  state?: string;
+}
+interface ReturnChain {
+  id: string;
+  name: string;
+  path?: string;
+  devices?: { id: string; type: string }[];
+}
+interface DeviceInfoResult {
+  returnChains?: ReturnChain[];
+  [key: string]: unknown;
+}
 import {
   buildChainInfo,
   isRedundantDeviceClassName,
@@ -14,23 +36,37 @@ import {
   hasInstrumentInDevices,
 } from "./device-state-helpers.js";
 
+// Helper types used in tests
+type ChainOverrides = {
+  type?: string;
+  name?: string;
+  mute?: number;
+  solo?: number;
+  muted_via_solo?: number;
+  choke_group?: number;
+  out_note?: number;
+  color?: string | null;
+};
+type MockChainOverrides = { devices?: unknown[] };
+
 describe("device-reader-helpers", () => {
   describe("buildChainInfo", () => {
-    const createMockChain = (overrides = {}) => ({
-      id: "chain-123",
-      type: overrides.type ?? "Chain",
-      getProperty: (prop) => {
-        if (prop === "name") return overrides.name ?? "Test Chain";
-        if (prop === "mute") return overrides.mute ?? 0;
-        if (prop === "solo") return overrides.solo ?? 0;
-        if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
-        if (prop === "choke_group") return overrides.choke_group ?? 0;
-        if (prop === "out_note") return overrides.out_note ?? 60;
+    const createMockChain = (overrides: ChainOverrides = {}) =>
+      ({
+        id: "chain-123",
+        type: overrides.type ?? "Chain",
+        getProperty: (prop: string) => {
+          if (prop === "name") return overrides.name ?? "Test Chain";
+          if (prop === "mute") return overrides.mute ?? 0;
+          if (prop === "solo") return overrides.solo ?? 0;
+          if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
+          if (prop === "choke_group") return overrides.choke_group ?? 0;
+          if (prop === "out_note") return overrides.out_note ?? 60;
 
-        return 0;
-      },
-      getColor: () => overrides.color ?? null,
-    });
+          return 0;
+        },
+        getColor: () => overrides.color ?? null,
+      }) as unknown as LiveAPI;
 
     it("builds chain info with id, type and name", () => {
       const chain = createMockChain({ name: "My Chain" });
@@ -179,62 +215,25 @@ describe("device-reader-helpers", () => {
   });
 
   describe("isRedundantDeviceClassName", () => {
-    it("returns true for matching Instrument Rack", () => {
-      expect(
-        isRedundantDeviceClassName(
-          DEVICE_TYPE.INSTRUMENT_RACK,
-          "Instrument Rack",
-        ),
-      ).toBe(true);
-    });
+    const redundantCases: [string, string, string, boolean][] = [
+      [DEVICE_TYPE.INSTRUMENT_RACK, "Instrument Rack", "matching", true],
+      [DEVICE_TYPE.INSTRUMENT_RACK, "My Rack", "non-matching", false],
+      [DEVICE_TYPE.DRUM_RACK, "Drum Rack", "matching", true],
+      [DEVICE_TYPE.DRUM_RACK, "Custom Drums", "non-matching", false],
+      [DEVICE_TYPE.AUDIO_EFFECT_RACK, "Audio Effect Rack", "matching", true],
+      [DEVICE_TYPE.AUDIO_EFFECT_RACK, "FX Chain", "non-matching", false],
+      [DEVICE_TYPE.MIDI_EFFECT_RACK, "MIDI Effect Rack", "matching", true],
+      [DEVICE_TYPE.MIDI_EFFECT_RACK, "Arp Chain", "non-matching", false],
+    ];
 
-    it("returns false for non-matching Instrument Rack class", () => {
-      expect(
-        isRedundantDeviceClassName(DEVICE_TYPE.INSTRUMENT_RACK, "My Rack"),
-      ).toBe(false);
-    });
-
-    it("returns true for matching Drum Rack", () => {
-      expect(
-        isRedundantDeviceClassName(DEVICE_TYPE.DRUM_RACK, "Drum Rack"),
-      ).toBe(true);
-    });
-
-    it("returns false for non-matching Drum Rack class", () => {
-      expect(
-        isRedundantDeviceClassName(DEVICE_TYPE.DRUM_RACK, "Custom Drums"),
-      ).toBe(false);
-    });
-
-    it("returns true for matching Audio Effect Rack", () => {
-      expect(
-        isRedundantDeviceClassName(
-          DEVICE_TYPE.AUDIO_EFFECT_RACK,
-          "Audio Effect Rack",
-        ),
-      ).toBe(true);
-    });
-
-    it("returns false for non-matching Audio Effect Rack class", () => {
-      expect(
-        isRedundantDeviceClassName(DEVICE_TYPE.AUDIO_EFFECT_RACK, "FX Chain"),
-      ).toBe(false);
-    });
-
-    it("returns true for matching MIDI Effect Rack", () => {
-      expect(
-        isRedundantDeviceClassName(
-          DEVICE_TYPE.MIDI_EFFECT_RACK,
-          "MIDI Effect Rack",
-        ),
-      ).toBe(true);
-    });
-
-    it("returns false for non-matching MIDI Effect Rack class", () => {
-      expect(
-        isRedundantDeviceClassName(DEVICE_TYPE.MIDI_EFFECT_RACK, "Arp Chain"),
-      ).toBe(false);
-    });
+    it.each(redundantCases)(
+      "returns correct result for %s with %s class (%s)",
+      (deviceType, className, _, expected) => {
+        expect(isRedundantDeviceClassName(deviceType, className)).toBe(
+          expected,
+        );
+      },
+    );
 
     it("returns false for non-rack device types", () => {
       expect(
@@ -247,78 +246,45 @@ describe("device-reader-helpers", () => {
   });
 
   describe("computeState", () => {
-    it("returns ACTIVE for master category", () => {
-      const liveObject = { getProperty: () => 0 };
-
-      expect(computeState(liveObject, "master")).toBe(STATE.ACTIVE);
+    type StatePropConfig = {
+      mute?: number;
+      solo?: number;
+      muted_via_solo?: number;
+    };
+    const createMockLiveObj = (props: StatePropConfig) => ({
+      getProperty: (p: string) => props[p as keyof StatePropConfig] ?? 0,
     });
 
-    it("returns MUTED_AND_SOLOED when both muted and soloed", () => {
-      const liveObject = {
-        getProperty: (prop) => {
-          if (prop === "mute") return 1;
-          if (prop === "solo") return 1;
+    const stateCases: [string, StatePropConfig, string | undefined, string][] =
+      [
+        ["ACTIVE for master category", {}, "master", STATE.ACTIVE],
+        [
+          "MUTED_AND_SOLOED when both muted and soloed",
+          { mute: 1, solo: 1 },
+          undefined,
+          STATE.MUTED_AND_SOLOED,
+        ],
+        ["SOLOED when only solo is true", { solo: 1 }, undefined, STATE.SOLOED],
+        [
+          "MUTED_ALSO_VIA_SOLO when both muted and muted_via_solo",
+          { mute: 1, muted_via_solo: 1 },
+          undefined,
+          STATE.MUTED_ALSO_VIA_SOLO,
+        ],
+        [
+          "MUTED_VIA_SOLO when only muted_via_solo",
+          { muted_via_solo: 1 },
+          undefined,
+          STATE.MUTED_VIA_SOLO,
+        ],
+        ["MUTED when only muted", { mute: 1 }, undefined, STATE.MUTED],
+        ["ACTIVE when not muted or soloed", {}, undefined, STATE.ACTIVE],
+      ];
 
-          return 0;
-        },
-      };
-
-      expect(computeState(liveObject)).toBe(STATE.MUTED_AND_SOLOED);
-    });
-
-    it("returns SOLOED when only solo is true", () => {
-      const liveObject = {
-        getProperty: (prop) => {
-          if (prop === "solo") return 1;
-
-          return 0;
-        },
-      };
-
-      expect(computeState(liveObject)).toBe(STATE.SOLOED);
-    });
-
-    it("returns MUTED_ALSO_VIA_SOLO when both muted and muted_via_solo", () => {
-      const liveObject = {
-        getProperty: (prop) => {
-          if (prop === "mute") return 1;
-          if (prop === "muted_via_solo") return 1;
-
-          return 0;
-        },
-      };
-
-      expect(computeState(liveObject)).toBe(STATE.MUTED_ALSO_VIA_SOLO);
-    });
-
-    it("returns MUTED_VIA_SOLO when only muted_via_solo", () => {
-      const liveObject = {
-        getProperty: (prop) => {
-          if (prop === "muted_via_solo") return 1;
-
-          return 0;
-        },
-      };
-
-      expect(computeState(liveObject)).toBe(STATE.MUTED_VIA_SOLO);
-    });
-
-    it("returns MUTED when only muted", () => {
-      const liveObject = {
-        getProperty: (prop) => {
-          if (prop === "mute") return 1;
-
-          return 0;
-        },
-      };
-
-      expect(computeState(liveObject)).toBe(STATE.MUTED);
-    });
-
-    it("returns ACTIVE when not muted or soloed", () => {
-      const liveObject = { getProperty: () => 0 };
-
-      expect(computeState(liveObject)).toBe(STATE.ACTIVE);
+    it.each(stateCases)("returns %s", (_, props, category, expected) => {
+      expect(
+        computeState(createMockLiveObj(props) as unknown as LiveAPI, category),
+      ).toBe(expected);
     });
   });
 
@@ -351,13 +317,17 @@ describe("device-reader-helpers", () => {
 
   describe("hasInstrumentInDevices", () => {
     it("returns false for empty or null devices", () => {
-      expect(hasInstrumentInDevices(null)).toBe(false);
-      expect(hasInstrumentInDevices()).toBe(false);
+      expect(hasInstrumentInDevices(null as unknown as DeviceInfo[])).toBe(
+        false,
+      );
+      expect(hasInstrumentInDevices(undefined as unknown as DeviceInfo[])).toBe(
+        false,
+      );
       expect(hasInstrumentInDevices([])).toBe(false);
     });
 
     it("returns true when device list has an instrument", () => {
-      const devices = [
+      const devices: DeviceInfo[] = [
         { type: DEVICE_TYPE.AUDIO_EFFECT },
         { type: DEVICE_TYPE.INSTRUMENT },
       ];
@@ -366,7 +336,7 @@ describe("device-reader-helpers", () => {
     });
 
     it("returns false when no instruments present", () => {
-      const devices = [
+      const devices: DeviceInfo[] = [
         { type: DEVICE_TYPE.AUDIO_EFFECT },
         { type: DEVICE_TYPE.MIDI_EFFECT },
       ];
@@ -375,7 +345,7 @@ describe("device-reader-helpers", () => {
     });
 
     it("finds instruments in nested chains", () => {
-      const devices = [
+      const devices: DeviceInfo[] = [
         {
           type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
           chains: [
@@ -390,7 +360,7 @@ describe("device-reader-helpers", () => {
     });
 
     it("returns false when nested chains have no instruments", () => {
-      const devices = [
+      const devices: DeviceInfo[] = [
         {
           type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
           chains: [
@@ -405,10 +375,10 @@ describe("device-reader-helpers", () => {
     });
 
     it("handles chains without devices property", () => {
-      const devices = [
+      const devices: DeviceInfo[] = [
         {
           type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-          chains: [{ name: "Empty Chain" }],
+          chains: [{}],
         },
       ];
 
@@ -418,15 +388,21 @@ describe("device-reader-helpers", () => {
 
   describe("updateDrumPadSoloStates", () => {
     // Helper to create drum pad chain objects
-    const drumPad = (pitch, name, state) =>
-      state !== undefined ? { pitch, name, state } : { pitch, name };
+    const drumPad = (
+      pitch: string,
+      name: string,
+      state?: string,
+    ): DrumPadInfo =>
+      state !== undefined
+        ? { note: 36, pitch, name, state }
+        : { note: 36, pitch, name };
 
     it("does nothing when no drum chain is soloed", () => {
       const chains = [drumPad("C3", "Kick"), drumPad("D3", "Snare")];
 
       updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBeUndefined();
-      expect(chains[1].state).toBeUndefined();
+      expect(chains[0]!.state).toBeUndefined();
+      expect(chains[1]!.state).toBeUndefined();
     });
 
     it("keeps soloed state unchanged and sets others to MUTED_VIA_SOLO", () => {
@@ -436,8 +412,8 @@ describe("device-reader-helpers", () => {
       ];
 
       updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-      expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
+      expect(chains[0]!.state).toBe(STATE.SOLOED);
+      expect(chains[1]!.state).toBe(STATE.MUTED_VIA_SOLO);
     });
 
     it("sets muted chains to MUTED_ALSO_VIA_SOLO when another is soloed", () => {
@@ -447,8 +423,8 @@ describe("device-reader-helpers", () => {
       ];
 
       updateDrumPadSoloStates(chains);
-      expect(chains[0].state).toBe(STATE.SOLOED);
-      expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
+      expect(chains[0]!.state).toBe(STATE.SOLOED);
+      expect(chains[1]!.state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
     });
   });
 
@@ -458,20 +434,24 @@ describe("device-reader-helpers", () => {
         getProperty: () => 0, // can_have_chains = 0
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({});
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual(
+        {},
+      );
     });
 
     it("returns empty object for rack with no variations", () => {
       const device = {
-        getProperty: (prop) => (prop === "can_have_chains" ? 1 : 0),
+        getProperty: (prop: string) => (prop === "can_have_chains" ? 1 : 0),
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({});
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual(
+        {},
+      );
     });
 
     it("returns variations object with count and selected", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_have_chains":
               return 1;
@@ -485,7 +465,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual({
         variations: {
           count: 5,
           selected: 2,
@@ -495,7 +475,7 @@ describe("device-reader-helpers", () => {
 
     it("returns macros info when visible macros exist", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_have_chains":
               return 1;
@@ -509,14 +489,14 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual({
         macros: { count: 8, hasMappings: true },
       });
     });
 
     it("omits macros when visible_macro_count is 0", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_have_chains":
               return 1;
@@ -526,12 +506,14 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({});
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual(
+        {},
+      );
     });
 
     it("returns both variations and macros when both exist", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_have_chains":
               return 1;
@@ -549,7 +531,7 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readMacroVariations(device)).toStrictEqual({
+      expect(readMacroVariations(device as unknown as LiveAPI)).toStrictEqual({
         variations: { count: 3, selected: 1 },
         macros: { count: 4, hasMappings: false },
       });
@@ -562,12 +544,12 @@ describe("device-reader-helpers", () => {
         getProperty: () => 0, // can_compare_ab = 0
       };
 
-      expect(readABCompare(device)).toStrictEqual({});
+      expect(readABCompare(device as unknown as LiveAPI)).toStrictEqual({});
     });
 
     it("returns { abCompare: 'a' } when on preset A", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_compare_ab":
               return 1;
@@ -579,12 +561,14 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readABCompare(device)).toStrictEqual({ abCompare: "a" });
+      expect(readABCompare(device as unknown as LiveAPI)).toStrictEqual({
+        abCompare: "a",
+      });
     });
 
     it("returns { abCompare: 'b' } when on preset B", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           switch (prop) {
             case "can_compare_ab":
               return 1;
@@ -596,15 +580,20 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      expect(readABCompare(device)).toStrictEqual({ abCompare: "b" });
+      expect(readABCompare(device as unknown as LiveAPI)).toStrictEqual({
+        abCompare: "b",
+      });
     });
   });
 
   describe("processDeviceChains", () => {
-    const createMockChain = (name, overrides = {}) => ({
+    const createMockChain = (
+      name: string,
+      overrides: MockChainOverrides = {},
+    ) => ({
       id: `chain-${name}`,
       type: "Chain",
-      getProperty: (prop) => {
+      getProperty: (prop: string) => {
         if (prop === "name") return name;
         if (prop === "mute") return 0;
         if (prop === "solo") return 0;
@@ -613,7 +602,7 @@ describe("device-reader-helpers", () => {
         return 0;
       },
       getColor: () => null,
-      getChildren: (child) => {
+      getChildren: (child: string) => {
         if (child === "devices") return overrides.devices ?? [];
 
         return [];
@@ -622,7 +611,7 @@ describe("device-reader-helpers", () => {
 
     it("processes return chains when includeReturnChains is true", () => {
       const mockDevice = {
-        getChildren: (child) => {
+        getChildren: (child: string) => {
           if (child === "chains") return [];
 
           if (child === "return_chains") {
@@ -633,11 +622,14 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      const deviceInfo = {};
-      const mockReadDevice = (d) => ({ id: d.id, type: "effect" });
+      const deviceInfo: DeviceInfoResult = {};
+      const mockReadDevice = (d: { id: string }) => ({
+        id: d.id,
+        type: "effect",
+      });
 
       processDeviceChains(
-        mockDevice,
+        mockDevice as unknown as LiveAPI,
         deviceInfo,
         DEVICE_TYPE.AUDIO_EFFECT_RACK,
         {
@@ -652,11 +644,11 @@ describe("device-reader-helpers", () => {
       );
 
       expect(deviceInfo.returnChains).toHaveLength(2);
-      expect(deviceInfo.returnChains[0]).toMatchObject({
+      expect(deviceInfo.returnChains![0]).toMatchObject({
         id: "chain-Return A",
         name: "Return A",
       });
-      expect(deviceInfo.returnChains[1]).toMatchObject({
+      expect(deviceInfo.returnChains![1]).toMatchObject({
         id: "chain-Return B",
         name: "Return B",
       });
@@ -664,7 +656,7 @@ describe("device-reader-helpers", () => {
 
     it("skips return chains when device has none", () => {
       const mockDevice = {
-        getChildren: (child) => {
+        getChildren: (child: string) => {
           if (child === "chains") return [];
           if (child === "return_chains") return [];
 
@@ -672,10 +664,10 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      const deviceInfo = {};
+      const deviceInfo: DeviceInfoResult = {};
 
       processDeviceChains(
-        mockDevice,
+        mockDevice as unknown as LiveAPI,
         deviceInfo,
         DEVICE_TYPE.AUDIO_EFFECT_RACK,
         {
@@ -685,7 +677,7 @@ describe("device-reader-helpers", () => {
           depth: 0,
           maxDepth: 2,
           readDeviceFn: () => ({}),
-          devicePath: null,
+          devicePath: undefined,
         },
       );
 
@@ -694,16 +686,16 @@ describe("device-reader-helpers", () => {
 
     it("processes return chains with nested devices and builds paths", () => {
       const mockNestedDevice = { id: "nested-dev-1" };
-      const createReturnChain = (name) => ({
+      const createReturnChain = (name: string) => ({
         id: `return-chain-${name}`,
         type: "Chain",
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "name") return name;
 
           return 0;
         },
         getColor: () => null,
-        getChildren: (child) => {
+        getChildren: (child: string) => {
           if (child === "devices") return [mockNestedDevice];
 
           return [];
@@ -711,7 +703,7 @@ describe("device-reader-helpers", () => {
       });
 
       const mockDevice = {
-        getChildren: (child) => {
+        getChildren: (child: string) => {
           if (child === "chains") return [];
           if (child === "return_chains") return [createReturnChain("Return A")];
 
@@ -719,18 +711,24 @@ describe("device-reader-helpers", () => {
         },
       };
 
-      const deviceInfo = {};
+      const deviceInfo: DeviceInfoResult = {};
 
-      const readDeviceCalls = [];
+      const readDeviceCalls: {
+        device: { id: string };
+        options: Record<string, unknown>;
+      }[] = [];
 
-      const mockReadDevice = (device, options) => {
+      const mockReadDevice = (
+        device: { id: string },
+        options: Record<string, unknown>,
+      ) => {
         readDeviceCalls.push({ device, options });
 
         return { id: device.id, type: "effect" };
       };
 
       processDeviceChains(
-        mockDevice,
+        mockDevice as unknown as LiveAPI,
         deviceInfo,
         DEVICE_TYPE.AUDIO_EFFECT_RACK,
         {
@@ -745,14 +743,14 @@ describe("device-reader-helpers", () => {
       );
 
       expect(deviceInfo.returnChains).toHaveLength(1);
-      expect(deviceInfo.returnChains[0].devices).toHaveLength(1);
-      expect(deviceInfo.returnChains[0].devices[0]).toMatchObject({
+      expect(deviceInfo.returnChains![0]!.devices).toHaveLength(1);
+      expect(deviceInfo.returnChains![0]!.devices![0]).toMatchObject({
         id: "nested-dev-1",
         type: "effect",
       });
       // Verify readDevice was called with correct nested path
       expect(readDeviceCalls).toHaveLength(1);
-      expect(readDeviceCalls[0].options.parentPath).toBe("0/rc0/0");
+      expect(readDeviceCalls[0]!.options.parentPath).toBe("0/rc0/0");
     });
   });
 });

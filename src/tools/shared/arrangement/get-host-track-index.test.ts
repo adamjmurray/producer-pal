@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiPath } from "#src/test/mocks/mock-live-api.js";
 import { getHostTrackIndex } from "./get-host-track-index.js";
 
+const g = globalThis as Record<string, unknown>;
+
 describe("getHostTrackIndex", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,9 +27,9 @@ describe("getHostTrackIndex", () => {
 
   it("should return null when LiveAPI.from throws an error", () => {
     // Mock the global LiveAPI.from to throw an error
-    const originalLiveAPI = global.LiveAPI;
+    const originalLiveAPI = g.LiveAPI;
 
-    global.LiveAPI = {
+    g.LiveAPI = {
       from: vi.fn(() => {
         throw new Error("LiveAPI not available");
       }),
@@ -38,7 +40,7 @@ describe("getHostTrackIndex", () => {
     expect(result).toBe(null);
 
     // Restore the original LiveAPI
-    global.LiveAPI = originalLiveAPI;
+    g.LiveAPI = originalLiveAPI;
   });
 
   it("should parse track index correctly for different track numbers", () => {

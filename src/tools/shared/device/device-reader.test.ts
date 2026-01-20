@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
 import "#src/live-api-adapter/live-api-extensions.js";
-import { LiveAPI } from "#src/test/mocks/mock-live-api.js";
+import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.js";
 import {
   DEVICE_CLASS,
   DEVICE_TYPE,
@@ -16,13 +16,19 @@ import {
   readDevice,
 } from "./device-reader.js";
 
-vi.mocked(LiveAPI);
+vi.mocked(MockLiveAPI);
+
+// Helper interface for device info result with internal drum pads
+interface DeviceInfoWithDrumPads {
+  _processedDrumPads?: unknown;
+  [key: string]: unknown;
+}
 
 describe("device-reader", () => {
   describe("getDeviceType", () => {
     it("returns drum rack for instrument with drum pads", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_INSTRUMENT;
           }
@@ -39,12 +45,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.DRUM_RACK);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.DRUM_RACK,
+      );
     });
 
     it("returns instrument rack for instrument with chains", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_INSTRUMENT;
           }
@@ -61,12 +69,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.INSTRUMENT_RACK);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.INSTRUMENT_RACK,
+      );
     });
 
     it("returns instrument for basic instrument device", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_INSTRUMENT;
           }
@@ -83,12 +93,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.INSTRUMENT);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.INSTRUMENT,
+      );
     });
 
     it("returns audio effect rack for audio effect with chains", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_AUDIO_EFFECT;
           }
@@ -101,12 +113,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.AUDIO_EFFECT_RACK);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+      );
     });
 
     it("returns audio effect for basic audio effect device", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_AUDIO_EFFECT;
           }
@@ -119,12 +133,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.AUDIO_EFFECT);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.AUDIO_EFFECT,
+      );
     });
 
     it("returns midi effect rack for midi effect with chains", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_MIDI_EFFECT;
           }
@@ -137,12 +153,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.MIDI_EFFECT_RACK);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.MIDI_EFFECT_RACK,
+      );
     });
 
     it("returns midi effect for basic midi effect device", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return LIVE_API_DEVICE_TYPE_MIDI_EFFECT;
           }
@@ -155,12 +173,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe(DEVICE_TYPE.MIDI_EFFECT);
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe(
+        DEVICE_TYPE.MIDI_EFFECT,
+      );
     });
 
     it("returns unknown for unrecognized device type", () => {
       const device = {
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") {
             return 999;
           }
@@ -169,14 +189,14 @@ describe("device-reader", () => {
         },
       };
 
-      expect(getDeviceType(device)).toBe("unknown");
+      expect(getDeviceType(device as unknown as LiveAPI)).toBe("unknown");
     });
   });
 
   describe("cleanupInternalDrumPads", () => {
     it("returns primitive values unchanged", () => {
       expect(cleanupInternalDrumPads(null)).toBe(null);
-      expect(cleanupInternalDrumPads()).toBe(undefined);
+      expect(cleanupInternalDrumPads(undefined)).toBe(undefined);
       expect(cleanupInternalDrumPads(42)).toBe(42);
       expect(cleanupInternalDrumPads("test")).toBe("test");
     });
@@ -187,7 +207,7 @@ describe("device-reader", () => {
         name: "Test",
         _processedDrumPads: [{ pitch: "C3", name: "Kick" }],
       };
-      const result = cleanupInternalDrumPads(obj);
+      const result = cleanupInternalDrumPads(obj) as DeviceInfoWithDrumPads;
 
       expect(result).toStrictEqual({
         type: "drum-rack",
@@ -364,6 +384,8 @@ describe("device-reader", () => {
   });
 
   describe("readDevice", () => {
+    const g = globalThis as Record<string, unknown>;
+
     beforeEach(() => {
       vi.clearAllMocks();
     });
@@ -373,7 +395,7 @@ describe("device-reader", () => {
       const device = {
         id: "device_1",
         path: "live_set tracks 0 devices 0",
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
           if (prop === "can_have_chains") return false;
           if (prop === "can_have_drum_pads") return false;
@@ -387,16 +409,21 @@ describe("device-reader", () => {
       };
 
       // Mock LiveAPI for device view
-      const MockLiveAPI = vi.fn().mockImplementation(() => ({
+      const TestMockLiveAPI = vi.fn().mockImplementation(() => ({
         exists: vi.fn().mockReturnValue(false),
         getProperty: vi.fn().mockReturnValue(0),
-      }));
+      })) as unknown as { from: ReturnType<typeof vi.fn> };
 
-      MockLiveAPI.from = vi.fn((path) => MockLiveAPI(path));
-      global.LiveAPI = MockLiveAPI;
+      TestMockLiveAPI.from = vi.fn((path: string) =>
+        (TestMockLiveAPI as unknown as (path: string) => unknown)(path),
+      );
+      g.LiveAPI = TestMockLiveAPI;
 
       // Call with depth > maxDepth
-      const result = readDevice(device, { depth: 5, maxDepth: 4 });
+      const result = readDevice(device as unknown as LiveAPI, {
+        depth: 5,
+        maxDepth: 4,
+      });
 
       expect(result).toStrictEqual({});
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -408,7 +435,7 @@ describe("device-reader", () => {
       const device = {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
-        getProperty: (prop) => {
+        getProperty: (prop: string) => {
           if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
           if (prop === "can_have_chains") return false;
           if (prop === "can_have_drum_pads") return false;
@@ -423,15 +450,22 @@ describe("device-reader", () => {
       };
 
       // Mock LiveAPI for device view
-      const MockLiveAPI = vi.fn(function () {
+      interface MockInstance {
+        exists: ReturnType<typeof vi.fn>;
+        getProperty: ReturnType<typeof vi.fn>;
+      }
+
+      const TestMockLiveAPI = vi.fn(function (this: MockInstance) {
         this.exists = vi.fn().mockReturnValue(false);
         this.getProperty = vi.fn().mockReturnValue(0);
+      }) as unknown as { from: ReturnType<typeof vi.fn>; new (): MockInstance };
+
+      TestMockLiveAPI.from = vi.fn(() => new TestMockLiveAPI());
+      g.LiveAPI = TestMockLiveAPI;
+
+      const result = readDevice(device as unknown as LiveAPI, {
+        includeChains: false,
       });
-
-      MockLiveAPI.from = vi.fn((path) => new MockLiveAPI(path));
-      global.LiveAPI = MockLiveAPI;
-
-      const result = readDevice(device, { includeChains: false });
 
       expect(result.multisample).toBe(true);
       expect(result.sample).toBeUndefined();

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  LiveAPI,
+  LiveAPI as MockLiveAPI,
   liveApiCall,
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.js";
@@ -18,8 +18,8 @@ beforeEach(() => {
 describe("createPartialTile", () => {
   // Integration test - relies on other tested helpers
   it("creates partial tile by combining helper functions", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     liveApiCall.mockReturnValueOnce(["id", "200"]); // Holding clip
     mockLiveApiGet({ "id 200": { end_time: 1000 } });
@@ -27,15 +27,23 @@ describe("createPartialTile", () => {
     liveApiCall.mockReturnValueOnce(["id", "400"]); // Final tile
     mockLiveApiGet({ "id 400": { start_marker: 2, loop_start: 2 } });
 
-    const result = createPartialTile(sourceClip, track, 500, 6, 1000, true);
+    const result = createPartialTile(
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
+      500,
+      6,
+      1000,
+      true,
+      mockContext,
+    );
 
-    expect(result).toBeInstanceOf(LiveAPI);
+    expect(result).toBeInstanceOf(MockLiveAPI);
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const sourceClip = LiveAPI.from("id 100");
+    const sourceClip = MockLiveAPI.from("id 100");
 
-    const track = LiveAPI.from("live_set tracks 0");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     // Mock createShortenedClipInHolding - clip needs to be longer than target for temp clip creation
     liveApiCall.mockReturnValueOnce(["id", "200"]);
@@ -47,13 +55,22 @@ describe("createPartialTile", () => {
       },
     });
     liveApiCall.mockReturnValueOnce(["id", "300"]);
-    liveApiCall.mockReturnValueOnce(); // delete temp clip
+    liveApiCall.mockReturnValueOnce(undefined); // delete temp clip
 
     // Mock moveClipFromHolding
     liveApiCall.mockReturnValueOnce(["id", "400"]);
-    liveApiCall.mockReturnValueOnce(); // delete holding clip
+    liveApiCall.mockReturnValueOnce(undefined); // delete holding clip
 
-    createPartialTile(sourceClip, track, 500, 8, 1000, true, {}, false);
+    createPartialTile(
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
+      500,
+      8,
+      1000,
+      true,
+      mockContext,
+      false,
+    );
 
     // Should have 5 calls: duplicate to holding, create temp, delete temp, move to target, delete holding
     // No pre-roll adjustment calls (since adjustPreRoll is false)
@@ -63,9 +80,9 @@ describe("createPartialTile", () => {
 
 describe("tileClipToRange", () => {
   it("creates correct number of full tiles without remainder", () => {
-    const sourceClip = LiveAPI.from("id 100");
+    const sourceClip = MockLiveAPI.from("id 100");
 
-    const track = LiveAPI.from("live_set tracks 0");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": {
@@ -96,8 +113,8 @@ describe("tileClipToRange", () => {
     liveApiCall.mockReturnValueOnce(["id", "202"]);
 
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       12,
       1000,
@@ -131,8 +148,8 @@ describe("tileClipToRange", () => {
 
   // Integration test for full + partial tiles
   it("creates appropriate combination of full and partial tiles", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": { loop_start: 0, loop_end: 4, start_marker: 0 },
@@ -144,8 +161,8 @@ describe("tileClipToRange", () => {
 
     // 10 beats / 4 beat clip = 2 full + 1 partial
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       10,
       1000,
@@ -156,8 +173,8 @@ describe("tileClipToRange", () => {
   });
 
   it("does not create partial tile when remainder is negligible", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": { loop_start: 0, loop_end: 4, start_marker: 0 },
@@ -168,8 +185,8 @@ describe("tileClipToRange", () => {
 
     // Total length 4.0005 should create 1 full tile, no partial
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       4.0005,
       1000,
@@ -181,9 +198,9 @@ describe("tileClipToRange", () => {
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const sourceClip = LiveAPI.from("id 100");
+    const sourceClip = MockLiveAPI.from("id 100");
 
-    const track = LiveAPI.from("live_set tracks 0");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": {
@@ -200,18 +217,26 @@ describe("tileClipToRange", () => {
 
     liveApiCall.mockReturnValueOnce(["id", "200"]);
 
-    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext, {
-      adjustPreRoll: false,
-    });
+    tileClipToRange(
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
+      100,
+      4,
+      1000,
+      mockContext,
+      {
+        adjustPreRoll: false,
+      },
+    );
 
     // Only 1 call for duplicate, no pre-roll adjustment
     expect(liveApiCall).toHaveBeenCalledTimes(1);
   });
 
   it("handles zero-length range gracefully", () => {
-    const sourceClip = LiveAPI.from("id 100");
+    const sourceClip = MockLiveAPI.from("id 100");
 
-    const track = LiveAPI.from("live_set tracks 0");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": {
@@ -222,8 +247,8 @@ describe("tileClipToRange", () => {
     });
 
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       0,
       1000,
@@ -235,8 +260,8 @@ describe("tileClipToRange", () => {
   });
 
   it("handles only partial tile when total length less than clip length", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": { loop_start: 0, loop_end: 8, start_marker: 0 },
@@ -245,8 +270,8 @@ describe("tileClipToRange", () => {
     liveApiCall.mockReturnValue(["id", "300"]);
 
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       3,
       1000,
@@ -258,8 +283,8 @@ describe("tileClipToRange", () => {
   });
 
   it("sets start_marker correctly when using startOffset parameter", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": {
@@ -295,8 +320,8 @@ describe("tileClipToRange", () => {
     // Tile 2: start_marker = 2 + (11 % 8) = 5
     // Tile 3: start_marker = 2 + (19 % 8) = 5
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       24,
       1000,
@@ -307,9 +332,9 @@ describe("tileClipToRange", () => {
     );
 
     // Verify start_marker is set on each tile
-    const tile1 = LiveAPI.from("id 200");
-    const tile2 = LiveAPI.from("id 201");
-    const tile3 = LiveAPI.from("id 202");
+    const tile1 = MockLiveAPI.from("id 200");
+    const tile2 = MockLiveAPI.from("id 201");
+    const tile3 = MockLiveAPI.from("id 202");
 
     expect(tile1.set).toHaveBeenCalledWith("start_marker", 5);
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 5);
@@ -319,8 +344,8 @@ describe("tileClipToRange", () => {
   });
 
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
-    const sourceClip = LiveAPI.from("id 100");
-    const track = LiveAPI.from("live_set tracks 0");
+    const sourceClip = MockLiveAPI.from("id 100");
+    const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
       "id 100": {
@@ -341,8 +366,8 @@ describe("tileClipToRange", () => {
     // Tile 2: start_marker = 0 + (4 % 4) = 0 (wraps)
     // Tile 3: start_marker = 0 + (8 % 4) = 0 (wraps)
     const result = tileClipToRange(
-      sourceClip,
-      track,
+      sourceClip as unknown as LiveAPI,
+      track as unknown as LiveAPI,
       100,
       12,
       1000,
@@ -352,9 +377,9 @@ describe("tileClipToRange", () => {
       },
     );
 
-    const tile1 = LiveAPI.from("id 200");
-    const tile2 = LiveAPI.from("id 201");
-    const tile3 = LiveAPI.from("id 202");
+    const tile1 = MockLiveAPI.from("id 200");
+    const tile2 = MockLiveAPI.from("id 201");
+    const tile3 = MockLiveAPI.from("id 202");
 
     expect(tile1.set).toHaveBeenCalledWith("start_marker", 0);
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 0);

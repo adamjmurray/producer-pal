@@ -133,7 +133,7 @@ describe("setAllNonNull", () => {
   });
 
   it("handles complex values like objects and arrays", () => {
-    const target = {};
+    const target: Record<string, unknown> = {};
     const obj = { nested: "value" };
     const arr = [1, 2, 3];
 

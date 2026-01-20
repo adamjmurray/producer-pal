@@ -15,6 +15,12 @@ import {
   resolveInsertionPath,
 } from "./device-path-helpers.js";
 
+interface MockLiveApiContext {
+  _path?: string;
+  _id?: string;
+  id?: string;
+}
+
 describe("device-path-helpers", () => {
   describe("extractDevicePath", () => {
     describe("regular track devices", () => {
@@ -327,7 +333,7 @@ describe("device-path-helpers", () => {
       });
 
       it("throws on null path", () => {
-        expect(() => resolvePathToLiveApi(null)).toThrow(
+        expect(() => resolvePathToLiveApi(null as unknown as string)).toThrow(
           "Path must be a non-empty string",
         );
       });
@@ -402,7 +408,7 @@ describe("device-path-helpers", () => {
     });
 
     it("resolves track and chain paths correctly", () => {
-      const cases = [
+      const cases: [string, string, number | null][] = [
         ["t0", "live_set tracks 0", null],
         ["t0/d3", "live_set tracks 0", 3],
         ["t0/d0/c0", "live_set tracks 0 devices 0 chains 0", null],
@@ -412,7 +418,9 @@ describe("device-path-helpers", () => {
       for (const [path, expectedPath, expectedPos] of cases) {
         const result = resolveInsertionPath(path);
 
-        expect(result.container._path).toBe(expectedPath);
+        expect((result.container as MockLiveApiContext)._path).toBe(
+          expectedPath,
+        );
         expect(result.position).toBe(expectedPos);
       }
     });
@@ -420,7 +428,7 @@ describe("device-path-helpers", () => {
     it("resolves drum pad paths (append and with position)", () => {
       const drumChainId = "drum-chain-36";
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
         if (this._path === "live_set tracks 0 devices 0") return "drum-rack";
 
         return this._path?.startsWith("id ")
@@ -428,7 +436,7 @@ describe("device-path-helpers", () => {
           : (this._id ?? "valid-id");
       });
       liveApiType.mockReturnValue("DrumGroupDevice");
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveApiContext, prop) {
         if (this._path === "live_set tracks 0 devices 0" && prop === "chains")
           return ["id", drumChainId];
         if ((this._id ?? this.id) === drumChainId && prop === "in_note")
@@ -447,7 +455,7 @@ describe("device-path-helpers", () => {
       expect(() => resolveInsertionPath("")).toThrow(
         "Path must be a non-empty string",
       );
-      expect(() => resolveInsertionPath(null)).toThrow(
+      expect(() => resolveInsertionPath(null as unknown as string)).toThrow(
         "Path must be a non-empty string",
       );
       expect(() => resolveInsertionPath("t0/dabc")).toThrow(
@@ -516,7 +524,7 @@ describe("device-path-helpers", () => {
         const result = resolveInsertionPath("t0/d0/c0");
 
         expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
-        expect(result.container._path).toBe(
+        expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set tracks 0 devices 0 chains 0",
         );
       });
@@ -544,7 +552,7 @@ describe("device-path-helpers", () => {
       });
 
       it("throws for non-existent return chain", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveApiContext) {
           if (this._path?.includes("return_chains")) return "0";
 
           return "valid-id";
@@ -621,7 +629,7 @@ describe("device-path-helpers", () => {
         const result = resolveInsertionPath("mt/d0/c0");
 
         expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
-        expect(result.container._path).toBe(
+        expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set master_track devices 0 chains 0",
         );
       });
@@ -632,13 +640,13 @@ describe("device-path-helpers", () => {
         const result = resolveInsertionPath("rt0/d0/c0");
 
         expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
-        expect(result.container._path).toBe(
+        expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set return_tracks 0 devices 0 chains 0",
         );
       });
 
       it("throws when device does not exist during chain navigation", () => {
-        liveApiId.mockImplementation(function () {
+        liveApiId.mockImplementation(function (this: MockLiveApiContext) {
           // Track exists but device doesn't
           if (this._path === "live_set tracks 0") return "track-id";
           if (this._path === "live_set tracks 0 devices 0") return "0"; // Non-existent

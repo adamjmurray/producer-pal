@@ -1,20 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.js";
 
-/**
- * Create a mock clip object that tracks set() calls
- *
- * @returns {{ clip: object, getCalls: () => Array }} Mock clip and call tracker
- */
+interface SetCall {
+  property: string;
+  value: unknown;
+}
+
 function createMockClip() {
-  const calls = [];
+  const calls: SetCall[] = [];
 
   return {
     clip: {
-      set: vi.fn((property, value) => {
+      set: vi.fn((property: string, value: unknown) => {
         calls.push({ property, value });
       }),
-    },
+    } as unknown as LiveAPI,
     getCalls: () => calls,
   };
 }
@@ -107,8 +107,8 @@ describe("clip-marker-helpers", () => {
       // looping=1 must be first, looping=0 must be last
       expect(properties[0]).toBe("looping");
       expect(properties.at(-1)).toBe("looping");
-      expect(calls[0].value).toBe(1);
-      expect(calls.at(-1).value).toBe(0);
+      expect(calls[0]!.value).toBe(1);
+      expect(calls.at(-1)!.value).toBe(0);
 
       // All marker properties should be between the looping calls
       expect(properties).toContain("loop_end");

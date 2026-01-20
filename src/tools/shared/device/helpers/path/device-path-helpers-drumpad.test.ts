@@ -13,6 +13,28 @@ import {
   resolveInsertionPath,
 } from "./device-path-helpers.js";
 
+// Type for mock LiveAPI instance context
+interface MockLiveApiContext {
+  _path?: string;
+  _id?: string;
+  id?: string;
+}
+
+// Type for chain properties
+interface ChainProperties {
+  [chainId: string]: {
+    inNote?: number;
+    type?: string;
+    deviceIds?: string[];
+  };
+}
+
+interface SetupConfig {
+  deviceId?: string;
+  chainIds?: string[];
+  chainProperties?: ChainProperties;
+}
+
 describe("device-path-helpers", () => {
   describe("resolveDrumPadFromPath", () => {
     beforeEach(() => {
@@ -21,20 +43,20 @@ describe("device-path-helpers", () => {
 
     // Helper to set up chain-based drum rack mocks
     // Uses chains with in_note property instead of drum_pads
-    const setupChainMocks = (config = {}) => {
+    const setupChainMocks = (config: SetupConfig = {}) => {
       const {
         deviceId = "drum-rack-1",
         chainIds = ["chain-36"],
         chainProperties = {},
       } = config;
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
         if (this._path === "live_set tracks 1 devices 0") return deviceId;
 
         return this._id ?? "0";
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
         const id = this._id ?? this.id;
 
         if (id?.startsWith("chain-"))
@@ -44,7 +66,10 @@ describe("device-path-helpers", () => {
         return "RackDevice";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (
+        this: MockLiveApiContext,
+        prop: string,
+      ) {
         const id = this._id ?? this.id;
 
         // Device returns chains
@@ -52,7 +77,7 @@ describe("device-path-helpers", () => {
           (id === deviceId || this._path?.includes("devices 0")) &&
           prop === "chains"
         )
-          return chainIds.flatMap((c) => ["id", c]);
+          return chainIds.flatMap((c: string) => ["id", c]);
 
         // Chain properties
         if (id?.startsWith("chain-")) {
@@ -60,7 +85,10 @@ describe("device-path-helpers", () => {
 
           if (prop === "in_note") return [chainProps.inNote ?? 36];
           if (prop === "devices")
-            return (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]);
+            return (chainProps.deviceIds ?? []).flatMap((d: string) => [
+              "id",
+              d,
+            ]);
         }
 
         return [];
@@ -80,7 +108,7 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-36");
+      expect(result.target!.id).toBe("chain-36");
       expect(result.targetType).toBe("chain");
     });
 
@@ -100,7 +128,7 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-36b");
+      expect(result.target!.id).toBe("chain-36b");
       expect(result.targetType).toBe("chain");
     });
 
@@ -119,7 +147,7 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("device-1");
+      expect(result.target!.id).toBe("device-1");
       expect(result.targetType).toBe("device");
     });
 
@@ -136,7 +164,7 @@ describe("device-path-helpers", () => {
       );
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe("chain-all");
+      expect(result.target!.id).toBe("chain-all");
       expect(result.targetType).toBe("chain");
     });
 
@@ -225,7 +253,7 @@ describe("device-path-helpers", () => {
       const nestedRackId = "nested-rack";
       const nestedChainId = "nested-chain-36";
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
         if (this._path === outerPath) return "outer-rack";
         if (this._path === nestedPath) return nestedRackId;
         if (this._path?.startsWith("id ")) return this._path.slice(3);
@@ -233,7 +261,7 @@ describe("device-path-helpers", () => {
         return this._id ?? "0";
       });
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveApiContext) {
         const id = this._id ?? this.id;
 
         if (id === nestedRackId) return nestedPath;
@@ -241,7 +269,7 @@ describe("device-path-helpers", () => {
         return this._path;
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
         const id = this._id ?? this.id;
 
         if (id === catchAllChainId) return "DrumChain";
@@ -252,7 +280,10 @@ describe("device-path-helpers", () => {
         return "RackDevice";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (
+        this: MockLiveApiContext,
+        prop: string,
+      ) {
         const id = this._id ?? this.id;
 
         // Outer drum rack returns catch-all chain
@@ -290,7 +321,7 @@ describe("device-path-helpers", () => {
       ]);
 
       expect(result.target).not.toBeNull();
-      expect(result.target.id).toBe(nestedChainId);
+      expect(result.target!.id).toBe(nestedChainId);
       expect(result.targetType).toBe("chain");
     });
 
@@ -303,18 +334,18 @@ describe("device-path-helpers", () => {
       const rackChainId = "rack-chain";
       const finalDeviceId = "final-device";
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
         if (this._path === drumRackPath) return "drum-rack";
         if (this._path?.startsWith("id ")) return this._path.slice(3);
 
         return this._id ?? "0";
       });
 
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveApiContext) {
         return this._path;
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
         const id = this._id ?? this.id;
 
         if (id === drumChainId) return "DrumChain";
@@ -325,7 +356,10 @@ describe("device-path-helpers", () => {
         return "DrumGroupDevice";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (
+        this: MockLiveApiContext,
+        prop: string,
+      ) {
         const id = this._id ?? this.id;
 
         // Drum rack returns C1 chain
@@ -358,11 +392,11 @@ describe("device-path-helpers", () => {
         // Valid navigation through nested rack
         const r1 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c0"]);
 
-        expect(r1.target.id).toBe(rackChainId);
+        expect(r1.target!.id).toBe(rackChainId);
         expect(r1.targetType).toBe("chain");
         const r2 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c0", "d0"]);
 
-        expect(r2.target.id).toBe(finalDeviceId);
+        expect(r2.target!.id).toBe(finalDeviceId);
         expect(r2.targetType).toBe("device");
         // Out of bounds
         const r3 = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c5"]);
@@ -448,15 +482,18 @@ describe("device-path-helpers", () => {
       vi.clearAllMocks();
     });
 
+    interface AutoCreateConfig {
+      chainIds?: string[];
+      chainProperties?: ChainProperties;
+      includeCreationMocks?: boolean;
+    }
+
     /**
      * Setup mocks for auto-creation tests
-     * @param {object} config - Configuration
-     * @param {string[]} config.chainIds - Initial chain IDs (mutable)
-     * @param {object} config.chainProperties - Initial chain properties (mutable)
-     * @param {boolean} config.includeCreationMocks - Include insert_chain and in_note mocks
+     * @param config - Configuration for mock setup
+     * @returns Chain IDs and properties for verification
      */
-
-    function setupAutoCreationMocks(config = {}) {
+    function setupAutoCreationMocks(config: AutoCreateConfig = {}) {
       const {
         chainIds = [],
         chainProperties = {},
@@ -464,7 +501,7 @@ describe("device-path-helpers", () => {
       } = config;
       const deviceId = "drum-rack-1";
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
         if (this._path === "live_set tracks 0") return "track-0";
         if (this._path === "live_set tracks 0 devices 0") return deviceId;
         if (this._path?.startsWith("id ")) return this._path.slice(3);
@@ -472,7 +509,7 @@ describe("device-path-helpers", () => {
         return this._id ?? "0";
       });
 
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
         const id = this._id ?? this.id;
 
         if (id?.startsWith("chain-")) return "DrumChain";
@@ -480,7 +517,10 @@ describe("device-path-helpers", () => {
         return "DrumGroupDevice";
       });
 
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (
+        this: MockLiveApiContext,
+        prop: string,
+      ) {
         const id = this._id ?? this.id;
 
         if (
@@ -499,7 +539,7 @@ describe("device-path-helpers", () => {
       });
 
       if (includeCreationMocks) {
-        liveApiCall.mockImplementation(function (method) {
+        liveApiCall.mockImplementation(function (method: string) {
           if (method === "insert_chain") {
             const newId = `chain-new-${chainIds.length}`;
 
@@ -508,7 +548,11 @@ describe("device-path-helpers", () => {
           }
         });
 
-        liveApiSet.mockImplementation(function (prop, value) {
+        liveApiSet.mockImplementation(function (
+          this: MockLiveApiContext,
+          prop: string,
+          value: number,
+        ) {
           const id = this._id ?? this.id;
 
           if (prop === "in_note" && id?.startsWith("chain-")) {
@@ -565,7 +609,7 @@ describe("device-path-helpers", () => {
 
       expect(liveApiCall).not.toHaveBeenCalled();
       expect(result.container).not.toBeNull();
-      expect(result.container.id).toBe("chain-36");
+      expect(result.container!.id).toBe("chain-36");
     });
 
     it("returns null for invalid note name during auto-creation", () => {

@@ -146,12 +146,18 @@ describe("device-display-helpers", () => {
       });
 
       it("handles null/undefined/non-string input", () => {
-        expect(parseLabel(null)).toStrictEqual({ value: null, unit: null });
-        expect(parseLabel()).toStrictEqual({
+        expect(parseLabel(null as unknown as string)).toStrictEqual({
           value: null,
           unit: null,
         });
-        expect(parseLabel(123)).toStrictEqual({ value: null, unit: null });
+        expect(parseLabel(undefined as unknown as string)).toStrictEqual({
+          value: null,
+          unit: null,
+        });
+        expect(parseLabel(123 as unknown as string)).toStrictEqual({
+          value: null,
+          unit: null,
+        });
       });
     });
   });
@@ -167,8 +173,8 @@ describe("device-display-helpers", () => {
     it("returns false for non-pan labels", () => {
       expect(isPanLabel("50 Hz")).toBe(false);
       expect(isPanLabel("Center")).toBe(false);
-      expect(isPanLabel(null)).toBe(false);
-      expect(isPanLabel()).toBe(false);
+      expect(isPanLabel(null as unknown as string)).toBe(false);
+      expect(isPanLabel(undefined as unknown as string)).toBe(false);
     });
   });
 
@@ -186,9 +192,9 @@ describe("device-display-helpers", () => {
       expect(isDivisionLabel("1")).toBe(false);
       expect(isDivisionLabel("1/")).toBe(false);
       expect(isDivisionLabel("50 Hz")).toBe(false);
-      expect(isDivisionLabel(null)).toBe(false);
-      expect(isDivisionLabel(undefined)).toBe(false);
-      expect(isDivisionLabel(123)).toBe(false);
+      expect(isDivisionLabel(null as unknown as string)).toBe(false);
+      expect(isDivisionLabel(undefined as unknown as string)).toBe(false);
+      expect(isDivisionLabel(123 as unknown as string)).toBe(false);
     });
   });
 
@@ -241,7 +247,7 @@ describe("device-display-helpers", () => {
     });
 
     it("returns id and name for a parameter", () => {
-      liveApiGet.mockImplementation((prop) => {
+      liveApiGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Volume"];
         if (prop === "original_name") return ["Volume"];
 
@@ -251,10 +257,10 @@ describe("device-display-helpers", () => {
       const mockParamApi = {
         id: "param_1",
         get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
+        getProperty: (prop: string) => liveApiGet(prop)?.[0],
       };
 
-      const result = readParameterBasic(mockParamApi);
+      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
 
       expect(result).toStrictEqual({
         id: "param_1",
@@ -263,7 +269,7 @@ describe("device-display-helpers", () => {
     });
 
     it("formats name with original_name for rack macros", () => {
-      liveApiGet.mockImplementation((prop) => {
+      liveApiGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Reverb"];
         if (prop === "original_name") return ["Macro 1"];
 
@@ -273,10 +279,10 @@ describe("device-display-helpers", () => {
       const mockParamApi = {
         id: "param_2",
         get: liveApiGet,
-        getProperty: (prop) => liveApiGet(prop)?.[0],
+        getProperty: (prop: string) => liveApiGet(prop)?.[0],
       };
 
-      const result = readParameterBasic(mockParamApi);
+      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
 
       expect(result).toStrictEqual({
         id: "param_2",
@@ -290,15 +296,28 @@ describe("device-display-helpers", () => {
       vi.clearAllMocks();
     });
 
-    const createMockParamApi = (id) => ({
-      id,
-      get: liveApiGet,
-      getProperty: (prop) => liveApiGet(prop)?.[0],
-      call: liveApiCall,
-    });
+    const createMockParamApi = (id: string) =>
+      ({
+        id,
+        get: liveApiGet,
+        getProperty: (prop: string) => liveApiGet(prop)?.[0],
+        call: liveApiCall,
+      }) as unknown as LiveAPI;
 
     // Helper to setup liveApiGet mock for parameter tests
-    const setupParamMock = (props) => {
+    interface ParamMockProps {
+      name?: string;
+      state?: number;
+      automationState?: number;
+      isQuantized?: number;
+      value?: number;
+      min?: number;
+      max?: number;
+      isEnabled?: number;
+      valueItems?: string[];
+    }
+
+    const setupParamMock = (props: ParamMockProps) => {
       const {
         name = "Param",
         state = 0,
@@ -311,7 +330,7 @@ describe("device-display-helpers", () => {
         valueItems,
       } = props;
 
-      liveApiGet.mockImplementation((prop) => {
+      liveApiGet.mockImplementation((prop: string) => {
         if (prop === "name") return [name];
         if (prop === "original_name") return [name];
         if (prop === "state") return [state];
@@ -457,7 +476,7 @@ describe("device-display-helpers", () => {
     it("reads division parameter with enum-like value and options", () => {
       // Division params like Echo's L Division have raw values -6 to 0
       // that map to "1/64" through "1"
-      liveApiGet.mockImplementation((prop) => {
+      liveApiGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["L Division"];
         if (prop === "original_name") return ["L Division"];
         if (prop === "state") return [0];
@@ -472,17 +491,17 @@ describe("device-display-helpers", () => {
       });
 
       // Map raw values to division strings
-      const divisionMap = {
+      const divisionMap: Record<string, string | number> = {
         "-6": "1/64",
         "-5": "1/32",
         "-4": "1/16",
         "-3": "1/8",
         "-2": "1/4",
         "-1": "1/2",
-        0: 1, // Note: returns number, not string
+        "0": 1, // Note: returns number, not string
       };
 
-      liveApiCall.mockImplementation((method, value) => {
+      liveApiCall.mockImplementation((method: string, value: number) => {
         if (method === "str_for_value") {
           return divisionMap[String(value)] ?? "";
         }
@@ -502,7 +521,7 @@ describe("device-display-helpers", () => {
 
     it("handles division param detected via minLabel", () => {
       // Edge case: current value is "1" (not a fraction) but min is "1/64"
-      liveApiGet.mockImplementation((prop) => {
+      liveApiGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Division"];
         if (prop === "original_name") return ["Division"];
         if (prop === "state") return [0];
@@ -516,13 +535,13 @@ describe("device-display-helpers", () => {
         return [0];
       });
 
-      const divisionMap = {
+      const divisionMap: Record<string, string | number> = {
         "-2": "1/4",
         "-1": "1/2",
-        0: 1,
+        "0": 1,
       };
 
-      liveApiCall.mockImplementation((method, value) => {
+      liveApiCall.mockImplementation((method: string, value: number) => {
         if (method === "str_for_value") {
           return divisionMap[String(value)] ?? "";
         }

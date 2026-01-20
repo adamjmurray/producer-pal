@@ -21,7 +21,7 @@ vi.mock(import("./device-state-helpers.js"), () => ({
 }));
 
 // Test helper for creating drum pads with optional state
-const pad = (note, pitch, name, state) =>
+const pad = (note: number, pitch: string, name: string, state?: string) =>
   state !== undefined ? { note, pitch, name, state } : { note, pitch, name };
 
 describe("device-reader-drum-helpers", () => {
@@ -30,8 +30,8 @@ describe("device-reader-drum-helpers", () => {
       const drumPads = [pad(36, "C1", "Kick"), pad(37, "C#1", "Snare")];
 
       updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0].state).toBeUndefined();
-      expect(drumPads[1].state).toBeUndefined();
+      expect(drumPads[0]!.state).toBeUndefined();
+      expect(drumPads[1]!.state).toBeUndefined();
     });
 
     it("should keep soloed pads as soloed and mute others via solo", () => {
@@ -42,9 +42,9 @@ describe("device-reader-drum-helpers", () => {
       ];
 
       updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0].state).toBe(STATE.SOLOED);
-      expect(drumPads[1].state).toBe(STATE.MUTED_VIA_SOLO);
-      expect(drumPads[2].state).toBe(STATE.MUTED_VIA_SOLO);
+      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
+      expect(drumPads[1]!.state).toBe(STATE.MUTED_VIA_SOLO);
+      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
     });
 
     it("should mark already-muted pads as muted_also_via_solo when others are soloed", () => {
@@ -55,9 +55,9 @@ describe("device-reader-drum-helpers", () => {
       ];
 
       updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0].state).toBe(STATE.SOLOED);
-      expect(drumPads[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
-      expect(drumPads[2].state).toBe(STATE.MUTED_VIA_SOLO);
+      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
+      expect(drumPads[1]!.state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
+      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
     });
 
     it("should handle multiple soloed pads", () => {
@@ -68,9 +68,9 @@ describe("device-reader-drum-helpers", () => {
       ];
 
       updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0].state).toBe(STATE.SOLOED);
-      expect(drumPads[1].state).toBe(STATE.SOLOED);
-      expect(drumPads[2].state).toBe(STATE.MUTED_VIA_SOLO);
+      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
+      expect(drumPads[1]!.state).toBe(STATE.SOLOED);
+      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
     });
 
     it("should not modify pads when only muted pads exist", () => {
@@ -80,8 +80,8 @@ describe("device-reader-drum-helpers", () => {
       ];
 
       updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0].state).toBe(STATE.MUTED);
-      expect(drumPads[1].state).toBeUndefined();
+      expect(drumPads[0]!.state).toBe(STATE.MUTED);
+      expect(drumPads[1]!.state).toBeUndefined();
     });
   });
 
@@ -90,10 +90,28 @@ describe("device-reader-drum-helpers", () => {
       vi.clearAllMocks();
     });
 
+    interface DrumPadInfoResult {
+      note: number;
+      pitch: string | null;
+      name?: string;
+      chains?: unknown[];
+    }
+
+    interface DeviceInfoResult {
+      drumPads?: DrumPadInfoResult[];
+      _processedDrumPads?: DrumPadInfoResult[];
+      [key: string]: unknown;
+    }
+
+    interface ChainConfig {
+      inNote: number;
+      name: string;
+    }
+
     // Helper to create mock chain
-    const createMockChain = (inNote, name = "Chain") => ({
+    const createMockChain = (inNote: number, name = "Chain") => ({
       _id: `chain-${inNote}`,
-      getProperty: vi.fn((prop) => {
+      getProperty: vi.fn((prop: string) => {
         if (prop === "in_note") return inNote;
         if (prop === "name") return name;
         if (prop === "mute") return 0;
@@ -105,7 +123,7 @@ describe("device-reader-drum-helpers", () => {
     });
 
     // Helper to create mock device
-    const createMockDevice = (chainConfigs) => ({
+    const createMockDevice = (chainConfigs: ChainConfig[]) => ({
       path: "live_set tracks 0 devices 0",
       getChildren: vi.fn(() =>
         chainConfigs.map((config) =>
@@ -116,16 +134,16 @@ describe("device-reader-drum-helpers", () => {
 
     // Helper for common test setup
     const setupAndProcess = (
-      chainConfigs,
+      chainConfigs: ChainConfig[],
       includeChains = false,
       includeDrumPads = true,
-    ) => {
+    ): DeviceInfoResult => {
       const device = createMockDevice(chainConfigs);
-      const deviceInfo = {};
+      const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
 
       processDrumPads(
-        device,
+        device as unknown as LiveAPI,
         deviceInfo,
         includeChains,
         includeDrumPads,
@@ -141,16 +159,16 @@ describe("device-reader-drum-helpers", () => {
       const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads[0].note).toBe(36);
-      expect(deviceInfo.drumPads[0].pitch).toBe("C1");
+      expect(deviceInfo.drumPads![0]!.note).toBe(36);
+      expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
     });
 
     it("should process chains with catch-all in_note (-1)", () => {
       const deviceInfo = setupAndProcess([{ inNote: -1, name: "Catch All" }]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads[0].note).toBe(-1);
-      expect(deviceInfo.drumPads[0].pitch).toBe("*");
+      expect(deviceInfo.drumPads![0]!.note).toBe(-1);
+      expect(deviceInfo.drumPads![0]!.pitch).toBe("*");
     });
 
     it("should sort drum pads by note with catch-all at end", () => {
@@ -161,9 +179,9 @@ describe("device-reader-drum-helpers", () => {
       ]);
 
       expect(deviceInfo.drumPads).toHaveLength(3);
-      expect(deviceInfo.drumPads[0].note).toBe(36);
-      expect(deviceInfo.drumPads[1].note).toBe(48);
-      expect(deviceInfo.drumPads[2].note).toBe(-1); // catch-all at end
+      expect(deviceInfo.drumPads![0]!.note).toBe(36);
+      expect(deviceInfo.drumPads![1]!.note).toBe(48);
+      expect(deviceInfo.drumPads![2]!.note).toBe(-1); // catch-all at end
     });
 
     it("should include chains when includeDrumPads and includeChains are both true", () => {
@@ -174,7 +192,7 @@ describe("device-reader-drum-helpers", () => {
       );
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads[0].chains).toBeDefined();
+      expect(deviceInfo.drumPads![0]!.chains).toBeDefined();
     });
 
     it("should not include drumPads in deviceInfo when includeDrumPads is false", () => {
@@ -197,14 +215,22 @@ describe("device-reader-drum-helpers", () => {
         path: "live_set tracks 0 devices 0",
         getChildren: vi.fn(() => mockChains),
       };
-      const deviceInfo = {};
+      const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
 
-      processDrumPads(device, deviceInfo, false, true, 0, 2, readDeviceFn);
+      processDrumPads(
+        device as unknown as LiveAPI,
+        deviceInfo,
+        false,
+        true,
+        0,
+        2,
+        readDeviceFn,
+      );
 
       // Should have only one drum pad (chains are grouped)
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads[0].note).toBe(36);
+      expect(deviceInfo.drumPads![0]!.note).toBe(36);
     });
 
     it("should handle invalid in_note values outside MIDI range", () => {
@@ -215,9 +241,9 @@ describe("device-reader-drum-helpers", () => {
       ]);
 
       expect(deviceInfo.drumPads).toHaveLength(1);
-      expect(deviceInfo.drumPads[0].note).toBe(200);
+      expect(deviceInfo.drumPads![0]!.note).toBe(200);
       // midiToNoteName returns null for invalid MIDI notes
-      expect(deviceInfo.drumPads[0].pitch).toBeNull();
+      expect(deviceInfo.drumPads![0]!.pitch).toBeNull();
     });
   });
 });

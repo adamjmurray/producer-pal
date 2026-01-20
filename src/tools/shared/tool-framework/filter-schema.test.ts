@@ -110,11 +110,11 @@ describe("filterSchemaForSmallModel", () => {
 
     // param1 should have new description (new schema object)
     expect(filtered.param1).not.toBe(schema.param1);
-    expect(filtered.param1.description).toBe("simplified description");
+    expect(filtered.param1!.description).toBe("simplified description");
 
     // param2 should be unchanged (same schema object)
     expect(filtered.param2).toBe(schema.param2);
-    expect(filtered.param2.description).toBe("another description");
+    expect(filtered.param2!.description).toBe("another description");
   });
 
   it("should combine exclusions and description overrides", () => {
@@ -131,7 +131,7 @@ describe("filterSchemaForSmallModel", () => {
     expect(Object.keys(filtered)).toStrictEqual(["keep", "override"]);
     expect(filtered.keep).toBe(schema.keep);
     expect(filtered.override).not.toBe(schema.override);
-    expect(filtered.override.description).toBe("simplified number");
+    expect(filtered.override!.description).toBe("simplified number");
     expect(filtered.remove).toBeUndefined();
   });
 
