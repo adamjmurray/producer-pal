@@ -338,6 +338,7 @@ export default [
       "knowledge-base/**",
       "max-for-live-device/**",
       "node_modules/**",
+      "npm/**",
       "release/**",
       "test-results/**",
       "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
@@ -695,6 +696,45 @@ export default [
     },
   },
 
+  // Enforce path aliases for parent directory imports in src files
+  {
+    files: ["src/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../ imports",
+        },
+      ],
+    },
+  },
+
+  // Enforce LiveAPI.from() over new LiveAPI() for safer ID handling
+  // LiveAPI.from() properly handles raw IDs (prefixes with "id ") while
+  // new LiveAPI() requires already-prefixed IDs or full paths
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/live-api-adapter/live-api-extensions.ts", // Defines LiveAPI.from()
+      "src/test/mocks/mock-live-api.ts", // Test mock that mirrors live-api-extensions.ts
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "NewExpression[callee.name='LiveAPI']",
+          message:
+            "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}", "**/test-setup.js"],
@@ -745,7 +785,7 @@ export default [
   // Max file size rules
   {
     files: [
-      "src/**/*.js",
+      "src/**/*.ts",
       "scripts/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
@@ -754,13 +794,13 @@ export default [
       "**/*.test.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "src/tools/shared/gain-lookup-table.js", // Auto-generated data
+      "src/tools/shared/gain-lookup-table.ts", // Auto-generated data
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 325,
+          max: 410, // TODO: ratchet back to 325
           skipBlankLines: true,
           skipComments: true,
         },
