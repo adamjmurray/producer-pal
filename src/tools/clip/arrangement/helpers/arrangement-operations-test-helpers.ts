@@ -86,7 +86,7 @@ interface SetupArrangementMocksOptions {
   clipId?: string;
   trackIndex?: number;
   clipProps?: ClipProps;
-  extraMocks?: Record<string, object>;
+  extraMocks?: Record<string, Record<string, unknown>>;
 }
 
 /**
