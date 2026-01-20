@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
 
 /** Context available in mockImplementation callbacks for LiveAPI mocks */
 export interface MockLiveAPIContext {
@@ -41,25 +42,7 @@ export class LiveAPI {
    * @returns LiveAPI instance
    */
   static from(idOrPath: string | string[] | number): LiveAPI {
-    // Handle array format ["id", "123"] from Live API calls
-    if (Array.isArray(idOrPath)) {
-      if (idOrPath.length === 2 && idOrPath[0] === "id") {
-        return new LiveAPI(`id ${idOrPath[1]}`);
-      }
-
-      throw new Error(
-        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${String(idOrPath)}]`,
-      );
-    }
-
-    if (
-      typeof idOrPath === "number" ||
-      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
-    ) {
-      return new LiveAPI(`id ${idOrPath}`);
-    }
-
-    return new LiveAPI(idOrPath);
+    return new LiveAPI(parseIdOrPath(idOrPath));
   }
 
   exists(): boolean {

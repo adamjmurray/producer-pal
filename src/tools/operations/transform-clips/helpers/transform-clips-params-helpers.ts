@@ -1,5 +1,10 @@
 import * as console from "#src/shared/v8-max-console.ts";
-import { applyAudioParams, applyMidiParams } from "./transform-clips-params.ts";
+import {
+  applyAudioParams,
+  applyMidiParams,
+  type AudioParams,
+  type MidiParams,
+} from "./transform-clips-params.ts";
 
 /**
  * Check if any audio transformation parameters are specified
@@ -63,14 +68,6 @@ function hasMidiTransformParams(
   );
 }
 
-interface AudioTransformParams {
-  gainDbMin?: number;
-  gainDbMax?: number;
-  transposeMin?: number;
-  transposeMax?: number;
-  transposeValuesArray?: number[] | null;
-}
-
 /**
  * Apply audio parameters to a clip if appropriate
  * @param clip - Live API clip object
@@ -80,7 +77,7 @@ interface AudioTransformParams {
  */
 function applyAudioTransformIfNeeded(
   clip: LiveAPI,
-  audioParams: AudioTransformParams,
+  audioParams: AudioParams,
   rng: () => number,
   warnings: Set<string>,
 ): void {
@@ -98,18 +95,6 @@ function applyAudioTransformIfNeeded(
   applyAudioParams(clip, audioParams, rng);
 }
 
-interface MidiTransformParams {
-  velocityMin?: number;
-  velocityMax?: number;
-  transposeMin?: number;
-  transposeMax?: number;
-  transposeValuesArray?: number[] | null;
-  durationMin?: number;
-  durationMax?: number;
-  velocityRange?: number;
-  probability?: number;
-}
-
 /**
  * Apply MIDI parameters to a clip if appropriate
  * @param clip - Live API clip object
@@ -119,7 +104,7 @@ interface MidiTransformParams {
  */
 function applyMidiTransformIfNeeded(
   clip: LiveAPI,
-  midiParams: MidiTransformParams,
+  midiParams: MidiParams,
   rng: () => number,
   warnings: Set<string>,
 ): void {

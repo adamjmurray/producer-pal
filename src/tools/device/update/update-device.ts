@@ -79,9 +79,7 @@ function warnIfSet(paramName: string, value: unknown, type: string): void {
 // Main export
 // ============================================================================
 
-interface UpdateDeviceArgs {
-  ids?: string;
-  path?: string;
+interface UpdateProperties {
   toPath?: string;
   name?: string;
   collapsed?: boolean;
@@ -95,23 +93,15 @@ interface UpdateDeviceArgs {
   color?: string;
   chokeGroup?: number;
   mappedPitch?: string;
+}
+
+interface UpdateDeviceArgs extends UpdateProperties {
+  ids?: string;
+  path?: string;
   wrapInRack?: boolean;
 }
 
-interface UpdateOptions {
-  toPath?: string;
-  name?: string;
-  collapsed?: boolean;
-  params?: string;
-  macroVariation?: string;
-  macroVariationIndex?: number;
-  macroCount?: number;
-  abCompare?: string;
-  mute?: boolean;
-  solo?: boolean;
-  color?: string;
-  chokeGroup?: number;
-  mappedPitch?: string;
+interface UpdateOptions extends UpdateProperties {
   isDrumPadPath?: boolean;
 }
 

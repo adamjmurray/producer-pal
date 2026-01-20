@@ -20,6 +20,41 @@ interface MockFunction {
   };
 }
 
+/**
+ * Validates and casts a value to MockFunction
+ * @param received - Value to validate
+ * @returns Error result if invalid, or validated mock data if valid
+ */
+function validateMockFunction(
+  received: unknown,
+): MatcherResult | { calls: unknown[][]; contexts: unknown[] } {
+  const rec = received as MockFunction & ((...args: unknown[]) => unknown);
+
+  if (typeof rec !== "function" || !("mock" in rec)) {
+    return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
+  }
+
+  return rec.mock;
+}
+
+/**
+ * Format call list for error messages
+ * @param calls - Array of call arguments
+ * @param contexts - Array of this contexts
+ * @returns Formatted string
+ */
+function formatCalls(calls: unknown[][], contexts: unknown[]): string {
+  return calls
+    .map((call, index) => {
+      return (
+        `  Call ${index + 1}:\n` +
+        `    Context: ${inspect(contexts[index])}\n` +
+        `    Args: ${inspect(call)}`
+      );
+    })
+    .join("\n");
+}
+
 expect.extend({
   /**
    * Assert mock was called with specific this context and args
@@ -33,13 +68,13 @@ expect.extend({
     expectedThis: unknown,
     ...expectedArgs: unknown[]
   ): MatcherResult {
-    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
+    const result = validateMockFunction(received);
 
-    if (typeof rec !== "function" || !("mock" in rec)) {
-      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
+    if ("pass" in result) {
+      return result;
     }
 
-    const { calls, contexts } = rec.mock;
+    const { calls, contexts } = result;
 
     if (calls.length === 0 || contexts.length === 0) {
       return {
@@ -69,23 +104,12 @@ expect.extend({
 
     return {
       pass: false,
-      message: () => {
-        return (
-          `Expected mock function to have been called with:\n` +
-          `  Context: ${inspect(expectedThis)}\n` +
-          `  Args: ${inspect(expectedArgs)}\n\n` +
-          `But it was called with:\n` +
-          calls
-            .map((call, index) => {
-              return (
-                `  Call ${index + 1}:\n` +
-                `    Context: ${inspect(contexts[index])}\n` +
-                `    Args: ${inspect(call)}`
-              );
-            })
-            .join("\n")
-        );
-      },
+      message: () =>
+        `Expected mock function to have been called with:\n` +
+        `  Context: ${inspect(expectedThis)}\n` +
+        `  Args: ${inspect(expectedArgs)}\n\n` +
+        `But it was called with:\n` +
+        formatCalls(calls, contexts),
     };
   },
 
@@ -103,13 +127,13 @@ expect.extend({
     expectedThis: unknown,
     ...expectedArgs: unknown[]
   ): MatcherResult {
-    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
+    const result = validateMockFunction(received);
 
-    if (typeof rec !== "function" || !("mock" in rec)) {
-      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
+    if ("pass" in result) {
+      return result;
     }
 
-    const { calls, contexts } = rec.mock;
+    const { calls, contexts } = result;
 
     if (typeof nthCall !== "number" || nthCall < 1) {
       return {
@@ -167,13 +191,13 @@ expect.extend({
     expectedThis: unknown,
     ...expectedArgs: unknown[]
   ): MatcherResult {
-    const rec = received as MockFunction & ((...args: unknown[]) => unknown);
+    const result = validateMockFunction(received);
 
-    if (typeof rec !== "function" || !("mock" in rec)) {
-      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
+    if ("pass" in result) {
+      return result;
     }
 
-    const { calls, contexts } = rec.mock;
+    const { calls, contexts } = result;
 
     if (calls.length === 0) {
       return {
@@ -188,15 +212,7 @@ expect.extend({
         pass: false,
         message: () =>
           `Expected mock function to have been called exactly once, but it was called ${calls.length} times:\n` +
-          calls
-            .map((call, index) => {
-              return (
-                `  Call ${index + 1}:\n` +
-                `    Context: ${inspect(contexts[index])}\n` +
-                `    Args: ${inspect(call)}`
-              );
-            })
-            .join("\n"),
+          formatCalls(calls, contexts),
       };
     }
 

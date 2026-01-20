@@ -1,6 +1,8 @@
 /// <reference path="../types/live-api.d.ts" />
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
+import { parseIdOrPath } from "./live-api-path-utils.ts";
+
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
@@ -10,25 +12,7 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.from = function (
     idOrPath: string | number | [string, string | number],
   ): LiveAPI {
-    // Handle array format ["id", "123"] from Live API calls
-    if (Array.isArray(idOrPath)) {
-      // Runtime check for malformed arrays (type says 2 elements, but check anyway)
-      const arr = idOrPath as unknown[];
-      if (arr.length === 2 && arr[0] === "id") {
-        return new LiveAPI(`id ${String(arr[1])}`);
-      }
-      throw new Error(
-        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${String(idOrPath)}]`,
-      );
-    }
-
-    if (
-      typeof idOrPath === "number" ||
-      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
-    ) {
-      return new LiveAPI(`id ${idOrPath}`);
-    }
-    return new LiveAPI(idOrPath);
+    return new LiveAPI(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // id can be "id 0", "0", or 0 (number) when object doesn't exist
