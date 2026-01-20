@@ -2,10 +2,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import {
-  findLocator,
-  findLocatorsByName,
-} from "#src/tools/shared/locator/locator-helpers.ts";
+import { resolveLocatorToBeats as resolveLocatorToBeatsRequired } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
   startBeats: number;
@@ -83,37 +80,16 @@ export function resolveLocatorToBeats(
   { locatorId, locatorName }: LocatorOptions,
   paramName: string,
 ): number | null {
-  if (locatorId != null) {
-    const found = findLocator(liveSet, { locatorId });
-
-    if (!found) {
-      throw new Error(`playback failed: locator not found: ${locatorId}`);
-    }
-
-    return found.locator.getProperty("time") as number;
+  if (locatorId == null && locatorName == null) {
+    return null;
   }
 
-  if (locatorName != null) {
-    const matches = findLocatorsByName(liveSet, locatorName);
-
-    if (matches.length === 0) {
-      throw new Error(
-        `playback failed: no locator found with name "${locatorName}" for ${paramName}`,
-      );
-    }
-
-    // Array is guaranteed non-empty after the length check above
-    const firstMatch = matches[0];
-
-    // TypeScript doesn't narrow based on length checks, so we add this guard
-    if (firstMatch === undefined) {
-      throw new Error("playback failed: unexpected empty array after check");
-    }
-
-    return firstMatch.time;
-  }
-
-  return null;
+  return resolveLocatorToBeatsRequired(
+    liveSet,
+    { locatorId, locatorName },
+    "playback",
+    `for ${paramName}`,
+  );
 }
 
 /**

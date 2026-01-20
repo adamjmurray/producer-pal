@@ -25,7 +25,26 @@ function randomInRange(min: number, max: number, rng: () => number): number {
   return min + rng() * (max - min);
 }
 
-interface AudioParams {
+/**
+ * Apply a pitch shift offset to an audio clip
+ * @param clip - The clip to modify
+ * @param transposeOffset - Semitones to shift
+ */
+function applyAudioPitchShift(clip: LiveAPI, transposeOffset: number): void {
+  const currentPitchCoarse = clip.getProperty("pitch_coarse") as number;
+  const currentPitchFine = clip.getProperty("pitch_fine") as number;
+  const currentPitch = currentPitchCoarse + currentPitchFine / 100;
+
+  const newPitch = currentPitch + transposeOffset;
+
+  const pitchCoarse = Math.floor(newPitch);
+  const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
+
+  clip.set("pitch_coarse", pitchCoarse);
+  clip.set("pitch_fine", pitchFine);
+}
+
+export interface AudioParams {
   gainDbMin?: number;
   gainDbMax?: number;
   transposeMin?: number;
@@ -74,31 +93,12 @@ export function applyAudioParams(
       Math.floor(rng() * transposeValuesArray.length)
     ] as number;
 
-    const currentPitchCoarse = clip.getProperty("pitch_coarse") as number;
-    const currentPitchFine = clip.getProperty("pitch_fine") as number;
-    const currentPitch = currentPitchCoarse + currentPitchFine / 100;
-
-    const newPitch = currentPitch + transposeOffset;
-
-    const pitchCoarse = Math.floor(newPitch);
-    const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
-
-    clip.set("pitch_coarse", pitchCoarse);
-    clip.set("pitch_fine", pitchFine);
+    applyAudioPitchShift(clip, transposeOffset);
   } else if (transposeMin != null && transposeMax != null) {
     // Random range
-    const currentPitchCoarse = clip.getProperty("pitch_coarse") as number;
-    const currentPitchFine = clip.getProperty("pitch_fine") as number;
-    const currentPitch = currentPitchCoarse + currentPitchFine / 100;
-
     const transposeOffset = randomInRange(transposeMin, transposeMax, rng);
-    const newPitch = currentPitch + transposeOffset;
 
-    const pitchCoarse = Math.floor(newPitch);
-    const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
-
-    clip.set("pitch_coarse", pitchCoarse);
-    clip.set("pitch_fine", pitchFine);
+    applyAudioPitchShift(clip, transposeOffset);
   }
 }
 
@@ -223,7 +223,7 @@ function applyProbabilityOffset(
   );
 }
 
-interface MidiParams {
+export interface MidiParams {
   velocityMin?: number;
   velocityMax?: number;
   transposeMin?: number;

@@ -143,6 +143,7 @@ export function findLocatorsByName(
  * @param options.locatorId - Locator ID to find
  * @param options.locatorName - Locator name to find
  * @param toolName - Name of the tool for error messages
+ * @param context - Optional context for error messages (e.g., "for start")
  * @returns Time in beats
  * @throws If locator is not found
  */
@@ -150,7 +151,10 @@ export function resolveLocatorToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: ResolveLocatorOptions,
   toolName: string,
+  context?: string,
 ): number {
+  const contextSuffix = context ? ` ${context}` : "";
+
   if (locatorId != null) {
     const found = findLocator(liveSet, { locatorId });
 
@@ -166,7 +170,7 @@ export function resolveLocatorToBeats(
 
     if (matches.length === 0) {
       throw new Error(
-        `${toolName} failed: no locator found with name "${locatorName}"`,
+        `${toolName} failed: no locator found with name "${locatorName}"${contextSuffix}`,
       );
     }
 
