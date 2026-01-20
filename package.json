@@ -97,7 +97,7 @@
     "duplication:tests": "printf 'Tests ' && jscpd -s -c config/.jscpd-tests.json",
     "duplication:scripts": "printf 'Scripts ' && jscpd -s -c config/.jscpd-scripts.json",
     "duplication:verbose": "jscpd -c config/.jscpd.json && jscpd -c config/.jscpd-tests.json && jscpd -c config/.jscpd-scripts.json",
-    "loc": "cloc --vcs=git",
+    "loc": "cloc --vcs=git --not-match-f='package-lock.json'",
     "knowledge-base": "npm run test:coverage && node scripts/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "kb:chatgpt": "npm run knowledge-base -- --concat",
