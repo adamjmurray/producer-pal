@@ -6,14 +6,24 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
+interface DirectoryConfig {
+  name: string;
+  excludeDirs?: string[];
+  excludeFiles?: string[];
+}
+
 /**
  * Check a directory for JavaScript files that should be TypeScript
- * @param dir - Directory to check
- * @param excludePaths - Paths to exclude from the search
+ * @param config - Directory configuration with exclusions
  * @returns Array of found JS files, or empty array if none
  */
-function findJsFiles(dir: string, excludePaths: string[] = []): string[] {
-  const excludeArgs = excludePaths.map((p) => `! -path "*/${p}/*"`).join(" ");
+function findJsFiles(config: DirectoryConfig): string[] {
+  const { name: dir, excludeDirs = [], excludeFiles = [] } = config;
+  const excludeDirArgs = excludeDirs.map((p) => `! -path "*/${p}/*"`).join(" ");
+  const excludeFileArgs = excludeFiles.map((f) => `! -path "${f}"`).join(" ");
+  const excludeArgs = [excludeDirArgs, excludeFileArgs]
+    .filter(Boolean)
+    .join(" ");
   const cmd = `find ${dir} -type f \\( -name "*.js" -o -name "*.jsx" -o -name "*.cjs" -o -name "*.mjs" \\) ${excludeArgs}`;
 
   try {
@@ -35,16 +45,24 @@ function findJsFiles(dir: string, excludePaths: string[] = []): string[] {
   }
 }
 
-// Check both webui/ and scripts/ directories
-const directories = [
-  { name: "webui", excludes: ["node_modules"] },
-  { name: "scripts", excludes: ["chat-lib"] },
+// Check webui/, scripts/, and src/ directories
+const directories: DirectoryConfig[] = [
+  { name: "webui", excludeDirs: ["node_modules"] },
+  { name: "scripts", excludeDirs: ["chat-lib"] },
+  {
+    name: "src",
+    excludeFiles: [
+      "src/notation/barbeat/parser/barbeat-parser.js",
+      "src/notation/modulation/parser/modulation-parser.js",
+    ],
+  },
 ];
 
 let hasViolations = false;
 
-for (const { name, excludes } of directories) {
-  const files = findJsFiles(name, excludes);
+for (const config of directories) {
+  const files = findJsFiles(config);
+  const { name } = config;
 
   if (files.length > 0) {
     hasViolations = true;
