@@ -484,7 +484,7 @@ describe("device-display-helpers", () => {
 
       liveApiCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
-          return divisionMap[String(value)] || "";
+          return divisionMap[String(value)] ?? "";
         }
 
         return "";
@@ -524,7 +524,7 @@ describe("device-display-helpers", () => {
 
       liveApiCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
-          return divisionMap[String(value)] || "";
+          return divisionMap[String(value)] ?? "";
         }
 
         return "";

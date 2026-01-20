@@ -4,17 +4,51 @@ import { assertDefined } from "#src/tools/shared/utils.js";
 import {
   buildChainInfo,
   hasInstrumentInDevices,
+  type DeviceInfo,
 } from "./device-state-helpers.js";
 import { extractDevicePath } from "./path/device-path-helpers.js";
 
+export interface DrumChainOptions {
+  includeDrumPads: boolean;
+  includeChains: boolean;
+  depth: number;
+  maxDepth: number;
+  readDeviceFn: (
+    device: LiveAPI,
+    options: Record<string, unknown>,
+  ) => Record<string, unknown>;
+  parentPath: string | null;
+}
+
+export interface ProcessedChain {
+  name?: string;
+  state?: string;
+  _hasInstrument?: boolean;
+  _inNote?: number;
+}
+
+export interface DrumPadInfo {
+  note: number;
+  pitch: string | null;
+  name?: string;
+  state?: string;
+  hasInstrument?: boolean;
+  chains?: Record<string, unknown>[];
+  _processedChains?: ProcessedChain[];
+}
+
 /**
  * Build path for a drum rack chain based on its in_note and position within that note group
- * @param {string} parentPath - Parent device path (e.g., "0/0")
- * @param {number} inNote - Chain's in_note property (-1 for catch-all, >=0 for specific note)
- * @param {number} indexWithinNote - Index within chains having the same in_note
- * @returns {string} Chain path (e.g., "0/0/pC1/0" or "0/0/p[star]/0" for catch-all)
+ * @param parentPath - Parent device path (e.g., "0/0")
+ * @param inNote - Chain's in_note property (-1 for catch-all, >=0 for specific note)
+ * @param indexWithinNote - Index within chains having the same in_note
+ * @returns Chain path (e.g., "0/0/pC1/0" or "0/0/p[star]/0" for catch-all)
  */
-function buildDrumChainPath(parentPath, inNote, indexWithinNote) {
+function buildDrumChainPath(
+  parentPath: string,
+  inNote: number,
+  indexWithinNote: number,
+): string {
   if (inNote === -1) {
     // Catch-all chain: p*/0, p*/1, etc.
     return `${parentPath}/p*/${indexWithinNote}`;
@@ -32,24 +66,19 @@ function buildDrumChainPath(parentPath, inNote, indexWithinNote) {
 }
 
 /**
- * @typedef {object} DrumChainOptions
- * @property {boolean} includeDrumPads
- * @property {boolean} includeChains
- * @property {number} depth
- * @property {number} maxDepth
- * @property {Function} readDeviceFn
- * @property {string | null} parentPath
- */
-
-/**
  * Process a single drum rack chain
- * @param {LiveAPI} chain - Chain object from drum rack
- * @param {number} inNote - Chain's in_note property
- * @param {number} indexWithinNote - Index within chains having the same in_note
- * @param {DrumChainOptions} options - Processing options
- * @returns {Record<string, unknown>} Processed chain info
+ * @param chain - Chain object from drum rack
+ * @param inNote - Chain's in_note property
+ * @param indexWithinNote - Index within chains having the same in_note
+ * @param options - Processing options
+ * @returns Processed chain info
  */
-function processDrumRackChain(chain, inNote, indexWithinNote, options) {
+function processDrumRackChain(
+  chain: LiveAPI,
+  inNote: number,
+  indexWithinNote: number,
+  options: DrumChainOptions,
+): Record<string, unknown> {
   const {
     includeDrumPads,
     includeChains,
@@ -83,52 +112,49 @@ function processDrumRackChain(chain, inNote, indexWithinNote, options) {
 
   // Add in_note for internal tracking
   chainInfo._inNote = inNote;
-  chainInfo._hasInstrument = hasInstrumentInDevices(processedDevices);
+  chainInfo._hasInstrument = hasInstrumentInDevices(
+    processedDevices as unknown as DeviceInfo[],
+  );
 
   return chainInfo;
 }
 
 /**
  * Group chains by their in_note property
- * @param {LiveAPI[]} chains - Array of chain objects
- * @returns {Map<number, LiveAPI[]>} Map of in_note -> array of chains with indices
+ * @param chains - Array of chain objects
+ * @returns Map of in_note -> array of chains with indices
  */
-function groupChainsByNote(chains) {
-  const noteGroups = new Map();
+function groupChainsByNote(chains: LiveAPI[]): Map<number, LiveAPI[]> {
+  const noteGroups = new Map<number, LiveAPI[]>();
 
   for (const chain of chains) {
-    const inNote = chain.getProperty("in_note");
+    const inNote = chain.getProperty("in_note") as number;
+    const group = noteGroups.get(inNote);
 
-    if (!noteGroups.has(inNote)) {
-      noteGroups.set(inNote, []);
+    if (group) {
+      group.push(chain);
+    } else {
+      noteGroups.set(inNote, [chain]);
     }
-
-    noteGroups.get(inNote).push(chain);
   }
 
   return noteGroups;
 }
 
 /**
- * @typedef {object} ProcessedChain
- * @property {string} [name] - Chain name
- * @property {string} [state] - Chain state
- * @property {boolean} [_hasInstrument] - Whether chain has instrument
- * @property {number} [_inNote] - Chain's in_note
- */
-
-/**
  * Build drum pad info from grouped chains
- * @param {number} inNote - MIDI note or -1 for catch-all
- * @param {ProcessedChain[]} processedChains - Processed chain info objects
- * @returns {Record<string, unknown>} Drum pad info object
+ * @param inNote - MIDI note or -1 for catch-all
+ * @param processedChains - Processed chain info objects
+ * @returns Drum pad info object
  */
-function buildDrumPadFromChains(inNote, processedChains) {
+function buildDrumPadFromChains(
+  inNote: number,
+  processedChains: ProcessedChain[],
+): Record<string, unknown> {
   const firstChain = assertDefined(processedChains[0], "first chain");
   const isCatchAll = inNote === -1;
 
-  /** @type {Record<string, unknown>} */
-  const drumPadInfo = {
+  const drumPadInfo: Record<string, unknown> = {
     note: inNote,
     pitch: isCatchAll ? "*" : midiToNoteName(inNote),
     name: firstChain.name,
@@ -156,19 +182,12 @@ function buildDrumPadFromChains(inNote, processedChains) {
 }
 
 /**
- * @typedef {object} DrumPadInfo
- * @property {number} note - MIDI note number
- * @property {string | null} pitch - Pitch name
- * @property {string} [name] - Drum pad name
- * @property {string} [state] - Drum pad state
- * @property {boolean} [hasInstrument] - Whether pad has instrument
- */
-
-/**
  * Update drum pad solo states based on which pads are soloed
- * @param {DrumPadInfo[]} processedDrumPads - Drum pads to update
+ * @param processedDrumPads - Drum pads to update
  */
-export function updateDrumPadSoloStates(processedDrumPads) {
+export function updateDrumPadSoloStates(
+  processedDrumPads: DrumPadInfo[],
+): void {
   const hasSoloedDrumPad = processedDrumPads.some(
     (drumPadInfo) => drumPadInfo.state === STATE.SOLOED,
   );
@@ -182,8 +201,8 @@ export function updateDrumPadSoloStates(processedDrumPads) {
       // Keep soloed state as-is
     } else if (drumPadInfo.state === STATE.MUTED) {
       drumPadInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
-    } else if (!drumPadInfo.state) {
-      drumPadInfo.state = STATE.MUTED_VIA_SOLO;
+    } else {
+      drumPadInfo.state ??= STATE.MUTED_VIA_SOLO;
     }
   }
 }
@@ -193,23 +212,23 @@ export function updateDrumPadSoloStates(processedDrumPads) {
  * Uses chains with in_note property instead of drum_pads collection.
  * This correctly handles nested drum racks by following the actual device hierarchy.
  *
- * @param {LiveAPI} device - Device object
- * @param {Record<string, unknown>} deviceInfo - Device info to update
- * @param {boolean} includeChains - Include chains data in drum pads
- * @param {boolean} includeDrumPads - Include drum pads in output
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param includeChains - Include chains data in drum pads
+ * @param includeDrumPads - Include drum pads in output
+ * @param depth - Current depth
+ * @param maxDepth - Max depth
+ * @param readDeviceFn - readDevice function
  */
 export function processDrumPads(
-  device,
-  deviceInfo,
-  includeChains,
-  includeDrumPads,
-  depth,
-  maxDepth,
-  readDeviceFn,
-) {
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  includeChains: boolean,
+  includeDrumPads: boolean,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: DrumChainOptions["readDeviceFn"],
+): void {
   const chains = device.getChildren("chains");
   const parentPath = extractDevicePath(device.path);
 
@@ -217,7 +236,7 @@ export function processDrumPads(
   const noteGroups = groupChainsByNote(chains);
 
   // Process each group
-  const processedDrumPads = [];
+  const processedDrumPads: Record<string, unknown>[] = [];
 
   for (const [inNote, chainsForNote] of noteGroups) {
     // Process each chain in the group
@@ -233,7 +252,10 @@ export function processDrumPads(
     );
 
     // Build drum pad info from the chains
-    const drumPadInfo = buildDrumPadFromChains(inNote, processedChains);
+    const drumPadInfo = buildDrumPadFromChains(
+      inNote,
+      processedChains as ProcessedChain[],
+    );
 
     // Add chains if requested
     if (includeDrumPads && includeChains) {
@@ -251,8 +273,8 @@ export function processDrumPads(
 
   // Sort drum pads: note-specific first (sorted by note), then catch-all
   processedDrumPads.sort((a, b) => {
-    const aNote = /** @type {number} */ (a.note);
-    const bNote = /** @type {number} */ (b.note);
+    const aNote = a.note as number;
+    const bNote = b.note as number;
 
     if (aNote === -1 && bNote === -1) return 0;
     if (aNote === -1) return 1; // catch-all at end
@@ -261,9 +283,7 @@ export function processDrumPads(
     return aNote - bNote;
   });
 
-  updateDrumPadSoloStates(
-    /** @type {DrumPadInfo[]} */ (/** @type {unknown} */ (processedDrumPads)),
-  );
+  updateDrumPadSoloStates(processedDrumPads as unknown as DrumPadInfo[]);
 
   if (includeDrumPads) {
     deviceInfo.drumPads = processedDrumPads.map(

@@ -614,7 +614,7 @@ describe("device-reader-helpers", () => {
       },
       getColor: () => null,
       getChildren: (child) => {
-        if (child === "devices") return overrides.devices || [];
+        if (child === "devices") return overrides.devices ?? [];
 
         return [];
       },

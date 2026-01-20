@@ -1,20 +1,28 @@
 import { assertDefined } from "#src/tools/shared/utils.js";
 
-/**
- * @typedef {object} ResolvedPath
- * @property {string} liveApiPath - Live API canonical path
- * @property {'device'|'chain'|'drum-pad'|'return-chain'} targetType - Type of target
- * @property {string} [drumPadNote] - Note name for drum pads
- * @property {string[]} remainingSegments - Segments after drum pad (empty for non-drum-pad)
- */
+export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
+
+export interface ResolvedPath {
+  liveApiPath: string;
+  targetType: TargetType;
+  drumPadNote?: string;
+  remainingSegments: string[];
+}
+
+interface ChainSegmentResult {
+  earlyReturn?: ResolvedPath;
+  liveApiPath?: string;
+  targetType?: TargetType;
+  remainingSegments?: string[];
+}
 
 /**
  * Parse the track segment and return the Live API path prefix
- * @param {string} trackSegment - Track segment (e.g., "t1", "rt0", "mt")
- * @param {string} path - Full path for error messages
- * @returns {string} Live API path prefix
+ * @param trackSegment - Track segment (e.g., "t1", "rt0", "mt")
+ * @param path - Full path for error messages
+ * @returns Live API path prefix
  */
-function parseTrackSegment(trackSegment, path) {
+function parseTrackSegment(trackSegment: string, path: string): string {
   if (trackSegment === "mt") return "live_set master_track";
 
   if (trackSegment.startsWith("rt")) {
@@ -39,23 +47,21 @@ function parseTrackSegment(trackSegment, path) {
 }
 
 /**
- * @typedef {object} ChainSegmentResult
- * @property {ResolvedPath} [earlyReturn] - Early return for drum pad paths
- * @property {string} [liveApiPath] - Updated Live API path
- * @property {'device'|'chain'|'drum-pad'|'return-chain'} [targetType] - Target type
- * @property {string[]} [remainingSegments] - Remaining path segments
- */
-
-/**
  * Parse a chain segment (c-prefixed chain, rc-prefixed return chain, or p-prefixed drum pad)
- * @param {string} segment - Chain segment to parse (e.g., "c0", "rc0", "pC1")
- * @param {string} path - Full path for error messages
- * @param {string} liveApiPath - Current Live API path
- * @param {string[]} segments - All path segments
- * @param {number} index - Current segment index
- * @returns {ChainSegmentResult} Result with liveApiPath, targetType, and optional early return
+ * @param segment - Chain segment to parse (e.g., "c0", "rc0", "pC1")
+ * @param path - Full path for error messages
+ * @param liveApiPath - Current Live API path
+ * @param segments - All path segments
+ * @param index - Current segment index
+ * @returns Result with liveApiPath, targetType, and optional early return
  */
-function parseChainSegment(segment, path, liveApiPath, segments, index) {
+function parseChainSegment(
+  segment: string,
+  path: string,
+  liveApiPath: string,
+  segments: string[],
+  index: number,
+): ChainSegmentResult {
   // Drum pad - return partial resolution for Live API lookup
   if (segment.startsWith("p")) {
     const noteName = segment.slice(1);
@@ -109,11 +115,11 @@ function parseChainSegment(segment, path, liveApiPath, segments, index) {
 
 /**
  * Resolve a simplified path to a Live API path
- * @param {string} path - e.g., "t1/d0", "t1/d0/c0", "rt0/d0", "mt/d0", "t1/d0/pC1", "t1/d0/rc0"
- * @returns {ResolvedPath} Resolved path info
- * @throws {Error} If path format is invalid
+ * @param path - e.g., "t1/d0", "t1/d0/c0", "rt0/d0", "mt/d0", "t1/d0/pC1", "t1/d0/rc0"
+ * @returns Resolved path info
+ * @throws If path format is invalid
  */
-export function resolvePathToLiveApi(path) {
+export function resolvePathToLiveApi(path: string): ResolvedPath {
   if (!path || typeof path !== "string") {
     throw new Error("Path must be a non-empty string");
   }
@@ -134,11 +140,10 @@ export function resolvePathToLiveApi(path) {
   }
 
   // Parse remaining segments using explicit prefixes
-  /** @type {'device'|'chain'|'drum-pad'|'return-chain'} */
-  let targetType = "device";
+  let targetType: TargetType = "device";
 
   for (let i = 1; i < segments.length; i++) {
-    const segment = /** @type {string} */ (segments[i]);
+    const segment = segments[i] as string;
 
     if (segment.startsWith("d")) {
       // Device segment
@@ -159,10 +164,8 @@ export function resolvePathToLiveApi(path) {
       }
 
       // After earlyReturn check, liveApiPath and targetType are guaranteed
-      liveApiPath = /** @type {string} */ (result.liveApiPath);
-      targetType = /** @type {'device'|'chain'|'drum-pad'|'return-chain'} */ (
-        result.targetType
-      );
+      liveApiPath = result.liveApiPath as string;
+      targetType = result.targetType as TargetType;
     }
   }
 

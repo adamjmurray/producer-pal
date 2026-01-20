@@ -396,7 +396,7 @@ function categorizeDevices(
       includeChains: includeRackChains,
       includeReturnChains,
       includeDrumPads,
-    }) as DeviceWithDrumPads;
+    }) as unknown as DeviceWithDrumPads;
 
     // Use processed device type for proper rack categorization
     const deviceType = processedDevice.type;

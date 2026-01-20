@@ -15,18 +15,17 @@ export { buildDrumPadPath } from "./device-path-builders.js";
 export { resolvePathToLiveApi } from "./device-path-to-live-api.js";
 export { resolveDrumPadFromPath } from "./device-drumpad-navigation.js";
 
-/**
- * @typedef {object} InsertionPathResolution
- * @property {LiveAPI | null} container - LiveAPI object (Track or Chain) to insert into, or null if not found
- * @property {number|null} position - Device index to insert at, or null to append
- */
+export interface InsertionPathResolution {
+  container: LiveAPI | null;
+  position: number | null;
+}
 
 /**
  * Resolve a track segment to a LiveAPI track object
- * @param {string} segment - Track segment (e.g., "t0", "rt0", "mt")
- * @returns {LiveAPI} LiveAPI track object
+ * @param segment - Track segment (e.g., "t0", "rt0", "mt")
+ * @returns LiveAPI track object
  */
-function resolveTrack(segment) {
+function resolveTrack(segment: string): LiveAPI {
   if (segment === "mt") {
     return LiveAPI.from("live_set master_track");
   }
@@ -48,10 +47,10 @@ function resolveTrack(segment) {
 
 /**
  * Resolve a drum pad container path with auto-creation of missing chains
- * @param {string} path - Path containing drum pad notation
- * @returns {LiveAPI | null} LiveAPI object (Chain)
+ * @param path - Path containing drum pad notation
+ * @returns LiveAPI object (Chain)
  */
-function resolveDrumPadContainer(path) {
+function resolveDrumPadContainer(path: string): LiveAPI | null {
   const resolved = resolvePathToLiveApi(path);
 
   if (resolved.targetType !== "drum-pad") {
@@ -59,7 +58,7 @@ function resolveDrumPadContainer(path) {
   }
 
   // drumPadNote is guaranteed for drum-pad targetType
-  const drumPadNote = /** @type {string} */ (resolved.drumPadNote);
+  const drumPadNote = resolved.drumPadNote as string;
   const { remainingSegments } = resolved;
 
   // Try to resolve the drum pad chain
@@ -137,10 +136,10 @@ function resolveDrumPadContainer(path) {
 /**
  * Resolve a container path (track or chain) to a LiveAPI object.
  * Auto-creates missing chains for regular racks. Throws for Drum Racks.
- * @param {string} path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
- * @returns {LiveAPI | null} LiveAPI object (Track or Chain)
+ * @param path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
+ * @returns LiveAPI object (Track or Chain)
  */
-function resolveContainer(path) {
+function resolveContainer(path: string): LiveAPI | null {
   const segments = path.split("/");
 
   if (segments.length === 1)
@@ -154,21 +153,21 @@ function resolveContainer(path) {
 /**
  * Resolve a path to a container (track or chain) for device insertion.
  * With explicit prefixes, insertion semantics are simple:
- * - Path ending with 'd' prefix → insert at that position
- * - Path ending with container (t, rt, mt, c, rc, p) → append
+ * - Path ending with 'd' prefix -> insert at that position
+ * - Path ending with container (t, rt, mt, c, rc, p) -> append
  *
  * Examples:
- * - "t0" → track 0, append
- * - "t0/d3" → track 0, position 3
- * - "t0/d0/c0" → chain 0 of device 0 on track 0, append
- * - "t0/d0/c0/d1" → chain 0 of device 0 on track 0, position 1
- * - "t0/d0/pC1" → drum pad C1 chain 0, append
- * - "rt0/d0" → return track 0, device 0; "mt/d0" → master track
+ * - "t0" -> track 0, append
+ * - "t0/d3" -> track 0, position 3
+ * - "t0/d0/c0" -> chain 0 of device 0 on track 0, append
+ * - "t0/d0/c0/d1" -> chain 0 of device 0 on track 0, position 1
+ * - "t0/d0/pC1" -> drum pad C1 chain 0, append
+ * - "rt0/d0" -> return track 0, device 0; "mt/d0" -> master track
  *
- * @param {string} path - Device insertion path
- * @returns {InsertionPathResolution} Container and optional position
+ * @param path - Device insertion path
+ * @returns Container and optional position
  */
-export function resolveInsertionPath(path) {
+export function resolveInsertionPath(path: string): InsertionPathResolution {
   if (!path || typeof path !== "string") {
     throw new Error("Path must be a non-empty string");
   }

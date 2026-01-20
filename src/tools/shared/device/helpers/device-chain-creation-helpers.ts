@@ -9,11 +9,14 @@ const MAX_AUTO_CREATE_CHAINS = 16;
 
 /**
  * Resolve container with auto-creation of missing chains
- * @param {string[]} segments - Path segments with explicit prefixes (t, rt, mt, d, c, rc)
- * @param {string} path - Original path for error messages
- * @returns {LiveAPI} LiveAPI object (Track or Chain)
+ * @param segments - Path segments with explicit prefixes (t, rt, mt, d, c, rc)
+ * @param path - Original path for error messages
+ * @returns LiveAPI object (Track or Chain)
  */
-export function resolveContainerWithAutoCreate(segments, path) {
+export function resolveContainerWithAutoCreate(
+  segments: string[],
+  path: string,
+): LiveAPI {
   // Start with track
   let currentPath = resolveTrackPath(
     assertDefined(segments[0], "track segment"),
@@ -26,7 +29,7 @@ export function resolveContainerWithAutoCreate(segments, path) {
 
   // Process remaining segments using explicit prefixes
   for (let i = 1; i < segments.length; i++) {
-    const segment = /** @type {string} */ (segments[i]);
+    const segment = segments[i] as string;
 
     if (segment.startsWith("d")) {
       // Device segment
@@ -46,10 +49,10 @@ export function resolveContainerWithAutoCreate(segments, path) {
 
 /**
  * Get Live API path for track segment
- * @param {string} segment - Track segment ("t0", "rt0", "mt")
- * @returns {string} Live API path
+ * @param segment - Track segment ("t0", "rt0", "mt")
+ * @returns Live API path
  */
-function resolveTrackPath(segment) {
+function resolveTrackPath(segment: string): string {
   if (segment === "mt") {
     return "live_set master_track";
   }
@@ -67,12 +70,16 @@ function resolveTrackPath(segment) {
 
 /**
  * Navigate to a device, throwing if it doesn't exist
- * @param {string} currentPath - Current Live API path
- * @param {string} segment - Device index segment
- * @param {string} fullPath - Full path for error messages
- * @returns {LiveAPI} LiveAPI device object
+ * @param currentPath - Current Live API path
+ * @param segment - Device index segment
+ * @param fullPath - Full path for error messages
+ * @returns LiveAPI device object
  */
-function navigateToDevice(currentPath, segment, fullPath) {
+function navigateToDevice(
+  currentPath: string,
+  segment: string,
+  fullPath: string,
+): LiveAPI {
   const devicePath = `${currentPath} devices ${segment}`;
   const device = LiveAPI.from(devicePath);
 
@@ -85,13 +92,18 @@ function navigateToDevice(currentPath, segment, fullPath) {
 
 /**
  * Navigate to a chain, auto-creating if necessary
- * @param {LiveAPI} parentDevice - Parent device LiveAPI object
- * @param {string} currentPath - Current Live API path
- * @param {string} segment - Chain segment ("cN" for chain, "rcN" for return chain)
- * @param {string} fullPath - Full path for error messages
- * @returns {LiveAPI} LiveAPI chain object
+ * @param parentDevice - Parent device LiveAPI object
+ * @param currentPath - Current Live API path
+ * @param segment - Chain segment ("cN" for chain, "rcN" for return chain)
+ * @param fullPath - Full path for error messages
+ * @returns LiveAPI chain object
  */
-function navigateToChain(parentDevice, currentPath, segment, fullPath) {
+function navigateToChain(
+  parentDevice: LiveAPI,
+  currentPath: string,
+  segment: string,
+  fullPath: string,
+): LiveAPI {
   // Return chain (rc prefix) - no auto-creation
   if (segment.startsWith("rc")) {
     const returnIndex = Number.parseInt(segment.slice(2));
@@ -120,18 +132,22 @@ function navigateToChain(parentDevice, currentPath, segment, fullPath) {
 
 /**
  * Auto-create chains up to the requested index
- * @param {LiveAPI} device - Parent device LiveAPI object
- * @param {number} targetIndex - Target chain index
- * @param {string} fullPath - Full path for error messages
+ * @param device - Parent device LiveAPI object
+ * @param targetIndex - Target chain index
+ * @param fullPath - Full path for error messages
  */
-function autoCreateChains(device, targetIndex, fullPath) {
+function autoCreateChains(
+  device: LiveAPI,
+  targetIndex: number,
+  fullPath: string,
+): void {
   // Check if device supports chains (prevents infinite loop on non-rack devices)
   if (!device.getProperty("can_have_chains")) {
     throw new Error(`Device at path "${fullPath}" does not support chains`);
   }
 
   // Check if it's a Drum Rack
-  if (/** @type {number} */ (device.getProperty("can_have_drum_pads")) > 0) {
+  if ((device.getProperty("can_have_drum_pads") as number) > 0) {
     throw new Error(
       `Auto-creating chains in Drum Racks is not supported (path: "${fullPath}")`,
     );
@@ -162,17 +178,17 @@ function autoCreateChains(device, targetIndex, fullPath) {
 /**
  * Auto-create drum pad chains up to the requested index within a note group.
  * Creates chains with the specified in_note value (MIDI note number).
- * @param {LiveAPI} device - Drum rack device LiveAPI object
- * @param {number} targetInNote - MIDI note for the chain's in_note property
- * @param {number} targetIndex - Target chain index within the note group
- * @param {number} existingCount - Current count of chains with this in_note
+ * @param device - Drum rack device LiveAPI object
+ * @param targetInNote - MIDI note for the chain's in_note property
+ * @param targetIndex - Target chain index within the note group
+ * @param existingCount - Current count of chains with this in_note
  */
 export function autoCreateDrumPadChains(
-  device,
-  targetInNote,
-  targetIndex,
-  existingCount,
-) {
+  device: LiveAPI,
+  targetInNote: number,
+  targetIndex: number,
+  existingCount: number,
+): void {
   const chainsToCreate = targetIndex + 1 - existingCount;
 
   if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {

@@ -1,19 +1,29 @@
 import { midiToNoteName } from "#src/shared/pitch.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 
+export interface BuildChainInfoOptions {
+  path?: string | null;
+  devices?: Record<string, unknown>[];
+}
+
+export interface DeviceInfo {
+  type: string;
+  chains?: Array<{ devices?: DeviceInfo[] }>;
+}
+
 /**
  * Build chain info object with standard properties
- * @param {LiveAPI} chain - Chain Live API object
- * @param {object} options - Build options
- * @param {string | null} [options.path] - Optional simplified path
- * @param {Array<Record<string, unknown>>} [options.devices] - Pre-processed devices array (skips device fetching)
- * @returns {Record<string, unknown>} Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
+ * @param chain - Chain Live API object
+ * @param options - Build options
+ * @returns Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
  */
-export function buildChainInfo(chain, options = {}) {
+export function buildChainInfo(
+  chain: LiveAPI,
+  options: BuildChainInfoOptions = {},
+): Record<string, unknown> {
   const { path, devices } = options;
 
-  /** @type {Record<string, unknown>} */
-  const chainInfo = {
+  const chainInfo: Record<string, unknown> = {
     id: chain.id,
   };
 
@@ -34,9 +44,7 @@ export function buildChainInfo(chain, options = {}) {
   // DrumChain-only properties: mappedPitch and chokeGroup
   if (chain.type === "DrumChain") {
     // out_note is the MIDI pitch sent to the instrument
-    const outNote = /** @type {number | null} */ (
-      chain.getProperty("out_note")
-    );
+    const outNote = chain.getProperty("out_note") as number | null;
 
     if (outNote != null) {
       const noteName = midiToNoteName(outNote);
@@ -46,7 +54,7 @@ export function buildChainInfo(chain, options = {}) {
       }
     }
 
-    const chokeGroup = /** @type {number} */ (chain.getProperty("choke_group"));
+    const chokeGroup = chain.getProperty("choke_group") as number;
 
     if (chokeGroup > 0) {
       chainInfo.chokeGroup = chokeGroup;
@@ -68,19 +76,22 @@ export function buildChainInfo(chain, options = {}) {
 
 /**
  * Compute the state of a Live object based on mute/solo properties
- * @param {LiveAPI} liveObject - Live API object
- * @param {string} category - Category type (default "regular")
- * @returns {string} State value
+ * @param liveObject - Live API object
+ * @param category - Category type (default "regular")
+ * @returns State value
  */
-export function computeState(liveObject, category = "regular") {
+export function computeState(
+  liveObject: LiveAPI,
+  category = "regular",
+): string {
   if (category === "master") {
     return STATE.ACTIVE;
   }
 
-  const isMuted = /** @type {number} */ (liveObject.getProperty("mute")) > 0;
-  const isSoloed = /** @type {number} */ (liveObject.getProperty("solo")) > 0;
+  const isMuted = (liveObject.getProperty("mute") as number) > 0;
+  const isSoloed = (liveObject.getProperty("solo") as number) > 0;
   const isMutedViaSolo =
-    /** @type {number} */ (liveObject.getProperty("muted_via_solo")) > 0;
+    (liveObject.getProperty("muted_via_solo") as number) > 0;
 
   if (isMuted && isSoloed) {
     return STATE.MUTED_AND_SOLOED;
@@ -107,10 +118,10 @@ export function computeState(liveObject, category = "regular") {
 
 /**
  * Check if device is an instrument type
- * @param {string} deviceType - Device type string
- * @returns {boolean} True if device is an instrument
+ * @param deviceType - Device type string
+ * @returns True if device is an instrument
  */
-export function isInstrumentDevice(deviceType) {
+export function isInstrumentDevice(deviceType: string): boolean {
   return (
     deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
     deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
@@ -119,17 +130,13 @@ export function isInstrumentDevice(deviceType) {
 }
 
 /**
- * @typedef {object} DeviceInfo
- * @property {string} type - Device type string
- * @property {Array<{devices?: DeviceInfo[]}>} [chains] - Device chains
- */
-
-/**
  * Check if any device in the list is an instrument
- * @param {DeviceInfo[]} devices - Array of device objects
- * @returns {boolean} True if any instrument found
+ * @param devices - Array of device objects
+ * @returns True if any instrument found
  */
-export function hasInstrumentInDevices(devices) {
+export function hasInstrumentInDevices(
+  devices: DeviceInfo[] | null | undefined,
+): boolean {
   if (!devices || devices.length === 0) {
     return false;
   }

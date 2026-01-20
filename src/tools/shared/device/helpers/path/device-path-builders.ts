@@ -1,9 +1,9 @@
 /**
  * Extract simplified path from Live API canonical path
- * @param {string} liveApiPath - e.g., "live_set tracks 1 devices 0 chains 2"
- * @returns {string|null} Simplified path e.g., "t1/d0/c2", "rt0/d0", "mt/d0", or null if invalid
+ * @param liveApiPath - e.g., "live_set tracks 1 devices 0 chains 2"
+ * @returns Simplified path e.g., "t1/d0/c2", "rt0/d0", "mt/d0", or null if invalid
  */
-export function extractDevicePath(liveApiPath) {
+export function extractDevicePath(liveApiPath: string): string | null {
   let prefix;
 
   const regularMatch = liveApiPath.match(/^live_set tracks (\d+)/);
@@ -46,32 +46,39 @@ export function extractDevicePath(liveApiPath) {
 
 /**
  * Build chain path from parent device path + chain index
- * @param {string} devicePath - Parent device path e.g., "t1/d0"
- * @param {number} chainIndex - Chain index
- * @returns {string} Chain path e.g., "t1/d0/c2"
+ * @param devicePath - Parent device path e.g., "t1/d0"
+ * @param chainIndex - Chain index
+ * @returns Chain path e.g., "t1/d0/c2"
  */
-export function buildChainPath(devicePath, chainIndex) {
+export function buildChainPath(devicePath: string, chainIndex: number): string {
   return `${devicePath}/c${chainIndex}`;
 }
 
 /**
  * Build return chain path from parent device path + return chain index
- * @param {string} devicePath - Parent device path e.g., "t1/d0"
- * @param {number} returnChainIndex - Return chain index
- * @returns {string} Return chain path e.g., "t1/d0/rc0"
+ * @param devicePath - Parent device path e.g., "t1/d0"
+ * @param returnChainIndex - Return chain index
+ * @returns Return chain path e.g., "t1/d0/rc0"
  */
-export function buildReturnChainPath(devicePath, returnChainIndex) {
+export function buildReturnChainPath(
+  devicePath: string,
+  returnChainIndex: number,
+): string {
   return `${devicePath}/rc${returnChainIndex}`;
 }
 
 /**
  * Build drum pad path from parent device path + note name
- * @param {string} devicePath - Parent device path e.g., "t1/d0"
- * @param {string} noteName - Note name e.g., "C1", "F#2", or asterisk for catch-all
- * @param {number} [chainIndex=0] - Index within chains having the same note
- * @returns {string} Drum pad path e.g., "t1/d0/pC1" or "t1/d0/pC1/c1" for layered chains
+ * @param devicePath - Parent device path e.g., "t1/d0"
+ * @param noteName - Note name e.g., "C1", "F#2", or asterisk for catch-all
+ * @param chainIndex - Index within chains having the same note (default 0)
+ * @returns Drum pad path e.g., "t1/d0/pC1" or "t1/d0/pC1/c1" for layered chains
  */
-export function buildDrumPadPath(devicePath, noteName, chainIndex = 0) {
+export function buildDrumPadPath(
+  devicePath: string,
+  noteName: string,
+  chainIndex = 0,
+): string {
   return chainIndex > 0
     ? `${devicePath}/p${noteName}/c${chainIndex}`
     : `${devicePath}/p${noteName}`;

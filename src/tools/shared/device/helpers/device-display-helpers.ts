@@ -2,26 +2,33 @@
 // Import from there directly instead of through this file
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
-/** @type {Record<number, string>} */
-export const PARAM_STATE_MAP = {
+export const PARAM_STATE_MAP: Record<number, string> = {
   0: "active",
   1: "inactive",
   2: "disabled",
 };
 
 // Automation state mapping (0=none, 1=active, 2=overridden)
-/** @type {Record<number, string>} */
-export const AUTOMATION_STATE_MAP = {
+export const AUTOMATION_STATE_MAP: Record<number, string> = {
   0: "none",
   1: "active",
   2: "overridden",
 };
 
+interface LabelPattern {
+  regex: RegExp;
+  unit: string;
+  multiplier?: number;
+  fixedValue?: number;
+  isNoteName?: boolean;
+  isPan?: boolean;
+}
+
 /**
  * Label parsing patterns for extracting values and units from display labels.
  * Order matters - more specific patterns should come before general ones.
  */
-const LABEL_PATTERNS = [
+const LABEL_PATTERNS: LabelPattern[] = [
   { regex: /^([\d.]+)\s*kHz$/, unit: "Hz", multiplier: 1000 },
   { regex: /^([\d.]+)\s*Hz$/, unit: "Hz", multiplier: 1 },
   { regex: /^([\d.]+)\s*s$/, unit: "ms", multiplier: 1000 },
@@ -35,26 +42,30 @@ const LABEL_PATTERNS = [
   { regex: /^(C)$/, unit: "pan", fixedValue: 0 },
 ];
 
+export interface ParsedLabel {
+  value: number | string | null;
+  unit: string | null;
+  direction?: string;
+}
+
 /**
  * Format parameter name, appending original_name if different (e.g. for rack macros).
- * @param {LiveAPI} paramApi - LiveAPI parameter object
- * @returns {string} Formatted name like "Reverb (Macro 1)" or just "Device On"
+ * @param paramApi - LiveAPI parameter object
+ * @returns Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
-function formatParamName(paramApi) {
-  const name = /** @type {string} */ (paramApi.getProperty("name"));
-  const originalName = /** @type {string} */ (
-    paramApi.getProperty("original_name")
-  );
+function formatParamName(paramApi: LiveAPI): string {
+  const name = paramApi.getProperty("name") as string;
+  const originalName = paramApi.getProperty("original_name") as string;
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }
 
 /**
  * Parse a label string to extract numeric value and unit.
- * @param {string} label - Display label from str_for_value()
- * @returns {{value: number|string|null, unit: string|null, direction?: string}} Parsed value and unit
+ * @param label - Display label from str_for_value()
+ * @returns Parsed value and unit
  */
-export function parseLabel(label) {
+export function parseLabel(label: string): ParsedLabel {
   if (!label || typeof label !== "string") {
     return { value: null, unit: null };
   }
@@ -69,21 +80,19 @@ export function parseLabel(label) {
     }
 
     if (pattern.isNoteName) {
-      return { value: /** @type {string} */ (match[1]), unit: "note" };
+      return { value: match[1] as string, unit: "note" };
     }
 
     if (pattern.isPan) {
       // Will be normalized later when we know the max pan value
-      const num = Number.parseInt(/** @type {string} */ (match[1]));
-      const dir = /** @type {string} */ (match[2]);
+      const num = Number.parseInt(match[1] as string);
+      const dir = match[2] as string;
 
       return { value: num, unit: "pan", direction: dir };
     }
 
     return {
-      value:
-        Number.parseFloat(/** @type {string} */ (match[1])) *
-        (pattern.multiplier || 1),
+      value: Number.parseFloat(match[1] as string) * (pattern.multiplier ?? 1),
       unit: pattern.unit,
     };
   }
@@ -93,7 +102,7 @@ export function parseLabel(label) {
 
   if (numMatch) {
     return {
-      value: Number.parseFloat(/** @type {string} */ (numMatch[1])),
+      value: Number.parseFloat(numMatch[1] as string),
       unit: null,
     };
   }
@@ -103,10 +112,10 @@ export function parseLabel(label) {
 
 /**
  * Check if a label represents a pan value.
- * @param {string} label - Display label
- * @returns {boolean} True if label is a pan format
+ * @param label - Display label
+ * @returns True if label is a pan format
  */
-export function isPanLabel(label) {
+export function isPanLabel(label: string): boolean {
   if (!label || typeof label !== "string") return false;
 
   return /^(\d+[LR]|C)$/.test(label);
@@ -114,30 +123,36 @@ export function isPanLabel(label) {
 
 /**
  * Check if a label is a division fraction format (e.g., "1/8", "1/16").
- * @param {string} label - Display label
- * @returns {boolean} True if label is a division fraction
+ * @param label - Display label
+ * @returns True if label is a division fraction
  */
-export function isDivisionLabel(label) {
+export function isDivisionLabel(label: string): boolean {
   return typeof label === "string" && /^1\/\d+$/.test(label);
 }
 
 /**
  * Build result for division-type parameters with enum-like options.
- * @param {LiveAPI} paramApi - LiveAPI parameter object
- * @param {string} name - Formatted parameter name
- * @param {string|number} valueLabel - Current value label
- * @param {number} rawMin - Raw minimum value
- * @param {number} rawMax - Raw maximum value
- * @returns {Record<string, unknown>} Parameter result with value and options
+ * @param paramApi - LiveAPI parameter object
+ * @param name - Formatted parameter name
+ * @param valueLabel - Current value label
+ * @param rawMin - Raw minimum value
+ * @param rawMax - Raw maximum value
+ * @returns Parameter result with value and options
  */
-function buildDivisionParamResult(paramApi, name, valueLabel, rawMin, rawMax) {
+function buildDivisionParamResult(
+  paramApi: LiveAPI,
+  name: string,
+  valueLabel: string | number,
+  rawMin: number,
+  rawMax: number,
+): Record<string, unknown> {
   // Enumerate all integer values as options
   const minInt = Math.ceil(Math.min(rawMin, rawMax));
   const maxInt = Math.floor(Math.max(rawMin, rawMax));
-  const options = [];
+  const options: string[] = [];
 
   for (let i = minInt; i <= maxInt; i++) {
-    const label = paramApi.call("str_for_value", i);
+    const label = paramApi.call("str_for_value", i) as string | number;
 
     options.push(typeof label === "number" ? String(label) : label);
   }
@@ -152,43 +167,48 @@ function buildDivisionParamResult(paramApi, name, valueLabel, rawMin, rawMax) {
 
 /**
  * Normalize pan value to -1 to 1 range.
- * @param {string} label - Pan label (e.g., "50L", "C", "50R")
- * @param {number} maxPanValue - Maximum pan value (e.g., 50)
- * @returns {number} Normalized pan value (-1 to 1)
+ * @param label - Pan label (e.g., "50L", "C", "50R")
+ * @param maxPanValue - Maximum pan value (e.g., 50)
+ * @returns Normalized pan value (-1 to 1)
  */
-export function normalizePan(label, maxPanValue) {
+export function normalizePan(label: string, maxPanValue: number): number {
   if (label === "C") return 0;
 
   const match = label.match(/^(\d+)([LR])$/);
 
   if (!match) return 0;
 
-  const num = Number.parseInt(/** @type {string} */ (match[1]));
-  const dir = /** @type {string} */ (match[2]);
+  const num = Number.parseInt(match[1] as string);
+  const dir = match[2] as string;
 
   return dir === "L" ? -num / maxPanValue : num / maxPanValue;
 }
 
 /**
  * Extract max pan value from min or max label.
- * @param {string} label - Min or max pan label (e.g., "50L" or "50R")
- * @returns {number} Max pan value
+ * @param label - Min or max pan label (e.g., "50L" or "50R")
+ * @returns Max pan value
  */
-export function extractMaxPanValue(label) {
+export function extractMaxPanValue(label: string): number {
   const match = label.match(/^(\d+)[LR]$/);
 
-  return match ? Number.parseInt(/** @type {string} */ (match[1])) : 50;
+  return match ? Number.parseInt(match[1] as string) : 50;
 }
 
 /**
- * @param {Record<string, unknown>} result - Result object to add flags to
- * @param {LiveAPI} paramApi - LiveAPI parameter object
- * @param {string | undefined} state - Parameter state
- * @param {string | undefined} automationState - Automation state
+ * Add state flags to result object
+ * @param result - Result object to add flags to
+ * @param paramApi - LiveAPI parameter object
+ * @param state - Parameter state
+ * @param automationState - Automation state
  */
-function addStateFlags(result, paramApi, state, automationState) {
-  const isEnabled =
-    /** @type {number} */ (paramApi.getProperty("is_enabled")) > 0;
+function addStateFlags(
+  result: Record<string, unknown>,
+  paramApi: LiveAPI,
+  state: string | undefined,
+  automationState: string | undefined,
+): void {
+  const isEnabled = (paramApi.getProperty("is_enabled") as number) > 0;
 
   if (!isEnabled) result.enabled = false;
   if (state && state !== "active") result.state = state;
@@ -200,10 +220,13 @@ function addStateFlags(result, paramApi, state, automationState) {
 
 /**
  * Read basic parameter info (id and name only)
- * @param {LiveAPI} paramApi - LiveAPI parameter object
- * @returns {{id: string, name: string}} Parameter info with id and name
+ * @param paramApi - LiveAPI parameter object
+ * @returns Parameter info with id and name
  */
-export function readParameterBasic(paramApi) {
+export function readParameterBasic(paramApi: LiveAPI): {
+  id: string;
+  name: string;
+} {
   const name = formatParamName(paramApi);
 
   return { id: paramApi.id, name };
@@ -211,23 +234,20 @@ export function readParameterBasic(paramApi) {
 
 /**
  * Read a single device parameter with full details.
- * @param {LiveAPI} paramApi - LiveAPI parameter object
- * @returns {Record<string, unknown>} Parameter info object
+ * @param paramApi - LiveAPI parameter object
+ * @returns Parameter info object
  */
-export function readParameter(paramApi) {
+export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   const name = formatParamName(paramApi);
-  const stateIdx = /** @type {number} */ (paramApi.getProperty("state"));
-  const automationIdx = /** @type {number} */ (
-    paramApi.getProperty("automation_state")
-  );
+  const stateIdx = paramApi.getProperty("state") as number;
+  const automationIdx = paramApi.getProperty("automation_state") as number;
   const state = PARAM_STATE_MAP[stateIdx];
   const automationState = AUTOMATION_STATE_MAP[automationIdx];
 
-  if (/** @type {number} */ (paramApi.getProperty("is_quantized")) > 0) {
-    const valueItems = /** @type {string[]} */ (paramApi.get("value_items"));
-    const valueIdx = /** @type {number} */ (paramApi.getProperty("value"));
-    /** @type {Record<string, unknown>} */
-    const result = {
+  if ((paramApi.getProperty("is_quantized") as number) > 0) {
+    const valueItems = paramApi.get("value_items") as string[];
+    const valueIdx = paramApi.getProperty("value") as number;
+    const result: Record<string, unknown> = {
       id: paramApi.id,
       name,
       value: valueItems[valueIdx],
@@ -239,18 +259,12 @@ export function readParameter(paramApi) {
     return result;
   }
 
-  const rawValue = /** @type {number} */ (paramApi.getProperty("value"));
-  const rawMin = /** @type {number} */ (paramApi.getProperty("min"));
-  const rawMax = /** @type {number} */ (paramApi.getProperty("max"));
-  const valueLabel = /** @type {string} */ (
-    paramApi.call("str_for_value", rawValue)
-  );
-  const minLabel = /** @type {string} */ (
-    paramApi.call("str_for_value", rawMin)
-  );
-  const maxLabel = /** @type {string} */ (
-    paramApi.call("str_for_value", rawMax)
-  );
+  const rawValue = paramApi.getProperty("value") as number;
+  const rawMin = paramApi.getProperty("min") as number;
+  const rawMax = paramApi.getProperty("max") as number;
+  const valueLabel = paramApi.call("str_for_value", rawValue) as string;
+  const minLabel = paramApi.call("str_for_value", rawMin) as string;
+  const maxLabel = paramApi.call("str_for_value", rawMax) as string;
 
   // Check for division-type params (fraction format like "1/8")
   if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {
@@ -270,13 +284,12 @@ export function readParameter(paramApi) {
   const valueParsed = parseLabel(valueLabel);
   const minParsed = parseLabel(minLabel);
   const maxParsed = parseLabel(maxLabel);
-  const unit = valueParsed.unit || minParsed.unit || maxParsed.unit;
+  const unit = valueParsed.unit ?? minParsed.unit ?? maxParsed.unit;
 
   if (unit === "pan") {
     const maxPanValue =
       extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
-    /** @type {Record<string, unknown>} */
-    const result = {
+    const result: Record<string, unknown> = {
       id: paramApi.id,
       name,
       value: normalizePan(valueLabel, maxPanValue),
@@ -290,8 +303,7 @@ export function readParameter(paramApi) {
     return result;
   }
 
-  /** @type {Record<string, unknown>} */
-  const result = {
+  const result: Record<string, unknown> = {
     id: paramApi.id,
     name,
     value:

@@ -77,7 +77,8 @@ export default [
               source.includes("/tools/shared/locator/") ||
               source.includes("/tools/shared/gain-lookup-table") ||
               source.includes("/tools/shared/gain-utils") ||
-              source.includes("/tools/shared/color-verification-helpers")) &&
+              source.includes("/tools/shared/color-verification-helpers") ||
+              source.includes("/tools/shared/device/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

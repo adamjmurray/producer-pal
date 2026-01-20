@@ -10,13 +10,36 @@ import {
 // Re-export for external use
 export { buildChainInfo };
 
+type ReadDeviceFn = (
+  device: LiveAPI,
+  options: Record<string, unknown>,
+) => Record<string, unknown>;
+
+export interface ProcessChainsOptions {
+  includeChains: boolean;
+  includeReturnChains: boolean;
+  includeDrumPads: boolean;
+  depth: number;
+  maxDepth: number;
+  readDeviceFn: ReadDeviceFn;
+  devicePath?: string;
+}
+
+export interface ReadDeviceParametersOptions {
+  includeValues?: boolean;
+  search?: string;
+}
+
 /**
  * Check if device className is redundant (matches the rack type name)
- * @param {string} deviceType - Device type string
- * @param {string} className - Class display name
- * @returns {boolean} True if className is redundant
+ * @param deviceType - Device type string
+ * @param className - Class display name
+ * @returns True if className is redundant
  */
-export function isRedundantDeviceClassName(deviceType, className) {
+export function isRedundantDeviceClassName(
+  deviceType: string,
+  className: string,
+): boolean {
   if (deviceType === DEVICE_TYPE.INSTRUMENT_RACK) {
     return className === "Instrument Rack";
   }
@@ -38,28 +61,28 @@ export function isRedundantDeviceClassName(deviceType, className) {
 
 /**
  * Process regular (non-drum) rack chains
- * @param {LiveAPI} device - Device object
- * @param {Record<string, unknown>} deviceInfo - Device info to update
- * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumPads - Include drum pads
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function
- * @param {string | undefined} devicePath - Device path for building nested paths
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param includeChains - Include chains
+ * @param includeDrumPads - Include drum pads
+ * @param depth - Current depth
+ * @param maxDepth - Max depth
+ * @param readDeviceFn - readDevice function
+ * @param devicePath - Device path for building nested paths
  */
 function processRegularChains(
-  device,
-  deviceInfo,
-  includeChains,
-  includeDrumPads,
-  depth,
-  maxDepth,
-  readDeviceFn,
-  devicePath,
-) {
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  includeChains: boolean,
+  includeDrumPads: boolean,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  devicePath: string | undefined,
+): void {
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some(
-    (chain) => /** @type {number} */ (chain.getProperty("solo")) > 0,
+    (chain) => (chain.getProperty("solo") as number) > 0,
   );
 
   if (includeChains) {
@@ -91,24 +114,18 @@ function processRegularChains(
 }
 
 /**
- * @typedef {object} ProcessChainsOptions
- * @property {boolean} includeChains - Include regular chains
- * @property {boolean} includeReturnChains - Include return chains
- * @property {boolean} includeDrumPads - Include drum pads
- * @property {number} depth - Current depth
- * @property {number} maxDepth - Max depth
- * @property {Function} readDeviceFn - readDevice function
- * @property {string} [devicePath] - Device path for building nested paths
- */
-
-/**
  * Process all chain types for rack devices
- * @param {LiveAPI} device - Device object
- * @param {Record<string, unknown>} deviceInfo - Device info to update
- * @param {string} deviceType - Device type
- * @param {ProcessChainsOptions} options - Processing options
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param deviceType - Device type
+ * @param options - Processing options
  */
-export function processDeviceChains(device, deviceInfo, deviceType, options) {
+export function processDeviceChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  deviceType: string,
+  options: ProcessChainsOptions,
+): void {
   const {
     includeChains,
     includeReturnChains,
@@ -168,25 +185,25 @@ export function processDeviceChains(device, deviceInfo, deviceType, options) {
 
 /**
  * Process return chains for rack devices (internal helper)
- * @param {LiveAPI} device - Device object
- * @param {Record<string, unknown>} deviceInfo - Device info to update
- * @param {boolean} includeChains - Include chains
- * @param {boolean} includeReturnChains - Include return chains
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function
- * @param {string | undefined} devicePath - Device path for building nested paths
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param includeChains - Include chains
+ * @param includeReturnChains - Include return chains
+ * @param depth - Current depth
+ * @param maxDepth - Max depth
+ * @param readDeviceFn - readDevice function
+ * @param devicePath - Device path for building nested paths
  */
 function processReturnChains(
-  device,
-  deviceInfo,
-  includeChains,
-  includeReturnChains,
-  depth,
-  maxDepth,
-  readDeviceFn,
-  devicePath,
-) {
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  includeChains: boolean,
+  includeReturnChains: boolean,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  devicePath: string | undefined,
+): void {
   const returnChains = device.getChildren("return_chains");
 
   if (returnChains.length === 0) return;
@@ -213,18 +230,17 @@ function processReturnChains(
 
 /**
  * Read macro variation and macro info for rack devices
- * @param {LiveAPI} device - LiveAPI device object
- * @returns {Record<string, unknown>} Object with variations and/or macros properties if applicable, empty object otherwise
+ * @param device - LiveAPI device object
+ * @returns Object with variations and/or macros properties if applicable, empty object otherwise
  */
-export function readMacroVariations(device) {
+export function readMacroVariations(device: LiveAPI): Record<string, unknown> {
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
     return {};
   }
 
-  /** @type {Record<string, unknown>} */
-  const result = {};
+  const result: Record<string, unknown> = {};
 
   // Variation info
   const variationCount = device.getProperty("variation_count");
@@ -237,15 +253,12 @@ export function readMacroVariations(device) {
   }
 
   // Macro info
-  const visibleMacroCount = /** @type {number} */ (
-    device.getProperty("visible_macro_count")
-  );
+  const visibleMacroCount = device.getProperty("visible_macro_count") as number;
 
   if (visibleMacroCount > 0) {
     result.macros = {
       count: visibleMacroCount,
-      hasMappings:
-        /** @type {number} */ (device.getProperty("has_macro_mappings")) > 0,
+      hasMappings: (device.getProperty("has_macro_mappings") as number) > 0,
     };
   }
 
@@ -254,10 +267,10 @@ export function readMacroVariations(device) {
 
 /**
  * Read A/B Compare state for devices that support it
- * @param {LiveAPI} device - LiveAPI device object
- * @returns {Record<string, unknown>} Object with abCompare property if supported, empty object otherwise
+ * @param device - LiveAPI device object
+ * @returns Object with abCompare property if supported, empty object otherwise
  */
-export function readABCompare(device) {
+export function readABCompare(device: LiveAPI): Record<string, unknown> {
   const canCompareAB = device.getProperty("can_compare_ab");
 
   if (!canCompareAB) {
@@ -265,7 +278,7 @@ export function readABCompare(device) {
   }
 
   const isUsingB =
-    /** @type {number} */ (device.getProperty("is_using_compare_preset_b")) > 0;
+    (device.getProperty("is_using_compare_preset_b") as number) > 0;
 
   return {
     abCompare: isUsingB ? "b" : "a",
@@ -274,13 +287,14 @@ export function readABCompare(device) {
 
 /**
  * Read all parameters for a device
- * @param {LiveAPI} device - LiveAPI device object
- * @param {object} [options] - Reading options
- * @param {boolean} [options.includeValues] - Include full values/metadata
- * @param {string} [options.search] - Filter by name substring (case-insensitive)
- * @returns {Array<Record<string, unknown>>} Array of parameter info objects
+ * @param device - LiveAPI device object
+ * @param options - Reading options
+ * @returns Array of parameter info objects
  */
-export function readDeviceParameters(device, options = {}) {
+export function readDeviceParameters(
+  device: LiveAPI,
+  options: ReadDeviceParametersOptions = {},
+): Record<string, unknown>[] {
   const { includeValues = false, search } = options;
 
   let parameters = device.getChildren("parameters");
@@ -290,7 +304,7 @@ export function readDeviceParameters(device, options = {}) {
     const searchLower = search.toLowerCase().trim();
 
     parameters = parameters.filter((p) => {
-      const name = /** @type {string} */ (p.getProperty("name"));
+      const name = p.getProperty("name") as string;
 
       return name.toLowerCase().includes(searchLower);
     });

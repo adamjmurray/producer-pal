@@ -1,19 +1,25 @@
 import { noteNameToMidi } from "#src/shared/pitch.js";
 import { assertDefined } from "#src/tools/shared/utils.js";
 
-/**
- * @typedef {object} DrumPadResolution
- * @property {LiveAPI|null} target - The resolved LiveAPI object (Chain or Device)
- * @property {'chain'|'device'} targetType - Type of the resolved target
- */
+export type DrumPadTargetType = "chain" | "device";
+
+export interface DrumPadResolution {
+  target: LiveAPI | null;
+  targetType: DrumPadTargetType;
+}
 
 /**
- * @param {LiveAPI} parent - Parent LiveAPI object
- * @param {string} childType - Type of children ("devices", "chains", etc.)
- * @param {number} index - Child index
- * @returns {LiveAPI|null} Child object or null if invalid
+ * Get a child at a specific index from a LiveAPI parent
+ * @param parent - Parent LiveAPI object
+ * @param childType - Type of children ("devices", "chains", etc.)
+ * @param index - Child index
+ * @returns Child object or null if invalid
  */
-function getChildAtIndex(parent, childType, index) {
+function getChildAtIndex(
+  parent: LiveAPI,
+  childType: string,
+  index: number,
+): LiveAPI | null {
   if (Number.isNaN(index)) return null;
   const c = parent.getChildren(childType);
 
@@ -22,15 +28,17 @@ function getChildAtIndex(parent, childType, index) {
 
 /**
  * Navigate through remaining path segments after reaching a device.
- * @param {LiveAPI} startDevice - Starting device
- * @param {string[]} segments - Remaining path segments with prefixes (c, d, rc, p)
- * @returns {DrumPadResolution} The resolved target and its type
+ * @param startDevice - Starting device
+ * @param segments - Remaining path segments with prefixes (c, d, rc, p)
+ * @returns The resolved target and its type
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- drum pad path navigation requires handling multiple segment types in one loop
-function navigateRemainingSegments(startDevice, segments) {
-  let current = startDevice;
-  /** @type {'chain'|'device'} */
-  let currentType = "device";
+function navigateRemainingSegments(
+  startDevice: LiveAPI,
+  segments: string[],
+): DrumPadResolution {
+  let current: LiveAPI = startDevice;
+  let currentType: DrumPadTargetType = "device";
 
   for (let i = 0; i < segments.length; i++) {
     const seg = assertDefined(segments[i], `segment at index ${i}`);
@@ -75,16 +83,16 @@ function navigateRemainingSegments(startDevice, segments) {
 
 /**
  * Resolve a drum pad path to its target LiveAPI object. Supports nested drum racks.
- * @param {string} liveApiPath - Live API path to the drum rack device
- * @param {string} drumPadNote - Note name (e.g., "C1", "F#2") or "*" for catch-all
- * @param {string[]} remainingSegments - Path segments after drum pad (c/d prefixed)
- * @returns {DrumPadResolution} The resolved target and its type
+ * @param liveApiPath - Live API path to the drum rack device
+ * @param drumPadNote - Note name (e.g., "C1", "F#2") or "*" for catch-all
+ * @param remainingSegments - Path segments after drum pad (c/d prefixed)
+ * @returns The resolved target and its type
  */
 export function resolveDrumPadFromPath(
-  liveApiPath,
-  drumPadNote,
-  remainingSegments,
-) {
+  liveApiPath: string,
+  drumPadNote: string,
+  remainingSegments: string[],
+): DrumPadResolution {
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
@@ -104,7 +112,7 @@ export function resolveDrumPadFromPath(
   let chainIndexWithinNote = 0;
   let nextSegmentStart = 0;
 
-  if (remainingSegments && remainingSegments.length > 0) {
+  if (remainingSegments.length > 0) {
     const firstSegment = assertDefined(remainingSegments[0], "first segment");
 
     // Only consume segment if it's a chain index (c prefix)
@@ -137,9 +145,7 @@ export function resolveDrumPadFromPath(
   );
 
   // Check if we need to navigate further
-  const nextSegments = remainingSegments
-    ? remainingSegments.slice(nextSegmentStart)
-    : [];
+  const nextSegments = remainingSegments.slice(nextSegmentStart);
 
   if (nextSegments.length === 0) {
     return { target: chain, targetType: "chain" };
