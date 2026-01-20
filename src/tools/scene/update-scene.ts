@@ -70,7 +70,5 @@ export function updateScene(
     });
   }
 
-  return unwrapSingleResult(updatedScenes) as
-    | UpdateSceneResult
-    | UpdateSceneResult[];
+  return unwrapSingleResult(updatedScenes);
 }

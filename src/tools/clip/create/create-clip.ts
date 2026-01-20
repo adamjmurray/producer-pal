@@ -200,7 +200,7 @@ export function createClip(
     select({ view });
   }
 
-  return unwrapSingleResult(createdClips) as object | object[];
+  return unwrapSingleResult(createdClips);
 }
 
 /**

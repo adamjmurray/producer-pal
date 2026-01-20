@@ -1,10 +1,13 @@
 /**
  * Sets properties on a target object, but only for non-null values
- * @param {Record<string, unknown>} target - The object to set properties on
- * @param {Record<string, unknown>} properties - Object with key-value pairs to set
- * @returns {Record<string, unknown>} The target object (for chaining)
+ * @param target - The object to set properties on
+ * @param properties - Object with key-value pairs to set
+ * @returns The target object (for chaining)
  */
-export function setAllNonNull(target, properties) {
+export function setAllNonNull(
+  target: Record<string, unknown>,
+  properties: Record<string, unknown>,
+): Record<string, unknown> {
   for (const [key, value] of Object.entries(properties)) {
     if (value != null) {
       target[key] = value;
@@ -16,12 +19,13 @@ export function setAllNonNull(target, properties) {
 
 /**
  * Creates a new object with all non-null properties from the input object
- * @param {Record<string, unknown>} obj - Object with key-value pairs
- * @returns {Record<string, unknown>} New object containing only non-null properties
+ * @param obj - Object with key-value pairs
+ * @returns New object containing only non-null properties
  */
-export function withoutNulls(obj) {
-  /** @type {Record<string, unknown>} */
-  const result = {};
+export function withoutNulls(
+  obj: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
     if (value != null) {
@@ -34,10 +38,12 @@ export function withoutNulls(obj) {
 
 /**
  * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
- * @param {string|null|undefined} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
- * @returns {Array<string>} Array of trimmed ID strings
+ * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
+ * @returns Array of trimmed ID strings
  */
-export function parseCommaSeparatedIds(ids) {
+export function parseCommaSeparatedIds(
+  ids: string | null | undefined,
+): string[] {
   if (ids == null) return [];
 
   return ids
@@ -48,11 +54,13 @@ export function parseCommaSeparatedIds(ids) {
 
 /**
  * Parses a comma-separated string of indices into an array of integers
- * @param {string|null|undefined} indices - Comma-separated string of indices (e.g., "0, 1, 2")
- * @returns {Array<number>} Array of integer indices
- * @throws {Error} If any index is not a valid integer
+ * @param indices - Comma-separated string of indices (e.g., "0, 1, 2")
+ * @returns Array of integer indices
+ * @throws If any index is not a valid integer
  */
-export function parseCommaSeparatedIndices(indices) {
+export function parseCommaSeparatedIndices(
+  indices: string | null | undefined,
+): number[] {
   if (indices == null) return [];
 
   return indices
@@ -72,10 +80,12 @@ export function parseCommaSeparatedIndices(indices) {
 
 /**
  * Parses a comma-separated string of values into an array of floats, filtering invalid values
- * @param {string|null|undefined} values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
- * @returns {Array<number>} Array of valid float values (NaN values are filtered out)
+ * @param values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
+ * @returns Array of valid float values (NaN values are filtered out)
  */
-export function parseCommaSeparatedFloats(values) {
+export function parseCommaSeparatedFloats(
+  values: string | null | undefined,
+): number[] {
   if (values == null) return [];
 
   return values
@@ -87,12 +97,16 @@ export function parseCommaSeparatedFloats(values) {
 /**
  * Builds an indexed name for batch-created items (clips, tracks, etc.)
  * First item keeps base name, subsequent items get numbered suffix.
- * @param {string|null|undefined} baseName - Base name for the item
- * @param {number} count - Total number of items being created
- * @param {number} index - Current item index (0-based)
- * @returns {string|undefined} - Generated name or undefined if baseName is null
+ * @param baseName - Base name for the item
+ * @param count - Total number of items being created
+ * @param index - Current item index (0-based)
+ * @returns Generated name or undefined if baseName is null
  */
-export function buildIndexedName(baseName, count, index) {
+export function buildIndexedName(
+  baseName: string | null | undefined,
+  count: number,
+  index: number,
+): string | undefined {
   if (baseName == null) return;
   if (count === 1) return baseName;
   if (index === 0) return baseName;
@@ -104,20 +118,23 @@ export function buildIndexedName(baseName, count, index) {
  * Unwraps a single-element array to its element, otherwise returns the array
  * Used for tool results that should return a single object when one item,
  * or an array when multiple items.
- * @param {Array<unknown>} array - Array of results
- * @returns {unknown} Single element if array has one item, otherwise the full array
+ * @param array - Array of results
+ * @returns Single element if array has one item, otherwise the full array
  */
-export function unwrapSingleResult(array) {
-  return array.length === 1 ? array[0] : array;
+export function unwrapSingleResult<T>(array: T[]): T | T[] {
+  return array.length === 1 ? (array[0] as T) : array;
 }
 
 /**
  * Parses a time signature string into numerator and denominator
- * @param {string} timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
- * @returns {{numerator: number, denominator: number}} Object with numerator and denominator
- * @throws {Error} If time signature format is invalid
+ * @param timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
+ * @returns Object with numerator and denominator
+ * @throws If time signature format is invalid
  */
-export function parseTimeSignature(timeSignature) {
+export function parseTimeSignature(timeSignature: string): {
+  numerator: number;
+  denominator: number;
+} {
   const match = timeSignature.match(/^(\d+)\/(\d+)$/);
 
   if (!match) {
@@ -125,18 +142,18 @@ export function parseTimeSignature(timeSignature) {
   }
 
   return {
-    numerator: Number.parseInt(/** @type {string} */ (match[1])),
-    denominator: Number.parseInt(/** @type {string} */ (match[2])),
+    numerator: Number.parseInt(match[1] as string),
+    denominator: Number.parseInt(match[2] as string),
   };
 }
 
 /**
  * Converts user-facing view names to Live API view names
- * @param {string} view - View name from user interface ("session" or "arrangement")
- * @returns {string} Live API view name ("Session" or "Arranger")
- * @throws {Error} If view name is not recognized
+ * @param view - View name from user interface ("session" or "arrangement")
+ * @returns Live API view name ("Session" or "Arranger")
+ * @throws If view name is not recognized
  */
-export function toLiveApiView(view) {
+export function toLiveApiView(view: string): string {
   const normalized = view.toLowerCase(); // for added flexibility even though should already be lower case
 
   switch (normalized) {
@@ -151,11 +168,11 @@ export function toLiveApiView(view) {
 
 /**
  * Converts Live API view names to user-facing view names
- * @param {string} liveApiView - Live API view name ("Session" or "Arranger")
- * @returns {string} User-facing view name ("session" or "arrangement")
- * @throws {Error} If view name is not recognized
+ * @param liveApiView - Live API view name ("Session" or "Arranger")
+ * @returns User-facing view name ("session" or "arrangement")
+ * @throws If view name is not recognized
  */
-export function fromLiveApiView(liveApiView) {
+export function fromLiveApiView(liveApiView: string): string {
   switch (liveApiView) {
     case "Session":
       return "session";
@@ -168,12 +185,11 @@ export function fromLiveApiView(liveApiView) {
 
 /**
  * Asserts a value is defined, throwing if null/undefined. Used for type narrowing.
- * @template T
- * @param {T} value - Value to check
- * @param {string} msg - Error message if undefined
- * @returns {NonNullable<T>} The value, narrowed to exclude null/undefined
+ * @param value - Value to check
+ * @param msg - Error message if undefined
+ * @returns The value, narrowed to exclude null/undefined
  */
-export function assertDefined(value, msg) {
+export function assertDefined<T>(value: T, msg: string): NonNullable<T> {
   if (value == null) {
     throw new Error(`Bug: ${msg}`);
   }

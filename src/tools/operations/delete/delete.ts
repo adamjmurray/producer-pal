@@ -99,7 +99,7 @@ export function deleteObject(
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  return unwrapSingleResult(deletedObjects) as DeleteResult | DeleteResult[];
+  return unwrapSingleResult(deletedObjects);
 }
 
 /**

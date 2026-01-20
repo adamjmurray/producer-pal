@@ -1,8 +1,8 @@
 /**
  * Get the track index of the host device
- * @returns {number|null} - Track index or null if not found
+ * @returns Track index or null if not found
  */
-export function getHostTrackIndex() {
+export function getHostTrackIndex(): number | null {
   try {
     const device = LiveAPI.from("this_device");
 

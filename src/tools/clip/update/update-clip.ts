@@ -185,5 +185,5 @@ export function updateClip(
   // Emit warning if multiple clips from same track were moved to same position
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
-  return unwrapSingleResult(updatedClips) as ClipResult | ClipResult[];
+  return unwrapSingleResult(updatedClips);
 }

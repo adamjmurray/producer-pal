@@ -430,7 +430,5 @@ export function updateTrack(
     });
   }
 
-  return unwrapSingleResult(updatedTracks) as
-    | UpdateTrackResult
-    | UpdateTrackResult[];
+  return unwrapSingleResult(updatedTracks);
 }

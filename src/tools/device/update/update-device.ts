@@ -248,9 +248,7 @@ function updateMultipleTargets(
     }
   }
 
-  return unwrapSingleResult(results) as
-    | Record<string, unknown>
-    | Record<string, unknown>[];
+  return unwrapSingleResult(results);
 }
 
 /**

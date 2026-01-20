@@ -75,9 +75,13 @@ export default [
               source.includes("/tools/clip/create/") ||
               source.includes("/tools/shared/validation/") ||
               source.includes("/tools/shared/locator/") ||
+              source.includes("/tools/shared/arrangement/") ||
               source.includes("/tools/shared/gain-lookup-table") ||
               source.includes("/tools/shared/gain-utils") ||
               source.includes("/tools/shared/color-verification-helpers") ||
+              source.includes("/tools/shared/utils") ||
+              source.includes("/tools/shared/clip-marker-helpers") ||
+              source.includes("/tools/shared/live-set-helpers") ||
               source.includes("/tools/shared/device/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
