@@ -8,11 +8,13 @@ import * as console from "#src/shared/v8-max-console.js";
  * in its fixed palette (~70 colors). This function reads back the actual color that
  * was set and compares it to the requested color. If they differ, a warning is
  * emitted to inform the user.
- *
- * @param {LiveAPI} object - LiveAPI object (Track, Scene, or Clip) with getColor() and type property
- * @param {string} requestedColor - The color that was requested in #RRGGBB format
+ * @param object - LiveAPI object (Track, Scene, or Clip)
+ * @param requestedColor - The color that was requested in #RRGGBB format
  */
-export function verifyColorQuantization(object, requestedColor) {
+export function verifyColorQuantization(
+  object: LiveAPI,
+  requestedColor: string,
+): void {
   try {
     const actualColor = object.getColor();
 

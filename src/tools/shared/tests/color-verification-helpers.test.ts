@@ -16,7 +16,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Track",
         getColor: vi.fn().mockReturnValue("#FF0000"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#FF0000");
 
@@ -27,7 +27,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Track",
         getColor: vi.fn().mockReturnValue("#FF0000"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#ff0000");
 
@@ -38,7 +38,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Scene",
         getColor: vi.fn().mockReturnValue("#ABCDEF"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#abcdef");
 
@@ -51,7 +51,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Track",
         getColor: vi.fn().mockReturnValue("#FF3636"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#FF0000");
 
@@ -64,7 +64,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Scene",
         getColor: vi.fn().mockReturnValue("#1AFF2F"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#00FF00");
 
@@ -77,7 +77,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Clip",
         getColor: vi.fn().mockReturnValue("#1A2F96"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#0000FF");
 
@@ -90,7 +90,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Track",
         getColor: vi.fn().mockReturnValue("#FF3636"),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#ff0000");
 
@@ -107,7 +107,7 @@ describe("verifyColorQuantization", () => {
         getColor: vi.fn().mockImplementation(() => {
           throw new Error("Failed to read color");
         }),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#FF0000");
 
@@ -120,7 +120,7 @@ describe("verifyColorQuantization", () => {
       const mockObject = {
         type: "Track",
         getColor: vi.fn().mockReturnValue(null),
-      };
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#FF0000");
 
@@ -132,8 +132,8 @@ describe("verifyColorQuantization", () => {
     it("should emit warning if getColor returns undefined", () => {
       const mockObject = {
         type: "Scene",
-        getColor: vi.fn().mockReturnValue(),
-      };
+        getColor: vi.fn().mockReturnValue(undefined),
+      } as unknown as LiveAPI;
 
       verifyColorQuantization(mockObject, "#00FF00");
 

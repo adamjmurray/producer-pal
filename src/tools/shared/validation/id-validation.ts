@@ -2,13 +2,17 @@ import * as console from "#src/shared/v8-max-console.js";
 
 /**
  * Validates a single ID matches expected type
- * @param {string} id - The ID to validate
- * @param {string} expectedType - Expected Live API type (case-insensitive, e.g., "track", "scene", "clip", "device")
- * @param {string} toolName - Name of calling tool for error messages (e.g., "updateTrack")
- * @returns {LiveAPI} The LiveAPI instance for the validated ID
- * @throws {Error} If ID doesn't exist or type doesn't match
+ * @param id - The ID to validate
+ * @param expectedType - Expected Live API type (case-insensitive)
+ * @param toolName - Name of calling tool for error messages
+ * @returns The LiveAPI instance for the validated ID
+ * @throws If ID doesn't exist or type doesn't match
  */
-export function validateIdType(id, expectedType, toolName) {
+export function validateIdType(
+  id: string,
+  expectedType: string,
+  toolName: string,
+): LiveAPI {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
@@ -24,23 +28,27 @@ export function validateIdType(id, expectedType, toolName) {
   return object;
 }
 
+interface ValidateIdTypesOptions {
+  skipInvalid?: boolean;
+}
+
 /**
  * Validates multiple IDs match expected type
- * @param {Array<string>} ids - Array of IDs to validate
- * @param {string} expectedType - Expected Live API type (case-insensitive)
- * @param {string} toolName - Name of calling tool for error messages
- * @param {object} [options={}] - Validation options
- * @param {boolean} [options.skipInvalid=false] - If true, log warnings and skip invalid IDs; if false, throw on first error
- * @returns {Array<LiveAPI>} Array of valid LiveAPI instances (may be empty if skipInvalid=true and all IDs are invalid)
- * @throws {Error} Only if skipInvalid=false and any ID is invalid
+ * @param ids - Array of IDs to validate
+ * @param expectedType - Expected Live API type (case-insensitive)
+ * @param toolName - Name of calling tool for error messages
+ * @param options - Validation options
+ * @param options.skipInvalid - If true, log warnings and skip invalid IDs
+ * @returns Array of valid LiveAPI instances
+ * @throws Only if skipInvalid=false and any ID is invalid
  */
 export function validateIdTypes(
-  ids,
-  expectedType,
-  toolName,
-  { skipInvalid = false } = {},
-) {
-  const validObjects = [];
+  ids: string[],
+  expectedType: string,
+  toolName: string,
+  { skipInvalid = false }: ValidateIdTypesOptions = {},
+): LiveAPI[] {
+  const validObjects: LiveAPI[] = [];
 
   for (const id of ids) {
     const object = LiveAPI.from(id);
@@ -76,13 +84,18 @@ export function validateIdTypes(
 
 /**
  * Validates that exactly one of two mutually exclusive parameters is provided
- * @param {*} param1 - First parameter value
- * @param {*} param2 - Second parameter value
- * @param {string} name1 - Name of first parameter for error message
- * @param {string} name2 - Name of second parameter for error message
- * @throws {Error} If neither or both parameters are provided
+ * @param param1 - First parameter value
+ * @param param2 - Second parameter value
+ * @param name1 - Name of first parameter for error message
+ * @param name2 - Name of second parameter for error message
+ * @throws If neither or both parameters are provided
  */
-export function validateExclusiveParams(param1, param2, name1, name2) {
+export function validateExclusiveParams(
+  param1: unknown,
+  param2: unknown,
+  name1: string,
+  name2: string,
+): void {
   if (!param1 && !param2) {
     throw new Error(`Either ${name1} or ${name2} must be provided`);
   }
@@ -95,11 +108,11 @@ export function validateExclusiveParams(param1, param2, name1, name2) {
 /**
  * Checks if the actual type matches the expected type.
  * Handles device subclasses (e.g., "HybridReverbDevice" matches "device").
- * @param {string} actualType - The actual type from the Live API object
- * @param {string} expectedType - The expected type to match against
- * @returns {boolean} True if types match
+ * @param actualType - The actual type from the Live API object
+ * @param expectedType - The expected type to match against
+ * @returns True if types match
  */
-function isTypeMatch(actualType, expectedType) {
+function isTypeMatch(actualType: string, expectedType: string): boolean {
   const actual = actualType.toLowerCase();
   const expected = expectedType.toLowerCase();
 

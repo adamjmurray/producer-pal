@@ -2,7 +2,12 @@
 // Collected: 2025-11-18T16:38:45.776Z
 // One entry per line for better diff-ability and reduced line count
 
-export const LOOKUP_TABLE = [
+export interface LookupEntry {
+  gain: number;
+  dB: number | null;
+}
+
+export const LOOKUP_TABLE: LookupEntry[] = [
   { gain: 0, dB: null },
   { gain: 0.001953125, dB: -65.7 },
   { gain: 0.00390625, dB: -62.9 },

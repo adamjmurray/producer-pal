@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiId, liveApiType } from "#src/test/mocks/mock-live-api.js";
 import { validateIdType, validateIdTypes } from "./id-validation.js";
 
+// Type for mock LiveAPI context
+interface MockContext {
+  _id: string;
+}
+
 describe("validateIdType", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,7 +110,7 @@ describe("validateIdTypes", () => {
     it("should return array of LiveAPI instances for all valid IDs", () => {
       const ids = ["track_1", "track_2", "track_3"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return this._id;
       });
       liveApiType.mockReturnValue("Track");
@@ -113,15 +118,15 @@ describe("validateIdTypes", () => {
       const result = validateIdTypes(ids, "track", "testTool");
 
       expect(result).toHaveLength(3);
-      expect(result[0].id).toBe("track_1");
-      expect(result[1].id).toBe("track_2");
-      expect(result[2].id).toBe("track_3");
+      expect(result[0]!.id).toBe("track_1");
+      expect(result[1]!.id).toBe("track_2");
+      expect(result[2]!.id).toBe("track_3");
     });
 
     it("should throw on first invalid ID (non-existent)", () => {
       const ids = ["track_1", "nonexistent", "track_3"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         // Return "id 0" for non-existent IDs
         return this._id === "nonexistent" ? "id 0" : this._id;
       });
@@ -135,10 +140,10 @@ describe("validateIdTypes", () => {
     it("should throw on first invalid ID (wrong type)", () => {
       const ids = ["track_1", "scene_1", "track_3"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return this._id;
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockContext) {
         return this._id === "scene_1" ? "Scene" : "Track";
       });
 
@@ -152,10 +157,10 @@ describe("validateIdTypes", () => {
     it("should return only valid IDs and log warnings for invalid", () => {
       const ids = ["track_1", "scene_1", "track_3"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return this._id;
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockContext) {
         return this._id === "scene_1" ? "Scene" : "Track";
       });
 
@@ -166,8 +171,8 @@ describe("validateIdTypes", () => {
       });
 
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe("track_1");
-      expect(result[1].id).toBe("track_3");
+      expect(result[0]!.id).toBe("track_1");
+      expect(result[1]!.id).toBe("track_3");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'testTool: id "scene_1" is not a track (found Scene)',
       );
@@ -197,7 +202,7 @@ describe("validateIdTypes", () => {
     it("should return empty array when all IDs are wrong type", () => {
       const ids = ["scene_1", "scene_2"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return this._id;
       });
       liveApiType.mockReturnValue("Scene");
@@ -215,11 +220,11 @@ describe("validateIdTypes", () => {
     it("should handle mix of non-existent and wrong type IDs", () => {
       const ids = ["nonexistent", "scene_1", "track_1"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         // Return "id 0" for non-existent, actual id for others
         return this._id === "nonexistent" ? "id 0" : this._id;
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockContext) {
         return this._id === "scene_1" ? "Scene" : "Track";
       });
 
@@ -230,7 +235,7 @@ describe("validateIdTypes", () => {
       });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("track_1");
+      expect(result[0]!.id).toBe("track_1");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'testTool: id "nonexistent" does not exist',
       );
@@ -242,18 +247,18 @@ describe("validateIdTypes", () => {
     it("should accept device subclasses when validating device type", () => {
       const ids = ["device_1", "device_2", "device_3"];
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockContext) {
         return this._id;
       });
       // Return different device subclass types
-      liveApiType.mockImplementation(function () {
-        const subclassMap = {
+      liveApiType.mockImplementation(function (this: MockContext) {
+        const subclassMap: Record<string, string> = {
           device_1: "Eq8Device",
           device_2: "HybridReverbDevice",
           device_3: "SimplerDevice",
         };
 
-        return subclassMap[this._id] || "Device";
+        return subclassMap[this._id] ?? "Device";
       });
 
       const result = validateIdTypes(ids, "device", "testTool", {
@@ -261,9 +266,9 @@ describe("validateIdTypes", () => {
       });
 
       expect(result).toHaveLength(3);
-      expect(result[0].id).toBe("device_1");
-      expect(result[1].id).toBe("device_2");
-      expect(result[2].id).toBe("device_3");
+      expect(result[0]!.id).toBe("device_1");
+      expect(result[1]!.id).toBe("device_2");
+      expect(result[2]!.id).toBe("device_3");
     });
   });
 });

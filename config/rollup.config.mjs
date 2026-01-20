@@ -72,7 +72,12 @@ export default [
               source.includes("/tools/clip/arrangement/") ||
               source.includes("/tools/clip/update/") ||
               source.includes("/tools/clip/read/") ||
-              source.includes("/tools/clip/create/")) &&
+              source.includes("/tools/clip/create/") ||
+              source.includes("/tools/shared/validation/") ||
+              source.includes("/tools/shared/locator/") ||
+              source.includes("/tools/shared/gain-lookup-table") ||
+              source.includes("/tools/shared/gain-utils") ||
+              source.includes("/tools/shared/color-verification-helpers")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {

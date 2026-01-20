@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { LiveAPI, mockLiveApiGet } from "#src/test/mocks/mock-live-api.js";
+import {
+  LiveAPI as MockLiveAPI,
+  mockLiveApiGet,
+} from "#src/test/mocks/mock-live-api.js";
 import { getLocatorId, resolveLocatorToBeats } from "./locator-helpers.js";
 
 // Make the mock LiveAPI globally available
-global.LiveAPI = LiveAPI;
+// @ts-expect-error - assigning mock to global
+global.LiveAPI = MockLiveAPI;
 
 describe("locator-helpers", () => {
   beforeEach(() => {
@@ -22,7 +26,7 @@ describe("locator-helpers", () => {
     it("throws when neither locatorId nor locatorName provided", () => {
       const mockLiveSet = {
         getChildIds: vi.fn().mockReturnValue([]),
-      };
+      } as unknown as LiveAPI;
 
       expect(() => {
         resolveLocatorToBeats(mockLiveSet, {}, "ppal-playback");
@@ -32,7 +36,7 @@ describe("locator-helpers", () => {
     it("throws when locator ID not found", () => {
       const mockLiveSet = {
         getChildIds: vi.fn().mockReturnValue([]),
-      };
+      } as unknown as LiveAPI;
 
       expect(() => {
         resolveLocatorToBeats(
@@ -52,7 +56,7 @@ describe("locator-helpers", () => {
 
       const mockLiveSet = {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
-      };
+      } as unknown as LiveAPI;
 
       const result = resolveLocatorToBeats(
         mockLiveSet,
@@ -73,7 +77,7 @@ describe("locator-helpers", () => {
 
       const mockLiveSet = {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
-      };
+      } as unknown as LiveAPI;
 
       const result = resolveLocatorToBeats(
         mockLiveSet,
@@ -94,7 +98,7 @@ describe("locator-helpers", () => {
 
       const mockLiveSet = {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
-      };
+      } as unknown as LiveAPI;
 
       expect(() => {
         resolveLocatorToBeats(
