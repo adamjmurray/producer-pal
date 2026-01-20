@@ -30,7 +30,7 @@ describe("arrangement-operations-helpers", () => {
 
       expect(() =>
         handleArrangementLengthening({
-          clip: mockClip,
+          clip: mockClip as unknown as LiveAPI,
           isAudioClip: false,
           arrangementLengthBeats: 16,
           currentArrangementLength: 8,
@@ -54,7 +54,7 @@ describe("arrangement-operations-helpers", () => {
 
       // currentArrangementLength (8) > totalContentLength (4) triggers the shortening-then-tiling branch
       const result = handleArrangementLengthening({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         isAudioClip: false,
         arrangementLengthBeats: 16, // > clipLength (8)
         currentArrangementLength: 8, // > totalContentLength (4)
@@ -83,8 +83,8 @@ describe("arrangement-operations-helpers", () => {
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
         .mockReturnValue({
-          clip: { id: sessionClipId },
-          slot: { call: vi.fn() },
+          clip: { id: sessionClipId } as unknown as LiveAPI,
+          slot: { call: vi.fn() } as unknown as LiveAPI,
         });
       const mockTileClipToRange = vi
         .spyOn(arrangementTiling, "tileClipToRange")
@@ -99,7 +99,7 @@ describe("arrangement-operations-helpers", () => {
       const mockClip = createMockClip({ props: clipProps });
 
       handleArrangementLengthening({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         isAudioClip: true, // Audio clip
         arrangementLengthBeats: 16,
         currentArrangementLength: 8, // > totalContentLength (4)
@@ -128,7 +128,7 @@ describe("arrangement-operations-helpers", () => {
 
       // arrangementLengthBeats (12) < clipLength (16) triggers hidden content exposure
       const result = handleArrangementLengthening({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         isAudioClip: false,
         arrangementLengthBeats: 12, // Less than clipLength (16)
         currentArrangementLength: 4,
@@ -171,7 +171,7 @@ describe("arrangement-operations-helpers", () => {
       // arrangementLengthBeats (16) > clipLength (8)
       // currentArrangementLength (4) < totalContentLength (6)
       const result = handleArrangementLengthening({
-        clip: mockClip,
+        clip: mockClip as unknown as LiveAPI,
         isAudioClip: false,
         arrangementLengthBeats: 16,
         currentArrangementLength: 4, // < totalContentLength (6)
@@ -206,7 +206,7 @@ describe("arrangement-operations-helpers", () => {
 
       expect(() =>
         handleArrangementShortening({
-          clip: { id: "456", trackIndex: null },
+          clip: { id: "456", trackIndex: null } as unknown as LiveAPI,
           isAudioClip: false,
           arrangementLengthBeats: 4,
           currentStartTime: 0,
@@ -225,8 +225,8 @@ describe("arrangement-operations-helpers", () => {
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
         .mockReturnValue({
-          clip: { id: sessionClipId },
-          slot: { call: vi.fn() },
+          clip: { id: sessionClipId } as unknown as LiveAPI,
+          slot: { call: vi.fn() } as unknown as LiveAPI,
         });
 
       liveApiCall.mockImplementation((method) => {
@@ -237,7 +237,7 @@ describe("arrangement-operations-helpers", () => {
       liveApiSet.mockImplementation(() => {});
 
       handleArrangementShortening({
-        clip: { id: "789", trackIndex: 0 },
+        clip: { id: "789", trackIndex: 0 } as unknown as LiveAPI,
         isAudioClip: true, // Audio clip
         arrangementLengthBeats: 4,
         currentStartTime: 0,
@@ -270,7 +270,7 @@ describe("arrangement-operations-helpers", () => {
       });
 
       handleArrangementShortening({
-        clip: { id: "789", trackIndex: 0 },
+        clip: { id: "789", trackIndex: 0 } as unknown as LiveAPI,
         isAudioClip: false, // MIDI clip
         arrangementLengthBeats: 4,
         currentStartTime: 0,

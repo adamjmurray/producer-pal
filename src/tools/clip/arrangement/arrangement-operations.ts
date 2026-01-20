@@ -3,36 +3,36 @@ import {
   handleArrangementLengthening,
   handleArrangementShortening,
 } from "./helpers/arrangement-operations-helpers.js";
+import type {
+  ArrangementContext,
+  ClipIdResult,
+} from "./helpers/arrangement-operations-helpers.js";
 
-/**
- * @typedef {import("./helpers/arrangement-operations-helpers.js").ArrangementContext} ArrangementContext
- */
-
-/**
- * @typedef {object} ClipIdResult
- * @property {string} id - Clip ID
- */
+interface HandleArrangementLengthOperationArgs {
+  clip: LiveAPI;
+  isAudioClip: boolean;
+  arrangementLengthBeats: number;
+  context: ArrangementContext;
+}
 
 /**
  * Handle arrangement length changes (lengthening via tiling/exposure or shortening)
- * @param {object} args - Operation arguments
- * @param {LiveAPI} args.clip - The LiveAPI clip object
- * @param {boolean} args.isAudioClip - Whether the clip is an audio clip
- * @param {number} args.arrangementLengthBeats - Target length in beats
- * @param {ArrangementContext} args.context - Tool execution context
- * @returns {Array<ClipIdResult>} Array of clip result objects to add to updatedClips
+ * @param args - Operation arguments
+ * @param args.clip - The LiveAPI clip object
+ * @param args.isAudioClip - Whether the clip is an audio clip
+ * @param args.arrangementLengthBeats - Target length in beats
+ * @param args.context - Tool execution context
+ * @returns Array of clip result objects to add to updatedClips
  */
-// eslint-disable-next-line import/no-unused-modules -- Used by TypeScript file update-clip-arrangement-helpers.ts
 export function handleArrangementLengthOperation({
   clip,
   isAudioClip,
   arrangementLengthBeats,
   context,
-}) {
-  /** @type {Array<ClipIdResult>} */
-  const updatedClips = [];
+}: HandleArrangementLengthOperationArgs): ClipIdResult[] {
+  const updatedClips: ClipIdResult[] = [];
   const isArrangementClip =
-    /** @type {number} */ (clip.getProperty("is_arrangement_clip")) > 0;
+    (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
     console.error(
@@ -43,10 +43,8 @@ export function handleArrangementLengthOperation({
   }
 
   // Get current clip dimensions
-  const currentStartTime = /** @type {number} */ (
-    clip.getProperty("start_time")
-  );
-  const currentEndTime = /** @type {number} */ (clip.getProperty("end_time"));
+  const currentStartTime = clip.getProperty("start_time") as number;
+  const currentEndTime = clip.getProperty("end_time") as number;
   const currentArrangementLength = currentEndTime - currentStartTime;
 
   // Check if shortening, lengthening, or same
