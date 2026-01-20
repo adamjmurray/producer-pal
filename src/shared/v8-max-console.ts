@@ -3,53 +3,64 @@
 // There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code
 // in the respective source code folders.
 
+// Declare Max for Live global functions
+declare function post(...args: unknown[]): void;
+declare const Dict:
+  | {
+      prototype: object;
+    }
+  | undefined;
+
 /**
  * Convert any value to a human-readable string representation
- * @param {unknown} value - Value to stringify
- * @returns {string} String representation
+ * @param value - Value to stringify
+ * @returns String representation
  */
-const str = (value) => {
-  const val = /** @type {any} */ (value);
+const str = (value: unknown): string => {
+  const val = value as {
+    map?: (fn: (v: unknown) => string) => string[];
+    entries?: () => Iterable<[unknown, unknown]>;
+    name?: string;
+    stringify?: () => string;
+    constructor?: { name: string };
+  };
 
-  switch (Object.getPrototypeOf(val ?? Object.prototype)) {
+  switch (Object.getPrototypeOf(value ?? Object.prototype)) {
     case Array.prototype:
-      return `[${val.map(str).join(", ")}]`;
+      return `[${(val as unknown[]).map(str).join(", ")}]`;
 
     case Set.prototype:
-      return `Set(${[...val].map(str).join(", ")})`;
+      return `Set(${[...(val as Set<unknown>)].map(str).join(", ")})`;
 
     case Object.prototype:
-      return `{${Object.entries(val)
+      return `{${Object.entries(val as object)
         .map(([k, v]) => `${str(k)}: ${str(v)}`)
         .join(", ")}}`;
 
     case Map.prototype: {
-      /** @type {string} */
-      const entries = [...val.entries()]
-        .map(
-          (/** @type {[unknown, unknown]} */ [k, v]) => `${str(k)} → ${str(v)}`,
-        )
+      const entries = [...(val as Map<unknown, unknown>).entries()]
+        .map(([k, v]) => `${str(k)} → ${str(v)}`)
         .join(", ");
 
       return `Map(${entries})`;
     }
 
     case typeof Dict !== "undefined" ? Dict.prototype : null:
-      return `Dict("${val.name}") ${val.stringify().replaceAll("\n", " ")}`;
+      return `Dict("${val.name}") ${val.stringify?.().replaceAll("\n", " ")}`;
   }
 
   const s = String(val);
 
   return s === "[object Object]"
-    ? val.constructor.name + JSON.stringify(val)
+    ? (val.constructor?.name ?? "Object") + JSON.stringify(val)
     : s;
 };
 
 /**
  * Log values to Max console (or Node console as fallback)
- * @param {...unknown} args - Values to log
+ * @param args - Values to log
  */
-export const log = (...args) => {
+export const log = (...args: unknown[]): void => {
   if (typeof post === "function") {
     post(...args.map(str), "\n");
   } else {
@@ -60,11 +71,11 @@ export const log = (...args) => {
 
 /**
  * Log error values to Max console (or Node console as fallback)
- * @param {...unknown} args - Values to log as errors
+ * @param args - Values to log as errors
  */
-export const error = (...args) => {
+export const error = (...args: unknown[]): void => {
   if (typeof globalThis.error === "function") {
-    globalThis.error(...args.map(str), "\n");
+    (globalThis.error as (...a: unknown[]) => void)(...args.map(str), "\n");
   } else {
     // Fallback for test environment
     console.error(...args.map(str));

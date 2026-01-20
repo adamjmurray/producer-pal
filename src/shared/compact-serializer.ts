@@ -1,5 +1,3 @@
-// src/shared/compact-serializer.js
-
 /**
  * Converts object to compact JavaScript literal syntax with unquoted keys
  * - Unquoted keys (where valid JS identifiers)
@@ -7,17 +5,16 @@
  * - Skips undefined values in objects/arrays
  * - Top-level undefined returns empty string
  *
- * @param {any} obj - Object to convert
- * @returns {string} Compact JS literal string
+ * @param obj - Object to convert
+ * @returns Compact JS literal string
  */
-export function toCompactJSLiteral(obj) {
+export function toCompactJSLiteral(obj: unknown): string {
   /**
    * Convert a value to compact JS literal syntax
-   *
-   * @param {any} val - Value to convert
-   * @returns {string|undefined} Converted value
+   * @param val - Value to convert
+   * @returns Converted value or undefined
    */
-  function convert(val) {
+  function convert(val: unknown): string | undefined {
     // Primitives that need special treatment other than JSON.stringify() below
     if (val === null) {
       return "null";
@@ -30,7 +27,7 @@ export function toCompactJSLiteral(obj) {
     }
 
     if (typeof val === "object") {
-      const pairs = [];
+      const pairs: string[] = [];
 
       for (const [key, value] of Object.entries(val)) {
         const converted = convert(value);

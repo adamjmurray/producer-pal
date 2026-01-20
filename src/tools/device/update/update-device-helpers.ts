@@ -202,7 +202,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const min = param.getProperty("min") as number;
     const max = param.getProperty("max") as number;
     // Convert -1 to 1 → internal range
-    const numValue = inputValue as number;
+    const numValue = inputValue;
     const internalValue = ((numValue + 1) / 2) * (max - min) + min;
 
     param.set("value", internalValue);

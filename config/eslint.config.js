@@ -47,7 +47,7 @@ const baseRules = {
         "**/*.test.{js,ts,tsx}", // Test files
         "**/*-test-helpers.{js,ts}", // Test helpers
         // JS files with exports consumed by TypeScript (eslint-plugin-import doesn't track)
-        "src/shared/pitch.js", // intervalsToPitchClasses used by tools/live-set/*.ts
+        "src/shared/pitch.ts", // intervalsToPitchClasses used by tools/live-set/*.ts
         "src/tools/constants.ts", // VALID_SCALE_NAMES used by tools/live-set/*.ts
       ],
     },

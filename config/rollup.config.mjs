@@ -84,7 +84,8 @@ export default [
               source.includes("/tools/shared/live-set-helpers") ||
               source.includes("/tools/shared/tool-framework/") ||
               source.includes("/tools/constants") ||
-              source.includes("/tools/shared/device/")) &&
+              source.includes("/tools/shared/device/") ||
+              source.includes("/shared/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
           ) {
