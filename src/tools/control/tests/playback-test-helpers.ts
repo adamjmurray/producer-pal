@@ -4,6 +4,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 
 interface LiveSetConfig {
@@ -26,11 +27,6 @@ interface SetupCuePointMocksOptions {
   liveSet?: LiveSetConfig;
 }
 
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
-
 /**
  * Setup default time signature mock (4/4) for playback tests.
  * Use in beforeEach to initialize standard test state.
@@ -49,7 +45,7 @@ export function setupDefaultTimeSignature(): void {
  * @param clipId - The clip ID to mock
  */
 export function setupClipWithNoTrackPath(clipId: string): void {
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id === clipId) {
       return "some_invalid_path"; // No track info in path
     }
@@ -57,7 +53,7 @@ export function setupClipWithNoTrackPath(clipId: string): void {
     return this._path;
   });
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id === clipId) {
       return `id ${clipId}`;
     }
@@ -65,7 +61,7 @@ export function setupClipWithNoTrackPath(clipId: string): void {
     return "id 1";
   });
 
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id === clipId) {
       return "Clip";
     }

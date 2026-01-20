@@ -2,7 +2,7 @@ import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbea
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 export interface ClipPropertiesToSet {
-  [key: string]: unknown;
+  [key: string]: unknown; // Required for setAll() compatibility with Record<string, unknown>
   start_marker: number;
   loop_start: number;
   loop_end: number;

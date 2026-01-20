@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
@@ -307,10 +308,7 @@ describe("readClip", () => {
       },
     });
 
-    liveApiPath.mockImplementation(function (this: {
-      _id: string;
-      _path: string;
-    }) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "session_clip_id") {
         return "live_set tracks 2 clip_slots 4 clip";
       }
@@ -348,10 +346,7 @@ describe("readClip", () => {
       },
     });
 
-    liveApiPath.mockImplementation(function (this: {
-      _id: string;
-      _path: string;
-    }) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "arrangement_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
@@ -359,15 +354,10 @@ describe("readClip", () => {
       return this._path;
     });
 
-    liveApiType.mockImplementation(function (this: {
-      _id: string;
-      _type: string;
-    }) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "arrangement_clip_id") {
         return "Clip";
       }
-
-      return this._type;
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });

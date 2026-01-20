@@ -4,6 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { createClip } from "./create-clip.ts";
 
@@ -233,10 +234,7 @@ describe("createClip - advanced features", () => {
         return null;
       });
 
-      liveApiId.mockImplementation(function (this: {
-        _path: string;
-        _id: string;
-      }) {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "id arrangement_clip") {
           return "arrangement_clip";
         }

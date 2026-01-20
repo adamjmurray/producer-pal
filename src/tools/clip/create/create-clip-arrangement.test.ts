@@ -4,6 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { createClip } from "./create-clip.ts";
 
@@ -23,10 +24,7 @@ describe("createClip - arrangement view", () => {
       return null;
     });
 
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
@@ -78,10 +76,7 @@ describe("createClip - arrangement view", () => {
       return null;
     });
 
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id arrangement_clip") {
         return "arrangement_clip";
       }
@@ -163,9 +158,9 @@ describe("createClip - arrangement view", () => {
     const liveAPIGlobal = global as any;
     const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
-      _path: string;
-    }) {
+    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
+      this: MockLiveAPIContext,
+    ) {
       // Track exists, but clip doesn't
       return this._path === "live_set tracks 0";
     });

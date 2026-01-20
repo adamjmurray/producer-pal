@@ -10,6 +10,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   setupRouteToSourceMock,
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
@@ -213,10 +214,7 @@ describe("duplicate - track duplication", () => {
 
   /** Sets up mocks for Producer Pal device tests with 3 devices on track 1 */
   function setupProducerPalDeviceMocks(): void {
-    liveApiPath.mockImplementation(function (this: {
-      _id: string;
-      _path: string;
-    }): string {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext): string {
       if (this._id === "track1") {
         return "live_set tracks 0";
       }
@@ -225,7 +223,7 @@ describe("duplicate - track duplication", () => {
         return "live_set tracks 0 devices 1";
       }
 
-      return this._path;
+      return this._path ?? "";
     });
     mockLiveApiGet({
       "live_set tracks 1": {
@@ -236,10 +234,7 @@ describe("duplicate - track duplication", () => {
 
   it("should remove Producer Pal device when duplicating host track", () => {
     setupProducerPalDeviceMocks();
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }): string {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
       if (this._path === "this_device") {
         return "id device1";
       }

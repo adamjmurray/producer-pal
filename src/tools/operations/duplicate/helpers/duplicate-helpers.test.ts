@@ -3,6 +3,7 @@ import {
   liveApiGet,
   liveApiPath,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import {
   parseArrangementLength,
@@ -88,10 +89,7 @@ describe("duplicate-helpers", () => {
     it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
       const clipId = "456";
 
-      liveApiPath.mockImplementation(function (this: {
-        _id: string;
-        _path: string;
-      }) {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -131,10 +129,7 @@ describe("duplicate-helpers", () => {
     it("omits trackIndex when specified in omitFields for arrangement clip", () => {
       const clipId = "457";
 
-      liveApiPath.mockImplementation(function (this: {
-        _id: string;
-        _path: string;
-      }) {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -172,10 +167,7 @@ describe("duplicate-helpers", () => {
     it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
       const clipId = "458";
 
-      liveApiPath.mockImplementation(function (this: {
-        _id: string;
-        _path: string;
-      }) {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === clipId) {
           return `live_set tracks 2 arrangement_clips 0`;
         }
@@ -213,10 +205,7 @@ describe("duplicate-helpers", () => {
     it("returns id, trackIndex, and sceneIndex for session clip", () => {
       const clipId = "789";
 
-      liveApiPath.mockImplementation(function (this: {
-        _id: string;
-        _path: string;
-      }) {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === clipId) {
           return `live_set tracks 1 clip_slots 3 clip`;
         }

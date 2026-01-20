@@ -1,7 +1,11 @@
 /**
  * Test helper functions for read-track tests
  */
-import { children, liveApiId } from "#src/test/mocks/mock-live-api.ts";
+import {
+  children,
+  liveApiId,
+  type MockLiveAPIContext,
+} from "#src/test/mocks/mock-live-api.ts";
 
 // Constants to avoid duplicate string errors
 const HAS_MIDI_INPUT = "has_midi_input";
@@ -9,12 +13,6 @@ const TEST_TRACK_NAME = "Test Track";
 
 interface PathIdMap {
   [path: string]: string;
-}
-
-interface MockThis {
-  _path?: string;
-  _id?: string;
-  path?: string;
 }
 
 interface MockTrackOverrides {
@@ -120,7 +118,7 @@ interface SimpleInstrumentMockOptions {
  * @param pathIdMap - Mapping of paths to IDs
  */
 export function setupDevicePathIdMock(pathIdMap: PathIdMap): void {
-  liveApiId.mockImplementation(function (this: MockThis): string {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
     if (this._path && pathIdMap[this._path]) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees value exists after map lookup
       return pathIdMap[this._path]!;
@@ -168,7 +166,7 @@ export function setupMixerIdMock(
   pathIdMap: PathIdMap,
   defaultId = "id 0",
 ): void {
-  liveApiId.mockImplementation(function (this: MockThis): string {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
     // Handle ID-based paths (from getChildren)
     if (this.path?.startsWith("id ")) {
       return this.path.slice(3);

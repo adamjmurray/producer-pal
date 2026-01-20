@@ -5,6 +5,7 @@ import {
   liveApiGet,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 
 // Re-export mock utilities from mock-live-api for convenience
@@ -17,17 +18,11 @@ export {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 
 /** Default arrangement clip path for testing */
 const DEFAULT_ARRANGEMENT_CLIP = "live_set tracks 0 arrangement_clips 0";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-  id?: string;
-  path?: string;
-}
 
 /**
  * Setup liveApiPath mock for track duplication tests.
@@ -36,7 +31,7 @@ interface MockContext {
  */
 export function setupTrackPath(trackId: string, trackIndex = 0): void {
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === trackId) {
       return `live_set tracks ${trackIndex}`;
@@ -53,7 +48,7 @@ export function setupTrackPath(trackId: string, trackIndex = 0): void {
  */
 export function setupScenePath(sceneId: string, sceneIndex = 0): void {
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === sceneId) {
       return `live_set scenes ${sceneIndex}`;
@@ -71,7 +66,7 @@ export function setupScenePath(sceneId: string, sceneIndex = 0): void {
  */
 export function setupScenePathFromId(sceneId: string, sceneIndex = 0): void {
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     // LiveAPI.from(sceneId) creates instance with _path = sceneId
     if (this._path === sceneId) {
@@ -94,14 +89,14 @@ export function setupArrangementClipMocks(
   const { getStartTime = () => 16 } = opts;
 
   const originalGet = (liveApiGet as Mock).getMockImplementation() as
-    | ((this: MockContext, prop: string) => unknown[])
+    | ((this: MockLiveAPIContext, prop: string) => unknown[])
     | undefined;
   const originalPath = (liveApiPath as Mock).getMockImplementation() as
-    | ((this: MockContext) => string | undefined)
+    | ((this: MockLiveAPIContext) => string | undefined)
     | undefined;
 
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     // For arrangement clips created by ID, return a proper path
     if (
@@ -115,7 +110,7 @@ export function setupArrangementClipMocks(
   });
 
   (liveApiGet as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
     prop: string,
   ): unknown[] {
     // Check if this is an arrangement clip requesting is_arrangement_clip
@@ -206,7 +201,7 @@ export function setupSessionClipPath(
   clipPath = "live_set tracks 0 clip_slots 0 clip",
 ): void {
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === clipId) return clipPath;
 
@@ -278,7 +273,7 @@ export function setupDeviceDuplicationMocks(
   deviceType = "PluginDevice",
 ): void {
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === deviceId) {
       return devicePath;
@@ -288,7 +283,7 @@ export function setupDeviceDuplicationMocks(
   });
 
   (liveApiType as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === deviceId) {
       return deviceType;
@@ -328,10 +323,6 @@ export function createTrackResultArray(
   );
 }
 
-interface TimeSignatureMockContext extends MockContext {
-  path?: string;
-}
-
 /**
  * Setup mock for time signature duration conversion tests.
  * @param opts - Options
@@ -345,7 +336,7 @@ export function setupTimeSignatureDurationMock(
     opts;
 
   (liveApiPath as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === clipId) {
       return clipPath;
@@ -359,7 +350,7 @@ export function setupTimeSignatureDurationMock(
   });
 
   (liveApiCall as Mock).mockImplementation(function (
-    this: TimeSignatureMockContext,
+    this: MockLiveAPIContext,
     method: string,
   ): string[] | string | null {
     if (method === "create_midi_clip") {

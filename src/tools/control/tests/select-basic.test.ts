@@ -18,7 +18,11 @@ import {
 // Type-safe way to access global LiveAPI
 const g = globalThis as Record<string, unknown>;
 
-// Interface for mock LiveAPI this context
+/**
+ * Extended mock context for LiveAPI constructor mock.
+ * Unlike MockLiveAPIContext which only has path/id properties,
+ * this interface includes mock functions bound to the instance.
+ */
 interface MockLiveAPIThis {
   path?: string;
   _path?: string;

@@ -5,6 +5,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   MockSequence,
 } from "#src/test/mocks/mock-live-api.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
@@ -13,10 +14,7 @@ import { createClip } from "./create-clip.ts";
 
 describe("createClip - session view", () => {
   it("should create a single clip with notes", () => {
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip_0_0";
@@ -149,9 +147,9 @@ describe("createClip - session view", () => {
     const liveAPIGlobal = global as any;
     const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
-      _path?: string;
-    }) {
+    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
+      this: MockLiveAPIContext,
+    ) {
       // Scene does not exist
       return !this._path?.startsWith("live_set scenes");
     });
@@ -195,10 +193,7 @@ describe("createClip - session view", () => {
   });
 
   it("should create multiple clips at specified scene indices", () => {
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 1 clip":
           return "clip_0_1";
