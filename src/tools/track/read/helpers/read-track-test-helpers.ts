@@ -121,9 +121,10 @@ interface SimpleInstrumentMockOptions {
  */
 export function setupDevicePathIdMock(pathIdMap: PathIdMap): void {
   liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
-    if (this._path && pathIdMap[this._path]) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees value exists after map lookup
-      return pathIdMap[this._path]!;
+    const pathLookup = this._path ? pathIdMap[this._path] : undefined;
+
+    if (pathLookup) {
+      return pathLookup;
     }
 
     return this._id ?? "";
