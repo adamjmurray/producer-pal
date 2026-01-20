@@ -61,7 +61,7 @@ export default [
       }),
       esbuild({
         include: /\.[jt]sx?$/,
-        target: "es2024",
+        target: "es2023",
         tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       resolve({
@@ -98,7 +98,7 @@ export default [
       }),
       esbuild({
         include: /\.[jt]sx?$/,
-        target: "es2024",
+        target: "es2023",
         tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
@@ -135,7 +135,7 @@ export default [
       }),
       esbuild({
         include: /\.[jt]sx?$/,
-        target: "es2024",
+        target: "es2023",
         tsconfig: join(rootDir, "src/tsconfig.json"),
       }),
       resolve({
