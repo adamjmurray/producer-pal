@@ -102,7 +102,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.6",
-    "@types/max-api": "^2.0.3",
     "@types/node": "^25.0.9",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
