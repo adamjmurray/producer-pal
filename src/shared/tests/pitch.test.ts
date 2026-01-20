@@ -95,9 +95,9 @@ describe("isValidMidi", () => {
   });
 
   it("returns false for non-numbers", () => {
-    expect(isValidMidi(null)).toBe(false);
-    expect(isValidMidi()).toBe(false);
-    expect(isValidMidi("60")).toBe(false);
+    expect(isValidMidi(null as unknown as number)).toBe(false);
+    expect(isValidMidi(undefined as unknown as number)).toBe(false);
+    expect(isValidMidi("60" as unknown as number)).toBe(false);
     expect(isValidMidi(Number.NaN)).toBe(false);
   });
 });
@@ -166,9 +166,9 @@ describe("isValidNoteName", () => {
   });
 
   it("returns false for non-strings", () => {
-    expect(isValidNoteName(60)).toBe(false);
-    expect(isValidNoteName(null)).toBe(false);
-    expect(isValidNoteName()).toBe(false);
+    expect(isValidNoteName(60 as unknown as string)).toBe(false);
+    expect(isValidNoteName(null as unknown as string)).toBe(false);
+    expect(isValidNoteName(undefined as unknown as string)).toBe(false);
   });
 
   it("returns false for empty string", () => {
@@ -252,9 +252,9 @@ describe("pitchClassToNumber", () => {
   });
 
   it("returns null for non-string inputs", () => {
-    expect(pitchClassToNumber(null)).toBe(null);
-    expect(pitchClassToNumber()).toBe(null);
-    expect(pitchClassToNumber(60)).toBe(null);
+    expect(pitchClassToNumber(null as unknown as string)).toBe(null);
+    expect(pitchClassToNumber(undefined as unknown as string)).toBe(null);
+    expect(pitchClassToNumber(60 as unknown as string)).toBe(null);
   });
 });
 
@@ -286,9 +286,9 @@ describe("numberToPitchClass", () => {
   });
 
   it("returns null for non-numbers", () => {
-    expect(numberToPitchClass(null)).toBe(null);
-    expect(numberToPitchClass()).toBe(null);
-    expect(numberToPitchClass("0")).toBe(null);
+    expect(numberToPitchClass(null as unknown as number)).toBe(null);
+    expect(numberToPitchClass(undefined as unknown as number)).toBe(null);
+    expect(numberToPitchClass("0" as unknown as number)).toBe(null);
   });
 });
 
@@ -327,9 +327,9 @@ describe("midiToNoteName", () => {
   it("returns null for invalid MIDI values", () => {
     expect(midiToNoteName(-1)).toBe(null);
     expect(midiToNoteName(128)).toBe(null);
-    expect(midiToNoteName(null)).toBe(null);
-    expect(midiToNoteName()).toBe(null);
-    expect(midiToNoteName("60")).toBe(null);
+    expect(midiToNoteName(null as unknown as number)).toBe(null);
+    expect(midiToNoteName(undefined as unknown as number)).toBe(null);
+    expect(midiToNoteName("60" as unknown as number)).toBe(null);
     expect(midiToNoteName(60.5)).toBe(null);
   });
 });
@@ -402,9 +402,9 @@ describe("noteNameToMidi", () => {
   });
 
   it("returns null for non-strings", () => {
-    expect(noteNameToMidi(null)).toBe(null);
-    expect(noteNameToMidi()).toBe(null);
-    expect(noteNameToMidi(60)).toBe(null);
+    expect(noteNameToMidi(null as unknown as string)).toBe(null);
+    expect(noteNameToMidi(undefined as unknown as string)).toBe(null);
+    expect(noteNameToMidi(60 as unknown as string)).toBe(null);
   });
 
   it("returns null for out-of-range results", () => {
@@ -417,7 +417,7 @@ describe("round-trip conversions", () => {
   it("noteNameToMidi(midiToNoteName(midi)) === midi for all valid MIDI values", () => {
     for (let midi = 0; midi <= 127; midi++) {
       const noteName = midiToNoteName(midi);
-      const result = noteNameToMidi(noteName);
+      const result = noteNameToMidi(noteName!);
 
       expect(result).toBe(midi);
     }
@@ -426,7 +426,7 @@ describe("round-trip conversions", () => {
   it("numberToPitchClass(pitchClassToNumber(name)) === name for canonical names", () => {
     for (const name of PITCH_CLASS_NAMES) {
       const num = pitchClassToNumber(name);
-      const result = numberToPitchClass(num);
+      const result = numberToPitchClass(num!);
 
       expect(result).toBe(name);
     }

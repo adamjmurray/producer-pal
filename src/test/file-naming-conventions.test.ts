@@ -2,13 +2,7 @@ import { readdirSync, statSync } from "node:fs";
 import { join, basename, extname } from "node:path";
 import { describe, it, expect } from "vitest";
 
-/**
- * Recursively get all files in a directory
- * @param {string} dir - Directory path to scan
- * @param {Array<string>} files - Accumulator array for file paths
- * @returns {Array<string>} - Array of file paths
- */
-function getAllFiles(dir, files = []) {
+function getAllFiles(dir: string, files: string[] = []): string[] {
   const entries = readdirSync(dir);
 
   for (const entry of entries) {
@@ -26,12 +20,7 @@ function getAllFiles(dir, files = []) {
   return files;
 }
 
-/**
- * Check if a filename follows kebab-case convention
- * @param {string} name - Filename (without extension) to check
- * @returns {boolean} - True if filename follows kebab-case
- */
-function isKebabCase(name) {
+function isKebabCase(name: string): boolean {
   // Remove known suffixes first
   const withoutSuffix = name
     .replace(/\.def$/, "")
@@ -42,12 +31,7 @@ function isKebabCase(name) {
   return /^[a-z][\da-z]*(-[\da-z]+)*$/.test(withoutSuffix);
 }
 
-/**
- * Check if a filename has only allowed dots (for suffixes and extension)
- * @param {string} filename - Full filename to validate
- * @returns {boolean} - True if filename has valid dot usage
- */
-function hasValidDots(filename) {
+function hasValidDots(filename: string): boolean {
   const name = basename(filename);
   const ext = extname(name);
   const nameWithoutExt = name.slice(0, -ext.length);

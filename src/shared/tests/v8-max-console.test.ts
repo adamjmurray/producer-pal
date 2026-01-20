@@ -1,9 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from "vitest";
 import { error, log, warn } from "#src/shared/v8-max-console.js";
 
+const g = globalThis as Record<string, unknown>;
+
 describe("v8-max-console", () => {
-  let consoleLogSpy;
-  let consoleErrorSpy;
+  let consoleLogSpy: MockInstance;
+  let consoleErrorSpy: MockInstance;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -14,15 +24,15 @@ describe("v8-max-console", () => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     // Clean up any global mocks for Max environment
-    delete globalThis.post;
-    delete globalThis.error;
+    delete g.post;
+    delete g.error;
   });
 
   describe("Max environment simulation", () => {
     it("uses post() function when available", () => {
       const mockPost = vi.fn();
 
-      globalThis.post = mockPost;
+      g.post = mockPost;
 
       log("test message");
       expect(mockPost).toHaveBeenCalledWith("test message", "\n");
@@ -32,7 +42,7 @@ describe("v8-max-console", () => {
     it("uses globalThis.error() function when available", () => {
       const mockError = vi.fn();
 
-      globalThis.error = mockError;
+      g.error = mockError;
 
       error("error message");
       expect(mockError).toHaveBeenCalledWith("error message", "\n");
@@ -99,9 +109,7 @@ describe("v8-max-console", () => {
 
     it("logs custom class instances with JSON serialization", () => {
       class CustomClass {
-        constructor() {
-          this.prop = "value";
-        }
+        prop = "value";
       }
       const instance = new CustomClass();
 
@@ -118,7 +126,7 @@ describe("v8-max-console", () => {
         }
       }
 
-      globalThis.Dict = Dict;
+      g.Dict = Dict;
       const dictInstance = new Dict();
 
       log(dictInstance);
@@ -126,7 +134,7 @@ describe("v8-max-console", () => {
         'Dict("testDict") { "key": "value" }',
       );
 
-      delete globalThis.Dict;
+      delete g.Dict;
     });
   });
 

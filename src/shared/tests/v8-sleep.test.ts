@@ -1,17 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { waitUntil } from "#src/shared/v8-sleep.js";
 
+const g = globalThis as Record<string, unknown>;
+
 // Mock the Task object for the Max for Live environment
-global.Task = class MockTask {
-  constructor(callback) {
+class MockTask {
+  private callback: () => void;
+
+  constructor(callback: () => void) {
     this.callback = callback;
   }
 
-  schedule(_ms) {
+  schedule(_ms: number) {
     // Immediately resolve for testing
     setTimeout(this.callback, 0);
   }
-};
+}
+g.Task = MockTask;
 
 describe("v8-sleep", () => {
   beforeEach(() => {

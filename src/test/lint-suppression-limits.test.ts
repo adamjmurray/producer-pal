@@ -1,20 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { assertPatternLimit } from "./meta-test-helpers.js";
 
+type TreeLimits = Record<string, number>;
+
 // Per-tree limits for lint suppressions (ratcheted to current counts)
-const ESLINT_DISABLE_LIMITS = {
+const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 8, // Increased for TypeScript migrations (cross-language import resolution)
   scripts: 0,
   webui: 1,
 };
 
-const TS_EXPECT_ERROR_LIMITS = {
+const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
   scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
   webui: 0,
 };
 
-const TS_NOCHECK_LIMITS = {
+const TS_NOCHECK_LIMITS: TreeLimits = {
   src: 0,
   scripts: 0,
   webui: 0,
@@ -22,15 +24,13 @@ const TS_NOCHECK_LIMITS = {
 
 const SOURCE_TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 
-/**
- * @typedef {object} SuppressionConfig
- * @property {RegExp} pattern - Pattern to search for
- * @property {Record<string, number>} limits - Per-tree limits
- * @property {string} errorSuffix - Message suffix for failures
- */
+interface SuppressionConfig {
+  pattern: RegExp;
+  limits: TreeLimits;
+  errorSuffix: string;
+}
 
-/** @type {Record<string, SuppressionConfig>} */
-const SUPPRESSION_CONFIGS = {
+const SUPPRESSION_CONFIGS: Record<string, SuppressionConfig> = {
   "eslint-disable": {
     pattern: /eslint-disable/,
     limits: ESLINT_DISABLE_LIMITS,
@@ -58,7 +58,7 @@ describe("Lint suppression limits", () => {
   for (const [name, config] of Object.entries(SUPPRESSION_CONFIGS)) {
     describe(`${name} comments (excluding test files)`, () => {
       for (const tree of SOURCE_TREES) {
-        const limit = config.limits[tree];
+        const limit = config.limits[tree]!;
 
         it(`should have at most ${limit} ${name} comments in ${tree}/`, () => {
           assertPatternLimit(

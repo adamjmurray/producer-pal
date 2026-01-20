@@ -63,7 +63,7 @@ describe("mcp-response-utils", () => {
     });
 
     it("formats number result by JSON stringifying", () => {
-      const result = formatSuccessResponse(42);
+      const result = formatSuccessResponse(42 as unknown as string);
 
       expect(result).toStrictEqual({
         content: [
@@ -76,7 +76,7 @@ describe("mcp-response-utils", () => {
     });
 
     it("formats boolean result by JSON stringifying", () => {
-      const result = formatSuccessResponse(true);
+      const result = formatSuccessResponse(true as unknown as string);
 
       expect(result).toStrictEqual({
         content: [
@@ -89,7 +89,7 @@ describe("mcp-response-utils", () => {
     });
 
     it("formats null result by JSON stringifying", () => {
-      const result = formatSuccessResponse(null);
+      const result = formatSuccessResponse(null as unknown as string);
 
       expect(result).toStrictEqual({
         content: [

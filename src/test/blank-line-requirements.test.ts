@@ -29,12 +29,20 @@ const SKIP_DIRECTORIES = new Set([
 // File extensions to check
 const SOURCE_EXTENSIONS = new Set([".js", ".ts", ".jsx", ".tsx"]);
 
-/**
- * Calculate the blank line ratio for a file
- * @param {string} filePath - Path to the file
- * @returns {{totalLines: number, blankLines: number, ratio: number}} Line statistics
- */
-function calculateBlankLineRatio(filePath) {
+interface BlankLineStats {
+  totalLines: number;
+  blankLines: number;
+  ratio: number;
+}
+
+interface FileResult {
+  path: string;
+  ratio: number;
+  blankLines: number;
+  totalLines: number;
+}
+
+function calculateBlankLineRatio(filePath: string): BlankLineStats {
   const content = fs.readFileSync(filePath, "utf-8");
   const lines = content.split("\n");
   const totalLines = lines.length;
@@ -44,25 +52,17 @@ function calculateBlankLineRatio(filePath) {
   return { totalLines, blankLines, ratio };
 }
 
-/**
- * Check if a file should be skipped based on patterns
- * @param {string} fileName - File name to check
- * @returns {boolean} True if file should be skipped
- */
-function shouldSkipFile(fileName) {
+function shouldSkipFile(fileName: string): boolean {
   if (SKIP_FILES.has(fileName)) return true;
 
   return SKIP_PATTERNS.some((pattern) => pattern.test(fileName));
 }
 
-/**
- * Recursively find source files with insufficient blank lines
- * @param {string} dirPath - Directory to scan
- * @param {string[]} excludeDirs - Directory names to exclude
- * @returns {Array<{path: string, ratio: number, blankLines: number, totalLines: number}>} Files below threshold
- */
-function findFilesWithInsufficientBlankLines(dirPath, excludeDirs = []) {
-  const results = [];
+function findFilesWithInsufficientBlankLines(
+  dirPath: string,
+  excludeDirs: string[] = [],
+): FileResult[] {
+  const results: FileResult[] = [];
 
   if (!fs.existsSync(dirPath)) {
     return results;
@@ -104,11 +104,7 @@ function findFilesWithInsufficientBlankLines(dirPath, excludeDirs = []) {
   return results;
 }
 
-/**
- * Assert that all files in a directory meet the minimum blank line ratio
- * @param {string} dirPath - Directory to check
- */
-function assertBlankLineRatio(dirPath) {
+function assertBlankLineRatio(dirPath: string): void {
   const insufficientFiles = findFilesWithInsufficientBlankLines(dirPath, [
     "node_modules",
   ]);
