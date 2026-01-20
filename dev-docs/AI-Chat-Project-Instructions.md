@@ -15,7 +15,7 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 
 ## Key Constraints
 
-- **Language**: JavaScript in `src/`, TypeScript in `webui/`
+- **Language**: TypeScript in `src/`, `scripts/`, and `webui/`
 - **Platform**: Live 12.2, Max 9, Node.js 20
 - **Repository**: https://github.com/adamjmurray/producer-pal
 - **Documentation**: See AGENTS.md in project resources for coding standards
@@ -31,10 +31,10 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 
 ## Architecture Overview
 
-- **MCP Server** (`src/mcp-server/mcp-server.js`): Runs in Node for Max
+- **MCP Server** (`src/mcp-server/mcp-server.ts`): Runs in Node for Max
 - **V8 Code** (`src/live-api-adapter/live-api-adapter.ts`): Runs in Max v8
   object, calls Live API
-- **Producer Pal Portal** (`src/portal/producer-pal-portal.js`): Adapts the MCP
+- **Producer Pal Portal** (`src/portal/producer-pal-portal.ts`): Adapts the MCP
   the stdio transport to the streaming http transport
 - **Desktop Extension**: Bridges Claude Desktop to MCP server via the portal
 - **Three Bundles**: MCP server bundle (Node.js), V8 bundle (Max), and MCP
@@ -53,7 +53,7 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
   - Bar|beat notation changes
   - Tool behavior changes that invalidate its instructions
 - **Context Window**: Keep all MCP-facing text minimal:
-  - Tool/parameter descriptions in `.def.js` files
+  - Tool/parameter descriptions in `.def.ts` files
   - Producer Pal Skills content
   - Tool result messages
   - Focus on most useful/relevant info only

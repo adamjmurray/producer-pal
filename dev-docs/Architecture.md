@@ -94,25 +94,24 @@ UI from the MCP server's Express app and connects directly to the LLM API.
 
 ## Language Choices
 
-TypeScript is used only in `webui/` directory. The main codebase (`src/`)
-remains JavaScript.
+The entire codebase uses TypeScript (`src/`, `scripts/`, and `webui/`).
 
-**Why webui uses TypeScript:**
+**Benefits of TypeScript:**
 
-- Complex React component state and props benefit from static typing
+- Static typing catches errors at compile time
+- Complex React component state and props benefit from type safety
 - Integrates multiple AI SDKs (Google GenAI, OpenAI) with different APIs
 - Complex response mapping to normalized UI format requires type safety
 - Streaming protocols and message parsing have many edge cases
 
-**Why src/ stays JavaScript:**
+**Runtime validation:**
 
 - Zod schemas validate tool inputs to avoid unexpected runtime values
-- Live API has no type definitions (would require extensive `.d.ts` work - it's
-  been tried and failed multiple times before)
+- Live API has no type definitions (uses type assertions where needed)
 
 ## Component Details
 
-### 1. Producer Pal Portal (`src/portal/producer-pal-portal.js`)
+### 1. Producer Pal Portal (`src/portal/producer-pal-portal.ts`)
 
 Stdio-to-HTTP bridge that converts MCP stdio transport to HTTP for connecting to
 the MCP server. Provides graceful fallback when Producer Pal is not running.
@@ -123,10 +122,10 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 - Graceful degradation when Live isn't running
 - Returns helpful setup instructions when offline
 
-### 2. MCP Server (`src/mcp-server/mcp-server.js`)
+### 2. MCP Server (`src/mcp-server/mcp-server.ts`)
 
 HTTP endpoint for MCP communication running in Node for Max. Entry point that
-imports all tool definitions from `src/tools/**/*.def.js`.
+imports all tool definitions from `src/tools/**/*.def.ts`.
 
 **Key details:**
 
@@ -163,7 +162,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 
 ### MCP Server Bundle
 
-- **Entry:** `src/mcp-server/mcp-server.js`
+- **Entry:** `src/mcp-server/mcp-server.ts`
 - **Output:** `max-for-live-device/mcp-server.mjs`
 - **Target:** Node.js (Node for Max)
 - **Dependencies:** Bundled for distribution
@@ -177,7 +176,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 
 ### Portal Bundle
 
-- **Entry:** `src/portal/producer-pal-portal.js`
+- **Entry:** `src/portal/producer-pal-portal.ts`
 - **Output:** `release/producer-pal-portal.js`
 - **Target:** Node.js (standalone process)
 - **Dependencies:** Bundled for distribution (zero runtime dependencies)
@@ -222,7 +221,7 @@ Communication between Node.js and V8:
 ## Live API Interface
 
 The Live API has idiosyncrasies that are abstracted by
-`src/live-api-adapter/live-api-extensions.js`:
+`src/live-api-adapter/live-api-extensions.ts`:
 
 - Properties accessed via `.get("propertyName")?.[0]`
 - Color values need special conversion
@@ -245,7 +244,7 @@ changes yet.
 
 ## Versioning
 
-Semantic versioning (major.minor.patch) maintained in `src/shared/version.js`:
+Semantic versioning (major.minor.patch) maintained in `src/shared/version.ts`:
 
 - Displayed in server startup logs
 - Sent to MCP SDK as server version
@@ -254,6 +253,6 @@ Semantic versioning (major.minor.patch) maintained in `src/shared/version.js`:
 ## Testing Infrastructure
 
 - **Framework:** Vitest
-- **Mock Live API:** `src/test/mock-live-api.js`
-- **Test location:** Colocated with source (`*.test.js`)
+- **Mock Live API:** `src/test/mock-live-api.ts`
+- **Test location:** Colocated with source (`*.test.ts`)
 - **Assertions:** Use `expect.objectContaining()` for maintainable tests

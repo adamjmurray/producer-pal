@@ -1,7 +1,8 @@
 ## Project Overview
 
 Producer Pal is an AI music composition tool that integrates with Ableton Live
-through a Max for Live device using the Model Context Protocol (MCP).
+through a Max for Live device using the Model Context Protocol (MCP). The
+codebase is written entirely in TypeScript.
 
 ## Essential Commands
 
@@ -37,12 +38,12 @@ Portal script → Max for Live Device (MCP Server) → Live API
 
 Key entry points:
 
-- MCP Server: `src/mcp-server/mcp-server.js`
+- MCP Server: `src/mcp-server/mcp-server.ts`
 - Max V8 code: `src/live-api-adapter/live-api-adapter.ts`
-- Portal: `src/portal/producer-pal-portal.js`
+- Portal: `src/portal/producer-pal-portal.ts`
 - Chat UI: `webui/src/main.tsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
-- Tools: `src/tools/**/*.js`
+- Tools: `src/tools/**/*.ts`
 
 See `dev-docs/Architecture.md` for detailed system design and
 `dev-docs/Chat-UI.md` for web UI architecture.
@@ -54,7 +55,7 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - **Function organization**: In files that export functions, the first exported
   function should be the main function named after the file (e.g.,
-  `updateClip()` in `update-clip.js`, `readTrack()` in `read-track.js`). All
+  `updateClip()` in `update-clip.ts`, `readTrack()` in `read-track.ts`). All
   helper functions (both internal and exported) must be placed below the main
   exported function(s). This improves code readability and makes it immediately
   clear what the primary purpose of each file is.
@@ -72,7 +73,7 @@ See `dev-docs/Architecture.md` for detailed system design and
   prefix is required by Node.js for unbundled execution (build scripts, CLI
   tools). Never use relative paths like `../../` when a path alias is available.
 
-- **No barrel files**: Do not create index.js or other files that only re-export
+- **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
@@ -81,7 +82,7 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.
   For list-like inputs, use comma-separated strings
 
-- **Live API**: Use `src/live-api-adapter/live-api-extensions.js` interface
+- **Live API**: Use `src/live-api-adapter/live-api-extensions.ts` interface
   instead of raw `.get("property")?.[0]` calls
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
@@ -96,12 +97,12 @@ See `dev-docs/Architecture.md` for detailed system design and
     `console.error("Warning: quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
-  in `src/tools/workflow/connect.js`. It needs to be adjusted after changes to
+  in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 
 - **Context window usage optimization**: The Producer Pal Skills, tool and
-  parameter descriptions in `.def.js` files, and tool results need to be very
+  parameter descriptions in `.def.ts` files, and tool results need to be very
   short, clear, and focused on the most useful and relevant info.
 
 - **Chat UI builds**: The webui is built with Vite (config in
@@ -117,19 +118,19 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Max 325 lines per file for source files (ESLint, ignoring blanks/comments)
   - Max 650 lines for `*.test.*` and `*-test-case.ts` (ESLint, ignoring
     blanks/comments)
-  - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
-    in the same directory (e.g., `update-clip-helpers.js`)
+  - When a file approaches the limit, extract helpers to `{feature}-helpers.ts`
+    in the same directory (e.g., `update-clip-helpers.ts`)
   - Helper files group related utility functions by feature/domain (e.g., audio
     operations, content analysis, clip duplication)
   - If a helper file exceeds 325 lines, split by feature group:
-    `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
-    `update-clip-midi-helpers.js`)
+    `{feature}-{group}-helpers.ts` (e.g., `update-clip-audio-helpers.ts`,
+    `update-clip-midi-helpers.ts`)
   - When a directory accumulates multiple helper files (2+), move them to a
     `helpers/` subdirectory while keeping the main source file in the parent
     directory
-  - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
-    `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
-  - Test helpers use `{feature}-test-helpers.js` for shared test utilities
+  - Test files split using dot notation: `{feature}-{area}.test.ts` (e.g.,
+    `update-clip-audio-arrangement.test.ts`, `duplicate-validation.test.ts`)
+  - Test helpers use `{feature}-test-helpers.ts` for shared test utilities
   - **Test file location**: Use colocated tests (same directory as source) for
     1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
     a feature to keep the main directory focused on source code
@@ -138,8 +139,8 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 A file is classified as a **test file** if it matches any of these patterns:
 
-- `*.test.{js,ts,tsx}` - Unit/integration tests
-- `*-test-helpers.{js,ts}` - Shared test utilities
+- `*.test.{ts,tsx}` - Unit/integration tests
+- `*-test-helpers.ts` - Shared test utilities
 - `*-test-case.ts` - Test data fixtures (webui)
 - Files in `tests/` directories
 - Files in `test-cases/` directories
@@ -157,15 +158,12 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Scope:** All source code is type-checked via `npm run typecheck`:
 
-- `src/` uses JSDoc annotations with TypeScript's `checkJs`
-- `scripts/` and `webui/` use TypeScript (`.ts`/`.tsx` files)
+- `src/`, `scripts/`, and `webui/` use TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
 - All code must pass: `npm run typecheck`
 - All code must pass: `npm run lint`
-- Use JSDoc `@param`, `@returns`, and `@type` annotations for type safety in JS
-- Cast `getProperty()` returns: `/** @type {number} */ (obj.getProperty("x"))`
 - Prefer explicit return types on exported functions
 
 **Scripts JSDoc convention:** ESLint enforces JSDoc on all function declarations
@@ -190,7 +188,7 @@ functions for clarity.
   - Example: `scripts/chat -p gemini -1 "list tracks in the set"`
 - **Debug logging for CLI testing**:
   - `console` must be imported:
-    `import * as console from "../../shared/v8-max-console.js"`
+    `import * as console from "../../shared/v8-max-console.ts"`
   - Use `console.error()` to see output in CLI tool results (appears as WARNING)
   - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
@@ -204,7 +202,7 @@ functions for clarity.
 
 ## Project Constraints
 
-- JavaScript with JSDoc types for `src/`, TypeScript for `scripts/` and `webui/`
+- TypeScript for `src/`, `scripts/`, and `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
@@ -215,7 +213,7 @@ The following files contain code quality thresholds that should only be relaxed
 with explicit user approval. **Do not modify these values without asking
 first:**
 
-- `src/test/lint-suppression-limits.test.js` - Per-tree limits for
+- `src/test/lint-suppression-limits.test.ts` - Per-tree limits for
   eslint-disable and @ts-expect-error comments. Increasing these limits weakens
   code quality enforcement.
 
