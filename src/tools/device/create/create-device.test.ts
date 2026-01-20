@@ -170,7 +170,7 @@ describe("createDevice", () => {
 
   describe("listing available devices", () => {
     it("should return valid devices list when deviceName is omitted", () => {
-      const result = createDevice({}) as {
+      const result = createDevice({}) as unknown as {
         instruments: string[];
         midiEffects: string[];
         audioEffects: string[];
@@ -182,7 +182,7 @@ describe("createDevice", () => {
     });
 
     it("should return valid devices list without path", () => {
-      const result = createDevice({}) as {
+      const result = createDevice({}) as unknown as {
         instruments: string[];
         midiEffects: string[];
         audioEffects: string[];

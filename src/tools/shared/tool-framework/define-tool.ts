@@ -1,41 +1,63 @@
-import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z, type ZodType } from "zod";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
-import { filterSchemaForSmallModel } from "./filter-schema.js";
+import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.js";
 
-/**
- * @typedef {object} SmallModelModeConfig
- * @property {string[]} [excludeParams]
- * @property {Record<string, string>} [descriptionOverrides]
- * @property {string} [toolDescription]
- */
+// Re-export CallToolResult for use by callers
+export type { CallToolResult };
 
-/**
- * @typedef {object} ToolAnnotations
- * @property {boolean} [readOnlyHint]
- * @property {boolean} [destructiveHint]
- */
+export interface SmallModelModeConfig {
+  excludeParams?: string[];
+  descriptionOverrides?: Record<string, string>;
+  toolDescription?: string;
+}
 
-/**
- * @typedef {object} ToolOptions
- * @property {string} [title]
- * @property {string} description
- * @property {ToolAnnotations} [annotations]
- * @property {Record<string, z.ZodType>} inputSchema
- * @property {SmallModelModeConfig} [smallModelModeConfig]
- */
+export interface ToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+}
 
-/**
- * @typedef {object} McpOptions
- * @property {boolean} [smallModelMode]
- */
+export interface ToolOptions {
+  title?: string;
+  description: string;
+  annotations?: ToolAnnotations;
+  inputSchema: Record<string, ZodType>;
+  smallModelModeConfig?: SmallModelModeConfig;
+}
+
+export interface McpOptions {
+  smallModelMode?: boolean;
+}
+
+interface ZodDef {
+  type?: string;
+  innerType?: ZodType;
+}
+
+interface ZodWithDef {
+  _def?: ZodDef;
+}
+
+type CallLiveApiFunction = (
+  name: string,
+  data: Record<string, unknown>,
+) => Promise<object>;
 
 /**
  * Defines an MCP tool with validation and small model mode support
- * @param {string} name - Tool name
- * @param {ToolOptions} options - Tool configuration options
- * @returns {(server: import("@modelcontextprotocol/sdk/server/mcp.js").McpServer, callLiveApi: Function, mcpOptions?: McpOptions) => void} - Function that registers the tool with the MCP server
+ * @param name - Tool name
+ * @param options - Tool configuration options
+ * @returns Function that registers the tool with the MCP server
  */
-export function defineTool(name, options) {
+export function defineTool(
+  name: string,
+  options: ToolOptions,
+): (
+  server: McpServer,
+  callLiveApi: CallLiveApiFunction,
+  mcpOptions?: McpOptions,
+) => void {
   return (server, callLiveApi, mcpOptions = {}) => {
     const { smallModelMode = false } = mcpOptions;
     const { inputSchema, smallModelModeConfig, ...toolConfig } = options;
@@ -45,7 +67,7 @@ export function defineTool(name, options) {
       smallModelMode && smallModelModeConfig
         ? filterSchemaForSmallModel(
             inputSchema,
-            smallModelModeConfig.excludeParams || [],
+            smallModelModeConfig.excludeParams ?? [],
             smallModelModeConfig.descriptionOverrides,
           )
         : inputSchema;
@@ -63,7 +85,7 @@ export function defineTool(name, options) {
         description: finalDescription,
         inputSchema: finalInputSchema,
       },
-      async (/** @type {Record<string, unknown>} */ args) => {
+      async (args: Record<string, unknown>): Promise<CallToolResult> => {
         // Coerce args to expected types before validation (transport-layer tolerance)
         const coercedArgs = coerceArgsToSchema(args, finalInputSchema);
         // Create Zod object schema from the input schema object for validation
@@ -71,7 +93,7 @@ export function defineTool(name, options) {
 
         if (!validation.success) {
           const errorMessages = validation.error.issues.map(
-            (/** @type {{path: PropertyKey[], message: string}} */ issue) => {
+            (issue: { path: PropertyKey[]; message: string }) => {
               const path =
                 issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
 
@@ -81,30 +103,28 @@ export function defineTool(name, options) {
 
           return formatErrorResponse(
             `Validation error in ${name}:\n${errorMessages.join("\n")}`,
-          );
+          ) as CallToolResult;
         }
 
-        return await callLiveApi(name, validation.data);
+        return (await callLiveApi(name, validation.data)) as CallToolResult;
       },
     );
   };
 }
 
 /**
- * @typedef {object} ZodDef
- * @property {string} [type]
- * @property {z.ZodType} [innerType]
- */
-
-/**
  * Gets the expected primitive type from a Zod schema, unwrapping wrappers.
- * @param {z.ZodType | null | undefined} zodType - A Zod type definition
- * @returns {string|null} 'string', 'number', 'boolean', or null for non-primitives
+ * @param zodType - A Zod type definition
+ * @returns 'string', 'number', 'boolean', or null for non-primitives
  */
-export function getExpectedPrimitiveType(zodType) {
+export function getExpectedPrimitiveType(
+  zodType: ZodType | null | undefined,
+): string | null {
+  if (zodType == null) return null;
+
   // Cast to access internal Zod _def property
-  const zodAny = /** @type {{_def?: ZodDef}} */ (zodType);
-  const def = zodAny?._def;
+  const zodAny = zodType as ZodWithDef;
+  const def = zodAny._def;
   const type = def?.type;
 
   if (type === "string") return "string";
@@ -122,16 +142,18 @@ export function getExpectedPrimitiveType(zodType) {
 /**
  * Coerces arg values to match schema expected types.
  * Handles: number→string, string→number, string→boolean, number→boolean
- * @param {Record<string, unknown>} args - The arguments object to coerce
- * @param {Record<string, z.ZodType>} schema - The Zod schema defining expected types
- * @returns {Record<string, unknown>} A new object with coerced values
+ * @param args - The arguments object to coerce
+ * @param schema - The Zod schema defining expected types
+ * @returns A new object with coerced values
  */
-export function coerceArgsToSchema(args, schema) {
+export function coerceArgsToSchema(
+  args: Record<string, unknown> | null | undefined,
+  schema: Record<string, ZodType>,
+): Record<string, unknown> | null | undefined {
   // Return as-is if not a valid object (let Zod handle the error)
   if (args == null || typeof args !== "object") return args;
 
-  /** @type {Record<string, unknown>} */
-  const result = { ...args };
+  const result: Record<string, unknown> = { ...args };
 
   for (const [key, zodType] of Object.entries(schema)) {
     if (!(key in result) || result[key] == null) continue;

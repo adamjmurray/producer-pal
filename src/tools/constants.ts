@@ -12,7 +12,7 @@ export const STATE = {
   MUTED_ALSO_VIA_SOLO: "muted-also-via-solo",
   MUTED_AND_SOLOED: "muted-and-soloed",
   SOLOED: "soloed",
-};
+} as const;
 
 // Live API numeric values for device types
 export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
@@ -28,14 +28,14 @@ export const DEVICE_TYPE = {
   AUDIO_EFFECT_RACK: "audio-effect-rack",
   MIDI_EFFECT: "midi-effect",
   MIDI_EFFECT_RACK: "midi-effect-rack",
-};
+} as const;
 
 // Monitoring states for user-facing API
 export const MONITORING_STATE = {
   IN: "in",
   AUTO: "auto",
   OFF: "off",
-};
+} as const;
 
 // Live API numeric values for monitoring states
 export const LIVE_API_MONITORING_STATE_IN = 0;
@@ -51,7 +51,7 @@ export const WARP_MODE = {
   COMPLEX: "complex",
   REX: "rex",
   PRO: "pro",
-};
+} as const;
 
 // Live API numeric values for warp modes
 export const LIVE_API_WARP_MODE_BEATS = 0;
@@ -70,7 +70,7 @@ export const LIVE_API_VIEW_NAMES = {
   DETAIL: "Detail",
   DETAIL_CLIP: "Detail/Clip",
   DETAIL_DEVICE_CHAIN: "Detail/DeviceChain",
-};
+} as const;
 
 export const VALID_SCALE_NAMES = [
   "Major",
@@ -108,7 +108,7 @@ export const VALID_SCALE_NAMES = [
   "Messiaen 5",
   "Messiaen 6",
   "Messiaen 7",
-];
+] as const;
 
 export const VALID_DEVICES = {
   instruments: [
@@ -184,9 +184,9 @@ export const VALID_DEVICES = {
     "Vinyl Distortion",
     "Vocoder",
   ],
-};
+} as const;
 
-export const ALL_VALID_DEVICES = [
+export const ALL_VALID_DEVICES: readonly string[] = [
   ...VALID_DEVICES.instruments,
   ...VALID_DEVICES.midiEffects,
   ...VALID_DEVICES.audioEffects,
@@ -195,4 +195,4 @@ export const ALL_VALID_DEVICES = [
 // Device class names for special handling
 export const DEVICE_CLASS = {
   SIMPLER: "Simpler",
-};
+} as const;

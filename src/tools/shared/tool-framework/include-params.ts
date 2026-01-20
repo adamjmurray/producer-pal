@@ -22,7 +22,7 @@ const LOCATORS = "locators";
 /**
  * All available include options mapped by tool type
  */
-const ALL_INCLUDE_OPTIONS = {
+const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
   song: [
     DRUM_PADS,
     DRUM_MAPS,
@@ -74,45 +74,47 @@ const ALL_INCLUDE_OPTIONS = {
 /**
  * Shortcut mappings for include options
  */
-const SHORTCUT_MAPPINGS = {
+const SHORTCUT_MAPPINGS: Record<string, string[]> = {
   "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
   "all-devices": ["midi-effects", "instruments", "audio-effects"],
   "all-routings": ["routings", "available-routings"],
   "all-clips": ["session-clips", "arrangement-clips"],
 };
 
-/**
- * @typedef {object} IncludeFlags
- * @property {boolean} includeDrumPads
- * @property {boolean} includeDrumMaps
- * @property {boolean} includeClipNotes
- * @property {boolean} includeRackChains
- * @property {boolean} includeReturnChains
- * @property {boolean} includeScenes
- * @property {boolean} includeMidiEffects
- * @property {boolean} includeInstruments
- * @property {boolean} includeAudioEffects
- * @property {boolean} includeRoutings
- * @property {boolean} includeAvailableRoutings
- * @property {boolean} includeSessionClips
- * @property {boolean} includeArrangementClips
- * @property {boolean} includeClips
- * @property {boolean} includeRegularTracks
- * @property {boolean} includeReturnTracks
- * @property {boolean} includeMasterTrack
- * @property {boolean} includeColor
- * @property {boolean} includeWarpMarkers
- * @property {boolean} includeMixer
- * @property {boolean} includeLocators
- */
+export interface IncludeFlags {
+  includeDrumPads: boolean;
+  includeDrumMaps: boolean;
+  includeClipNotes: boolean;
+  includeRackChains: boolean;
+  includeReturnChains: boolean;
+  includeScenes: boolean;
+  includeMidiEffects: boolean;
+  includeInstruments: boolean;
+  includeAudioEffects: boolean;
+  includeRoutings: boolean;
+  includeAvailableRoutings: boolean;
+  includeSessionClips: boolean;
+  includeArrangementClips: boolean;
+  includeClips: boolean;
+  includeRegularTracks: boolean;
+  includeReturnTracks: boolean;
+  includeMasterTrack: boolean;
+  includeColor: boolean;
+  includeWarpMarkers: boolean;
+  includeMixer: boolean;
+  includeLocators: boolean;
+}
 
 /**
  * Parse include array format and return boolean flags for each option
- * @param {string[] | undefined} includeArray - Array of kebab-case include options
- * @param {Partial<IncludeFlags>} defaults - Default values for each parameter
- * @returns {IncludeFlags} Object with boolean include* properties
+ * @param includeArray - Array of kebab-case include options
+ * @param defaults - Default values for each parameter
+ * @returns Object with boolean include* properties
  */
-export function parseIncludeArray(includeArray, defaults = {}) {
+export function parseIncludeArray(
+  includeArray: string[] | undefined,
+  defaults: Partial<IncludeFlags> = {},
+): IncludeFlags {
   // If no include array is provided (undefined), use defaults
   if (includeArray === undefined) {
     return {
@@ -201,7 +203,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
 /**
  * Mapping of flag properties to their include option strings
  */
-const FLAG_TO_OPTION = [
+const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeDrumPads", DRUM_PADS],
   ["includeDrumMaps", DRUM_MAPS],
   ["includeClipNotes", CLIP_NOTES],
@@ -227,22 +229,23 @@ const FLAG_TO_OPTION = [
 
 /**
  * Convert include flags back to an array format
- * @param {Partial<IncludeFlags>} includeFlags - Object with boolean include* properties
- * @returns {string[]} Array of include options
+ * @param includeFlags - Object with boolean include* properties
+ * @returns Array of include options
  */
-export function includeArrayFromFlags(includeFlags) {
-  /** @type {Record<string, boolean | undefined>} */
-  const flagsRecord = includeFlags;
+export function includeArrayFromFlags(
+  includeFlags: Partial<IncludeFlags>,
+): string[] {
+  const flagsRecord = includeFlags as Record<string, boolean | undefined>;
 
-  return FLAG_TO_OPTION.filter(
-    ([flag]) => flagsRecord[/** @type {keyof IncludeFlags} */ (flag)],
-  ).map(([, option]) => /** @type {string} */ (option));
+  return FLAG_TO_OPTION.filter(([flag]) => flagsRecord[flag]).map(
+    ([, option]) => option,
+  );
 }
 
 /**
  * Default include parameters for read-live-set tool
  */
-export const READ_SONG_DEFAULTS = {
+export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
   includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: false,
@@ -267,7 +270,7 @@ export const READ_SONG_DEFAULTS = {
 /**
  * Default include parameters for read-track tool
  */
-export const READ_TRACK_DEFAULTS = {
+export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
   includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: true,
@@ -288,7 +291,7 @@ export const READ_TRACK_DEFAULTS = {
 /**
  * Default include parameters for read-scene tool
  */
-export const READ_SCENE_DEFAULTS = {
+export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
   includeClips: false,
   includeClipNotes: false,
   includeColor: false,
@@ -298,7 +301,7 @@ export const READ_SCENE_DEFAULTS = {
 /**
  * Default include parameters for read-clip tool
  */
-export const READ_CLIP_DEFAULTS = {
+export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
   includeClipNotes: true,
   includeColor: false,
   includeWarpMarkers: false,
@@ -306,20 +309,20 @@ export const READ_CLIP_DEFAULTS = {
 
 /**
  * Expand shortcuts and '*' in include array to concrete options
- * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
- * @param {Partial<IncludeFlags>} defaults - Default values to determine tool type from structure
- * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
+ * @param includeArray - Array of include options that may contain '*' or shortcuts
+ * @param defaults - Default values to determine tool type from structure
+ * @returns Expanded array with shortcuts and '*' replaced by concrete options
  */
-function expandWildcardIncludes(includeArray, defaults) {
+function expandWildcardIncludes(
+  includeArray: string[],
+  defaults: Partial<IncludeFlags>,
+): string[] {
   // First expand shortcuts
-  /** @type {string[]} */
-  const expandedArray = [];
-  /** @type {Record<string, string[]>} */
-  const shortcuts = SHORTCUT_MAPPINGS;
+  const expandedArray: string[] = [];
 
   for (const option of includeArray) {
-    if (shortcuts[option]) {
-      expandedArray.push(...shortcuts[option]);
+    if (SHORTCUT_MAPPINGS[option]) {
+      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
     } else {
       expandedArray.push(option);
     }
@@ -331,7 +334,7 @@ function expandWildcardIncludes(includeArray, defaults) {
   }
 
   // Determine tool type from defaults structure to get appropriate options
-  let toolType;
+  let toolType: string;
 
   if (
     Object.keys(defaults).length === 1 &&
@@ -348,9 +351,7 @@ function expandWildcardIncludes(includeArray, defaults) {
     toolType = "song"; // fallback
   }
 
-  /** @type {Record<string, string[]>} */
-  const optionsByType = ALL_INCLUDE_OPTIONS;
-  const allOptions = optionsByType[toolType] || [];
+  const allOptions = ALL_INCLUDE_OPTIONS[toolType] ?? [];
 
   // Create set with all non-'*' options plus all available options
   const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));

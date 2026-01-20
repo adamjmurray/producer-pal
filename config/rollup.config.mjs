@@ -82,6 +82,8 @@ export default [
               source.includes("/tools/shared/utils") ||
               source.includes("/tools/shared/clip-marker-helpers") ||
               source.includes("/tools/shared/live-set-helpers") ||
+              source.includes("/tools/shared/tool-framework/") ||
+              source.includes("/tools/constants") ||
               source.includes("/tools/shared/device/")) &&
             source.endsWith(".js") &&
             !source.endsWith("-parser.js")
