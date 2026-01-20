@@ -52,7 +52,7 @@
     "knowledge-base": "npm run test:coverage && node scripts/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "kb:chatgpt": "npm run knowledge-base -- --concat",
-    "kb:small": "npm run knowledge-base -- --exclude-groups=src--tests,src--notation--tests,src--tools--tests,webui--test.ts",
+    "kb:small": "npm run knowledge-base -- --exclude-groups=third-party-licenses,src--tests,src--notation--tests,src--tools--tests,webui--test.ts",
     "dxt:clean": "rm -f claude-desktop-extension/*.mcpb claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE",
     "dxt:build": "node scripts/build-claude-desktop-extension.ts",
     "version:bump": "node scripts/bump-version.ts",

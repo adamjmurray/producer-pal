@@ -47,7 +47,7 @@ function createItemsArray(): KbItem[] {
       exclude: [".vitepress/cache", ".vitepress/dist"],
       group: "docs",
     },
-    { src: "licenses", isDir: true },
+    { src: "licenses", isDir: true, group: "third-party-licenses" },
     { src: "scripts", isDir: true },
     {
       src: "src",
@@ -123,7 +123,7 @@ function createItemsArray(): KbItem[] {
     { src: "CLAUDE.md", group: "config" },
     { src: "GEMINI.md", group: "config" },
     { src: "DEVELOPERS.md", group: "doc" },
-    { src: "LICENSE", group: "licenses" },
+    { src: "LICENSE", group: "doc" },
     { src: "package.json", group: "config" },
     { src: "README.md", group: "doc" },
     {
