@@ -45,8 +45,8 @@ describe("clip-result-helpers", () => {
   });
 
   describe("validateAndParseArrangementParams", () => {
-    it("returns null values when both params are null", () => {
-      const result = validateAndParseArrangementParams(null, null);
+    it("returns null values when both params are undefined", () => {
+      const result = validateAndParseArrangementParams(undefined, undefined);
 
       expect(result.songTimeSigNumerator).toBeNull();
       expect(result.songTimeSigDenominator).toBeNull();
@@ -55,7 +55,7 @@ describe("clip-result-helpers", () => {
     });
 
     it("parses arrangementStart when provided", () => {
-      const result = validateAndParseArrangementParams("2|1", null);
+      const result = validateAndParseArrangementParams("2|1", undefined);
 
       expect(result.songTimeSigNumerator).toBe(4);
       expect(result.songTimeSigDenominator).toBe(4);
@@ -64,7 +64,7 @@ describe("clip-result-helpers", () => {
     });
 
     it("parses arrangementLength when provided", () => {
-      const result = validateAndParseArrangementParams(null, "1:0");
+      const result = validateAndParseArrangementParams(undefined, "1:0");
 
       expect(result.songTimeSigNumerator).toBe(4);
       expect(result.songTimeSigDenominator).toBe(4);
@@ -80,15 +80,15 @@ describe("clip-result-helpers", () => {
     });
 
     it("throws when arrangementLength is zero", () => {
-      expect(() => validateAndParseArrangementParams(null, "0:0")).toThrow(
+      expect(() => validateAndParseArrangementParams(undefined, "0:0")).toThrow(
         "arrangementLength must be greater than 0",
       );
     });
 
     it("throws when arrangementLength is negative", () => {
-      expect(() => validateAndParseArrangementParams(null, "-1:0")).toThrow(
-        "arrangementLength must be greater than 0",
-      );
+      expect(() =>
+        validateAndParseArrangementParams(undefined, "-1:0"),
+      ).toThrow("arrangementLength must be greater than 0");
     });
   });
 

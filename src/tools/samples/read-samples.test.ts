@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockFolderStructure } from "#src/test/mocks/mock-folder.js";
+import {
+  type FolderEntry,
+  mockFolderStructure,
+} from "#src/test/mocks/mock-folder.js";
 import { readSamples } from "./read-samples.js";
 
 describe("readSamples", () => {
-  let context;
+  let context: { sampleFolder: string | null };
 
   beforeEach(() => {
     context = {
@@ -167,7 +170,7 @@ describe("readSamples", () => {
       context.sampleFolder = "/samples/";
 
       // Create 1005 files (more than the 1000 limit)
-      const entries = [];
+      const entries: FolderEntry[] = [];
 
       for (let i = 0; i < 1005; i++) {
         entries.push({
@@ -189,7 +192,7 @@ describe("readSamples", () => {
     it("should log warning when limit is reached", () => {
       context.sampleFolder = "/samples/";
 
-      const entries = [];
+      const entries: FolderEntry[] = [];
 
       for (let i = 0; i < 1005; i++) {
         entries.push({
@@ -221,7 +224,7 @@ describe("readSamples", () => {
       context.sampleFolder = "/samples/";
 
       // Create 1000 files in root, plus a folder with more
-      const rootEntries = [];
+      const rootEntries: FolderEntry[] = [];
 
       for (let i = 0; i < 999; i++) {
         rootEntries.push({
@@ -338,7 +341,7 @@ describe("readSamples", () => {
       context.sampleFolder = "/samples/";
 
       // Create 1005 non-matching files and 5 matching files
-      const entries = [];
+      const entries: FolderEntry[] = [];
 
       for (let i = 0; i < 1005; i++) {
         entries.push({

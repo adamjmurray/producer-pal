@@ -6,6 +6,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { deleteObject } from "./delete.js";
 
@@ -19,17 +20,17 @@ describe("deleteObject device path error cases", () => {
     const drumRackPath = "live_set tracks 0 devices 0";
     const chainId = "chain-1";
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === drumRackPath) return "drum-rack";
       if (this._id?.startsWith("id ")) return this._id.slice(3);
 
       return this._id;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === chainId) return "DrumChain";
       if (this._path === drumRackPath) return "DrumGroupDevice";
     });
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       const id = this._id ?? this.id;
 
       if (
@@ -64,20 +65,20 @@ describe("deleteObject device path error cases", () => {
   it("should warn when device type requested but path resolves to chain", () => {
     const consoleSpy = vi.spyOn(console, "error");
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "device_0";
       if (this._path === "live_set tracks 0 devices 0 chains 0")
         return "chain_0";
 
       return this._id;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "Device";
       if (this._path === "live_set tracks 0 devices 0 chains 0") return "Chain";
       if (this._id === "device_0") return "Device";
       if (this._id === "chain_0") return "Chain";
     });
-    liveApiGet.mockImplementation(function (prop) {
+    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
       if (this._path === "live_set tracks 0 devices 0" && prop === "chains") {
         return children("chain_0");
       }
@@ -113,7 +114,7 @@ describe("deleteObject device path error cases", () => {
     const consoleSpy = vi.spyOn(console, "error");
 
     // Mock liveApiId to return "0" for non-existent device (exists() checks id !== "0")
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "0";
 
       return this._id;

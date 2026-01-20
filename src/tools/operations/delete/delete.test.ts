@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   liveApiCall,
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.js";
 import { deleteObject } from "./delete.js";
@@ -113,7 +115,7 @@ describe("deleteObject", () => {
   it("should delete multiple clips (order doesn't matter for clips)", () => {
     const ids = "clip_0_0,clip_1_1";
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip_0_0";
@@ -123,7 +125,7 @@ describe("deleteObject", () => {
           return this._id;
       }
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "clip_0_0":
           return "live_set tracks 0 clip_slots 0 clip";
@@ -133,8 +135,8 @@ describe("deleteObject", () => {
           return this._path;
       }
     });
-    liveApiType.mockImplementation(function () {
-      if (["clip_0_0", "clip_1_1"].includes(this._id)) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
+      if (["clip_0_0", "clip_1_1"].includes(this._id ?? "")) {
         return "Clip";
       }
     });
@@ -161,12 +163,15 @@ describe("deleteObject", () => {
   it("should throw an error when neither ids nor path is provided", () => {
     const expectedError = "delete failed: ids or path is required";
 
-    expect(() => deleteObject({ type: "clip" })).toThrow(expectedError);
+    expect(() => deleteObject({ ids: undefined, type: "clip" })).toThrow(
+      expectedError,
+    );
   });
 
   it("should throw an error when type arg is missing", () => {
     const expectedError = "delete failed: type is required";
 
+    // @ts-expect-error testing missing required type parameter
     expect(() => deleteObject({ ids: "clip_1" })).toThrow(expectedError);
   });
 
@@ -180,7 +185,7 @@ describe("deleteObject", () => {
   });
 
   it("should log warning when object doesn't exist", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";
@@ -190,7 +195,7 @@ describe("deleteObject", () => {
           return this._id;
       }
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "123") {
         return "Track";
       }
@@ -207,7 +212,7 @@ describe("deleteObject", () => {
   });
 
   it("should log warning when object is wrong type", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id track_1":
           return "track_1";
@@ -217,7 +222,7 @@ describe("deleteObject", () => {
           return this._id;
       }
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "track_1") {
         return "Track";
       }
@@ -238,7 +243,7 @@ describe("deleteObject", () => {
   });
 
   it("should skip invalid IDs in comma-separated list and delete valid ones", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set tracks 0":
           return "track_0";
@@ -254,7 +259,7 @@ describe("deleteObject", () => {
           return this._id;
       }
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "track_0":
           return "live_set tracks 0";
@@ -264,8 +269,8 @@ describe("deleteObject", () => {
           return this._path;
       }
     });
-    liveApiType.mockImplementation(function () {
-      if (["track_0", "track_2"].includes(this._id)) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
+      if (["track_0", "track_2"].includes(this._id ?? "")) {
         return "Track";
       }
     });
@@ -319,7 +324,7 @@ describe("deleteObject", () => {
   });
 
   it("should throw error when trying to delete Producer Pal host track", () => {
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "this_device") {
         return "live_set tracks 1 devices 0";
       }
@@ -372,21 +377,21 @@ describe("deleteObject", () => {
   });
 
   it("should throw error when track path is malformed (no track index)", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0") {
         return "track_0";
       }
 
       return this._id;
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "track_0") {
         return "invalid_path_without_track_index";
       }
 
       return this._path;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "track_0") {
         return "Track";
       }
@@ -398,21 +403,21 @@ describe("deleteObject", () => {
   });
 
   it("should throw error when scene path is malformed (no scene index)", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set scenes 0") {
         return "scene_0";
       }
 
       return this._id;
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "scene_0") {
         return "invalid_path_without_scene_index";
       }
 
       return this._path;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "scene_0") {
         return "Scene";
       }
@@ -424,21 +429,21 @@ describe("deleteObject", () => {
   });
 
   it("should throw error when clip path is malformed (no track index)", () => {
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 clip_slots 0 clip") {
         return "clip_0";
       }
 
       return this._id;
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "clip_0") {
         return "invalid_path_without_track_index";
       }
 
       return this._path;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "clip_0") {
         return "Clip";
       }
@@ -454,21 +459,21 @@ describe("deleteObject", () => {
     const returnTrackIndex = 1;
     const path = `live_set return_tracks ${returnTrackIndex}`;
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === path) {
         return id;
       }
 
       return this._id;
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === id) {
         return path;
       }
 
       return this._path;
     });
-    liveApiType.mockImplementation(function () {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === id) {
         return "Track";
       }
@@ -487,7 +492,7 @@ describe("deleteObject", () => {
   it("should delete multiple return tracks in descending index order", () => {
     const ids = "return_0,return_2";
 
-    liveApiId.mockImplementation(function () {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "live_set return_tracks 0":
           return "return_0";
@@ -497,7 +502,7 @@ describe("deleteObject", () => {
           return this._id;
       }
     });
-    liveApiPath.mockImplementation(function () {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._id) {
         case "return_0":
           return "live_set return_tracks 0";
@@ -507,8 +512,8 @@ describe("deleteObject", () => {
           return this._path;
       }
     });
-    liveApiType.mockImplementation(function () {
-      if (["return_0", "return_2"].includes(this._id)) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
+      if (["return_0", "return_2"].includes(this._id ?? "")) {
         return "Track";
       }
     });

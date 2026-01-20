@@ -8,6 +8,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.js";
 import {
   setupDeviceMocks,
@@ -250,7 +251,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should return empty array when all paths are invalid", () => {
-      liveApiType.mockReturnValue();
+      liveApiType.mockReturnValue(undefined);
 
       const result = deleteObject({ path: "t99/d99", type: "device" });
 
@@ -260,15 +261,15 @@ describe("deleteObject device deletion", () => {
     it("should warn when path is used with non-device/drum-pad type", () => {
       const consoleSpy = vi.spyOn(console, "error");
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         return this._id;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === "track_1") return "live_set tracks 0";
 
         return this._path;
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === "track_1") return "Track";
       });
 
@@ -285,23 +286,23 @@ describe("deleteObject device deletion", () => {
       const deviceId = "nested-device";
       const devicePath = "live_set tracks 1 devices 0 chains 0 devices 0";
 
-      liveApiId.mockImplementation(function () {
+      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === drumRackPath) return "drum-rack";
         if (this._id?.startsWith("id ")) return this._id.slice(3);
 
         return this._id;
       });
-      liveApiPath.mockImplementation(function () {
+      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === deviceId) return devicePath;
 
         return this._path;
       });
-      liveApiType.mockImplementation(function () {
+      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._id === chainId) return "DrumChain";
         if (this._id === deviceId) return "Device";
         if (this._path === drumRackPath) return "DrumGroupDevice";
       });
-      liveApiGet.mockImplementation(function (prop) {
+      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
         const id = this._id ?? this.id;
 
         if (
