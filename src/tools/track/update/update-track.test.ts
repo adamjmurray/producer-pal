@@ -146,14 +146,14 @@ describe("updateTrack", () => {
   });
 
   it("should throw error when ids is missing", () => {
-    // @ts-expect-error testing invalid input
-    expect(() => updateTrack({})).toThrow(
-      "updateTrack failed: ids is required",
-    );
-    // @ts-expect-error testing invalid input
-    expect(() => updateTrack({ name: "Test" })).toThrow(
-      "updateTrack failed: ids is required",
-    );
+    expect(() =>
+      updateTrack({} as unknown as Parameters<typeof updateTrack>[0]),
+    ).toThrow("updateTrack failed: ids is required");
+    expect(() =>
+      updateTrack({ name: "Test" } as unknown as Parameters<
+        typeof updateTrack
+      >[0]),
+    ).toThrow("updateTrack failed: ids is required");
   });
 
   it("should log warning when track ID doesn't exist", () => {
