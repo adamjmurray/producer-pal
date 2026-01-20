@@ -3,36 +3,13 @@ import {
   liveApiCall,
   liveApiId,
   liveApiSet,
-  mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.ts";
 import { createClip } from "./create-clip.ts";
+import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", () => {
-    mockLiveApiGet({
-      Track: { exists: () => true },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      arrangement_clip: { length: 4 }, // 1 bar in 4/4 = 4 beats
-    });
-
-    liveApiCall.mockImplementation((method, ..._args) => {
-      if (method === "create_midi_clip") {
-        return ["id", "arrangement_clip"];
-      }
-
-      return null;
-    });
-
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
-      if (this._path === "id arrangement_clip") {
-        return "arrangement_clip";
-      }
-
-      return this._id;
-    });
+    setupArrangementClipMocks();
 
     const result = createClip({
       view: "arrangement",
@@ -64,30 +41,7 @@ describe("createClip - arrangement view", () => {
   });
 
   it("should create arrangement clips at specified positions", () => {
-    mockLiveApiGet({
-      Track: { exists: () => true },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      arrangement_clip: { length: 4 }, // 1 bar in 4/4 = 4 beats
-    });
-
-    liveApiCall.mockImplementation((method, ..._args) => {
-      if (method === "create_midi_clip") {
-        return ["id", "arrangement_clip"];
-      }
-
-      return null;
-    });
-
-    liveApiId.mockImplementation(function (this: {
-      _path: string;
-      _id: string;
-    }) {
-      if (this._path === "id arrangement_clip") {
-        return "arrangement_clip";
-      }
-
-      return this._id;
-    });
+    setupArrangementClipMocks();
 
     const result = createClip({
       view: "arrangement",

@@ -1,7 +1,12 @@
 /**
  * Test helper functions for read-track tests
  */
-import { children, liveApiId } from "#src/test/mocks/mock-live-api.ts";
+import {
+  children,
+  liveApiId,
+  mockLiveApiGet,
+} from "#src/test/mocks/mock-live-api.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 
 // Constants to avoid duplicate string errors
 const HAS_MIDI_INPUT = "has_midi_input";
@@ -381,8 +386,6 @@ export function createSimpleInstrumentMock(
   can_have_drum_pads: number;
 } {
   const { name = "Simpler", className = "Simpler" } = opts;
-  // Import dynamically to avoid circular dependency
-  const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
 
   return {
     name,
@@ -393,4 +396,66 @@ export function createSimpleInstrumentMock(
     can_have_chains: 0,
     can_have_drum_pads: 0,
   };
+}
+
+interface SetupDrumRackMockOptions {
+  kickDeviceId?: string;
+}
+
+/**
+ * Setup complete drum rack mocks with track, chain, and kick instrument.
+ * Configures both liveApiId and mockLiveApiGet for drum rack testing.
+ * @param options - Configuration options
+ * @param options.kickDeviceId - ID for the kick device (default: "kick_device")
+ */
+export function setupDrumRackMocks(
+  options: SetupDrumRackMockOptions = {},
+): void {
+  const { kickDeviceId = "kick_device" } = options;
+
+  liveApiId.mockImplementation(function (this: MockThis): string {
+    switch (this._path) {
+      case "live_set tracks 0":
+        return "track1";
+      case "live_set tracks 0 devices 0":
+        return "drumrack1";
+      case "live_set tracks 0 devices 0 chains 0":
+        return "chain1";
+      case "live_set tracks 0 devices 0 chains 0 devices 0":
+        return kickDeviceId;
+      default:
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees _id is set
+        return this._id!;
+    }
+  });
+
+  mockLiveApiGet({
+    Track: mockTrackProperties({
+      devices: children("drumrack1"),
+    }),
+    drumrack1: {
+      name: "Test Drum Rack",
+      class_name: "DrumGroupDevice",
+      class_display_name: "Drum Rack",
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      is_active: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      chains: children("chain1"),
+      return_chains: [],
+    },
+    chain1: {
+      in_note: 60, // C3
+      name: "Test Kick",
+      mute: 0,
+      muted_via_solo: 0,
+      solo: 0,
+      devices: children(kickDeviceId),
+    },
+    [kickDeviceId]: {
+      name: "Kick Instrument",
+      class_name: "Simpler",
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    },
+  });
 }

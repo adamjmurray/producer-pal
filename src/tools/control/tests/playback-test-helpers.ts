@@ -31,6 +31,11 @@ interface MockContext {
   _path?: string;
 }
 
+interface ClipPathMapping {
+  clipId: string;
+  path: string;
+}
+
 /**
  * Setup default time signature mock (4/4) for playback tests.
  * Use in beforeEach to initialize standard test state.
@@ -103,5 +108,40 @@ export function setupCuePointMocks({
       loop_length: loopLength,
       tracks,
     },
+  });
+}
+
+/**
+ * Setup mocks for multiple clip path resolutions in playback tests.
+ * Configures both the LiveSet state and clip path mappings.
+ * @param clipMappings - Array of clip ID to path mappings (defaults to 3 clips)
+ */
+export function setupMultiClipMocks(
+  clipMappings: ClipPathMapping[] = [
+    { clipId: "clip1", path: "live_set tracks 0 clip_slots 0 clip" },
+    { clipId: "clip2", path: "live_set tracks 1 clip_slots 1 clip" },
+    { clipId: "clip3", path: "live_set tracks 2 clip_slots 2 clip" },
+  ],
+): void {
+  mockLiveApiGet({
+    ClipSlot: { has_clip: 1 },
+    LiveSet: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      current_song_time: 5,
+      loop: 0,
+      loop_start: 0,
+      loop_length: 4,
+    },
+  });
+
+  liveApiPath.mockImplementation(function (this: MockContext) {
+    for (const mapping of clipMappings) {
+      if (this._path === mapping.clipId) {
+        return mapping.path;
+      }
+    }
+
+    return this._path;
   });
 }
