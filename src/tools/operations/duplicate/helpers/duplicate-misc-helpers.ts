@@ -33,7 +33,7 @@ export function generateObjectName(
  * @param type - Type of object being duplicated
  * @returns Target view or null
  */
-export function determineTargetView(
+function determineTargetView(
   destination: string | undefined,
   type: string,
 ): "session" | "arrangement" | null {

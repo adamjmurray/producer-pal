@@ -43,6 +43,17 @@ export function stopPlaybackIfNeeded(liveSet: LiveAPI): boolean {
 
 /**
  * Wait for the playhead position to reach the target time.
+ *
+ * This is required because `set_or_delete_cue` operates on the actual playhead
+ * position, not a parameter. When we call `liveSet.set("current_song_time", X)`,
+ * Live updates the playhead asynchronously. If we call `set_or_delete_cue`
+ * immediately, it may operate on the old position. We must poll until the
+ * playhead reaches the target before proceeding.
+ *
+ * Note: The playhead cannot be positioned past the song's content length. If you
+ * need to create a locator beyond the current song end, use `extendSongIfNeeded`
+ * to temporarily add content that extends the song length first.
+ *
  * @param liveSet - The live_set LiveAPI object
  * @param targetBeats - Expected position in beats
  */
