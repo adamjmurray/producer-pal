@@ -19,13 +19,14 @@ reach out directly.
 
 ## Changelog
 
-### 1.3 - Device Control (December 2025)
+### 1.3 - Device Control (December 2025 - January 2026)
 
 - Full device control: add/delete/move native devices on any track, read/write
   parameters, insert into rack chains
 - Rack macro and variation management
 - A/B comparison for device parameters
 - Arrangement locator support
+- MIDI clip quantization support
 
 ### 1.2 - Audio clip and mixer support (November 2025)
 
@@ -49,11 +50,6 @@ Expanded features and support for multiple AI platforms.
 Initial public release with Claude Desktop support.
 
 ## Planned Features
-
-### 1.3.5 - MIDI Clip quantization
-
-- Quantize MIDI clips
-- Read and update quantization amount
 
 ### 1.4 - Modulation
 
