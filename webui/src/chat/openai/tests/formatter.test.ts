@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   expectValidTimestamps,
   stripTimestamps,
-} from "#webui/test-utils/message-test-utils";
+} from "#webui/test-utils/message-test-helpers";
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { expected, history } from "./test-cases/formatter/basic-test-case";
 import {

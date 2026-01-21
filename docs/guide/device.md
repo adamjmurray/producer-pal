@@ -5,7 +5,7 @@ to AI by giving it an interface to the Live API.
 
 ## Main Tab
 
-![Main tab](/device-main-tab.png)
+<img src="/device-main-tab.png" alt="Main tab" width="500"/>
 
 The Main tab shows the connection status and provides quick access to common
 actions.
@@ -28,7 +28,7 @@ error message.
 
 ## Notes Tab
 
-![Notes tab](/device-notes-tab.png)
+<img src="/device-notes-tab.png" alt="Notes tab" width="500"/>
 
 Project notes provide context to help AI understand your creative goals and
 preferences. Notes are saved with your Ableton Live Set file.
@@ -46,7 +46,7 @@ Example notes:
 
 ## Setup Tab
 
-![Setup tab](/device-setup-tab.png)
+<img src="/device-setup-tab.png" alt="Setup tab" width="500"/>
 
 ### Server
 

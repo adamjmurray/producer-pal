@@ -1,5 +1,6 @@
 import vitestPlugin from "@vitest/eslint-plugin";
 import js from "@eslint/js";
+import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
@@ -9,9 +10,6 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 import globals from "globals";
-
-// See .claude/skills/refactoring/SKILL.md for refactoring guidelines
-// to address max function/file length violations, complexity violations, etc
 
 const baseRules = {
   // Comparison & Equality
@@ -50,6 +48,14 @@ const baseRules = {
 
   // Debug & Development
   "no-debugger": "error", // No debugger statements in production
+
+  // ESLint directive comments - require explanation for any rule disabling
+  "@eslint-community/eslint-comments/require-description": [
+    "error",
+    { ignore: [] }, // Require description for all directives
+  ],
+  "@eslint-community/eslint-comments/no-unlimited-disable": "error", // Must specify rules to disable
+  "@eslint-community/eslint-comments/no-unused-disable": "error", // Clean up stale disables
 
   // Type Coercion
   "no-implicit-coercion": "error", // Force explicit conversions like Number() not !!x
@@ -118,13 +124,13 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 120,
+      max: 115,
       skipBlankLines: true,
       skipComments: true,
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 19], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsdocRules = {
@@ -217,30 +223,6 @@ const unicornRules = {
   "unicorn/explicit-length-check": "error", // Require explicit .length > 0
 };
 
-const jsOnlyRules = {
-  "no-unused-vars": [
-    // Unused variables (allow _prefixed to signal intentional)
-    "error",
-    {
-      argsIgnorePattern: "^_",
-      varsIgnorePattern: "^_",
-      caughtErrorsIgnorePattern: "^_",
-    },
-  ],
-
-  // Error Handling (TS has better type-aware version)
-  "no-throw-literal": "error", // Only throw Error objects, not strings/numbers
-
-  // Object Access (TS has type-aware version)
-  "dot-notation": "error", // Use obj.key not obj['key'] when possible
-
-  // Security (TS has type-aware version)
-  "no-implied-eval": "error", // Prevents setTimeout/setInterval with strings
-
-  // Variable Shadowing (TS has type-aware version)
-  "no-shadow": "error", // Prevents var x shadowing outer x
-};
-
 const tsOnlyRules = {
   "@typescript-eslint/no-unused-vars": [
     // Unused variables (allow _prefixed to signal intentional)
@@ -251,12 +233,25 @@ const tsOnlyRules = {
       caughtErrorsIgnorePattern: "^_",
     },
   ],
+  "@typescript-eslint/ban-ts-comment": [
+    "error",
+    {
+      "ts-expect-error": "allow-with-description", // Require explanation
+      "ts-ignore": true, // Ban completely - use ts-expect-error instead
+      "ts-nocheck": true, // Ban - too broad
+      "ts-check": false, // Allow - enables stricter checking
+      minimumDescriptionLength: 10, // Require meaningful descriptions
+    },
+  ],
   "@typescript-eslint/no-explicit-any": "error", // Force proper typing instead of any
   "@typescript-eslint/no-non-null-assertion": "error", // No ! operator - use proper null checks
   "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
   "@typescript-eslint/prefer-nullish-coalescing": "error", // Use ?? instead of || for null/undefined
   "@typescript-eslint/prefer-optional-chain": "error", // Use a?.b instead of a && a.b
-  "@typescript-eslint/no-unnecessary-condition": "error", // Remove conditions that are always true/false
+  "@typescript-eslint/no-unnecessary-condition": [
+    "error",
+    { allowConstantLoopConditions: "only-allowed-literals" }, // Allow while(true) but catch while(alwaysTrueVar)
+  ], // Remove conditions that are always true/false
   "@typescript-eslint/no-floating-promises": "error", // Must await or .catch() promises
   "@typescript-eslint/await-thenable": "error", // Only await actual promises
   "@typescript-eslint/no-misused-promises": "error", // Don't use promises in conditionals/spreads
@@ -274,6 +269,7 @@ const tsOnlyRules = {
   "@typescript-eslint/unified-signatures": "error", // Merge overloads when possible
   "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
   "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
+  "@typescript-eslint/no-deprecated": "error", // Flag usage of @deprecated APIs
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
@@ -294,6 +290,7 @@ export default [
       "knowledge-base/**",
       "max-for-live-device/**",
       "node_modules/**",
+      "npm/**",
       "release/**",
       "test-results/**",
       "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
@@ -302,49 +299,13 @@ export default [
     ],
   },
 
-  // All JavaScript files (any directory)
-  {
-    files: ["{src,scripts,webui,tests}/**/*.{js,mjs}"],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-    },
-    plugins: {
-      "@stylistic": stylistic,
-      import: importPlugin,
-      sonarjs,
-      jsdoc,
-      unicorn,
-    },
-    settings: {
-      "import/resolver": {
-        alias: {
-          map: [
-            ["#webui", "./webui/src"],
-            ["#src", "./src"],
-          ],
-          extensions: [".js", ".mjs", ".ts", ".tsx"],
-        },
-        node: true,
-      },
-    },
-    rules: {
-      ...js.configs.recommended.rules,
-      ...baseRules,
-      ...sonarCoreRules,
-      ...unicornRules,
-      ...jsOnlyRules,
-      ...jsdocRules,
-    },
-  },
-
   // WebUI TypeScript files
   {
     files: ["webui/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
         project: "./webui/tsconfig.json", // Explicit path for type-aware rules
@@ -358,6 +319,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -372,6 +334,7 @@ export default [
       ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
+      "no-undef": "off", // TypeScript handles undefined variable checks
     },
   },
 
@@ -381,9 +344,9 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
-        project: "./scripts/chat-lib/tsconfig.json",
+        project: ["./scripts/tsconfig.json"],
       },
       globals: {
         ...globals.node,
@@ -392,13 +355,14 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: "./scripts/chat-lib/tsconfig.json",
+          project: ["./scripts/tsconfig.json"],
         },
         node: true,
       },
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -413,12 +377,84 @@ export default [
       ...unicornRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Require JSDoc for ALL functions in scripts (not just exported)
+  {
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            FunctionDeclaration: true,
+            FunctionExpression: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: false, // Handled via contexts below
+          },
+          // Contexts for arrow functions assigned to variables (not inline callbacks)
+          contexts: ["VariableDeclarator > ArrowFunctionExpression"],
+        },
+      ],
+    },
+  },
+
+  // src TypeScript files (portal and future migrations)
+  {
+    files: ["src/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: ["./src/tsconfig.json"],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: ["./src/tsconfig.json"],
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      ...jsdocRules,
+      ...tsOnlyRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Allow triple-slash references for live-api-adapter (uses Max V8 type declarations)
+  {
+    files: ["src/live-api-adapter/*.ts"],
+    rules: {
+      "@typescript-eslint/triple-slash-reference": "off",
     },
   },
 
   // Node.js code
   {
-    files: ["{src,scripts}/**/*.{js,mjs,ts}"],
+    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -430,7 +466,7 @@ export default [
   {
     files: ["tests/docs/**/*.{js,mjs}"],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2024,
       sourceType: "module",
       globals: {
         ...globals.node,
@@ -438,6 +474,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       import: importPlugin,
       sonarjs,
     },
@@ -457,7 +494,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2024,
         sourceType: "module",
         project: "./tests/webui/tsconfig.json",
       },
@@ -475,6 +512,7 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -513,41 +551,37 @@ export default [
     },
   },
 
-  // Max for Live / Live API rules
+  // Allow larger functions for main App component and custom hooks
+  // These orchestrate multiple hooks/effects and are naturally longer
   {
-    files: ["src/**/*.js"],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-        // Max/MSP V8 globals
-        LiveAPI: "readonly",
-        Folder: "readonly",
-        outlet: "readonly",
-        post: "readonly",
-        Dict: "readonly",
-        Task: "readonly",
-        // Vitest globals
-        describe: "readonly",
-        it: "readonly",
-        expect: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-        vi: "readonly",
-      },
+    files: ["webui/**/App.tsx", "webui/**/hooks/**/use-*.ts"],
+    rules: {
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 240,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
     },
   },
 
-  // Require extensions for src and scripts (unbundled Node.js execution)
+  // Require .ts extensions for src TypeScript imports
+  // Parser files (.js) are exempt since they're generated JavaScript
   {
-    files: ["{src,scripts}/**/*.{js,mjs}"],
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/**/parser/*.ts", // Parser test files import .js files
+      "src/**/interpreter/*.ts", // Interpreter imports parser
+      "src/**/modulation/**/*.ts", // Modulation files import parser (includes tests/)
+    ],
     rules: {
-      // Node.js ESM requires explicit file extensions for relative imports.
-      // See: https://nodejs.org/api/esm.html#import-specifiers
       "import/extensions": [
         "error",
         "always",
         {
-          js: "always",
+          ts: "always",
           ignorePackages: true,
         },
       ],
@@ -579,7 +613,7 @@ export default [
 
   // Enforce path aliases for parent directory imports in src files
   {
-    files: ["src/**/*.js"],
+    files: ["src/**/*.ts"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -599,10 +633,10 @@ export default [
   // LiveAPI.from() properly handles raw IDs (prefixes with "id ") while
   // new LiveAPI() requires already-prefixed IDs or full paths
   {
-    files: ["src/**/*.js"],
+    files: ["src/**/*.ts"],
     ignores: [
-      "src/live-api-adapter/live-api-extensions.js", // Defines LiveAPI.from()
-      "src/test/mock-live-api.js", // Test mock that mirrors live-api-extensions.js
+      "src/live-api-adapter/live-api-extensions.ts", // Defines LiveAPI.from()
+      "src/test/mocks/mock-live-api.ts", // Test mock that mirrors live-api-extensions.ts
     ],
     rules: {
       "no-restricted-syntax": [
@@ -618,15 +652,22 @@ export default [
 
   // Test files - relax some rules
   {
-    files: ["**/*.test.{js,ts,tsx}"],
+    files: ["**/*.test.{js,ts,tsx}", "**/test-setup.ts"],
     plugins: {
       vitest: vitestPlugin,
     },
     rules: {
       ...vitestPlugin.configs.recommended.rules,
       "@typescript-eslint/no-non-null-assertion": "off",
-      "max-lines-per-function": "off",
-      complexity: ["error", 30],
+      "max-lines-per-function": [
+        "error",
+        {
+          max: 630, // TODO: ratchet down
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+      complexity: ["error", 28],
       "sonarjs/no-duplicate-string": "off",
       "import/first": "off", // Test files need imports after vi.mock() calls
       "import/order": "off",
@@ -650,7 +691,7 @@ export default [
   {
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
-      "sonarjs/cognitive-complexity": ["error", 40],
+      "sonarjs/cognitive-complexity": ["error", 38],
       // Allow DOM element narrowing casts (e.g., `as HTMLSelectElement`) in tests
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
@@ -659,20 +700,15 @@ export default [
   // Max file size rules
   {
     files: [
-      "src/**/*.js",
-      "scripts/**/*.js",
-      "scripts/**/*.mjs",
+      "src/**/*.ts",
       "scripts/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],
     ignores: [
-      "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures
-      "src/tools/shared/gain-lookup-table.js", // Auto-generated data
+      "src/tools/shared/gain-lookup-table.ts", // Auto-generated data
     ],
     rules: {
       "max-lines": [
@@ -687,11 +723,9 @@ export default [
   },
   {
     files: [
-      "**/*.test.js",
-      "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
-      "**/*-test-case.ts", // Test data fixtures (these could be given a separate longer max file length, if needed, or ignore on a per-file basis)
+      "**/*-test-case.ts", // Test data fixtures
     ],
     rules: {
       "max-lines": [

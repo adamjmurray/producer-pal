@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   expectValidTimestamps,
   stripTimestamps,
-} from "#webui/test-utils/message-test-utils";
+} from "#webui/test-utils/message-test-helpers";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import type { ResponsesConversationItem } from "#webui/types/responses-api";
 
@@ -344,6 +344,34 @@ describe("formatResponsesMessages", () => {
     expect(result[0]!.parts[0]).toMatchObject({
       type: "tool",
       isError: true,
+    });
+  });
+
+  it("skips non-function_call_output items when searching for tool result", () => {
+    const conversation: ResponsesConversationItem[] = [
+      {
+        type: "function_call",
+        id: "fc_1",
+        call_id: "call_123",
+        name: "my_tool",
+        arguments: "{}",
+      },
+      // Intervening message item that should be skipped during search
+      { type: "message", role: "assistant", content: "Some text" },
+      {
+        type: "function_call_output",
+        call_id: "call_123",
+        output: '{"result":"found"}',
+      },
+    ];
+
+    const result = formatResponsesMessages(conversation);
+
+    // Should find the result even with intervening items
+    expect(result[0]!.parts[0]).toMatchObject({
+      type: "tool",
+      name: "my_tool",
+      result: '{"result":"found"}',
     });
   });
 });

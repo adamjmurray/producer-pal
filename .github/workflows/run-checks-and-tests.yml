@@ -14,6 +14,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: "24.x"
+
 jobs:
   build-verification:
     runs-on: ubuntu-latest
@@ -29,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -77,7 +80,7 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  tests:
+  unit-tests:
     runs-on: ubuntu-latest
 
     permissions:
@@ -91,7 +94,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -113,22 +116,64 @@ jobs:
           FUNCTIONS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.functions.pct)")
           BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
 
+          # Extract thresholds from config
+          MIN_STATEMENTS=$(node scripts/get-thresholds.ts coverage statements)
+          MIN_BRANCHES=$(node scripts/get-thresholds.ts coverage branches)
+          MIN_FUNCTIONS=$(node scripts/get-thresholds.ts coverage functions)
+          MIN_LINES=$(node scripts/get-thresholds.ts coverage lines)
+
           cat > /tmp/summary.md << EOF
           ## Unit Test Coverage
 
-          | Category | Coverage |
-          |----------|----------|
-          | Statements | ${STATEMENTS}% |
-          | Branches | ${BRANCHES}% |
-          | Functions | ${FUNCTIONS}% |
-          | Lines | ${LINES}% |
+          | Category | Coverage | Min Required |
+          |----------|----------|--------------|
+          | Statements | ${STATEMENTS}% | ${MIN_STATEMENTS}% |
+          | Branches | ${BRANCHES}% | ${MIN_BRANCHES}% |
+          | Functions | ${FUNCTIONS}% | ${MIN_FUNCTIONS}% |
+          | Lines | ${LINES}% | ${MIN_LINES}% |
           EOF
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  quality-checks:
+  lint:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+  code-hygiene:
     runs-on: ubuntu-latest
 
     permissions:
@@ -142,7 +187,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - run: npm ci
 
@@ -165,30 +210,33 @@ jobs:
           # Clean up backup file
           rm barbeat-parser-backup.js
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check
-        run: npm run typecheck
-
       - name: Check formatting
         run: npm run format:check
+
+      - name: Validate TypeScript-only directories
+        run: npm run validate:typescript-only
 
       - name: Check code duplication
         id: summary
         run: |
+          set -o pipefail
           npm run duplication 2>&1 | tee duplication-output.txt
 
+          # Extract duplication thresholds from config
+          MAX_SOURCE=$(node scripts/get-thresholds.ts duplication source)
+          MAX_TESTS=$(node scripts/get-thresholds.ts duplication tests)
+          MAX_SCRIPTS=$(node scripts/get-thresholds.ts duplication scripts)
+
           # Format duplication report as markdown table
-          cat > /tmp/summary.md << 'EOF'
+          cat > /tmp/summary.md << EOF
           ## Code Duplication Report
 
-          | Code Group | Line Dupe % | Files with Dupes | Exact Clones |
-          |------------|-------------|------------------|--------------|
+          | Code Group | Line Dupe % | Max Allowed | Files with Dupes | Exact Clones |
+          |------------|-------------|-------------|------------------|--------------|
           EOF
-          grep "^Source " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | \3 | \1 |/' >> /tmp/summary.md
-          grep "^Tests " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | \3 | \1 |/' >> /tmp/summary.md
-          grep "^Scripts " duplication-output.txt | sed 's/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \2% | \3 | \1 |/' >> /tmp/summary.md
+          grep "^Source " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | ${MAX_SOURCE}% | \3 | \1 |/" >> /tmp/summary.md
+          grep "^Tests " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | ${MAX_TESTS}% | \3 | \1 |/" >> /tmp/summary.md
+          grep "^Scripts " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \2% | ${MAX_SCRIPTS}% | \3 | \1 |/" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
@@ -208,7 +256,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -279,7 +327,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -299,7 +347,15 @@ jobs:
 
   post-summary:
     needs:
-      [quality-checks, tests, build-verification, playwright-tests, repo-stats]
+      [
+        build-verification,
+        lint,
+        typecheck,
+        unit-tests,
+        playwright-tests,
+        code-hygiene,
+        repo-stats,
+      ]
     if: always()
     runs-on: ubuntu-latest
 
@@ -311,25 +367,30 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            // Find PR associated with this push (if any)
-            const { data: prs } = await github.rest.pulls.list({
-              ...context.repo,
-              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
-              state: 'open'
-            });
-
-            if (prs.length === 0) {
-              console.log('No open PR found for this branch, skipping comment');
-              return;
+            // Find PR number - handle both push and pull_request events
+            let prNumber;
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else {
+              const { data: prs } = await github.rest.pulls.list({
+                ...context.repo,
+                head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+                state: 'open'
+              });
+              if (prs.length === 0) {
+                console.log('No open PR found for this branch, skipping comment');
+                return;
+              }
+              prNumber = prs[0].number;
             }
-
-            const prNumber = prs[0].number;
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
             // Check job statuses
             const jobs = {
-              'Quality Checks': '${{ needs.quality-checks.result }}',
-              'Tests': '${{ needs.tests.result }}',
+              'Lint': '${{ needs.lint.result }}',
+              'Typecheck': '${{ needs.typecheck.result }}',
+              'Code Hygiene': '${{ needs.code-hygiene.result }}',
+              'Unit Tests': '${{ needs.unit-tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
               'Playwright': '${{ needs.playwright-tests.result }}',
               'Repo Stats': '${{ needs.repo-stats.result }}'
@@ -344,8 +405,8 @@ jobs:
             const decode = (b64) => b64 ? Buffer.from(b64, 'base64').toString('utf-8') : '';
             const summaries = [
               decode(`${{ needs.build-verification.outputs.summary }}`),
-              decode(`${{ needs.tests.outputs.summary }}`),
-              decode(`${{ needs.quality-checks.outputs.summary }}`),
+              decode(`${{ needs.unit-tests.outputs.summary }}`),
+              decode(`${{ needs.code-hygiene.outputs.summary }}`),
               decode(`${{ needs.playwright-tests.outputs.summary }}`),
               decode(`${{ needs.repo-stats.outputs.summary }}`)
             ].filter(s => s && s.trim()).join('\n\n');
@@ -354,15 +415,19 @@ jobs:
             const tableRows = [
               '| Job | Status |',
               '|-----|--------|',
-              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,              
-              `| Unit Tests | ${icon(jobs['Tests'])} ${jobs['Tests']} |`,
-              `| Quality Checks | ${icon(jobs['Quality Checks'])} ${jobs['Quality Checks']} |`,              
+              `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
+              `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
+              `| Lint | ${icon(jobs['Lint'])} ${jobs['Lint']} |`,
+              `| Typecheck | ${icon(jobs['Typecheck'])} ${jobs['Typecheck']} |`,
+              `| Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
               `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');
             const body = [
               marker,
               `## ${statusEmoji} CI Results: ${statusText}`,
+              '',
+              `**Node.js version:** ${process.env.NODE_VERSION}`,
               '',
               tableRows,
               '',

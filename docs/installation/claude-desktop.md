@@ -18,7 +18,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-![Producer Pal device running in Ableton Live](/device-main-tab.png)
+<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -58,8 +58,8 @@ extension only accesses Ableton Live through the Max for Live device.
 
 ### 5. Verify Installation
 
-You should see Producer Pal tools in Claude's "Search and Tools" menu (make sure
-it's enabled when starting a conversation):
+You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
+enabled when starting a conversation):
 
 ![Producer Pal tools in Claude](/tools-in-claude.png)
 

@@ -56,7 +56,6 @@ function getBaseUrl(
  *
  * @returns {JSX.Element} - React component
  */
-// eslint-disable-next-line max-lines-per-function
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();

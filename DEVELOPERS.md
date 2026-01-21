@@ -34,7 +34,7 @@ Also feel free to:
 
 ## Building from source
 
-Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
+Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 
 1. Clone this repository
 2. `npm install`
@@ -113,8 +113,8 @@ configuration, and content guidelines.
 
 Quick commands:
 
-- `node scripts/cli.mjs tools/list` - List available tools
-- `node scripts/cli.mjs tools/call ppal-read-live-set '{}'` - Call a tool
+- `node scripts/cli.ts tools/list` - List available tools
+- `node scripts/cli.ts tools/call ppal-read-live-set '{}'` - Call a tool
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you

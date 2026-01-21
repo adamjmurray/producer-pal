@@ -20,7 +20,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-![Producer Pal device running in Ableton Live](/device-main-tab.png)
+<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -40,6 +40,28 @@ npx -y producer-pal
 ```
 
 This option requires [Node.js 20+](https://nodejs.org/en/download).
+
+::: details Using a small/local model?
+
+If you're using a small local model with
+[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended)
+enabled in the device, enable the `SMALL_MODEL_MODE` environment variable in
+your MCP server settings:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "producer-pal"],
+  "env": {
+    "SMALL_MODEL_MODE": "true"
+  }
+}
+```
+
+This ensures the AI won't cache large model tool definitions if a conversation
+is started before Ableton Live and the Producer Pal device are running.
+
+:::
 
 ### Option B: Local MCP via HTTP
 
@@ -77,6 +99,28 @@ node /path/to/producer-pal-portal.js
 ```
 
 This option requires [Node.js 20+](https://nodejs.org/en/download).
+
+::: details Using a small/local model?
+
+If you're using a small local model with
+[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended)
+enabled in the device, enable the `SMALL_MODEL_MODE` environment variable in
+your MCP server settings:
+
+```json
+{
+  "command": "node",
+  "args": ["/path/to/producer-pal-portal.js"],
+  "env": {
+    "SMALL_MODEL_MODE": "true"
+  }
+}
+```
+
+This ensures the AI won't cache large model tool definitions if a conversation
+is started before Ableton Live and the Producer Pal device are running.
+
+:::
 
 ## Example: Configuring Cline
 

@@ -1,6 +1,17 @@
 import type OpenAI from "openai";
 import type { OpenAIToolCall } from "#webui/types/messages";
 
+type Delta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+/**
+ * Extended delta type with reasoning fields from o-series models.
+ * These fields exist at runtime but aren't in official openai types yet.
+ */
+interface DeltaWithReasoning extends Delta {
+  reasoning_content?: string;
+  reasoning_details?: ReasoningDetail[];
+}
+
 /**
  * Reasoning detail structure from OpenRouter/OpenAI streaming responses.
  * Must preserve ALL fields exactly as received for API round-tripping.
@@ -30,24 +41,20 @@ export interface OpenAIAssistantMessageWithReasoning {
  * Processes a streaming delta chunk to extract reasoning content.
  * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
  *
- * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - The delta object from a streaming chunk
- * @returns {string} - The reasoning text from this delta, or empty string if none
+ * @param delta - The delta object from a streaming chunk
+ * @returns The reasoning text from this delta, or empty string if none
  */
-export function extractReasoningFromDelta(
-  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
-): string {
-  // @ts-expect-error - reasoning fields not in official types yet
-  if (delta.reasoning_content) {
-    // @ts-expect-error - reasoning fields not in official types yet
-    return delta.reasoning_content;
+export function extractReasoningFromDelta(delta: Delta): string {
+  const d = delta as DeltaWithReasoning;
+
+  if (d.reasoning_content) {
+    return d.reasoning_content;
   }
 
-  // @ts-expect-error - reasoning fields not in official types yet
-  if (delta.reasoning_details) {
+  if (d.reasoning_details) {
     let text = "";
 
-    // @ts-expect-error - reasoning fields not in official types yet
-    for (const detail of delta.reasoning_details) {
+    for (const detail of d.reasoning_details) {
       if (detail.type === "reasoning.text" && detail.text) {
         text += detail.text;
       }
@@ -66,11 +73,10 @@ export function extractReasoningFromDelta(
  * @param reasoningDetailsMap - Map of reasoning blocks by type-index key
  */
 export function processReasoningDelta(
-  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
+  delta: Delta,
   reasoningDetailsMap: Map<string, ReasoningDetail>,
 ): void {
-  // @ts-expect-error - reasoning fields not in official types yet
-  const details = delta.reasoning_details as ReasoningDetail[] | undefined;
+  const details = (delta as DeltaWithReasoning).reasoning_details;
 
   if (!details) return;
 

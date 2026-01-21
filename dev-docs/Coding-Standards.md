@@ -1,11 +1,13 @@
 # Coding Standards
 
+The codebase is written entirely in TypeScript (`.ts`/`.tsx` files).
+
 ## File Naming
 
 - **React Components**: PascalCase matching the component name (e.g.,
   `ChatHeader.tsx`, `ModelSelector.tsx`)
 - **All other files**: kebab-case (e.g., `use-gemini-chat.ts` in webui,
-  `merge-messages.js`, `live-api-adapter.js` in core)
+  `merge-messages.ts`, `live-api-adapter.ts` in core)
 
 This applies throughout the codebase including hooks, utilities, configuration,
 tests, and modules.
@@ -17,62 +19,64 @@ and file extensions:
 
 **Allowed:**
 
-- `arrangement-tiling.js` - descriptive kebab-case name
-- `create-clip.test.js` - unit test (`.test` suffix)
-- `create-clip.def.js` - tool definition (`.def` suffix, tools only)
+- `arrangement-tiling.ts` - descriptive kebab-case name
+- `create-clip.test.ts` - unit test (`.test` suffix)
+- `create-clip.def.ts` - tool definition (`.def` suffix, tools only)
 - `index.d.ts` - TypeScript declaration (`.d` suffix)
 
 **Avoid:**
 
-- `arrangement.tiling.js` - uses dot instead of hyphen
-- `clip.helper.js` - uses dot instead of hyphen
-- `utils.config.js` - uses dot instead of hyphen
+- `arrangement.tiling.ts` - uses dot instead of hyphen
+- `clip.helper.ts` - uses dot instead of hyphen
+- `utils.config.ts` - uses dot instead of hyphen
 
 ### Test File Naming
 
 Test files should follow this pattern:
 
-1. **Core tests**: `{filename}.test.[js|ts|tsx]` - Tests for the main
+1. **Core tests**: `{filename}.test.ts` (or `.tsx`) - Tests for the main
    functionality of the source file
-   - Example: `create-clip.test.js` tests `create-clip.js`
+   - Example: `create-clip.test.ts` tests `create-clip.ts`
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
-2. **Split tests**: `{filename}-{feature-group}.test.[js|ts|tsx]` - When test
+2. **Split tests**: `{filename}-{feature-group}.test.ts` (or `.tsx`) - When test
    files exceed size limits (600 lines for source, 800 for tests), split by
    feature area
-   - Example: `update-clip-audio-arrangement.test.js`
-   - Example: `read-track-drums-advanced.test.js`
-   - Example: `duplicate-arrangement-length.test.js`
+   - Example: `update-clip-audio-arrangement.test.ts`
+   - Example: `read-track-drums-advanced.test.ts`
+   - Example: `duplicate-arrangement-length.test.ts`
 
-3. **Helper files**: `{filename}-helpers.js` - Source helper functions
-   - Example: `duplicate-helpers.js`
+3. **Helper files**: `{filename}-helpers.ts` - Source helper functions
+   - Example: `duplicate-helpers.ts`
 
-4. **Helper tests**: `{filename}-helpers.test.js` - Tests for helper functions
-   - Example: `duplicate-helpers.test.js`
+4. **Helper tests**: `{filename}-helpers.test.ts` - Tests for helper functions
+   - Example: `duplicate-helpers.test.ts`
 
-5. **Test utilities**: `{filename}-test-helpers.js` - Mock utilities and shared
+5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities and shared
    test setup (NOT a test file itself)
-   - Example: `duplicate-test-helpers.js`
-   - Example: `update-clip-test-helpers.js`
+   - Example: `duplicate-test-helpers.ts`
+   - Example: `update-clip-test-helpers.ts`
 
 ### Naming Utilities and Helpers
 
 Prefer specific, descriptive names over generic terms:
 
-- `string-formatters.js` instead of `string-helper.js`
-- `clip-operations.js` instead of `clip-utils.js`
-- `message-transforms.js` instead of `message-helper.js`
+- `string-formatters.ts` instead of `string-helper.ts`
+- `clip-operations.ts` instead of `clip-utils.ts`
+- `message-transforms.ts` instead of `message-helper.ts`
 
-Exception: `utils.js` is acceptable for general utilities within a specific
-domain (e.g., `src/tools/shared/utils.js`).
+Exception: `utils.ts` is acceptable for general utilities within a specific
+domain (e.g., `src/tools/shared/utils.ts`).
 
 ## Imports
 
-Always include `.js` extensions (Node.js requirement):
+Always include `.ts` extensions matching the actual file type:
 
-```javascript
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
+```typescript
+import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
 ```
+
+Exception: Peggy-generated parser files use `.js` (e.g., `barbeat-parser.js`).
 
 ## Style
 
@@ -82,7 +86,7 @@ import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
 ## Tools
 
-Always pass args in `src/main.js`:
+Always pass args in `src/main.ts`:
 
 ```javascript
 tools: {
@@ -94,7 +98,8 @@ Zod schemas: primitives/enums only. For lists, use comma-separated strings.
 
 ## Live API
 
-Use `src/live-api-extensions.js` instead of raw `.get("property")?.[0]`
+Use `src/live-api-adapter/live-api-extensions.ts` instead of raw
+`.get("property")?.[0]`
 
 Return optimistic results for playback operations.
 

@@ -43,7 +43,6 @@ function createProviderSetter<K extends keyof ProviderSettings>(
  *
  * @returns {UseSettingsReturn} Settings state and management functions
  */
-// eslint-disable-next-line max-lines-per-function
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(

@@ -1,7 +1,7 @@
 {
-  "threshold": 7.75,
+  "threshold": 3.5,
   "reporters": ["console"],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
-  "pattern": "**/{*.test.{js,ts,tsx},test-utils/*.{js,ts},test-cases/**/*.{js,ts}}",
+  "pattern": "**/{*.test.{js,ts,tsx},*-test-helpers.{js,ts},*-test-case.ts,test-utils/**/*.{js,ts},test-cases/**/*.{js,ts},tests/**/*.{js,ts}}",
   "path": ["../src", "../webui/src"]
 }

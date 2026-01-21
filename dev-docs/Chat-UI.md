@@ -165,7 +165,7 @@ for await (const chunk of stream) {
 
 **Build:**
 
-- Config: `config/vite.config.mjs`
+- Config: `config/vite.config.ts`
 - Output: Single-file `max-for-live-device/chat-ui.html` (all assets inlined)
 - Served at: `http://localhost:3350/chat`
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   ResponsesClient,
   type ResponsesClientConfig,
+  type ResponsesMessageOverrides,
 } from "#webui/chat/openai/responses-client";
 
 // Mock MCP SDK
@@ -43,6 +44,31 @@ function createMockStream(
       }
     },
   };
+}
+
+// Helper to setup mock and send a message, returning the mockCreate for assertions
+async function setupMockAndSendMessage(
+  client: ResponsesClient,
+  message = "Test",
+  options?: ResponsesMessageOverrides,
+) {
+  const mockCreate = vi
+    .fn()
+    .mockResolvedValue(
+      createMockStream([
+        { type: "response.completed", response: { output: [] } },
+      ]),
+    );
+
+  client.ai.responses.create = mockCreate;
+
+  const generator = client.sendMessage(message, undefined, options);
+
+  for await (const _ of generator) {
+    // pass
+  }
+
+  return mockCreate;
 }
 
 beforeEach(() => {
@@ -200,26 +226,10 @@ describe("ResponsesClient sendMessage", () => {
 
     await client.initialize();
 
-    const mockCreate = vi
-      .fn()
-      .mockResolvedValue(
-        createMockStream([
-          { type: "response.completed", response: { output: [] } },
-        ]),
-      );
-
-    client.ai.responses.create = mockCreate;
-
-    const generator = client.sendMessage("Test", undefined, {
+    const mockCreate = await setupMockAndSendMessage(client, "Test", {
       temperature: 0.9,
     });
 
-    // Consume generator
-    for await (const _ of generator) {
-      // pass
-    }
-
-    // Check that temperature override was passed
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         temperature: 0.9,
@@ -235,26 +245,10 @@ describe("ResponsesClient sendMessage", () => {
 
     await client.initialize();
 
-    const mockCreate = vi
-      .fn()
-      .mockResolvedValue(
-        createMockStream([
-          { type: "response.completed", response: { output: [] } },
-        ]),
-      );
-
-    client.ai.responses.create = mockCreate;
-
-    const generator = client.sendMessage("Test", undefined, {
+    const mockCreate = await setupMockAndSendMessage(client, "Test", {
       reasoningEffort: "high",
     });
 
-    // Consume generator
-    for await (const _ of generator) {
-      // pass
-    }
-
-    // Check that reasoning override was passed
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         reasoning: expect.objectContaining({ effort: "high" }),
@@ -270,21 +264,7 @@ describe("ResponsesClient sendMessage", () => {
 
     await client.initialize();
 
-    const mockCreate = vi
-      .fn()
-      .mockResolvedValue(
-        createMockStream([
-          { type: "response.completed", response: { output: [] } },
-        ]),
-      );
-
-    client.ai.responses.create = mockCreate;
-
-    const generator = client.sendMessage("Test");
-
-    for await (const _ of generator) {
-      // pass
-    }
+    const mockCreate = await setupMockAndSendMessage(client);
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -301,21 +281,7 @@ describe("ResponsesClient sendMessage", () => {
 
     await client.initialize();
 
-    const mockCreate = vi
-      .fn()
-      .mockResolvedValue(
-        createMockStream([
-          { type: "response.completed", response: { output: [] } },
-        ]),
-      );
-
-    client.ai.responses.create = mockCreate;
-
-    const generator = client.sendMessage("Test");
-
-    for await (const _ of generator) {
-      // pass
-    }
+    const mockCreate = await setupMockAndSendMessage(client);
 
     // Tools should be empty since test_tool was disabled
     expect(mockCreate).toHaveBeenCalledWith(

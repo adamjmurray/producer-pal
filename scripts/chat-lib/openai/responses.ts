@@ -93,6 +93,13 @@ export async function runOpenAIResponses(
   }
 }
 
+/**
+ * Sends a user message and handles the response
+ *
+ * @param ctx - Session context with client and conversation
+ * @param input - User input text
+ * @param turnCount - Current conversation turn number
+ */
 async function sendMessage(
   ctx: SessionContext,
   input: string,
@@ -117,6 +124,14 @@ async function sendMessage(
     : handleNonStreaming(ctx, requestBody));
 }
 
+/**
+ * Builds the Responses API request body
+ *
+ * @param ctx - Session context with conversation
+ * @param model - Model identifier
+ * @param options - Chat configuration options
+ * @returns Request body for responses.create
+ */
 function buildRequestBody(
   ctx: SessionContext,
   model: string,
@@ -141,13 +156,18 @@ function buildRequestBody(
   return body;
 }
 
+/**
+ * Handles non-streaming response flow with tool call loop
+ *
+ * @param ctx - Session context with client and MCP
+ * @param requestBody - Initial request body
+ */
 async function handleNonStreaming(
   ctx: SessionContext,
   requestBody: ResponseCreateParamsBase,
 ): Promise<void> {
   const { client, conversation, model, options } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     const response = (await client.responses.create(
       requestBody,
@@ -175,13 +195,18 @@ async function handleNonStreaming(
   }
 }
 
+/**
+ * Handles streaming response flow with tool call loop
+ *
+ * @param ctx - Session context with client and MCP
+ * @param requestBody - Initial request body
+ */
 async function handleStreaming(
   ctx: SessionContext,
   requestBody: ResponseCreateParamsBase,
 ): Promise<void> {
   const { client, conversation, model, options, mcpClient } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     const stream = await client.responses.create({
       ...requestBody,
@@ -224,6 +249,12 @@ async function handleStreaming(
   }
 }
 
+/**
+ * Processes a single output item (reasoning, message, or function call)
+ *
+ * @param item - Output item to process
+ * @param ctx - Session context with MCP client
+ */
 async function processOutputItem(
   item: OpenAIResponseOutput,
   ctx: SessionContext,

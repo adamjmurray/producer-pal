@@ -129,6 +129,12 @@ const GEMINI_THINKING_MAP: Record<string, number> = {
   auto: -1,
 };
 
+/**
+ * Builds Gemini API configuration from chat options
+ *
+ * @param options - Chat configuration options
+ * @returns Gemini content generation config
+ */
 function buildConfig(options: ChatOptions): GenerateContentConfig {
   const config: GenerateContentConfig = {};
 
@@ -158,6 +164,13 @@ function buildConfig(options: ChatOptions): GenerateContentConfig {
   return config;
 }
 
+/**
+ * Sends a message to Gemini and displays the response
+ *
+ * @param ctx - Session context with chat session and options
+ * @param input - User input text
+ * @param turnCount - Current conversation turn number
+ */
 async function sendMessage(
   ctx: GeminiSessionContext,
   input: string,
@@ -187,6 +200,12 @@ async function sendMessage(
   }
 }
 
+/**
+ * Prints streaming response chunks to stdout
+ *
+ * @param stream - Async iterable of response chunks
+ * @param debug - Whether to log debug information
+ */
 async function printStream(
   stream: AsyncIterable<GeminiResponse>,
   debug: boolean,
@@ -208,6 +227,13 @@ async function printStream(
   console.log();
 }
 
+/**
+ * Processes a single response part and writes to stdout
+ *
+ * @param part - Response part containing text, thought, or function call
+ * @param inThought - Whether currently inside a thought block
+ * @returns Whether now inside a thought block
+ */
 function processPart(part: ResponsePart, inThought: boolean): boolean {
   if (part.text) {
     if (part.thought) {
@@ -244,6 +270,13 @@ function processPart(part: ResponsePart, inThought: boolean): boolean {
   return inThought;
 }
 
+/**
+ * Formats a non-streaming response for display
+ *
+ * @param response - Complete Gemini response
+ * @param currentInput - Current user input for context
+ * @returns Formatted response string
+ */
 function formatResponse(
   response: GeminiResponse,
   currentInput: string,
@@ -324,6 +357,11 @@ function formatResponse(
 // Debug helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Logs debug information for a Gemini response
+ *
+ * @param result - Response to log
+ */
 function debugResult(result: GeminiResponse): void {
   const { candidates, ...rest } = result;
 

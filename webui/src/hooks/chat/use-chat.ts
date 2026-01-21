@@ -124,7 +124,6 @@ export interface UseChatReturn {
  * @param {UseChatProps} props - Chat configuration and adapter
  * @returns {UseChatReturn} Chat state and handlers
  */
-// eslint-disable-next-line max-lines-per-function
 export function useChat<
   TClient extends ChatClient<TMessage>,
   TMessage,

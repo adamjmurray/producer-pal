@@ -4,6 +4,7 @@ import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
+import esbuild from "rollup-plugin-esbuild";
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -43,7 +44,7 @@ const addLicenseHeader = (options = {}) => ({
 
 export default [
   {
-    input: join(rootDir, "src/live-api-adapter/live-api-adapter.js"),
+    input: join(rootDir, "src/live-api-adapter/live-api-adapter.ts"),
     output: {
       file: join(rootDir, "max-for-live-device/live-api-adapter.js"),
       format: "es",
@@ -58,13 +59,23 @@ export default [
         ),
         preventAssignment: true,
       }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2023",
+        tsconfig: join(rootDir, "src/tsconfig.json"),
+      }),
+      resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
+        preferBuiltins: true,
+        browser: false,
+      }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
     ],
   },
   {
-    input: join(rootDir, "src/mcp-server/mcp-server.js"),
+    input: join(rootDir, "src/mcp-server/mcp-server.ts"),
     output: {
       file: join(rootDir, "max-for-live-device/mcp-server.mjs"),
       format: "es",
@@ -85,8 +96,14 @@ export default [
         ),
         preventAssignment: true,
       }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2023",
+        tsconfig: join(rootDir, "src/tsconfig.json"),
+      }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
         preferBuiltins: true,
         browser: false,
       }),
@@ -97,7 +114,7 @@ export default [
     ],
   },
   {
-    input: join(rootDir, "src/portal/producer-pal-portal.js"),
+    input: join(rootDir, "src/portal/producer-pal-portal.ts"),
     output: [
       {
         file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
@@ -116,7 +133,13 @@ export default [
       alias({
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
+      esbuild({
+        include: /\.[jt]sx?$/,
+        target: "es2023",
+        tsconfig: join(rootDir, "src/tsconfig.json"),
+      }),
       resolve({
+        extensions: [".mjs", ".js", ".json", ".node", ".ts"],
         preferBuiltins: true,
         browser: false,
       }),

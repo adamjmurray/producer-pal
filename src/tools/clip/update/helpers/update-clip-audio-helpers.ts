@@ -1,0 +1,325 @@
+import * as console from "#src/shared/v8-max-console.ts";
+import {
+  LIVE_API_WARP_MODE_BEATS,
+  LIVE_API_WARP_MODE_COMPLEX,
+  LIVE_API_WARP_MODE_PRO,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_TONES,
+  WARP_MODE,
+} from "#src/tools/constants.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
+import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+
+// This approach is flawed. The warp marker algorithm does not work correctly in some cases.
+// Leaving here for reference. Determining actual end for non-warped clips via sample rate/length seems correct
+// and maybe we'll use that approach elsewhere.
+// /**
+//  * Get the actual audio content end position for unlooped audio clips.
+//  * For unwarped clips: calculates from sample_length, sample_rate, and tempo.
+//  * For warped clips: uses warp markers (second-to-last marker).
+//  * @param clip - The audio clip to analyze
+//  * @returns The end position of the audio in beats
+//  */
+// export function getActualAudioEnd(clip: LiveAPI): number {
+//   try {
+//     const isWarped = clip.getProperty("warping") === 1;
+
+//     if (!isWarped) {
+//       // Unwarped: calculate from sample properties and tempo
+//       const sampleLength = clip.getProperty("sample_length");
+//       const sampleRate = clip.getProperty("sample_rate");
+
+//       if (!sampleLength || !sampleRate) {
+//         console.error(
+//           `Warning: Missing sample properties for unwarped clip ${clip.id}`,
+//         );
+//         return 0;
+//       }
+//       const liveSet = LiveAPI.from("live_set");
+//       const tempo = liveSet.getProperty("tempo");
+
+//       if (!tempo) {
+//         console.error(`Warning: Could not get tempo from live_set`);
+//         return 0;
+//       }
+
+//       const durationSeconds = sampleLength / sampleRate;
+//       const beatsPerSecond = tempo / 60;
+//       return durationSeconds * beatsPerSecond;
+//     }
+
+//     // Warped: use warp markers
+//     const warpMarkersJson = clip.getProperty("warp_markers");
+//     const warpData = JSON.parse(warpMarkersJson);
+//     if (!warpData.warp_markers || warpData.warp_markers.length === 0) return 0;
+//     const markers = warpData.warp_markers;
+
+//     // Use second-to-last warp marker (last one is often beyond actual content)
+//     if (markers.length < 2) return markers[0].beat_time;
+//     return markers[markers.length - 2].beat_time;
+//   } catch (error) {
+//     console.error(
+//       `Warning: Failed to get actual audio end for clip ${clip.id}: ${error.message}`,
+//     );
+//     return 0;
+//   }
+// }
+
+/**
+ * Reveals hidden content in an unwarped audio clip using session holding area technique.
+ * Creates a temp warped/looped clip, sets markers, then restores unwarp/unloop state.
+ * ONLY used for unlooped + unwarped + audio clips with hidden content.
+ * @param sourceClip - The source clip to get audio file from
+ * @param track - The track to work with
+ * @param newStartMarker - Start marker for revealed content
+ * @param newEndMarker - End marker for revealed content
+ * @param targetPosition - Where to place revealed clip in arrangement
+ * @param _context - Context object with paths (unused)
+ * @returns The revealed clip in arrangement
+ */
+function revealUnwarpedAudioContent(
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  newStartMarker: number,
+  newEndMarker: number,
+  targetPosition: number,
+  _context: Partial<ToolContext>,
+): LiveAPI {
+  const filePath = sourceClip.getProperty("file_path") as string;
+
+  console.error(
+    `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
+  );
+  // Create temp clip in session holding area; length=newEndMarker to include all content
+  const { clip: tempClip, slot: tempSlot } = createAudioClipInSession(
+    track,
+    newEndMarker,
+    filePath,
+  );
+
+  // Set markers in BEATS while warped and looped
+  tempClip.set("loop_end", newEndMarker);
+  tempClip.set("loop_start", newStartMarker);
+  tempClip.set("end_marker", newEndMarker);
+  tempClip.set("start_marker", newStartMarker);
+
+  // Duplicate to arrangement WHILE STILL WARPED (preserves markers)
+  const result = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${tempClip.id}`,
+    targetPosition,
+  ) as string;
+  const revealedClip = LiveAPI.from(result);
+
+  // Unwarp and unloop the ARRANGEMENT clip (markers auto-convert to seconds)
+  revealedClip.set("warping", 0);
+  revealedClip.set("looping", 0);
+
+  // Shorten the clip to only show the revealed portion (if needed)
+  const revealedClipEndTime = revealedClip.getProperty("end_time") as number;
+  const targetLengthBeats = newEndMarker - newStartMarker;
+  const expectedEndTime = targetPosition + targetLengthBeats;
+  const EPSILON = 0.001;
+
+  // Only shorten if the revealed clip is longer than expected
+  // (placing a shortener at the exact boundary would damage adjacent clips)
+  if (revealedClipEndTime > expectedEndTime + EPSILON) {
+    const { clip: tempShortenerClip, slot: tempShortenerSlot } =
+      createAudioClipInSession(
+        track,
+        targetLengthBeats,
+        sourceClip.getProperty("file_path") as string,
+      );
+
+    const tempShortenerResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${tempShortenerClip.id}`,
+      revealedClipEndTime,
+    ) as string;
+
+    const tempShortener = LiveAPI.from(tempShortenerResult);
+
+    tempShortenerSlot.call("delete_clip");
+    track.call("delete_clip", `id ${tempShortener.id}`);
+  }
+
+  tempSlot.call("delete_clip");
+
+  return revealedClip;
+}
+
+/**
+ * Reveals audio content at a target position with specific markers.
+ * Handles both warped (looping workaround) and unwarped (session holding area) clips.
+ * @param sourceClip - The source clip to duplicate from
+ * @param track - The track to work with
+ * @param newStartMarker - Start marker for revealed content
+ * @param newEndMarker - End marker for revealed content
+ * @param targetPosition - Where to place revealed clip in arrangement
+ * @param _context - Context object
+ * @returns The revealed clip in arrangement
+ */
+export function revealAudioContentAtPosition(
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  newStartMarker: number,
+  newEndMarker: number,
+  targetPosition: number,
+  _context: Partial<ToolContext>,
+): LiveAPI {
+  const isWarped = sourceClip.getProperty("warping") === 1;
+
+  if (isWarped) {
+    // Warped: duplicate and use looping workaround
+    const duplicateResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      targetPosition,
+    ) as string;
+    const revealedClip = LiveAPI.from(duplicateResult);
+
+    setClipMarkersWithLoopingWorkaround(revealedClip, {
+      loopStart: newStartMarker,
+      loopEnd: newEndMarker,
+      startMarker: newStartMarker,
+      endMarker: newEndMarker,
+    });
+
+    return revealedClip;
+  }
+
+  // Unwarped: use session holding area workaround
+  return revealUnwarpedAudioContent(
+    sourceClip,
+    track,
+    newStartMarker,
+    newEndMarker,
+    targetPosition,
+    _context,
+  );
+}
+
+interface AudioParams {
+  /** Audio clip gain in decibels (-70 to 24) */
+  gainDb?: number;
+  /** Audio clip pitch shift in semitones (-48 to 48) */
+  pitchShift?: number;
+  /** Audio clip warp mode */
+  warpMode?: string;
+  /** Audio clip warping on/off */
+  warping?: boolean;
+}
+
+/**
+ * Sets audio-specific parameters on a clip
+ * @param clip - The audio clip
+ * @param params - Audio parameters
+ * @param params.gainDb - Audio clip gain in decibels (-70 to 24)
+ * @param params.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
+ * @param params.warpMode - Audio clip warp mode
+ * @param params.warping - Audio clip warping on/off
+ */
+export function setAudioParameters(
+  clip: LiveAPI,
+  { gainDb, pitchShift, warpMode, warping }: AudioParams,
+): void {
+  if (gainDb !== undefined) {
+    const liveGain = dbToLiveGain(gainDb);
+
+    clip.set("gain", liveGain);
+  }
+
+  if (pitchShift !== undefined) {
+    const pitchCoarse = Math.floor(pitchShift);
+    const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
+
+    clip.set("pitch_coarse", pitchCoarse);
+    clip.set("pitch_fine", pitchFine);
+  }
+
+  if (warpMode !== undefined) {
+    const warpModeValue: Record<string, number> = {
+      [WARP_MODE.BEATS]: LIVE_API_WARP_MODE_BEATS,
+      [WARP_MODE.TONES]: LIVE_API_WARP_MODE_TONES,
+      [WARP_MODE.TEXTURE]: LIVE_API_WARP_MODE_TEXTURE,
+      [WARP_MODE.REPITCH]: LIVE_API_WARP_MODE_REPITCH,
+      [WARP_MODE.COMPLEX]: LIVE_API_WARP_MODE_COMPLEX,
+      [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
+      [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
+    };
+
+    if (warpModeValue[warpMode] !== undefined) {
+      clip.set("warp_mode", warpModeValue[warpMode]);
+    }
+  }
+
+  if (warping !== undefined) {
+    clip.set("warping", warping ? 1 : 0);
+  }
+}
+
+/**
+ * Handles warp marker operations on a clip
+ * @param clip - The audio clip
+ * @param warpOp - Operation: add, move, or remove
+ * @param warpBeatTime - Beat time for the warp marker
+ * @param warpSampleTime - Sample time (for add operation)
+ * @param warpDistance - Distance to move (for move operation)
+ */
+export function handleWarpMarkerOperation(
+  clip: LiveAPI,
+  warpOp: string,
+  warpBeatTime: number | undefined,
+  warpSampleTime?: number | undefined,
+  warpDistance?: number | undefined,
+): void {
+  // Validate audio clip
+  const hasAudioFile = clip.getProperty("file_path") != null;
+
+  if (!hasAudioFile) {
+    console.error(
+      `Warning: warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+    );
+
+    return;
+  }
+
+  // Validate required parameters per operation
+  if (warpBeatTime == null) {
+    console.error(`Warning: warpBeatTime required for ${warpOp} operation`);
+
+    return;
+  }
+
+  switch (warpOp) {
+    case "add": {
+      // Add warp marker with optional sample time
+      const args =
+        warpSampleTime != null
+          ? { beat_time: warpBeatTime, sample_time: warpSampleTime }
+          : { beat_time: warpBeatTime };
+
+      clip.call("add_warp_marker", args);
+      break;
+    }
+
+    case "move": {
+      if (warpDistance == null) {
+        console.error("Warning: warpDistance required for move operation");
+
+        return;
+      }
+
+      clip.call("move_warp_marker", warpBeatTime, warpDistance);
+      break;
+    }
+
+    case "remove": {
+      clip.call("remove_warp_marker", warpBeatTime);
+      break;
+    }
+  }
+}
