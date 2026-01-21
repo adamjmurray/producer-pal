@@ -9,7 +9,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    clipId: z
+    clipId: z.coerce
       .string()
       .optional()
       .describe("provide this or trackIndex + sceneIndex"),

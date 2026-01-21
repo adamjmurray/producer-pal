@@ -11,7 +11,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
   },
 
   inputSchema: {
-    trackId: z
+    trackId: z.coerce
       .string()
       .optional()
       .describe("provide this or category/trackIndex"),

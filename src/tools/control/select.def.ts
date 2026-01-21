@@ -12,7 +12,7 @@ export const toolDefSelect = defineTool("ppal-select", {
 
   inputSchema: {
     view: z.enum(["session", "arrangement"]).optional().describe("main view"),
-    trackId: z
+    trackId: z.coerce
       .string()
       .optional()
       .describe("select a track with this or category/trackIndex"),
@@ -24,19 +24,19 @@ export const toolDefSelect = defineTool("ppal-select", {
         "track category: regular and return tracks have independent trackIndexes, master has no index",
       ),
     trackIndex: z.number().int().min(0).optional().describe("0-based index"),
-    sceneId: z
+    sceneId: z.coerce
       .string()
       .optional()
       .describe("select a scene with this or sceneIndex"),
     sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
-    clipId: z
+    clipId: z.coerce
       .string()
       .nullable()
       .optional()
       .describe(
         "select a clip with this or trackIndex + sceneIndex, or null to deselect all clips",
       ),
-    deviceId: z.string().optional().describe("select a device"),
+    deviceId: z.coerce.string().optional().describe("select a device"),
     instrument: z
       .boolean()
       .optional()

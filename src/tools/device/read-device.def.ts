@@ -12,7 +12,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   },
 
   inputSchema: {
-    deviceId: z.string().optional().describe("Device ID to read"),
+    deviceId: z.coerce.string().optional().describe("Device ID to read"),
     path: z
       .string()
       .optional()

@@ -9,7 +9,10 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    sceneId: z.string().optional().describe("provide this or sceneIndex"),
+    sceneId: z.coerce
+      .string()
+      .optional()
+      .describe("provide this or sceneIndex"),
     sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
     include: z
       .array(z.enum(["*", "clips", "clip-notes", "color", "warp-markers"]))

@@ -82,6 +82,13 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.
   For list-like inputs, use comma-separated strings
 
+- **Tool schema ID coercion**: Use `z.coerce.string()` instead of `z.string()`
+  for ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
+  `sceneIndex` when it accepts comma-separated values). This allows LLMs to pass
+  numeric IDs (like `id: 123`) which Zod automatically coerces to strings. The
+  MCP SDK validates schemas before our handler runs, so coercion must happen at
+  the schema level.
+
 - **Live API**: Use `src/live-api-adapter/live-api-extensions.ts` interface
   instead of raw `.get("property")?.[0]` calls
 
