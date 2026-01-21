@@ -41,15 +41,15 @@ execSync("npm install", {
 });
 console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
-// Update version.js
-const versionPath = join(rootDir, "src/shared/version.js");
+// Update version.ts
+const versionPath = join(rootDir, "src/shared/version.ts");
 const versionContent = `// Semantic versioning: major.minor.patch
 // Currently in pre-release, working towards 1.0.0
 export const VERSION = "${newVersion}";
 `;
 
 writeFileSync(versionPath, versionContent);
-console.log("✓ Updated src/shared/version.js");
+console.log("✓ Updated src/shared/version.ts");
 
 // Update npm/package.json
 const npmPkgPath = join(rootDir, "npm/package.json");
