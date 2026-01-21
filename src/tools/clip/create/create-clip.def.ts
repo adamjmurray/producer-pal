@@ -21,14 +21,14 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .min(0)
       .describe("0-based track index for session clips"),
 
-    sceneIndex: z
+    sceneIndex: z.coerce
       .string()
       .optional()
       .describe(
         "scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
       ),
 
-    arrangementStart: z
+    arrangementStart: z.coerce
       .string()
       .optional()
       .describe(

@@ -12,7 +12,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    ids: z.string().describe("comma-separated clip ID(s) to update"),
+    ids: z.coerce.string().describe("comma-separated clip ID(s) to update"),
     name: z.string().optional().describe("clip name"),
     color: z.string().optional().describe("#RRGGBB"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),

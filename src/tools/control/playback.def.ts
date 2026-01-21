@@ -66,7 +66,7 @@ stop: session and arrangement`,
       .optional()
       .default(true)
       .describe("tracks auto-follow arrangement?"),
-    clipIds: z
+    clipIds: z.coerce
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),

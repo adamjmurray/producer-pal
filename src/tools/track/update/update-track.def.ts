@@ -12,7 +12,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   },
 
   inputSchema: {
-    ids: z.string().describe("comma-separated track ID(s) to update"),
+    ids: z.coerce.string().describe("comma-separated track ID(s) to update"),
     name: z.string().optional().describe("name, ideally unique"),
     color: z.string().optional().describe("#RRGGBB"),
     gainDb: z.number().min(-70).max(6).optional().describe("track gain in dB"),

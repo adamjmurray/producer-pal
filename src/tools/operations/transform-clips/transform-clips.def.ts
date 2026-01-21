@@ -14,11 +14,11 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   },
 
   inputSchema: {
-    clipIds: z
+    clipIds: z.coerce
       .string()
       .optional()
       .describe("comma-separated clip IDs to transform"),
-    arrangementTrackIndex: z
+    arrangementTrackIndex: z.coerce
       .string()
       .optional()
       .describe(

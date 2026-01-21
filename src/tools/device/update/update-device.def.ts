@@ -11,7 +11,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   },
 
   inputSchema: {
-    ids: z
+    ids: z.coerce
       .string()
       .optional()
       .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),

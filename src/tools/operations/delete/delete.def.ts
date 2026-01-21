@@ -9,7 +9,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z
+    ids: z.coerce
       .string()
       .optional()
       .describe(

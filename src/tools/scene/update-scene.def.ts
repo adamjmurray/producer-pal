@@ -9,7 +9,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z.string().describe("comma-separated scene ID(s) to update"),
+    ids: z.coerce.string().describe("comma-separated scene ID(s) to update"),
     name: z.string().optional().describe("name"),
     color: z.string().optional().describe("#RRGGBB"),
     tempo: z.number().optional().describe("BPM (-1 disables)"),

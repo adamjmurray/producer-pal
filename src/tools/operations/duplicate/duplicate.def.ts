@@ -15,7 +15,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
 
-    id: z.string().describe("object to duplicate"),
+    id: z.coerce.string().describe("object to duplicate"),
 
     count: z
       .number()
@@ -28,7 +28,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .enum(["session", "arrangement"])
       .optional()
       .describe("scenes and clips can be copied to the session or arrangement"),
-    arrangementStart: z
+    arrangementStart: z.coerce
       .string()
       .optional()
       .describe(
@@ -70,7 +70,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .min(0)
       .optional()
       .describe("destination track index (for session clips)"),
-    toSceneIndex: z
+    toSceneIndex: z.coerce
       .string()
       .optional()
       .describe(
