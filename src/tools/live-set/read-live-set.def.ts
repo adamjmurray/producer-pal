@@ -44,4 +44,11 @@ Re-read after moves/deletes for updated state.`,
         'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, warp-markers, locators, "*" for all (avoid in big sets).',
       ),
   },
+
+  smallModelModeConfig: {
+    descriptionOverrides: {
+      include:
+        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, warp-markers, "*" for all (avoid in big sets).',
+    },
+  },
 });

@@ -38,4 +38,14 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .describe("Name for create/rename, or name-match filter for delete"),
     // arrangementFollower removed from interface - playback tool handles this via autoFollow parameter
   },
+
+  smallModelModeConfig: {
+    toolDescription: "Update Live Set global settings",
+    excludeParams: [
+      "locatorOperation",
+      "locatorId",
+      "locatorTime",
+      "locatorName",
+    ],
+  },
 });
