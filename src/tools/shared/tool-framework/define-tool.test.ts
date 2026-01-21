@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { z } from "zod";
+import { z, type ZodObject, type ZodRawShape } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { defineTool } from "./define-tool.ts";
 
@@ -10,8 +10,13 @@ function createMockServer() {
   };
 }
 
+// Helper to extract shape from a Zod object schema (works with passthrough schemas)
+function getSchemaShape(schema: ZodObject<ZodRawShape>): ZodRawShape {
+  return schema.shape;
+}
+
 describe("defineTool", () => {
-  it("should register tool and handle validation errors", async () => {
+  it("should register tool with correct config", () => {
     const mockServer = createMockServer();
     const mockCallLiveApi = vi.fn();
 
@@ -25,50 +30,34 @@ describe("defineTool", () => {
       },
     };
 
-    // Create and register the tool
     const toolRegistrar = defineTool(toolName, toolOptions);
 
     toolRegistrar(mockServer, mockCallLiveApi);
 
-    // Verify tool was registered
     expect(mockServer.registerTool).toHaveBeenCalledWith(
       toolName,
       expect.objectContaining({
         title: "Test Tool",
         description: "A test tool",
-        inputSchema: toolOptions.inputSchema,
       }),
       expect.any(Function),
     );
 
-    // Get the registered tool handler
-    const toolHandler = mockServer.registerTool.mock.calls[0]![2];
+    // Verify schema shape matches (inputSchema is now a Zod object with passthrough)
+    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema);
 
-    // Test validation error case
-    const invalidArgs = { optionalParam: "not a number" };
-    const result = await toolHandler(invalidArgs);
-
-    expect(result).toStrictEqual({
-      content: [
-        {
-          type: "text",
-          text: expect.stringContaining("Validation error in test-tool:"),
-        },
-      ],
-      isError: true,
-    });
-
-    expect(result.content[0].text).toContain(
-      "requiredParam: Invalid input: expected string, received undefined",
-    );
-    expect(result.content[0].text).toContain(
-      "optionalParam: Invalid input: expected number, received string",
-    );
+    expect(Object.keys(shape)).toStrictEqual([
+      "requiredParam",
+      "optionalParam",
+    ]);
   });
 
   it("should call liveApi for valid input", async () => {
     const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({ success: true });
+    const mockCallLiveApi = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "success" }],
+    });
 
     const toolOptions = {
       title: "Test Tool",
@@ -89,7 +78,9 @@ describe("defineTool", () => {
     const result = await toolHandler(validArgs);
 
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", validArgs);
-    expect(result).toStrictEqual({ success: true });
+    expect(result).toStrictEqual({
+      content: [{ type: "text", text: "success" }],
+    });
   });
 
   it("should filter schema parameters when smallModelMode is enabled", () => {
@@ -115,18 +106,12 @@ describe("defineTool", () => {
 
     // Verify tool was registered with filtered schema
     const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema);
 
-    expect(Object.keys(registeredConfig.inputSchema)).toStrictEqual([
-      "keepParam",
-      "alsoKeep",
-    ]);
-    expect(registeredConfig.inputSchema.keepParam).toBe(
-      toolOptions.inputSchema.keepParam,
-    );
-    expect(registeredConfig.inputSchema.alsoKeep).toBe(
-      toolOptions.inputSchema.alsoKeep,
-    );
-    expect(registeredConfig.inputSchema.removeParam).toBeUndefined();
+    expect(Object.keys(shape)).toStrictEqual(["keepParam", "alsoKeep"]);
+    expect(shape.keepParam).toBe(toolOptions.inputSchema.keepParam);
+    expect(shape.alsoKeep).toBe(toolOptions.inputSchema.alsoKeep);
+    expect(shape.removeParam).toBeUndefined();
   });
 
   it("should use full schema when smallModelMode is disabled", () => {
@@ -149,15 +134,18 @@ describe("defineTool", () => {
 
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
 
-    // Verify tool was registered with full schema
+    // Verify tool was registered with full schema (all params present)
     const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema);
 
-    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
+    expect(Object.keys(shape)).toStrictEqual(["keepParam", "removeParam"]);
   });
 
   it("should strip filtered parameters in smallModelMode", async () => {
     const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({ success: true });
+    const mockCallLiveApi = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "success" }],
+    });
 
     const toolOptions = {
       title: "Test Tool",
@@ -215,8 +203,9 @@ describe("defineTool", () => {
 
     // Should use original schema even in small model mode
     const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema);
 
-    expect(registeredConfig.inputSchema).toStrictEqual(toolOptions.inputSchema);
+    expect(Object.keys(shape)).toStrictEqual(["param1", "param2"]);
   });
 
   it("should apply description overrides when smallModelMode is enabled", () => {
@@ -242,14 +231,16 @@ describe("defineTool", () => {
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema) as Record<
+      string,
+      { description?: string }
+    >;
 
     // param1 should have overridden description
-    expect(registeredConfig.inputSchema.param1.description).toBe("simplified");
+    expect(shape.param1?.description).toBe("simplified");
 
     // param2 should keep original description
-    expect(registeredConfig.inputSchema.param2.description).toBe(
-      "original number",
-    );
+    expect(shape.param2?.description).toBe("original number");
   });
 
   it("should work with only descriptionOverrides (no excludeParams)", () => {
@@ -275,15 +266,16 @@ describe("defineTool", () => {
     toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
 
     const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
+    const shape = getSchemaShape(registeredConfig.inputSchema) as Record<
+      string,
+      { description?: string }
+    >;
 
     // Both params should be present
-    expect(Object.keys(registeredConfig.inputSchema)).toStrictEqual([
-      "keepAll",
-      "alsoKeep",
-    ]);
+    expect(Object.keys(shape)).toStrictEqual(["keepAll", "alsoKeep"]);
 
     // keepAll should have overridden description
-    expect(registeredConfig.inputSchema.keepAll.description).toBe("short");
+    expect(shape.keepAll?.description).toBe("short");
   });
 
   it("should apply toolDescription override when smallModelMode is enabled", () => {
@@ -336,16 +328,17 @@ describe("defineTool", () => {
     );
   });
 
-  it("should format validation errors without path for root-level errors", async () => {
+  it("should warn when extra arguments are passed", async () => {
     const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
+    const mockCallLiveApi = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "success" }],
+    });
 
-    // Create a tool with a refinement at the root level that produces an error with empty path
     const toolOptions = {
       title: "Test Tool",
-      description: "A test tool",
+      description: "Test",
       inputSchema: {
-        param: z.string(),
+        knownParam: z.string(),
       },
     };
 
@@ -355,26 +348,32 @@ describe("defineTool", () => {
 
     const toolHandler = mockServer.registerTool.mock.calls[0]![2];
 
-    // Pass null which triggers a root-level error
-    // When safeParse receives null/undefined for an object, it creates an error with empty path
-    const result = await toolHandler(null);
-
-    expect(result).toStrictEqual({
-      content: [
-        {
-          type: "text",
-          text: expect.stringContaining("Validation error in test-tool:"),
-        },
-      ],
-      isError: true,
+    // Pass extra arguments that aren't in the schema
+    const result = await toolHandler({
+      knownParam: "valid",
+      unknownParam: "extra",
+      anotherExtra: 123,
     });
-    // The error message should not have a path prefix (just the message)
-    expect(result.content[0].text).toMatch(/Invalid input: expected object/);
+
+    // Tool should still succeed
+    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
+      knownParam: "valid",
+      // Extra params should be stripped by Zod
+    });
+
+    // But a warning should be appended
+    expect(result.content).toHaveLength(2);
+    expect(result.content[1]).toStrictEqual({
+      type: "text",
+      text: "Warning: test-tool ignored unexpected argument(s): unknownParam, anotherExtra",
+    });
   });
 
   it("should coerce number to string when using z.coerce.string()", async () => {
     const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({ success: true });
+    const mockCallLiveApi = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "success" }],
+    });
 
     const toolOptions = {
       title: "Test Tool",
@@ -393,7 +392,9 @@ describe("defineTool", () => {
     // LLM sends number instead of string - Zod coerces it
     const result = await toolHandler({ sceneIndex: 0 });
 
-    expect(result).toStrictEqual({ success: true });
+    expect(result).toStrictEqual({
+      content: [{ type: "text", text: "success" }],
+    });
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
       sceneIndex: "0",
     });

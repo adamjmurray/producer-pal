@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
-import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 
 // Re-export CallToolResult for use by callers
@@ -69,33 +68,36 @@ export function defineTool(
         ? smallModelModeConfig.toolDescription
         : toolConfig.description;
 
+    // Use passthrough() so extra args reach our handler (SDK would strip them otherwise)
+    const passthroughSchema = z.object(finalInputSchema).passthrough();
+
     server.registerTool(
       name,
       {
         ...toolConfig,
         description: finalDescription,
-        inputSchema: finalInputSchema,
+        inputSchema: passthroughSchema,
       },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
-        // Create Zod object schema from the input schema object for validation
-        const validation = z.object(finalInputSchema).safeParse(args);
+        // Detect unexpected arguments before stripping them
+        const expectedKeys = new Set(Object.keys(finalInputSchema));
+        const extraKeys = Object.keys(args).filter(
+          (key) => !expectedKeys.has(key),
+        );
 
-        if (!validation.success) {
-          const errorMessages = validation.error.issues.map(
-            (issue: { path: PropertyKey[]; message: string }) => {
-              const path =
-                issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+        // Parse with strict schema (strips extra keys for callLiveApi)
+        const validated = z.object(finalInputSchema).parse(args);
 
-              return `${path}${issue.message}`;
-            },
-          );
+        const result = (await callLiveApi(name, validated)) as CallToolResult;
 
-          return formatErrorResponse(
-            `Validation error in ${name}:\n${errorMessages.join("\n")}`,
-          ) as CallToolResult;
+        // Append warning for extra keys so LLMs learn correct usage
+        if (extraKeys.length > 0) {
+          const warning = `Warning: ${name} ignored unexpected argument(s): ${extraKeys.join(", ")}`;
+
+          result.content.push({ type: "text", text: warning });
         }
 
-        return (await callLiveApi(name, validation.data)) as CallToolResult;
+        return result;
       },
     );
   };
