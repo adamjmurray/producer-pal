@@ -269,6 +269,7 @@ const tsOnlyRules = {
   "@typescript-eslint/unified-signatures": "error", // Merge overloads when possible
   "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
   "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
+  "@typescript-eslint/no-deprecated": "error", // Flag usage of @deprecated APIs
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative

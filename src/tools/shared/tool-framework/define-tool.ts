@@ -68,8 +68,8 @@ export function defineTool(
         ? smallModelModeConfig.toolDescription
         : toolConfig.description;
 
-    // Use passthrough() so extra args reach our handler (SDK would strip them otherwise)
-    const passthroughSchema = z.object(finalInputSchema).passthrough();
+    // Use loose() so extra args reach our handler (SDK would strip them otherwise)
+    const passthroughSchema = z.object(finalInputSchema).loose();
 
     server.registerTool(
       name,

@@ -7,7 +7,6 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { ZodTypeAny } from "zod";
 import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -30,7 +29,7 @@ interface FallbackTool {
 interface RegisteredToolInfo {
   title?: string;
   description: string;
-  inputSchema?: ZodTypeAny;
+  inputSchema?: z.ZodType;
 }
 
 interface CallToolRequest {
@@ -46,6 +45,7 @@ interface CallToolRequest {
  */
 export class StdioHttpBridge {
   private httpUrl: string;
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Server needed for setRequestHandler proxying
   private mcpServer: Server | null = null;
   private httpClient: Client | null = null;
   private isConnected = false;
@@ -167,6 +167,7 @@ The default URL value is http://localhost:3350`);
     logger.debug(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
 
     // Create MCP server that will handle stdio connections
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- Server needed for setRequestHandler proxying
     this.mcpServer = new Server(
       {
         name: "stdio-http-bridge",
