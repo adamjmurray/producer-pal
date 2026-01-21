@@ -6,10 +6,11 @@ import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 const mcpServerOrigin =
   process.env.MCP_SERVER_ORIGIN ?? "http://localhost:3350";
 const mcpUrl = `${mcpServerOrigin}/mcp`;
+const smallModelMode = process.env.SMALL_MODEL_MODE === "true";
 
 logger.info(`Starting Producer Pal bridge (mcpUrl ${mcpUrl})`);
 
-const bridge = new StdioHttpBridge(mcpUrl);
+const bridge = new StdioHttpBridge(mcpUrl, { smallModelMode });
 
 // Handle graceful shutdown
 process.on("SIGINT", () => {

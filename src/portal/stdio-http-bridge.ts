@@ -17,6 +17,7 @@ const SETUP_URL = "https://producer-pal.org";
 
 interface BridgeOptions {
   timeout?: number;
+  smallModelMode?: boolean;
 }
 
 interface FallbackTool {
@@ -50,15 +51,19 @@ export class StdioHttpBridge {
   private httpClient: Client | null = null;
   private isConnected = false;
   private fallbackTools: { tools: FallbackTool[] };
+  private smallModelMode: boolean;
 
-  constructor(httpUrl: string, _options: BridgeOptions = {}) {
+  constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
+    this.smallModelMode = options.smallModelMode ?? false;
     this.fallbackTools = this._generateFallbackTools();
   }
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
     // Create MCP server to extract tool definitions (callLiveApi not used)
-    const server = createMcpServer(null as unknown as CallLiveApiFunction);
+    const server = createMcpServer(null as unknown as CallLiveApiFunction, {
+      smallModelMode: this.smallModelMode,
+    });
     const tools: FallbackTool[] = [];
 
     // Access private _registeredTools for fallback tool list

@@ -35,10 +35,18 @@ _It should display "Producer Pal Running" or something isn't working._
 
 In Producer Pal's "Setup" tab, enable "Small Model Mode":
 
-![Small model mode setting](/small-model-mode.png)
+<img src="/small-model-mode.png" alt="Small model mode setting" width="375"/>
 
-_This option is disabled by default and must be enabled each time you add
-Producer Pal to Live._
+This provides a smaller, simpler interface optimized for small/local language
+models.
+
+::: tip Making small model mode the default.
+
+This option is disabled by default and must be enabled each time you _add a new_
+Producer Pal device to Live (the setting is saved with your Live Set though).
+You can **make a preset** for the device with small model model enabled.
+
+:::
 
 ### 3. Install a Compatible Model
 
@@ -61,11 +69,37 @@ mcp.json:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal"],
+      "env": {
+        "SMALL_MODEL_MODE": "true"
+      }
     }
   }
 }
 ```
+
+The producer-pal package is a proxy that responds to requests even when Ableton
+Live or the Producer Pal device are not running, to let you know there's a
+problem.
+
+::: info About the SMALL_MODEL_MODE setting
+
+If you forget to start Live or Producer Pal, your AI can read and cache the tool
+interface from this proxy, which defaults to the normal mode for large models.
+When this happens you may need to restart your conversation. Setting
+`"SMALL_MODEL_MODE": "true"` here avoids this problem. Use it if you're enabling
+small model mode in the device
+[as explained above](#_2-enable-small-model-mode-optional-but-recommended).
+
+:::
+
+::: warning
+
+`"SMALL_MODEL_MODE": "true"` does not enable small model mode in the Live
+device. You must
+[enable it there too](#_2-enable-small-model-mode-optional-but-recommended).
+
+:::
 
 **Option B: Direct HTTP**:
 
@@ -90,17 +124,24 @@ and configure:
   "mcpServers": {
     "producer-pal": {
       "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js"]
+      "args": ["/absolute/path/to/producer-pal-portal.js"],
+      "env": {
+        "SMALL_MODEL_MODE": "true"
+      }
     }
   }
 }
 ```
 
+This is a standalone version of `npx producer-pal` (Option A). See
+[the notes above](#_4-configure-lm-studio) on why to use
+`"SMALL_MODEL_MODE": "true"`.
+
 ### 5. Verify Tools
 
 Confirm the Producer Pal tools are listed under Settings → Program:
 
-![Producer Pal tools listed in LM Studio](/lm-studio-tool-list.png)
+<img src="/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="375"/>
 
 _See below for tips on using a subset of tools._
 
