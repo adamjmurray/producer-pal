@@ -33,13 +33,15 @@ It should display "Producer Pal Running":
 
 <img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
-## 4. Enable Small Model Mode
+## 4. Enable Small Model Mode (Optional but Recommended)
 
 In [the Producer Pal "Setup" tab](/guide/device#setup-tab), enable **Small Model
-Mode**. This simplifies tool descriptions for better compatibility with local
-models.
+Mode**.
 
-![Setup tab](/device-setup-tab.png)
+<img src="/small-model-mode.png" alt="Small model mode setting" width="375"/>
+
+This provides a smaller, simpler interface optimized for small/local language
+models.
 
 ## 5. Open the Chat UI
 
