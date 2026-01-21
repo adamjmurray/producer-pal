@@ -48,8 +48,8 @@ will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
 ### 4. Verify Installation
 
-You should see Producer Pal tools in Claude's "Search and Tools" menu (make sure
-it's enabled when starting a conversation):
+You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
+enabled when starting a conversation):
 
 ![Producer Pal tools in Claude web app](/claude-web-tool-list.png)
 

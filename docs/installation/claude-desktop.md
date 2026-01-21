@@ -58,8 +58,8 @@ extension only accesses Ableton Live through the Max for Live device.
 
 ### 5. Verify Installation
 
-You should see Producer Pal tools in Claude's "Search and Tools" menu (make sure
-it's enabled when starting a conversation):
+You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
+enabled when starting a conversation):
 
 ![Producer Pal tools in Claude](/tools-in-claude.png)
 
