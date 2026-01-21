@@ -122,7 +122,7 @@
     "jscpd": "^4.0.7",
     "peggy": "^5.0.6",
     "prettier": "^3.8.1",
-    "rollup": "^4.55.2",
+    "rollup": "^4.55.3",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "^5.9.3",
