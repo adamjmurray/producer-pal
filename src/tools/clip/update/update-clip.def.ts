@@ -120,14 +120,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .min(0)
       .max(1)
       .optional()
-      .describe("swing amount 0-1 (default: 0)"),
+      .describe("swing amount (shifts off-beats toward next grid line)"),
     quantizePitch: z
-      .number()
-      .int()
-      .min(0)
-      .max(127)
+      .string()
       .optional()
-      .describe("limit quantization to specific pitch"),
+      .describe("limit quantization to specific pitch (e.g., C3, D#4)"),
 
     // Warp marker parameters
     warpOp: z

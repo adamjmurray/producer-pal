@@ -130,10 +130,29 @@ describe("handleQuantization", () => {
     handleQuantization(mockClip, {
       quantize: 1,
       quantizeGrid: "1/8",
-      quantizePitch: 60,
+      quantizePitch: "C3",
     });
 
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 2, 1);
+  });
+
+  it("should warn and skip when quantizePitch is invalid note name", () => {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    handleQuantization(mockClip, {
+      quantize: 1,
+      quantizeGrid: "1/8",
+      quantizePitch: "invalid",
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('invalid note name "invalid"'),
+    );
+    expect(mockClip.call).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("should set swing_amount before quantizing and restore after", () => {

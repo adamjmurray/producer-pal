@@ -249,7 +249,7 @@ export interface ProcessSingleClipUpdateParams {
   quantize?: number;
   quantizeGrid?: string;
   quantizeSwing?: number;
-  quantizePitch?: number;
+  quantizePitch?: string;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   context: Partial<ToolContext>;

@@ -58,8 +58,8 @@ interface UpdateClipArgs {
   quantizeGrid?: string;
   /** Swing amount 0-1 (default: 0) */
   quantizeSwing?: number;
-  /** Limit quantization to specific pitch */
-  quantizePitch?: number;
+  /** Limit quantization to specific pitch (e.g., C3, D#4) */
+  quantizePitch?: string;
 }
 
 interface ClipResult {

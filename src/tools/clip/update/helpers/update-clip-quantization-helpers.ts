@@ -1,3 +1,4 @@
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /**
@@ -21,8 +22,8 @@ interface QuantizationOptions {
   quantizeGrid?: string;
   /** Swing amount 0-1 (default: 0) */
   quantizeSwing?: number;
-  /** Limit to specific pitch (optional) */
-  quantizePitch?: number;
+  /** Limit to specific pitch as note name, e.g., C3, D#4 (optional) */
+  quantizePitch?: string;
 }
 
 /**
@@ -71,7 +72,17 @@ export function handleQuantization(
 
   try {
     if (quantizePitch != null) {
-      clip.call("quantize_pitch", quantizePitch, gridValue, quantize);
+      const midiPitch = noteNameToMidi(quantizePitch);
+
+      if (midiPitch == null) {
+        console.error(
+          `Warning: invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
+        );
+
+        return;
+      }
+
+      clip.call("quantize_pitch", midiPitch, gridValue, quantize);
     } else {
       clip.call("quantize", gridValue, quantize);
     }
