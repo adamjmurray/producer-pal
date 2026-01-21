@@ -79,7 +79,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.37.0",
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.25.3",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
