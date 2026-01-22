@@ -273,8 +273,8 @@ export function handleWarpMarkerOperation(
   clip: LiveAPI,
   warpOp: string,
   warpBeatTime: number | undefined,
-  warpSampleTime?: number | undefined,
-  warpDistance?: number | undefined,
+  warpSampleTime?: number,
+  warpDistance?: number,
 ): void {
   // Validate audio clip
   const hasAudioFile = clip.getProperty("file_path") != null;

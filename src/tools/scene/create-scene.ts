@@ -226,8 +226,8 @@ function createSingleScene(
   count: number,
   name: string | undefined,
   color: string | undefined,
-  tempo: number | null | undefined,
-  timeSignature: string | null | undefined,
+  tempo?: number | null,
+  timeSignature?: string | null,
 ): SceneResult {
   liveSet.call("create_scene", sceneIndex);
   const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);

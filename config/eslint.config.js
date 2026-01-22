@@ -270,6 +270,9 @@ const tsOnlyRules = {
   "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
   "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
   "@typescript-eslint/no-deprecated": "error", // Flag usage of @deprecated APIs
+  "@typescript-eslint/no-redundant-type-constituents": "error", // Catch | null | undefined where one is redundant
+  "@typescript-eslint/no-duplicate-type-constituents": "error", // Catch duplicate union members
+  "@typescript-eslint/prefer-as-const": "error", // Use `as const` for literal assertions
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative

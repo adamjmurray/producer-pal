@@ -34,7 +34,7 @@ interface LoopEndParams {
 }
 
 interface ResolvedStartTime {
-  startTimeBeats: number | null | undefined;
+  startTimeBeats?: number;
   useLocatorStart: boolean;
 }
 
@@ -73,15 +73,15 @@ export function getCurrentLoopState(
  * @param options.locatorId - Locator ID to find
  * @param options.locatorName - Locator name to find
  * @param paramName - Name of the parameter for error messages
- * @returns Time in beats or null if no locator specified
+ * @returns Time in beats or undefined if no locator specified
  */
 export function resolveLocatorToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: LocatorOptions,
   paramName: string,
-): number | null {
+): number | undefined {
   if (locatorId == null && locatorName == null) {
-    return null;
+    return;
   }
 
   return resolveLocatorToBeatsRequired(
@@ -144,7 +144,7 @@ export function resolveStartTime(
   timeSigDenominator: number,
 ): ResolvedStartTime {
   const useLocatorStart = startLocatorId != null || startLocatorName != null;
-  let startTimeBeats: number | null | undefined;
+  let startTimeBeats: number | undefined;
 
   if (startTime != null) {
     startTimeBeats = barBeatToAbletonBeats(
@@ -181,8 +181,8 @@ export function resolveLoopStart(
   { loopStart, loopStartLocatorId, loopStartLocatorName }: LoopStartParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
-): number | null | undefined {
-  let loopStartBeats: number | null | undefined;
+): number | undefined {
+  let loopStartBeats: number | undefined;
 
   if (loopStart != null) {
     loopStartBeats = barBeatToAbletonBeats(
@@ -217,11 +217,11 @@ export function resolveLoopStart(
 export function resolveLoopEnd(
   liveSet: LiveAPI,
   { loopEnd, loopEndLocatorId, loopEndLocatorName }: LoopEndParams,
-  loopStartBeats: number | null | undefined,
+  loopStartBeats: number | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): void {
-  let loopEndBeats: number | null | undefined;
+  let loopEndBeats: number | undefined;
 
   if (loopEnd != null) {
     loopEndBeats = barBeatToAbletonBeats(
@@ -282,7 +282,7 @@ export interface PlaybackState {
 export function handlePlayArrangement(
   liveSet: LiveAPI,
   startTime: string | undefined,
-  startTimeBeats: number | null | undefined,
+  startTimeBeats: number | undefined,
   useLocatorStart: boolean,
   autoFollow: boolean,
   _state: PlaybackState,

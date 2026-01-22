@@ -107,8 +107,8 @@ function processAssignment(
   assignment: ModulationAssignment,
   position: number,
   pitch: number | undefined,
-  bar: number | null | undefined,
-  beat: number | null | undefined,
+  bar: number | undefined,
+  beat: number | undefined,
   numerator: number,
   denominator: number,
   clipTimeRange: TimeRange | undefined,
@@ -180,8 +180,8 @@ function processAssignment(
  */
 function calculateActiveTimeRange(
   assignment: ModulationAssignment,
-  bar: number | null | undefined,
-  beat: number | null | undefined,
+  bar: number | undefined,
+  beat: number | undefined,
   numerator: number,
   denominator: number,
   clipTimeRange: TimeRange | undefined,

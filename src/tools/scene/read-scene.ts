@@ -14,7 +14,7 @@ interface ReadSceneArgs {
 interface ReadSceneResult {
   id: string | null;
   name: string | null;
-  sceneIndex: number | null | undefined;
+  sceneIndex?: number | null;
   color?: string | null;
   tempo?: unknown;
   timeSignature?: string | null;

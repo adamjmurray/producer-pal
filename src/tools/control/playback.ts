@@ -16,7 +16,7 @@ import { select } from "./select.ts";
 
 interface PlaybackActionParams {
   startTime?: string;
-  startTimeBeats?: number | null;
+  startTimeBeats?: number;
   useLocatorStart: boolean;
   autoFollow: boolean;
   sceneIndex?: number;
@@ -80,7 +80,7 @@ interface BuildPlaybackResultParams {
  * @param args.sceneIndex - Scene index for Session view operations
  * @param args.clipIds - Comma-separated clip IDs for Session view operations
  * @param args.switchView - Automatically switch to the appropriate view
- * @param _context - Context from main (unused)
+ * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result with transport state
  */
 export function playback(

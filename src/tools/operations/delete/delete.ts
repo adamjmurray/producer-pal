@@ -32,7 +32,7 @@ interface DeleteArgs {
  * @param args.ids - Comma-separated list of object IDs
  * @param args.path - Comma-separated paths for device/drum-pad
  * @param args.type - Type of objects to delete
- * @param _context - Internal context object (unused)
+ * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
  */
 export function deleteObject(

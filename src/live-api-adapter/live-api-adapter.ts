@@ -236,7 +236,7 @@ export async function mcp_request(
   requestId: string,
   tool: string,
   argsJSON: string,
-  contextJSON: string | null | undefined,
+  contextJSON?: string | null,
 ): Promise<void> {
   let result;
 

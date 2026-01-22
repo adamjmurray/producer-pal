@@ -301,7 +301,7 @@ describe("playback - locator support", () => {
   });
 
   describe("resolveLocatorToBeats", () => {
-    it("should return null when no locator is specified", () => {
+    it("should return undefined when no locator is specified", () => {
       const mockLiveSet = {} as unknown as globalThis.LiveAPI;
       const result = resolveLocatorToBeats(
         mockLiveSet,
@@ -309,7 +309,7 @@ describe("playback - locator support", () => {
         "start",
       );
 
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
   });
 });
