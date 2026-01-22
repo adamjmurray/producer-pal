@@ -6,8 +6,8 @@ import {
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
 } from "#src/notation/barbeat/barbeat-config.ts";
-import * as parser from "#src/notation/barbeat/parser/barbeat-parser-wrapper.ts";
-import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser-wrapper.ts";
+import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,

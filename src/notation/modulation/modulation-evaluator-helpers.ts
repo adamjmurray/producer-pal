@@ -6,7 +6,7 @@ import type {
   ExpressionNode,
   ModulationAssignment,
   PitchRange,
-} from "./parser/modulation-parser-wrapper.ts";
+} from "./parser/modulation-parser.ts";
 
 export interface TimeRange {
   start: number;

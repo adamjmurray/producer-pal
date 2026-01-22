@@ -571,8 +571,8 @@ export default [
   {
     files: ["src/**/*.ts"],
     ignores: [
-      "src/notation/barbeat/parser/barbeat-parser-wrapper.ts",
-      "src/notation/modulation/parser/modulation-parser-wrapper.ts",
+      "src/notation/barbeat/parser/barbeat-parser.ts",
+      "src/notation/modulation/parser/modulation-parser.ts",
     ],
     rules: {
       "import/extensions": [

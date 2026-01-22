@@ -63,9 +63,9 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Import extensions**: Code in `src/` must include `.ts` file extensions in
   imports matching the actual file type (e.g., `import foo from './bar.ts'`).
   Peggy-generated parsers are wrapped in TypeScript files (e.g.,
-  `barbeat-parser-wrapper.ts`) - import from the wrapper, not the `.js` file.
-  Code in `webui/` is bundled and must NEVER use file extensions in relative
-  imports (e.g., `import foo from './bar'`).
+  `barbeat-parser.ts`) - import from the wrapper, not the `.js` file. Code in
+  `webui/` is bundled and must NEVER use file extensions in relative imports
+  (e.g., `import foo from './bar'`).
 
 - **Path aliases**: Use `#src/` for src imports (e.g.,
   `import foo from '#src/shared/utils.ts'`) and `#webui/` for webui imports

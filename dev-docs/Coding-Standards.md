@@ -77,7 +77,7 @@ import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
 ```
 
 Peggy-generated parsers are wrapped in TypeScript files (e.g.,
-`barbeat-parser-wrapper.ts`) - import from the wrapper, not the `.js` file.
+`barbeat-parser.ts`) - import from the wrapper, not the `.js` file.
 
 ## Style
 

@@ -7,7 +7,7 @@ import {
   evaluateExpression,
   evaluateModulationAST,
 } from "#src/notation/modulation/modulation-evaluator-helpers.ts";
-import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser-wrapper.ts";
+import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.ts";
 import { evaluateFunction } from "#src/notation/modulation/modulation-functions.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 

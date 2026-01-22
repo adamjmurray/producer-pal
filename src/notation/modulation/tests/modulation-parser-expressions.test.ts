@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { FunctionNode } from "#src/notation/modulation/parser/modulation-parser-wrapper.ts";
-import * as parser from "#src/notation/modulation/parser/modulation-parser-wrapper.ts";
+import type { FunctionNode } from "#src/notation/modulation/parser/modulation-parser.ts";
+import * as parser from "#src/notation/modulation/parser/modulation-parser.ts";
 
 describe("Modulation Parser - Expressions", () => {
   describe("function calls", () => {
