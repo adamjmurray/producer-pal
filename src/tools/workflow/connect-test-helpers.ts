@@ -26,7 +26,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
   const {
     liveSetName = "Test Project",
     tempo = 120,
-    version = "12.2",
+    version = "12.3",
     view = "Session",
     liveSetOverrides = {},
   } = opts;

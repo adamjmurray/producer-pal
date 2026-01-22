@@ -99,6 +99,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 }));
 
 // Import the class after mocking
+import { VERSION } from "#src/shared/version.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
@@ -212,18 +213,14 @@ describe("StdioHttpBridge", () => {
         content: [
           {
             type: "text",
-            text: expect.stringContaining(
-              "Cannot connect to Producer Pal in Ableton Live.",
-            ),
+            text: expect.stringContaining("Cannot connect to Ableton Live."),
           },
         ],
         isError: true,
       });
 
-      expect(response.content[0]?.text).toContain("Ableton Live is running");
-      expect(response.content[0]?.text).toContain(
-        "https://github.com/adamjmurray/producer-pal",
-      );
+      expect(response.content[0]?.text).toContain("producer-pal.org");
+      expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
     });
   });
 
@@ -235,14 +232,15 @@ describe("StdioHttpBridge", () => {
         content: [
           {
             type: "text",
-            text: expect.stringContaining("Invalid URL"),
+            text: expect.stringContaining("Invalid MCP server URL"),
           },
         ],
         isError: true,
       });
 
       expect(response.content[0]?.text).toContain("http://localhost:3350");
-      expect(response.content[0]?.text).toContain("Desktop Extension");
+      expect(response.content[0]?.text).toContain("producer-pal.org");
+      expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
     });
   });
 

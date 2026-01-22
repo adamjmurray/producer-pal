@@ -101,7 +101,7 @@ beforeEach(() => {
   liveApiCall.mockImplementation(function (method: string) {
     switch (method) {
       case "get_version_string":
-        return "12.2";
+        return "12.3";
       case "get_notes_extended":
         return JSON.stringify({ notes: [] });
       default:
