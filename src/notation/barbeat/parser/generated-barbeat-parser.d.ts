@@ -26,7 +26,7 @@ export interface BarCopyDestination {
 }
 
 /** Bar copy source */
-export type BarCopySouce =
+export type BarCopySource =
   | { bar?: number; range?: [number, number] }
   | "previous";
 
@@ -42,7 +42,7 @@ export interface ASTElement {
   beat?: number | RepeatPattern;
   clearBuffer?: boolean;
   destination?: BarCopyDestination;
-  source?: BarCopySouce;
+  source?: BarCopySource;
 }
 
 /** Parse a barbeat expression string into an AST */
