@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type {
   BinaryOpNode,
   FunctionNode,
-} from "#src/notation/modulation/parser/modulation-parser.js";
-import * as parser from "#src/notation/modulation/parser/modulation-parser.js";
+} from "#src/notation/modulation/parser/modulation-parser-wrapper.ts";
+import * as parser from "#src/notation/modulation/parser/modulation-parser-wrapper.ts";
 
 describe("Modulation Parser", () => {
   describe("basic structure", () => {

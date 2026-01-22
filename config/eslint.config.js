@@ -568,13 +568,12 @@ export default [
   },
 
   // Require .ts extensions for src TypeScript imports
-  // Parser files (.js) are exempt since they're generated JavaScript
+  // Only the parser wrappers are exempt (they import generated .js files)
   {
     files: ["src/**/*.ts"],
     ignores: [
-      "src/**/parser/*.ts", // Parser test files import .js files
-      "src/**/interpreter/*.ts", // Interpreter imports parser
-      "src/**/modulation/**/*.ts", // Modulation files import parser (includes tests/)
+      "src/notation/barbeat/parser/barbeat-parser-wrapper.ts",
+      "src/notation/modulation/parser/modulation-parser-wrapper.ts",
     ],
     rules: {
       "import/extensions": [

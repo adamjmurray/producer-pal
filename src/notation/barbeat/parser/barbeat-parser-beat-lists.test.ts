@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as parser from "./barbeat-parser.js";
+import * as parser from "./barbeat-parser-wrapper.ts";
 
 describe("BarBeatScript Parser - beat lists", () => {
   describe("comma-separated beat lists", () => {

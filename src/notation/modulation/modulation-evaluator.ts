@@ -8,7 +8,7 @@ import {
   type NoteProperties,
   type ModulationResult,
 } from "./modulation-evaluator-helpers.ts";
-import * as parser from "./parser/modulation-parser.js";
+import * as parser from "./parser/modulation-parser-wrapper.ts";
 
 /**
  * Apply modulations to a list of notes in-place
