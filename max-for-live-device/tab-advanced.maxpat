@@ -15,13 +15,24 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-71",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "outputvalue" ],
+					"patching_rect" : [ 167.0, 347.0, 77.0, 22.0 ],
+					"text" : "t outputvalue"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-32",
 					"linecount" : 3,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 722.0, 318.0, 149.0, 47.0 ],
-					"presentation_linecount" : 3,
 					"text" : "Note, the port cannot be resynced because it will stop the MCP server"
 				}
 
@@ -1689,6 +1700,15 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-41", 0 ],
+					"order" : 1,
+					"source" : [ "obj-44", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-71", 0 ],
+					"order" : 0,
 					"source" : [ "obj-44", 0 ]
 				}
 
@@ -1819,24 +1839,8 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-68", 0 ],
-					"order" : 3,
-					"source" : [ "obj-63", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-72", 0 ],
 					"source" : [ "obj-63", 1 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-8", 0 ],
-					"order" : 2,
-					"source" : [ "obj-63", 0 ]
 				}
 
 			}
@@ -1865,6 +1869,30 @@
 				"patchline" : 				{
 					"destination" : [ "obj-7", 0 ],
 					"source" : [ "obj-70", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-21", 0 ],
+					"order" : 0,
+					"source" : [ "obj-71", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-68", 0 ],
+					"order" : 2,
+					"source" : [ "obj-71", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-8", 0 ],
+					"order" : 1,
+					"source" : [ "obj-71", 0 ]
 				}
 
 			}
@@ -1981,6 +2009,16 @@
 			"obj-70" : [ "live.text[1]", "live.text", 0 ],
 			"obj-72" : [ "sampleFolder", "sampleFolder", 0 ],
 			"obj-8" : [ "verbose-logs", "verbose-logs", 0 ],
+			"parameterbanks" : 			{
+				"0" : 				{
+					"index" : 0,
+					"name" : "",
+					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
+					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
+				}
+
+			}
+,
 			"inherited_shortname" : 1
 		}
 ,

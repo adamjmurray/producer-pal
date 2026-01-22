@@ -10,10 +10,34 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 878.0, 197.0, 609.0, 526.0 ],
+		"rect" : [ 878.0, 197.0, 631.0, 526.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-6",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "outputvalue" ],
+					"patching_rect" : [ 397.0, 266.000005006790161, 77.0, 22.0 ],
+					"text" : "t outputvalue"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-44",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 397.0, 229.0, 95.0, 22.0 ],
+					"text" : "r ---node-started"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"annotation" : "Open the built-in AI chat UI in a web browser.",
 					"annotation_name" : "Open Chat UI",
@@ -141,11 +165,11 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-15",
-					"linecount" : 7,
+					"linecount" : 8,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 459.0, 169.0, 130.0, 100.0 ],
+					"patching_rect" : [ 507.0, 348.0, 107.0, 114.0 ],
 					"text" : "The [pipe]s attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
 				}
 
@@ -180,7 +204,7 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 392.0, 293.0, 87.0, 18.0 ],
+					"patching_rect" : [ 414.0, 309.0, 87.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 93.0, 102.0, 79.397429999999986, 18.0 ],
 					"text" : "Enable Chat UI",
@@ -430,6 +454,20 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-6", 0 ],
+					"source" : [ "obj-44", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-37", 0 ],
+					"source" : [ "obj-6", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-2", 1 ],
 					"source" : [ "obj-7", 0 ]
 				}
@@ -467,16 +505,6 @@
 		"parameters" : 		{
 			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
 			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
-			"parameterbanks" : 			{
-				"0" : 				{
-					"index" : 0,
-					"name" : "",
-					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
-					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
-				}
-
-			}
-,
 			"inherited_shortname" : 1
 		}
 ,
