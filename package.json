@@ -78,7 +78,7 @@
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --headed"
   },
   "dependencies": {
-    "@google/genai": "^1.37.0",
+    "@google/genai": "^1.38.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
@@ -121,8 +121,8 @@
     "happy-dom": "^20.3.4",
     "jscpd": "^4.0.7",
     "peggy": "^5.0.6",
-    "prettier": "^3.8.0",
-    "rollup": "^4.55.2",
+    "prettier": "^3.8.1",
+    "rollup": "^4.55.3",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "^5.9.3",
