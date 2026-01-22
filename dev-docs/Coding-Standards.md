@@ -76,7 +76,8 @@ Always include `.ts` extensions matching the actual file type:
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
 ```
 
-Exception: Peggy-generated parser files use `.js` (e.g., `barbeat-parser.js`).
+Peggy-generated parsers are wrapped in TypeScript files (e.g.,
+`barbeat-parser-wrapper.ts`) - import from the wrapper, not the `.js` file.
 
 ## Style
 

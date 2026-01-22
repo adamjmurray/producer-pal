@@ -293,8 +293,7 @@ export default [
       "npm/**",
       "release/**",
       "test-results/**",
-      "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
-      "src/notation/modulation/parser/modulation-parser.js", // Generated parser
+      "**/generated-*-parser.js", // Generated parsers
       "**/*.d.ts", // TypeScript declaration files
     ],
   },

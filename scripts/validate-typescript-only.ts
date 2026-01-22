@@ -51,10 +51,7 @@ const directories: DirectoryConfig[] = [
   { name: "scripts", excludeDirs: ["chat-lib"] },
   {
     name: "src",
-    excludeFiles: [
-      "src/notation/barbeat/parser/barbeat-parser.js",
-      "src/notation/modulation/parser/modulation-parser.js",
-    ],
+    excludeFiles: ["*/generated-*-parser.js"],
   },
 ];
 

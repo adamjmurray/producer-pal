@@ -3,8 +3,7 @@
   "reporters": ["console"],
   "ignore": [
     "**/node_modules/**",
-    "**/barbeat-parser.js",
-    "**/modulation-parser.js",
+    "**/generated-*-parser.js",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*-test-helpers.ts",

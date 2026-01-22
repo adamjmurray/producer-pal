@@ -2,7 +2,7 @@
 ../.claude
 ../coverage
 ../knowledge-base
-../src/**/barbeat-parser.js
+../src/**/generated-*-parser.js
 ../max-for-live-device
 ../claude-desktop-extension
 ../npm/*.js
@@ -12,5 +12,4 @@
 ../release
 ../docs/.vitepress/cache
 ../docs/.vitepress/dist
-../src/**/modulation-parser.js
 ../test-results
