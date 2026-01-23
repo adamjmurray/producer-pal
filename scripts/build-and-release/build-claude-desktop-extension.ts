@@ -4,15 +4,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
-import type { CallLiveApiFunction } from "../src/mcp-server/create-mcp-server.ts";
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
+import type { CallLiveApiFunction } from "../../src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "../../src/mcp-server/create-mcp-server.ts";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 
 const server = createMcpServer(null as unknown as CallLiveApiFunction);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..");
+const rootDir = join(__dirname, "../..");
 const desktopExtensionDir = join(rootDir, "claude-desktop-extension");
 
 console.log("Building MCP bundle...");
@@ -49,7 +49,12 @@ for (const [name, toolInfo] of Object.entries(registeredTools)) {
 
 // Read template and replace placeholders
 const template = readFileSync(
-  join(__dirname, "..", "claude-desktop-extension", "manifest.template.json"),
+  join(
+    __dirname,
+    "../..",
+    "claude-desktop-extension",
+    "manifest.template.json",
+  ),
   "utf8",
 );
 const manifest = template

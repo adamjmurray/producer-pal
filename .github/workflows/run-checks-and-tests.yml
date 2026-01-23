@@ -117,10 +117,10 @@ jobs:
           BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
 
           # Extract thresholds from config
-          MIN_STATEMENTS=$(node scripts/get-thresholds.ts coverage statements)
-          MIN_BRANCHES=$(node scripts/get-thresholds.ts coverage branches)
-          MIN_FUNCTIONS=$(node scripts/get-thresholds.ts coverage functions)
-          MIN_LINES=$(node scripts/get-thresholds.ts coverage lines)
+          MIN_STATEMENTS=$(node scripts/build-and-release/get-thresholds.ts coverage statements)
+          MIN_BRANCHES=$(node scripts/build-and-release/get-thresholds.ts coverage branches)
+          MIN_FUNCTIONS=$(node scripts/build-and-release/get-thresholds.ts coverage functions)
+          MIN_LINES=$(node scripts/build-and-release/get-thresholds.ts coverage lines)
 
           cat > /tmp/summary.md << EOF
           ## Unit Test Coverage
@@ -223,9 +223,9 @@ jobs:
           npm run duplication 2>&1 | tee duplication-output.txt
 
           # Extract duplication thresholds from config
-          MAX_SOURCE=$(node scripts/get-thresholds.ts duplication source)
-          MAX_TESTS=$(node scripts/get-thresholds.ts duplication tests)
-          MAX_SCRIPTS=$(node scripts/get-thresholds.ts duplication scripts)
+          MAX_SOURCE=$(node scripts/build-and-release/get-thresholds.ts duplication source)
+          MAX_TESTS=$(node scripts/build-and-release/get-thresholds.ts duplication tests)
+          MAX_SCRIPTS=$(node scripts/build-and-release/get-thresholds.ts duplication scripts)
 
           # Format duplication report as markdown table
           cat > /tmp/summary.md << EOF

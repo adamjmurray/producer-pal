@@ -6,7 +6,7 @@ import { createKnowledgeBaseConfig } from "./helpers/kb-config.ts";
 import { processFlatMode, processConcatMode } from "./helpers/kb-processors.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.join(__dirname, "..");
+const projectRoot = path.join(__dirname, "../..");
 
 /**
  * Cleans and creates the output directory

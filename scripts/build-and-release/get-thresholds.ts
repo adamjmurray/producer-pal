@@ -4,10 +4,10 @@
  * Used by GitHub Actions to populate summary tables.
  *
  * Usage:
- *   node scripts/get-thresholds.ts coverage              # outputs all as JSON
- *   node scripts/get-thresholds.ts coverage statements   # outputs single value
- *   node scripts/get-thresholds.ts duplication           # outputs all as JSON
- *   node scripts/get-thresholds.ts duplication source    # outputs single value
+ *   node scripts/build-and-release/get-thresholds.ts coverage              # outputs all as JSON
+ *   node scripts/build-and-release/get-thresholds.ts coverage statements   # outputs single value
+ *   node scripts/build-and-release/get-thresholds.ts duplication           # outputs all as JSON
+ *   node scripts/build-and-release/get-thresholds.ts duplication source    # outputs single value
  */
 
 import { readFile } from "node:fs/promises";
@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const configDir = join(__dirname, "..", "config");
+const configDir = join(__dirname, "../..", "config");
 
 interface CoverageThresholds {
   statements: number;
@@ -119,7 +119,7 @@ if (command === "coverage") {
   }
 } else {
   console.error(
-    "Usage: node scripts/get-thresholds.ts <coverage|duplication> [field]",
+    "Usage: node scripts/build-and-release/get-thresholds.ts <coverage|duplication> [field]",
   );
   process.exit(1);
 }
