@@ -20,6 +20,7 @@ interface CliOptions {
   json?: boolean;
   verbose?: boolean;
   list?: boolean;
+  skipOpen?: boolean;
 }
 
 const program = new Command();
@@ -37,6 +38,7 @@ program
   .option("--json", "Output results as JSON")
   .option("-v, --verbose", "Show detailed output including tool results")
   .option("-l, --list", "List available scenarios and tags")
+  .option("--skip-open", "Skip opening Live Set (use existing MCP connection)")
   .action(async (options: CliOptions) => {
     if (options.list) {
       printList();
@@ -89,7 +91,9 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     const results: EvalScenarioResult[] = [];
 
     for (const scenario of scenarios) {
-      const result = await runScenario(scenario);
+      const result = await runScenario(scenario, {
+        skipLiveSetOpen: options.skipOpen,
+      });
 
       results.push(result);
 
