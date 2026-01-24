@@ -4,9 +4,9 @@
 
 import { GoogleGenAI, mcpToTool } from "@google/genai";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { connectMcp } from "../chat-lib/shared/mcp.ts";
-import { printGeminiStream } from "../shared/gemini-streaming.ts";
-import type { GeminiResponse } from "../shared/gemini-types.ts";
+import { connectMcp } from "#evals/chat/shared/mcp.ts";
+import { printGeminiStream } from "#evals/shared/gemini-streaming.ts";
+import type { GeminiResponse } from "#evals/shared/gemini-types.ts";
 import type { EvalProvider, TurnResult } from "./types.ts";
 
 /** Default model for Gemini provider */

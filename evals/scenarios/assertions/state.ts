@@ -3,7 +3,7 @@
  */
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { extractToolResultText } from "../../chat-lib/shared/mcp.ts";
+import { extractToolResultText } from "#evals/chat/shared/mcp.ts";
 import type { StateAssertion, EvalAssertionResult } from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 

@@ -7,7 +7,7 @@ import {
 import type {
   GeminiResponse,
   GeminiResponsePart as ResponsePart,
-} from "../shared/gemini-types.ts";
+} from "#evals/shared/gemini-types.ts";
 import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
   startThought,

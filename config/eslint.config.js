@@ -403,6 +403,70 @@ export default [
     },
   },
 
+  // Evals TypeScript files (LLM evaluation framework)
+  {
+    files: ["evals/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: ["./evals/tsconfig.json"],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: ["./evals/tsconfig.json"],
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      ...jsdocRules,
+      ...tsOnlyRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Require JSDoc for ALL functions in evals (not just exported)
+  {
+    files: ["evals/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            FunctionDeclaration: true,
+            FunctionExpression: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: false, // Handled via contexts below
+          },
+          // Contexts for arrow functions assigned to variables (not inline callbacks)
+          contexts: ["VariableDeclarator > ArrowFunctionExpression"],
+        },
+      ],
+    },
+  },
+
   // src TypeScript files (portal and future migrations)
   {
     files: ["src/**/*.ts"],
@@ -456,7 +520,7 @@ export default [
 
   // Node.js code
   {
-    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],
+    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts", "evals/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -703,6 +767,7 @@ export default [
     files: [
       "src/**/*.ts",
       "scripts/**/*.ts",
+      "evals/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],

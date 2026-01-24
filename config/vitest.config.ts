@@ -17,6 +17,7 @@ export default defineConfig({
     alias: {
       "#webui": join(__dirname, "../webui/src"),
       "#src": join(__dirname, "../src"),
+      "#evals": join(__dirname, "../evals"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mocks/mock-chat-ui-html.ts",
@@ -26,7 +27,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.ts", "webui/**/*.test.ts", "webui/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.ts",
+      "webui/**/*.test.ts",
+      "webui/**/*.test.tsx",
+      "evals/**/*.test.ts",
+    ],
     setupFiles: ["src/test/test-setup.ts"],
     clearMocks: true,
     restoreMocks: true,
@@ -40,12 +46,13 @@ export default defineConfig({
         "json",
         "html",
       ],
-      include: ["src/**", "webui/**"],
+      include: ["src/**", "webui/**", "evals/**"],
       exclude: [
         // ignore files that are not feasible to test
 
-        // ignore OS metadata files
+        // ignore OS metadata files and git placeholders
         "**/.DS_Store",
+        "**/.gitkeep",
 
         // ignore typedefs:
         "**/*.d.ts",
@@ -80,6 +87,22 @@ export default defineConfig({
 
         // ignore test mocks:
         "src/test/mocks/**",
+
+        // evals: Exclude most evals code since it requires live LLM/MCP connections.
+        // Tests exist for: assertions/helpers.ts, assertions/tool-call.ts, assertions/response.ts
+        "evals/chat/**",
+        "evals/scenarios/eval.ts",
+        "evals/scenarios/index.ts",
+        "evals/scenarios/run-scenario.ts",
+        "evals/scenarios/eval-session.ts",
+        "evals/scenarios/open-live-set.ts",
+        "evals/scenarios/load-scenarios.ts",
+        "evals/scenarios/types.ts",
+        "evals/scenarios/assertions/llm-judge.ts",
+        "evals/scenarios/assertions/state.ts",
+        "evals/scenarios/assertions/index.ts",
+        "evals/scenarios/scenario-defs/**",
+        "evals/shared/**",
       ],
       reportOnFailure: true,
 

@@ -50,6 +50,21 @@ function createItemsArray(): KbItem[] {
     { src: "licenses", isDir: true, group: "third-party-licenses" },
     { src: "scripts", isDir: true },
     {
+      src: "evals",
+      isDir: true,
+      group: ({ relativePath }) => {
+        const isTestFile =
+          Boolean(relativePath.match(/\.test\.\w+$/)) ||
+          Boolean(relativePath.match(/-test-helpers\.\w+$/));
+
+        if (isTestFile) {
+          return "evals--tests";
+        }
+
+        return "evals";
+      },
+    },
+    {
       src: "src",
       isDir: true,
       group: ({ relativePath }) => {

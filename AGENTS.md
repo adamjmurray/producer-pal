@@ -44,6 +44,8 @@ Key entry points:
 - Chat UI: `webui/src/main.tsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.ts`
+- Chat CLI: `evals/chat/index.ts`
+- Evaluation scenarios: `evals/scenarios/eval.ts`
 
 See `dev-docs/Architecture.md` for detailed system design and
 `dev-docs/Chat-UI.md` for web UI architecture.
@@ -68,11 +70,14 @@ See `dev-docs/Architecture.md` for detailed system design and
   (e.g., `import foo from './bar'`).
 
 - **Path aliases**: Use `#src/` for src imports (e.g.,
-  `import foo from '#src/shared/utils.ts'`) and `#webui/` for webui imports
-  (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
-  package subpath imports configured in package.json `"imports"` field. The `#`
-  prefix is required by Node.js for unbundled execution (build scripts, CLI
-  tools). Never use relative paths like `../../` when a path alias is available.
+  `import foo from '#src/shared/utils.ts'`), `#webui/` for webui imports (e.g.,
+  `import { App } from '#webui/components/App'`), and `#evals/` for evals
+  imports (e.g.,
+  `import { runScenario } from '#evals/scenarios/run-scenario.ts'`). All use
+  Node.js package subpath imports configured in package.json `"imports"` field.
+  The `#` prefix is required by Node.js for unbundled execution (build scripts,
+  CLI tools). Never use relative paths like `../../` when a path alias is
+  available.
 
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
@@ -166,7 +171,7 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Scope:** All source code is type-checked via `npm run typecheck`:
 
-- `src/`, `scripts/`, and `webui/` use TypeScript (`.ts`/`.tsx` files)
+- `src/`, `scripts/`, `evals/`, and `webui/` use TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
@@ -210,7 +215,7 @@ functions for clarity.
 
 ## Project Constraints
 
-- TypeScript for `src/`, `scripts/`, and `webui/`
+- TypeScript for `src/`, `scripts/`, `evals/`, and `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution

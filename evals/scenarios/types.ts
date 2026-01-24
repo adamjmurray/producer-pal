@@ -2,8 +2,8 @@
  * Type definitions for the Producer Pal evaluation system
  */
 
-// Re-export types from chat-lib for convenience
-export type { TurnResult, ToolCall } from "../chat-lib/shared/types.ts";
+// Re-export types from chat for convenience
+export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 
 export type EvalProvider = "gemini" | "openai" | "openrouter";
 

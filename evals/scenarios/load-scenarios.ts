@@ -2,8 +2,8 @@
  * Scenario loader - loads and filters evaluation scenarios
  */
 
-import { connectToAbleton } from "./scenarios/connect-to-ableton.ts";
-import { createDrumBeat } from "./scenarios/create-drum-beat.ts";
+import { connectToAbleton } from "./scenario-defs/connect-to-ableton.ts";
+import { createDrumBeat } from "./scenario-defs/create-drum-beat.ts";
 import type { EvalScenario } from "./types.ts";
 
 /**

@@ -8,7 +8,7 @@ import {
   startThought,
   continueThought,
   endThought,
-} from "../chat-lib/shared/formatting.ts";
+} from "#evals/chat/shared/formatting.ts";
 import type { GeminiResponse, GeminiResponsePart } from "./gemini-types.ts";
 
 /** Tool call with optional result */
