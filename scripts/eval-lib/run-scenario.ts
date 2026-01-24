@@ -8,7 +8,11 @@ import {
   assertWithLlmJudge,
   assertResponseContains,
 } from "./assertions/index.ts";
-import { createEvalSession, type EvalSession } from "./eval-session.ts";
+import {
+  createEvalSession,
+  DEFAULT_GEMINI_MODEL,
+  type EvalSession,
+} from "./eval-session.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import type {
   EvalScenario,
@@ -42,13 +46,12 @@ export async function runScenario(
     }
 
     // 2. Create evaluation session
+    const effectiveModel = scenario.model ?? DEFAULT_GEMINI_MODEL;
+
     console.log(`\nStarting scenario: ${scenario.id}`);
     console.log(`Description: ${scenario.description}`);
     console.log(`Provider: ${scenario.provider}`);
-
-    if (scenario.model) {
-      console.log(`Model: ${scenario.model}`);
-    }
+    console.log(`Model: ${effectiveModel}`);
 
     session = await createEvalSession({
       provider: scenario.provider,

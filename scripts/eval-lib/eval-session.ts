@@ -7,6 +7,9 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { connectMcp } from "../chat-lib/shared/mcp.ts";
 import type { EvalProvider, TurnResult } from "./types.ts";
 
+/** Default model for Gemini provider */
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
 interface ResponsePart {
   text?: string;
   thought?: boolean;
@@ -93,7 +96,7 @@ async function createGeminiSession(
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const model = options.model ?? "gemini-2.5-flash";
+  const model = options.model ?? DEFAULT_GEMINI_MODEL;
 
   const config: Record<string, unknown> = {
     tools: [mcpToTool(mcpClient)],

@@ -17,6 +17,7 @@ interface CliOptions {
   scenario?: string;
   tag?: string;
   provider?: EvalProvider;
+  model?: string;
   json?: boolean;
   verbose?: boolean;
   list?: boolean;
@@ -35,6 +36,7 @@ program
     "-p, --provider <provider>",
     "Override provider (gemini, openai, openrouter)",
   )
+  .option("-m, --model <model>", "Override model")
   .option("--json", "Output results as JSON")
   .option("-v, --verbose", "Show detailed output including tool results")
   .option("-l, --list", "List available scenarios and tags")
@@ -79,6 +81,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       scenarioId: options.scenario,
       tag: options.tag,
       provider: options.provider,
+      model: options.model,
     });
 
     if (scenarios.length === 0) {

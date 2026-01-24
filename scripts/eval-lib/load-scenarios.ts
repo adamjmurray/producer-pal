@@ -17,6 +17,8 @@ export interface LoadScenariosOptions {
   tag?: string;
   /** Override provider for all scenarios */
   provider?: EvalScenario["provider"];
+  /** Override model for all scenarios */
+  model?: string;
 }
 
 /**
@@ -59,6 +61,16 @@ export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
     scenarios = scenarios.map((s) => ({
       ...s,
       provider: overrideProvider,
+    }));
+  }
+
+  // Override model if specified
+  if (options?.model) {
+    const overrideModel = options.model;
+
+    scenarios = scenarios.map((s) => ({
+      ...s,
+      model: overrideModel,
     }));
   }
 
