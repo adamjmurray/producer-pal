@@ -1,4 +1,3 @@
-/// <reference path="../types/live-api.d.ts" />
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
 import { parseIdOrPath } from "./live-api-path-utils.ts";

@@ -1,5 +1,3 @@
-/// <reference path="../types/live-api.d.ts" />
-/// <reference path="../types/max-globals.d.ts" />
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
