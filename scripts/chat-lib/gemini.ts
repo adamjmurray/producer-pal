@@ -4,6 +4,10 @@ import {
   mcpToTool,
   type GenerateContentConfig,
 } from "@google/genai";
+import type {
+  GeminiResponse,
+  GeminiResponsePart as ResponsePart,
+} from "../shared/gemini-types.ts";
 import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
   startThought,
@@ -22,35 +26,6 @@ import {
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
 import type { ChatOptions, TurnResult } from "./shared/types.ts";
-
-interface ResponsePart {
-  text?: string;
-  thought?: boolean;
-  functionCall?: {
-    name: string;
-    args: Record<string, unknown>;
-  };
-  functionResponse?: {
-    response?: {
-      content?: Array<{ text?: string }>;
-    };
-  };
-}
-
-interface ResponseCandidate {
-  content?: {
-    parts?: ResponsePart[];
-  };
-}
-
-interface GeminiResponse {
-  candidates?: ResponseCandidate[];
-  automaticFunctionCallingHistory?: Array<{
-    role: string;
-    parts: ResponsePart[];
-  }>;
-  sdkHttpResponse?: unknown;
-}
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
 
