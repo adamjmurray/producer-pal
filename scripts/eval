@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Eval CLI - delegates to TypeScript implementation in eval-lib/
+# Usage: ./scripts/eval [options]
+#
+# Examples:
+#   ./scripts/eval --list                    # List available scenarios
+#   ./scripts/eval --scenario create-drum-beat  # Run specific scenario
+#   ./scripts/eval --tag drums               # Run all drum scenarios
+#   ./scripts/eval --json                    # Output as JSON
+
+exec npx tsx --env-file=.env scripts/eval-lib/eval-cli.ts "$@"
