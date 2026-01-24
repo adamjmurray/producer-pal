@@ -157,7 +157,7 @@ function parseArgs(): ParsedArgs {
           "Error: tools/call requires tool name and JSON arguments",
         );
         console.error(
-          "Usage: cli.ts [url] tools/call <tool-name> '<json-args>'",
+          "Usage: ppal-client.ts [url] tools/call <tool-name> '<json-args>'",
         );
         process.exit(1);
       }
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log("Usage: cli.ts [url] [command] [args...]");
+  console.log("Usage: ppal-client.ts [url] [command] [args...]");
   console.log("");
   console.log("Commands:");
   console.log("  (none)                    Connect and show server info");
@@ -258,12 +258,12 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("  tools/call <name> <json>  Call a tool with JSON arguments");
   console.log("");
   console.log("Examples:");
-  console.log("  cli.ts");
-  console.log("  cli.ts tools/list");
-  console.log("  cli.ts tools/call ppal-read-live-set '{}'");
-  console.log("  cli.ts http://localhost:6274/mcp tools/list");
+  console.log("  ppal-client.ts");
+  console.log("  ppal-client.ts tools/list");
+  console.log("  ppal-client.ts tools/call ppal-read-live-set '{}'");
+  console.log("  ppal-client.ts http://localhost:6274/mcp tools/list");
   console.log(
-    '  cli.ts tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',
+    '  ppal-client.ts tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',
   );
   process.exit(0);
 }

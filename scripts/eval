@@ -8,4 +8,4 @@
 #   ./scripts/eval --tag drums               # Run all drum scenarios
 #   ./scripts/eval --json                    # Output as JSON
 
-exec npx tsx --env-file=.env scripts/eval-lib/eval-cli.ts "$@"
+exec npx tsx --env-file=.env scripts/eval-lib/eval.ts "$@"

@@ -186,8 +186,8 @@ functions for clarity.
   check, and tests)
 - Direct tool invocation (upon request):
   ```
-  node scripts/cli.ts tools/list
-  node scripts/cli.ts tools/call tool-name '{"arg": "value"}'
+  node scripts/ppal-client.ts tools/list
+  node scripts/ppal-client.ts tools/call tool-name '{"arg": "value"}'
   ```
 - **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
   (verifies the AI can use tools correctly, not just that tools work):
