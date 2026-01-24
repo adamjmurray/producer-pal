@@ -10,7 +10,7 @@ import {
 } from "./assertions/index.ts";
 import {
   createEvalSession,
-  DEFAULT_GEMINI_MODEL,
+  getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
 import { openLiveSet } from "./open-live-set.ts";
@@ -46,7 +46,7 @@ export async function runScenario(
     }
 
     // 2. Create evaluation session
-    const effectiveModel = scenario.model ?? DEFAULT_GEMINI_MODEL;
+    const effectiveModel = scenario.model ?? getDefaultModel(scenario.provider);
 
     console.log(`\nStarting scenario: ${scenario.id}`);
     console.log(`Description: ${scenario.description}`);

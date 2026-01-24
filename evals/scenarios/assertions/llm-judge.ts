@@ -3,6 +3,11 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
+import {
+  parseJudgeResponse,
+  type JudgeResult,
+} from "../helpers/judge-response-parser.ts";
+import { callOpenAIJudge } from "../helpers/openai-judge.ts";
 import type {
   LlmJudgeAssertion,
   EvalTurnResult,
@@ -10,7 +15,7 @@ import type {
   EvalProvider,
 } from "../types.ts";
 
-const JUDGE_SYSTEM_PROMPT = `You are evaluating an AI assistant's response for a music production task.
+export const JUDGE_SYSTEM_PROMPT = `You are evaluating an AI assistant's response for a music production task.
 
 Rate the response on a scale of 1-5:
 1 = Completely wrong or failed to accomplish the task
@@ -23,11 +28,6 @@ You MUST respond with ONLY a JSON object in this exact format:
 {"score": <number>, "reasoning": "<brief explanation>"}
 
 Do not include any other text before or after the JSON.`;
-
-interface JudgeResult {
-  score: number;
-  reasoning: string;
-}
 
 /**
  * Call an LLM to judge the response quality
@@ -127,13 +127,26 @@ async function callJudgeLlm(
   provider: EvalProvider,
   model?: string,
 ): Promise<JudgeResult> {
-  if (provider !== "gemini") {
-    throw new Error(
-      `Provider "${provider}" not yet implemented for LLM judge. Only "gemini" is supported.`,
-    );
-  }
+  switch (provider) {
+    case "gemini":
+      return await callGeminiJudge(prompt, model);
+    case "openai":
+    case "openrouter":
+      return await callOpenAIJudge(
+        prompt,
+        JUDGE_SYSTEM_PROMPT,
+        provider,
+        model,
+      );
 
-  return await callGeminiJudge(prompt, model);
+    default: {
+      const _exhaustiveCheck: never = provider;
+
+      throw new Error(
+        `Unknown provider for LLM judge: ${String(_exhaustiveCheck)}`,
+      );
+    }
+  }
 }
 
 /**
@@ -169,36 +182,5 @@ async function callGeminiJudge(
 
   const text = response.text?.trim() ?? "";
 
-  // Parse JSON response
-  try {
-    const result = JSON.parse(text) as JudgeResult;
-
-    if (
-      typeof result.score !== "number" ||
-      typeof result.reasoning !== "string"
-    ) {
-      throw new Error("Invalid judge response format");
-    }
-
-    return result;
-  } catch {
-    // Try to extract JSON from response if it has extra text.
-    // This regex is intentionally simple - it only matches flat objects without
-    // nested braces. The expected format is {"score": N, "reasoning": "..."}
-    // which should never have nested braces. This is a best-effort fallback.
-    const jsonMatch = /{[^}]+}/.exec(text);
-
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]) as JudgeResult;
-
-      if (
-        typeof result.score === "number" &&
-        typeof result.reasoning === "string"
-      ) {
-        return result;
-      }
-    }
-
-    throw new Error(`Failed to parse judge response: ${text}`);
-  }
+  return parseJudgeResponse(text);
 }

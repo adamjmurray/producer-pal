@@ -101,6 +101,7 @@ export default defineConfig({
         "evals/scenarios/assertions/llm-judge.ts",
         "evals/scenarios/assertions/state.ts",
         "evals/scenarios/assertions/index.ts",
+        "evals/scenarios/helpers/**",
         "evals/scenarios/scenario-defs/**",
         "evals/shared/**",
       ],

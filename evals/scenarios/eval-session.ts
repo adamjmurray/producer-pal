@@ -7,10 +7,39 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { connectMcp } from "#evals/chat/shared/mcp.ts";
 import { printGeminiStream } from "#evals/shared/gemini-streaming.ts";
 import type { GeminiResponse } from "#evals/shared/gemini-types.ts";
+import {
+  createOpenAIEvalSession,
+  OPENAI_CONFIG,
+  OPENROUTER_CONFIG,
+  type OpenAIProviderConfig,
+} from "./helpers/openai-session.ts";
 import type { EvalProvider, TurnResult } from "./types.ts";
 
 /** Default model for Gemini provider */
 export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
+/**
+ * Get the default model for a provider
+ *
+ * @param provider - The LLM provider
+ * @returns Default model string for the provider
+ */
+export function getDefaultModel(provider: EvalProvider): string {
+  switch (provider) {
+    case "gemini":
+      return DEFAULT_GEMINI_MODEL;
+    case "openai":
+      return OPENAI_CONFIG.defaultModel;
+    case "openrouter":
+      return OPENROUTER_CONFIG.defaultModel;
+
+    default: {
+      const _exhaustiveCheck: never = provider;
+
+      throw new Error(`Unknown provider: ${String(_exhaustiveCheck)}`);
+    }
+  }
+}
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
 
@@ -43,13 +72,28 @@ export async function createEvalSession(
 ): Promise<EvalSession> {
   const { client: mcpClient } = await connectMcp();
 
-  if (options.provider !== "gemini") {
-    throw new Error(
-      `Provider "${options.provider}" not yet implemented. Only "gemini" is supported.`,
-    );
-  }
+  switch (options.provider) {
+    case "gemini":
+      return await createGeminiSession(mcpClient, options);
+    case "openai":
+      return await createOpenAIProviderSession(
+        mcpClient,
+        OPENAI_CONFIG,
+        options,
+      );
+    case "openrouter":
+      return await createOpenAIProviderSession(
+        mcpClient,
+        OPENROUTER_CONFIG,
+        options,
+      );
 
-  return await createGeminiSession(mcpClient, options);
+    default: {
+      const _exhaustiveCheck: never = options.provider;
+
+      throw new Error(`Unknown provider: ${String(_exhaustiveCheck)}`);
+    }
+  }
 }
 
 /**
@@ -112,4 +156,32 @@ async function sendGeminiMessage(
   const stream = await chatSession.sendMessageStream({ message });
 
   return await printGeminiStream(stream as AsyncIterable<GeminiResponse>);
+}
+
+/**
+ * Create an OpenAI-compatible evaluation session
+ *
+ * @param mcpClient - MCP client for tool calls
+ * @param config - Provider configuration
+ * @param options - Session configuration
+ * @returns Evaluation session
+ */
+async function createOpenAIProviderSession(
+  mcpClient: Client,
+  config: OpenAIProviderConfig,
+  options: EvalSessionOptions,
+): Promise<EvalSession> {
+  const session = await createOpenAIEvalSession(mcpClient, config, {
+    model: options.model,
+    instructions: options.instructions,
+  });
+
+  return {
+    mcpClient,
+    sendMessage: session.sendMessage,
+    close: async () => {
+      await session.close();
+      await mcpClient.close();
+    },
+  };
 }
