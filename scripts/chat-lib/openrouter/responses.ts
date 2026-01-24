@@ -2,12 +2,9 @@ import {
   formatThought,
   formatToolCall,
   formatToolResult,
-  startThought,
-  continueThought,
   endThought,
   debugLog,
   debugCall,
-  DEBUG_SEPARATOR,
 } from "../shared/formatting.ts";
 import {
   connectMcp,
@@ -15,6 +12,7 @@ import {
   getMcpToolsForResponses,
   type ResponsesTool,
 } from "../shared/mcp.ts";
+import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import type {
   ChatOptions,
@@ -23,10 +21,11 @@ import type {
   ResponsesConversationItem,
   ResponsesOutputItem,
   ResponsesRequestBody,
-  ResponsesStreamEvent,
   ResponsesStreamState,
+  TurnResult,
 } from "../shared/types.ts";
 import { DEFAULT_MODEL } from "./config.ts";
+import { readSseStream } from "./responses-streaming.ts";
 
 const OPENROUTER_RESPONSES_URL = "https://openrouter.ai/api/v1/responses";
 const OPENROUTER_HEADERS = {
@@ -94,12 +93,13 @@ export async function runOpenRouterResponses(
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const conversation: ResponsesConversationItem[] = [];
+  const messageSource = createMessageSource(rl, options, initialText);
 
   try {
     await runChatLoop(
       { mcpClient, tools, conversation, model, options },
-      rl,
-      { initialText, once: options.once },
+      messageSource,
+      { once: options.once },
       { sendMessage: sendMessageResponses },
     );
   } catch (error) {
@@ -119,22 +119,31 @@ export async function runOpenRouterResponses(
  * @param ctx - Session context with conversation and tools
  * @param input - User input text
  * @param turnCount - Current conversation turn number
+ * @returns Turn result with response text and tool calls
  */
 async function sendMessageResponses(
   ctx: SessionContext,
   input: string,
   turnCount: number,
-): Promise<void> {
+): Promise<TurnResult> {
   ctx.conversation.push({ type: "message", role: "user", content: input });
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
+
   while (true) {
-    const shouldContinue = ctx.options.stream
+    const result = ctx.options.stream
       ? await handleResponsesStreaming(ctx)
       : await handleResponsesNonStreaming(ctx);
 
-    if (!shouldContinue) break;
+    text += result.text;
+    toolCalls.push(...result.toolCalls);
+
+    if (!result.shouldContinue) break;
   }
+
+  return { text, toolCalls };
 }
 
 /**
@@ -159,15 +168,21 @@ function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   return body;
 }
 
+interface ResponseHandlerResult {
+  text: string;
+  toolCalls: TurnResult["toolCalls"];
+  shouldContinue: boolean;
+}
+
 /**
  * Handles non-streaming response from Responses API
  *
  * @param ctx - Session context
- * @returns Whether to continue with tool calls
+ * @returns Response result with text, tool calls, and continuation flag
  */
 async function handleResponsesNonStreaming(
   ctx: SessionContext,
-): Promise<boolean> {
+): Promise<ResponseHandlerResult> {
   const { options } = ctx;
   const body = buildResponsesRequestBody(ctx);
 
@@ -191,9 +206,11 @@ async function handleResponsesNonStreaming(
  * Handles streaming response from Responses API
  *
  * @param ctx - Session context
- * @returns Whether to continue with tool calls
+ * @returns Response result with text, tool calls, and continuation flag
  */
-async function handleResponsesStreaming(ctx: SessionContext): Promise<boolean> {
+async function handleResponsesStreaming(
+  ctx: SessionContext,
+): Promise<ResponseHandlerResult> {
   const { options } = ctx;
   const body = { ...buildResponsesRequestBody(ctx), stream: true };
 
@@ -221,8 +238,9 @@ async function handleResponsesStreaming(ctx: SessionContext): Promise<boolean> {
   if (state.inThought) process.stdout.write(endThought());
   console.log();
 
-  if (state.functionCalls.size > 0)
+  if (state.functionCalls.size > 0) {
     return await handleResponsesFunctionCalls(ctx, state);
+  }
 
   if (state.currentContent) {
     ctx.conversation.push({
@@ -232,100 +250,11 @@ async function handleResponsesStreaming(ctx: SessionContext): Promise<boolean> {
     });
   }
 
-  return false;
-}
-
-/**
- * Reads and parses an SSE stream from the Responses API
- *
- * @param reader - Stream reader for response body
- * @param options - Chat options for debug logging
- * @param state - Stream state to update
- */
-async function readSseStream(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  options: ChatOptions,
-  state: ResponsesStreamState,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-
-    buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const data = line.slice(6);
-
-      if (data === "[DONE]") continue;
-
-      try {
-        const event = JSON.parse(data) as ResponsesStreamEvent;
-
-        if (options.debug) {
-          console.log(DEBUG_SEPARATOR);
-          debugLog(event);
-        }
-
-        processResponsesStreamEvent(event, state);
-      } catch {
-        // Skip invalid JSON
-      }
-    }
-  }
-}
-
-/**
- * Processes a single stream event and updates state
- *
- * @param event - Stream event to process
- * @param state - Stream state to update
- */
-function processResponsesStreamEvent(
-  event: ResponsesStreamEvent,
-  state: ResponsesStreamState,
-): void {
-  if (event.type === "response.reasoning.delta" && event.delta?.text) {
-    state.currentReasoning += event.delta.text;
-
-    if (!state.inThought) {
-      process.stdout.write(startThought(event.delta.text));
-      state.inThought = true;
-    } else {
-      process.stdout.write(continueThought(event.delta.text));
-    }
-  }
-
-  if (event.type === "response.output_text.delta" && event.delta?.text) {
-    if (state.inThought) {
-      process.stdout.write(endThought());
-      state.inThought = false;
-    }
-
-    process.stdout.write(event.delta.text);
-    state.currentContent += event.delta.text;
-  }
-
-  if (event.type === "response.function_call_arguments.delta") {
-    const callId = event.call_id ?? "";
-    const existing = state.functionCalls.get(callId);
-
-    if (existing) {
-      existing.arguments += event.arguments ?? "";
-    } else {
-      state.functionCalls.set(callId, {
-        name: event.name ?? "",
-        arguments: event.arguments ?? "",
-      });
-    }
-  }
+  return {
+    text: state.currentContent,
+    toolCalls: [],
+    shouldContinue: false,
+  };
 }
 
 /**
@@ -333,12 +262,14 @@ function processResponsesStreamEvent(
  *
  * @param ctx - Session context with MCP client
  * @param state - Stream state with function calls
- * @returns True to continue the response loop
+ * @returns Result with tool calls and shouldContinue=true
  */
 async function handleResponsesFunctionCalls(
   ctx: SessionContext,
   state: ResponsesStreamState,
-): Promise<boolean> {
+): Promise<ResponseHandlerResult> {
+  const toolCalls: TurnResult["toolCalls"] = [];
+
   for (const [callId, fc] of state.functionCalls) {
     ctx.conversation.push({
       type: "function_call",
@@ -347,10 +278,21 @@ async function handleResponsesFunctionCalls(
       name: fc.name,
       arguments: fc.arguments,
     });
-    await executeResponsesToolCall(ctx, callId, fc.name, fc.arguments);
+    const result = await executeResponsesToolCall(
+      ctx,
+      callId,
+      fc.name,
+      fc.arguments,
+    );
+
+    toolCalls.push(result);
   }
 
-  return true;
+  return {
+    text: state.currentContent,
+    toolCalls,
+    shouldContinue: true,
+  };
 }
 
 /**
@@ -360,13 +302,14 @@ async function handleResponsesFunctionCalls(
  * @param callId - Unique call identifier
  * @param name - Tool name to call
  * @param argsJson - JSON-encoded arguments
+ * @returns Tool call info with name, args, and result
  */
 async function executeResponsesToolCall(
   ctx: SessionContext,
   callId: string,
   name: string,
   argsJson: string,
-): Promise<void> {
+): Promise<TurnResult["toolCalls"][number]> {
   const { mcpClient, conversation } = ctx;
   let args: Record<string, unknown>;
 
@@ -388,6 +331,8 @@ async function executeResponsesToolCall(
       call_id: callId,
       output: resultText,
     });
+
+    return { name, args, result: resultText };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
 
@@ -397,6 +342,8 @@ async function executeResponsesToolCall(
       call_id: callId,
       output: `Error: ${errorMsg}`,
     });
+
+    return { name, args, result: `Error: ${errorMsg}` };
   }
 }
 
@@ -405,37 +352,38 @@ async function executeResponsesToolCall(
  *
  * @param ctx - Session context with MCP client
  * @param output - Output items to process
- * @returns Whether function calls were made
+ * @returns Result with text, tool calls, and continuation flag
  */
 async function processResponsesOutput(
   ctx: SessionContext,
   output: ResponsesOutputItem[],
-): Promise<boolean> {
+): Promise<ResponseHandlerResult> {
   const { conversation } = ctx;
-  let hasFunctionCalls = false;
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
 
   for (const item of output) {
     if (item.type === "reasoning" && item.summary)
       console.log(formatThought(item.summary));
 
     if (item.type === "message" && item.content) {
-      const text = item.content
+      const messageText = item.content
         .filter((c) => c.type === "output_text")
         .map((c) => c.text)
         .join("");
 
-      if (text) {
-        console.log(text);
+      if (messageText) {
+        console.log(messageText);
+        text += messageText;
         conversation.push({
           type: "message",
           role: "assistant",
-          content: text,
+          content: messageText,
         });
       }
     }
 
     if (item.type === "function_call" && item.name && item.call_id) {
-      hasFunctionCalls = true;
       conversation.push({
         type: "function_call",
         id: item.id ?? `fc_${item.call_id}`,
@@ -443,14 +391,20 @@ async function processResponsesOutput(
         name: item.name,
         arguments: item.arguments ?? "{}",
       });
-      await executeResponsesToolCall(
+      const toolCall = await executeResponsesToolCall(
         ctx,
         item.call_id,
         item.name,
         item.arguments ?? "{}",
       );
+
+      toolCalls.push(toolCall);
     }
   }
 
-  return hasFunctionCalls;
+  return {
+    text,
+    toolCalls,
+    shouldContinue: toolCalls.length > 0,
+  };
 }

@@ -1,4 +1,5 @@
 import { createInterface, type Interface } from "node:readline";
+import type { MessageSource, TurnResult } from "./types.ts";
 
 /**
  * Create a readline interface for user input
@@ -42,48 +43,41 @@ export interface ChatLoopCallbacks<TSession> {
     session: TSession,
     input: string,
     turnCount: number,
-  ) => Promise<void>;
+  ) => Promise<TurnResult>;
 }
 
 export interface ChatLoopConfig {
-  initialText: string;
   once?: boolean;
 }
 
 /**
- * Run an interactive chat loop
+ * Run a chat loop with messages from a MessageSource
  *
  * @param session - Chat session context
- * @param rl - Readline interface
+ * @param messageSource - Source of messages (interactive, array, or file)
  * @param config - Loop configuration
  * @param callbacks - Callback functions for the loop
  */
 export async function runChatLoop<TSession>(
   session: TSession,
-  rl: Interface,
+  messageSource: MessageSource,
   config: ChatLoopConfig,
   callbacks: ChatLoopCallbacks<TSession>,
 ): Promise<void> {
   let turnCount = 0;
-  let currentInput = config.initialText;
 
   while (true) {
-    if (currentInput.trim() === "") {
-      currentInput = await question(rl, "> ");
-    }
+    const input = await messageSource.nextMessage();
 
-    if (isExitCommand(currentInput)) {
-      console.log("Goodbye!");
+    if (input == null) {
       break;
     }
 
     turnCount++;
-    console.log(`\n[Turn ${turnCount}] User: ${currentInput}`);
+    console.log(`\n[Turn ${turnCount}] User: ${input}`);
 
-    await callbacks.sendMessage(session, currentInput, turnCount);
+    await callbacks.sendMessage(session, input, turnCount);
 
     if (config.once) break;
-
-    currentInput = await question(rl, "\n> ");
   }
 }

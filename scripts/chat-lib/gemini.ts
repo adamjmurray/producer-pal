@@ -15,12 +15,13 @@ import {
   DEBUG_SEPARATOR,
 } from "./shared/formatting.ts";
 import { connectMcp } from "./shared/mcp.ts";
+import { createMessageSource } from "./shared/message-source.ts";
 import {
   createReadline,
   runChatLoop,
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
-import type { ChatOptions } from "./shared/types.ts";
+import type { ChatOptions, TurnResult } from "./shared/types.ts";
 
 interface ResponsePart {
   text?: string;
@@ -98,6 +99,8 @@ export async function runGemini(
   console.log(`Provider: Gemini`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
+  const messageSource = createMessageSource(rl, options, initialText);
+
   const callbacks: ChatLoopCallbacks<GeminiSessionContext> = {
     sendMessage: sendMessage,
   };
@@ -105,8 +108,8 @@ export async function runGemini(
   try {
     await runChatLoop(
       { chatSession, options },
-      rl,
-      { initialText, once: options.once },
+      messageSource,
+      { once: options.once },
       callbacks,
     );
   } catch (error) {
@@ -170,12 +173,13 @@ function buildConfig(options: ChatOptions): GenerateContentConfig {
  * @param ctx - Session context with chat session and options
  * @param input - User input text
  * @param turnCount - Current conversation turn number
+ * @returns Turn result with response text and tool calls
  */
 async function sendMessage(
   ctx: GeminiSessionContext,
   input: string,
   turnCount: number,
-): Promise<void> {
+): Promise<TurnResult> {
   const { chatSession, options } = ctx;
   const message = { message: input };
   const { stream, debug } = options;
@@ -185,19 +189,27 @@ async function sendMessage(
     const responseStream = await chatSession.sendMessageStream(message);
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
-    await printStream(responseStream as AsyncIterable<GeminiResponse>, debug);
-  } else {
-    if (debug) debugCall("chat.sendMessage", message);
-    const response = (await chatSession.sendMessage(message)) as GeminiResponse;
 
-    console.log(`\n[Turn ${turnCount}] Assistant:`);
-
-    if (debug) {
-      debugResult(response);
-    }
-
-    console.log(formatResponse(response, input));
+    return await printStream(
+      responseStream as AsyncIterable<GeminiResponse>,
+      debug,
+    );
   }
+
+  if (debug) debugCall("chat.sendMessage", message);
+  const response = (await chatSession.sendMessage(message)) as GeminiResponse;
+
+  console.log(`\n[Turn ${turnCount}] Assistant:`);
+
+  if (debug) {
+    debugResult(response);
+  }
+
+  const formatted = formatResponse(response, input);
+
+  console.log(formatted.text);
+
+  return formatted;
 }
 
 /**
@@ -205,12 +217,15 @@ async function sendMessage(
  *
  * @param stream - Async iterable of response chunks
  * @param debug - Whether to log debug information
+ * @returns Turn result with collected response text and tool calls
  */
 async function printStream(
   stream: AsyncIterable<GeminiResponse>,
   debug: boolean,
-): Promise<void> {
+): Promise<TurnResult> {
   let inThought = false;
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
 
   for await (const chunk of stream) {
     if (debug) {
@@ -220,11 +235,29 @@ async function printStream(
     }
 
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-      inThought = processPart(part, inThought);
+      const result = processPart(part, inThought);
+
+      inThought = result.inThought;
+
+      if (result.text) {
+        text += result.text;
+      }
+
+      if (result.toolCall) {
+        toolCalls.push(result.toolCall);
+      }
     }
   }
 
   console.log();
+
+  return { text, toolCalls };
+}
+
+interface ProcessPartResult {
+  inThought: boolean;
+  text?: string;
+  toolCall?: TurnResult["toolCalls"][number];
 }
 
 /**
@@ -232,16 +265,19 @@ async function printStream(
  *
  * @param part - Response part containing text, thought, or function call
  * @param inThought - Whether currently inside a thought block
- * @returns Whether now inside a thought block
+ * @returns Result with updated thought state and any collected text/toolCall
  */
-function processPart(part: ResponsePart, inThought: boolean): boolean {
+function processPart(
+  part: ResponsePart,
+  inThought: boolean,
+): ProcessPartResult {
   if (part.text) {
     if (part.thought) {
       process.stdout.write(
         inThought ? continueThought(part.text) : startThought(part.text),
       );
 
-      return true;
+      return { inThought: true };
     }
 
     if (inThought) {
@@ -250,7 +286,7 @@ function processPart(part: ResponsePart, inThought: boolean): boolean {
 
     process.stdout.write(part.text);
 
-    return false;
+    return { inThought: false, text: part.text };
   }
 
   if (part.functionCall) {
@@ -258,7 +294,10 @@ function processPart(part: ResponsePart, inThought: boolean): boolean {
       `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
     );
 
-    return inThought;
+    return {
+      inThought,
+      toolCall: { name: part.functionCall.name, args: part.functionCall.args },
+    };
   }
 
   if (part.functionResponse) {
@@ -267,7 +306,7 @@ function processPart(part: ResponsePart, inThought: boolean): boolean {
     );
   }
 
-  return inThought;
+  return { inThought };
 }
 
 /**
@@ -275,12 +314,12 @@ function processPart(part: ResponsePart, inThought: boolean): boolean {
  *
  * @param response - Complete Gemini response
  * @param currentInput - Current user input for context
- * @returns Formatted response string
+ * @returns Turn result with formatted text and tool calls
  */
 function formatResponse(
   response: GeminiResponse,
   currentInput: string,
-): string {
+): TurnResult {
   const history = response.automaticFunctionCallingHistory ?? [];
 
   interface FunctionCall {
@@ -343,14 +382,18 @@ function formatResponse(
 
   const textResponse =
     response.candidates?.[0]?.content?.parts
-      ?.map(({ thought, text }) =>
-        thought ? startThought(text ?? "") + endThought() : text,
-      )
+      ?.filter(({ thought }) => !thought)
+      .map(({ text }) => text)
       .join("\n") ?? "<no content>";
 
   output.push(textResponse);
 
-  return output.join("\n");
+  const toolCalls: TurnResult["toolCalls"] = calls.map(({ name, args }) => ({
+    name,
+    args,
+  }));
+
+  return { text: output.join("\n"), toolCalls };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

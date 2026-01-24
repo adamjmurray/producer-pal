@@ -39,6 +39,11 @@ program
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
   .option("-i, --instructions <text>", "System instructions")
   .option("-1, --once", "Exit after generating one response")
+  .option(
+    "-M, --messages <messages...>",
+    "Multiple messages to send in sequence",
+  )
+  .option("-f, --file <path>", "File containing messages (one per line)")
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");

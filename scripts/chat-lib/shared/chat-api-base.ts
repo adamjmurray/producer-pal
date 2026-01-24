@@ -21,6 +21,7 @@ import {
   endThought,
 } from "./formatting.ts";
 import { connectMcp, getMcpToolsForChat } from "./mcp.ts";
+import { createMessageSource } from "./message-source.ts";
 import { createReadline, runChatLoop } from "./readline.ts";
 import type {
   ChatOptions,
@@ -28,6 +29,7 @@ import type {
   OpenRouterMessage,
   OpenRouterResponse,
   OpenRouterStreamChunk,
+  TurnResult,
 } from "./types.ts";
 
 /**
@@ -99,12 +101,13 @@ export async function runChatSession(
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const messages: OpenRouterMessage[] = [];
+  const messageSource = createMessageSource(rl, options, initialText);
 
   try {
     await runChatLoop(
       { client, mcpClient, tools, messages, model, options, config },
-      rl,
-      { initialText, once: options.once },
+      messageSource,
+      { once: options.once },
       { sendMessage: sendMessageChat },
     );
   } catch (error) {
@@ -128,13 +131,16 @@ export async function runChatSession(
  * @param ctx - Session context with client and messages
  * @param input - User input text
  * @param turnCount - Current conversation turn number
+ * @returns Turn result with response text and tool calls
  */
 async function sendMessageChat(
   ctx: ChatSessionContext,
   input: string,
   turnCount: number,
-): Promise<void> {
+): Promise<TurnResult> {
   const { messages, options } = ctx;
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
 
   messages.push({
     role: "user",
@@ -144,12 +150,17 @@ async function sendMessageChat(
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
   while (true) {
-    const shouldContinue = options.stream
+    const result = options.stream
       ? await handleStreamingResponse(ctx)
       : await handleNonStreamingResponse(ctx);
 
-    if (!shouldContinue) break;
+    text += result.text;
+    toolCalls.push(...result.toolCalls);
+
+    if (!result.shouldContinue) break;
   }
+
+  return { text, toolCalls };
 }
 
 /**
@@ -197,15 +208,21 @@ function buildRequestBody(ctx: ChatSessionContext): RequestBody {
   return body;
 }
 
+interface ResponseHandlerResult {
+  text: string;
+  toolCalls: TurnResult["toolCalls"];
+  shouldContinue: boolean;
+}
+
 /**
  * Handles non-streaming Chat API response
  *
  * @param ctx - Session context with client and messages
- * @returns Whether to continue with tool calls
+ * @returns Response result with text, tool calls, and continuation flag
  */
 async function handleNonStreamingResponse(
   ctx: ChatSessionContext,
-): Promise<boolean> {
+): Promise<ResponseHandlerResult> {
   const { client, messages, options } = ctx;
   const body = buildRequestBody(ctx);
 
@@ -230,7 +247,7 @@ async function handleNonStreamingResponse(
   if (!choice) {
     console.log("<no response>");
 
-    return false;
+    return { text: "", toolCalls: [], shouldContinue: false };
   }
 
   const assistantMessage = choice.message;
@@ -247,11 +264,23 @@ async function handleNonStreamingResponse(
       reasoning_details: assistantMessage.reasoning_details,
     });
 
+    const toolCalls: TurnResult["toolCalls"] = [];
+
     for (const toolCall of assistantMessage.tool_calls) {
+      const args = JSON.parse(toolCall.function.arguments) as Record<
+        string,
+        unknown
+      >;
+
+      toolCalls.push({ name: toolCall.function.name, args });
       await executeToolCall(ctx.mcpClient, messages, toolCall);
     }
 
-    return true;
+    return {
+      text: assistantMessage.content ?? "",
+      toolCalls,
+      shouldContinue: true,
+    };
   }
 
   if (assistantMessage.content) {
@@ -264,18 +293,22 @@ async function handleNonStreamingResponse(
     reasoning_details: assistantMessage.reasoning_details,
   });
 
-  return false;
+  return {
+    text: assistantMessage.content ?? "",
+    toolCalls: [],
+    shouldContinue: false,
+  };
 }
 
 /**
  * Handles streaming Chat API response
  *
  * @param ctx - Session context with client and messages
- * @returns Whether to continue with tool calls
+ * @returns Response result with text, tool calls, and continuation flag
  */
 async function handleStreamingResponse(
   ctx: ChatSessionContext,
-): Promise<boolean> {
+): Promise<ResponseHandlerResult> {
   const { client, messages, options } = ctx;
   const body = buildRequestBody(ctx);
 
@@ -321,11 +354,23 @@ async function handleStreamingResponse(
         state.reasoningDetails.length > 0 ? state.reasoningDetails : undefined,
     });
 
+    const toolCalls: TurnResult["toolCalls"] = [];
+
     for (const toolCall of toolCallsArray) {
+      const args = JSON.parse(toolCall.function.arguments) as Record<
+        string,
+        unknown
+      >;
+
+      toolCalls.push({ name: toolCall.function.name, args });
       await executeToolCall(ctx.mcpClient, messages, toolCall);
     }
 
-    return true;
+    return {
+      text: state.currentContent,
+      toolCalls,
+      shouldContinue: true,
+    };
   }
 
   messages.push({
@@ -336,5 +381,9 @@ async function handleStreamingResponse(
       state.reasoningDetails.length > 0 ? state.reasoningDetails : undefined,
   });
 
-  return false;
+  return {
+    text: state.currentContent,
+    toolCalls: [],
+    shouldContinue: false,
+  };
 }

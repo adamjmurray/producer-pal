@@ -77,7 +77,10 @@ function handleTextDelta(
   state: OpenAIStreamState,
 ): void {
   handleReasoningDone(state);
-  process.stdout.write(getDeltaText(event.delta) ?? "");
+  const text = getDeltaText(event.delta) ?? "";
+
+  state.currentContent += text;
+  process.stdout.write(text);
 }
 
 /**
@@ -120,6 +123,7 @@ async function handleFunctionCallDone(
 
   const args = JSON.parse(event.arguments) as Record<string, unknown>;
 
+  functionInfo.args = args;
   console.log("\n" + formatToolCall(functionInfo.name, args));
   const result = await mcpClient.callTool({
     name: functionInfo.name,

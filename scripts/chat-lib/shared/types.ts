@@ -30,6 +30,17 @@ export interface ChatOptions {
   outputTokens?: number;
   instructions?: string;
   once?: boolean;
+  messages?: string[];
+  file?: string;
+}
+
+export interface MessageSource {
+  nextMessage: () => Promise<string | null>;
+}
+
+export interface TurnResult {
+  text: string;
+  toolCalls: Array<ToolCall & { result?: string }>;
 }
 
 export interface ChatContext {
@@ -279,7 +290,11 @@ export interface OpenAIResponsesResult {
 export interface OpenAIStreamState {
   inThought: boolean;
   displayedReasoning: boolean;
-  pendingFunctionCalls: Map<string, { name: string; call_id: string }>;
+  currentContent: string;
+  pendingFunctionCalls: Map<
+    string,
+    { name: string; call_id: string; args?: Record<string, unknown> }
+  >;
   toolResults: Map<string, string>;
   hasToolCalls: boolean;
 }

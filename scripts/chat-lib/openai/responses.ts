@@ -18,6 +18,7 @@ import {
   getMcpToolsForOpenAI,
   type ResponsesTool,
 } from "../shared/mcp.ts";
+import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import type {
   ChatOptions,
@@ -27,6 +28,7 @@ import type {
   OpenAIStreamEvent,
   OpenAIThinkingLevel,
   OpenAIStreamState,
+  TurnResult,
 } from "../shared/types.ts";
 import { DEFAULT_MODEL } from "./config.ts";
 import {
@@ -75,11 +77,13 @@ export async function runOpenAIResponses(
   console.log(`Provider: OpenAI (Responses API)`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
+  const messageSource = createMessageSource(rl, options, initialText);
+
   try {
     await runChatLoop(
       { client, mcpClient, tools, conversation: [], model, options },
-      rl,
-      { initialText, once: options.once },
+      messageSource,
+      { once: options.once },
       { sendMessage },
     );
   } catch (error) {
@@ -99,12 +103,13 @@ export async function runOpenAIResponses(
  * @param ctx - Session context with client and conversation
  * @param input - User input text
  * @param turnCount - Current conversation turn number
+ * @returns Turn result with response text and tool calls
  */
 async function sendMessage(
   ctx: SessionContext,
   input: string,
   turnCount: number,
-): Promise<void> {
+): Promise<TurnResult> {
   const { conversation, model, options } = ctx;
 
   conversation.push({ type: "message", role: "user", content: input });
@@ -119,9 +124,10 @@ async function sendMessage(
   }
 
   console.log(`\n[Turn ${turnCount}] Assistant:`);
-  await (options.stream
-    ? handleStreaming(ctx, requestBody)
-    : handleNonStreaming(ctx, requestBody));
+
+  return options.stream
+    ? await handleStreaming(ctx, requestBody)
+    : await handleNonStreaming(ctx, requestBody);
 }
 
 /**
@@ -161,12 +167,15 @@ function buildRequestBody(
  *
  * @param ctx - Session context with client and MCP
  * @param requestBody - Initial request body
+ * @returns Turn result with response text and tool calls
  */
 async function handleNonStreaming(
   ctx: SessionContext,
   requestBody: ResponseCreateParamsBase,
-): Promise<void> {
+): Promise<TurnResult> {
   const { client, conversation, model, options } = ctx;
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
 
   while (true) {
     const response = (await client.responses.create(
@@ -179,7 +188,13 @@ async function handleNonStreaming(
       (item) => item.type === "function_call",
     );
 
-    for (const item of response.output) await processOutputItem(item, ctx);
+    for (const item of response.output) {
+      const result = await processOutputItem(item, ctx);
+
+      if (result.text) text += result.text;
+      if (result.toolCall) toolCalls.push(result.toolCall);
+    }
+
     conversation.push(...(response.output as OpenAIConversationItem[]));
 
     if (!hasToolCalls) break;
@@ -193,6 +208,8 @@ async function handleNonStreaming(
       });
     }
   }
+
+  return { text, toolCalls };
 }
 
 /**
@@ -200,12 +217,15 @@ async function handleNonStreaming(
  *
  * @param ctx - Session context with client and MCP
  * @param requestBody - Initial request body
+ * @returns Turn result with response text and tool calls
  */
 async function handleStreaming(
   ctx: SessionContext,
   requestBody: ResponseCreateParamsBase,
-): Promise<void> {
+): Promise<TurnResult> {
   const { client, conversation, model, options, mcpClient } = ctx;
+  let text = "";
+  const toolCalls: TurnResult["toolCalls"] = [];
 
   while (true) {
     const stream = await client.responses.create({
@@ -215,6 +235,7 @@ async function handleStreaming(
     const state: OpenAIStreamState = {
       inThought: false,
       displayedReasoning: false,
+      currentContent: "",
       pendingFunctionCalls: new Map(),
       toolResults: new Map(),
       hasToolCalls: false,
@@ -235,6 +256,19 @@ async function handleStreaming(
       );
     }
 
+    text += state.currentContent;
+
+    // Collect tool calls from state
+    for (const [, call] of state.pendingFunctionCalls) {
+      const result = state.toolResults.get(call.call_id);
+
+      toolCalls.push({
+        name: call.name,
+        args: call.args ?? {},
+        result,
+      });
+    }
+
     console.log();
     if (!state.hasToolCalls) break;
     requestBody = buildRequestBody(ctx, model, options);
@@ -247,6 +281,13 @@ async function handleStreaming(
       });
     }
   }
+
+  return { text, toolCalls };
+}
+
+interface ProcessOutputResult {
+  text?: string;
+  toolCall?: TurnResult["toolCalls"][number];
 }
 
 /**
@@ -254,17 +295,20 @@ async function handleStreaming(
  *
  * @param item - Output item to process
  * @param ctx - Session context with MCP client
+ * @returns Result with any text content and tool call info
  */
 async function processOutputItem(
   item: OpenAIResponseOutput,
   ctx: SessionContext,
-): Promise<void> {
+): Promise<ProcessOutputResult> {
   const { mcpClient, conversation } = ctx;
 
   if (item.type === "reasoning") {
     const text = extractReasoningText(item);
 
     if (text) console.log(formatThought(text));
+
+    return {};
   } else if (item.type === "message" && item.content) {
     const text = item.content
       .filter((c) => c.type === "output_text")
@@ -272,6 +316,8 @@ async function processOutputItem(
       .join("");
 
     if (text) console.log(text);
+
+    return { text };
   } else if (item.type === "function_call" && item.name && item.arguments) {
     const args = JSON.parse(item.arguments) as Record<string, unknown>;
 
@@ -288,5 +334,9 @@ async function processOutputItem(
       call_id: item.call_id,
       output: resultText,
     });
+
+    return { toolCall: { name: item.name, args, result: resultText } };
   }
+
+  return {};
 }
