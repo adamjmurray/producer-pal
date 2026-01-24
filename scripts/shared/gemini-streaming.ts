@@ -35,10 +35,23 @@ export async function printGeminiStream(
 ): Promise<StreamResult> {
   let inThought = false;
   let text = "";
+  let chunkCount = 0;
   const toolCalls: StreamToolCall[] = [];
 
   for await (const chunk of stream) {
-    for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+    chunkCount++;
+    const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+
+    if (parts.length === 0) {
+      // Log warning for chunks with no content (may indicate API issues)
+      if (chunkCount === 1 && !chunk.candidates?.length) {
+        console.error("\nWarning: First chunk has no candidates");
+      }
+
+      continue;
+    }
+
+    for (const part of parts) {
       const result = processStreamPart(part, inThought, toolCalls);
 
       inThought = result.inThought;
@@ -50,6 +63,17 @@ export async function printGeminiStream(
   }
 
   console.log();
+
+  // Warn if stream produced no output
+  if (chunkCount === 0) {
+    console.error(
+      "Warning: Stream returned no chunks (API may be unavailable)",
+    );
+  } else if (text === "" && toolCalls.length === 0) {
+    console.error(
+      `Warning: Stream returned ${chunkCount} chunks but no text or tool calls`,
+    );
+  }
 
   return { text, toolCalls };
 }
