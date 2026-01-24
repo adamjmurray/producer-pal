@@ -52,9 +52,7 @@ export async function callOpenAIJudge(
   const apiKey = process.env[config.apiKeyEnvVar];
 
   if (!apiKey) {
-    throw new Error(
-      `${config.apiKeyEnvVar} environment variable is required for LLM judge`,
-    );
+    throw new Error(`API key for ${provider} is not set`);
   }
 
   const client = config.createClient(apiKey);

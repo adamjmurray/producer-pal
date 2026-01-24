@@ -75,9 +75,7 @@ export async function createOpenAIEvalSession(
   const apiKey = process.env[config.apiKeyEnvVar];
 
   if (!apiKey) {
-    throw new Error(
-      `${config.apiKeyEnvVar} environment variable is required for ${config.providerName}`,
-    );
+    throw new Error(`API key for ${config.providerName} is not set`);
   }
 
   const client = config.createClient(apiKey);
