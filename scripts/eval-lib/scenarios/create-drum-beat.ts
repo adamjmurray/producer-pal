@@ -12,14 +12,25 @@ export const createDrumBeat: EvalScenario = {
   tags: ["basic", "drums", "creation"],
 
   messages: [
+    // Turn 0: Connect to get Producer Pal skills
+    "Connect to Ableton Live",
+    // Turn 1: Create the drum loop
     "Create a 4-bar drum loop with kick on every beat and snare on 2 and 4",
   ],
 
   assertions: [
-    // Verify create-clip was called
+    // Verify ppal-connect was called in setup turn
+    {
+      type: "tool_called",
+      tool: "ppal-connect",
+      turn: 0,
+    },
+
+    // Verify create-clip was called in main turn
     {
       type: "tool_called",
       tool: "ppal-create-clip",
+      turn: 1,
     },
 
     // Verify the response mentions the drum creation

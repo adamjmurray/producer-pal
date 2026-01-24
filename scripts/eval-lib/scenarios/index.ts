@@ -6,4 +6,5 @@
  * scenario registration in load-scenarios.ts.
  */
 
+export { connectToAbleton } from "./connect-to-ableton.ts";
 export { createDrumBeat } from "./create-drum-beat.ts";
