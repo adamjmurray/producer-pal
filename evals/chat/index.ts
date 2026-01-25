@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { runAnthropic } from "./anthropic.ts";
 import { runGemini } from "./gemini.ts";
 import { runOpenAI } from "./openai/index.ts";
 import { runOpenRouter } from "./openrouter/index.ts";
@@ -8,7 +9,7 @@ import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
-const providerHelp = `AI provider (gemini, openai, openrouter)`;
+const providerHelp = `AI provider (anthropic, gemini, openai, openrouter)`;
 
 program
   .name("chat")
@@ -48,14 +49,20 @@ program
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");
 
-    // Warn if --api is used with Gemini (only applies to openai/openrouter)
-    if (options.api && options.provider === "gemini") {
+    // Warn if --api is used with Anthropic/Gemini (only applies to openai/openrouter)
+    if (
+      options.api &&
+      (options.provider === "anthropic" || options.provider === "gemini")
+    ) {
       console.warn(
-        `Warning: --api flag does not apply to Gemini provider (ignored)`,
+        `Warning: --api flag does not apply to ${options.provider} provider (ignored)`,
       );
     }
 
     switch (options.provider) {
+      case "anthropic":
+        await runAnthropic(initialText, options);
+        break;
       case "gemini":
         await runGemini(initialText, options);
         break;

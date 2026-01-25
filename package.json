@@ -81,6 +81,7 @@
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --headed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@google/genai": "^1.38.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@tailwindcss/typography": "^0.5.19",

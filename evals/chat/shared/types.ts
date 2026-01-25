@@ -15,8 +15,20 @@ export type GeminiThinkingLevel =
   | "auto"
   | (string & {}); // allows numeric strings like "2048"
 
+export type AnthropicThinkingLevel =
+  | "off"
+  | "low"
+  | "medium"
+  | "high"
+  | "ultra"
+  | "auto"
+  | (string & {}); // allows numeric strings like "4096"
+
 // Union type for CLI - accepts values from any provider
-export type ThinkingLevel = ReasoningEffort | GeminiThinkingLevel;
+export type ThinkingLevel =
+  | ReasoningEffort
+  | GeminiThinkingLevel
+  | AnthropicThinkingLevel;
 
 export interface ChatOptions {
   provider: string;
@@ -93,6 +105,17 @@ export interface ChatTool {
     name: string;
     description: string;
     parameters: Record<string, unknown>;
+  };
+}
+
+// Tool format for Anthropic Messages API
+export interface AnthropicTool {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
   };
 }
 

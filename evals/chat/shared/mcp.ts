@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { ChatTool, ResponsesTool } from "./types.ts";
+import type { AnthropicTool, ChatTool, ResponsesTool } from "./types.ts";
 
 const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 
@@ -84,6 +84,27 @@ export async function getMcpToolsForOpenAI(
 
 // Alias for OpenRouter Responses API (uses same flat format as OpenAI Responses)
 export const getMcpToolsForResponses = getMcpToolsForOpenAI;
+
+// Re-export AnthropicTool for convenience
+export type { AnthropicTool };
+
+/**
+ * Convert MCP tools to Anthropic Messages API format
+ *
+ * @param client - MCP client
+ * @returns Anthropic formatted tool definitions
+ */
+export async function getMcpToolsForAnthropic(
+  client: Client,
+): Promise<AnthropicTool[]> {
+  const { tools } = await client.listTools();
+
+  return tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description ?? "",
+    input_schema: tool.inputSchema as AnthropicTool["input_schema"],
+  }));
+}
 
 /**
  * Extract text content from an MCP tool call result
