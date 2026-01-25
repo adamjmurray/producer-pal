@@ -20,7 +20,13 @@ import type {
   EvalTurnResult,
   EvalAssertion,
   EvalAssertionResult,
+  EvalProvider,
 } from "./types.ts";
+
+export interface JudgeOverride {
+  provider: EvalProvider;
+  model?: string;
+}
 
 /**
  * Run a single evaluation scenario
@@ -28,11 +34,12 @@ import type {
  * @param scenario - The scenario to run
  * @param options - Optional overrides
  * @param options.skipLiveSetOpen - Skip opening the Live Set (for testing)
+ * @param options.judgeOverride - Override judge LLM provider/model
  * @returns Scenario result with turns, assertions, and pass/fail status
  */
 export async function runScenario(
   scenario: EvalScenario,
-  options?: { skipLiveSetOpen?: boolean },
+  options?: { skipLiveSetOpen?: boolean; judgeOverride?: JudgeOverride },
 ): Promise<EvalScenarioResult> {
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
@@ -80,6 +87,7 @@ export async function runScenario(
       turns,
       session,
       scenario.provider,
+      options?.judgeOverride,
     );
 
     const passed = assertionResults.every((r) => r.passed);
@@ -114,6 +122,7 @@ export async function runScenario(
  * @param turns - Completed conversation turns
  * @param session - Active evaluation session
  * @param provider - LLM provider being used
+ * @param judgeOverride - Optional judge LLM override
  * @returns Array of assertion results
  */
 async function runAssertions(
@@ -121,11 +130,18 @@ async function runAssertions(
   turns: EvalTurnResult[],
   session: EvalSession,
   provider: EvalScenario["provider"],
+  judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
-    const result = await runAssertion(assertion, turns, session, provider);
+    const result = await runAssertion(
+      assertion,
+      turns,
+      session,
+      provider,
+      judgeOverride,
+    );
 
     results.push(result);
 
@@ -144,6 +160,7 @@ async function runAssertions(
  * @param turns - Completed conversation turns
  * @param session - Active evaluation session
  * @param provider - LLM provider being used
+ * @param judgeOverride - Optional judge LLM override
  * @returns Assertion result
  */
 async function runAssertion(
@@ -151,6 +168,7 @@ async function runAssertion(
   turns: EvalTurnResult[],
   session: EvalSession,
   provider: EvalScenario["provider"],
+  judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult> {
   switch (assertion.type) {
     case "tool_called":
@@ -160,7 +178,12 @@ async function runAssertion(
       return await assertState(assertion, session.mcpClient);
 
     case "llm_judge":
-      return await assertWithLlmJudge(assertion, turns, provider);
+      return await assertWithLlmJudge(
+        assertion,
+        turns,
+        provider,
+        judgeOverride,
+      );
 
     case "response_contains":
       return assertResponseContains(assertion, turns);

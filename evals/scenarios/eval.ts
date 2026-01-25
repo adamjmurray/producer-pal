@@ -18,10 +18,39 @@ interface CliOptions {
   tag?: string;
   provider?: EvalProvider;
   model?: string;
+  judge?: string;
   json?: boolean;
   verbose?: boolean;
   list?: boolean;
   skipSetup?: boolean;
+}
+
+export interface JudgeOverride {
+  provider: EvalProvider;
+  model?: string;
+}
+
+/**
+ * Parse a provider/model string into separate components
+ *
+ * @param llmString - String in format "provider" or "provider/model"
+ * @returns Parsed provider and optional model
+ */
+function parseLlmString(llmString: string): JudgeOverride {
+  const slashIndex = llmString.indexOf("/");
+  const provider =
+    slashIndex === -1 ? llmString : llmString.slice(0, slashIndex);
+  const model = slashIndex === -1 ? undefined : llmString.slice(slashIndex + 1);
+
+  const validProviders = ["gemini", "openai", "openrouter"];
+
+  if (!validProviders.includes(provider)) {
+    throw new Error(
+      `Unknown provider: ${provider}. Valid: ${validProviders.join(", ")}`,
+    );
+  }
+
+  return { provider: provider as EvalProvider, model: model ?? undefined };
 }
 
 const program = new Command();
@@ -37,7 +66,11 @@ program
     "Override provider (gemini, openai, openrouter)",
   )
   .option("-m, --model <model>", "Override model")
-  .option("-j, --json", "Output results as JSON")
+  .option(
+    "-j, --judge <provider/model>",
+    "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
+  )
+  .option("-J, --json", "Output results as JSON")
   .option("-v, --verbose", "Show detailed output including tool results")
   .option("-l, --list", "List available scenarios and tags")
   .option(
@@ -92,6 +125,11 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       process.exit(1);
     }
 
+    // Parse judge override if provided
+    const judgeOverride = options.judge
+      ? parseLlmString(options.judge)
+      : undefined;
+
     console.log(`Running ${scenarios.length} scenario(s)...`);
 
     const results: EvalScenarioResult[] = [];
@@ -99,6 +137,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     for (const scenario of scenarios) {
       const result = await runScenario(scenario, {
         skipLiveSetOpen: options.skipSetup,
+        judgeOverride,
       });
 
       results.push(result);

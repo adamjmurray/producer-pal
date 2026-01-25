@@ -29,18 +29,25 @@ You MUST respond with ONLY a JSON object in this exact format:
 
 Do not include any other text before or after the JSON.`;
 
+interface JudgeOverride {
+  provider: EvalProvider;
+  model?: string;
+}
+
 /**
  * Call an LLM to judge the response quality
  *
  * @param assertion - The LLM judge assertion
  * @param turns - All conversation turns
  * @param defaultProvider - Default provider from scenario
+ * @param cliOverride - Optional CLI override for judge provider/model
  * @returns Assertion result with pass/fail and details
  */
 export async function assertWithLlmJudge(
   assertion: LlmJudgeAssertion,
   turns: EvalTurnResult[],
   defaultProvider: EvalProvider,
+  cliOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult> {
   const targetTurn =
     assertion.turn === "last" || assertion.turn == null
@@ -57,14 +64,14 @@ export async function assertWithLlmJudge(
   }
 
   const judgePrompt = buildJudgePrompt(assertion, targetTurn);
-  const provider = assertion.judgeProvider ?? defaultProvider;
+
+  // CLI override > assertion-level > scenario default
+  const provider =
+    cliOverride?.provider ?? assertion.judgeProvider ?? defaultProvider;
+  const model = cliOverride?.model ?? assertion.judgeModel;
 
   try {
-    const judgeResult = await callJudgeLlm(
-      judgePrompt,
-      provider,
-      assertion.judgeModel,
-    );
+    const judgeResult = await callJudgeLlm(judgePrompt, provider, model);
     const minScore = assertion.minScore ?? 3;
     const passed = judgeResult.score >= minScore;
 
