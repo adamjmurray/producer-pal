@@ -6,20 +6,21 @@ import type {
 } from "openai/resources/responses/responses";
 import {
   formatThought,
-  formatToolCall,
-  formatToolResult,
   debugLog,
   debugCall,
   DEBUG_SEPARATOR,
 } from "../shared/formatting.ts";
 import {
   connectMcp,
-  extractToolResultText,
   getMcpToolsForOpenAI,
   type ResponsesTool,
 } from "../shared/mcp.ts";
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
+import {
+  executeAndLogToolCall,
+  parseToolArgs,
+} from "../shared/tool-execution.ts";
 import type {
   ChatOptions,
   OpenAIConversationItem,
@@ -319,23 +320,16 @@ async function processOutputItem(
 
     return { text };
   } else if (item.type === "function_call" && item.name && item.arguments) {
-    const args = JSON.parse(item.arguments) as Record<string, unknown>;
+    const args = parseToolArgs(item.arguments);
+    const toolResult = await executeAndLogToolCall(mcpClient, item.name, args);
 
-    console.log(formatToolCall(item.name, args));
-    const result = await mcpClient.callTool({
-      name: item.name,
-      arguments: args,
-    });
-    const resultText = extractToolResultText(result);
-
-    console.log(formatToolResult(resultText));
     conversation.push({
       type: "function_call_output",
       call_id: item.call_id,
-      output: resultText,
+      output: toolResult.result,
     });
 
-    return { toolCall: { name: item.name, args, result: resultText } };
+    return { toolCall: toolResult };
   }
 
   return {};

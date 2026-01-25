@@ -10,19 +10,13 @@ import {
   endThought,
 } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
+import { type McpClient, parseToolArgs } from "../shared/tool-execution.ts";
 import type {
   OpenAIConversationItem,
   OpenAIResponseOutput,
   OpenAIStreamEvent,
   OpenAIStreamState,
 } from "../shared/types.ts";
-
-type McpClient = {
-  callTool: (params: {
-    name: string;
-    arguments: Record<string, unknown>;
-  }) => Promise<unknown>;
-};
 
 /**
  * Extracts text from a stream event delta
@@ -121,7 +115,7 @@ async function handleFunctionCallDone(
 
   if (!functionInfo) return;
 
-  const args = JSON.parse(event.arguments) as Record<string, unknown>;
+  const args = parseToolArgs(event.arguments);
 
   functionInfo.args = args;
   console.log("\n" + formatToolCall(functionInfo.name, args));

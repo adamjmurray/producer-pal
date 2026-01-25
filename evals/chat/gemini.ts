@@ -25,6 +25,7 @@ import {
   runChatLoop,
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
+import { GEMINI_THINKING_MAP } from "./shared/thinking-maps.ts";
 import type { ChatOptions, TurnResult } from "./shared/types.ts";
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
@@ -96,16 +97,6 @@ export async function runGemini(
     rl.close();
   }
 }
-
-// Maps thinking level strings to token budgets
-const GEMINI_THINKING_MAP: Record<string, number> = {
-  off: 0,
-  low: 2048,
-  medium: 4096,
-  high: 8192,
-  ultra: 16384,
-  auto: -1,
-};
 
 /**
  * Builds Gemini API configuration from chat options
