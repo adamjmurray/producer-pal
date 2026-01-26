@@ -5,6 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 
 interface NoteOptions {
@@ -53,12 +54,6 @@ export function note(
   };
 }
 
-interface MockContext {
-  _path?: string;
-  _id?: string;
-  id?: string;
-}
-
 /**
  * Shared mock context for update-clip tests
  */
@@ -74,7 +69,7 @@ export function setupMocks(): void {
   // Track added notes per clip ID for get_notes_extended mocking
   const addedNotesByClipId: Record<string, unknown[]> = {};
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     switch (this._path) {
       case "id 123":
         return "123";
@@ -89,7 +84,7 @@ export function setupMocks(): void {
     }
   });
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     switch (this._id) {
       case "123":
         return "live_set tracks 0 clip_slots 0 clip";
@@ -106,7 +101,7 @@ export function setupMocks(): void {
 
   // Mock liveApiCall to track added notes and return them for get_notes_extended
   liveApiCall.mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
     method: string,
     ...args: unknown[]
   ) {
@@ -145,7 +140,7 @@ export function setupArrangementClipPath(
         (clipIds.includes(id) || clipIds.includes(String(id)))
     : clipIds;
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     if (matchesClipId(this._id)) {
       return `live_set tracks ${trackIndex} arrangement_clips 0`;
     }

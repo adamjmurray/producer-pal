@@ -7,15 +7,11 @@ import {
   liveApiCall,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   setupArrangementClipMocks,
   setupScenePath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
-
-interface MockContext {
-  _path?: string;
-  path?: string;
-}
 
 interface DuplicateClipResult {
   id: string;
@@ -234,7 +230,7 @@ describe("duplicate - scene duplication", () => {
       });
 
       (liveApiCall as Mock).mockImplementation(function (
-        this: MockContext,
+        this: MockLiveAPIContext,
         method: string,
         clipIdOrStartTime: string,
         _startTimeOrLength?: number,
@@ -308,7 +304,7 @@ describe("duplicate - scene duplication", () => {
       let clipCounter = 0;
 
       (liveApiCall as Mock).mockImplementation(function (
-        this: MockContext,
+        this: MockLiveAPIContext,
         method: string,
         _clipIdOrStartTime?: string,
         _startTimeOrLength?: number,

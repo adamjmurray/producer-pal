@@ -5,15 +5,11 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-}
 
 describe("updateClip - Properties and ID handling", () => {
   beforeEach(() => {
@@ -95,7 +91,7 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
-    liveApiId.mockImplementation(function (this: MockContext) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
           return "123";

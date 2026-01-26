@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import {
+  liveApiCall,
+  liveApiGet,
+  type MockLiveAPIContext,
+} from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import {
   setupLoopedClipSlicingMocks,
@@ -7,11 +11,6 @@ import {
   setupSlicingClipGetMock,
   setupTwoClipBaseMocks,
 } from "./transform-clips-slicing-test-helpers.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 describe("transformClips - slicing", () => {
   it("should slice looped clips and tile to original length", () => {
@@ -77,7 +76,10 @@ describe("transformClips - slicing", () => {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
     // Override to be a session clip
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -126,7 +128,10 @@ describe("transformClips - slicing", () => {
     let sliceOperationCount = 0;
 
     setupTwoClipBaseMocks(clip1Id, clip2Id);
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") {
           return [4];
@@ -207,7 +212,7 @@ describe("transformClips - slicing", () => {
       return [0];
     });
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       // Track when we duplicate/move clips (which happens during slicing)
@@ -333,7 +338,10 @@ describe("transformClips - slicing", () => {
       return null;
     }
 
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -370,7 +378,7 @@ describe("transformClips - slicing", () => {
 
     // Mock liveApiCall for clip operations
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ..._args: unknown[]
     ) {

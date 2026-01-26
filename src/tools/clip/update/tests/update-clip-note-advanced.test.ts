@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
+import {
+  liveApiCall,
+  liveApiSet,
+  type MockLiveAPIContext,
+} from "#src/test/mocks/mock-live-api.ts";
 import {
   note,
   setupAudioClipMock,
@@ -7,12 +11,6 @@ import {
   setupMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-interface MockContext {
-  id?: string;
-  _id?: string;
-  _path?: string;
-}
 
 describe("updateClip - Advanced note operations", () => {
   beforeEach(() => {
@@ -39,7 +37,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock existing notes in the clip
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "get_notes_extended") {
@@ -102,7 +100,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock existing notes that don't match the v0 note
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "get_notes_extended") {
@@ -149,7 +147,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock existing notes
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "get_notes_extended") {
@@ -200,7 +198,7 @@ describe("updateClip - Advanced note operations", () => {
     let addedNotes = existingNotes;
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ...args: unknown[]
     ) {
@@ -247,7 +245,7 @@ describe("updateClip - Advanced note operations", () => {
     let allAddedNotes: Array<{ start_time: number }> = [];
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ...args: unknown[]
     ) {
@@ -299,7 +297,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // Mock existing notes in bar 1
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "get_notes_extended") {

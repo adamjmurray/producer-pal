@@ -4,13 +4,8 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-  id?: string;
-}
 
 interface DrumChainConfig {
   devicePath: string;
@@ -34,7 +29,7 @@ export function setupEntityMocks(
     Object.entries(idToPathMap).map(([id, path]) => [path, id]),
   );
 
-  liveApiId.mockImplementation(function (this: MockContext): string {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
     const pathLookup = this._path ? pathToIdMap[this._path] : undefined;
 
     if (pathLookup) {
@@ -44,7 +39,7 @@ export function setupEntityMocks(
     return this._id ?? "";
   });
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     const idLookup = this._id ? idToPathMap[this._id] : undefined;
 
     if (idLookup) {
@@ -54,7 +49,7 @@ export function setupEntityMocks(
     return this._path ?? "";
   });
 
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id && idToPathMap[this._id]) {
       return entityType;
     }
@@ -95,7 +90,7 @@ export function setupDeviceMocks(
       ? { [ids[0] as string]: pathOrMap }
       : pathOrMap;
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path?.startsWith("live_set ") && this._path.includes("devices")) {
       // Path-based lookup returns the device ID
       for (const [id, path] of Object.entries(pathMap)) {
@@ -108,7 +103,7 @@ export function setupDeviceMocks(
     return this._id ?? "";
   });
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     const idLookup = this._id ? pathMap[this._id] : undefined;
 
     if (idLookup) {
@@ -118,7 +113,7 @@ export function setupDeviceMocks(
     return this._path ?? "";
   });
 
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id && ids.includes(this._id)) {
       return type;
     }
@@ -164,14 +159,14 @@ export function setupDrumChainMocks({
 }: DrumChainConfig): void {
   const extraPadPathTyped: Record<string, string> | null = extraPadPath;
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === devicePath) return drumRackId;
     if (this._path === `id ${chainId}`) return chainId;
 
     return this._id ?? "";
   });
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     const id = this._id ?? this.id;
 
     if (id === chainId) return chainPath;
@@ -180,7 +175,7 @@ export function setupDrumChainMocks({
     return this._path ?? "";
   });
 
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     const id = this._id ?? this.id;
 
     if (id && extraPadPathTyped?.[id]) return "DrumPad";
@@ -190,7 +185,7 @@ export function setupDrumChainMocks({
   });
 
   liveApiGet.mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
     prop: string,
   ): unknown[] {
     const id = this._id ?? this.id;
