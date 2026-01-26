@@ -4,6 +4,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -13,11 +14,6 @@ import {
   assertDuplicateClipCalled,
   assertRevealedClipMarkers,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 // NOTE: After discovering that the Live API's warp_markers and end_marker properties
 // are unreliable for detecting hidden audio content, we changed the behavior to
@@ -85,7 +81,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     const revealedClipId = "802";
     const sceneIndex = 0;
 
-    liveApiPath.mockImplementation(function (this: MockContext) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
@@ -159,7 +155,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     });
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "create_audio_clip") return ["id", tempSessionClipId];
@@ -238,7 +234,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     const movedClipId = "901";
     const revealedClipId = "902";
 
-    liveApiPath.mockImplementation(function (this: MockContext) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (
         this._id &&
         [clipId, movedClipId, revealedClipId].includes(this._id)
@@ -302,7 +298,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     let duplicateCallCount = 0;
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "duplicate_clip_to_arrangement") {

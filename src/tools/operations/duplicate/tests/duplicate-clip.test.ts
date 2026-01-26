@@ -7,15 +7,11 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   setupArrangementClipMocks,
   setupArrangementDuplicationMock,
   setupSessionClipPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-}
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when destination is missing", () => {
@@ -120,7 +116,7 @@ describe("duplicate - clip duplication", () => {
     it("should throw an error when trying to duplicate an arrangement clip to session", () => {
       // Mock an arrangement clip (has trackIndex but no sceneIndex)
       (liveApiPath as Mock).mockImplementation(function (
-        this: MockContext,
+        this: MockLiveAPIContext,
       ): string | undefined {
         if (this._id === "arrangementClip1") {
           return "live_set tracks 0 arrangement_clips 0";

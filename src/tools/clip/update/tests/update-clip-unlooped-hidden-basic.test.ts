@@ -4,14 +4,10 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 interface SetupMocksOptions {
   clipId: string;
@@ -30,7 +26,7 @@ function setupUnloopedTilingMocks({
 }: SetupMocksOptions) {
   const counter = { count: 0 };
 
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._id === clipId || tileIds.includes(this._id ?? "")) {
       return `live_set tracks ${trackIndex} arrangement_clips 0`;
     }
@@ -62,7 +58,10 @@ function setupUnloopedTilingMocks({
     [`live_set tracks ${trackIndex}`]: { arrangement_clips: ["id", clipId] },
   });
 
-  liveApiCall.mockImplementation(function (this: MockContext, method: string) {
+  liveApiCall.mockImplementation(function (
+    this: MockLiveAPIContext,
+    method: string,
+  ) {
     if (method === "duplicate_clip_to_arrangement") {
       return `id ${tileIds[counter.count++]}`;
     }

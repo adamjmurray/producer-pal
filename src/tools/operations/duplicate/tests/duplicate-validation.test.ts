@@ -5,15 +5,11 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
   setupSessionClipPath,
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", () => {
@@ -145,7 +141,7 @@ describe("duplicate - track/scene index validation", () => {
   it("should throw when track index cannot be determined", () => {
     // Set up a path that doesn't match "tracks N" pattern but returns Track type
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "live_set some_other_path";
@@ -156,7 +152,7 @@ describe("duplicate - track/scene index validation", () => {
 
     // Mock the type to return Track to pass type validation
     (liveApiType as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "Track";
@@ -172,7 +168,7 @@ describe("duplicate - track/scene index validation", () => {
     beforeEach(() => {
       // Set up a path that doesn't match "scenes N" pattern but returns Scene type
       (liveApiPath as Mock).mockImplementation(function (
-        this: MockContext,
+        this: MockLiveAPIContext,
       ): string | undefined {
         if (this._id === "scene1") {
           return "live_set some_other_path";
@@ -183,7 +179,7 @@ describe("duplicate - track/scene index validation", () => {
 
       // Mock the type to return Scene to pass type validation
       (liveApiType as Mock).mockImplementation(function (
-        this: MockContext,
+        this: MockLiveAPIContext,
       ): string | undefined {
         if (this._id === "scene1") {
           return "Scene";

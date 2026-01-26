@@ -3,16 +3,12 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 
 interface SessionClipMockOptions {
   isMidi?: boolean;
   length?: number;
-}
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
 }
 
 /**
@@ -32,20 +28,23 @@ export function setupSessionClipMocks(
     idToPath[id] = `live_set tracks 0 clip_slots ${i} clip`;
   }
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     for (const id of clipIds) {
       if (this._path === `id ${id}`) return id;
     }
 
     return this._id ?? "";
   });
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     return idToPath[this._id as string] ?? this._path;
   });
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     return clipIds.includes(this._id as string) ? "Clip" : undefined;
   });
-  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+  liveApiGet.mockImplementation(function (
+    this: MockLiveAPIContext,
+    prop: string,
+  ) {
     if (!clipIds.includes(this._id as string)) return [0];
     const props: Record<string, number[]> = {
       is_midi_clip: [isMidi ? 1 : 0],
@@ -81,16 +80,19 @@ export function setupClipMocks(
     length = 4.0,
   } = opts;
 
-  liveApiId.mockImplementation(function (this: MockContext): string {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
     return this._path === `id ${clipId}` ? clipId : (this._id ?? "");
   });
-  liveApiPath.mockImplementation(function (this: MockContext) {
+  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
     return this._id === clipId ? path : this._path;
   });
-  liveApiType.mockImplementation(function (this: MockContext) {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     return this._id === clipId ? "Clip" : undefined;
   });
-  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+  liveApiGet.mockImplementation(function (
+    this: MockLiveAPIContext,
+    prop: string,
+  ) {
     if (this._id !== clipId) return [0];
     const props: Record<string, number[]> = {
       is_midi_clip: [isMidi ? 1 : 0],

@@ -5,20 +5,16 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 describe("transformClips - slice + shuffle combination", () => {
   it("should handle slice + shuffle without stale object errors", () => {
     const clip1Id = "clip_1";
     const clip2Id = "clip_2";
 
-    liveApiId.mockImplementation(function (this: MockContext) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id clip_1") {
         return clip1Id;
       }
@@ -30,7 +26,7 @@ describe("transformClips - slice + shuffle combination", () => {
       return this._id!;
     });
 
-    liveApiPath.mockImplementation(function (this: MockContext) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       // Original clips
       if (this._id === clip1Id) {
         return "live_set tracks 0 arrangement_clips 0";
@@ -53,7 +49,7 @@ describe("transformClips - slice + shuffle combination", () => {
       return this._path;
     });
 
-    liveApiType.mockImplementation(function (this: MockContext) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === clip1Id || this._id === clip2Id) {
         return "Clip";
       }
@@ -143,7 +139,10 @@ describe("transformClips - slice + shuffle combination", () => {
       return null;
     }
 
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -179,7 +178,7 @@ describe("transformClips - slice + shuffle combination", () => {
     });
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ...args: unknown[]
     ) {
