@@ -11,6 +11,41 @@ import type { MinimalClipInfo } from "./duplicate-helpers.ts";
 import { configureRouting } from "./duplicate-routing-helpers.ts";
 
 /**
+ * Callback type for forEachClipInScene
+ */
+type ClipInSceneCallback = (
+  clip: LiveAPI,
+  clipSlot: LiveAPI,
+  trackIndex: number,
+) => void;
+
+/**
+ * Iterate over all clips in a scene and call a callback for each
+ * @param sceneIndex - Scene index
+ * @param trackIds - Array of track IDs
+ * @param callback - Callback to call for each clip
+ */
+function forEachClipInScene(
+  sceneIndex: number,
+  trackIds: string[],
+  callback: ClipInSceneCallback,
+): void {
+  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+    const clipSlot = LiveAPI.from(
+      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    );
+
+    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+      const clip = LiveAPI.from(`${clipSlot.path} clip`);
+
+      if (clip.exists()) {
+        callback(clip, clipSlot, trackIndex);
+      }
+    }
+  }
+}
+
+/**
  * Remove the Producer Pal device from a duplicated track if it was the host track
  * @param trackIndex - Original track index
  * @param withoutDevices - Whether devices were excluded
@@ -230,30 +265,14 @@ export function duplicateScene(
 
   if (withoutClips === true) {
     // Delete all clips in the duplicated scene
-    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = LiveAPI.from(
-        `live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`,
-      );
-
-      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-        clipSlot.call("delete_clip");
-      }
-    }
+    forEachClipInScene(newSceneIndex, trackIds, (_clip, clipSlot) => {
+      clipSlot.call("delete_clip");
+    });
   } else {
     // Default behavior: collect info about duplicated clips
-    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = LiveAPI.from(
-        `live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`,
-      );
-
-      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-        const clip = LiveAPI.from(`${clipSlot.path} clip`);
-
-        if (clip.exists()) {
-          duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
-        }
-      }
-    }
+    forEachClipInScene(newSceneIndex, trackIds, (clip) => {
+      duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
+    });
   }
 
   // Return optimistic metadata
@@ -275,18 +294,11 @@ export function calculateSceneLength(sceneIndex: number): number {
 
   let maxLength = 4; // Default minimum scene length
 
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
-    );
+  forEachClipInScene(sceneIndex, trackIds, (clip) => {
+    const clipLength = clip.getProperty("length") as number;
 
-    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = LiveAPI.from(`${clipSlot.path} clip`);
-      const clipLength = clip.getProperty("length") as number;
-
-      maxLength = Math.max(maxLength, clipLength);
-    }
-  }
+    maxLength = Math.max(maxLength, clipLength);
+  });
 
   return maxLength;
 }
@@ -362,35 +374,28 @@ export function duplicateSceneToArrangement(
 
     // Only duplicate clips if withoutClips is not explicitly true
     // Find all clips in this scene and duplicate them to arrangement
-    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-      const clipSlot = LiveAPI.from(
-        `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
+      const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+
+      // Use the new length-aware clip creation logic
+      // Omit arrangementStart since all clips share the same start time
+      const clipsForTrack = createClipsForLength(
+        clip,
+        track,
+        arrangementStartBeats,
+        arrangementLengthBeats,
+        name,
+        ["arrangementStart"],
+        context,
       );
 
-      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-        const clip = LiveAPI.from(`${clipSlot.path} clip`);
-        const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
-
-        // Use the new length-aware clip creation logic
-        // Omit arrangementStart since all clips share the same start time
-        const clipsForTrack = createClipsForLength(
-          clip,
-          track,
-          arrangementStartBeats,
-          arrangementLengthBeats,
-          name,
-          ["arrangementStart"],
-          context,
-        );
-
-        // Add the scene name to each clip result if provided
-        if (name != null) {
-          assignNamesToClips(clipsForTrack, name);
-        }
-
-        duplicatedClips.push(...clipsForTrack);
+      // Add the scene name to each clip result if provided
+      if (name != null) {
+        assignNamesToClips(clipsForTrack, name);
       }
-    }
+
+      duplicatedClips.push(...clipsForTrack);
+    });
   }
 
   return {
