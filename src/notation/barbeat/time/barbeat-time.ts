@@ -79,17 +79,30 @@ export function barBeatToBeats(barBeat: string, beatsPerBar: number): number {
     const fracPart = parts[1] as string;
     const fracParts = fracPart.split("/");
     const numerator = fracParts[0] as string;
-    const denominator = fracParts[1] as string;
+    const denominatorStr = fracParts[1] as string;
+    const denominatorNum = Number.parseInt(denominatorStr);
+
+    if (denominatorNum === 0) {
+      throw new Error(
+        `Invalid bar|beat format: division by zero in "${barBeat}"`,
+      );
+    }
 
     beat =
-      Number.parseInt(intPart) +
-      Number.parseInt(numerator) / Number.parseInt(denominator);
+      Number.parseInt(intPart) + Number.parseInt(numerator) / denominatorNum;
   } else if (beatStr.includes("/")) {
     const parts = beatStr.split("/");
     const numerator = parts[0] as string;
-    const denominator = parts[1] as string;
+    const denominatorStr = parts[1] as string;
+    const denominatorNum = Number.parseInt(denominatorStr);
 
-    beat = Number.parseInt(numerator) / Number.parseInt(denominator);
+    if (denominatorNum === 0) {
+      throw new Error(
+        `Invalid bar|beat format: division by zero in "${barBeat}"`,
+      );
+    }
+
+    beat = Number.parseInt(numerator) / denominatorNum;
   } else {
     beat = Number.parseFloat(beatStr);
   }

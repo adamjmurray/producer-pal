@@ -117,7 +117,7 @@ function callTool(toolName: string, args: object): unknown {
   const tool = tools[toolName];
 
   if (!tool) {
-    throw new Error(`Unknown tool: ${tool}`);
+    throw new Error(`Unknown tool: ${toolName}`);
   }
 
   return tool(args);
