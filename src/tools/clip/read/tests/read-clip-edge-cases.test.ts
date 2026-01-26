@@ -5,6 +5,7 @@ import {
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { expectGetNotesExtendedCall } from "./read-clip-test-helpers.ts";
 
 describe("readClip", () => {
   // E2E test with real bar|beat notation
@@ -74,14 +75,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -332,14 +326,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     // Verify get_notes_extended is called with upper bound of 128 (exclusive), not 127
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128, // Upper bound must be 128 to include note 127 (G8)
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",

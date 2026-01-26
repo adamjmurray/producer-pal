@@ -5,6 +5,7 @@ import {
   children,
   createTrackResult,
   createTrackResultArray,
+  expectDeleteDeviceCalls,
   liveApiCall,
   liveApiId,
   liveApiPath,
@@ -158,22 +159,7 @@ describe("duplicate - track duplication", () => {
       0,
     );
 
-    // Verify delete_device was called for each device (backwards)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      2,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      1,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      0,
-    );
+    expectDeleteDeviceCalls("live_set tracks 1", 3);
   });
 
   it.each([
