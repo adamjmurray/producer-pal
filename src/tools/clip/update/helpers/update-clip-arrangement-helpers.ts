@@ -57,13 +57,22 @@ export function handleArrangementStartOperation({
 
   const newClipResult = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${clip.id}`,
+    clip.id,
     arrangementStartBeats,
   ) as string;
   const newClip = LiveAPI.from(newClipResult);
 
+  // Verify duplicate succeeded before deleting original
+  if (!newClip.exists()) {
+    console.error(
+      `Warning: failed to duplicate clip ${clip.id} - original preserved`,
+    );
+
+    return clip.id;
+  }
+
   // Delete original clip
-  track.call("delete_clip", `id ${clip.id}`);
+  track.call("delete_clip", clip.id);
 
   // Return the new clip ID
   return newClip.id;
@@ -112,7 +121,7 @@ export function handleArrangementOperations({
       arrangementStartBeats,
       tracksWithMovedClips,
     });
-    currentClip = LiveAPI.from(`id ${finalClipId}`);
+    currentClip = LiveAPI.from(finalClipId);
   }
 
   // Handle arrangementLength SECOND

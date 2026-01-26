@@ -67,23 +67,32 @@ export function performShuffling(
   });
 
   // Move all clips to holding area first
-  // Store trackIndex before entering loop (all arrangement clips are on same track)
-  const firstArrangementClip = arrangementClips[0] as LiveAPI;
-  const trackIndexForShuffle = firstArrangementClip.trackIndex;
+  // Track all track indices for multi-track support
+  const seenTrackIndices = new Set<number>();
 
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
+
+    if (trackIndex != null) {
+      seenTrackIndices.add(trackIndex);
+    }
+
     const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
     const holdingPos = context.holdingAreaStartBeats + index * 100;
     const result = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${clip.id}`,
+      clip.id,
       holdingPos,
     ) as string;
     const tempClip = LiveAPI.from(result);
 
+    // Verify duplicate succeeded before deleting original
+    if (!tempClip.exists()) {
+      throw new Error(`Failed to duplicate clip ${clip.id} during shuffle`);
+    }
+
     // Delete original
-    track.call("delete_clip", `id ${clip.id}`);
+    track.call("delete_clip", clip.id);
 
     return {
       tempClip,
@@ -94,23 +103,37 @@ export function performShuffling(
 
   // Move clips from holding area to shuffled positions
   for (const { tempClip, track, targetPosition } of holdingPositions) {
-    track.call(
+    const finalResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${tempClip.id}`,
+      tempClip.id,
       targetPosition,
-    );
-    track.call("delete_clip", `id ${tempClip.id}`);
+    ) as string;
+    const finalClip = LiveAPI.from(finalResult);
+
+    // Verify duplicate succeeded before deleting temp clip
+    if (!finalClip.exists()) {
+      throw new Error(
+        `Failed to move clip ${tempClip.id} from holding during shuffle`,
+      );
+    }
+
+    track.call("delete_clip", tempClip.id);
   }
 
   // After shuffling, the clips in the array are stale (they were deleted and recreated)
-  // Re-scan to get fresh clip objects
-  const track = LiveAPI.from(`live_set tracks ${trackIndexForShuffle}`);
-  const freshClipIds = track.getChildIds("arrangement_clips");
-  const freshClips = freshClipIds.map((id) => LiveAPI.from(id));
+  // Re-scan ALL tracks that had clips (not just the first track)
+  const allFreshClips: LiveAPI[] = [];
+
+  for (const trackIndex of seenTrackIndices) {
+    const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+    const freshClipIds = track.getChildIds("arrangement_clips");
+
+    allFreshClips.push(...freshClipIds.map((id) => LiveAPI.from(id)));
+  }
 
   // Replace all stale clips with fresh ones
   clips.length = 0;
-  clips.push(...freshClips);
+  clips.push(...allFreshClips);
 }
 
 /**

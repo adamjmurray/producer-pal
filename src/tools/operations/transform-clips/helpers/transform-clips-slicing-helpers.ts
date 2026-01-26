@@ -77,7 +77,7 @@ function sliceUnloopedMidiContent(
     (sliceContentStart, sliceContentEnd, slicePosition) => {
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
+        sourceClip.id,
         slicePosition,
       ) as string;
       const sliceClip = LiveAPI.from(duplicateResult);
@@ -250,8 +250,17 @@ export function performSlicing(
       _context as TilingContext,
     );
 
+    // Verify holding clip was created before deleting original
+    const holdingClip = LiveAPI.from(holdingClipId);
+
+    if (!holdingClip.exists()) {
+      throw new Error(
+        `Failed to create holding clip for ${originalClipId} during slicing`,
+      );
+    }
+
     // Delete original clip before moving from holding
-    track.call("delete_clip", `id ${originalClipId}`);
+    track.call("delete_clip", originalClipId);
     // Move shortened clip from holding back to original position
     const movedClip = moveClipFromHolding(
       holdingClipId,
