@@ -1,22 +1,26 @@
 import {
   formatThought,
-  formatToolCall,
-  formatToolResult,
   endThought,
   debugLog,
   debugCall,
 } from "../shared/formatting.ts";
 import {
   connectMcp,
-  extractToolResultText,
   getMcpToolsForResponses,
   type ResponsesTool,
 } from "../shared/mcp.ts";
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
+import {
+  applyResponsesOptions,
+  extractMessageText,
+} from "../shared/responses-api-base.ts";
+import {
+  executeToolCallSafe,
+  parseToolArgs,
+} from "../shared/tool-execution.ts";
 import type {
   ChatOptions,
-  OpenRouterReasoningConfig,
   ResponsesAPIResponse,
   ResponsesConversationItem,
   ResponsesOutputItem,
@@ -156,14 +160,7 @@ function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   const { conversation, model, tools, options } = ctx;
   const body: ResponsesRequestBody = { model, input: conversation, tools };
 
-  if (options.thinking)
-    body.reasoning = {
-      effort: options.thinking as OpenRouterReasoningConfig["effort"],
-    };
-  if (options.outputTokens != null)
-    body.max_output_tokens = options.outputTokens;
-  if (options.randomness != null) body.temperature = options.randomness;
-  if (options.instructions != null) body.instructions = options.instructions;
+  applyResponsesOptions(body as unknown as Record<string, unknown>, options);
 
   return body;
 }
@@ -311,40 +308,16 @@ async function executeResponsesToolCall(
   argsJson: string,
 ): Promise<TurnResult["toolCalls"][number]> {
   const { mcpClient, conversation } = ctx;
-  let args: Record<string, unknown>;
+  const args = parseToolArgs(argsJson);
+  const toolResult = await executeToolCallSafe(mcpClient, name, args);
 
-  try {
-    args = JSON.parse(argsJson) as Record<string, unknown>;
-  } catch {
-    args = {};
-  }
+  conversation.push({
+    type: "function_call_output",
+    call_id: callId,
+    output: toolResult.result,
+  });
 
-  console.log(formatToolCall(name, args));
-
-  try {
-    const result = await mcpClient.callTool({ name, arguments: args });
-    const resultText = extractToolResultText(result);
-
-    console.log(formatToolResult(resultText));
-    conversation.push({
-      type: "function_call_output",
-      call_id: callId,
-      output: resultText,
-    });
-
-    return { name, args, result: resultText };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-
-    console.log(formatToolResult(`Error: ${errorMsg}`));
-    conversation.push({
-      type: "function_call_output",
-      call_id: callId,
-      output: `Error: ${errorMsg}`,
-    });
-
-    return { name, args, result: `Error: ${errorMsg}` };
-  }
+  return toolResult;
 }
 
 /**
@@ -367,10 +340,7 @@ async function processResponsesOutput(
       console.log(formatThought(item.summary));
 
     if (item.type === "message" && item.content) {
-      const messageText = item.content
-        .filter((c) => c.type === "output_text")
-        .map((c) => c.text)
-        .join("");
+      const messageText = extractMessageText(item.content);
 
       if (messageText) {
         console.log(messageText);

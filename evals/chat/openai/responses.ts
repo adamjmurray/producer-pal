@@ -6,27 +6,31 @@ import type {
 } from "openai/resources/responses/responses";
 import {
   formatThought,
-  formatToolCall,
-  formatToolResult,
   debugLog,
   debugCall,
   DEBUG_SEPARATOR,
 } from "../shared/formatting.ts";
 import {
   connectMcp,
-  extractToolResultText,
   getMcpToolsForOpenAI,
   type ResponsesTool,
 } from "../shared/mcp.ts";
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
+import {
+  applyResponsesOptions,
+  extractMessageText,
+} from "../shared/responses-api-base.ts";
+import {
+  executeAndLogToolCall,
+  parseToolArgs,
+} from "../shared/tool-execution.ts";
 import type {
   ChatOptions,
   OpenAIConversationItem,
   OpenAIResponseOutput,
   OpenAIResponsesResult,
   OpenAIStreamEvent,
-  OpenAIThinkingLevel,
   OpenAIStreamState,
   TurnResult,
 } from "../shared/types.ts";
@@ -149,15 +153,7 @@ function buildRequestBody(
     tools: ctx.tools as Tool[],
   };
 
-  if (options.thinking)
-    body.reasoning = {
-      effort: options.thinking as OpenAIThinkingLevel,
-      summary: options.thinkingSummary ?? "auto",
-    };
-  if (options.outputTokens != null)
-    body.max_output_tokens = options.outputTokens;
-  if (options.randomness != null) body.temperature = options.randomness;
-  if (options.instructions != null) body.instructions = options.instructions;
+  applyResponsesOptions(body as Record<string, unknown>, options);
 
   return body;
 }
@@ -310,32 +306,22 @@ async function processOutputItem(
 
     return {};
   } else if (item.type === "message" && item.content) {
-    const text = item.content
-      .filter((c) => c.type === "output_text")
-      .map((c) => c.text)
-      .join("");
+    const text = extractMessageText(item.content);
 
     if (text) console.log(text);
 
     return { text };
   } else if (item.type === "function_call" && item.name && item.arguments) {
-    const args = JSON.parse(item.arguments) as Record<string, unknown>;
+    const args = parseToolArgs(item.arguments);
+    const toolResult = await executeAndLogToolCall(mcpClient, item.name, args);
 
-    console.log(formatToolCall(item.name, args));
-    const result = await mcpClient.callTool({
-      name: item.name,
-      arguments: args,
-    });
-    const resultText = extractToolResultText(result);
-
-    console.log(formatToolResult(resultText));
     conversation.push({
       type: "function_call_output",
       call_id: item.call_id,
-      output: resultText,
+      output: toolResult.result,
     });
 
-    return { toolCall: { name: item.name, args, result: resultText } };
+    return { toolCall: toolResult };
   }
 
   return {};

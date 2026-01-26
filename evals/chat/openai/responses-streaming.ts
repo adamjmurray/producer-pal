@@ -5,34 +5,21 @@ import {
   formatThought,
   formatToolCall,
   formatToolResult,
-  startThought,
-  continueThought,
-  endThought,
 } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
+import {
+  getDeltaText,
+  handleReasoningText,
+  finishReasoning,
+  handleContentText,
+} from "../shared/responses-streaming.ts";
+import { type McpClient, parseToolArgs } from "../shared/tool-execution.ts";
 import type {
   OpenAIConversationItem,
   OpenAIResponseOutput,
   OpenAIStreamEvent,
   OpenAIStreamState,
 } from "../shared/types.ts";
-
-type McpClient = {
-  callTool: (params: {
-    name: string;
-    arguments: Record<string, unknown>;
-  }) => Promise<unknown>;
-};
-
-/**
- * Extracts text from a stream event delta
- *
- * @param delta - Delta object or string from stream event
- * @returns Text content or undefined
- */
-function getDeltaText(delta: OpenAIStreamEvent["delta"]): string | undefined {
-  return typeof delta === "string" ? delta : delta?.text;
-}
 
 /**
  * Handles reasoning/thought stream deltas
@@ -46,23 +33,9 @@ function handleReasoningDelta(
 ): void {
   const text = getDeltaText(event.delta);
 
-  if (!text) return;
-  state.displayedReasoning = true;
-  process.stdout.write(
-    state.inThought ? continueThought(text) : startThought(text),
-  );
-  state.inThought = true;
-}
-
-/**
- * Handles completion of a reasoning section
- *
- * @param state - Current stream state to update
- */
-function handleReasoningDone(state: OpenAIStreamState): void {
-  if (state.inThought) {
-    process.stdout.write(endThought());
-    state.inThought = false;
+  if (text) {
+    state.displayedReasoning = true;
+    handleReasoningText(state, text);
   }
 }
 
@@ -76,11 +49,7 @@ function handleTextDelta(
   event: OpenAIStreamEvent,
   state: OpenAIStreamState,
 ): void {
-  handleReasoningDone(state);
-  const text = getDeltaText(event.delta) ?? "";
-
-  state.currentContent += text;
-  process.stdout.write(text);
+  handleContentText(state, getDeltaText(event.delta) ?? "");
 }
 
 /**
@@ -121,7 +90,7 @@ async function handleFunctionCallDone(
 
   if (!functionInfo) return;
 
-  const args = JSON.parse(event.arguments) as Record<string, unknown>;
+  const args = parseToolArgs(event.arguments);
 
   functionInfo.args = args;
   console.log("\n" + formatToolCall(functionInfo.name, args));
@@ -222,7 +191,7 @@ export async function processStreamEvent(
       handleReasoningDelta(event, state);
       break;
     case "response.reasoning.done":
-      handleReasoningDone(state);
+      finishReasoning(state);
       break;
     case "response.output_text.delta":
       handleTextDelta(event, state);
