@@ -9,7 +9,10 @@ import {
   mockLiveApiGet,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-import { setupScenePathFromId } from "./duplicate-test-helpers.ts";
+import {
+  expectDeleteDeviceCalls,
+  setupScenePathFromId,
+} from "./duplicate-test-helpers.ts";
 import {
   calculateSceneLength,
   duplicateScene,
@@ -204,22 +207,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, false, true);
 
-      // Verify delete_device was called for each device (backwards)
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "delete_device",
-        2,
-      );
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "delete_device",
-        1,
-      );
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "delete_device",
-        0,
-      );
+      expectDeleteDeviceCalls("live_set tracks 1", 3);
     });
 
     it("should delete clips when withoutClips is true", () => {

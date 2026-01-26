@@ -1,6 +1,7 @@
 /**
  * Test helper functions for read-clip tests
  */
+import { expect } from "vitest";
 import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 
 interface TestNote {
@@ -163,4 +164,23 @@ export function createClipProps68(
     loop_end: 3,
     ...overrides,
   };
+}
+
+/**
+ * Expect get_notes_extended was called with standard parameters.
+ * @param clipPath - The clip path (e.g., "live_set tracks 1 clip_slots 1 clip")
+ * @param clipLength - The clip length in Ableton beats (default 4)
+ */
+export function expectGetNotesExtendedCall(
+  clipPath: string,
+  clipLength = 4,
+): void {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ path: clipPath }),
+    "get_notes_extended",
+    0,
+    128,
+    0,
+    clipLength,
+  );
 }

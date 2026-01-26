@@ -1,4 +1,4 @@
-// Shared constants for tool call error test case
+// Shared constants for Gemini formatter test cases
 export const PPAL_CONNECT = "ppal-connect";
 export const PPAL_READ_LIVE_SET = "ppal-read-live-set";
 export const PPAL_CREATE_CLIP = "ppal-create-clip";
