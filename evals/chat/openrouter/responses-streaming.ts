@@ -2,13 +2,11 @@
  * Streaming helpers for OpenRouter Responses API
  */
 
+import { debugLog, DEBUG_SEPARATOR } from "../shared/formatting.ts";
 import {
-  startThought,
-  continueThought,
-  endThought,
-  debugLog,
-  DEBUG_SEPARATOR,
-} from "../shared/formatting.ts";
+  handleReasoningText,
+  handleContentText,
+} from "../shared/responses-streaming.ts";
 import type {
   ChatOptions,
   ResponsesStreamEvent,
@@ -73,24 +71,11 @@ export function processResponsesStreamEvent(
   state: ResponsesStreamState,
 ): void {
   if (event.type === "response.reasoning.delta" && event.delta?.text) {
-    state.currentReasoning += event.delta.text;
-
-    if (!state.inThought) {
-      process.stdout.write(startThought(event.delta.text));
-      state.inThought = true;
-    } else {
-      process.stdout.write(continueThought(event.delta.text));
-    }
+    handleReasoningText(state, event.delta.text);
   }
 
   if (event.type === "response.output_text.delta" && event.delta?.text) {
-    if (state.inThought) {
-      process.stdout.write(endThought());
-      state.inThought = false;
-    }
-
-    process.stdout.write(event.delta.text);
-    state.currentContent += event.delta.text;
+    handleContentText(state, event.delta.text);
   }
 
   if (event.type === "response.function_call_arguments.delta") {

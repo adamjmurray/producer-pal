@@ -12,12 +12,15 @@ import {
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import {
+  applyResponsesOptions,
+  extractMessageText,
+} from "../shared/responses-api-base.ts";
+import {
   executeToolCallSafe,
   parseToolArgs,
 } from "../shared/tool-execution.ts";
 import type {
   ChatOptions,
-  OpenRouterReasoningConfig,
   ResponsesAPIResponse,
   ResponsesConversationItem,
   ResponsesOutputItem,
@@ -157,14 +160,7 @@ function buildResponsesRequestBody(ctx: SessionContext): ResponsesRequestBody {
   const { conversation, model, tools, options } = ctx;
   const body: ResponsesRequestBody = { model, input: conversation, tools };
 
-  if (options.thinking)
-    body.reasoning = {
-      effort: options.thinking as OpenRouterReasoningConfig["effort"],
-    };
-  if (options.outputTokens != null)
-    body.max_output_tokens = options.outputTokens;
-  if (options.randomness != null) body.temperature = options.randomness;
-  if (options.instructions != null) body.instructions = options.instructions;
+  applyResponsesOptions(body as unknown as Record<string, unknown>, options);
 
   return body;
 }
@@ -344,10 +340,7 @@ async function processResponsesOutput(
       console.log(formatThought(item.summary));
 
     if (item.type === "message" && item.content) {
-      const messageText = item.content
-        .filter((c) => c.type === "output_text")
-        .map((c) => c.text)
-        .join("");
+      const messageText = extractMessageText(item.content);
 
       if (messageText) {
         console.log(messageText);

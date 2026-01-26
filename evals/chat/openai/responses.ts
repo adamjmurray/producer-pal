@@ -18,6 +18,10 @@ import {
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
 import {
+  applyResponsesOptions,
+  extractMessageText,
+} from "../shared/responses-api-base.ts";
+import {
   executeAndLogToolCall,
   parseToolArgs,
 } from "../shared/tool-execution.ts";
@@ -27,7 +31,6 @@ import type {
   OpenAIResponseOutput,
   OpenAIResponsesResult,
   OpenAIStreamEvent,
-  OpenAIThinkingLevel,
   OpenAIStreamState,
   TurnResult,
 } from "../shared/types.ts";
@@ -150,15 +153,7 @@ function buildRequestBody(
     tools: ctx.tools as Tool[],
   };
 
-  if (options.thinking)
-    body.reasoning = {
-      effort: options.thinking as OpenAIThinkingLevel,
-      summary: options.thinkingSummary ?? "auto",
-    };
-  if (options.outputTokens != null)
-    body.max_output_tokens = options.outputTokens;
-  if (options.randomness != null) body.temperature = options.randomness;
-  if (options.instructions != null) body.instructions = options.instructions;
+  applyResponsesOptions(body as Record<string, unknown>, options);
 
   return body;
 }
@@ -311,10 +306,7 @@ async function processOutputItem(
 
     return {};
   } else if (item.type === "message" && item.content) {
-    const text = item.content
-      .filter((c) => c.type === "output_text")
-      .map((c) => c.text)
-      .join("");
+    const text = extractMessageText(item.content);
 
     if (text) console.log(text);
 
