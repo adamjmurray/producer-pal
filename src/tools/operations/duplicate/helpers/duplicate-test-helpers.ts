@@ -1,4 +1,4 @@
-import type { Mock } from "vitest";
+import { expect, type Mock } from "vitest";
 // Import for use in helper functions below
 import {
   liveApiCall,
@@ -321,6 +321,25 @@ export function createTrackResultArray(
   return Array.from({ length: count }, (_, i) =>
     createTrackResult(startIndex + i),
   );
+}
+
+/**
+ * Verify that delete_device was called for each device in reverse order.
+ * @param trackPath - Track path (e.g., "live_set tracks 1")
+ * @param deviceCount - Number of devices that should have been deleted
+ */
+export function expectDeleteDeviceCalls(
+  trackPath: string,
+  deviceCount: number,
+): void {
+  // Devices are deleted in reverse order
+  for (let i = deviceCount - 1; i >= 0; i--) {
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: trackPath }),
+      "delete_device",
+      i,
+    );
+  }
 }
 
 /**

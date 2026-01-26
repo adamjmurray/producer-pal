@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  liveApiCall,
   liveApiId,
   liveApiPath,
   liveApiType,
@@ -10,6 +9,7 @@ import {
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
+  expectGetNotesExtendedCall,
   setupMidiClipMock,
   setupNotesMock,
 } from "./read-clip-test-helpers.ts";
@@ -30,14 +30,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -71,14 +64,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -115,14 +101,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
@@ -153,14 +132,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      3,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip", 3);
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
