@@ -324,7 +324,7 @@ export function assertDuplicateClipCalled(
   clipId: string,
   position: number,
 ): void {
-  // Production code passes clip.id directly which is "id X" format
+  // Construct "id X" format to match production LiveAPI.id behavior
   expect(liveApiCall).toHaveBeenCalledWith(
     "duplicate_clip_to_arrangement",
     `id ${clipId}`,

@@ -105,7 +105,6 @@ describe("update-clip-arrangement-helpers", () => {
 
       const mockClip = {
         id: "id 789",
-        exists: () => true,
         getProperty: vi.fn((prop) => {
           if (prop === "is_arrangement_clip") {
             return 1;

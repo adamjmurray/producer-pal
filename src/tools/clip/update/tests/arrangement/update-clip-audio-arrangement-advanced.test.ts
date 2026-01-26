@@ -342,7 +342,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       mockContext,
     );
 
-    // Move happened first (clip.id returns "id X" format in production)
+    // Move happened first - construct "id X" format to match production
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
