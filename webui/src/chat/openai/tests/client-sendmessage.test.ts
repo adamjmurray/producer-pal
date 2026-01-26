@@ -338,6 +338,64 @@ describe("OpenAIClient with non-function tool calls", () => {
   });
 });
 
+describe("OpenAIClient error handling", () => {
+  it("throws when listTools returns null in getFilteredTools", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    // Create MCP client where listTools returns null
+    const mcpClient = {
+      connect: vi.fn(),
+      listTools: vi.fn().mockResolvedValue(null),
+      callTool: vi.fn(),
+    } as unknown as ReturnType<typeof createMockMcpClient>;
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* () {
+      yield { choices: [DONE_CHUNK] };
+    }) as typeof client.ai;
+
+    await expect(async () => {
+      for await (const _history of client.sendMessage("Test")) {
+        // consume generator
+      }
+    }).rejects.toThrow("MCP client not initialized. Call initialize() first.");
+  });
+
+  it("throws when callTool returns null in executeSingleToolCall", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    // Create MCP client where callTool returns null
+    const mcpClient = {
+      connect: vi.fn(),
+      listTools: vi.fn().mockResolvedValue({
+        tools: [{ name: "test-tool", description: "Test", inputSchema: {} }],
+      }),
+      callTool: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof createMockMcpClient>;
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(
+      createToolThenDoneGenerator(createToolCallChunk("test-tool", "{}")),
+    ) as typeof client.ai;
+
+    // Should handle the error by adding error tool message
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Test"),
+    );
+
+    const finalHistory = historyUpdates.at(-1);
+    const toolMessage = finalHistory?.find(
+      (msg) => (msg as { role: string }).role === "tool",
+    );
+
+    expect(toolMessage).toBeDefined();
+    const content = JSON.parse((toolMessage as { content: string }).content);
+
+    expect(content.error).toBe(
+      "MCP client not initialized. Call initialize() first.",
+    );
+    expect(content.isError).toBe(true);
+  });
+});
+
 describe("OpenAIClient max iterations warning", () => {
   it("warns and stops when max iterations reached", async () => {
     const client = new OpenAIClient("test-key", { model: "gpt-4" });

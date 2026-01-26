@@ -453,6 +453,58 @@ describe("view", () => {
         }),
       );
     });
+
+    it("skips instrument selection when no track is selected", () => {
+      // Mock no selected track in the read state
+      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(function (
+        path: string,
+      ) {
+        if (path === "live_app view") {
+          return {
+            getProperty: vi.fn().mockReturnValue(1), // session view
+            call: vi.fn().mockReturnValue(0), // no special views visible
+          };
+        }
+
+        if (path === "live_set view") {
+          return mockSongView;
+        }
+
+        if (path === "live_set view selected_track") {
+          // No track is selected
+          return {
+            exists: vi.fn().mockReturnValue(false),
+          };
+        }
+
+        if (path === "live_set view selected_scene") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view detail_clip") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view highlighted_clip_slot") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        // Default fallback for any other LiveAPI object
+        return {
+          exists: vi.fn().mockReturnValue(false),
+          call: liveApiCall,
+          get: vi.fn(),
+          set: liveApiSet,
+        };
+      });
+
+      const result = select({ instrument: true });
+
+      // Should not call select_instrument since no track is selected
+      expect(liveApiCall).not.toHaveBeenCalledWith("select_instrument");
+      // Result reflects actual readViewState() with no track selected
+      expect(result).toStrictEqual(expectViewState());
+    });
   });
 
   describe("highlighted clip slot", () => {
