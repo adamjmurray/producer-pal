@@ -209,20 +209,20 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       return this._path;
     });
 
+    // Mock the id getter to return "id X" format (matching production behavior)
+    // Note: mockLiveApiGet uses this.id to look up overrides, so keys must match
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "id 789") {
-        return "789";
-      }
-
-      if (this._path === "id 999") {
-        return movedClipId;
+      // Return "id X" format for all IDs to match production behavior
+      if (this._id) {
+        return `id ${this._id}`;
       }
 
       return this._id;
     });
 
     mockLiveApiGet({
-      789: {
+      // Keys must use "id X" format to match what liveApiId returns
+      "id 789": {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 0.0,
@@ -231,7 +231,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         signature_denominator: 4,
         trackIndex,
       },
-      [movedClipId]: {
+      [`id ${movedClipId}`]: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 32.0, // Moved to bar 9
@@ -276,7 +276,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       8.0, // tempClipLength = 48 - 40 = 8
     );
 
-    expect(result).toStrictEqual({ id: movedClipId });
+    expect(result).toStrictEqual({ id: `id ${movedClipId}` });
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", () => {

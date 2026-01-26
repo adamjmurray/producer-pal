@@ -204,8 +204,9 @@ export function buildAudioClipMock({
   // end_marker = startMarker + visibleLength (endTime)
   const endMarker = startMarker + endTime;
 
+  // Use "id X" format for keys to match liveApiId mock behavior
   return {
-    [clipId]: {
+    [`id ${clipId}`]: {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -264,8 +265,9 @@ export function buildRevealedClipMock({
   startMarker,
   endMarker,
 }: RevealedClipMockOptions): Record<string, RevealedClipMockData> {
+  // Use "id X" format for keys to match liveApiId mock behavior
   return {
-    [clipId]: {
+    [`id ${clipId}`]: {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -298,15 +300,16 @@ export function setupDuplicateClipMock(revealedClipId: string): void {
 
 /**
  * Assert that source clip end_marker was set correctly.
- * @param clipId - Source clip ID
+ * @param clipId - Source clip ID (without "id " prefix)
  * @param expectedEndMarker - Expected end marker value
  */
 export function assertSourceClipEndMarker(
   clipId: string,
   expectedEndMarker: number,
 ): void {
+  // Context uses "id X" format to match liveApiId mock
   expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
+    expect.objectContaining({ id: `id ${clipId}` }),
     "end_marker",
     expectedEndMarker,
   );
@@ -314,13 +317,14 @@ export function assertSourceClipEndMarker(
 
 /**
  * Assert that duplicate_clip_to_arrangement was called correctly.
- * @param clipId - Source clip ID
+ * @param clipId - Source clip ID (without "id " prefix)
  * @param position - Position for the duplicated clip
  */
 export function assertDuplicateClipCalled(
   clipId: string,
   position: number,
 ): void {
+  // Production code passes clip.id directly which is "id X" format
   expect(liveApiCall).toHaveBeenCalledWith(
     "duplicate_clip_to_arrangement",
     `id ${clipId}`,
@@ -330,7 +334,7 @@ export function assertDuplicateClipCalled(
 
 /**
  * Assert that revealed clip markers were set using the looping workaround.
- * @param clipId - Revealed clip ID
+ * @param clipId - Revealed clip ID (without "id " prefix)
  * @param startMarker - Expected start marker
  * @param endMarker - Expected end marker
  */
@@ -339,7 +343,8 @@ export function assertRevealedClipMarkers(
   startMarker: number,
   endMarker: number,
 ): void {
-  const ctx = expect.objectContaining({ id: clipId });
+  // Context uses "id X" format to match liveApiId mock
+  const ctx = expect.objectContaining({ id: `id ${clipId}` });
 
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 1);
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_end", endMarker);
@@ -435,6 +440,15 @@ export function setupAudioArrangementTest({
   name = "Audio Clip",
 }: AudioArrangementTestOptions): void {
   setupArrangementClipPath(trackIndex, [clipId, revealedClipId]);
+
+  // Mock the id getter to return "id X" format (matching production behavior)
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+    if (this._id) {
+      return `id ${this._id}`;
+    }
+
+    return this._id;
+  });
 
   const sourceMock = buildAudioClipMock({
     clipId,

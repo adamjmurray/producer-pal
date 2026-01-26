@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiPath } from "#src/test/mocks/mock-live-api.ts";
+import {
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+} from "#src/test/mocks/mock-live-api.ts";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.ts";
 
 interface MockPathContext {
@@ -74,7 +78,7 @@ describe("update-clip-arrangement-helpers", () => {
 
     it("should duplicate clip to new position and delete original", () => {
       const trackIndex = 2;
-      const newClipId = "999";
+      const newClipId = "id 999";
 
       liveApiPath.mockImplementation(function (this: MockPathContext) {
         if (this._id === "789") {
@@ -84,14 +88,24 @@ describe("update-clip-arrangement-helpers", () => {
         return this._path;
       });
 
+      // Mock the id getter to return "id X" format (matching production behavior)
+      liveApiId.mockImplementation(function (this: MockPathContext) {
+        if (this._path === "id 999") {
+          return newClipId;
+        }
+
+        return this._id;
+      });
+
       liveApiCall.mockImplementation((method) => {
         if (method === "duplicate_clip_to_arrangement") {
-          return `id ${newClipId}`;
+          return newClipId;
         }
       });
 
       const mockClip = {
-        id: "789",
+        id: "id 789",
+        exists: () => true,
         getProperty: vi.fn((prop) => {
           if (prop === "is_arrangement_clip") {
             return 1;

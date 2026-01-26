@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
+  liveApiId,
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
@@ -45,7 +46,11 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     assertDuplicateClipCalled(clipId, 7.0);
     // visibleContentEnd = startMarker + sourceEndTime = 1 + 7 = 8
     assertRevealedClipMarkers(revealedClipId, 8.0, 15.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+    // Result IDs use "id X" format to match production LiveAPI.id behavior
+    expect(result).toStrictEqual([
+      { id: `id ${clipId}` },
+      { id: `id ${revealedClipId}` },
+    ]);
   });
 
   it("should calculate correct markers with start_marker offset)", () => {
@@ -71,7 +76,11 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     assertSourceClipEndMarker(clipId, 15.0);
     // visibleContentEnd = 1 + 4 = 5
     assertRevealedClipMarkers(revealedClipId, 5.0, 15.0);
-    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+    // Result IDs use "id X" format to match production LiveAPI.id behavior
+    expect(result).toStrictEqual([
+      { id: `id ${clipId}` },
+      { id: `id ${revealedClipId}` },
+    ]);
   });
 
   it("should extend unwarped audio clip to target length using session holding area", () => {
@@ -251,8 +260,18 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       return this._path;
     });
 
+    // Mock the id getter to return "id X" format (matching production behavior)
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+      if (this._id) {
+        return `id ${this._id}`;
+      }
+
+      return this._id;
+    });
+
+    // Keys must use "id X" format to match what liveApiId returns
     mockLiveApiGet({
-      [clipId]: {
+      [`id ${clipId}`]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -267,7 +286,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
         name: "Audio for move+lengthen",
         trackIndex,
       },
-      [movedClipId]: {
+      [`id ${movedClipId}`]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -282,7 +301,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
         name: "Audio for move+lengthen",
         trackIndex,
       },
-      [revealedClipId]: {
+      [`id ${revealedClipId}`]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -305,8 +324,8 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
         duplicateCallCount++;
 
         return duplicateCallCount === 1
-          ? ["id", movedClipId]
-          : ["id", revealedClipId];
+          ? `id ${movedClipId}`
+          : `id ${revealedClipId}`;
       }
 
       if (method === "delete_clip") return 1;
@@ -323,7 +342,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       mockContext,
     );
 
-    // Move happened first
+    // Move happened first (clip.id returns "id X" format in production)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
@@ -339,6 +358,9 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       12.0,
     );
 
-    expect(result).toStrictEqual([{ id: movedClipId }, { id: revealedClipId }]);
+    expect(result).toStrictEqual([
+      { id: `id ${movedClipId}` },
+      { id: `id ${revealedClipId}` },
+    ]);
   });
 });
