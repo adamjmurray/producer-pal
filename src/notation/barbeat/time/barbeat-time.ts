@@ -68,44 +68,8 @@ export function barBeatToBeats(barBeat: string, beatsPerBar: number): number {
   }
 
   const bar = Number.parseInt(match[1] as string);
-
-  // Parse beat as decimal, fraction, or integer+fraction
   const beatStr = match[2] as string;
-  let beat;
-
-  if (beatStr.includes("+")) {
-    const parts = beatStr.split("+");
-    const intPart = parts[0] as string;
-    const fracPart = parts[1] as string;
-    const fracParts = fracPart.split("/");
-    const numerator = fracParts[0] as string;
-    const denominatorStr = fracParts[1] as string;
-    const denominatorNum = Number.parseInt(denominatorStr);
-
-    if (denominatorNum === 0) {
-      throw new Error(
-        `Invalid bar|beat format: division by zero in "${barBeat}"`,
-      );
-    }
-
-    beat =
-      Number.parseInt(intPart) + Number.parseInt(numerator) / denominatorNum;
-  } else if (beatStr.includes("/")) {
-    const parts = beatStr.split("/");
-    const numerator = parts[0] as string;
-    const denominatorStr = parts[1] as string;
-    const denominatorNum = Number.parseInt(denominatorStr);
-
-    if (denominatorNum === 0) {
-      throw new Error(
-        `Invalid bar|beat format: division by zero in "${barBeat}"`,
-      );
-    }
-
-    beat = Number.parseInt(numerator) / denominatorNum;
-  } else {
-    beat = Number.parseFloat(beatStr);
-  }
+  const beat = parseBeatValue(beatStr, barBeat, "bar|beat");
 
   if (bar < 1) {
     throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
@@ -204,9 +168,14 @@ export function abletonBeatsToBarBeatDuration(
  * Parse a beat value string (supports fractions and mixed numbers)
  * @param beatsStr - Beat value string
  * @param context - Original string for error messages
+ * @param formatType - Type of format for error messages (e.g., "duration", "bar|beat")
  * @returns Parsed beat value
  */
-function parseBeatValue(beatsStr: string, context: string): number {
+function parseBeatValue(
+  beatsStr: string,
+  context: string,
+  formatType = "duration",
+): number {
   if (beatsStr.includes("+")) {
     const plusParts = beatsStr.split("+");
     const intPart = plusParts[0] as string;
@@ -214,7 +183,7 @@ function parseBeatValue(beatsStr: string, context: string): number {
     const num = Number.parseInt(intPart);
 
     if (Number.isNaN(num)) {
-      throw new Error(`Invalid integer+fraction format: "${context}"`);
+      throw new Error(`Invalid ${formatType} format: "${context}"`);
     }
 
     const slashParts = fracPart.split("/");
@@ -224,11 +193,13 @@ function parseBeatValue(beatsStr: string, context: string): number {
     const fracDen = Number.parseInt(denominator);
 
     if (fracDen === 0) {
-      throw new Error(`Invalid fraction: division by zero in "${context}"`);
+      throw new Error(
+        `Invalid ${formatType} format: division by zero in "${context}"`,
+      );
     }
 
     if (Number.isNaN(fracNum) || Number.isNaN(fracDen)) {
-      throw new Error(`Invalid integer+fraction format: "${context}"`);
+      throw new Error(`Invalid ${formatType} format: "${context}"`);
     }
 
     return num + fracNum / fracDen;
@@ -242,11 +213,13 @@ function parseBeatValue(beatsStr: string, context: string): number {
     const den = Number.parseInt(denominator);
 
     if (den === 0) {
-      throw new Error(`Invalid fraction: division by zero in "${context}"`);
+      throw new Error(
+        `Invalid ${formatType} format: division by zero in "${context}"`,
+      );
     }
 
     if (Number.isNaN(num) || Number.isNaN(den)) {
-      throw new Error(`Invalid fraction format: "${context}"`);
+      throw new Error(`Invalid ${formatType} format: "${context}"`);
     }
 
     return num / den;
@@ -255,7 +228,7 @@ function parseBeatValue(beatsStr: string, context: string): number {
   const beats = Number.parseFloat(beatsStr);
 
   if (Number.isNaN(beats)) {
-    throw new Error(`Invalid duration format: "${context}"`);
+    throw new Error(`Invalid ${formatType} format: "${context}"`);
   }
 
   return beats;

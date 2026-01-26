@@ -186,6 +186,27 @@ describe("barbeat-time utilities", () => {
         "Invalid bar|beat format",
       );
     });
+
+    it("throws error for division by zero", () => {
+      expect(() => barBeatToBeats("1|2/0", 4)).toThrow(
+        "Invalid bar|beat format: division by zero",
+      );
+      expect(() => barBeatToBeats("1|2+1/0", 4)).toThrow(
+        "Invalid bar|beat format: division by zero",
+      );
+    });
+
+    it("throws error for invalid numeric values (NaN)", () => {
+      expect(() => barBeatToBeats("1|a/2", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
+      expect(() => barBeatToBeats("1|a+1/2", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
+      expect(() => barBeatToBeats("1|2+a/2", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
+    });
   });
 
   describe("abletonBeatsToBarBeat", () => {

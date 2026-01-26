@@ -44,7 +44,7 @@ describe("barBeatDurationToMusicalBeats", () => {
 
     it("throws error for division by zero", () => {
       expect(() => barBeatDurationToMusicalBeats("5/0", 4)).toThrow(
-        "Invalid fraction: division by zero",
+        "Invalid duration format: division by zero",
       );
     });
 
@@ -56,10 +56,10 @@ describe("barBeatDurationToMusicalBeats", () => {
         "Invalid duration format",
       );
       expect(() => barBeatDurationToMusicalBeats("/3", 4)).toThrow(
-        "Invalid fraction format",
+        "Invalid duration format",
       );
       expect(() => barBeatDurationToMusicalBeats("5/", 4)).toThrow(
-        "Invalid fraction format",
+        "Invalid duration format",
       );
     });
   });
