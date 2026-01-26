@@ -14,12 +14,18 @@ interface HandleArrangementStartArgs {
 }
 
 /**
- * Handle moving arrangement clips to a new position
+ * Handle moving arrangement clips to a new position.
+ *
+ * Uses soft failure: on duplication failure, logs warning and returns original clip ID.
+ * This allows update operations to continue processing other clips/parameters.
+ * Compare to transform operations (shuffle/slice) which use hard failure (throw)
+ * since they require all-or-nothing semantics.
+ *
  * @param args - Operation arguments
  * @param args.clip - The clip to move
  * @param args.arrangementStartBeats - New position in beats
  * @param args.tracksWithMovedClips - Track of clips moved per track
- * @returns The new clip ID after move
+ * @returns The new clip ID after move, or original ID on failure
  */
 export function handleArrangementStartOperation({
   clip,

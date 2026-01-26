@@ -181,6 +181,13 @@ export function revealAudioContentAtPosition(
     ) as string;
     const revealedClip = LiveAPI.from(duplicateResult);
 
+    // Verify duplicate succeeded before proceeding
+    if (!revealedClip.exists()) {
+      throw new Error(
+        `Failed to duplicate clip ${sourceClip.id} for audio content reveal`,
+      );
+    }
+
     setClipMarkersWithLoopingWorkaround(revealedClip, {
       loopStart: newStartMarker,
       loopEnd: newEndMarker,

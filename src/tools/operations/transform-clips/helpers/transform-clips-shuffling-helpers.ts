@@ -1,13 +1,20 @@
 import * as console from "#src/shared/v8-max-console.ts";
 
 /**
- * Perform shuffling of arrangement clips
+ * Perform shuffling of arrangement clips.
+ *
+ * Uses hard failure (throws) since shuffle requires all-or-nothing semantics.
+ * Note: If a failure occurs mid-operation, clips may be left in the holding area
+ * (at positions starting from holdingAreaStartBeats). This is a known limitation
+ * as implementing rollback would add significant complexity.
+ *
  * @param arrangementClips - Array of arrangement clip objects
  * @param clips - Array to update with fresh clips after shuffling
  * @param warnings - Set to track warnings already issued
  * @param rng - Random number generator function
  * @param context - Context object with holdingAreaStartBeats
  * @param context.holdingAreaStartBeats - Start position for temporary holding area
+ * @throws Error if clip duplication fails during shuffle
  */
 export function performShuffling(
   arrangementClips: LiveAPI[],
