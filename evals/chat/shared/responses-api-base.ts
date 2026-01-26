@@ -4,17 +4,6 @@
 import type { ChatOptions, TurnResult } from "./types.ts";
 
 /**
- * Common options that map to Responses API request parameters
- */
-export interface ResponsesRequestOptions {
-  thinking?: string;
-  thinkingSummary?: string;
-  outputTokens?: number;
-  randomness?: number;
-  instructions?: string;
-}
-
-/**
  * Applies common chat options to a Responses API request body
  *
  * Both OpenAI and OpenRouter Responses APIs use the same parameter names

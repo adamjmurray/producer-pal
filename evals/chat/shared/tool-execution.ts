@@ -3,7 +3,6 @@
  */
 import { formatToolCall, formatToolResult } from "./formatting.ts";
 import { extractToolResultText } from "./mcp.ts";
-import type { TurnResult } from "./types.ts";
 
 export type McpClient = {
   callTool: (params: {
@@ -19,7 +18,8 @@ export interface ToolExecutionResult {
 }
 
 /**
- * Executes a tool call via MCP and logs the result
+ * Executes a tool call via MCP and logs the result.
+ * Throws if the tool call fails - use executeToolCallSafe for error handling.
  *
  * @param mcpClient - MCP client to execute the call
  * @param name - Tool name to call
@@ -51,12 +51,15 @@ export function parseToolArgs(argsJson: string): Record<string, unknown> {
   try {
     return JSON.parse(argsJson) as Record<string, unknown>;
   } catch {
+    console.warn(`Warning: Failed to parse tool arguments: ${argsJson}`);
+
     return {};
   }
 }
 
 /**
- * Executes a tool call with error handling
+ * Executes a tool call with error handling.
+ * Unlike executeAndLogToolCall, this catches errors and returns them in the result field.
  *
  * @param mcpClient - MCP client to execute the call
  * @param name - Tool name to call
@@ -84,16 +87,4 @@ export async function executeToolCallSafe(
 
     return { name, args, result: `Error: ${errorMsg}` };
   }
-}
-
-/**
- * Type guard to check if tool calls array is non-empty
- *
- * @param toolCalls - Array of tool calls to check
- * @returns True if array has items
- */
-export function hasToolCalls(
-  toolCalls: TurnResult["toolCalls"],
-): toolCalls is [TurnResult["toolCalls"][number], ...TurnResult["toolCalls"]] {
-  return toolCalls.length > 0;
 }
