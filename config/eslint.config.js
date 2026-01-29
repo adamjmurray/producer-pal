@@ -530,7 +530,7 @@ export default [
 
   // Playwright docs tests (JavaScript)
   {
-    files: ["tests/docs/**/*.{js,mjs}"],
+    files: ["e2e/docs/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",
@@ -556,13 +556,13 @@ export default [
 
   // Playwright UI tests (TypeScript)
   {
-    files: ["tests/webui/**/*.ts"],
+    files: ["e2e/webui/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2024,
         sourceType: "module",
-        project: "./tests/webui/tsconfig.json",
+        project: "./e2e/webui/tsconfig.json",
       },
       globals: {
         ...globals.node,
@@ -571,7 +571,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: "./tests/webui/tsconfig.json",
+          project: "./e2e/webui/tsconfig.json",
         },
         node: true,
       },

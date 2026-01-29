@@ -163,7 +163,7 @@ npm run ui:test
 ```
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
-models. See `tests/webui/README.md` for details.
+models. See `e2e/webui/README.md` for details.
 
 Note: These tests require an `.env` file with API keys.
 

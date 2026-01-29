@@ -10,7 +10,8 @@
     "**/*-test-case.ts",
     "**/test-cases/**",
     "**/test-utils/**",
-    "**/tests/**"
+    "**/tests/**",
+    "**/e2e/**"
   ],
   "path": ["../src", "../webui/src"]
 }

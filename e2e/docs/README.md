@@ -30,7 +30,7 @@ npm run docs:test:headed
 - **Config file**: `config/playwright.docs.config.mjs`
 - **Browser**: Chromium (headless)
 - **Workers**: Limited to 2 for stability
-- **Test files**: `tests/docs/*.spec.mjs`
+- **Test files**: `e2e/docs/*.spec.ts`
 
 ## What the Tests Check
 
@@ -70,7 +70,7 @@ npm run docs:test:headed
 ## Adding New External Domains
 
 If you add links to new external domains in the documentation, update the
-`ALLOWED_EXTERNAL_DOMAINS` array in `tests/docs/sitemap.spec.mjs`:
+`ALLOWED_EXTERNAL_DOMAINS` array in `e2e/docs/sitemap.spec.ts`:
 
 ```javascript
 const ALLOWED_EXTERNAL_DOMAINS = [
