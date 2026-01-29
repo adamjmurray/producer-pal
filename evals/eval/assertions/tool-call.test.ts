@@ -57,7 +57,22 @@ describe("assertToolCalled", () => {
   });
 
   describe("args matching", () => {
-    it("passes when args partially match", () => {
+    it("passes when args exactly match", () => {
+      const turns = [
+        createTurn([{ name: "update-clip", args: { name: "Kick" } }]),
+      ];
+      const assertion: ToolCallAssertion = {
+        type: "tool_called",
+        tool: "update-clip",
+        args: { name: "Kick" },
+      };
+
+      const result = assertToolCalled(assertion, turns);
+
+      expect(result.passed).toBe(true);
+    });
+
+    it("fails when actual has extra keys (exact match)", () => {
       const turns = [
         createTurn([
           { name: "update-clip", args: { id: "1", name: "Kick", length: 4 } },
@@ -67,6 +82,26 @@ describe("assertToolCalled", () => {
         type: "tool_called",
         tool: "update-clip",
         args: { name: "Kick" },
+      };
+
+      const result = assertToolCalled(assertion, turns);
+
+      expect(result.passed).toBe(false);
+    });
+
+    it("passes with expect.objectContaining() for partial match", () => {
+      const turns = [
+        createTurn([
+          { name: "update-clip", args: { id: "1", name: "Kick", length: 4 } },
+        ]),
+      ];
+      const assertion: ToolCallAssertion = {
+        type: "tool_called",
+        tool: "update-clip",
+        args: expect.objectContaining({ name: "Kick" }) as Record<
+          string,
+          unknown
+        >,
       };
 
       const result = assertToolCalled(assertion, turns);

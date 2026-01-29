@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   partialMatch,
+  exactMatch,
   normalizeCount,
   formatExpectedCount,
 } from "./helpers.ts";
@@ -72,6 +73,199 @@ describe("partialMatch", () => {
   it("handles string values", () => {
     expect(partialMatch({ name: "test" }, { name: "test" })).toBe(true);
     expect(partialMatch({ name: "test" }, { name: "other" })).toBe(false);
+  });
+});
+
+describe("partialMatch with vitest matchers", () => {
+  it("matches expect.any(String) for string values", () => {
+    expect(
+      partialMatch(
+        { sessionId: "abc-123-xyz" },
+        { sessionId: expect.any(String) },
+      ),
+    ).toBe(true);
+  });
+
+  it("fails expect.any(String) for non-string values", () => {
+    expect(
+      partialMatch({ sessionId: 12345 }, { sessionId: expect.any(String) }),
+    ).toBe(false);
+  });
+
+  it("matches expect.any(Number) for number values", () => {
+    expect(partialMatch({ count: 42 }, { count: expect.any(Number) })).toBe(
+      true,
+    );
+  });
+
+  it("matches expect.anything() for any non-null value", () => {
+    expect(partialMatch({ value: "test" }, { value: expect.anything() })).toBe(
+      true,
+    );
+    expect(partialMatch({ value: 123 }, { value: expect.anything() })).toBe(
+      true,
+    );
+    expect(partialMatch({ value: {} }, { value: expect.anything() })).toBe(
+      true,
+    );
+  });
+
+  it("fails expect.anything() for null/undefined", () => {
+    expect(partialMatch({ value: null }, { value: expect.anything() })).toBe(
+      false,
+    );
+  });
+
+  it("matches expect.stringContaining() for partial strings", () => {
+    expect(
+      partialMatch(
+        { message: "Hello World" },
+        { message: expect.stringContaining("World") },
+      ),
+    ).toBe(true);
+  });
+
+  it("fails expect.stringContaining() when substring not found", () => {
+    expect(
+      partialMatch(
+        { message: "Hello World" },
+        { message: expect.stringContaining("Foo") },
+      ),
+    ).toBe(false);
+  });
+
+  it("matches expect.stringMatching() with regex", () => {
+    expect(
+      partialMatch(
+        { id: "session-abc-123" },
+        { id: expect.stringMatching(/^session-[a-z]+-\d+$/) },
+      ),
+    ).toBe(true);
+  });
+
+  it("matches expect.objectContaining() for nested objects", () => {
+    expect(
+      partialMatch(
+        { options: { enabled: true, mode: "fast", extra: "ignored" } },
+        { options: expect.objectContaining({ enabled: true }) },
+      ),
+    ).toBe(true);
+  });
+
+  it("fails expect.objectContaining() when key missing", () => {
+    expect(
+      partialMatch(
+        { options: { mode: "fast" } },
+        { options: expect.objectContaining({ enabled: true }) },
+      ),
+    ).toBe(false);
+  });
+
+  it("matches expect.arrayContaining() for arrays", () => {
+    expect(
+      partialMatch(
+        { tracks: [1, 2, 3, 4, 5] },
+        { tracks: expect.arrayContaining([2, 4]) },
+      ),
+    ).toBe(true);
+  });
+
+  it("fails expect.arrayContaining() when elements missing", () => {
+    expect(
+      partialMatch(
+        { tracks: [1, 2, 3] },
+        { tracks: expect.arrayContaining([2, 4]) },
+      ),
+    ).toBe(false);
+  });
+
+  it("supports mixing matchers with literal values", () => {
+    expect(
+      partialMatch(
+        { name: "Test", id: "abc-123", count: 5 },
+        { name: "Test", id: expect.any(String), count: expect.any(Number) },
+      ),
+    ).toBe(true);
+  });
+
+  it("supports nested matchers in objects", () => {
+    expect(
+      partialMatch(
+        { outer: { inner: { value: "test-value" } } },
+        {
+          outer: expect.objectContaining({
+            inner: expect.objectContaining({
+              value: expect.stringContaining("test"),
+            }),
+          }),
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("supports matchers inside arrays", () => {
+    expect(
+      partialMatch(
+        { items: [{ id: "abc" }, { id: "xyz" }] },
+        { items: [{ id: expect.any(String) }, { id: expect.any(String) }] },
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("exactMatch", () => {
+  it("returns true for empty actual and empty expected", () => {
+    expect(exactMatch({}, {})).toBe(true);
+  });
+
+  it("returns false when actual has extra keys", () => {
+    expect(exactMatch({ a: 1, b: 2 }, { a: 1 })).toBe(false);
+  });
+
+  it("returns false when actual is missing keys", () => {
+    expect(exactMatch({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+  });
+
+  it("returns true when keys match exactly", () => {
+    expect(exactMatch({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true);
+  });
+
+  it("returns false when values differ", () => {
+    expect(exactMatch({ a: 1 }, { a: 2 })).toBe(false);
+  });
+
+  it("ignores undefined values in expected", () => {
+    expect(exactMatch({ a: 1 }, { a: 1, b: undefined })).toBe(true);
+  });
+
+  it("supports matchers for values", () => {
+    expect(exactMatch({ id: "abc-123" }, { id: expect.any(String) })).toBe(
+      true,
+    );
+  });
+
+  it("fails when actual has extra keys even with matchers", () => {
+    expect(
+      exactMatch({ id: "abc-123", extra: "value" }, { id: expect.any(String) }),
+    ).toBe(false);
+  });
+
+  it("supports expect.objectContaining() for partial matching", () => {
+    expect(
+      exactMatch(
+        { id: "abc-123", extra: "value" },
+        expect.objectContaining({ id: "abc-123" }) as Record<string, unknown>,
+      ),
+    ).toBe(true);
+  });
+
+  it("fails expect.objectContaining() when key missing", () => {
+    expect(
+      exactMatch(
+        { extra: "value" },
+        expect.objectContaining({ id: "abc-123" }) as Record<string, unknown>,
+      ),
+    ).toBe(false);
   });
 });
 

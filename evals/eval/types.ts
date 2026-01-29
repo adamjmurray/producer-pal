@@ -52,7 +52,7 @@ export interface ToolCallAssertion {
   type: "tool_called";
   /** Tool name to check for */
   tool: string;
-  /** Partial match on arguments (deep equality on specified keys) */
+  /** Exact match on arguments. Use expect.objectContaining() for partial matches. */
   args?: Record<string, unknown>;
   /** Which turn to check (0-indexed, or "any" for any turn) */
   turn?: number | "any";

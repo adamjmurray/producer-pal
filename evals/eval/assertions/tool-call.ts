@@ -7,11 +7,7 @@ import type {
   EvalTurnResult,
   EvalAssertionResult,
 } from "../types.ts";
-import {
-  partialMatch,
-  normalizeCount,
-  formatExpectedCount,
-} from "./helpers.ts";
+import { exactMatch, normalizeCount, formatExpectedCount } from "./helpers.ts";
 
 /**
  * Assert that a tool was called with expected arguments
@@ -35,7 +31,7 @@ export function assertToolCalled(
     .flatMap((t) => t.toolCalls)
     .filter((tc) => tc.name === assertion.tool)
     .filter(
-      (tc) => assertion.args == null || partialMatch(tc.args, assertion.args),
+      (tc) => assertion.args == null || exactMatch(tc.args, assertion.args),
     );
 
   const count = matchingCalls.length;

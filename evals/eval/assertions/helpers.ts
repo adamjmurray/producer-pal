@@ -29,6 +29,51 @@ export function partialMatch(
 }
 
 /**
+ * Type guard to check if a value is an asymmetric matcher (vitest/jest)
+ *
+ * @param value - The value to check
+ * @returns True if value has asymmetricMatch method
+ */
+function isAsymmetricMatcher(
+  value: unknown,
+): value is { asymmetricMatch: (other: unknown) => boolean } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "asymmetricMatch" in value &&
+    typeof (value as Record<string, unknown>).asymmetricMatch === "function"
+  );
+}
+
+/**
+ * Check if actual object exactly matches expected (no extra keys allowed)
+ *
+ * @param actual - The actual value to check
+ * @param expected - The expected object (or asymmetric matcher like expect.objectContaining)
+ * @returns True if actual has same keys as expected with matching values
+ */
+export function exactMatch(
+  actual: Record<string, unknown>,
+  expected: Record<string, unknown>,
+): boolean {
+  // Handle asymmetric matchers at the top level (e.g., expect.objectContaining)
+  if (isAsymmetricMatcher(expected)) {
+    return expected.asymmetricMatch(actual);
+  }
+
+  const actualKeys = Object.keys(actual);
+  const expectedKeys = Object.keys(expected).filter(
+    (k) => expected[k] !== undefined,
+  );
+
+  if (actualKeys.length !== expectedKeys.length) {
+    return false;
+  }
+
+  return partialMatch(actual, expected);
+}
+
+/**
  * Recursively compare two values for equality
  *
  * @param actual - The actual value
@@ -36,6 +81,11 @@ export function partialMatch(
  * @returns True if values match
  */
 function valuesMatch(actual: unknown, expected: unknown): boolean {
+  // Handle asymmetric matchers (vitest/jest)
+  if (isAsymmetricMatcher(expected)) {
+    return expected.asymmetricMatch(actual);
+  }
+
   // Handle arrays - compare length and elements
   if (Array.isArray(expected) && Array.isArray(actual)) {
     if (actual.length !== expected.length) {

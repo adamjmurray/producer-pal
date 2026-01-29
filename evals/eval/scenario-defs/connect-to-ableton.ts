@@ -17,11 +17,13 @@ export const connectToAbleton: EvalScenario = {
       type: "tool_called",
       tool: "ppal-connect",
       turn: 0,
+      args: {},
     },
     {
       type: "tool_called",
       tool: "ppal-read-live-set",
       turn: 0,
+      args: {},
     },
 
     // Verify the response acknowledges the connection
