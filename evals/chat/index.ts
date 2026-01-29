@@ -26,7 +26,7 @@ program
     "-a, --api <api>",
     "API style (chat, responses) - defaults: openai=responses, openrouter=chat",
   )
-  .option("-s, --stream", "Enable streaming mode")
+  .option("-n, --no-stream", "Disable streaming mode")
   .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
     "-t, --thinking <level>",
