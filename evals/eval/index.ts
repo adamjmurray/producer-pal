@@ -11,7 +11,7 @@ import { runScenario } from "./run-scenario.ts";
 import type { EvalProvider, EvalScenarioResult } from "./types.ts";
 
 interface CliOptions {
-  test?: string;
+  test: string[];
   model: string[];
   judge?: string;
   list?: boolean;
@@ -49,13 +49,13 @@ function parseLlmString(llmString: string): ModelSpec {
 }
 
 /**
- * Collector function for multiple -m flags
+ * Collector function for multiple flag values
  *
  * @param value - Current flag value
  * @param previous - Previously collected values
  * @returns Updated array of values
  */
-function collectModel(value: string, previous: string[]): string[] {
+function collectValues(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
 
@@ -65,11 +65,16 @@ program
   .name("eval")
   .description("Run Producer Pal evaluation scenarios against Ableton Live")
   .showHelpAfterError(true)
-  .option("-t, --test <id>", "Run specific scenario by ID")
+  .option(
+    "-t, --test <id>",
+    "Run specific scenario(s) by ID",
+    collectValues,
+    [],
+  )
   .option(
     "-m, --model <provider/model>",
     "Model(s) to test (e.g., gemini, anthropic/claude-sonnet-4-5)",
-    collectModel,
+    collectValues,
     [],
   )
   .option(
@@ -119,7 +124,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     // Parse all model specs upfront
     const modelSpecs = options.model.map(parseLlmString);
 
-    const scenarios = loadScenarios({ testId: options.test });
+    const scenarios = loadScenarios({ testIds: options.test });
 
     if (scenarios.length === 0) {
       console.error("No scenarios to run.");

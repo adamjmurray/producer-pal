@@ -5,6 +5,10 @@
 import type { ModelSpec } from "../index.ts";
 import type { EvalScenarioResult } from "../types.ts";
 
+interface JudgeDetails {
+  score?: number;
+}
+
 /**
  * Print results as a formatted table
  *
@@ -22,12 +26,12 @@ export function printResultsTable(
   // Calculate column widths
   const scenarioIds = [...resultsByScenario.keys()];
   const scenarioColWidth = Math.max(
-    8, // "Scenario"
+    9, // "Avg Score"
     ...scenarioIds.map((id) => id.length),
   );
 
   const modelColWidths = modelKeys.map(
-    (key) => Math.max(key.length, 8), // min width for "✓ 1234ms"
+    (key) => Math.max(key.length, 6), // min width for "✓ 4.5"
   );
 
   // Build table
@@ -43,24 +47,30 @@ export function printResultsTable(
   console.log(headerRow);
   console.log(separator);
 
-  // Data rows
+  // Data rows - show pass/fail with score
   for (const [scenarioId, modelResults] of resultsByScenario) {
     const cells = modelKeys.map((key) => {
       const result = modelResults.get(key);
 
       if (!result) return "—";
       const icon = result.passed ? "✓" : "✗";
-      const duration = formatDuration(result.totalDurationMs);
+      const score = getAverageScore(result);
 
-      return `${icon} ${duration}`;
+      if (score !== null) {
+        return `${icon} ${score.toFixed(1)}`;
+      }
+
+      return icon;
     });
 
     console.log(buildRow(scenarioId, cells, scenarioColWidth, modelColWidths));
   }
 
-  // Totals row
+  // Summary rows
   console.log(separator);
-  const totals = modelKeys.map((key) => {
+
+  // Passing row
+  const passing = modelKeys.map((key) => {
     let passed = 0;
     let total = 0;
 
@@ -77,8 +87,56 @@ export function printResultsTable(
     return `${passed}/${total}`;
   });
 
-  console.log(buildRow("Total", totals, scenarioColWidth, modelColWidths));
+  console.log(buildRow("Passing", passing, scenarioColWidth, modelColWidths));
+
+  // Average score row
+  const avgScores = modelKeys.map((key) => {
+    const scores: number[] = [];
+
+    for (const modelResults of resultsByScenario.values()) {
+      const result = modelResults.get(key);
+
+      if (result) {
+        const score = getAverageScore(result);
+
+        if (score !== null) scores.push(score);
+      }
+    }
+
+    if (scores.length === 0) return "—";
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    return avg.toFixed(1);
+  });
+
+  console.log(
+    buildRow("Avg Score", avgScores, scenarioColWidth, modelColWidths),
+  );
   console.log(separator);
+}
+
+/**
+ * Get the average LLM judge score from a scenario result
+ *
+ * @param result - The scenario result
+ * @returns Average score or null if no judge assertions
+ */
+function getAverageScore(result: EvalScenarioResult): number | null {
+  const scores: number[] = [];
+
+  for (const assertion of result.assertions) {
+    if (assertion.assertion.type === "llm_judge") {
+      const details = assertion.details as JudgeDetails | undefined;
+
+      if (details?.score != null) {
+        scores.push(details.score);
+      }
+    }
+  }
+
+  if (scores.length === 0) return null;
+
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
 /**
@@ -119,18 +177,4 @@ function buildRow(
   );
 
   return `│ ${scenarioCell} │ ${modelCells.join(" │ ")} │`;
-}
-
-/**
- * Format duration in human-readable form
- *
- * @param ms - Duration in milliseconds
- * @returns Formatted string (e.g., "1.2s" or "45ms")
- */
-function formatDuration(ms: number): string {
-  if (ms >= 1000) {
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
-
-  return `${ms}ms`;
 }

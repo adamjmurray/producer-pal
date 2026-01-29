@@ -12,8 +12,8 @@ import type { EvalScenario } from "./types.ts";
 const allScenarios: EvalScenario[] = [connectToAbleton, createDrumBeat];
 
 export interface LoadScenariosOptions {
-  /** Filter to specific test/scenario ID */
-  testId?: string;
+  /** Filter to specific test/scenario IDs */
+  testIds?: string[];
 }
 
 /**
@@ -23,18 +23,28 @@ export interface LoadScenariosOptions {
  * @returns Filtered list of scenarios
  */
 export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
-  if (!options?.testId) {
+  const testIds = options?.testIds;
+
+  if (!testIds || testIds.length === 0) {
     return [...allScenarios];
   }
 
-  const scenarios = allScenarios.filter((s) => s.id === options.testId);
+  const scenarios = allScenarios.filter((s) => testIds.includes(s.id));
 
   if (scenarios.length === 0) {
     const available = allScenarios.map((s) => s.id).join(", ");
 
     throw new Error(
-      `Test not found: ${options.testId}. Available: ${available}`,
+      `Test(s) not found: ${testIds.join(", ")}. Available: ${available}`,
     );
+  }
+
+  // Warn about any IDs that weren't found
+  const foundIds = new Set(scenarios.map((s) => s.id));
+  const notFound = testIds.filter((id) => !foundIds.has(id));
+
+  if (notFound.length > 0) {
+    console.warn(`Warning: Test(s) not found: ${notFound.join(", ")}`);
   }
 
   return scenarios;
