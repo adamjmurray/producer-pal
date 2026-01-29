@@ -14,7 +14,6 @@ interface CliOptions {
   provider?: EvalProvider;
   model?: string;
   judge?: string;
-  output?: string;
   list?: boolean;
   skipSetup?: boolean;
 }
@@ -63,7 +62,6 @@ program
     "-j, --judge <provider/model>",
     "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
   )
-  .option("-o, --output <format>", "Output format (json)")
   .option("-l, --list", "List available scenarios")
   .option(
     "-s, --skip-setup",
@@ -131,17 +129,10 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       });
 
       results.push(result);
-
-      if (options.output !== "json") {
-        printResult(result);
-      }
+      printResult(result);
     }
 
-    if (options.output === "json") {
-      console.log(JSON.stringify(results, null, 2));
-    } else {
-      printSummary(results);
-    }
+    printSummary(results);
 
     // Exit with error code if any scenario failed
     const allPassed = results.every((r) => r.passed);
