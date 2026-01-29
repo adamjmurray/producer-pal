@@ -591,6 +591,45 @@ export default [
     },
   },
 
+  // MCP E2E tests (TypeScript with vitest)
+  {
+    files: ["e2e/mcp/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: "./e2e/mcp/tsconfig.json",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./e2e/mcp/tsconfig.json",
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      vitest: vitestPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...vitestPlugin.configs.recommended.rules,
+    },
+  },
+
   // webui/react-specific rules
   {
     files: ["webui/**/*.{ts,tsx}"],
