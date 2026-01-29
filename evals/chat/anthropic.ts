@@ -7,7 +7,7 @@ import type {
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { ANTHROPIC_THINKING_MAP, DEFAULT_MODEL } from "./anthropic/config.ts";
+import { ANTHROPIC_THINKING_MAP } from "./anthropic/config.ts";
 import {
   formatNonStreamingResponse,
   handleStreamingResponse,
@@ -54,7 +54,7 @@ export async function runAnthropic(
     process.exit(1);
   }
 
-  const model = options.model ?? DEFAULT_MODEL;
+  const model = options.model;
   const client = new Anthropic({ apiKey });
 
   const rl = createReadline();

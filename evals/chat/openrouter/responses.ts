@@ -28,7 +28,6 @@ import type {
   ResponsesStreamState,
   TurnResult,
 } from "../shared/types.ts";
-import { DEFAULT_MODEL } from "./config.ts";
 import { readSseStream } from "./responses-streaming.ts";
 
 const OPENROUTER_RESPONSES_URL = "https://openrouter.ai/api/v1/responses";
@@ -87,7 +86,7 @@ export async function runOpenRouterResponses(
     process.exit(1);
   }
 
-  const model = options.model ?? DEFAULT_MODEL;
+  const model = options.model;
   const rl = createReadline();
   const { client: mcpClient } = await connectMcp();
   const tools = await getMcpToolsForResponses(mcpClient);

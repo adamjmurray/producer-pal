@@ -89,7 +89,7 @@ export async function runChatSession(
     process.exit(1);
   }
 
-  const model = options.model ?? config.defaultModel;
+  const model = options.model;
   const client = config.createClient(apiKey);
 
   const rl = createReadline();

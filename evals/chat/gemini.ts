@@ -8,7 +8,6 @@ import type {
   GeminiResponse,
   GeminiResponsePart as ResponsePart,
 } from "#evals/shared/gemini-types.ts";
-import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
   debugCall,
   debugLog,
@@ -50,7 +49,7 @@ export async function runGemini(
     process.exit(1);
   }
 
-  const model = options.model ?? DEFAULT_MODEL;
+  const model = options.model;
   const ai = new GoogleGenAI({ apiKey });
   const config = buildConfig(options);
 

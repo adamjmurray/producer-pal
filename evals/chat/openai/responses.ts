@@ -34,7 +34,6 @@ import type {
   OpenAIStreamState,
   TurnResult,
 } from "../shared/types.ts";
-import { DEFAULT_MODEL } from "./config.ts";
 import {
   extractReasoningText,
   processStreamEvent,
@@ -71,7 +70,7 @@ export async function runOpenAIResponses(
     process.exit(1);
   }
 
-  const model = options.model ?? DEFAULT_MODEL;
+  const model = options.model;
   const client = new OpenAI({ apiKey });
   const rl = createReadline();
   const { client: mcpClient } = await connectMcp();

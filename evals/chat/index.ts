@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 import { runAnthropic } from "./anthropic.ts";
 import { runGemini } from "./gemini.ts";
 import { runOpenAI } from "./openai/index.ts";
@@ -9,18 +10,22 @@ import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
-const providerHelp = `AI provider (anthropic, google, openai, openrouter)`;
+interface RawChatOptions extends Omit<ChatOptions, "provider" | "model"> {
+  model: string;
+}
 
 program
   .name("chat")
   .description("Chat with AI providers")
   .showHelpAfterError(true)
-  .requiredOption("-p, --provider <provider>", providerHelp)
+  .requiredOption(
+    "-m, --model <model>",
+    "Model (e.g., claude-sonnet-4-5, google/gemini-2.0-flash)",
+  )
   .option(
     "-a, --api <api>",
     "API style (chat, responses) - defaults: openai=responses, openrouter=chat",
   )
-  .option("-m, --model <model>", "Model (provider default if not specified)")
   .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
@@ -46,8 +51,12 @@ program
   )
   .option("-f, --file <path>", "File containing messages (one per line)")
   .argument("[text...]", "Initial text to start conversation")
-  .action(async (textArray: string[], options: ChatOptions) => {
+  .action(async (textArray: string[], rawOptions: RawChatOptions) => {
     const initialText = textArray.join(" ");
+
+    // Parse model argument to get provider and model
+    const { provider, model } = parseModelArg(rawOptions.model);
+    const options: ChatOptions = { ...rawOptions, provider, model };
 
     // Warn if --api is used with Anthropic/Google (only applies to openai/openrouter)
     if (
@@ -72,9 +81,13 @@ program
       case "openrouter":
         await runOpenRouter(initialText, options);
         break;
-      default:
-        console.error(`Unknown provider: ${options.provider}`);
+
+      default: {
+        const _exhaustiveCheck: never = options.provider;
+
+        console.error(`Unknown provider: ${String(_exhaustiveCheck)}`);
         process.exit(1);
+      }
     }
   });
 

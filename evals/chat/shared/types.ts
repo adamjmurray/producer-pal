@@ -1,6 +1,7 @@
 import type { Interface } from "node:readline";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { ReasoningEffort } from "openai/resources/shared";
+import type { EvalProvider } from "#evals/eval/types.ts";
 
 export type ReasoningSummary = "auto" | "concise" | "detailed";
 
@@ -31,9 +32,9 @@ export type ThinkingLevel =
   | AnthropicThinkingLevel;
 
 export interface ChatOptions {
-  provider: string;
+  provider: EvalProvider;
   api?: "chat" | "responses";
-  model?: string;
+  model: string;
   stream: boolean;
   debug: boolean;
   thinking?: ThinkingLevel;

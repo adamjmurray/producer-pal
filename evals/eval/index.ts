@@ -5,10 +5,16 @@
  */
 
 import { Command } from "commander";
+import {
+  parseModelArg,
+  type ModelSpec,
+} from "#evals/shared/parse-model-arg.ts";
 import { printResultsTable } from "./helpers/report-table.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import type { EvalProvider, EvalScenarioResult } from "./types.ts";
+import type { EvalScenarioResult } from "./types.ts";
+
+export type { ModelSpec, ModelSpec as JudgeOverride };
 
 interface CliOptions {
   test: string[];
@@ -16,36 +22,6 @@ interface CliOptions {
   judge?: string;
   list?: boolean;
   skipSetup?: boolean;
-}
-
-export interface ModelSpec {
-  provider: EvalProvider;
-  model?: string;
-}
-
-export type { ModelSpec as JudgeOverride };
-
-/**
- * Parse a provider/model string into separate components
- *
- * @param llmString - String in format "provider" or "provider/model"
- * @returns Parsed provider and optional model
- */
-function parseLlmString(llmString: string): ModelSpec {
-  const slashIndex = llmString.indexOf("/");
-  const provider =
-    slashIndex === -1 ? llmString : llmString.slice(0, slashIndex);
-  const model = slashIndex === -1 ? undefined : llmString.slice(slashIndex + 1);
-
-  const validProviders = ["anthropic", "google", "openai", "openrouter"];
-
-  if (!validProviders.includes(provider)) {
-    throw new Error(
-      `Unknown provider: ${provider}. Valid: ${validProviders.join(", ")}`,
-    );
-  }
-
-  return { provider: provider as EvalProvider, model: model ?? undefined };
 }
 
 /**
@@ -73,7 +49,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., google, anthropic/claude-sonnet-4-5)",
+    "Model(s) to test (e.g., gemini-2.0-flash, anthropic/claude-sonnet-4-5)",
     collectValues,
     [],
   )
@@ -122,7 +98,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
   try {
     // Parse all model specs upfront
-    const modelSpecs = options.model.map(parseLlmString);
+    const modelSpecs = options.model.map(parseModelArg);
 
     const scenarios = loadScenarios({ testIds: options.test });
 
@@ -133,7 +109,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
     // Parse judge override if provided
     const judgeOverride = options.judge
-      ? parseLlmString(options.judge)
+      ? parseModelArg(options.judge)
       : undefined;
 
     const totalRuns = scenarios.length * modelSpecs.length;
@@ -152,9 +128,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       const scenarioResults = new Map<string, EvalScenarioResult>();
 
       for (const spec of modelSpecs) {
-        const modelKey = spec.model
-          ? `${spec.provider}/${spec.model}`
-          : spec.provider;
+        const modelKey = `${spec.provider}/${spec.model}`;
         const result = await runScenario(scenario, {
           provider: spec.provider,
           model: spec.model,
