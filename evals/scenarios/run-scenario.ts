@@ -41,6 +41,12 @@ export async function runScenario(
   scenario: EvalScenario,
   options?: { skipLiveSetOpen?: boolean; judgeOverride?: JudgeOverride },
 ): Promise<EvalScenarioResult> {
+  // Provider is required (set via CLI --provider flag)
+  if (!scenario.provider) {
+    throw new Error("Provider is required. Use --provider flag.");
+  }
+
+  const provider = scenario.provider;
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
@@ -53,15 +59,15 @@ export async function runScenario(
     }
 
     // 2. Create evaluation session
-    const effectiveModel = scenario.model ?? getDefaultModel(scenario.provider);
+    const effectiveModel = scenario.model ?? getDefaultModel(provider);
 
     console.log(`\nStarting scenario: ${scenario.id}`);
     console.log(`Description: ${scenario.description}`);
-    console.log(`Provider: ${scenario.provider}`);
+    console.log(`Provider: ${provider}`);
     console.log(`Model: ${effectiveModel}`);
 
     session = await createEvalSession({
-      provider: scenario.provider,
+      provider,
       model: scenario.model,
       instructions: scenario.instructions,
     });
@@ -86,7 +92,7 @@ export async function runScenario(
       scenario.assertions,
       turns,
       session,
-      scenario.provider,
+      provider,
       options?.judgeOverride,
     );
 
@@ -129,7 +135,7 @@ async function runAssertions(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   session: EvalSession,
-  provider: EvalScenario["provider"],
+  provider: EvalProvider,
   judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
@@ -167,7 +173,7 @@ async function runAssertion(
   assertion: EvalAssertion,
   turns: EvalTurnResult[],
   session: EvalSession,
-  provider: EvalScenario["provider"],
+  provider: EvalProvider,
   judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult> {
   switch (assertion.type) {

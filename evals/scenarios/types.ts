@@ -20,8 +20,8 @@ export interface EvalScenario {
   /** Path to .als file (relative to project root) */
   liveSet: string;
 
-  /** LLM provider to use */
-  provider: EvalProvider;
+  /** LLM provider (set via CLI --provider flag) */
+  provider?: EvalProvider;
 
   /** Optional model override */
   model?: string;

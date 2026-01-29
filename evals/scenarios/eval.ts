@@ -16,7 +16,7 @@ import type {
 interface CliOptions {
   scenario?: string;
   tag?: string;
-  provider?: EvalProvider;
+  provider: EvalProvider;
   model?: string;
   judge?: string;
   json?: boolean;
@@ -61,9 +61,9 @@ program
   .showHelpAfterError(true)
   .option("-s, --scenario <id>", "Run specific scenario by ID")
   .option("-t, --tag <tag>", "Run scenarios with specific tag")
-  .option(
+  .requiredOption(
     "-p, --provider <provider>",
-    "Override provider (gemini, openai, openrouter)",
+    "LLM provider (gemini, openai, openrouter)",
   )
   .option("-m, --model <model>", "Override model")
   .option(

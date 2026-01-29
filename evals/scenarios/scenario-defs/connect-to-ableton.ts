@@ -8,7 +8,6 @@ export const connectToAbleton: EvalScenario = {
   id: "connect-to-ableton",
   description: "Connect to Ableton Live and retrieve Producer Pal skills",
   liveSet: "scripts/eval-lib/live-sets/empty-project.als",
-  provider: "gemini",
   tags: ["basic", "connection", "setup"],
 
   messages: ["Connect to Ableton Live"],

@@ -4,7 +4,7 @@
 
 import { connectToAbleton } from "./scenario-defs/connect-to-ableton.ts";
 import { createDrumBeat } from "./scenario-defs/create-drum-beat.ts";
-import type { EvalScenario } from "./types.ts";
+import type { EvalProvider, EvalScenario } from "./types.ts";
 
 /**
  * All registered scenarios
@@ -16,8 +16,8 @@ export interface LoadScenariosOptions {
   scenarioId?: string;
   /** Filter to scenarios with specific tag */
   tag?: string;
-  /** Override provider for all scenarios */
-  provider?: EvalScenario["provider"];
+  /** Provider to use for all scenarios (required from CLI) */
+  provider?: EvalProvider;
   /** Override model for all scenarios */
   model?: string;
 }
