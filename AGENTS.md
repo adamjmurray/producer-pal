@@ -212,6 +212,25 @@ functions for clarity.
   totals). Look for files with low coverage percentages to identify what needs
   tests.
 
+## MCP E2E Testing
+
+E2E tests for MCP tools are in `e2e/mcp/`. These tests open Ableton Live and
+verify tools via the MCP protocol.
+
+**Key pattern:** Use a single comprehensive `it()` test per tool with all
+assertions grouped together. This minimizes overhead since each test requires:
+
+- Opening/switching Live Sets (slow)
+- MCP connection setup
+- 30-60 second hook timeouts
+
+**Commands:**
+
+- `npm run e2e:mcp` - Run MCP e2e tests
+- `npm run e2e:mcp:watch` - Watch mode
+
+**Adding tests:** See `e2e/mcp/README.md` for prerequisites and patterns.
+
 ## Project Constraints
 
 - TypeScript for `src/`, `scripts/`, `evals/`, and `webui/`

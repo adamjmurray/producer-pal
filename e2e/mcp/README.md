@@ -28,6 +28,14 @@ Tests automatically:
 3. Wait for the MCP server to become responsive
 4. Run the test suite
 
+## Test Live Set
+
+The `basic-midi-4-track` Live Set contains:
+
+- 4 MIDI tracks (the "music" tracks)
+- 1 track with the Producer Pal Max for Live device
+- Total: 5 tracks reported by the API
+
 ## Custom MCP URL
 
 Set the `MCP_URL` environment variable to use a different server:
