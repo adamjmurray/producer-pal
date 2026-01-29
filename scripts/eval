@@ -3,9 +3,9 @@
 # Usage: ./scripts/eval [options]
 #
 # Examples:
-#   ./scripts/eval --list                    # List available scenarios
-#   ./scripts/eval --scenario create-drum-beat  # Run specific scenario
-#   ./scripts/eval --tag drums               # Run all drum scenarios
-#   ./scripts/eval --json                    # Output as JSON
+#   ./scripts/eval -l                             # List available scenarios
+#   ./scripts/eval -p gemini -t create-drum-beat  # Run specific scenario
+#   ./scripts/eval -p gemini -o json              # Output as JSON
+#   ./scripts/eval -p gemini -s                   # Skip Live Set setup
 
 exec npx tsx --env-file=.env evals/scenarios/eval.ts "$@"

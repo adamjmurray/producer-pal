@@ -10,7 +10,7 @@
  */
 
 export { runScenario } from "./run-scenario.ts";
-export { loadScenarios, listScenarioIds, listTags } from "./load-scenarios.ts";
+export { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 export { createEvalSession, type EvalSession } from "./eval-session.ts";
 export { openLiveSet } from "./open-live-set.ts";
 

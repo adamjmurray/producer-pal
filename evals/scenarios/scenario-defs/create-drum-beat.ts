@@ -8,7 +8,6 @@ export const createDrumBeat: EvalScenario = {
   id: "create-drum-beat",
   description: "Create a basic 4-bar drum loop from an empty project",
   liveSet: "scripts/eval-lib/live-sets/empty-project.als",
-  tags: ["basic", "drums", "creation"],
 
   messages: [
     // Turn 0: Connect to get Producer Pal skills

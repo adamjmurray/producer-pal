@@ -5,7 +5,7 @@
  */
 
 import { Command } from "commander";
-import { loadScenarios, listScenarioIds, listTags } from "./load-scenarios.ts";
+import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import type {
   EvalAssertionResult,
@@ -14,12 +14,11 @@ import type {
 } from "./types.ts";
 
 interface CliOptions {
-  scenario?: string;
-  tag?: string;
-  provider: EvalProvider;
+  test?: string;
+  provider?: EvalProvider;
   model?: string;
   judge?: string;
-  json?: boolean;
+  output?: string;
   verbose?: boolean;
   list?: boolean;
   skipSetup?: boolean;
@@ -59,9 +58,8 @@ program
   .name("eval")
   .description("Run Producer Pal evaluation scenarios against Ableton Live")
   .showHelpAfterError(true)
-  .option("-s, --scenario <id>", "Run specific scenario by ID")
-  .option("-t, --tag <tag>", "Run scenarios with specific tag")
-  .requiredOption(
+  .option("-t, --test <id>", "Run specific scenario by ID")
+  .option(
     "-p, --provider <provider>",
     "LLM provider (gemini, openai, openrouter)",
   )
@@ -70,11 +68,11 @@ program
     "-j, --judge <provider/model>",
     "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
   )
-  .option("-J, --json", "Output results as JSON")
+  .option("-o, --output <format>", "Output format (json)")
   .option("-v, --verbose", "Show detailed output including tool results")
-  .option("-l, --list", "List available scenarios and tags")
+  .option("-l, --list", "List available scenarios")
   .option(
-    "-k, --skip-setup",
+    "-s, --skip-setup",
     "Skip Live Set setup (use existing MCP connection)",
   )
   .action(async (options: CliOptions) => {
@@ -90,19 +88,13 @@ program
 program.parse();
 
 /**
- * Print available scenarios and tags
+ * Print available scenarios
  */
 function printList(): void {
   console.log("Available scenarios:");
 
   for (const id of listScenarioIds()) {
     console.log(`  - ${id}`);
-  }
-
-  console.log("\nAvailable tags:");
-
-  for (const tag of listTags()) {
-    console.log(`  - ${tag}`);
   }
 }
 
@@ -112,10 +104,14 @@ function printList(): void {
  * @param options - CLI options
  */
 async function runEvaluation(options: CliOptions): Promise<void> {
+  if (!options.provider) {
+    console.error("Error: -p, --provider is required when running tests");
+    process.exit(1);
+  }
+
   try {
     const scenarios = loadScenarios({
-      scenarioId: options.scenario,
-      tag: options.tag,
+      testId: options.test,
       provider: options.provider,
       model: options.model,
     });
@@ -142,12 +138,12 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
       results.push(result);
 
-      if (!options.json) {
+      if (options.output !== "json") {
         printResult(result, options.verbose);
       }
     }
 
-    if (options.json) {
+    if (options.output === "json") {
       console.log(JSON.stringify(results, null, 2));
     } else {
       printSummary(results);

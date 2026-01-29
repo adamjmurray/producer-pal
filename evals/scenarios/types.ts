@@ -32,9 +32,6 @@ export interface EvalScenario {
   /** Assertions to run after conversation completes */
   assertions: EvalAssertion[];
 
-  /** Tags for filtering scenarios */
-  tags?: string[];
-
   /** Optional system instructions */
   instructions?: string;
 }

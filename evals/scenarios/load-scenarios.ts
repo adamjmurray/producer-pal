@@ -12,10 +12,8 @@ import type { EvalProvider, EvalScenario } from "./types.ts";
 const allScenarios: EvalScenario[] = [connectToAbleton, createDrumBeat];
 
 export interface LoadScenariosOptions {
-  /** Filter to specific scenario ID */
-  scenarioId?: string;
-  /** Filter to scenarios with specific tag */
-  tag?: string;
+  /** Filter to specific test/scenario ID */
+  testId?: string;
   /** Provider to use for all scenarios (required from CLI) */
   provider?: EvalProvider;
   /** Override model for all scenarios */
@@ -31,27 +29,16 @@ export interface LoadScenariosOptions {
 export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
   let scenarios = [...allScenarios];
 
-  // Filter by scenario ID
-  if (options?.scenarioId) {
-    scenarios = scenarios.filter((s) => s.id === options.scenarioId);
+  // Filter by test ID
+  if (options?.testId) {
+    scenarios = scenarios.filter((s) => s.id === options.testId);
 
     if (scenarios.length === 0) {
       const available = allScenarios.map((s) => s.id).join(", ");
 
       throw new Error(
-        `Scenario not found: ${options.scenarioId}. Available: ${available}`,
+        `Test not found: ${options.testId}. Available: ${available}`,
       );
-    }
-  }
-
-  // Filter by tag
-  if (options?.tag) {
-    const filterTag = options.tag;
-
-    scenarios = scenarios.filter((s) => s.tags?.includes(filterTag));
-
-    if (scenarios.length === 0) {
-      throw new Error(`No scenarios found with tag: ${options.tag}`);
     }
   }
 
@@ -85,21 +72,4 @@ export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
  */
 export function listScenarioIds(): string[] {
   return allScenarios.map((s) => s.id);
-}
-
-/**
- * List all available tags
- *
- * @returns Sorted array of unique tags
- */
-export function listTags(): string[] {
-  const tags = new Set<string>();
-
-  for (const scenario of allScenarios) {
-    for (const tag of scenario.tags ?? []) {
-      tags.add(tag);
-    }
-  }
-
-  return [...tags].sort();
 }
