@@ -8,29 +8,22 @@ import type {
   Tool,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { DEFAULT_MODEL } from "#evals/chat/anthropic/config.ts";
 import { handleStreamingResponse } from "#evals/chat/anthropic/streaming.ts";
 import {
   convertMcpToolsToAnthropic,
   processAnthropicToolCalls,
 } from "#evals/chat/anthropic/tool-helpers.ts";
 import { getMcpToolsForAnthropic } from "#evals/chat/shared/mcp.ts";
+import {
+  ANTHROPIC_CONFIG,
+  validateApiKey,
+} from "#evals/shared/provider-configs.ts";
 import type { TurnResult } from "../types.ts";
+import { logTurnStart } from "./eval-session-base.ts";
+
+export { ANTHROPIC_CONFIG };
 
 const DEFAULT_MAX_TOKENS = 8192;
-
-/** Provider configuration for Anthropic */
-export interface AnthropicProviderConfig {
-  apiKeyEnvVar: string;
-  providerName: string;
-  defaultModel: string;
-}
-
-export const ANTHROPIC_CONFIG: AnthropicProviderConfig = {
-  apiKeyEnvVar: "ANTHROPIC_KEY",
-  providerName: "Anthropic",
-  defaultModel: DEFAULT_MODEL,
-};
 
 interface AnthropicEvalSessionOptions {
   model?: string;
@@ -54,12 +47,7 @@ export async function createAnthropicEvalSession(
   mcpClient: Client,
   options: AnthropicEvalSessionOptions,
 ): Promise<AnthropicEvalSession> {
-  const apiKey = process.env[ANTHROPIC_CONFIG.apiKeyEnvVar];
-
-  if (!apiKey) {
-    throw new Error(`API key for ${ANTHROPIC_CONFIG.providerName} is not set`);
-  }
-
+  const apiKey = validateApiKey(ANTHROPIC_CONFIG);
   const client = new Anthropic({ apiKey });
   const model = options.model ?? ANTHROPIC_CONFIG.defaultModel;
   const mcpTools = await getMcpToolsForAnthropic(mcpClient);
@@ -109,9 +97,7 @@ async function sendAnthropicMessage(
   message: string,
   turnNumber: number,
 ): Promise<TurnResult> {
-  console.log(`\n[Turn ${turnNumber}] User: ${message}`);
-  console.log(`[Turn ${turnNumber}] Assistant:`);
-
+  logTurnStart(turnNumber, message);
   messages.push({ role: "user", content: message });
 
   let text = "";

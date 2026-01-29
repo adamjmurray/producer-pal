@@ -1,5 +1,5 @@
 {
-  "threshold": 1.5,
+  "threshold": 1.4,
   "reporters": ["console"],
   "ignore": ["**/tsconfig.json", "**/*.test.ts"],
   "path": ["../evals"]

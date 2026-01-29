@@ -4,12 +4,15 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { RawMessageStreamEvent } from "@anthropic-ai/sdk/resources/messages/messages";
-import { DEFAULT_MODEL } from "#evals/chat/anthropic/config.ts";
 import {
-  printJudgeHeader,
-  printJudgeChunk,
+  ANTHROPIC_CONFIG,
+  validateApiKey,
+} from "#evals/shared/provider-configs.ts";
+import {
   finishJudgeOutput,
-} from "#evals/shared/judge-streaming.ts";
+  printJudgeChunk,
+  printJudgeHeader,
+} from "./judge-output.ts";
 import {
   parseJudgeResponse,
   type JudgeResult,
@@ -32,14 +35,9 @@ export async function callAnthropicJudge(
   model: string | undefined,
   criteria: string,
 ): Promise<JudgeResult> {
-  const apiKey = process.env.ANTHROPIC_KEY;
-
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_KEY environment variable is required");
-  }
-
+  const apiKey = validateApiKey(ANTHROPIC_CONFIG);
   const client = new Anthropic({ apiKey });
-  const judgeModel = model ?? DEFAULT_MODEL;
+  const judgeModel = model ?? ANTHROPIC_CONFIG.defaultModel;
 
   printJudgeHeader("anthropic", judgeModel, criteria);
 

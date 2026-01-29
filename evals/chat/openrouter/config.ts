@@ -1,1 +1,3 @@
-export const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
+import { OPENROUTER_CONFIG } from "#evals/shared/provider-configs.ts";
+
+export const DEFAULT_MODEL = OPENROUTER_CONFIG.defaultModel;

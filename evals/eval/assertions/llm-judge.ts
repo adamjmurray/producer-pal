@@ -2,17 +2,9 @@
  * LLM-as-judge assertion - use an LLM to evaluate response quality
  */
 
-import { GoogleGenAI } from "@google/genai";
-import {
-  printJudgeHeader,
-  printJudgeChunk,
-  finishJudgeOutput,
-} from "#evals/shared/judge-streaming.ts";
 import { callAnthropicJudge } from "../helpers/anthropic-judge.ts";
-import {
-  parseJudgeResponse,
-  type JudgeResult,
-} from "../helpers/judge-response-parser.ts";
+import { callGeminiJudge } from "../helpers/gemini-judge.ts";
+import type { JudgeResult } from "../helpers/judge-response-parser.ts";
 import { callOpenAIJudge } from "../helpers/openai-judge.ts";
 import type {
   LlmJudgeAssertion,
@@ -156,7 +148,12 @@ async function callJudgeLlm(
         criteria,
       );
     case "gemini":
-      return await callGeminiJudge(prompt, model, criteria);
+      return await callGeminiJudge(
+        prompt,
+        JUDGE_SYSTEM_PROMPT,
+        model,
+        criteria,
+      );
     case "openai":
     case "openrouter":
       return await callOpenAIJudge(
@@ -175,52 +172,4 @@ async function callJudgeLlm(
       );
     }
   }
-}
-
-/**
- * Call Gemini as the judge with streaming output
- *
- * @param prompt - The evaluation prompt
- * @param model - Optional model override
- * @param criteria - Evaluation criteria for output
- * @returns Judge result with score and reasoning
- */
-async function callGeminiJudge(
-  prompt: string,
-  model: string | undefined,
-  criteria: string,
-): Promise<JudgeResult> {
-  const apiKey = process.env.GEMINI_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      "GEMINI_KEY environment variable is required for LLM judge",
-    );
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  const judgeModel = model ?? "gemini-2.0-flash";
-
-  printJudgeHeader("gemini", judgeModel, criteria);
-
-  const stream = await ai.models.generateContentStream({
-    model: judgeModel,
-    contents: prompt,
-    config: {
-      systemInstruction: JUDGE_SYSTEM_PROMPT,
-    },
-  });
-
-  let text = "";
-
-  for await (const chunk of stream) {
-    const chunkText = chunk.text ?? "";
-
-    printJudgeChunk(chunkText);
-    text += chunkText;
-  }
-
-  finishJudgeOutput();
-
-  return parseJudgeResponse(text.trim());
 }

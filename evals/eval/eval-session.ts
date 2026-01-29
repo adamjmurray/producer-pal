@@ -8,19 +8,17 @@ import { connectMcp } from "#evals/chat/shared/mcp.ts";
 import { printGeminiStream } from "#evals/shared/gemini-streaming.ts";
 import type { GeminiResponse } from "#evals/shared/gemini-types.ts";
 import {
-  createAnthropicEvalSession,
   ANTHROPIC_CONFIG,
-} from "./helpers/anthropic-session.ts";
-import {
-  createOpenAIEvalSession,
+  GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
+  validateApiKey,
   type OpenAIProviderConfig,
-} from "./helpers/openai-session.ts";
+} from "#evals/shared/provider-configs.ts";
+import { createAnthropicEvalSession } from "./helpers/anthropic-session.ts";
+import { logTurnStart } from "./helpers/eval-session-base.ts";
+import { createOpenAIEvalSession } from "./helpers/openai-session.ts";
 import type { EvalProvider, TurnResult } from "./types.ts";
-
-/** Default model for Gemini provider */
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 /**
  * Get the default model for a provider
@@ -33,7 +31,7 @@ export function getDefaultModel(provider: EvalProvider): string {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
     case "gemini":
-      return DEFAULT_GEMINI_MODEL;
+      return GEMINI_CONFIG.defaultModel;
     case "openai":
       return OPENAI_CONFIG.defaultModel;
     case "openrouter":
@@ -115,14 +113,9 @@ async function createGeminiSession(
   mcpClient: Client,
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
-  const apiKey = process.env.GEMINI_KEY;
-
-  if (!apiKey) {
-    throw new Error("GEMINI_KEY environment variable is required");
-  }
-
+  const apiKey = validateApiKey(GEMINI_CONFIG);
   const ai = new GoogleGenAI({ apiKey });
-  const model = options.model ?? DEFAULT_GEMINI_MODEL;
+  const model = options.model ?? GEMINI_CONFIG.defaultModel;
 
   const config: Record<string, unknown> = {
     tools: [mcpToTool(mcpClient)],
@@ -158,9 +151,7 @@ async function sendGeminiMessage(
   message: string,
   turnNumber: number,
 ): Promise<TurnResult> {
-  console.log(`\n[Turn ${turnNumber}] User: ${message}`);
-  console.log(`[Turn ${turnNumber}] Assistant:`);
-
+  logTurnStart(turnNumber, message);
   const stream = await chatSession.sendMessageStream({ message });
 
   return await printGeminiStream(stream as AsyncIterable<GeminiResponse>);

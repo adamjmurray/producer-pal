@@ -4,9 +4,7 @@
  */
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import OpenAI from "openai";
-import { DEFAULT_MODEL as DEFAULT_OPENAI_MODEL } from "#evals/chat/openai/config.ts";
-import { DEFAULT_MODEL as DEFAULT_OPENROUTER_MODEL } from "#evals/chat/openrouter/config.ts";
+import type OpenAI from "openai";
 import {
   createStreamState,
   processStreamChunk,
@@ -21,32 +19,16 @@ import type {
   OpenRouterStreamChunk,
   OpenRouterToolCall,
 } from "#evals/chat/shared/types.ts";
+import {
+  OPENAI_CONFIG,
+  OPENROUTER_CONFIG,
+  validateApiKey,
+  type OpenAIProviderConfig,
+} from "#evals/shared/provider-configs.ts";
 import type { TurnResult } from "../types.ts";
+import { logTurnStart } from "./eval-session-base.ts";
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-
-/** Provider configuration for OpenAI-compatible APIs */
-export interface OpenAIProviderConfig {
-  apiKeyEnvVar: string;
-  providerName: string;
-  defaultModel: string;
-  createClient: (apiKey: string) => OpenAI;
-}
-
-export const OPENAI_CONFIG: OpenAIProviderConfig = {
-  apiKeyEnvVar: "OPENAI_KEY",
-  providerName: "OpenAI",
-  defaultModel: DEFAULT_OPENAI_MODEL,
-  createClient: (apiKey: string) => new OpenAI({ apiKey }),
-};
-
-export const OPENROUTER_CONFIG: OpenAIProviderConfig = {
-  apiKeyEnvVar: "OPENROUTER_KEY",
-  providerName: "OpenRouter",
-  defaultModel: DEFAULT_OPENROUTER_MODEL,
-  createClient: (apiKey: string) =>
-    new OpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL }),
-};
+export { OPENAI_CONFIG, OPENROUTER_CONFIG, type OpenAIProviderConfig };
 
 interface OpenAIEvalSessionOptions {
   model?: string;
@@ -72,12 +54,7 @@ export async function createOpenAIEvalSession(
   config: OpenAIProviderConfig,
   options: OpenAIEvalSessionOptions,
 ): Promise<OpenAIEvalSession> {
-  const apiKey = process.env[config.apiKeyEnvVar];
-
-  if (!apiKey) {
-    throw new Error(`API key for ${config.providerName} is not set`);
-  }
-
+  const apiKey = validateApiKey(config);
   const client = config.createClient(apiKey);
   const model = options.model ?? config.defaultModel;
   const tools = await getMcpToolsForChat(mcpClient);
@@ -126,9 +103,7 @@ async function sendOpenAIMessage(
   message: string,
   turnNumber: number,
 ): Promise<TurnResult> {
-  console.log(`\n[Turn ${turnNumber}] User: ${message}`);
-  console.log(`[Turn ${turnNumber}] Assistant:`);
-
+  logTurnStart(turnNumber, message);
   messages.push({ role: "user", content: message });
 
   let text = "";

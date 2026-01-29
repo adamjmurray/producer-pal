@@ -1,5 +1,5 @@
 /**
- * Shared streaming utilities for LLM judge output
+ * Streaming output utilities for LLM judge
  */
 
 /**

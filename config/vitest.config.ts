@@ -128,6 +128,9 @@ export default defineConfig({
         // LLM-dependent session helpers
         "evals/eval/helpers/anthropic-session.ts",
         "evals/eval/helpers/anthropic-judge.ts",
+        "evals/eval/helpers/eval-session-base.ts",
+        "evals/eval/helpers/gemini-judge.ts",
+        "evals/eval/helpers/judge-output.ts",
         "evals/eval/helpers/openai-session.ts",
         "evals/eval/helpers/openai-judge.ts",
 
