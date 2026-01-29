@@ -7,7 +7,7 @@ import type { EvalScenario } from "../types.ts";
 export const createDrumBeat: EvalScenario = {
   id: "create-drum-beat",
   description: "Create a basic 4-bar drum loop from an empty project",
-  liveSet: "scripts/eval-lib/live-sets/empty-project.als",
+  liveSet: "basic-midi-4-track",
 
   messages: [
     // Turn 0: Connect to get Producer Pal skills

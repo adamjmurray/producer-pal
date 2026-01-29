@@ -17,7 +17,8 @@ export interface EvalScenario {
   /** Human-readable description */
   description: string;
 
-  /** Path to .als file (relative to project root) */
+  /** Live Set name or path. Short names (no `/`) resolve to
+   * `evals/live-sets/{name} Project/{name}.als` */
   liveSet: string;
 
   /** Conversation messages (multi-turn support) */

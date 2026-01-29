@@ -1,8 +1,0 @@
-# Placeholder for Ableton Live Set files used in evaluation scenarios
-#
-# Add .als files here that are referenced by scenarios in ../scenarios/
-# These files should be version controlled as they define the test environment.
-#
-# Example files:
-#   - empty-project.als: An empty Live project with Producer Pal device
-#   - drums-bass-chords.als: A project with existing drum, bass, and chord tracks

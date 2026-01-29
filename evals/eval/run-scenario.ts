@@ -24,6 +24,8 @@ import type {
   EvalProvider,
 } from "./types.ts";
 
+const LIVE_SETS_DIR = "evals/live-sets";
+
 export interface JudgeOverride {
   provider: EvalProvider;
   model?: string;
@@ -55,9 +57,10 @@ export async function runScenario(
   try {
     // 1. Open Live Set and wait for MCP
     if (!skipLiveSetOpen) {
-      if (!isQuietMode())
-        console.log(`\nOpening Live Set: ${scenario.liveSet}`);
-      await openLiveSet(scenario.liveSet);
+      const liveSetPath = resolveLiveSetPath(scenario.liveSet);
+
+      if (!isQuietMode()) console.log(`\nOpening Live Set: ${liveSetPath}`);
+      await openLiveSet(liveSetPath);
     }
 
     // 2. Create evaluation session
@@ -206,4 +209,19 @@ async function runAssertion(
         message: `Unknown assertion type: ${(assertion as EvalAssertion).type}`,
       };
   }
+}
+
+/**
+ * Resolve a liveSet value to a full path.
+ * If it's a short name (no `/`), resolves to the Ableton project structure.
+ * @param liveSet - Short name or full path
+ * @returns Full path to the .als file
+ */
+function resolveLiveSetPath(liveSet: string): string {
+  if (liveSet.includes("/")) {
+    return liveSet;
+  }
+
+  // Ableton stores .als files in "{name} Project/{name}.als"
+  return `${LIVE_SETS_DIR}/${liveSet} Project/${liveSet}.als`;
 }
