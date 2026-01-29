@@ -90,7 +90,7 @@ export default defineConfig({
 
         // evals: Targeted exclusions for code requiring live LLM/MCP connections.
         // Tested: assertions/{helpers,tool-call,response,state}.ts,
-        //         chat/shared/formatting.ts, scenarios/helpers/judge-response-parser.ts
+        //         chat/shared/formatting.ts, eval/helpers/judge-response-parser.ts
 
         // Chat CLI - LLM provider implementations (require live APIs)
         "evals/chat/anthropic.ts",
@@ -113,27 +113,26 @@ export default defineConfig({
         "evals/chat/shared/thinking-maps.ts",
         "evals/chat/shared/types.ts",
 
-        // Scenario orchestration (integration code)
-        "evals/scenarios/eval.ts",
-        "evals/scenarios/index.ts",
-        "evals/scenarios/run-scenario.ts",
-        "evals/scenarios/eval-session.ts",
-        "evals/scenarios/open-live-set.ts",
-        "evals/scenarios/load-scenarios.ts",
-        "evals/scenarios/types.ts",
+        // Eval orchestration (integration code)
+        "evals/eval/index.ts",
+        "evals/eval/run-scenario.ts",
+        "evals/eval/eval-session.ts",
+        "evals/eval/open-live-set.ts",
+        "evals/eval/load-scenarios.ts",
+        "evals/eval/types.ts",
 
         // LLM-dependent assertions
-        "evals/scenarios/assertions/llm-judge.ts",
-        "evals/scenarios/assertions/index.ts",
+        "evals/eval/assertions/llm-judge.ts",
+        "evals/eval/assertions/index.ts",
 
         // LLM-dependent session helpers
-        "evals/scenarios/helpers/anthropic-session.ts",
-        "evals/scenarios/helpers/anthropic-judge.ts",
-        "evals/scenarios/helpers/openai-session.ts",
-        "evals/scenarios/helpers/openai-judge.ts",
+        "evals/eval/helpers/anthropic-session.ts",
+        "evals/eval/helpers/anthropic-judge.ts",
+        "evals/eval/helpers/openai-session.ts",
+        "evals/eval/helpers/openai-judge.ts",
 
         // Scenario definitions (test data, not logic)
-        "evals/scenarios/scenario-defs/**",
+        "evals/eval/scenario-defs/**",
 
         // Shared LLM utilities
         "evals/shared/**",

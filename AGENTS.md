@@ -45,7 +45,7 @@ Key entry points:
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.ts`
 - Chat CLI: `evals/chat/index.ts`
-- Evaluation scenarios: `evals/scenarios/eval.ts`
+- Evaluation scenarios: `evals/eval/index.ts`
 
 See `dev-docs/Architecture.md` for detailed system design and
 `dev-docs/Chat-UI.md` for web UI architecture.
@@ -72,12 +72,11 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Path aliases**: Use `#src/` for src imports (e.g.,
   `import foo from '#src/shared/utils.ts'`), `#webui/` for webui imports (e.g.,
   `import { App } from '#webui/components/App'`), and `#evals/` for evals
-  imports (e.g.,
-  `import { runScenario } from '#evals/scenarios/run-scenario.ts'`). All use
-  Node.js package subpath imports configured in package.json `"imports"` field.
-  The `#` prefix is required by Node.js for unbundled execution (build scripts,
-  CLI tools). Never use relative paths like `../../` when a path alias is
-  available.
+  imports (e.g., `import { runScenario } from '#evals/eval/run-scenario.ts'`).
+  All use Node.js package subpath imports configured in package.json `"imports"`
+  field. The `#` prefix is required by Node.js for unbundled execution (build
+  scripts, CLI tools). Never use relative paths like `../../` when a path alias
+  is available.
 
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
