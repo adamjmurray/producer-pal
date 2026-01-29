@@ -10,6 +10,7 @@ import type {
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
 import { truncate } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
 import type { TurnResult } from "../shared/types.ts";
@@ -74,7 +75,7 @@ export async function executeAnthropicToolCalls(
 
     if (tracked) tracked.result = resultText;
 
-    console.log(`   \u21b3 ${truncate(resultText, 160)}`);
+    if (!isQuietMode()) console.log(`   \u21b3 ${truncate(resultText, 160)}`);
   }
 
   return toolResults;
@@ -126,7 +127,7 @@ export async function processAnthropicToolCalls(
   // Add tool results as user message
   messages.push({ role: "user", content: toolResults });
 
-  console.log();
+  if (!isQuietMode()) console.log();
 
   return { hasToolCalls: true };
 }

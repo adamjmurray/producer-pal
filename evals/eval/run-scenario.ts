@@ -13,6 +13,7 @@ import {
   getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
+import { isQuietMode } from "./helpers/output-config.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import type {
   EvalScenario,
@@ -54,7 +55,8 @@ export async function runScenario(
   try {
     // 1. Open Live Set and wait for MCP
     if (!skipLiveSetOpen) {
-      console.log(`\nOpening Live Set: ${scenario.liveSet}`);
+      if (!isQuietMode())
+        console.log(`\nOpening Live Set: ${scenario.liveSet}`);
       await openLiveSet(scenario.liveSet);
     }
 
@@ -151,9 +153,12 @@ async function runAssertions(
 
     results.push(result);
 
-    const status = result.passed ? "✓" : "✗";
+    // Show all results in verbose mode, only LLM judge results in quiet mode
+    if (!isQuietMode() || assertion.type === "llm_judge") {
+      const status = result.passed ? "✓" : "✗";
 
-    console.log(`  ${status} ${result.message}`);
+      console.log(`  ${status} ${result.message}`);
+    }
   }
 
   return results;

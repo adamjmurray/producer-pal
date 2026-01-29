@@ -7,6 +7,7 @@ import type {
   RawContentBlockStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
 import {
   continueThought,
   DEBUG_SEPARATOR,
@@ -66,7 +67,7 @@ export async function handleStreamingResponse(
     if (result.toolCall) toolCalls.push(result.toolCall);
   }
 
-  console.log();
+  if (!isQuietMode()) console.log();
   const response = await stream.finalMessage();
 
   return { response, text, toolCalls };
@@ -114,7 +115,7 @@ function handleContentBlockStart(
   const block = event.content_block;
 
   if (block.type === "thinking") {
-    process.stdout.write(startThought(""));
+    if (!isQuietMode()) process.stdout.write(startThought(""));
 
     return { inThought: true, currentToolUse: null };
   }
@@ -145,17 +146,19 @@ function handleContentBlockDelta(
   const delta = event.delta;
 
   if (delta.type === "thinking_delta") {
-    process.stdout.write(continueThought(delta.thinking));
+    if (!isQuietMode()) process.stdout.write(continueThought(delta.thinking));
 
     return { inThought: true, currentToolUse };
   }
 
   if (delta.type === "text_delta") {
-    if (inThought) {
-      process.stdout.write(endThought());
-    }
+    if (!isQuietMode()) {
+      if (inThought) {
+        process.stdout.write(endThought());
+      }
 
-    process.stdout.write(delta.text);
+      process.stdout.write(delta.text);
+    }
 
     return { inThought: false, currentToolUse, text: delta.text };
   }
@@ -184,7 +187,7 @@ function handleContentBlockStop(
   inThought: boolean,
   currentToolUse: { id: string; name: string; inputJson: string } | null,
 ): StreamEventResult {
-  if (inThought) {
+  if (inThought && !isQuietMode()) {
     process.stdout.write(endThought());
   }
 
@@ -194,9 +197,11 @@ function handleContentBlockStop(
       unknown
     >;
 
-    process.stdout.write(
-      `\ud83d\udd27 ${currentToolUse.name}(${inspect(args, { compact: true, depth: 10 })})\n`,
-    );
+    if (!isQuietMode()) {
+      process.stdout.write(
+        `\ud83d\udd27 ${currentToolUse.name}(${inspect(args, { compact: true, depth: 10 })})\n`,
+      );
+    }
 
     return {
       inThought: false,

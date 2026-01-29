@@ -2,6 +2,7 @@
  * Shared streaming helpers for Chat API implementations (OpenAI, OpenRouter)
  */
 
+import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
 import {
   formatToolCall,
   formatToolResult,
@@ -51,12 +52,15 @@ export function createStreamState(): StreamState {
 export function writeThoughtText(text: string, state: StreamState): void {
   state.currentReasoning += text;
 
-  if (!state.inThought) {
-    process.stdout.write(startThought(text));
-    state.inThought = true;
-  } else {
-    process.stdout.write(continueThought(text));
+  if (!isQuietMode()) {
+    if (!state.inThought) {
+      process.stdout.write(startThought(text));
+    } else {
+      process.stdout.write(continueThought(text));
+    }
   }
+
+  state.inThought = true;
 }
 
 /**
@@ -85,12 +89,15 @@ function processReasoningDetails(
  * @param state - Stream state to update
  */
 function processContent(content: string, state: StreamState): void {
-  if (state.inThought) {
-    process.stdout.write(endThought());
-    state.inThought = false;
+  if (!isQuietMode()) {
+    if (state.inThought) {
+      process.stdout.write(endThought());
+    }
+
+    process.stdout.write(content);
   }
 
-  process.stdout.write(content);
+  state.inThought = false;
   state.currentContent += content;
 }
 
@@ -200,13 +207,13 @@ export async function executeToolCall(
     args = {};
   }
 
-  console.log(formatToolCall(name, args));
+  if (!isQuietMode()) console.log(formatToolCall(name, args));
 
   try {
     const result = await mcpClient.callTool({ name, arguments: args });
     const resultText = extractToolResultText(result);
 
-    console.log(formatToolResult(resultText));
+    if (!isQuietMode()) console.log(formatToolResult(resultText));
     messages.push({
       role: "tool",
       content: resultText,
@@ -215,7 +222,7 @@ export async function executeToolCall(
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
 
-    console.log(formatToolResult(`Error: ${errorMsg}`));
+    if (!isQuietMode()) console.log(formatToolResult(`Error: ${errorMsg}`));
     messages.push({
       role: "tool",
       content: `Error: ${errorMsg}`,

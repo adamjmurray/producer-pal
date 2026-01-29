@@ -7,6 +7,7 @@ import {
   formatToolResult,
 } from "#evals/chat/shared/formatting.ts";
 import { processThoughtText } from "#evals/chat/shared/thought-processing.ts";
+import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
 import type { GeminiResponse, GeminiResponsePart } from "./gemini-types.ts";
 
 /** Tool call with optional result */
@@ -60,7 +61,7 @@ export async function printGeminiStream(
     }
   }
 
-  console.log();
+  if (!isQuietMode()) console.log();
 
   // Warn if stream produced no output
   if (chunkCount === 0) {
@@ -101,15 +102,18 @@ function processStreamPart(
       inThought,
     );
 
-    process.stdout.write(result.output);
+    if (!isQuietMode()) process.stdout.write(result.output);
 
     return { inThought: result.inThought, text: result.text };
   }
 
   if (part.functionCall) {
-    process.stdout.write(
-      formatToolCall(part.functionCall.name, part.functionCall.args) + "\n",
-    );
+    if (!isQuietMode()) {
+      process.stdout.write(
+        formatToolCall(part.functionCall.name, part.functionCall.args) + "\n",
+      );
+    }
+
     toolCalls.push({
       name: part.functionCall.name,
       args: part.functionCall.args,
@@ -119,7 +123,8 @@ function processStreamPart(
   if (part.functionResponse) {
     const resultText = part.functionResponse.response?.content?.[0]?.text;
 
-    process.stdout.write(formatToolResult(resultText) + "\n");
+    if (!isQuietMode())
+      process.stdout.write(formatToolResult(resultText) + "\n");
 
     // Attach result to the last tool call
     const lastCall = toolCalls.at(-1);

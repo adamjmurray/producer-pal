@@ -27,6 +27,7 @@ import {
 } from "#evals/shared/provider-configs.ts";
 import type { TurnResult } from "../types.ts";
 import { logTurnStart } from "./eval-session-base.ts";
+import { isQuietMode } from "./output-config.ts";
 
 export { OPENAI_CONFIG, OPENROUTER_CONFIG, type OpenAIProviderConfig };
 
@@ -193,6 +194,8 @@ async function streamResponse(
  * @param state.inThought - Whether currently in thought mode
  */
 function finishStreamOutput(state: { inThought: boolean }): void {
+  if (isQuietMode()) return;
+
   if (state.inThought) {
     process.stdout.write(endThought());
   }

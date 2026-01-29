@@ -9,6 +9,7 @@ import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
+import { setQuietMode } from "./helpers/output-config.ts";
 import { printResultsTable } from "./helpers/report-table.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
@@ -22,6 +23,7 @@ interface CliOptions {
   judge?: string;
   list?: boolean;
   skipSetup?: boolean;
+  quiet?: boolean;
 }
 
 /**
@@ -62,6 +64,7 @@ program
     "-s, --skip-setup",
     "Skip Live Set setup (use existing MCP connection)",
   )
+  .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .action(async (options: CliOptions) => {
     if (options.list) {
       printList();
@@ -91,6 +94,8 @@ function printList(): void {
  * @param options - CLI options
  */
 async function runEvaluation(options: CliOptions): Promise<void> {
+  setQuietMode(options.quiet ?? false);
+
   if (options.model.length === 0) {
     console.error("Error: -m, --model is required when running tests");
     process.exit(1);
