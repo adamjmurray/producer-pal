@@ -43,7 +43,7 @@ export interface ChatOptions {
   outputTokens?: number;
   instructions?: string;
   once?: boolean;
-  messages?: string[];
+  sequence?: string[];
   file?: string;
 }
 

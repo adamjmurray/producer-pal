@@ -131,8 +131,8 @@ export function createMessageSource(
   options: ChatOptions,
   initialText: string,
 ): MessageSource {
-  if (options.messages && options.messages.length > 0) {
-    return new ArrayMessageSource(options.messages);
+  if (options.sequence && options.sequence.length > 0) {
+    return new ArrayMessageSource(options.sequence);
   }
 
   if (options.file) {

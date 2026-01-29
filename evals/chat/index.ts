@@ -46,7 +46,7 @@ program
   .option("-i, --instructions <text>", "System instructions")
   .option("-1, --once", "Exit after generating one response")
   .option(
-    "-M, --messages <messages...>",
+    "-s, --sequence <messages...>",
     "Multiple messages to send in sequence",
   )
   .option("-f, --file <path>", "File containing messages (one per line)")
