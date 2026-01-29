@@ -27,6 +27,14 @@ export function parseCompactJSLiteral<T>(text: string): T {
 }
 
 /**
+ * Sleep for a specified number of milliseconds.
+ * Useful for waiting for Live API state to settle.
+ */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * MCP test context containing the client connection.
  * Use with setupMcpTestContext() to initialize.
  */
