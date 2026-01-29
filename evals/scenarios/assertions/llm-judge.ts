@@ -8,6 +8,7 @@ import {
   printJudgeChunk,
   finishJudgeOutput,
 } from "#evals/shared/judge-streaming.ts";
+import { callAnthropicJudge } from "../helpers/anthropic-judge.ts";
 import {
   parseJudgeResponse,
   type JudgeResult,
@@ -147,6 +148,13 @@ async function callJudgeLlm(
   criteria: string,
 ): Promise<JudgeResult> {
   switch (provider) {
+    case "anthropic":
+      return await callAnthropicJudge(
+        prompt,
+        JUDGE_SYSTEM_PROMPT,
+        model,
+        criteria,
+      );
     case "gemini":
       return await callGeminiJudge(prompt, model, criteria);
     case "openai":

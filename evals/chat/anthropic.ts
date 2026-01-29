@@ -4,7 +4,6 @@ import type {
   MessageParam,
   ThinkingConfigParam,
   Tool,
-  ToolResultBlockParam,
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -13,12 +12,12 @@ import {
   formatNonStreamingResponse,
   handleStreamingResponse,
 } from "./anthropic/streaming.ts";
-import { debugCall, debugLog, truncate } from "./shared/formatting.ts";
 import {
-  connectMcp,
-  extractToolResultText,
-  getMcpToolsForAnthropic,
-} from "./shared/mcp.ts";
+  convertMcpToolsToAnthropic,
+  executeAnthropicToolCalls,
+} from "./anthropic/tool-helpers.ts";
+import { debugCall, debugLog } from "./shared/formatting.ts";
+import { connectMcp, getMcpToolsForAnthropic } from "./shared/mcp.ts";
 import { createMessageSource } from "./shared/message-source.ts";
 import {
   createReadline,
@@ -62,12 +61,7 @@ export async function runAnthropic(
   const { client: mcpClient } = await connectMcp();
   const mcpTools = await getMcpToolsForAnthropic(mcpClient);
 
-  // Convert to Anthropic Tool format
-  const tools: Tool[] = mcpTools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    input_schema: tool.input_schema,
-  }));
+  const tools = convertMcpToolsToAnthropic(mcpTools);
 
   if (options.debug) {
     debugCall("Anthropic client created", { model, toolCount: tools.length });
@@ -176,7 +170,7 @@ async function sendMessage(
     messages.push({ role: "assistant", content: response.content });
 
     // Execute tools and collect results
-    const toolResults = await executeToolCalls(
+    const toolResults = await executeAnthropicToolCalls(
       toolUseBlocks,
       mcpClient,
       allToolCalls,
@@ -196,49 +190,6 @@ async function sendMessage(
   }
 
   return { text: finalText, toolCalls: allToolCalls };
-}
-
-/**
- * Executes tool calls and returns tool results for Anthropic
- *
- * @param toolUseBlocks - Tool use blocks from the response
- * @param mcpClient - MCP client for tool execution
- * @param allToolCalls - Array to track all tool calls (mutated with results)
- * @returns Tool result blocks to send back to Anthropic
- */
-async function executeToolCalls(
-  toolUseBlocks: ToolUseBlock[],
-  mcpClient: Client,
-  allToolCalls: TurnResult["toolCalls"],
-): Promise<ToolResultBlockParam[]> {
-  const toolResults: ToolResultBlockParam[] = [];
-
-  for (const toolUse of toolUseBlocks) {
-    const result = await mcpClient.callTool({
-      name: toolUse.name,
-      arguments: toolUse.input as Record<string, unknown>,
-    });
-    const resultText = extractToolResultText(result);
-
-    toolResults.push({
-      type: "tool_result",
-      tool_use_id: toolUse.id,
-      content: resultText,
-    });
-
-    // Update tool call result in our tracking
-    const tracked = allToolCalls.find(
-      (tc) =>
-        tc.name === toolUse.name &&
-        JSON.stringify(tc.args) === JSON.stringify(toolUse.input),
-    );
-
-    if (tracked) tracked.result = resultText;
-
-    console.log(`   \u21b3 ${truncate(resultText, 160)}`);
-  }
-
-  return toolResults;
 }
 
 /**

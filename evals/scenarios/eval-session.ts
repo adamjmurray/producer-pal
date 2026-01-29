@@ -8,6 +8,10 @@ import { connectMcp } from "#evals/chat/shared/mcp.ts";
 import { printGeminiStream } from "#evals/shared/gemini-streaming.ts";
 import type { GeminiResponse } from "#evals/shared/gemini-types.ts";
 import {
+  createAnthropicEvalSession,
+  ANTHROPIC_CONFIG,
+} from "./helpers/anthropic-session.ts";
+import {
   createOpenAIEvalSession,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
@@ -26,6 +30,8 @@ export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
  */
 export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
+    case "anthropic":
+      return ANTHROPIC_CONFIG.defaultModel;
     case "gemini":
       return DEFAULT_GEMINI_MODEL;
     case "openai":
@@ -73,6 +79,8 @@ export async function createEvalSession(
   const { client: mcpClient } = await connectMcp();
 
   switch (options.provider) {
+    case "anthropic":
+      return await createAnthropicProviderSession(mcpClient, options);
     case "gemini":
       return await createGeminiSession(mcpClient, options);
     case "openai":
@@ -158,6 +166,52 @@ async function sendGeminiMessage(
   return await printGeminiStream(stream as AsyncIterable<GeminiResponse>);
 }
 
+/** Minimal session interface for wrapping */
+interface WrappableSession {
+  sendMessage: EvalSession["sendMessage"];
+  close: () => Promise<void>;
+}
+
+/**
+ * Wrap a provider session into an EvalSession
+ *
+ * @param mcpClient - MCP client for tool calls
+ * @param session - Provider session to wrap
+ * @returns Evaluation session
+ */
+function wrapSession(
+  mcpClient: Client,
+  session: WrappableSession,
+): EvalSession {
+  return {
+    mcpClient,
+    sendMessage: session.sendMessage,
+    close: async () => {
+      await session.close();
+      await mcpClient.close();
+    },
+  };
+}
+
+/**
+ * Create an Anthropic evaluation session
+ *
+ * @param mcpClient - MCP client for tool calls
+ * @param options - Session configuration
+ * @returns Evaluation session
+ */
+async function createAnthropicProviderSession(
+  mcpClient: Client,
+  options: EvalSessionOptions,
+): Promise<EvalSession> {
+  const session = await createAnthropicEvalSession(mcpClient, {
+    model: options.model,
+    instructions: options.instructions,
+  });
+
+  return wrapSession(mcpClient, session);
+}
+
 /**
  * Create an OpenAI-compatible evaluation session
  *
@@ -176,12 +230,5 @@ async function createOpenAIProviderSession(
     instructions: options.instructions,
   });
 
-  return {
-    mcpClient,
-    sendMessage: session.sendMessage,
-    close: async () => {
-      await session.close();
-      await mcpClient.close();
-    },
-  };
+  return wrapSession(mcpClient, session);
 }

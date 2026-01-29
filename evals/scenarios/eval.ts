@@ -36,7 +36,7 @@ function parseLlmString(llmString: string): JudgeOverride {
     slashIndex === -1 ? llmString : llmString.slice(0, slashIndex);
   const model = slashIndex === -1 ? undefined : llmString.slice(slashIndex + 1);
 
-  const validProviders = ["gemini", "openai", "openrouter"];
+  const validProviders = ["anthropic", "gemini", "openai", "openrouter"];
 
   if (!validProviders.includes(provider)) {
     throw new Error(

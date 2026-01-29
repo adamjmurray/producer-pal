@@ -18,11 +18,16 @@ export const connectToAbleton: EvalScenario = {
       tool: "ppal-connect",
       turn: 0,
     },
+    {
+      type: "tool_called",
+      tool: "ppal-read-live-set",
+      turn: 0,
+    },
 
     // Verify the response acknowledges the connection
     {
       type: "response_contains",
-      pattern: /connected|producer pal/i,
+      pattern: /connected/i,
     },
 
     // LLM judges the quality of the response

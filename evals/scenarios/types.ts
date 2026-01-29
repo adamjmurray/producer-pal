@@ -5,7 +5,7 @@
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 
-export type EvalProvider = "gemini" | "openai" | "openrouter";
+export type EvalProvider = "anthropic" | "gemini" | "openai" | "openrouter";
 
 /**
  * A test scenario that runs against Ableton Live
