@@ -30,7 +30,7 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
-    case "gemini":
+    case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
       return OPENAI_CONFIG.defaultModel;
@@ -79,7 +79,7 @@ export async function createEvalSession(
   switch (options.provider) {
     case "anthropic":
       return await createAnthropicProviderSession(mcpClient, options);
-    case "gemini":
+    case "google":
       return await createGeminiSession(mcpClient, options);
     case "openai":
       return await createOpenAIProviderSession(

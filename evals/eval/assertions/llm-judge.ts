@@ -147,7 +147,7 @@ async function callJudgeLlm(
         model,
         criteria,
       );
-    case "gemini":
+    case "google":
       return await callGeminiJudge(
         prompt,
         JUDGE_SYSTEM_PROMPT,

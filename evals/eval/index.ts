@@ -37,7 +37,7 @@ function parseLlmString(llmString: string): ModelSpec {
     slashIndex === -1 ? llmString : llmString.slice(0, slashIndex);
   const model = slashIndex === -1 ? undefined : llmString.slice(slashIndex + 1);
 
-  const validProviders = ["anthropic", "gemini", "openai", "openrouter"];
+  const validProviders = ["anthropic", "google", "openai", "openrouter"];
 
   if (!validProviders.includes(provider)) {
     throw new Error(
@@ -73,13 +73,13 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini, anthropic/claude-sonnet-4-5)",
+    "Model(s) to test (e.g., google, anthropic/claude-sonnet-4-5)",
     collectValues,
     [],
   )
   .option(
     "-j, --judge <provider/model>",
-    "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
+    "Override judge LLM (e.g., google/gemini-2.0-flash)",
   )
   .option("-l, --list", "List available scenarios")
   .option(

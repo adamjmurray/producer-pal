@@ -9,7 +9,7 @@ import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
-const providerHelp = `AI provider (anthropic, gemini, openai, openrouter)`;
+const providerHelp = `AI provider (anthropic, google, openai, openrouter)`;
 
 program
   .name("chat")
@@ -49,10 +49,10 @@ program
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");
 
-    // Warn if --api is used with Anthropic/Gemini (only applies to openai/openrouter)
+    // Warn if --api is used with Anthropic/Google (only applies to openai/openrouter)
     if (
       options.api &&
-      (options.provider === "anthropic" || options.provider === "gemini")
+      (options.provider === "anthropic" || options.provider === "google")
     ) {
       console.warn(
         `Warning: --api flag does not apply to ${options.provider} provider (ignored)`,
@@ -63,7 +63,7 @@ program
       case "anthropic":
         await runAnthropic(initialText, options);
         break;
-      case "gemini":
+      case "google":
         await runGemini(initialText, options);
         break;
       case "openai":

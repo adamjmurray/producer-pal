@@ -36,7 +36,7 @@ export async function callGeminiJudge(
   const ai = new GoogleGenAI({ apiKey });
   const judgeModel = model ?? GEMINI_CONFIG.defaultModel;
 
-  printJudgeHeader("gemini", judgeModel, criteria);
+  printJudgeHeader("google", judgeModel, criteria);
 
   const stream = await ai.models.generateContentStream({
     model: judgeModel,
