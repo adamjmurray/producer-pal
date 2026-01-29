@@ -800,6 +800,13 @@ export default [
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
+  // E2E MCP tests - override max-expects (comprehensive tests have many assertions)
+  {
+    files: ["e2e/mcp/**/*.test.ts"],
+    rules: {
+      "vitest/max-expects": "off",
+    },
+  },
 
   // Max file size rules
   {

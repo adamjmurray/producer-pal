@@ -19,6 +19,7 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 30000, // Longer timeout for MCP connections
+    hookTimeout: 60000, // beforeAll needs time to open Ableton + wait for MCP
     // No coverage thresholds - e2e tests are optional
   },
 });

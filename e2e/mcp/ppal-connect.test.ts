@@ -1,25 +1,33 @@
 /**
  * E2E tests for ppal-connect tool
- * Requires a running Producer Pal MCP server (Ableton Live + device active)
+ * Automatically opens the basic-midi-4-track Live Set before each test.
  *
  * Run with: npm run e2e:mcp
  */
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   connectMcp,
   extractToolResultText,
   type McpConnection,
 } from "#evals/chat/shared/mcp.ts";
+import { openLiveSet } from "#evals/eval/open-live-set.ts";
 
 const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
+const LIVE_SET_PATH =
+  "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
 
-// Connect at module load time (top-level await)
-const connection: McpConnection = await connectMcp(MCP_URL);
-const client: Client = connection.client;
+let connection: McpConnection;
+let client: Client;
 
-afterAll(async () => {
-  await client.close();
+beforeEach(async () => {
+  await openLiveSet(LIVE_SET_PATH);
+  connection = await connectMcp(MCP_URL);
+  client = connection.client;
+});
+
+afterEach(async () => {
+  await client?.close();
 });
 
 /**
@@ -33,7 +41,7 @@ function parseCompactJSLiteral<T>(text: string): T {
 }
 
 describe("ppal-connect", () => {
-  it("connects to Ableton Live and returns connection info", async () => {
+  it("connects to Ableton Live and returns expected response", async () => {
     const result = await client.callTool({
       name: "ppal-connect",
       arguments: {},
@@ -42,64 +50,32 @@ describe("ppal-connect", () => {
     const text = extractToolResultText(result);
     const parsed = parseCompactJSLiteral<ConnectResult>(text);
 
-    // Verify required fields
+    // Connection status
     expect(parsed.connected).toBe(true);
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
 
-    // Verify liveSet structure
+    // Live Set info
     expect(parsed.liveSet).toBeDefined();
     expect(typeof parsed.liveSet.trackCount).toBe("number");
     expect(typeof parsed.liveSet.sceneCount).toBe("number");
     expect(parsed.liveSet.tempo).toBeDefined();
-
-    // timeSignature can be null or a string like "4/4"
     expect(
       parsed.liveSet.timeSignature === null ||
         /^\d+\/\d+$/.test(parsed.liveSet.timeSignature),
     ).toBe(true);
 
-    // Verify optional skill documentation fields
+    // Skills documentation
     expect(parsed.$skills).toBeDefined();
-    expect(parsed.$instructions).toBeDefined();
-    expect(parsed.messagesForUser).toBeDefined();
-  });
-
-  it("returns Producer Pal Skills documentation", async () => {
-    const result = await client.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-
-    const text = extractToolResultText(result);
-    const parsed = parseCompactJSLiteral<ConnectResult>(text);
-
     expect(parsed.$skills).toContain("Producer Pal Skills");
-  });
 
-  it("returns initialization instructions", async () => {
-    const result = await client.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-
-    const text = extractToolResultText(result);
-    const parsed = parseCompactJSLiteral<ConnectResult>(text);
-
+    // Instructions
+    expect(parsed.$instructions).toBeDefined();
     expect(parsed.$instructions).toContain("ppal-read-live-set");
-  });
 
-  it("returns messages for the user", async () => {
-    const result = await client.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-
-    const text = extractToolResultText(result);
-    const parsed = parseCompactJSLiteral<ConnectResult>(text);
-
-    // Messages should include connection confirmation and tips
+    // User messages
+    expect(parsed.messagesForUser).toBeDefined();
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
     expect(parsed.messagesForUser).toContain("Save often");
   });

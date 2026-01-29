@@ -64,6 +64,7 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
   // Live's "unsaved changes" dialog is a window with subrole AXDialog (not a sheet).
   // The buttons are inside group 1, and their labels are in the "description"
   // attribute (not "name"). We use `contains "Don"` to avoid apostrophe issues.
+  // After clicking, we delay briefly to let Ableton process before returning.
   const script = `
     tell application "System Events"
       tell process "${ABLETON_PROCESS}"
@@ -75,6 +76,7 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
                   repeat with btn in buttons
                     if description of btn contains "Don" then
                       click btn
+                      delay 1
                       return "dismissed"
                     end if
                   end repeat
