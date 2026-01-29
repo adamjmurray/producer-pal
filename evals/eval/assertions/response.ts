@@ -7,6 +7,7 @@ import type {
   EvalTurnResult,
   EvalAssertionResult,
 } from "../types.ts";
+import { getTargetTurns } from "./helpers.ts";
 
 /**
  * Assert that the response contains (or doesn't contain) a pattern
@@ -19,12 +20,7 @@ export function assertResponseContains(
   assertion: ResponseContainsAssertion,
   turns: EvalTurnResult[],
 ): EvalAssertionResult {
-  const targetTurns =
-    assertion.turn === "any" || assertion.turn == null
-      ? turns
-      : [turns[assertion.turn]].filter(
-          (t): t is EvalTurnResult => t !== undefined,
-        );
+  const targetTurns = getTargetTurns(turns, assertion.turn);
 
   const pattern =
     typeof assertion.pattern === "string"

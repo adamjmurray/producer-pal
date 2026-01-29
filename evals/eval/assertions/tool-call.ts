@@ -7,7 +7,12 @@ import type {
   EvalTurnResult,
   EvalAssertionResult,
 } from "../types.ts";
-import { exactMatch, normalizeCount, formatExpectedCount } from "./helpers.ts";
+import {
+  exactMatch,
+  formatExpectedCount,
+  getTargetTurns,
+  normalizeCount,
+} from "./helpers.ts";
 
 /**
  * Assert that a tool was called with expected arguments
@@ -20,12 +25,7 @@ export function assertToolCalled(
   assertion: ToolCallAssertion,
   turns: EvalTurnResult[],
 ): EvalAssertionResult {
-  const targetTurns =
-    assertion.turn === "any" || assertion.turn == null
-      ? turns
-      : [turns[assertion.turn]].filter(
-          (t): t is EvalTurnResult => t !== undefined,
-        );
+  const targetTurns = getTargetTurns(turns, assertion.turn);
 
   const matchingCalls = targetTurns
     .flatMap((t) => t.toolCalls)

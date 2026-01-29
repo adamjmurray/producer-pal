@@ -2,6 +2,26 @@
  * Shared utilities for assertion evaluation
  */
 
+import type { EvalTurnResult } from "../types.ts";
+
+/**
+ * Get target turns based on assertion's turn specification
+ *
+ * @param turns - All conversation turns
+ * @param turn - Turn specification: number index, "any", or undefined
+ * @returns Filtered array of matching turns
+ */
+export function getTargetTurns(
+  turns: EvalTurnResult[],
+  turn: number | "any" | undefined,
+): EvalTurnResult[] {
+  if (turn === "any" || turn == null) {
+    return turns;
+  }
+
+  return [turns[turn]].filter((t): t is EvalTurnResult => t !== undefined);
+}
+
 /**
  * Check if actual object contains all keys/values from expected (partial match)
  *

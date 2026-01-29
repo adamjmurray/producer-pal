@@ -5,10 +5,8 @@
 import {
   formatToolCall,
   formatToolResult,
-  startThought,
-  continueThought,
-  endThought,
 } from "#evals/chat/shared/formatting.ts";
+import { processThoughtText } from "#evals/chat/shared/thought-processing.ts";
 import type { GeminiResponse, GeminiResponsePart } from "./gemini-types.ts";
 
 /** Tool call with optional result */
@@ -97,21 +95,15 @@ function processStreamPart(
   toolCalls: StreamToolCall[],
 ): ProcessPartResult {
   if (part.text) {
-    if (part.thought) {
-      process.stdout.write(
-        inThought ? continueThought(part.text) : startThought(part.text),
-      );
+    const result = processThoughtText(
+      part.text,
+      Boolean(part.thought),
+      inThought,
+    );
 
-      return { inThought: true };
-    }
+    process.stdout.write(result.output);
 
-    if (inThought) {
-      process.stdout.write(endThought());
-    }
-
-    process.stdout.write(part.text);
-
-    return { inThought: false, text: part.text };
+    return { inThought: result.inThought, text: result.text };
   }
 
   if (part.functionCall) {

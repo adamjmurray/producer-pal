@@ -10,9 +10,6 @@ import type {
 } from "#evals/shared/gemini-types.ts";
 import { DEFAULT_MODEL } from "./gemini/config.ts";
 import {
-  startThought,
-  continueThought,
-  endThought,
   debugCall,
   debugLog,
   truncate,
@@ -26,6 +23,7 @@ import {
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
 import { GEMINI_THINKING_MAP } from "./shared/thinking-maps.ts";
+import { processThoughtText } from "./shared/thought-processing.ts";
 import type { ChatOptions, TurnResult } from "./shared/types.ts";
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
@@ -238,21 +236,15 @@ function processPart(
   inThought: boolean,
 ): ProcessPartResult {
   if (part.text) {
-    if (part.thought) {
-      process.stdout.write(
-        inThought ? continueThought(part.text) : startThought(part.text),
-      );
+    const result = processThoughtText(
+      part.text,
+      Boolean(part.thought),
+      inThought,
+    );
 
-      return { inThought: true };
-    }
+    process.stdout.write(result.output);
 
-    if (inThought) {
-      process.stdout.write(endThought());
-    }
-
-    process.stdout.write(part.text);
-
-    return { inThought: false, text: part.text };
+    return { inThought: result.inThought, text: result.text };
   }
 
   if (part.functionCall) {

@@ -1,10 +1,60 @@
 import { describe, it, expect } from "vitest";
 import {
+  getTargetTurns,
   partialMatch,
   exactMatch,
   normalizeCount,
   formatExpectedCount,
 } from "./helpers.ts";
+import type { EvalTurnResult } from "../types.ts";
+
+describe("getTargetTurns", () => {
+  const mockTurns: EvalTurnResult[] = [
+    {
+      turnIndex: 0,
+      userMessage: "first",
+      assistantResponse: "a",
+      toolCalls: [],
+      durationMs: 100,
+    },
+    {
+      turnIndex: 1,
+      userMessage: "second",
+      assistantResponse: "b",
+      toolCalls: [],
+      durationMs: 200,
+    },
+  ];
+
+  it("returns all turns for 'any'", () => {
+    expect(getTargetTurns(mockTurns, "any")).toStrictEqual(mockTurns);
+  });
+
+  it("returns all turns for undefined", () => {
+    expect(getTargetTurns(mockTurns, undefined)).toStrictEqual(mockTurns);
+  });
+
+  it("returns specific turn by index", () => {
+    expect(getTargetTurns(mockTurns, 1)).toStrictEqual([mockTurns[1]]);
+  });
+
+  it("returns first turn when index is 0", () => {
+    expect(getTargetTurns(mockTurns, 0)).toStrictEqual([mockTurns[0]]);
+  });
+
+  it("returns empty array for out-of-bounds index", () => {
+    expect(getTargetTurns(mockTurns, 5)).toStrictEqual([]);
+  });
+
+  it("returns empty array for negative index", () => {
+    expect(getTargetTurns(mockTurns, -1)).toStrictEqual([]);
+  });
+
+  it("handles empty turns array", () => {
+    expect(getTargetTurns([], "any")).toStrictEqual([]);
+    expect(getTargetTurns([], 0)).toStrictEqual([]);
+  });
+});
 
 describe("partialMatch", () => {
   it("returns true for empty expected object", () => {
