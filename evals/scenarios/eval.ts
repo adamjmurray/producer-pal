@@ -7,11 +7,7 @@
 import { Command } from "commander";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import type {
-  EvalAssertionResult,
-  EvalProvider,
-  EvalScenarioResult,
-} from "./types.ts";
+import type { EvalProvider, EvalScenarioResult } from "./types.ts";
 
 interface CliOptions {
   test?: string;
@@ -19,7 +15,6 @@ interface CliOptions {
   model?: string;
   judge?: string;
   output?: string;
-  verbose?: boolean;
   list?: boolean;
   skipSetup?: boolean;
 }
@@ -69,7 +64,6 @@ program
     "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
   )
   .option("-o, --output <format>", "Output format (json)")
-  .option("-v, --verbose", "Show detailed output including tool results")
   .option("-l, --list", "List available scenarios")
   .option(
     "-s, --skip-setup",
@@ -139,7 +133,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       results.push(result);
 
       if (options.output !== "json") {
-        printResult(result, options.verbose);
+        printResult(result);
       }
     }
 
@@ -166,9 +160,8 @@ async function runEvaluation(options: CliOptions): Promise<void> {
  * Print result for a single scenario
  *
  * @param result - The scenario result
- * @param verbose - Whether to show verbose output
  */
-function printResult(result: EvalScenarioResult, verbose?: boolean): void {
+function printResult(result: EvalScenarioResult): void {
   const status = result.passed ? "PASSED" : "FAILED";
   const icon = result.passed ? "✓" : "✗";
 
@@ -177,71 +170,6 @@ function printResult(result: EvalScenarioResult, verbose?: boolean): void {
 
   if (result.error) {
     console.log(`  Error: ${result.error}`);
-  }
-
-  if (verbose) {
-    printVerboseResult(result);
-  }
-}
-
-/**
- * Print verbose details for a result
- *
- * @param result - The scenario result to print
- */
-function printVerboseResult(result: EvalScenarioResult): void {
-  console.log(`\n  Turns:`);
-
-  for (const turn of result.turns) {
-    console.log(`    [${turn.turnIndex + 1}] User: ${turn.userMessage}`);
-    console.log(
-      `    [${turn.turnIndex + 1}] Assistant: ${turn.assistantResponse}`,
-    );
-
-    if (turn.toolCalls.length > 0) {
-      printToolCalls(turn);
-    }
-  }
-
-  printAssertions(result.assertions);
-}
-
-/**
- * Print assertions for a result
- *
- * @param assertions - The assertions to print
- */
-function printAssertions(assertions: EvalAssertionResult[]): void {
-  console.log(`\n  Assertions:`);
-
-  for (const assertion of assertions) {
-    const aIcon = assertion.passed ? "✓" : "✗";
-
-    console.log(`    ${aIcon} ${assertion.message}`);
-
-    if (!assertion.passed && assertion.details) {
-      console.log(`      Details: ${JSON.stringify(assertion.details)}`);
-    }
-  }
-}
-
-/**
- * Print tool calls for a turn
- *
- * @param turn - The turn containing tool calls to print
- */
-function printToolCalls(turn: EvalScenarioResult["turns"][0]): void {
-  console.log(`    [${turn.turnIndex + 1}] Tools:`);
-
-  for (const tc of turn.toolCalls) {
-    console.log(`      - ${tc.name}(${JSON.stringify(tc.args)})`);
-
-    if (tc.result) {
-      const truncated = tc.result.length > 200;
-      const display = truncated ? tc.result.slice(0, 200) + "..." : tc.result;
-
-      console.log(`        Result: ${display}`);
-    }
   }
 }
 

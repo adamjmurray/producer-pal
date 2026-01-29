@@ -39,7 +39,10 @@ export interface JudgeOverride {
  */
 export async function runScenario(
   scenario: EvalScenario,
-  options?: { skipLiveSetOpen?: boolean; judgeOverride?: JudgeOverride },
+  options?: {
+    skipLiveSetOpen?: boolean;
+    judgeOverride?: JudgeOverride;
+  },
 ): Promise<EvalScenarioResult> {
   // Provider is required (set via CLI --provider flag)
   if (!scenario.provider) {

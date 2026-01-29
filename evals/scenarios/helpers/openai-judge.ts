@@ -7,6 +7,11 @@ import OpenAI from "openai";
 import { DEFAULT_MODEL as DEFAULT_OPENAI_MODEL } from "#evals/chat/openai/config.ts";
 import { DEFAULT_MODEL as DEFAULT_OPENROUTER_MODEL } from "#evals/chat/openrouter/config.ts";
 import {
+  printJudgeHeader,
+  printJudgeChunk,
+  finishJudgeOutput,
+} from "#evals/shared/judge-streaming.ts";
+import {
   parseJudgeResponse,
   type JudgeResult,
 } from "./judge-response-parser.ts";
@@ -33,19 +38,21 @@ const OPENROUTER_JUDGE_CONFIG: JudgeConfig = {
 };
 
 /**
- * Call OpenAI or OpenRouter as the LLM judge
+ * Call OpenAI or OpenRouter as the LLM judge with streaming output
  *
  * @param prompt - The evaluation prompt
  * @param systemPrompt - System instructions for the judge
  * @param provider - Either "openai" or "openrouter"
  * @param model - Optional model override
+ * @param criteria - Evaluation criteria for output
  * @returns Judge result with score and reasoning
  */
 export async function callOpenAIJudge(
   prompt: string,
   systemPrompt: string,
   provider: "openai" | "openrouter",
-  model?: string,
+  model: string | undefined,
+  criteria: string,
 ): Promise<JudgeResult> {
   const config =
     provider === "openai" ? OPENAI_JUDGE_CONFIG : OPENROUTER_JUDGE_CONFIG;
@@ -58,21 +65,28 @@ export async function callOpenAIJudge(
   const client = config.createClient(apiKey);
   const judgeModel = model ?? config.defaultModel;
 
-  const response = await client.chat.completions.create({
+  printJudgeHeader(provider, judgeModel, criteria);
+
+  const stream = await client.chat.completions.create({
     model: judgeModel,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt },
     ],
+    stream: true,
   });
 
-  const choice = response.choices[0];
+  let text = "";
 
-  if (!choice) {
-    throw new Error("No response from LLM judge");
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta;
+    const chunkText = delta?.content ?? "";
+
+    printJudgeChunk(chunkText);
+    text += chunkText;
   }
 
-  const text = choice.message.content?.trim() ?? "";
+  finishJudgeOutput();
 
-  return parseJudgeResponse(text);
+  return parseJudgeResponse(text.trim());
 }

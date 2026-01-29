@@ -4,6 +4,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 import {
+  printJudgeHeader,
+  printJudgeChunk,
+  finishJudgeOutput,
+} from "#evals/shared/judge-streaming.ts";
+import {
   parseJudgeResponse,
   type JudgeResult,
 } from "../helpers/judge-response-parser.ts";
@@ -71,7 +76,12 @@ export async function assertWithLlmJudge(
   const model = cliOverride?.model ?? assertion.judgeModel;
 
   try {
-    const judgeResult = await callJudgeLlm(judgePrompt, provider, model);
+    const judgeResult = await callJudgeLlm(
+      judgePrompt,
+      provider,
+      model,
+      assertion.prompt,
+    );
     const minScore = assertion.minScore ?? 3;
     const passed = judgeResult.score >= minScore;
 
@@ -127,16 +137,18 @@ Evaluation criteria: ${assertion.prompt}`;
  * @param prompt - The evaluation prompt
  * @param provider - LLM provider to use
  * @param model - Optional model override
+ * @param criteria - Evaluation criteria for output
  * @returns Judge result with score and reasoning
  */
 async function callJudgeLlm(
   prompt: string,
   provider: EvalProvider,
-  model?: string,
+  model: string | undefined,
+  criteria: string,
 ): Promise<JudgeResult> {
   switch (provider) {
     case "gemini":
-      return await callGeminiJudge(prompt, model);
+      return await callGeminiJudge(prompt, model, criteria);
     case "openai":
     case "openrouter":
       return await callOpenAIJudge(
@@ -144,6 +156,7 @@ async function callJudgeLlm(
         JUDGE_SYSTEM_PROMPT,
         provider,
         model,
+        criteria,
       );
 
     default: {
@@ -157,15 +170,17 @@ async function callJudgeLlm(
 }
 
 /**
- * Call Gemini as the judge
+ * Call Gemini as the judge with streaming output
  *
  * @param prompt - The evaluation prompt
  * @param model - Optional model override
+ * @param criteria - Evaluation criteria for output
  * @returns Judge result with score and reasoning
  */
 async function callGeminiJudge(
   prompt: string,
-  model?: string,
+  model: string | undefined,
+  criteria: string,
 ): Promise<JudgeResult> {
   const apiKey = process.env.GEMINI_KEY;
 
@@ -178,7 +193,9 @@ async function callGeminiJudge(
   const ai = new GoogleGenAI({ apiKey });
   const judgeModel = model ?? "gemini-2.0-flash";
 
-  const response = await ai.models.generateContent({
+  printJudgeHeader("gemini", judgeModel, criteria);
+
+  const stream = await ai.models.generateContentStream({
     model: judgeModel,
     contents: prompt,
     config: {
@@ -186,7 +203,16 @@ async function callGeminiJudge(
     },
   });
 
-  const text = response.text?.trim() ?? "";
+  let text = "";
 
-  return parseJudgeResponse(text);
+  for await (const chunk of stream) {
+    const chunkText = chunk.text ?? "";
+
+    printJudgeChunk(chunkText);
+    text += chunkText;
+  }
+
+  finishJudgeOutput();
+
+  return parseJudgeResponse(text.trim());
 }
