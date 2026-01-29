@@ -84,13 +84,13 @@
     "e2e:mcp:watch": "vitest -c config/vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
+    "@anthropic-ai/sdk": "^0.72.0",
     "@google/genai": "^1.38.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
-    "openai": "^6.16.0",
+    "openai": "^6.17.0",
     "preact": "^10.28.2",
     "zod": "^4.3.5"
   },
