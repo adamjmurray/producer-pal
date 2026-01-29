@@ -138,6 +138,9 @@ export default defineConfig({
         // Scenario definitions (test data, not logic)
         "evals/eval/scenario-defs/**",
 
+        // Ableton Live Set files (binary project files)
+        "evals/live-sets/**",
+
         // Shared LLM utilities
         "evals/shared/**",
       ],
