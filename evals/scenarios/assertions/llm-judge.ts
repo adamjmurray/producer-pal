@@ -183,7 +183,6 @@ async function callGeminiJudge(
     contents: prompt,
     config: {
       systemInstruction: JUDGE_SYSTEM_PROMPT,
-      temperature: 0,
     },
   });
 

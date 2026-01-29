@@ -64,7 +64,6 @@ export async function callOpenAIJudge(
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt },
     ],
-    temperature: 0,
   });
 
   const choice = response.choices[0];
