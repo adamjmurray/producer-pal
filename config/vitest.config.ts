@@ -88,9 +88,32 @@ export default defineConfig({
         // ignore test mocks:
         "src/test/mocks/**",
 
-        // evals: Exclude most evals code since it requires live LLM/MCP connections.
-        // Tests exist for: assertions/helpers.ts, assertions/tool-call.ts, assertions/response.ts
-        "evals/chat/**",
+        // evals: Targeted exclusions for code requiring live LLM/MCP connections.
+        // Tested: assertions/{helpers,tool-call,response,state}.ts,
+        //         chat/shared/formatting.ts, scenarios/helpers/judge-response-parser.ts
+
+        // Chat CLI - LLM provider implementations (require live APIs)
+        "evals/chat/anthropic.ts",
+        "evals/chat/anthropic/**",
+        "evals/chat/gemini.ts",
+        "evals/chat/gemini/**",
+        "evals/chat/openai/**",
+        "evals/chat/openrouter/**",
+        "evals/chat/index.ts",
+
+        // Chat CLI - shared code requiring MCP/LLM connections
+        "evals/chat/shared/mcp.ts",
+        "evals/chat/shared/chat-api-base.ts",
+        "evals/chat/shared/responses-api-base.ts",
+        "evals/chat/shared/chat-streaming.ts",
+        "evals/chat/shared/responses-streaming.ts",
+        "evals/chat/shared/tool-execution.ts",
+        "evals/chat/shared/message-source.ts",
+        "evals/chat/shared/readline.ts",
+        "evals/chat/shared/thinking-maps.ts",
+        "evals/chat/shared/types.ts",
+
+        // Scenario orchestration (integration code)
         "evals/scenarios/eval.ts",
         "evals/scenarios/index.ts",
         "evals/scenarios/run-scenario.ts",
@@ -98,11 +121,21 @@ export default defineConfig({
         "evals/scenarios/open-live-set.ts",
         "evals/scenarios/load-scenarios.ts",
         "evals/scenarios/types.ts",
+
+        // LLM-dependent assertions
         "evals/scenarios/assertions/llm-judge.ts",
-        "evals/scenarios/assertions/state.ts",
         "evals/scenarios/assertions/index.ts",
-        "evals/scenarios/helpers/**",
+
+        // LLM-dependent session helpers
+        "evals/scenarios/helpers/anthropic-session.ts",
+        "evals/scenarios/helpers/anthropic-judge.ts",
+        "evals/scenarios/helpers/openai-session.ts",
+        "evals/scenarios/helpers/openai-judge.ts",
+
+        // Scenario definitions (test data, not logic)
         "evals/scenarios/scenario-defs/**",
+
+        // Shared LLM utilities
         "evals/shared/**",
       ],
       reportOnFailure: true,
