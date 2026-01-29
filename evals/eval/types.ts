@@ -20,12 +20,6 @@ export interface EvalScenario {
   /** Path to .als file (relative to project root) */
   liveSet: string;
 
-  /** LLM provider (set via CLI --provider flag) */
-  provider?: EvalProvider;
-
-  /** Optional model override */
-  model?: string;
-
   /** Conversation messages (multi-turn support) */
   messages: string[];
 

@@ -5,23 +5,25 @@
  */
 
 import { Command } from "commander";
+import { printResultsTable } from "./helpers/report-table.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import type { EvalProvider, EvalScenarioResult } from "./types.ts";
 
 interface CliOptions {
   test?: string;
-  provider?: EvalProvider;
-  model?: string;
+  model: string[];
   judge?: string;
   list?: boolean;
   skipSetup?: boolean;
 }
 
-export interface JudgeOverride {
+export interface ModelSpec {
   provider: EvalProvider;
   model?: string;
 }
+
+export type { ModelSpec as JudgeOverride };
 
 /**
  * Parse a provider/model string into separate components
@@ -29,7 +31,7 @@ export interface JudgeOverride {
  * @param llmString - String in format "provider" or "provider/model"
  * @returns Parsed provider and optional model
  */
-function parseLlmString(llmString: string): JudgeOverride {
+function parseLlmString(llmString: string): ModelSpec {
   const slashIndex = llmString.indexOf("/");
   const provider =
     slashIndex === -1 ? llmString : llmString.slice(0, slashIndex);
@@ -46,6 +48,17 @@ function parseLlmString(llmString: string): JudgeOverride {
   return { provider: provider as EvalProvider, model: model ?? undefined };
 }
 
+/**
+ * Collector function for multiple -m flags
+ *
+ * @param value - Current flag value
+ * @param previous - Previously collected values
+ * @returns Updated array of values
+ */
+function collectModel(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 const program = new Command();
 
 program
@@ -54,10 +67,11 @@ program
   .showHelpAfterError(true)
   .option("-t, --test <id>", "Run specific scenario by ID")
   .option(
-    "-p, --provider <provider>",
-    "LLM provider (gemini, openai, openrouter)",
+    "-m, --model <provider/model>",
+    "Model(s) to test (e.g., gemini, anthropic/claude-sonnet-4-5)",
+    collectModel,
+    [],
   )
-  .option("-m, --model <model>", "Override model")
   .option(
     "-j, --judge <provider/model>",
     "Override judge LLM (e.g., gemini/gemini-2.0-flash)",
@@ -96,17 +110,16 @@ function printList(): void {
  * @param options - CLI options
  */
 async function runEvaluation(options: CliOptions): Promise<void> {
-  if (!options.provider) {
-    console.error("Error: -p, --provider is required when running tests");
+  if (options.model.length === 0) {
+    console.error("Error: -m, --model is required when running tests");
     process.exit(1);
   }
 
   try {
-    const scenarios = loadScenarios({
-      testId: options.test,
-      provider: options.provider,
-      model: options.model,
-    });
+    // Parse all model specs upfront
+    const modelSpecs = options.model.map(parseLlmString);
+
+    const scenarios = loadScenarios({ testId: options.test });
 
     if (scenarios.length === 0) {
       console.error("No scenarios to run.");
@@ -118,24 +131,45 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       ? parseLlmString(options.judge)
       : undefined;
 
-    console.log(`Running ${scenarios.length} scenario(s)...`);
+    const totalRuns = scenarios.length * modelSpecs.length;
 
-    const results: EvalScenarioResult[] = [];
+    console.log(
+      `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s) = ${totalRuns} run(s)...`,
+    );
+
+    // Results keyed by scenarioId -> modelSpec -> result
+    const resultsByScenario = new Map<
+      string,
+      Map<string, EvalScenarioResult>
+    >();
 
     for (const scenario of scenarios) {
-      const result = await runScenario(scenario, {
-        skipLiveSetOpen: options.skipSetup,
-        judgeOverride,
-      });
+      const scenarioResults = new Map<string, EvalScenarioResult>();
 
-      results.push(result);
-      printResult(result);
+      for (const spec of modelSpecs) {
+        const modelKey = spec.model
+          ? `${spec.provider}/${spec.model}`
+          : spec.provider;
+        const result = await runScenario(scenario, {
+          provider: spec.provider,
+          model: spec.model,
+          skipLiveSetOpen: options.skipSetup,
+          judgeOverride,
+        });
+
+        scenarioResults.set(modelKey, result);
+        printResult(result, modelKey);
+      }
+
+      resultsByScenario.set(scenario.id, scenarioResults);
     }
 
-    printSummary(results);
+    printSummary(resultsByScenario, modelSpecs);
 
     // Exit with error code if any scenario failed
-    const allPassed = results.every((r) => r.passed);
+    const allPassed = [...resultsByScenario.values()].every((scenarioResults) =>
+      [...scenarioResults.values()].every((r) => r.passed),
+    );
 
     process.exit(allPassed ? 0 : 1);
   } catch (error) {
@@ -148,15 +182,16 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 }
 
 /**
- * Print result for a single scenario
+ * Print result for a single scenario run
  *
  * @param result - The scenario result
+ * @param modelKey - The model identifier (provider or provider/model)
  */
-function printResult(result: EvalScenarioResult): void {
+function printResult(result: EvalScenarioResult, modelKey: string): void {
   const status = result.passed ? "PASSED" : "FAILED";
   const icon = result.passed ? "✓" : "✗";
 
-  console.log(`\n${icon} ${result.scenario.id}: ${status}`);
+  console.log(`\n${icon} ${result.scenario.id} [${modelKey}]: ${status}`);
   console.log(`  Duration: ${result.totalDurationMs}ms`);
 
   if (result.error) {
@@ -167,19 +202,34 @@ function printResult(result: EvalScenarioResult): void {
 /**
  * Print summary of all results
  *
- * @param results - All scenario results
+ * @param resultsByScenario - Results organized by scenario and model
+ * @param modelSpecs - All model specs tested
  */
-function printSummary(results: EvalScenarioResult[]): void {
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.length - passed;
+function printSummary(
+  resultsByScenario: Map<string, Map<string, EvalScenarioResult>>,
+  modelSpecs: ModelSpec[],
+): void {
+  // If multiple models, print a table
+  if (modelSpecs.length > 1) {
+    printResultsTable(resultsByScenario, modelSpecs);
+
+    return;
+  }
+
+  // Single model - use simple summary
+  const allResults = [...resultsByScenario.values()].flatMap((m) => [
+    ...m.values(),
+  ]);
+  const passed = allResults.filter((r) => r.passed).length;
+  const failed = allResults.length - passed;
 
   console.log("\n" + "=".repeat(50));
-  console.log(`Summary: ${passed}/${results.length} passed`);
+  console.log(`Summary: ${passed}/${allResults.length} passed`);
 
   if (failed > 0) {
     console.log(`\nFailed scenarios:`);
 
-    for (const result of results.filter((r) => !r.passed)) {
+    for (const result of allResults.filter((r) => !r.passed)) {
       console.log(`  - ${result.scenario.id}`);
 
       if (result.error) {

@@ -125,7 +125,7 @@ export default defineConfig({
         "evals/eval/assertions/llm-judge.ts",
         "evals/eval/assertions/index.ts",
 
-        // LLM-dependent session helpers
+        // LLM-dependent session helpers and eval output
         "evals/eval/helpers/anthropic-session.ts",
         "evals/eval/helpers/anthropic-judge.ts",
         "evals/eval/helpers/eval-session-base.ts",
@@ -133,6 +133,7 @@ export default defineConfig({
         "evals/eval/helpers/judge-output.ts",
         "evals/eval/helpers/openai-session.ts",
         "evals/eval/helpers/openai-judge.ts",
+        "evals/eval/helpers/report-table.ts",
 
         // Scenario definitions (test data, not logic)
         "evals/eval/scenario-defs/**",

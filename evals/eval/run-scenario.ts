@@ -28,41 +28,38 @@ export interface JudgeOverride {
   model?: string;
 }
 
+export interface RunScenarioOptions {
+  provider: EvalProvider;
+  model?: string;
+  skipLiveSetOpen?: boolean;
+  judgeOverride?: JudgeOverride;
+}
+
 /**
  * Run a single evaluation scenario
  *
  * @param scenario - The scenario to run
- * @param options - Optional overrides
- * @param options.skipLiveSetOpen - Skip opening the Live Set (for testing)
- * @param options.judgeOverride - Override judge LLM provider/model
+ * @param options - Run options including provider/model
  * @returns Scenario result with turns, assertions, and pass/fail status
  */
 export async function runScenario(
   scenario: EvalScenario,
-  options?: {
-    skipLiveSetOpen?: boolean;
-    judgeOverride?: JudgeOverride;
-  },
+  options: RunScenarioOptions,
 ): Promise<EvalScenarioResult> {
-  // Provider is required (set via CLI --provider flag)
-  if (!scenario.provider) {
-    throw new Error("Provider is required. Use --provider flag.");
-  }
-
-  const provider = scenario.provider;
+  const { provider, model, skipLiveSetOpen, judgeOverride } = options;
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
 
   try {
     // 1. Open Live Set and wait for MCP
-    if (!options?.skipLiveSetOpen) {
+    if (!skipLiveSetOpen) {
       console.log(`\nOpening Live Set: ${scenario.liveSet}`);
       await openLiveSet(scenario.liveSet);
     }
 
     // 2. Create evaluation session
-    const effectiveModel = scenario.model ?? getDefaultModel(provider);
+    const effectiveModel = model ?? getDefaultModel(provider);
 
     console.log(`\nStarting scenario: ${scenario.id}`);
     console.log(`Description: ${scenario.description}`);
@@ -71,7 +68,7 @@ export async function runScenario(
 
     session = await createEvalSession({
       provider,
-      model: scenario.model,
+      model,
       instructions: scenario.instructions,
     });
 
@@ -96,7 +93,7 @@ export async function runScenario(
       turns,
       session,
       provider,
-      options?.judgeOverride,
+      judgeOverride,
     );
 
     const passed = assertionResults.every((r) => r.passed);
