@@ -127,6 +127,7 @@ export function readClip(
   ) as number;
 
   const isLooping = (clip.getProperty("looping") as number) > 0;
+  const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
   const lengthBeats = clip.getProperty("length") as number; // Live API already gives us the effective length!
 
   const clipName = clip.getProperty("name") as string;
@@ -140,6 +141,7 @@ export function readClip(
   // Calculate start and end based on looping state
   const { startBeats, endBeats } = getActiveClipBounds(
     isLooping,
+    isMidiClip,
     startMarkerBeats,
     loopStartBeats,
     endMarkerBeats,
@@ -176,7 +178,7 @@ export function readClip(
 
   const result: ReadClipResult = {
     id: clip.id,
-    type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
+    type: isMidiClip ? "midi" : "audio",
     ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
@@ -369,6 +371,7 @@ function addClipLocationProperties(
 /**
  * Get the active start and end beats based on looping state
  * @param isLooping - Whether the clip is looping
+ * @param isMidiClip - Whether the clip is a MIDI clip (vs audio)
  * @param startMarkerBeats - Start marker position in beats
  * @param loopStartBeats - Loop start position in beats
  * @param endMarkerBeats - End marker position in beats
@@ -378,6 +381,7 @@ function addClipLocationProperties(
  */
 function getActiveClipBounds(
   isLooping: boolean,
+  isMidiClip: boolean,
   startMarkerBeats: number,
   loopStartBeats: number,
   endMarkerBeats: number,
@@ -387,8 +391,9 @@ function getActiveClipBounds(
   const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
   const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
 
-  // Sanity check for non-looping clips
-  if (!isLooping) {
+  // Sanity check for non-looping MIDI clips only
+  // (audio clips have length based on sample duration, not end_marker - start_marker)
+  if (!isLooping && isMidiClip) {
     const derivedStart = endBeats - lengthBeats;
 
     if (Math.abs(derivedStart - startBeats) > 0.001) {

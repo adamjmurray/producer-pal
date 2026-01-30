@@ -78,11 +78,12 @@ export function calculateBeatPositions({
         // For non-looping clips, derive from end_marker - length
         const currentEndMarker = clip.getProperty("end_marker") as number;
         const currentStartMarker = clip.getProperty("start_marker") as number;
+        const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
 
         startBeats = currentEndMarker - lengthBeats;
 
-        // Sanity check: warn if derived start doesn't match start_marker
-        if (Math.abs(startBeats - currentStartMarker) > 0.001) {
+        // Sanity check for MIDI clips only - audio clips have length based on sample duration
+        if (isMidiClip && Math.abs(startBeats - currentStartMarker) > 0.001) {
           console.error(
             `Warning: Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
           );
