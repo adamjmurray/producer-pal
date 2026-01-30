@@ -29,6 +29,7 @@ interface DuplicationThresholds {
   tests: number;
   scripts: number;
   evals: number;
+  e2e: number;
 }
 
 /**
@@ -76,7 +77,7 @@ async function getCoverageThresholds(): Promise<CoverageThresholds> {
  * @returns Duplication threshold values
  */
 async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
-  const [srcConfig, testsConfig, scriptsConfig, evalsConfig] =
+  const [srcConfig, testsConfig, scriptsConfig, evalsConfig, e2eConfig] =
     await Promise.all([
       readFile(join(configDir, ".jscpd.json"), "utf-8").then(JSON.parse),
       readFile(join(configDir, ".jscpd-tests.json"), "utf-8").then(JSON.parse),
@@ -84,6 +85,7 @@ async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
         JSON.parse,
       ),
       readFile(join(configDir, ".jscpd-evals.json"), "utf-8").then(JSON.parse),
+      readFile(join(configDir, ".jscpd-e2e.json"), "utf-8").then(JSON.parse),
     ]);
 
   return {
@@ -91,6 +93,7 @@ async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
     tests: testsConfig.threshold,
     scripts: scriptsConfig.threshold,
     evals: evalsConfig.threshold,
+    e2e: e2eConfig.threshold,
   };
 }
 
