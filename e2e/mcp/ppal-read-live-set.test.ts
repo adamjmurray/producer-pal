@@ -11,7 +11,7 @@ import {
   setupMcpTestContext,
 } from "./mcp-test-helpers";
 
-const ctx = setupMcpTestContext();
+const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-read-live-set", () => {
   it("reads live set info with default and custom include params", async () => {

@@ -1,50 +1,28 @@
 /**
  * E2E tests for ppal-connect tool
- * Automatically opens the basic-midi-4-track Live Set before each test.
+ * Uses once mode to reuse MCP connection across tests (faster).
  *
  * Run with: npm run e2e:mcp
  */
 import { afterEach, describe, expect, it } from "vitest";
 import {
   extractToolResultText,
-  MCP_URL,
   parseCompactJSLiteral,
+  setConfig,
   setupMcpTestContext,
 } from "./mcp-test-helpers";
 
-const ctx = setupMcpTestContext();
-
-/**
- * Get the config endpoint URL from the MCP URL
- */
-function getConfigUrl(): string {
-  return MCP_URL.replace("/mcp", "/config");
-}
-
-/**
- * Set smallModelMode via the config endpoint
- */
-async function setSmallModelMode(enabled: boolean): Promise<void> {
-  const response = await fetch(getConfigUrl(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ smallModelMode: enabled }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to set smallModelMode: ${response.status}`);
-  }
-}
+const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-connect", () => {
   // Ensure smallModelMode is reset after each test
   afterEach(async () => {
-    await setSmallModelMode(false);
+    await setConfig({ smallModelMode: false });
   });
 
   it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
     // Ensure standard mode is active
-    await setSmallModelMode(false);
+    await setConfig({ smallModelMode: false });
 
     const result = await ctx.client!.callTool({
       name: "ppal-connect",
@@ -93,7 +71,7 @@ describe("ppal-connect", () => {
 
   it("returns simplified skills and instructions (smallModelMode=true)", async () => {
     // Enable small model mode
-    await setSmallModelMode(true);
+    await setConfig({ smallModelMode: true });
 
     const result = await ctx.client!.callTool({
       name: "ppal-connect",

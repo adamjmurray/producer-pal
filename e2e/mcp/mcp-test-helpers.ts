@@ -2,7 +2,7 @@
  * Shared test utilities for MCP e2e tests
  */
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { afterEach, beforeEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import {
   connectMcp,
   extractToolResultText,
@@ -13,8 +13,36 @@ import { openLiveSet } from "#evals/eval/open-live-set.ts";
 export { extractToolResultText };
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
+export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
 export const LIVE_SET_PATH =
   "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
+
+/**
+ * Configuration options that can be set via the /config endpoint
+ */
+export interface ConfigOptions {
+  useProjectNotes?: boolean;
+  projectNotes?: string;
+  projectNotesWritable?: boolean;
+  smallModelMode?: boolean;
+  jsonOutput?: boolean;
+  sampleFolder?: string;
+}
+
+/**
+ * Update server config via the /config endpoint
+ */
+export async function setConfig(options: ConfigOptions): Promise<void> {
+  const response = await fetch(CONFIG_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to set config: ${response.status}`);
+  }
+}
 
 /**
  * Parse the compact JS literal format used by Producer Pal to save tokens.
@@ -43,24 +71,33 @@ export interface McpTestContext {
   client: Client | null;
 }
 
+interface SetupOptions {
+  /** Use beforeAll/afterAll instead of beforeEach/afterEach (reuses connection across tests) */
+  once?: boolean;
+}
+
 /**
- * Sets up beforeEach/afterEach hooks for MCP e2e tests.
+ * Sets up hooks for MCP e2e tests.
  * Returns a context object that will be populated with the client after setup.
+ *
+ * @param options.once - If true, uses beforeAll/afterAll (faster for multiple tests that don't need fresh state)
  *
  * Usage:
  *   const ctx = setupMcpTestContext();
  *   it("test", () => { ctx.client!.callTool(...); });
  */
-export function setupMcpTestContext(): McpTestContext {
+export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
   const ctx: McpTestContext = { connection: null, client: null };
+  const setup = options?.once ? beforeAll : beforeEach;
+  const teardown = options?.once ? afterAll : afterEach;
 
-  beforeEach(async () => {
+  setup(async () => {
     await openLiveSet(LIVE_SET_PATH);
     ctx.connection = await connectMcp(MCP_URL);
     ctx.client = ctx.connection.client;
   });
 
-  afterEach(async () => {
+  teardown(async () => {
     await ctx.client?.close();
   });
 
