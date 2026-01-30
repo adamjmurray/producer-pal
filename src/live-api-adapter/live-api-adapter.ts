@@ -130,7 +130,8 @@ let isCompactOutputEnabled = true;
  *
  * @param enabled - Whether to enable compact output
  */
-export function compactOutput(enabled: boolean): void {
+export function compactOutput(enabled: unknown): void {
+  // console.log(`Setting isCompactOutputEnabled ${Boolean(enabled)}`);
   isCompactOutputEnabled = Boolean(enabled);
 }
 
@@ -139,7 +140,8 @@ export function compactOutput(enabled: boolean): void {
  *
  * @param enabled - Whether to enable small model mode
  */
-export function smallModelMode(enabled: boolean): void {
+export function smallModelMode(enabled: unknown): void {
+  // console.log(`[v8] Setting smallModelMode ${Boolean(enabled)}`);
   context.smallModelMode = Boolean(enabled);
 }
 
@@ -148,7 +150,8 @@ export function smallModelMode(enabled: boolean): void {
  *
  * @param enabled - Whether to enable project notes
  */
-export function projectNotesEnabled(enabled: boolean): void {
+export function projectNotesEnabled(enabled: unknown): void {
+  // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
   context.projectNotes.enabled = Boolean(enabled);
 }
 
@@ -157,28 +160,35 @@ export function projectNotesEnabled(enabled: boolean): void {
  *
  * @param writable - Whether project notes should be writable
  */
-export function projectNotesWritable(writable: boolean): void {
+export function projectNotesWritable(writable: unknown): void {
+  // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
   context.projectNotes.writable = Boolean(writable);
 }
 
 /**
  * Set the project notes content
  *
- * @param _text - Unused parameter (needed for integration with the Max patch)
  * @param content - Project notes content
  */
-export function projectNotes(_text: string, content: string | undefined): void {
-  context.projectNotes.content = content ?? "";
+export function projectNotes(content: unknown): void {
+  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
+  const value = content === "bang" ? "" : String(content ?? "");
+
+  // console.log(`[v8] Setting projectNotes "${value}"`);
+  context.projectNotes.content = value;
 }
 
 /**
  * Set the sample folder path
  *
- * @param _text - Unused parameter (needed for integration with the Max patch)
  * @param path - Sample folder path
  */
-export function sampleFolder(_text: string, path: string): void {
-  context.sampleFolder = path || null;
+export function sampleFolder(path: unknown): void {
+  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
+  const value = path === "bang" ? "" : String(path ?? "");
+
+  // console.log(`[v8] Setting sampleFolder "${value}"`);
+  context.sampleFolder = value;
 }
 
 /**

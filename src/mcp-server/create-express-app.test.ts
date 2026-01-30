@@ -517,6 +517,154 @@ describe("MCP Express App", () => {
     });
   });
 
+  describe("Config Endpoints", () => {
+    let configUrl: string;
+
+    beforeAll(() => {
+      configUrl = serverUrl.replace("/mcp", "/config");
+    });
+
+    it("should return current config on GET /config", async () => {
+      const response = await fetch(configUrl);
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config).toMatchObject({
+        useProjectNotes: expect.any(Boolean),
+        projectNotes: expect.any(String),
+        projectNotesWritable: expect.any(Boolean),
+        smallModelMode: expect.any(Boolean),
+        jsonOutput: expect.any(Boolean),
+        sampleFolder: expect.any(String),
+      });
+    });
+
+    it("should update config on POST /config", async () => {
+      // First, get current config
+      const initialResponse = await fetch(configUrl);
+      const initialConfig = await initialResponse.json();
+
+      // Update with new values
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          smallModelMode: true,
+          jsonOutput: true,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const updatedConfig = await response.json();
+
+      expect(updatedConfig.smallModelMode).toBe(true);
+      expect(updatedConfig.jsonOutput).toBe(true);
+
+      // Restore original values
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          smallModelMode: initialConfig.smallModelMode,
+          jsonOutput: initialConfig.jsonOutput,
+        }),
+      });
+    });
+
+    it("should support partial config updates", async () => {
+      // Get current config
+      const getResponse = await fetch(configUrl);
+      const before = await getResponse.json();
+
+      // Only update useProjectNotes
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ useProjectNotes: true }),
+      });
+
+      expect(response.status).toBe(200);
+      const after = await response.json();
+
+      expect(after.useProjectNotes).toBe(true);
+      // Other values should remain unchanged
+      expect(after.smallModelMode).toBe(before.smallModelMode);
+      expect(after.jsonOutput).toBe(before.jsonOutput);
+
+      // Restore
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ useProjectNotes: false }),
+      });
+    });
+
+    it("should update projectNotes string", async () => {
+      const testNotes = "Test project notes content";
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectNotes: testNotes }),
+      });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config.projectNotes).toBe(testNotes);
+
+      // Clear notes
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectNotes: "" }),
+      });
+    });
+
+    it("should update projectNotesWritable", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectNotesWritable: true }),
+      });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config.projectNotesWritable).toBe(true);
+
+      // Restore
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectNotesWritable: false }),
+      });
+    });
+
+    it("should update sampleFolder", async () => {
+      const testPath = "/path/to/samples";
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleFolder: testPath }),
+      });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config.sampleFolder).toBe(testPath);
+
+      // Clear
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleFolder: "" }),
+      });
+    });
+  });
+
   describe("Handler Registration", () => {
     it("should set chatUIEnabled to true with 1", () => {
       const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
@@ -561,6 +709,56 @@ describe("MCP Express App", () => {
       smallModelHandler("true");
       smallModelHandler(0);
       smallModelHandler(false);
+    });
+
+    it("should set projectNotesEnabled with various inputs", () => {
+      const handler = mockMax.handlers.get("projectNotesEnabled") as (
+        input: unknown,
+      ) => void;
+
+      expect(handler).toBeDefined();
+      handler(1);
+      handler(0);
+    });
+
+    it("should set projectNotes with string input", () => {
+      const handler = mockMax.handlers.get("projectNotes") as (
+        input: unknown,
+      ) => void;
+
+      expect(handler).toBeDefined();
+      handler("test notes");
+      handler("");
+    });
+
+    it("should set projectNotesWritable with various inputs", () => {
+      const handler = mockMax.handlers.get("projectNotesWritable") as (
+        input: unknown,
+      ) => void;
+
+      expect(handler).toBeDefined();
+      handler(1);
+      handler(0);
+    });
+
+    it("should set compactOutput with various inputs", () => {
+      const handler = mockMax.handlers.get("compactOutput") as (
+        input: unknown,
+      ) => void;
+
+      expect(handler).toBeDefined();
+      handler(1);
+      handler(0);
+    });
+
+    it("should set sampleFolder with string input", () => {
+      const handler = mockMax.handlers.get("sampleFolder") as (
+        input: unknown,
+      ) => void;
+
+      expect(handler).toBeDefined();
+      handler("/path/to/samples");
+      handler("");
     });
   });
 });
