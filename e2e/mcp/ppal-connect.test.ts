@@ -4,11 +4,9 @@
  *
  * Run with: npm run e2e:mcp
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  extractToolResultText,
-  parseCompactJSLiteral,
-  resetConfig,
+  parseToolResult,
   setConfig,
   setupMcpTestContext,
 } from "./mcp-test-helpers";
@@ -22,15 +20,10 @@ async function callConnect(): Promise<ConnectResult> {
     arguments: {},
   });
 
-  return parseCompactJSLiteral<ConnectResult>(extractToolResultText(result));
+  return parseToolResult<ConnectResult>(result);
 }
 
 describe("ppal-connect", () => {
-  // Reset config after each test
-  afterEach(async () => {
-    await resetConfig();
-  });
-
   it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
     // Ensure standard mode is active
     await setConfig({ smallModelMode: false });

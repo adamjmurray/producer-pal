@@ -6,8 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  extractToolResultText,
-  parseCompactJSLiteral,
+  parseToolResult,
   setupMcpTestContext,
   sleep,
 } from "./mcp-test-helpers";
@@ -21,9 +20,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-read-live-set",
       arguments: { include: ["scenes"] },
     });
-    const initial = parseCompactJSLiteral<ReadResult>(
-      extractToolResultText(initialRead),
-    );
+    const initial = parseToolResult<ReadResult>(initialRead);
     const originalTempo = initial.tempo;
     const originalTimeSig = initial.timeSignature;
 
@@ -33,9 +30,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-update-live-set",
       arguments: { tempo: newTempo },
     });
-    const tempoResult = parseCompactJSLiteral<UpdateResult>(
-      extractToolResultText(tempoUpdate),
-    );
+    const tempoResult = parseToolResult<UpdateResult>(tempoUpdate);
 
     expect(tempoResult.tempo).toBe(newTempo);
 
@@ -44,9 +39,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-read-live-set",
       arguments: {},
     });
-    const afterTempoRead = parseCompactJSLiteral<ReadResult>(
-      extractToolResultText(afterTempo),
-    );
+    const afterTempoRead = parseToolResult<ReadResult>(afterTempo);
 
     expect(afterTempoRead.tempo).toBe(newTempo);
 
@@ -62,9 +55,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-update-live-set",
       arguments: { timeSignature: newTimeSig },
     });
-    const timeSigResult = parseCompactJSLiteral<UpdateResult>(
-      extractToolResultText(timeSigUpdate),
-    );
+    const timeSigResult = parseToolResult<UpdateResult>(timeSigUpdate);
 
     expect(timeSigResult.timeSignature).toBe(newTimeSig);
 
@@ -74,9 +65,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-read-live-set",
       arguments: {},
     });
-    const afterTimeSigRead = parseCompactJSLiteral<ReadResult>(
-      extractToolResultText(afterTimeSig),
-    );
+    const afterTimeSigRead = parseToolResult<ReadResult>(afterTimeSig);
 
     expect(afterTimeSigRead.timeSignature).toBe(newTimeSig);
 
@@ -91,9 +80,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-update-live-set",
       arguments: { scale: "D Minor" },
     });
-    const scaleResult = parseCompactJSLiteral<UpdateResult>(
-      extractToolResultText(scaleUpdate),
-    );
+    const scaleResult = parseToolResult<UpdateResult>(scaleUpdate);
 
     expect(scaleResult.scale).toBe("D Minor");
     expect(scaleResult.scalePitches).toBeDefined();
@@ -107,9 +94,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-update-live-set",
       arguments: { scale: "" },
     });
-    const disableResult = parseCompactJSLiteral<UpdateResult>(
-      extractToolResultText(disableScale),
-    );
+    const disableResult = parseToolResult<UpdateResult>(disableScale);
 
     expect(disableResult.scale).toBe(""); // Empty string means scale disabled
 
@@ -122,9 +107,7 @@ describe("ppal-update-live-set", () => {
         scale: "G Major",
       },
     });
-    const multiResult = parseCompactJSLiteral<UpdateResult>(
-      extractToolResultText(multiUpdate),
-    );
+    const multiResult = parseToolResult<UpdateResult>(multiUpdate);
 
     expect(multiResult.tempo).toBe(140);
     expect(multiResult.timeSignature).toBe("6/8");
@@ -136,9 +119,7 @@ describe("ppal-update-live-set", () => {
       name: "ppal-read-live-set",
       arguments: {},
     });
-    const afterMultiRead = parseCompactJSLiteral<ReadResult>(
-      extractToolResultText(afterMulti),
-    );
+    const afterMultiRead = parseToolResult<ReadResult>(afterMulti);
 
     expect(afterMultiRead.tempo).toBe(140);
     expect(afterMultiRead.timeSignature).toBe("6/8");

@@ -10,7 +10,13 @@ import {
 } from "#evals/chat/shared/mcp.ts";
 import { openLiveSet } from "#evals/eval/open-live-set.ts";
 
-export { extractToolResultText };
+/**
+ * Parse a tool result as JSON with type casting.
+ * Requires jsonOutput: true in config (set by resetConfig).
+ */
+export function parseToolResult<T>(result: unknown): T {
+  return JSON.parse(extractToolResultText(result)) as T;
+}
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
@@ -45,12 +51,12 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 }
 
 /**
- * Reset server config to defaults:
+ * Reset server config to e2e test defaults:
  * - smallModelMode: false
  * - useProjectNotes: false
  * - projectNotes: ""
  * - projectNotesWritable: false
- * - jsonOutput: false (compact output)
+ * - jsonOutput: true (JSON output for easy parsing in tests)
  * - sampleFolder: ""
  */
 export async function resetConfig(): Promise<void> {
@@ -59,19 +65,9 @@ export async function resetConfig(): Promise<void> {
     useProjectNotes: false,
     projectNotes: "",
     projectNotesWritable: false,
-    jsonOutput: false,
+    jsonOutput: true,
     sampleFolder: "",
   });
-}
-
-/**
- * Parse the compact JS literal format used by Producer Pal to save tokens.
- * Uses eval since the format is valid JS but not valid JSON (unquoted keys).
- * Safe here since we're only parsing trusted MCP server responses in local tests.
- */
-export function parseCompactJSLiteral<T>(text: string): T {
-  // eslint-disable-next-line no-eval -- Parsing trusted MCP server response in local e2e test
-  return eval(`(${text})`) as T;
 }
 
 /**
@@ -115,6 +111,11 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
     await openLiveSet(LIVE_SET_PATH);
     ctx.connection = await connectMcp(MCP_URL);
     ctx.client = ctx.connection.client;
+  });
+
+  // Always reset config before each test (even when reusing connection)
+  beforeEach(async () => {
+    await resetConfig();
   });
 
   teardown(async () => {

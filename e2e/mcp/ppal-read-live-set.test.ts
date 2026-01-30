@@ -5,11 +5,7 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import {
-  extractToolResultText,
-  parseCompactJSLiteral,
-  setupMcpTestContext,
-} from "./mcp-test-helpers";
+import { parseToolResult, setupMcpTestContext } from "./mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -20,8 +16,7 @@ describe("ppal-read-live-set", () => {
       name: "ppal-read-live-set",
       arguments: {},
     });
-    const defaultText = extractToolResultText(defaultResult);
-    const defaultParsed = parseCompactJSLiteral<ReadLiveSetResult>(defaultText);
+    const defaultParsed = parseToolResult<ReadLiveSetResult>(defaultResult);
 
     // Basic live set info
     expect(defaultParsed.id).toBeDefined();
@@ -50,8 +45,7 @@ describe("ppal-read-live-set", () => {
       name: "ppal-read-live-set",
       arguments: { include: ["scenes"] },
     });
-    const scenesText = extractToolResultText(scenesResult);
-    const scenesParsed = parseCompactJSLiteral<ReadLiveSetResult>(scenesText);
+    const scenesParsed = parseToolResult<ReadLiveSetResult>(scenesResult);
 
     expect(Array.isArray(scenesParsed.scenes)).toBe(true);
     expect(scenesParsed.scenes?.length).toBeGreaterThanOrEqual(1);
@@ -66,8 +60,7 @@ describe("ppal-read-live-set", () => {
       name: "ppal-read-live-set",
       arguments: { include: ["return-tracks"] },
     });
-    const returnText = extractToolResultText(returnResult);
-    const returnParsed = parseCompactJSLiteral<ReadLiveSetResult>(returnText);
+    const returnParsed = parseToolResult<ReadLiveSetResult>(returnResult);
 
     // Return tracks may or may not exist in the test set, but the property should be present
     expect(
