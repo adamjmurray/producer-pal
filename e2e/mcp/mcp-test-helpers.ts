@@ -45,6 +45,26 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 }
 
 /**
+ * Reset server config to defaults:
+ * - smallModelMode: false
+ * - useProjectNotes: false
+ * - projectNotes: ""
+ * - projectNotesWritable: false
+ * - jsonOutput: false (compact output)
+ * - sampleFolder: ""
+ */
+export async function resetConfig(): Promise<void> {
+  await setConfig({
+    smallModelMode: false,
+    useProjectNotes: false,
+    projectNotes: "",
+    projectNotesWritable: false,
+    jsonOutput: false,
+    sampleFolder: "",
+  });
+}
+
+/**
  * Parse the compact JS literal format used by Producer Pal to save tokens.
  * Uses eval since the format is valid JS but not valid JSON (unquoted keys).
  * Safe here since we're only parsing trusted MCP server responses in local tests.

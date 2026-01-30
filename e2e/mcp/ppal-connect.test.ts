@@ -8,29 +8,33 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   extractToolResultText,
   parseCompactJSLiteral,
+  resetConfig,
   setConfig,
   setupMcpTestContext,
 } from "./mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
+/** Helper to call ppal-connect and parse the result */
+async function callConnect(): Promise<ConnectResult> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-connect",
+    arguments: {},
+  });
+
+  return parseCompactJSLiteral<ConnectResult>(extractToolResultText(result));
+}
+
 describe("ppal-connect", () => {
-  // Ensure smallModelMode is reset after each test
+  // Reset config after each test
   afterEach(async () => {
-    await setConfig({ smallModelMode: false });
+    await resetConfig();
   });
 
   it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
     // Ensure standard mode is active
     await setConfig({ smallModelMode: false });
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-
-    const text = extractToolResultText(result);
-    const parsed = parseCompactJSLiteral<ConnectResult>(text);
+    const parsed = await callConnect();
 
     // Connection status
     expect(parsed.connected).toBe(true);
@@ -72,14 +76,7 @@ describe("ppal-connect", () => {
   it("returns simplified skills and instructions (smallModelMode=true)", async () => {
     // Enable small model mode
     await setConfig({ smallModelMode: true });
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-
-    const text = extractToolResultText(result);
-    const parsed = parseCompactJSLiteral<ConnectResult>(text);
+    const parsed = await callConnect();
 
     // Connection status still works
     expect(parsed.connected).toBe(true);
@@ -107,6 +104,56 @@ describe("ppal-connect", () => {
     // User messages still work
     expect(parsed.messagesForUser).toBeDefined();
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
+  });
+
+  describe("project notes", () => {
+    const TEST_NOTES = "Test project notes content for e2e testing";
+
+    it("excludes projectNotes when disabled (default)", async () => {
+      await setConfig({ useProjectNotes: false, projectNotes: "" });
+      const parsed = await callConnect();
+
+      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.$instructions).not.toContain("project notes");
+    });
+
+    it("includes projectNotes when enabled with content (read-only)", async () => {
+      await setConfig({
+        useProjectNotes: true,
+        projectNotes: TEST_NOTES,
+        projectNotesWritable: false,
+      });
+      const parsed = await callConnect();
+
+      expect(parsed.projectNotes).toBe(TEST_NOTES);
+      expect(parsed.$instructions).toContain("Summarize the project notes");
+      expect(parsed.$instructions).not.toContain("update the project notes");
+    });
+
+    it("includes writable instruction when projectNotesWritable is true", async () => {
+      await setConfig({
+        useProjectNotes: true,
+        projectNotes: TEST_NOTES,
+        projectNotesWritable: true,
+      });
+      const parsed = await callConnect();
+
+      expect(parsed.projectNotes).toBe(TEST_NOTES);
+      expect(parsed.$instructions).toContain("Summarize the project notes");
+      expect(parsed.$instructions).toContain("update the project notes");
+    });
+
+    it("excludes projectNotes when enabled but content is empty", async () => {
+      await setConfig({
+        useProjectNotes: true,
+        projectNotes: "",
+        projectNotesWritable: false,
+      });
+      const parsed = await callConnect();
+
+      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.$instructions).not.toContain("project notes");
+    });
   });
 });
 
