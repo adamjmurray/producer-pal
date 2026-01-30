@@ -1,7 +1,7 @@
 /**
  * Shared streaming utilities for Responses API implementations
  */
-import { startThought, continueThought, endThought } from "./formatting.ts";
+import { startThought, continueThought, endThought } from "../formatting.ts";
 
 /**
  * Common stream state fields for tracking reasoning output

@@ -9,13 +9,13 @@ import {
   startThought,
   continueThought,
   endThought,
-} from "./formatting.ts";
-import { extractToolResultText } from "./mcp.ts";
+} from "../formatting.ts";
+import { extractToolResultText } from "../mcp.ts";
 import type {
   OpenRouterStreamChunk,
   OpenRouterToolCall,
   ReasoningDetail,
-} from "./types.ts";
+} from "../types.ts";
 
 export interface StreamState {
   inThought: boolean;

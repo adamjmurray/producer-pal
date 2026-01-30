@@ -5,6 +5,10 @@ import type {
   Tool,
 } from "openai/resources/responses/responses";
 import {
+  applyResponsesOptions,
+  extractMessageText,
+} from "../shared/api/responses-api-base.ts";
+import {
   formatThought,
   debugLog,
   debugCall,
@@ -17,10 +21,6 @@ import {
 } from "../shared/mcp.ts";
 import { createMessageSource } from "../shared/message-source.ts";
 import { createReadline, runChatLoop } from "../shared/readline.ts";
-import {
-  applyResponsesOptions,
-  extractMessageText,
-} from "../shared/responses-api-base.ts";
 import {
   executeAndLogToolCall,
   parseToolArgs,

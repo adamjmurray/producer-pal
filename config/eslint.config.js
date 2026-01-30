@@ -556,13 +556,13 @@ export default [
 
   // Playwright UI tests (TypeScript)
   {
-    files: ["e2e/webui/**/*.ts"],
+    files: ["e2e/webui/**/*.ts", "e2e/docs/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2024,
         sourceType: "module",
-        project: "./e2e/webui/tsconfig.json",
+        project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
       },
       globals: {
         ...globals.node,
@@ -571,7 +571,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: "./e2e/webui/tsconfig.json",
+          project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
         },
         node: true,
       },
@@ -814,6 +814,9 @@ export default [
       "src/**/*.ts",
       "scripts/**/*.ts",
       "evals/**/*.ts",
+      "e2e/mcp/**/*.ts",
+      "e2e/webui/**/*.ts",
+      "e2e/docs/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],

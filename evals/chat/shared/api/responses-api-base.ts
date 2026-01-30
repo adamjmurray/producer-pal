@@ -1,7 +1,7 @@
 /**
  * Shared utilities for Responses API implementations (OpenAI and OpenRouter)
  */
-import type { ChatOptions, TurnResult } from "./types.ts";
+import type { ChatOptions, TurnResult } from "../types.ts";
 
 /**
  * Applies common chat options to a Responses API request body

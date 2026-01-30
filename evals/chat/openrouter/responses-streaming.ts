@@ -2,11 +2,11 @@
  * Streaming helpers for OpenRouter Responses API
  */
 
-import { debugLog, DEBUG_SEPARATOR } from "../shared/formatting.ts";
 import {
   handleReasoningText,
   handleContentText,
-} from "../shared/responses-streaming.ts";
+} from "../shared/api/responses-streaming.ts";
+import { debugLog, DEBUG_SEPARATOR } from "../shared/formatting.ts";
 import type {
   ChatOptions,
   ResponsesStreamEvent,

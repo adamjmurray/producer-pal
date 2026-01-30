@@ -103,10 +103,10 @@ export default defineConfig({
 
         // Chat CLI - shared code requiring MCP/LLM connections
         "evals/chat/shared/mcp.ts",
-        "evals/chat/shared/chat-api-base.ts",
-        "evals/chat/shared/responses-api-base.ts",
-        "evals/chat/shared/chat-streaming.ts",
-        "evals/chat/shared/responses-streaming.ts",
+        "evals/chat/shared/api/chat-api-base.ts",
+        "evals/chat/shared/api/responses-api-base.ts",
+        "evals/chat/shared/api/chat-streaming.ts",
+        "evals/chat/shared/api/responses-streaming.ts",
         "evals/chat/shared/tool-execution.ts",
         "evals/chat/shared/message-source.ts",
         "evals/chat/shared/readline.ts",

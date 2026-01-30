@@ -2,17 +2,17 @@
  * Streaming event handlers for OpenAI Responses API
  */
 import {
+  getDeltaText,
+  handleReasoningText,
+  finishReasoning,
+  handleContentText,
+} from "../shared/api/responses-streaming.ts";
+import {
   formatThought,
   formatToolCall,
   formatToolResult,
 } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
-import {
-  getDeltaText,
-  handleReasoningText,
-  finishReasoning,
-  handleContentText,
-} from "../shared/responses-streaming.ts";
 import { type McpClient, parseToolArgs } from "../shared/tool-execution.ts";
 import type {
   OpenAIConversationItem,

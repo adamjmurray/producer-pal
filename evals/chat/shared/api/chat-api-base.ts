@@ -8,21 +8,15 @@
 
 import type OpenAI from "openai";
 import {
-  createStreamState,
-  processStreamChunk,
-  buildToolCallsArray,
-  executeToolCall,
-} from "./chat-streaming.ts";
-import {
   formatThought,
   debugLog,
   debugCall,
   DEBUG_SEPARATOR,
   endThought,
-} from "./formatting.ts";
-import { connectMcp, getMcpToolsForChat } from "./mcp.ts";
-import { createMessageSource } from "./message-source.ts";
-import { createReadline, runChatLoop } from "./readline.ts";
+} from "../formatting.ts";
+import { connectMcp, getMcpToolsForChat } from "../mcp.ts";
+import { createMessageSource } from "../message-source.ts";
+import { createReadline, runChatLoop } from "../readline.ts";
 import type {
   ChatOptions,
   ChatTool,
@@ -30,7 +24,13 @@ import type {
   OpenRouterResponse,
   OpenRouterStreamChunk,
   TurnResult,
-} from "./types.ts";
+} from "../types.ts";
+import {
+  createStreamState,
+  processStreamChunk,
+  buildToolCallsArray,
+  executeToolCall,
+} from "./chat-streaming.ts";
 
 /**
  * Provider-specific configuration for Chat API implementations

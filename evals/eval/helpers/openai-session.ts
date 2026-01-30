@@ -10,7 +10,7 @@ import {
   processStreamChunk,
   buildToolCallsArray,
   executeToolCall,
-} from "#evals/chat/shared/chat-streaming.ts";
+} from "#evals/chat/shared/api/chat-streaming.ts";
 import { endThought } from "#evals/chat/shared/formatting.ts";
 import { getMcpToolsForChat } from "#evals/chat/shared/mcp.ts";
 import type {
