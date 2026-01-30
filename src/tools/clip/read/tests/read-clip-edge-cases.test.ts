@@ -1,11 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
   mockLiveApiGet,
 } from "#src/test/mocks/mock-live-api.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
-import { expectGetNotesExtendedCall } from "./read-clip-test-helpers.ts";
+import {
+  expectGetNotesExtendedCall,
+  setupAudioClipMock,
+  setupMidiClipMock,
+} from "./read-clip-test-helpers.ts";
 
 describe("readClip", () => {
   // E2E test with real bar|beat notation
@@ -342,6 +346,61 @@ describe("readClip", () => {
       length: "1:0",
       notes: "G8 1|1",
       noteCount: 1,
+    });
+  });
+
+  describe("getActiveClipBounds sanity check", () => {
+    it("emits warning for non-looping MIDI clip with mismatched start_marker", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      setupMidiClipMock({
+        clipProps: {
+          is_midi_clip: 1,
+          looping: 0,
+          start_marker: 0,
+          end_marker: 4,
+          length: 5, // derived start = 4 - 5 = -1 !== 0
+          loop_start: 0,
+          loop_end: 4,
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      readClip({ trackIndex: 1, sceneIndex: 1 });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Derived start"),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("does NOT emit warning for non-looping audio clip with mismatched boundaries", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      setupAudioClipMock({
+        clipProps: {
+          looping: 0,
+          start_marker: 0,
+          end_marker: 0.131,
+          length: 0.262, // derived start = 0.131 - 0.262 = -0.131 !== 0
+          loop_start: 0,
+          loop_end: 0.131,
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      readClip({ trackIndex: 1, sceneIndex: 1 });
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

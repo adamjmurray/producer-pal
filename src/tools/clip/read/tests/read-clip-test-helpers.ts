@@ -37,6 +37,10 @@ interface SetupMidiClipMockOptions {
   clipProps: ClipProperties;
 }
 
+interface SetupAudioClipMockOptions {
+  clipProps: ClipProperties;
+}
+
 // Default test notes: C3, D3, E3 at beats 0, 1, 2
 export const defaultTestNotes: TestNote[] = [
   {
@@ -109,6 +113,22 @@ export function setupMidiClipMock({
   });
   mockLiveApiGet({
     "live_set/tracks/1/clip_slots/1/clip": clipProps,
+  });
+}
+
+/**
+ * Helper to set up mocks for an audio clip (no notes)
+ * @param opts - Options
+ * @param opts.clipProps - Clip properties to mock
+ */
+export function setupAudioClipMock({
+  clipProps,
+}: SetupAudioClipMockOptions): void {
+  mockLiveApiGet({
+    "live_set/tracks/1/clip_slots/1/clip": {
+      is_midi_clip: 0,
+      ...clipProps,
+    },
   });
 }
 
