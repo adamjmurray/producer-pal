@@ -273,14 +273,6 @@ describe("view", () => {
       // Result reflects actual readViewState(), which returns default (no clip selected)
       expect(result).toStrictEqual(expectViewState());
     });
-
-    it("deselects all clips when clipId is null", () => {
-      const result = select({ clipId: null });
-
-      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 0");
-      // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toStrictEqual(expectViewState());
-    });
   });
 
   describe("device selection", () => {

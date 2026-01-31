@@ -31,11 +31,8 @@ export const toolDefSelect = defineTool("ppal-select", {
     sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
     clipId: z.coerce
       .string()
-      .nullable()
       .optional()
-      .describe(
-        "select a clip with this or trackIndex + sceneIndex, or null to deselect all clips",
-      ),
+      .describe("select a clip with this or trackIndex + sceneIndex"),
     deviceId: z.coerce.string().optional().describe("select a device"),
     instrument: z
       .boolean()

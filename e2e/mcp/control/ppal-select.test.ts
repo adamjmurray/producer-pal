@@ -105,17 +105,7 @@ describe("ppal-select", () => {
 
     expect(withClip.selectedClipId).toBe(createdClip.id);
 
-    // Test 9: Deselect clip (note: Live may keep the last selected clip)
-    const deselectClipResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { clipId: null },
-    });
-    const noClip = parseToolResult<ViewState>(deselectClipResult);
-
-    // Deselection call succeeds - Live API may or may not clear the selection
-    expect(noClip).toBeDefined();
-
-    // Test 10: Create a device and select it
+    // Test 9: Create a device and select it
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
 
     const selectDeviceResult = await ctx.client!.callTool({
@@ -126,7 +116,7 @@ describe("ppal-select", () => {
 
     expect(withDevice.selectedDeviceId).toBe(deviceId);
 
-    // Test 11: Show clip detail view
+    // Test 10: Show clip detail view
     const clipDetailResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { detailView: "clip" },
@@ -135,7 +125,7 @@ describe("ppal-select", () => {
 
     expect(clipDetail.detailView).toBe("clip");
 
-    // Test 12: Show device detail view
+    // Test 11: Show device detail view
     const deviceDetailResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { detailView: "device" },
@@ -144,7 +134,7 @@ describe("ppal-select", () => {
 
     expect(deviceDetail.detailView).toBe("device");
 
-    // Test 13: Hide detail view
+    // Test 12: Hide detail view
     const hideDetailResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { detailView: "none" },
@@ -153,7 +143,7 @@ describe("ppal-select", () => {
 
     expect(hiddenDetail.detailView).toBeNull();
 
-    // Test 14: Show browser
+    // Test 13: Show browser
     const showBrowserResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { showBrowser: true },
@@ -162,7 +152,7 @@ describe("ppal-select", () => {
 
     expect(browserShown.showBrowser).toBe(true);
 
-    // Test 15: Hide browser
+    // Test 14: Hide browser
     const hideBrowserResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { showBrowser: false },
