@@ -84,7 +84,7 @@
     "e2e:mcp:watch": "vitest -c config/vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.72.0",
+    "@anthropic-ai/sdk": "^0.72.1",
     "@google/genai": "^1.38.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@tailwindcss/typography": "^0.5.19",
@@ -121,12 +121,12 @@
     "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsdoc": "^62.4.1",
+    "eslint-plugin-jsdoc": "^62.5.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-sonarjs": "^3.0.6",
     "eslint-plugin-unicorn": "^62.0.0",
     "happy-dom": "^20.4.0",
-    "jscpd": "^4.0.7",
+    "jscpd": "^4.0.8",
     "peggy": "^5.0.6",
     "prettier": "^3.8.1",
     "rollup": "^4.57.0",
