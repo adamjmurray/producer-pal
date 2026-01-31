@@ -95,6 +95,17 @@ const baseRules = {
   "no-eval": "error", // Never use eval()
   "no-new-func": "error", // Never use new Function()
 
+  // Path resolution - use import.meta.url for reliable paths
+  "no-restricted-properties": [
+    "error",
+    {
+      object: "process",
+      property: "cwd",
+      message:
+        "Use import.meta.url with fileURLToPath/dirname instead of process.cwd()",
+    },
+  ],
+
   // Vertical spacing - enforces blank lines at logical locations
   "@stylistic/padding-line-between-statements": [
     "error",

@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
@@ -34,7 +37,8 @@ const ALLOWED_EXTERNAL_DOMAINS = [
  */
 function parseSitemap(): string[] {
   const sitemapPath = join(
-    process.cwd(),
+    __dirname,
+    "..",
     "docs",
     ".vitepress",
     "dist",
