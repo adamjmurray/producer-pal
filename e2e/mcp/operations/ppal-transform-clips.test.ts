@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -202,9 +203,4 @@ describe("ppal-transform-clips", () => {
 interface TransformResult {
   clipIds: string[];
   seed: number;
-}
-
-interface ReadClipResult {
-  id: string;
-  arrangementStart?: string;
 }

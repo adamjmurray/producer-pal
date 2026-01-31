@@ -4,23 +4,17 @@
  *
  * Run with: npm run e2e:mcp
  */
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  type CreateTrackResult,
   parseToolResult,
+  type ReadClipResult,
+  SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
-
-// Sample file for audio clip tests - resolve relative to this file's location
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SAMPLE_FILE = resolve(
-  __dirname,
-  "../../../evals/live-sets/samples/sample.aiff",
-);
 
 describe("ppal-update-clip", () => {
   it(
@@ -411,32 +405,3 @@ describe("ppal-update-clip", () => {
     },
   );
 });
-
-interface CreateTrackResult {
-  id: string;
-  trackIndex?: number;
-}
-
-interface ReadClipResult {
-  id: string;
-  type: "midi" | "audio";
-  name?: string;
-  view: "session" | "arrangement";
-  color?: string;
-  timeSignature?: string;
-  looping?: boolean;
-  start?: string;
-  end?: string;
-  length?: string;
-  trackIndex?: number;
-  sceneIndex?: number;
-  arrangementStart?: string;
-  arrangementLength?: string;
-  noteCount?: number;
-  notes?: string;
-  // Audio clip properties
-  gainDb?: number;
-  pitchShift?: number;
-  warping?: boolean;
-  warpMode?: string;
-}

@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -119,22 +120,3 @@ describe("ppal-read-clip", () => {
     expect(emptyClip.type).toBeNull();
   });
 });
-
-interface ReadClipResult {
-  id: string | null;
-  type: "midi" | "audio" | null;
-  name?: string | null;
-  view?: "session" | "arrangement";
-  color?: string | null;
-  timeSignature?: string | null;
-  looping?: boolean;
-  start?: string;
-  end?: string;
-  length?: string;
-  trackIndex?: number | null;
-  sceneIndex?: number | null;
-  arrangementStart?: string;
-  arrangementLength?: string;
-  noteCount?: number;
-  notes?: string;
-}
