@@ -150,7 +150,6 @@ describe("ppal-create-clip", () => {
     });
     const readLengthClip = parseToolResult<ReadClipResult>(verifyLength);
 
-    // eslint-disable-next-line vitest/prefer-to-have-length -- length is a string property, not array length
     expect(readLengthClip.length).toBe("2:0");
 
     // Test 7: Create clip with looping enabled

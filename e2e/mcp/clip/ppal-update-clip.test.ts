@@ -159,7 +159,6 @@ describe("ppal-update-clip", () => {
     const startLengthClip = parseToolResult<ReadClipResult>(verifyStartLength);
 
     expect(startLengthClip.start).toBe("1|2");
-    // eslint-disable-next-line vitest/prefer-to-have-length -- length is a string property, not array length
     expect(startLengthClip.length).toBe("1:0");
 
     // Test 7: Update multiple clips with comma-separated IDs

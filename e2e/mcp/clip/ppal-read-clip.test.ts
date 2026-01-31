@@ -47,7 +47,6 @@ describe("ppal-read-clip", () => {
     expect(byIdClip.looping).toBe(true);
     expect(byIdClip.start).toBeDefined();
     expect(byIdClip.end).toBeDefined();
-    // eslint-disable-next-line vitest/prefer-to-have-length -- length is a string property, not array length
     expect(byIdClip.length).toBe("2:0");
     expect(byIdClip.trackIndex).toBe(0);
     expect(byIdClip.sceneIndex).toBe(0);
