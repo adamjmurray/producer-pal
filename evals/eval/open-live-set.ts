@@ -101,7 +101,7 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
  */
 async function openAbletonLiveProject(projectPath: string): Promise<void> {
   return await new Promise((resolve, reject) => {
-    exec(`open -a "${ABLETON_APP}" "${projectPath}"`, (error) => {
+    exec(`open -g -a "${ABLETON_APP}" "${projectPath}"`, (error) => {
       if (error) {
         reject(new Error(`Failed to open project: ${error.message}`));
       } else {
