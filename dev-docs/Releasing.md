@@ -47,6 +47,7 @@ The version bump script updates the following:
 - [ ] All code is committed
 - [ ] All commits in the local dev branch are pushed to github
 - [ ] The PR build is green
+- [ ] MCP e2e tests pass: `npm run build:all && npm run e2e:mcp`
 
 ## Step 1: Build Release Files
 
@@ -144,7 +145,7 @@ After testing succeeds:
    - Fresh Live Set with downloaded `Producer_Pal.amxd`
    - Leave `producer-pal-portal.js` in Downloads folder
 
-### Claude Desktop - Full Sanity Check
+### Claude Desktop - Sanity Check
 
 - [ ] Connect and read Live Set
 - [ ] Create MIDI clip

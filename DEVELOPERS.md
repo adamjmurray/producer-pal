@@ -115,6 +115,7 @@ Quick commands:
 
 - `node scripts/ppal-client.ts tools/list` - List available tools
 - `node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'` - Call a tool
+- `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
