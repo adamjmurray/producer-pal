@@ -5,7 +5,12 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
+import {
+  getToolErrorMessage,
+  isToolError,
+  parseToolResult,
+  setupMcpTestContext,
+} from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -73,14 +78,16 @@ describe("ppal-read-scene", () => {
     expect(all.color).toBeDefined();
     expect(Array.isArray(all.clips)).toBe(true);
 
-    // Test 7: Non-existent scene returns id: null
+    // Test 7: Non-existent scene throws error
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
       arguments: { sceneIndex: 999 },
     });
-    const nonExistent = parseToolResult<ReadSceneResult>(nonExistentResult);
 
-    expect(nonExistent.id).toBeNull();
+    expect(isToolError(nonExistentResult)).toBe(true);
+    expect(getToolErrorMessage(nonExistentResult)).toContain(
+      "sceneIndex 999 does not exist",
+    );
   });
 });
 

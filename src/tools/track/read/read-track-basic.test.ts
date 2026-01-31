@@ -12,17 +12,12 @@ import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
-  it("returns null values when the track does not exist", () => {
+  it("throws when the track does not exist", () => {
     liveApiId.mockReturnValue("id 0");
 
-    const result = readTrack({ trackIndex: 99 });
-
-    expect(result).toStrictEqual({
-      id: null,
-      type: null,
-      name: null,
-      trackIndex: 99,
-    });
+    expect(() => readTrack({ trackIndex: 99 })).toThrow(
+      "readTrack: trackIndex 99 does not exist",
+    );
   });
 
   it("returns track information for MIDI tracks", () => {
@@ -30,6 +25,10 @@ describe("readTrack", () => {
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set scenes 1":
+          return "scene2";
         default:
           // make default mocks appear to not exist:
           return "id 0";
@@ -106,6 +105,10 @@ describe("readTrack", () => {
       switch (this.path) {
         case "live_set tracks 0":
           return "track1";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set scenes 1":
+          return "scene2";
         default:
           // make default mocks appear to not exist:
           return "id 0";
@@ -210,6 +213,12 @@ describe("readTrack", () => {
       switch (this.path) {
         case "live_set tracks 2":
           return "track3";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set scenes 1":
+          return "scene2";
+        case "live_set scenes 2":
+          return "scene3";
         case "live_set tracks 2 clip_slots 0 clip":
           return "clip1";
         case "live_set tracks 2 clip_slots 2 clip":
@@ -265,6 +274,12 @@ describe("readTrack", () => {
       switch (this._path) {
         case "live_set tracks 2":
           return "track3";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set scenes 1":
+          return "scene2";
+        case "live_set scenes 2":
+          return "scene3";
         case "id arr_clip1":
         case "id arr_clip2":
           return this._path.substring(3);

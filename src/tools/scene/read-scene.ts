@@ -67,11 +67,7 @@ export function readScene(
   }
 
   if (!scene.exists()) {
-    return {
-      id: null,
-      name: null,
-      sceneIndex: resolvedSceneIndex,
-    };
+    throw new Error(`readScene: sceneIndex ${sceneIndex} does not exist`);
   }
 
   const isTempoEnabled = (scene.getProperty("tempo_enabled") as number) > 0;

@@ -201,17 +201,12 @@ describe("readTrack", () => {
         });
       });
 
-      it("returns null values when return track does not exist", () => {
+      it("throws when return track does not exist", () => {
         liveApiId.mockReturnValue("id 0");
 
-        const result = readTrack({ trackIndex: 99, category: "return" });
-
-        expect(result).toStrictEqual({
-          id: null,
-          type: null,
-          name: null,
-          returnTrackIndex: 99,
-        });
+        expect(() => readTrack({ trackIndex: 99, category: "return" })).toThrow(
+          "readTrack: returnTrackIndex 99 does not exist",
+        );
       });
 
       it("includes routing properties for return tracks when requested", () => {
@@ -335,17 +330,12 @@ describe("readTrack", () => {
         expect(result.returnTrackIndex).toBeUndefined();
       });
 
-      it("returns null values when master track does not exist", () => {
+      it("throws when master track does not exist", () => {
         liveApiId.mockReturnValue("id 0");
 
-        const result = readTrack({ trackIndex: 0, category: "master" });
-
-        expect(result).toStrictEqual({
-          id: null,
-          type: null,
-          name: null,
-          trackIndex: null, // trackIndex is null for master track
-        });
+        expect(() => readTrack({ trackIndex: 0, category: "master" })).toThrow(
+          "readTrack: trackIndex null does not exist",
+        );
       });
 
       it("includes audio effects for master track when requested", () => {

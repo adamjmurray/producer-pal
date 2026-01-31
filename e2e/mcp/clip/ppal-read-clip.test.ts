@@ -6,6 +6,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  getToolWarnings,
+  isToolError,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
@@ -109,14 +112,46 @@ describe("ppal-read-clip", () => {
     expect(arrangementClip.arrangementStart).toBe("5|1");
     expect(arrangementClip.arrangementLength).toBeDefined();
 
-    // Test 6: Read non-existent clip (empty slot) - verify id === null
+    // Test 6: Read empty slot (valid track/scene but no clip) - verify id === null and warning
+    // Use track 3 which should exist but have no clips in basic-midi-4-track
     const emptyResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 0, sceneIndex: 99 },
+      arguments: { trackIndex: 3, sceneIndex: 0 },
     });
     const emptyClip = parseToolResult<ReadClipResult>(emptyResult);
 
     expect(emptyClip.id).toBeNull();
     expect(emptyClip.type).toBeNull();
+    expect(emptyClip.trackIndex).toBe(3);
+    expect(emptyClip.sceneIndex).toBe(0);
+
+    // Verify warning is emitted for empty slot
+    const warnings = getToolWarnings(emptyResult);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("no clip at trackIndex 3");
+    expect(warnings[0]).toContain("sceneIndex 0");
+
+    // Test 7: Non-existent scene throws error
+    const invalidSceneResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 0, sceneIndex: 999 },
+    });
+
+    expect(isToolError(invalidSceneResult)).toBe(true);
+    expect(getToolErrorMessage(invalidSceneResult)).toContain(
+      "sceneIndex 999 does not exist",
+    );
+
+    // Test 8: Non-existent track throws error
+    const invalidTrackResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 999, sceneIndex: 0 },
+    });
+
+    expect(isToolError(invalidTrackResult)).toBe(true);
+    expect(getToolErrorMessage(invalidTrackResult)).toContain(
+      "trackIndex 999 does not exist",
+    );
   });
 });

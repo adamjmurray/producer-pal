@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as consoleModule from "#src/shared/v8-max-console.ts";
 import {
   liveApiId,
   liveApiPath,
@@ -140,8 +141,16 @@ describe("readClip", () => {
     expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
 
-  it("returns null values when no clip exists", () => {
-    liveApiId.mockReturnValue("id 0");
+  it("returns null values and emits warning when no clip exists at valid track/scene", () => {
+    const consoleSpy = vi.spyOn(consoleModule, "error");
+
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+      // Track and scene exist, but clip does not
+      if (this._path === "live_set tracks 2") return "track2";
+      if (this._path === "live_set scenes 3") return "scene3";
+
+      return "id 0"; // Clip doesn't exist
+    });
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
 
     expect(result).toStrictEqual({
@@ -151,6 +160,32 @@ describe("readClip", () => {
       trackIndex: 2,
       sceneIndex: 3,
     });
+
+    // Verify warning is emitted
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "readClip: no clip at trackIndex 2, sceneIndex 3",
+    );
+  });
+
+  it("throws when track does not exist", () => {
+    liveApiId.mockReturnValue("id 0");
+
+    expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
+      "readClip: trackIndex 99 does not exist",
+    );
+  });
+
+  it("throws when scene does not exist", () => {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+      // Track exists, but scene does not
+      if (this._path === "live_set tracks 0") return "track0";
+
+      return "id 0";
+    });
+
+    expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
+      "readClip: sceneIndex 99 does not exist",
+    );
   });
 
   it("handles audio clips correctly", () => {

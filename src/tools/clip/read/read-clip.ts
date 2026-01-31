@@ -9,9 +9,9 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   processWarpMarkers,
+  resolveClip,
   WARP_MODE_MAPPING,
 } from "./helpers/read-clip-helpers.ts";
 
@@ -97,27 +97,14 @@ export function readClip(
     );
   }
 
-  // Support "id {id}" (such as returned by childIds()) and id values directly
-  let clip: LiveAPI;
+  // Resolve clip from ID or location
+  const resolved = resolveClip(clipId, trackIndex, sceneIndex);
 
-  if (clipId != null) {
-    // Validate the clip ID is actually a clip
-    clip = validateIdType(clipId, "clip", "readClip");
-  } else {
-    clip = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-    );
-
-    if (!clip.exists()) {
-      return {
-        id: null,
-        type: null,
-        name: null,
-        trackIndex,
-        sceneIndex,
-      };
-    }
+  if (!resolved.found) {
+    return resolved.emptySlotResponse;
   }
+
+  const clip = resolved.clip;
 
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;

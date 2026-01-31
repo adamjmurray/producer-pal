@@ -31,6 +31,42 @@ export function parseToolResult<T>(result: unknown): T {
   return JSON.parse(extractToolResultText(result)) as T;
 }
 
+/**
+ * Check if a tool result is an error.
+ */
+export function isToolError(result: unknown): boolean {
+  const typed = result as { isError?: boolean } | null;
+
+  return typed?.isError === true;
+}
+
+/**
+ * Extract error message from a tool error result.
+ */
+export function getToolErrorMessage(result: unknown): string {
+  if (!isToolError(result)) {
+    throw new Error("Expected tool result to be an error");
+  }
+
+  return extractToolResultText(result);
+}
+
+/**
+ * Extract warning messages from a tool result.
+ * Warnings are content items that start with "WARNING: ".
+ */
+export function getToolWarnings(result: unknown): string[] {
+  const typed = result as {
+    content?: Array<{ text?: string; type?: string }>;
+  } | null;
+
+  if (!typed?.content) return [];
+
+  return typed.content
+    .filter((item) => item.type === "text" && item.text?.startsWith("WARNING:"))
+    .map((item) => item.text ?? "");
+}
+
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
 export const LIVE_SET_PATH =

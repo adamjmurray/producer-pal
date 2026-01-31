@@ -5,7 +5,12 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
+import {
+  getToolErrorMessage,
+  isToolError,
+  parseToolResult,
+  setupMcpTestContext,
+} from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -102,14 +107,16 @@ describe("ppal-read-track", () => {
     expect(all.color).toBeDefined();
     expect(typeof all.gainDb).toBe("number");
 
-    // Test 9: Non-existent track returns exists: false
+    // Test 9: Non-existent track throws error
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: { trackIndex: 999, category: "regular" },
     });
-    const nonExistent = parseToolResult<ReadTrackResult>(nonExistentResult);
 
-    expect(nonExistent.id).toBeNull();
+    expect(isToolError(nonExistentResult)).toBe(true);
+    expect(getToolErrorMessage(nonExistentResult)).toContain(
+      "trackIndex 999 does not exist",
+    );
 
     // Test 10: Verify all music tracks are MIDI type
     for (let i = 0; i < 4; i++) {
