@@ -78,7 +78,7 @@ describe("update-clip-arrangement-helpers", () => {
 
     it("should duplicate clip to new position and delete original", () => {
       const trackIndex = 2;
-      const newClipId = "id 999";
+      const newClipId = "999";
 
       liveApiPath.mockImplementation(function (this: MockPathContext) {
         if (this._id === "789") {
@@ -88,23 +88,24 @@ describe("update-clip-arrangement-helpers", () => {
         return this._path;
       });
 
-      // Mock the id getter to return "id X" format (matching production behavior)
+      // Mock the id getter - LiveAPI.id returns just the number, not "id X" format
       liveApiId.mockImplementation(function (this: MockPathContext) {
-        if (this._path === "id 999") {
+        if (this._path === "id 999" || this._path === `id ${newClipId}`) {
           return newClipId;
         }
 
         return this._id;
       });
 
+      // duplicate_clip_to_arrangement returns array format ["id", number]
       liveApiCall.mockImplementation((method) => {
         if (method === "duplicate_clip_to_arrangement") {
-          return newClipId;
+          return ["id", 999];
         }
       });
 
       const mockClip = {
-        id: "id 789",
+        id: "789", // LiveAPI.id returns just the number
         getProperty: vi.fn((prop) => {
           if (prop === "is_arrangement_clip") {
             return 1;
@@ -123,6 +124,7 @@ describe("update-clip-arrangement-helpers", () => {
         tracksWithMovedClips,
       });
 
+      // Code now formats ID with "id " prefix for Live API calls
       expect(liveApiCall).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id 789",
@@ -139,14 +141,23 @@ describe("update-clip-arrangement-helpers", () => {
 
       liveApiPath.mockReturnValue("live_set tracks 1 arrangement_clips 0");
 
+      liveApiId.mockImplementation(function (this: MockPathContext) {
+        if (this._path === `id ${newClipId}`) {
+          return newClipId;
+        }
+
+        return this._id;
+      });
+
+      // duplicate_clip_to_arrangement returns array format ["id", number]
       liveApiCall.mockImplementation((method) => {
         if (method === "duplicate_clip_to_arrangement") {
-          return `id ${newClipId}`;
+          return ["id", 888];
         }
       });
 
       const mockClip = {
-        id: "555",
+        id: "555", // LiveAPI.id returns just the number
         getProperty: vi.fn((prop) => {
           if (prop === "is_arrangement_clip") {
             return 1;

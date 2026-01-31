@@ -61,11 +61,15 @@ export function handleArrangementStartOperation({
 
   tracksWithMovedClips.set(trackIndex, moveCount);
 
+  // Format clip ID for Live API (requires "id X" format)
+  const formattedClipId = clip.id.startsWith("id ") ? clip.id : `id ${clip.id}`;
+
+  // duplicate_clip_to_arrangement returns ["id", number] array format
   const newClipResult = track.call(
     "duplicate_clip_to_arrangement",
-    clip.id,
+    formattedClipId,
     arrangementStartBeats,
-  ) as string;
+  ) as [string, number];
   const newClip = LiveAPI.from(newClipResult);
 
   // Verify duplicate succeeded before deleting original
@@ -78,7 +82,7 @@ export function handleArrangementStartOperation({
   }
 
   // Delete original clip
-  track.call("delete_clip", clip.id);
+  track.call("delete_clip", formattedClipId);
 
   // Return the new clip ID
   return newClip.id;
