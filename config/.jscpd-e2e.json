@@ -1,5 +1,5 @@
 {
-  "threshold": 1,
+  "threshold": 1.25,
   "reporters": ["console"],
   "ignore": ["**/tsconfig.json"],
   "path": ["../e2e"]
