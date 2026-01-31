@@ -150,6 +150,17 @@ export function select(
     const clipAPI = validateIdType(clipId, "clip", "select");
 
     songView.setProperty("detail_clip", clipAPI.id);
+
+    // For session clips, also highlight the clip slot
+    if (clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null) {
+      updateHighlightedClipSlot({
+        songView,
+        clipSlot: {
+          trackIndex: clipAPI.trackIndex,
+          sceneIndex: clipAPI.clipSlotIndex,
+        },
+      });
+    }
   }
 
   // Update device selection
