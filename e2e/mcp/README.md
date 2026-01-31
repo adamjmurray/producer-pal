@@ -46,14 +46,17 @@ MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 
 ## Directory Structure
 
-Tests are organized by resource type:
+Tests are organized by resource type, mirroring `src/tools/`:
 
 ```
 e2e/mcp/
 ├── mcp-test-helpers.ts    # Shared test utilities
-├── live-set/              # Live Set tools (connect, read, update)
+├── clip/                  # Clip tools (create, read, update, transform)
+├── device/                # Device tools (create, read, update)
+├── live-set/              # Live Set tools (read, update)
+├── scene/                 # Scene tools (create, read, update)
 ├── track/                 # Track tools (create, read, update)
-└── scene/                 # Scene tools (create, read, update)
+└── workflow/              # Workflow tools (connect, memory)
 ```
 
 ## Adding New Tests
