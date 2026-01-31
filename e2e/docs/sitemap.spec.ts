@@ -39,6 +39,7 @@ function parseSitemap(): string[] {
   const sitemapPath = join(
     __dirname,
     "..",
+    "..",
     "docs",
     ".vitepress",
     "dist",
