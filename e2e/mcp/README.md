@@ -44,8 +44,22 @@ Set the `MCP_URL` environment variable to use a different server:
 MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 ```
 
+## Directory Structure
+
+Tests are organized by resource type:
+
+```
+e2e/mcp/
+├── mcp-test-helpers.ts    # Shared test utilities
+├── live-set/              # Live Set tools (connect, read, update)
+├── track/                 # Track tools (create, read, update)
+└── scene/                 # Scene tools (create, read, update)
+```
+
 ## Adding New Tests
 
-1. Create a new file following the pattern: `<tool-name>.test.ts`
-2. Use `openLiveSet()` from `#evals/eval/open-live-set.ts` in `beforeAll`
-3. Use `connectMcp()` from `#evals/chat/shared/mcp.ts` to get an MCP client
+1. Create a new file in the appropriate subdirectory (e.g.,
+   `track/ppal-delete-track.test.ts`)
+2. Import helpers from `../mcp-test-helpers`
+3. Use `setupMcpTestContext()` for tests that modify state
+4. Use `setupMcpTestContext({ once: true })` for read-only tests (faster)

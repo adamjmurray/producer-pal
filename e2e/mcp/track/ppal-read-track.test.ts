@@ -5,7 +5,7 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "./mcp-test-helpers";
+import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 

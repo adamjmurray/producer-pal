@@ -9,7 +9,7 @@ import {
   parseToolResult,
   setConfig,
   setupMcpTestContext,
-} from "./mcp-test-helpers";
+} from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
