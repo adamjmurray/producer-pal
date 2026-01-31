@@ -10,6 +10,9 @@ import {
 } from "#evals/chat/shared/mcp.ts";
 import { openLiveSet } from "#evals/eval/open-live-set.ts";
 
+// Re-export for use in tests
+export { extractToolResultText };
+
 /**
  * Parse a tool result as JSON with type casting.
  * Requires jsonOutput: true in config (set by resetConfig).
@@ -123,4 +126,29 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
   });
 
   return ctx;
+}
+
+interface CreateDeviceResult {
+  deviceId: string | number;
+  deviceIndex: number;
+}
+
+/**
+ * Creates a device for testing and waits for state to settle.
+ * Returns the deviceId as a string for use in subsequent assertions.
+ */
+export async function createTestDevice(
+  client: Client,
+  deviceName: string,
+  path: string,
+): Promise<string> {
+  const result = await client.callTool({
+    name: "ppal-create-device",
+    arguments: { deviceName, path },
+  });
+  const created = parseToolResult<CreateDeviceResult>(result);
+
+  await sleep(100);
+
+  return String(created.deviceId);
 }
