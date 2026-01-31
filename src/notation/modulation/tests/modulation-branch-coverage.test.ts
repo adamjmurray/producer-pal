@@ -7,7 +7,7 @@ import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 
 describe("Modulation Branch Coverage", () => {
   beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {

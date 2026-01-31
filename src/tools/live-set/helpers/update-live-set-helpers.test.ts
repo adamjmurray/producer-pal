@@ -312,35 +312,29 @@ describe("update-live-set-helpers", () => {
     it("should warn and not set tempo below 20 BPM", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { tempo?: number } = {};
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
       applyTempo(mockLiveSet, 19, result);
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.tempo).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Warning: tempo must be between 20.0 and 999.0 BPM",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "tempo must be between 20.0 and 999.0 BPM",
       );
-      consoleSpy.mockRestore();
     });
 
     it("should warn and not set tempo above 999 BPM", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { tempo?: number } = {};
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
       applyTempo(mockLiveSet, 1000, result);
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.tempo).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Warning: tempo must be between 20.0 and 999.0 BPM",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "tempo must be between 20.0 and 999.0 BPM",
       );
-      consoleSpy.mockRestore();
     });
   });
 

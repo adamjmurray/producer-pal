@@ -129,8 +129,7 @@ describe("ppal-read-clip", () => {
     const warnings = getToolWarnings(emptyResult);
 
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("no clip at trackIndex 3");
-    expect(warnings[0]).toContain("sceneIndex 0");
+    expect(warnings[0]).toBe("WARNING: no clip at trackIndex 3, sceneIndex 0");
 
     // Test 7: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({

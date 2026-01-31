@@ -45,18 +45,14 @@ export function handleQuantization(
 
   // Warn and skip for audio clips
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
-    console.error(
-      `Warning: quantize parameter ignored for audio clip (id ${clip.id})`,
-    );
+    console.warn(`quantize parameter ignored for audio clip (id ${clip.id})`);
 
     return;
   }
 
   // Warn and skip if grid not provided
   if (quantizeGrid == null) {
-    console.error(
-      "Warning: quantize parameter ignored - quantizeGrid is required",
-    );
+    console.warn("quantize parameter ignored - quantizeGrid is required");
 
     return;
   }
@@ -75,8 +71,8 @@ export function handleQuantization(
       const midiPitch = noteNameToMidi(quantizePitch);
 
       if (midiPitch == null) {
-        console.error(
-          `Warning: invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
+        console.warn(
+          `invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
         );
 
         return;

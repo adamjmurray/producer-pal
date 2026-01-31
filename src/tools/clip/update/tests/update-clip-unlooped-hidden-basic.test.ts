@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiPath,
@@ -67,11 +67,7 @@ function setupUnloopedTilingMocks({
     }
   });
 
-  const consoleErrorSpy = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  return { counter, consoleErrorSpy };
+  return { counter };
 }
 
 describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => {
@@ -79,7 +75,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     const clipId = "800";
     const tileIds = ["801", "802", "803", "804", "805"];
 
-    const { counter, consoleErrorSpy } = setupUnloopedTilingMocks({
+    const { counter } = setupUnloopedTilingMocks({
       clipId,
       tileIds,
       clipProps: {
@@ -103,8 +99,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats (3.5 bars)
       mockContext,
     );
-
-    consoleErrorSpy.mockRestore();
 
     // Original clip should have end_marker extended to target
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -144,7 +138,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     const clipId = "810";
     const tileIds = ["811", "812", "813", "814", "815", "816"];
 
-    const { counter, consoleErrorSpy } = setupUnloopedTilingMocks({
+    const { counter } = setupUnloopedTilingMocks({
       clipId,
       tileIds,
       clipProps: {
@@ -168,8 +162,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );
-
-    consoleErrorSpy.mockRestore();
 
     // First tile should have markers 2-4 (tileSize = 2)
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -196,7 +188,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     // 5 IDs needed: 3 full tiles (direct) + 1 partial tile (holding + move = 2 calls)
     const tileIds = ["821", "822", "823", "824", "825"];
 
-    const { counter, consoleErrorSpy } = setupUnloopedTilingMocks({
+    const { counter } = setupUnloopedTilingMocks({
       clipId,
       tileIds,
       clipProps: {
@@ -220,8 +212,6 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );
-
-    consoleErrorSpy.mockRestore();
 
     // Target end marker = 1.0 + 14 = 15.0
     expect(liveApiSet).toHaveBeenCalledWithThis(

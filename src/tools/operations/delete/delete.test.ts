@@ -204,12 +204,12 @@ describe("deleteObject", () => {
       }
     });
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
+    const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({ ids: "999", type: "track" });
 
     expect(result).toStrictEqual([]);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "999" does not exist',
     );
   });
@@ -235,12 +235,12 @@ describe("deleteObject", () => {
       }
     });
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
+    const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({ ids: "scene_1", type: "track" });
 
     expect(result).toStrictEqual([]);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "scene_1" is not a track (found Scene)',
     );
   });
@@ -278,7 +278,7 @@ describe("deleteObject", () => {
       }
     });
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
+    const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({
       ids: "track_0, nonexistent, track_2",
@@ -301,7 +301,7 @@ describe("deleteObject", () => {
       { id: "track_2", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
     ]);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent" does not exist',
     );
   });
@@ -309,7 +309,7 @@ describe("deleteObject", () => {
   it("should return empty array when all IDs are invalid", () => {
     liveApiId.mockReturnValue("id 0"); // All non-existent
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
+    const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({
       ids: "nonexistent1, nonexistent2",
@@ -317,11 +317,11 @@ describe("deleteObject", () => {
     });
 
     expect(result).toStrictEqual([]);
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent1" does not exist',
     );
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent2" does not exist',
     );
   });

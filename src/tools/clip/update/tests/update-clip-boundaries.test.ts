@@ -78,10 +78,6 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should warn when firstStart provided for non-looping clips", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -100,11 +96,11 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Warning: firstStart parameter ignored for non-looping clips",
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "firstStart parameter ignored for non-looping clips",
     );
 
-    consoleErrorSpy.mockRestore();
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -188,10 +184,6 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
   });
 
   it("emits warning for non-looping MIDI clip with mismatched derived start", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     setupMidiClipMock("123", {
       looping: 0,
       start_marker: 0,
@@ -201,17 +193,14 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
 
     updateClip({ ids: "123", length: "4:0" });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("Derived start"),
     );
-
-    consoleErrorSpy.mockRestore();
   });
 
   it("does NOT emit warning for non-looping audio clip with mismatched derived start", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    vi.mocked(outlet).mockClear();
 
     setupAudioClipMock("123", {
       looping: 0,
@@ -222,8 +211,6 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
 
     updateClip({ ids: "123", length: "1:0" });
 
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-
-    consoleErrorSpy.mockRestore();
+    expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
   });
 });

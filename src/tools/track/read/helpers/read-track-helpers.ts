@@ -433,7 +433,7 @@ export function readMixerProperties(
 
     // Warn if send count doesn't match return track count
     if (sends.length !== names.length) {
-      console.error(
+      console.warn(
         `Send count (${sends.length}) doesn't match return track count (${names.length})`,
       );
     }

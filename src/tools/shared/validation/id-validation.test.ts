@@ -163,8 +163,6 @@ describe("validateIdTypes", () => {
         return this._id === "scene_1" ? "Scene" : "Track";
       });
 
-      const consoleErrorSpy = vi.spyOn(console, "error");
-
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
       });
@@ -172,7 +170,8 @@ describe("validateIdTypes", () => {
       expect(result).toHaveLength(2);
       expect(result[0]!.id).toBe("track_1");
       expect(result[1]!.id).toBe("track_3");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'testTool: id "scene_1" is not a track (found Scene)',
       );
     });
@@ -182,18 +181,17 @@ describe("validateIdTypes", () => {
 
       liveApiId.mockReturnValue("id 0"); // All non-existent
 
-      const consoleErrorSpy = vi.spyOn(console, "error");
-
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(0);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'testTool: id "nonexistent_1" does not exist',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'testTool: id "nonexistent_2" does not exist',
       );
     });
@@ -206,14 +204,16 @@ describe("validateIdTypes", () => {
       });
       liveApiType.mockReturnValue("Scene");
 
-      const consoleErrorSpy = vi.spyOn(console, "error");
-
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(0);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+      // Two warnings should have been emitted
+      const outletCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls;
+      const warnCalls = outletCalls.filter((call) => call[0] === 1);
+
+      expect(warnCalls).toHaveLength(2);
     });
 
     it("should handle mix of non-existent and wrong type IDs", () => {
@@ -227,18 +227,18 @@ describe("validateIdTypes", () => {
         return this._id === "scene_1" ? "Scene" : "Track";
       });
 
-      const consoleErrorSpy = vi.spyOn(console, "error");
-
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe("track_1");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'testTool: id "nonexistent" does not exist',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'testTool: id "scene_1" is not a track (found Scene)',
       );
     });

@@ -335,8 +335,8 @@ export function interpretNotation(
 
     // Warn if pitches buffered but never emitted
     if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
-      console.error(
-        `Warning: ${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
+      console.warn(
+        `${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
       );
     }
 

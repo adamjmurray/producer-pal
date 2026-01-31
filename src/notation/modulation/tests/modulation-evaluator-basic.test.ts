@@ -1,5 +1,4 @@
-import type { MockInstance } from "vitest";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
 
 describe("Modulation Evaluator", () => {
@@ -498,16 +497,6 @@ probability += 0.2 * cos(0:2t)`;
   });
 
   describe("error handling", () => {
-    let consoleErrorSpy: MockInstance;
-
-    beforeEach(() => {
-      consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      consoleErrorSpy.mockRestore();
-    });
-
     it("returns empty object on parse error", () => {
       const result = evaluateModulation("invalid syntax!!!", {
         position: 0,
@@ -515,8 +504,9 @@ probability += 0.2 * cos(0:2t)`;
       });
 
       expect(result).toStrictEqual({});
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Warning: Failed to parse"),
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Failed to parse"),
       );
     });
 
@@ -533,8 +523,9 @@ timing += 0.05`;
       // velocity should be skipped due to error, but timing should work
       expect(result).not.toHaveProperty("velocity");
       expect(result.timing!.value).toBe(0.05);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Warning: Failed to evaluate modulation"),
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Failed to evaluate modulation"),
       );
     });
 
@@ -545,7 +536,7 @@ timing += 0.05`;
       });
 
       expect(result).toStrictEqual({});
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
     });
   });
 

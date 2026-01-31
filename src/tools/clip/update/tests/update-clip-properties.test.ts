@@ -101,7 +101,6 @@ describe("updateClip - Properties and ID handling", () => {
           return "id 0";
       }
     });
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     mockLiveApiGet({
       123: {
@@ -119,7 +118,8 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(result).toStrictEqual({ id: "123" });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateClip: id "nonexistent" does not exist',
     );
     expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
@@ -205,7 +205,7 @@ describe("updateClip - Properties and ID handling", () => {
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       mockLiveApiGet({
         123: {
@@ -233,7 +233,7 @@ describe("updateClip - Properties and ID handling", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Note: Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -241,7 +241,7 @@ describe("updateClip - Properties and ID handling", () => {
 
     it("should not emit warning when color matches exactly", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       mockLiveApiGet({
         123: {
@@ -275,7 +275,7 @@ describe("updateClip - Properties and ID handling", () => {
 
     it("should not verify color if color parameter is not provided", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       mockLiveApiGet({
         123: {

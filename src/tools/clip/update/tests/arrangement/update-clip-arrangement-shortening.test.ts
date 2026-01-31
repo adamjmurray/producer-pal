@@ -86,10 +86,6 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should emit warning and ignore for session clips", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0, // Session clip
@@ -104,8 +100,9 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       arrangementLength: "2:0",
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Warning: arrangementLength parameter ignored for session clip (id 123)",
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "arrangementLength parameter ignored for session clip (id 123)",
     );
 
     // Should not call create_midi_clip or delete_clip
@@ -115,7 +112,6 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       expect.anything(),
     );
 
-    consoleErrorSpy.mockRestore();
     expect(result).toStrictEqual({ id: "123" });
   });
 

@@ -158,32 +158,25 @@ describe("updateDevice", () => {
   });
 
   it("should skip non-existent devices with warning", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123, 999, 456",
       name: "Test",
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateDevice: target not found at id "999"',
     );
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
-
-    consoleSpy.mockRestore();
   });
 
   it("should return empty array when all devices are invalid", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "998, 999",
       name: "Test",
     });
 
     expect(result).toStrictEqual([]);
-
-    consoleSpy.mockRestore();
   });
 
   it("should handle 'id ' prefixed device IDs", () => {
@@ -244,21 +237,16 @@ describe("updateDevice", () => {
     });
 
     it("should log error for invalid param ID but continue", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         params: '{"999": 0.5}',
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'updateDevice: param "999" not found on device',
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should throw error for invalid JSON in params", () => {
@@ -300,16 +288,13 @@ describe("updateDevice", () => {
     });
 
     it("should log error for invalid enum value", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         params: '{"791": "InvalidValue"}',
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'updateDevice: "InvalidValue" is not valid. Options: Repitch, Fade, Jump',
       );
       expect(liveApiSet).not.toHaveBeenCalledWithThis(
@@ -318,8 +303,6 @@ describe("updateDevice", () => {
         expect.anything(),
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -447,22 +430,17 @@ describe("updateDevice", () => {
     });
 
     it("should reject non-rack devices with error", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "456",
         macroCount: 8,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'macroCount' not applicable to Device",
       );
       expect(liveApiCall).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should call add_macro when increasing count (macros added in pairs)", () => {
@@ -504,16 +482,13 @@ describe("updateDevice", () => {
     });
 
     it("should round odd counts up to next even and warn", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: macro count rounded from 7 to 8 (macros come in pairs)",
       );
       expect(liveApiCall).toHaveBeenCalledTimes(2);
@@ -522,8 +497,6 @@ describe("updateDevice", () => {
         "add_macro",
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -541,23 +514,18 @@ describe("updateDevice", () => {
     });
 
     it("should reject devices without AB Compare support", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "456",
         abCompare: "b",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: A/B Compare not available on this device",
       );
       expect(liveApiSet).not.toHaveBeenCalled();
       expect(liveApiCall).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should set is_using_compare_preset_b to 0 for 'a'", () => {

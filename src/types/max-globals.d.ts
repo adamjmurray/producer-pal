@@ -48,6 +48,19 @@ declare function error(...args: unknown[]): void;
 declare function outlet(outletNumber: number, ...args: unknown[]): void;
 
 /**
+ * Max V8 global variable to declare the number of outlets.
+ * Set at module load to configure outlet count before any outlet() calls.
+ */
+declare let outlets: number;
+
+/**
+ * Max V8 global function to set the assistance message for an outlet.
+ * @param outletNumber - The outlet index (0-based)
+ * @param message - The assistance message shown on hover
+ */
+declare function setoutletassist(outletNumber: number, message: string): void;
+
+/**
  * Max V8 Task object for scheduling callbacks.
  */
 declare class Task {

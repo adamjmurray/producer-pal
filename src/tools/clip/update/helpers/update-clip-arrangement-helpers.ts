@@ -36,8 +36,8 @@ export function handleArrangementStartOperation({
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.error(
-      `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
+    console.warn(
+      `arrangementStart parameter ignored for session clip (id ${clip.id})`,
     );
 
     return clip.id;
@@ -47,9 +47,7 @@ export function handleArrangementStartOperation({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    console.error(
-      `Warning: could not determine trackIndex for clip ${clip.id}`,
-    );
+    console.warn(`could not determine trackIndex for clip ${clip.id}`);
 
     return clip.id;
   }
@@ -74,9 +72,7 @@ export function handleArrangementStartOperation({
 
   // Verify duplicate succeeded before deleting original
   if (!newClip.exists()) {
-    console.error(
-      `Warning: failed to duplicate clip ${clip.id} - original preserved`,
-    );
+    console.warn(`failed to duplicate clip ${clip.id} - original preserved`);
 
     return clip.id;
   }

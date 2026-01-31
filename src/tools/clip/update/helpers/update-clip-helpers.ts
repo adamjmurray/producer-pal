@@ -334,9 +334,7 @@ export function processSingleClipUpdate(
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
-    console.error(
-      "Warning: firstStart parameter ignored for non-looping clips",
-    );
+    console.warn("firstStart parameter ignored for non-looping clips");
   }
 
   // Calculate beat positions (includes end_marker bounds check for start_marker)

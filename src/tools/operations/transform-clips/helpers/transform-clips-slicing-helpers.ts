@@ -150,7 +150,7 @@ export function prepareSliceParams(
 
   if (arrangementClips.length === 0) {
     if (!warnings.has("slice-no-arrangement")) {
-      console.error("Warning: slice requires arrangement clips");
+      console.warn("slice requires arrangement clips");
       warnings.add("slice-no-arrangement");
     }
 

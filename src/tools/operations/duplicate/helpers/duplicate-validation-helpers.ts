@@ -93,14 +93,14 @@ export function validateAndConfigureRouteToSource(
 
   // Emit warnings if user provided conflicting parameters
   if (withoutClips === false) {
-    console.error(
-      "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
+    console.warn(
+      "routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
     );
   }
 
   if (withoutDevices === false) {
-    console.error(
-      "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+    console.warn(
+      "routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
     );
   }
 

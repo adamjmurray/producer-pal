@@ -58,7 +58,7 @@ export function categorizeDevices(
 
   // Validate instrument count
   if (instruments.length > 1) {
-    console.error(
+    console.warn(
       `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
     );
   }

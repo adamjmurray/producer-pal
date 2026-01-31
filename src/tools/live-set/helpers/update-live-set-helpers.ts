@@ -185,7 +185,7 @@ export function applyTempo(
   result: { tempo?: number },
 ): void {
   if (tempo < 20 || tempo > 999) {
-    console.error("Warning: tempo must be between 20.0 and 999.0 BPM");
+    console.warn("tempo must be between 20.0 and 999.0 BPM");
 
     return;
   }
@@ -217,7 +217,7 @@ export function applyScale(
   const scaleRootNumber = pitchClassToNumber(scaleRoot);
 
   if (scaleRootNumber == null) {
-    console.error(`Warning: invalid scale root: ${scaleRoot}`);
+    console.warn(`invalid scale root: ${scaleRoot}`);
 
     return;
   }

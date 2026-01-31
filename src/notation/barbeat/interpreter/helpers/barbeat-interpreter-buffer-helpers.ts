@@ -64,8 +64,8 @@ export function validateBufferedState(
 ): void {
   // Warn if pitches or state buffered but not emitted
   if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
-    console.error(
-      `Warning: ${state.currentPitches.length} pitch(es) buffered but not emitted before ${operationType}`,
+    console.warn(
+      `${state.currentPitches.length} pitch(es) buffered but not emitted before ${operationType}`,
     );
   }
 
@@ -73,9 +73,7 @@ export function validateBufferedState(
     (state.stateChangedSinceLastPitch && state.pitchGroupStarted) ||
     state.stateChangedAfterEmission
   ) {
-    console.error(
-      `Warning: state change won't affect anything before ${operationType}`,
-    );
+    console.warn(`state change won't affect anything before ${operationType}`);
   }
 }
 

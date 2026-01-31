@@ -352,9 +352,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       }
     });
 
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    vi.mocked(outlet).mockClear();
 
     const result = updateClip(
       {
@@ -379,11 +377,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     );
 
     // Should NOT emit envelope warning (preserves envelopes via non-destructive tiling)
-    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
       expect.stringContaining("Automation envelopes were lost"),
     );
-
-    consoleErrorSpy.mockRestore();
 
     // Should return original + 2 full tiles (4 beats each)
     expect(result).toStrictEqual([

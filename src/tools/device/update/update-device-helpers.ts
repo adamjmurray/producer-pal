@@ -30,7 +30,7 @@ export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
   const { container, position } = resolveInsertionPath(toPath);
 
   if (!container?.exists()) {
-    console.error(`Warning: move target at path "${toPath}" does not exist`);
+    console.warn(`move target at path "${toPath}" does not exist`);
 
     return;
   }
@@ -58,7 +58,7 @@ export function moveDrumChainToPath(
   const targetNote = parseDrumPadNoteFromPath(toPath);
 
   if (targetNote == null) {
-    console.error(`Warning: toPath "${toPath}" is not a drum pad path`);
+    console.warn(`toPath "${toPath}" is not a drum pad path`);
 
     return;
   }
@@ -66,7 +66,7 @@ export function moveDrumChainToPath(
   const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
 
   if (targetInNote == null) {
-    console.error(`Warning: invalid note "${targetNote}" in toPath`);
+    console.warn(`invalid note "${targetNote}" in toPath`);
 
     return;
   }
@@ -123,7 +123,7 @@ export function setParamValues(device: LiveAPI, paramsJson: string): void {
     const param = resolveParamForDevice(device, paramId);
 
     if (!param?.exists()) {
-      console.error(`updateDevice: param "${paramId}" not found on device`);
+      console.warn(`updateDevice: param "${paramId}" not found on device`);
       continue;
     }
 
@@ -167,7 +167,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const index = valueItems.indexOf(inputValue);
 
     if (index === -1) {
-      console.error(
+      console.warn(
         `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
@@ -184,7 +184,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
-      console.error(`updateDevice: invalid note name "${inputValue}"`);
+      console.warn(`updateDevice: invalid note name "${inputValue}"`);
 
       return;
     }
@@ -222,7 +222,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     if (rawValue != null) {
       param.set("value", rawValue);
     } else {
-      console.error(
+      console.warn(
         `updateDevice: "${inputValue}" is not a valid division option`,
       );
     }
@@ -281,7 +281,7 @@ export function updateMacroVariation(
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
-    console.error(
+    console.warn(
       "updateDevice: macro variations only available on rack devices",
     );
 
@@ -312,7 +312,7 @@ function validateMacroVariationParams(
   index: number | undefined,
 ): boolean {
   if (index != null && action == null) {
-    console.error(
+    console.warn(
       "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
 
@@ -320,7 +320,7 @@ function validateMacroVariationParams(
   }
 
   if ((action === "load" || action === "delete") && index == null) {
-    console.error(
+    console.warn(
       `updateDevice: macroVariation '${action}' requires macroVariationIndex`,
     );
 
@@ -344,13 +344,13 @@ function warnIfIndexIgnored(
   }
 
   if (action === "create") {
-    console.error(
+    console.warn(
       "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
     );
   } else if (action === "revert") {
-    console.error("updateDevice: macroVariationIndex ignored for 'revert'");
+    console.warn("updateDevice: macroVariationIndex ignored for 'revert'");
   } else if (action === "randomize") {
-    console.error("updateDevice: macroVariationIndex ignored for 'randomize'");
+    console.warn("updateDevice: macroVariationIndex ignored for 'randomize'");
   }
 }
 
@@ -373,7 +373,7 @@ function setVariationIndex(
   const variationCount = device.getProperty("variation_count") as number;
 
   if (index >= variationCount) {
-    console.error(
+    console.warn(
       `updateDevice: variation index ${index} out of range (${variationCount} available)`,
     );
 
@@ -427,7 +427,7 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
-    console.error("updateDevice: macro count only available on rack devices");
+    console.warn("updateDevice: macro count only available on rack devices");
 
     return;
   }
@@ -437,7 +437,7 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
 
   if (targetCount % 2 !== 0) {
     effectiveTarget = Math.min(targetCount + 1, 16);
-    console.error(
+    console.warn(
       `updateDevice: macro count rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
     );
   }
@@ -470,7 +470,7 @@ export function updateABCompare(device: LiveAPI, action: string): void {
   const canCompareAB = device.getProperty("can_compare_ab");
 
   if (!canCompareAB) {
-    console.error("updateDevice: A/B Compare not available on this device");
+    console.warn("updateDevice: A/B Compare not available on this device");
 
     return;
   }

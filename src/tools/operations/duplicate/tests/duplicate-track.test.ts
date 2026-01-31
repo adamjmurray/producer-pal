@@ -392,7 +392,7 @@ describe("duplicate - track duplication", () => {
         setupRouteToSourceMock({ inputRoutingName: "Audio In", arm: 1 }),
       );
 
-      const consoleSpy = vi.spyOn(console, "error");
+      vi.mocked(outlet).mockClear();
 
       duplicate({
         type: "track",
@@ -408,11 +408,10 @@ describe("duplicate - track duplication", () => {
       );
 
       // Verify the arm warning was NOT emitted since it was already armed
-      expect(consoleSpy).not.toHaveBeenCalledWith(
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
         "routeToSource: Armed the source track",
       );
-
-      consoleSpy.mockRestore();
     });
   });
 });

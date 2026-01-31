@@ -1,5 +1,4 @@
-import type { MockInstance } from "vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 
@@ -168,34 +167,26 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     });
 
     describe("multi-bar source range tiling: warnings and errors", () => {
-      let consoleErrorSpy: MockInstance;
-
-      beforeEach(() => {
-        consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
-      });
-
-      afterEach(() => {
-        consoleErrorSpy.mockRestore();
-      });
-
       it("warns when destination range is invalid (start > end)", () => {
         interpretNotation("C3 1|1 @10-3=1-2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Invalid destination range"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("start > end"),
         );
       });
 
       it("warns when source range is invalid (start > end)", () => {
         interpretNotation("C3 1|1 @3-10=5-2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Invalid source range"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("start > end"),
         );
       });
@@ -203,20 +194,24 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("warns when source bar is empty during tiling", () => {
         interpretNotation("C3 1|1 D3 3|1 @5-8=1-4");
         // Bar 2 and 4 are empty, should warn when trying to copy them
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 4 is empty, nothing to copy"),
         );
       });
 
       it("warns when skipping self-copy during tiling", () => {
         interpretNotation("C3 5|1 D3 6|1 @3-10=5-6");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Skipping copy of bar 5 to itself"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Skipping copy of bar 6 to itself"),
         );
       });
@@ -225,10 +220,12 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Copy bars 3-4 to range 3-4 (all are self-copies, should skip all)
         const result = interpretNotation("C3 3|1 D3 4|1 @3-4=3-4");
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Skipping copy of bar 3 to itself"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Skipping copy of bar 4 to itself"),
         );
         // Should only have the original 2 notes, no copies
@@ -237,28 +234,18 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     });
 
     describe("warnings and errors", () => {
-      let consoleErrorSpy: MockInstance;
-
-      beforeEach(() => {
-        consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
-      });
-
-      afterEach(() => {
-        consoleErrorSpy.mockRestore();
-      });
-
       it("warns when copying from empty bar", () => {
         interpretNotation("C3 1|1 @3=2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
       });
 
       it("warns when copying previous bar at bar 1", () => {
         interpretNotation("@1=");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "Cannot copy from previous bar when at bar 1",
           ),
@@ -267,7 +254,8 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when pitches are buffered before copy", () => {
         interpretNotation("C3 1|1 D3 @2=1");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "1 pitch(es) buffered but not emitted before bar copy",
           ),
@@ -276,7 +264,8 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when state changed before copy", () => {
         interpretNotation("C3 1|1 v90 @2=1");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "state change won't affect anything before bar copy",
           ),
@@ -285,7 +274,8 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy has invalid source bar (bar 0)", () => {
         interpretNotation("@1-4=");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "Cannot copy from previous bar when destination starts at bar 1",
           ),
@@ -294,7 +284,8 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy has invalid range (start > end)", () => {
         interpretNotation("C3 1|1 @5-3=");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "Invalid destination range @5-3= (start > end)",
           ),
@@ -303,21 +294,24 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy from empty bar", () => {
         interpretNotation("C3 1|1 @3-5=2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
       });
 
       it("warns when source range has reversed order", () => {
         interpretNotation("C3 1|1 @3=5-2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Invalid source range 5-2 (start > end)"),
         );
       });
 
       it("warns when multi-bar source range has reversed order", () => {
         interpretNotation("C3 1|1 @3-5=4-2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining(
             "Invalid source range @3-5=4-2 (start > end)",
           ),
@@ -327,41 +321,33 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
     describe("edge cases", () => {
       it("rejects copying a bar to itself (prevents infinite loop)", () => {
-        const consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
         const result = interpretNotation("C3 1|1 @1=1");
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Cannot copy bar 1 to itself"),
         );
         // Should only have the original note, not a copy
         expect(result).toStrictEqual([createNote()]);
-        consoleErrorSpy.mockRestore();
       });
 
       it("handles empty source in range copy", () => {
-        const consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
-
         interpretNotation("C3 1|1 @5=1-3");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 3 is empty, nothing to copy"),
         );
-        consoleErrorSpy.mockRestore();
       });
 
       it("skips copying a bar to itself in range copy", () => {
-        const consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
         const result = interpretNotation("C3 1|1 D3 2|1 @1-5=2");
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Skipping copy of bar 2 to itself"),
         );
         // Should have 6 notes: C3 in bar 1, D3 in bar 2, and D3 copied to bars 1,3,4,5
@@ -382,7 +368,6 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toContainEqual(
           createNote({ pitch: 62, start_time: 16 }),
         );
-        consoleErrorSpy.mockRestore();
       });
     });
 
@@ -407,16 +392,12 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     describe("@clear", () => {
       it("@clear immediately clears the copy buffer", () => {
         const result = interpretNotation("C3 1|1 @clear E3 2|1 @3=1");
-        const consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
 
-        interpretNotation("C3 1|1 @clear E3 2|1 @3=1");
         // Should warn that bar 1 is empty (cleared by @clear)
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(outlet).toHaveBeenCalledWith(
+          1,
           expect.stringContaining("Bar 1 is empty, nothing to copy"),
         );
-        consoleErrorSpy.mockRestore();
 
         expect(result).toStrictEqual([
           // Bar 1

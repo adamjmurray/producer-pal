@@ -22,8 +22,8 @@ export function duplicateDevice(
   count = 1,
 ): { id: string } {
   if (count > 1) {
-    console.error(
-      "Warning: count parameter ignored for device duplication (only single copy supported)",
+    console.warn(
+      "count parameter ignored for device duplication (only single copy supported)",
     );
   }
 

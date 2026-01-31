@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import type { Mock, MockInstance } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Mock } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
@@ -158,10 +158,6 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should warn when track is not found in routing options", () => {
-    const consoleSpy: MockInstance = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     (liveApiPath as Mock).mockImplementation(function (
       this: MockLiveAPIContext,
     ): string | undefined {
@@ -208,8 +204,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     // Should warn about not finding the track
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Warning: Could not find track "NonExistentTrack" in routing options',
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'Could not find track "NonExistentTrack" in routing options',
     );
 
     // Should not set output routing with NonExistentTrack identifier
@@ -219,8 +216,6 @@ describe("duplicate - routeToSource with duplicate track names", () => {
         identifier: expect.stringContaining("NonExistent"),
       }),
     );
-
-    consoleSpy.mockRestore();
   });
 });
 

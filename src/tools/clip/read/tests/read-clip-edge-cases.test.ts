@@ -351,10 +351,6 @@ describe("readClip", () => {
 
   describe("getActiveClipBounds sanity check", () => {
     it("emits warning for non-looping MIDI clip with mismatched start_marker", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       setupMidiClipMock({
         clipProps: {
           is_midi_clip: 1,
@@ -371,18 +367,13 @@ describe("readClip", () => {
 
       readClip({ trackIndex: 1, sceneIndex: 1 });
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("Derived start"),
       );
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("does NOT emit warning for non-looping audio clip with mismatched boundaries", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       setupAudioClipMock({
         clipProps: {
           looping: 0,
@@ -396,11 +387,11 @@ describe("readClip", () => {
         },
       });
 
+      vi.mocked(outlet).mockClear();
+
       readClip({ trackIndex: 1, sceneIndex: 1 });
 
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
+      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
     });
   });
 });

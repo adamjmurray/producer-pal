@@ -44,8 +44,8 @@ function determineStartMarker(
       return firstStartBeats;
     }
 
-    console.error(
-      `Warning: firstStart parameter ignored - exceeds clip content boundary (${firstStartBeats} >= ${endMarker})`,
+    console.warn(
+      `firstStart parameter ignored - exceeds clip content boundary (${firstStartBeats} >= ${endMarker})`,
     );
 
     return null;
@@ -114,8 +114,8 @@ export function calculateBeatPositions({
 
         // Sanity check for MIDI clips only - audio clips have length based on sample duration
         if (isMidiClip && Math.abs(startBeats - currentStartMarker) > 0.001) {
-          console.error(
-            `Warning: Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
+          console.warn(
+            `Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
           );
         }
       }

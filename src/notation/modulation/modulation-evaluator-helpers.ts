@@ -159,8 +159,8 @@ function processAssignment(
 
     return { value, pitchRange };
   } catch (error) {
-    console.error(
-      `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+    console.warn(
+      `Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
     );
 
     return { skip: true };

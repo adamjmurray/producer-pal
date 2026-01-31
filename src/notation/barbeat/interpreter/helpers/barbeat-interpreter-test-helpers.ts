@@ -1,4 +1,4 @@
-import { expect, vi } from "vitest";
+import { expect } from "vitest";
 import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
 import type {
   BufferState,
@@ -47,17 +47,13 @@ function testCopyFailureWithHandler(
   notesByBar: Map<number, BarCopyNote[]>,
   bufferState: BufferState,
 ): true {
-  const consoleErrorSpy = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
   const result = handler(element, 4, 4, notesByBar, [], bufferState);
 
   expect(result).toStrictEqual(nullCopyResult);
-  expect(consoleErrorSpy).toHaveBeenCalledWith(
+  expect(outlet).toHaveBeenCalledWith(
+    1,
     expect.stringContaining(errorContains),
   );
-  consoleErrorSpy.mockRestore();
 
   return true;
 }

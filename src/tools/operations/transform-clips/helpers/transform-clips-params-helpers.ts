@@ -85,7 +85,7 @@ function applyAudioTransformIfNeeded(
 
   if (!isAudioClip) {
     if (!warnings.has("audio-params-midi-clip")) {
-      console.error("Warning: audio parameters ignored for MIDI clips");
+      console.warn("audio parameters ignored for MIDI clips");
       warnings.add("audio-params-midi-clip");
     }
 
@@ -112,7 +112,7 @@ function applyMidiTransformIfNeeded(
 
   if (!isMidiClip) {
     if (!warnings.has("midi-params-audio-clip")) {
-      console.error("Warning: MIDI parameters ignored for audio clips");
+      console.warn("MIDI parameters ignored for audio clips");
       warnings.add("midi-params-audio-clip");
     }
 

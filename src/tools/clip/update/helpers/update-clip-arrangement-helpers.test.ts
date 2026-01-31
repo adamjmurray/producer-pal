@@ -18,10 +18,6 @@ describe("update-clip-arrangement-helpers", () => {
 
   describe("handleArrangementStartOperation", () => {
     it("should warn and return original ID for session clips", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const mockClip = {
         id: "123",
         getProperty: vi.fn((prop) => {
@@ -41,12 +37,11 @@ describe("update-clip-arrangement-helpers", () => {
         tracksWithMovedClips,
       });
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Warning: arrangementStart parameter ignored for session clip (id 123)",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "arrangementStart parameter ignored for session clip (id 123)",
       );
       expect(result).toBe("123");
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("should warn and return original clip id when trackIndex is null for arrangement clips", () => {

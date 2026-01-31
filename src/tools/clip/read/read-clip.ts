@@ -384,8 +384,8 @@ function getActiveClipBounds(
     const derivedStart = endBeats - lengthBeats;
 
     if (Math.abs(derivedStart - startBeats) > 0.001) {
-      console.error(
-        `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
+      console.warn(
+        `Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
       );
     }
   }

@@ -56,7 +56,7 @@ export function readSamples(
   scanFolder(sampleFolder, sampleFolder, samples, limitReached, searchLower);
 
   if (limitReached.value) {
-    console.error(
+    console.warn(
       `Stopped scanning for samples at ${MAX_SAMPLE_FILES} files. Consider using a smaller sample folder.`,
     );
   }

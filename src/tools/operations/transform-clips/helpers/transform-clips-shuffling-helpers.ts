@@ -25,7 +25,7 @@ export function performShuffling(
 ): void {
   if (arrangementClips.length === 0) {
     if (!warnings.has("shuffle-no-arrangement")) {
-      console.error("Warning: shuffleOrder requires arrangement clips");
+      console.warn("shuffleOrder requires arrangement clips");
       warnings.add("shuffle-no-arrangement");
     }
 

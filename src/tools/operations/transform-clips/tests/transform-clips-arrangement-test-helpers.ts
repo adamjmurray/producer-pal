@@ -1,5 +1,3 @@
-import type { MockInstance } from "vitest";
-import { vi } from "vitest";
 import {
   liveApiGet,
   liveApiId,
@@ -11,11 +9,8 @@ import {
 /**
  * Setup mocks for testing error scenarios with no clips in arrangement.
  * @param trackIndex - Track index to mock (default: 0)
- * @returns Console error spy
  */
-export function setupNoClipsInArrangementMocks(
-  trackIndex = 0,
-): MockInstance<typeof console.error> {
+export function setupNoClipsInArrangementMocks(trackIndex = 0): void {
   liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "Track";
   });
@@ -36,8 +31,6 @@ export function setupNoClipsInArrangementMocks(
 
     return [0];
   });
-
-  return vi.spyOn(console, "error");
 }
 
 /**

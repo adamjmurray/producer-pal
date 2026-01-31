@@ -98,14 +98,13 @@ describe("updateDevice - division params", () => {
   });
 
   it("should log error for invalid division value", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       params: '{"793": "1/128"}',
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateDevice: "1/128" is not a valid division option',
     );
     expect(liveApiSet).not.toHaveBeenCalledWithThis(
@@ -114,7 +113,5 @@ describe("updateDevice - division params", () => {
       expect.anything(),
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 });

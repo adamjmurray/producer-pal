@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
@@ -350,13 +350,12 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("warns when time position has no pitches", () => {
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     // Time position with no pitches
     interpretNotation("1|1");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Warning: Time position 1|1 has no pitches"),
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Time position 1|1 has no pitches"),
     );
   });
 });

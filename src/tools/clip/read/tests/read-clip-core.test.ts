@@ -142,7 +142,7 @@ describe("readClip", () => {
   });
 
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "error");
+    const consoleSpy = vi.spyOn(consoleModule, "warn");
 
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       // Track and scene exist, but clip does not
@@ -163,7 +163,7 @@ describe("readClip", () => {
 
     // Verify warning is emitted
     expect(consoleSpy).toHaveBeenCalledWith(
-      "readClip: no clip at trackIndex 2, sceneIndex 3",
+      "no clip at trackIndex 2, sceneIndex 3",
     );
   });
 
@@ -171,7 +171,7 @@ describe("readClip", () => {
     liveApiId.mockReturnValue("id 0");
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
-      "readClip: trackIndex 99 does not exist",
+      "trackIndex 99 does not exist",
     );
   });
 
@@ -184,7 +184,7 @@ describe("readClip", () => {
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
-      "readClip: sceneIndex 99 does not exist",
+      "sceneIndex 99 does not exist",
     );
   });
 

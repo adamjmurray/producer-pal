@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   applyModulations,
   evaluateModulation,
@@ -9,17 +9,8 @@ import {
 } from "#src/notation/modulation/modulation-evaluator-helpers.ts";
 import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.ts";
 import { evaluateFunction } from "#src/notation/modulation/modulation-functions.ts";
-import * as console from "#src/shared/v8-max-console.ts";
 
 describe("Modulation Evaluator Error Handling", () => {
-  beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("applyModulations parsing errors", () => {
     it("handles invalid modulation string gracefully", () => {
       const notes = [
@@ -35,7 +26,8 @@ describe("Modulation Evaluator Error Handling", () => {
       // Invalid syntax should trigger parse error
       applyModulations(notes, "invalid @@ syntax", 4, 4);
 
-      expect(console.error).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("Failed to parse modulation string"),
       );
       // Notes should be unchanged
@@ -55,7 +47,7 @@ describe("Modulation Evaluator Error Handling", () => {
 
       applyModulations(notes, "{ this is not valid", 4, 4);
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(notes[0]!.velocity).toBe(100);
     });
   });
@@ -67,7 +59,8 @@ describe("Modulation Evaluator Error Handling", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(console.error).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("Failed to parse modulation string"),
       );
       expect(result).toStrictEqual({});
@@ -83,7 +76,7 @@ describe("Modulation Evaluator Error Handling", () => {
       });
 
       // Should log error but return empty result for this parameter
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
 
@@ -99,7 +92,7 @@ describe("Modulation Evaluator Error Handling", () => {
 
       // Should work fine
       expect(result.velocity!.value).toBe(60);
-      expect(console.error).not.toHaveBeenCalled();
+      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
     });
   });
 
@@ -110,7 +103,7 @@ describe("Modulation Evaluator Error Handling", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
 
@@ -120,7 +113,7 @@ describe("Modulation Evaluator Error Handling", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
   });
@@ -133,7 +126,7 @@ describe("Modulation Evaluator Error Handling", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
 
@@ -143,7 +136,7 @@ describe("Modulation Evaluator Error Handling", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
 
@@ -153,7 +146,7 @@ describe("Modulation Evaluator Error Handling", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
   });
@@ -227,7 +220,7 @@ describe("Modulation Evaluator Error Handling", () => {
         {},
       );
 
-      expect(console.error).toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
     });
   });

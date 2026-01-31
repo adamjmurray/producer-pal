@@ -306,8 +306,8 @@ function createClips(
           ? `trackIndex=${trackIndex}, sceneIndex=${currentSceneIndex}`
           : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
 
-      console.error(
-        `Warning: Failed to create clip at ${position}: ${errorMessage(error)}`,
+      console.warn(
+        `Failed to create clip at ${position}: ${errorMessage(error)}`,
       );
     }
   }

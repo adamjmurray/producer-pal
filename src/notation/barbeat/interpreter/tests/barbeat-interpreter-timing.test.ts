@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type vi } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
@@ -142,73 +142,53 @@ describe("bar|beat interpretNotation() - timing features", () => {
     });
 
     it("warns when pitches buffered but no time position", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       interpretNotation("C3 E3 G3");
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("3 pitch(es) buffered but no time position"),
       );
-      consoleSpy.mockRestore();
     });
 
     it("warns when time position has no pitches", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       interpretNotation("1|1");
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("Time position 1|1 has no pitches"),
       );
-      consoleSpy.mockRestore();
     });
 
     it("warns when state changes after pitch but before time", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       interpretNotation("C4 v100 1|1");
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining(
           "state change after pitch(es) but before time position won't affect this group",
         ),
       );
-      consoleSpy.mockRestore();
     });
 
     it("does not warn when state changes after pitch but before another pitch", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       const result = interpretNotation("v80 C4 v90 G4 1|1");
 
       expect(result).toHaveLength(2);
       // Should only warn about "state change won't affect group", not about it happening
-      const warningCalls = consoleSpy.mock.calls.filter(
-        (call) => !call[0].includes("buffered but no time position"),
-      );
+      const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
+        .filter((call) => call[0] === 1)
+        .filter((call) => !call[1].includes("buffered but no time position"));
 
       expect(warningCalls).toHaveLength(0);
-      consoleSpy.mockRestore();
     });
 
     it("does not warn when state changes after time", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       const result = interpretNotation("C4 1|1 v90 |2");
 
       expect(result).toHaveLength(2);
       // Should only warn about "state change won't affect group", not about it happening
-      const warningCalls = consoleSpy.mock.calls.filter(
-        (call) => !call[0].includes("buffered but no time position"),
-      );
+      const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
+        .filter((call) => call[0] === 1)
+        .filter((call) => !call[1].includes("buffered but no time position"));
 
       expect(warningCalls).toHaveLength(0);
-      consoleSpy.mockRestore();
     });
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   createSeededRNG,
   parseTransposeValues,
@@ -52,33 +52,27 @@ describe("transform-clips helpers", () => {
     });
 
     it("logs warning when transposeMin is provided", () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       parseTransposeValues("1,2,3", 0);
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Warning: transposeValues ignores transposeMin/transposeMax",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "transposeValues ignores transposeMin/transposeMax",
       );
-      errorSpy.mockRestore();
     });
 
     it("logs warning when transposeMax is provided", () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       parseTransposeValues("1,2,3", undefined, 12);
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Warning: transposeValues ignores transposeMin/transposeMax",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "transposeValues ignores transposeMin/transposeMax",
       );
-      errorSpy.mockRestore();
     });
 
     it("logs warning when both transposeMin and transposeMax are provided", () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       parseTransposeValues("1,2,3", -5, 5);
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Warning: transposeValues ignores transposeMin/transposeMax",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "transposeValues ignores transposeMin/transposeMax",
       );
-      errorSpy.mockRestore();
     });
 
     it("parses decimal transpose values", () => {

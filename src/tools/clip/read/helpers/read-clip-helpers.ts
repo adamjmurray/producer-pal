@@ -45,14 +45,14 @@ export function resolveClip(
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
-    throw new Error(`readClip: trackIndex ${trackIndex} does not exist`);
+    throw new Error(`trackIndex ${trackIndex} does not exist`);
   }
 
   // Validate scene exists
   const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
   if (!scene.exists()) {
-    throw new Error(`readClip: sceneIndex ${sceneIndex} does not exist`);
+    throw new Error(`sceneIndex ${sceneIndex} does not exist`);
   }
 
   // Track and scene exist - check if clip slot has a clip
@@ -61,8 +61,8 @@ export function resolveClip(
   );
 
   if (!clip.exists()) {
-    console.error(
-      `readClip: no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
+    console.warn(
+      `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
     );
 
     return {
@@ -134,7 +134,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
     }
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
-    console.error(
+    console.warn(
       `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
     );
   }

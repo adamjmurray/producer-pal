@@ -158,12 +158,12 @@ describe("updateTrack", () => {
 
   it("should log warning when track ID doesn't exist", () => {
     liveApiId.mockReturnValue("id 0"); // non-existent
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = updateTrack({ ids: "nonexistent" });
 
     expect(result).toStrictEqual([]); // Empty array, no valid tracks
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateTrack: id "nonexistent" does not exist',
     );
   });
@@ -181,12 +181,11 @@ describe("updateTrack", () => {
     });
     liveApiType.mockReturnValue("Track");
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123" }); // Only valid track updated
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateTrack: id "nonexistent" does not exist',
     );
     expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
@@ -477,7 +476,7 @@ describe("updateTrack", () => {
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Mock getProperty to return quantized color (different from input)
       liveApiGet.mockImplementation(function (prop: string) {
@@ -494,7 +493,7 @@ describe("updateTrack", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Note: Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -502,7 +501,7 @@ describe("updateTrack", () => {
 
     it("should not emit warning when color matches exactly", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Mock getProperty to return exact color (same as input)
       liveApiGet.mockImplementation(function (prop: string) {
@@ -525,7 +524,7 @@ describe("updateTrack", () => {
 
     it("should emit warning for each track when updating multiple tracks", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Mock getProperty to return quantized color
       liveApiGet.mockImplementation(function (prop: string) {
@@ -544,11 +543,11 @@ describe("updateTrack", () => {
       expect(consoleSpy).toHaveBeenCalledTimes(2);
       expect(consoleSpy).toHaveBeenNthCalledWith(
         1,
-        "Note: Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
       expect(consoleSpy).toHaveBeenNthCalledWith(
         2,
-        "Note: Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -556,7 +555,7 @@ describe("updateTrack", () => {
 
     it("should not verify color if color parameter is not provided", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       updateTrack({
         ids: "123",

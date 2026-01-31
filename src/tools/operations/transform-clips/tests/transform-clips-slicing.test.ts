@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -94,15 +94,14 @@ describe("transformClips - slicing", () => {
       return [0];
     });
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     transformClips({
       clipIds: clipId,
       slice: "1:0.0",
       seed: 12345,
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("slice requires arrangement clips"),
     );
   });

@@ -8,10 +8,6 @@ describe("update-clip-timing-helpers", () => {
 
   describe("calculateBeatPositions", () => {
     it("should warn when firstStart exceeds end_marker", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
           if (prop === "end_marker") return 4; // 1 bar at 4/4
@@ -28,22 +24,20 @@ describe("update-clip-timing-helpers", () => {
         isLooping: true,
       });
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("firstStart parameter ignored"),
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         expect.stringContaining("exceeds clip content boundary"),
       );
       expect(result.startMarkerBeats).toBeNull();
       expect(result.firstStartBeats).toBe(8); // Still calculated, just not applied
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("should set startMarkerBeats when firstStart is within end_marker", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      vi.mocked(outlet).mockClear();
 
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
@@ -61,17 +55,13 @@ describe("update-clip-timing-helpers", () => {
         isLooping: true,
       });
 
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
       expect(result.startMarkerBeats).toBe(2);
       expect(result.firstStartBeats).toBe(2);
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("should not warn when start exceeds end_marker (silent skip intentional)", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      vi.mocked(outlet).mockClear();
 
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
@@ -90,11 +80,9 @@ describe("update-clip-timing-helpers", () => {
       });
 
       // No warning for start param - silent skip is intentional
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
       expect(result.startMarkerBeats).toBeNull();
       expect(result.startBeats).toBe(8);
-
-      consoleErrorSpy.mockRestore();
     });
   });
 });

@@ -215,7 +215,7 @@ async function createLocator(
   context: UpdateLiveSetContext,
 ): Promise<Record<string, unknown>> {
   if (locatorTime == null) {
-    console.error("Warning: locatorTime is required for create operation");
+    console.warn("locatorTime is required for create operation");
 
     return {
       operation: "skipped",
@@ -233,7 +233,7 @@ async function createLocator(
   const existing = findLocator(liveSet, { timeInBeats: targetBeats });
 
   if (existing) {
-    console.error(
+    console.warn(
       `Locator already exists at ${locatorTime} (id: ${getLocatorId(existing.index)}), skipping create`,
     );
 

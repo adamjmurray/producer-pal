@@ -16,7 +16,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("should warn when device path through drum pad does not exist", () => {
-    const consoleSpy = vi.spyOn(console, "error");
+    const consoleSpy = vi.spyOn(console, "warn");
     const drumRackPath = "live_set tracks 0 devices 0";
     const chainId = "chain-1";
 
@@ -63,7 +63,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("should warn when device type requested but path resolves to chain", () => {
-    const consoleSpy = vi.spyOn(console, "error");
+    const consoleSpy = vi.spyOn(console, "warn");
 
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "live_set tracks 0 devices 0") return "device_0";
@@ -97,7 +97,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("should warn and skip when path resolution throws an error", () => {
-    const consoleSpy = vi.spyOn(console, "error");
+    const consoleSpy = vi.spyOn(console, "warn");
 
     // Path with invalid format that causes resolvePathToLiveApi to throw
     // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
@@ -111,7 +111,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("should warn when direct device path does not exist", () => {
-    const consoleSpy = vi.spyOn(console, "error");
+    const consoleSpy = vi.spyOn(console, "warn");
 
     // Mock liveApiId to return "0" for non-existent device (exists() checks id !== "0")
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {

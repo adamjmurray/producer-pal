@@ -207,9 +207,6 @@ describe("transform-clips-shuffling-helpers", () => {
     });
 
     it("should warn and return early when arrangementClips is empty", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       const clips: LiveAPI[] = [];
       const warnings = new Set<string>();
       const rng = (): number => 0.5;
@@ -217,18 +214,16 @@ describe("transform-clips-shuffling-helpers", () => {
 
       performShuffling([], clips, warnings, rng, context);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Warning: shuffleOrder requires arrangement clips",
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "shuffleOrder requires arrangement clips",
       );
       expect(warnings.has("shuffle-no-arrangement")).toBe(true);
       expect(clips).toHaveLength(0);
-      consoleErrorSpy.mockRestore();
     });
 
     it("should not warn twice for empty arrangementClips", () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      vi.mocked(outlet).mockClear();
       const clips: LiveAPI[] = [];
       const warnings = new Set<string>();
 
@@ -238,8 +233,7 @@ describe("transform-clips-shuffling-helpers", () => {
 
       performShuffling([], clips, warnings, rng, context);
 
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
-      consoleErrorSpy.mockRestore();
+      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
     });
 
     it("should return early without changes for single clip", () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiId,
@@ -80,7 +80,6 @@ describe("updateClip - Basic operations", () => {
 
   it("should log warning when clip ID doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = updateClip({
       ids: "nonexistent",
@@ -89,7 +88,8 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(result).toStrictEqual([]);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateClip: id "nonexistent" does not exist',
     );
   });

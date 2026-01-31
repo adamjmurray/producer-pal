@@ -112,8 +112,8 @@ function applyMonitoringState(
   }[monitoringState];
 
   if (monitoringValue === undefined) {
-    console.error(
-      `Warning: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+    console.warn(
+      `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
     );
 
     return;
@@ -135,7 +135,7 @@ function applySendProperties(
 ): void {
   // Validate both params provided together
   if ((sendGainDb != null) !== (sendReturn != null)) {
-    console.error("Warning: sendGainDb and sendReturn must both be specified");
+    console.warn("sendGainDb and sendReturn must both be specified");
 
     return;
   }
@@ -148,7 +148,7 @@ function applySendProperties(
   const mixer = LiveAPI.from(track.path + " mixer_device");
 
   if (!mixer.exists()) {
-    console.error(`Warning: track ${track.id} has no mixer device`);
+    console.warn(`track ${track.id} has no mixer device`);
 
     return;
   }
@@ -156,7 +156,7 @@ function applySendProperties(
   const sends = mixer.getChildren("sends");
 
   if (sends.length === 0) {
-    console.error(`Warning: track ${track.id} has no sends`);
+    console.warn(`track ${track.id} has no sends`);
 
     return;
   }
@@ -180,15 +180,13 @@ function applySendProperties(
   }
 
   if (sendIndex === -1) {
-    console.error(`Warning: no return track found matching "${sendReturn}"`);
+    console.warn(`no return track found matching "${sendReturn}"`);
 
     return;
   }
 
   if (sendIndex >= sends.length) {
-    console.error(
-      `Warning: send ${sendIndex} doesn't exist on track ${track.id}`,
-    );
+    console.warn(`send ${sendIndex} doesn't exist on track ${track.id}`);
 
     return;
   }
@@ -222,7 +220,7 @@ function applyStereoPan(
   }
 
   if (leftPan != null || rightPan != null) {
-    console.error(
+    console.warn(
       "updateTrack: leftPan and rightPan have no effect in stereo panning mode. " +
         "Set panningMode to 'split' or use 'pan' instead.",
     );
@@ -259,7 +257,7 @@ function applySplitPan(
   }
 
   if (pan != null) {
-    console.error(
+    console.warn(
       "updateTrack: pan has no effect in split panning mode. " +
         "Set panningMode to 'stereo' or use leftPan/rightPan instead.",
     );

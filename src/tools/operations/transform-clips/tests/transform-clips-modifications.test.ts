@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -135,12 +135,11 @@ describe("transformClips - modifications", () => {
   it("should warn when no valid clips found", () => {
     liveApiId.mockReturnValue("id 0"); // Non-existent clips
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     const result = transformClips({ clipIds: "nonexistent", seed: 12345 });
 
     expect(result).toStrictEqual({ clipIds: [], seed: 12345 });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("no valid clips found"),
     );
   });
@@ -265,8 +264,6 @@ describe("transformClips - modifications", () => {
     setupClipMocks(clipId);
     setupNoteCaptureMock(clipId);
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     transformClips({
       clipIds: clipId,
       transposeValues: "-12, 0, 12",
@@ -275,7 +272,8 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("transposeValues ignores transposeMin"),
     );
   });

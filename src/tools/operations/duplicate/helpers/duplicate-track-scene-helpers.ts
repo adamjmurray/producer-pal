@@ -71,14 +71,14 @@ function removeHostTrackDevice(
           "delete_device",
           Number.parseInt(deviceIndexMatch[1] ?? ""),
         );
-        console.error(
+        console.warn(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
     } catch {
       // If we can't access this_device, just continue without removing anything
-      console.error(
-        "Warning: Could not check for Producer Pal device in duplicated track",
+      console.warn(
+        "Could not check for Producer Pal device in duplicated track",
       );
     }
   }

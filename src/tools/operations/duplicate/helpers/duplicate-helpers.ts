@@ -161,8 +161,8 @@ export function createClipsForLength(
   if (arrangementLengthBeats < sourceClipLength) {
     // Case 1: Shortening - use holding area approach (preserves clip data including envelopes)
     if (!isMidiClip && !context.silenceWavPath) {
-      console.error(
-        "Warning: silenceWavPath missing in context - audio clip shortening may fail",
+      console.warn(
+        "silenceWavPath missing in context - audio clip shortening may fail",
       );
     }
 

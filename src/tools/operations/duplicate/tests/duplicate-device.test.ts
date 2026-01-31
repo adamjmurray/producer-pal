@@ -124,8 +124,8 @@ describe("duplicate - device duplication", () => {
 
     duplicate({ type: "device", id: "device1", count: 3 });
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
-      "Warning: count parameter ignored for device duplication (only single copy supported)",
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      "count parameter ignored for device duplication (only single copy supported)",
     );
   });
 

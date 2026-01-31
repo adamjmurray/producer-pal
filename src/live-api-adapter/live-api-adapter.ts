@@ -36,6 +36,11 @@ import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { memory } from "#src/tools/workflow/memory.ts";
 
+// Configure 2 outlets: MCP responses (0) and warnings (1)
+outlets = 2;
+setoutletassist(0, "tool call results");
+setoutletassist(1, "tool call warnings");
+
 const context: ToolContext = {
   projectNotes: {
     enabled: false,
@@ -263,7 +268,7 @@ export async function mcp_request(
             ? contextError.message
             : String(contextError);
 
-        console.error(`Warning: Failed to parse contextJSON: ${message}`);
+        console.warn(`Failed to parse contextJSON: ${message}`);
       }
     }
 
