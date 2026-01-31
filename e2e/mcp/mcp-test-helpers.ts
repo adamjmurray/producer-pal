@@ -1,6 +1,8 @@
 /**
  * Shared test utilities for MCP e2e tests
  */
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import {
@@ -12,6 +14,14 @@ import { openLiveSet } from "#evals/eval/open-live-set.ts";
 
 // Re-export for use in tests
 export { extractToolResultText };
+
+// Sample file for audio clip tests - resolve relative to this file's location
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export const SAMPLE_FILE = resolve(
+  __dirname,
+  "../../evals/live-sets/samples/sample.aiff",
+);
 
 /**
  * Parse a tool result as JSON with type casting.
@@ -151,4 +161,44 @@ export async function createTestDevice(
   await sleep(100);
 
   return String(created.deviceId);
+}
+
+// ============================================================================
+// Shared Result Interfaces
+// ============================================================================
+
+/** Result from ppal-create-clip tool */
+export interface CreateClipResult {
+  id: string;
+}
+
+/** Result from ppal-create-track tool */
+export interface CreateTrackResult {
+  id: string;
+  trackIndex?: number;
+}
+
+/** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
+export interface ReadClipResult {
+  id: string | null;
+  type: "midi" | "audio" | null;
+  name?: string | null;
+  view?: "session" | "arrangement";
+  color?: string | null;
+  timeSignature?: string | null;
+  looping?: boolean;
+  start?: string;
+  end?: string;
+  length?: string;
+  trackIndex?: number | null;
+  sceneIndex?: number | null;
+  arrangementStart?: string;
+  arrangementLength?: string;
+  noteCount?: number;
+  notes?: string;
+  // Audio clip properties
+  gainDb?: number;
+  pitchShift?: number;
+  warping?: boolean;
+  warpMode?: string;
 }
