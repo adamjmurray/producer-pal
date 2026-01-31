@@ -49,8 +49,16 @@ function parseSitemap(): string[] {
 
   // Extract all <loc> URLs from sitemap
   const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
+  const urls = Array.from(urlMatches, (match) => match[1]);
 
-  return Array.from(urlMatches, (match) => match[1]);
+  if (urls.length === 0) {
+    throw new Error(
+      `No URLs found in sitemap at ${sitemapPath}. ` +
+        `Ensure docs are built with 'npm run docs:build' before running tests.`,
+    );
+  }
+
+  return urls;
 }
 
 /**
