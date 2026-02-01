@@ -163,6 +163,45 @@ describe("ppal-create-device", () => {
 
     expect(position1Device.deviceId).toBeDefined();
     expect(position1Device.deviceIndex).toBe(1);
+
+    // Test 11: Create device at position 0 on empty chain inside rack
+    // Creates a rack, then inserts device at d0/c0/d0 (position 0 in first chain)
+    const emptyTrack3Result = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio" },
+    });
+    const emptyTrack3 = parseToolResult<{ id: string; trackIndex: number }>(
+      emptyTrack3Result,
+    );
+
+    await sleep(100);
+
+    // Create an Audio Effect Rack (it auto-creates one empty chain)
+    const rackResult = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        deviceName: "Audio Effect Rack",
+        path: `t${emptyTrack3.trackIndex}`,
+      },
+    });
+    const rack = parseToolResult<CreateDeviceResult>(rackResult);
+
+    expect(rack.deviceId).toBeDefined();
+
+    await sleep(100);
+
+    // Insert device at position 0 in the empty chain
+    const chainDeviceResult = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        deviceName: "Compressor",
+        path: `t${emptyTrack3.trackIndex}/d${rack.deviceIndex}/c0/d0`,
+      },
+    });
+    const chainDevice = parseToolResult<CreateDeviceResult>(chainDeviceResult);
+
+    expect(chainDevice.deviceId).toBeDefined();
+    expect(chainDevice.deviceIndex).toBe(0);
   });
 });
 
