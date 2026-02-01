@@ -33,7 +33,30 @@ describe("ppal-create-device", () => {
     expect(list.audioEffects).toContain("Compressor");
     expect(list.midiEffects).toContain("Arpeggiator");
 
-    // Test 2: Create audio effect on track
+    // Test 2: Create device at position 0 on empty track (t{N}/d0 fallback to append)
+    // First create a new track to ensure it's empty
+    const newTrackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi" },
+    });
+    const newTrack = parseToolResult<{ id: string; trackIndex: number }>(
+      newTrackResult,
+    );
+    const emptyTrackPath = `t${newTrack.trackIndex}/d0`;
+
+    await sleep(100);
+
+    // Now test creating device at position 0 on the empty track
+    const eqResult = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "EQ Eight", path: emptyTrackPath },
+    });
+    const eq = parseToolResult<CreateDeviceResult>(eqResult);
+
+    expect(eq.deviceId).toBeDefined();
+    expect(eq.deviceIndex).toBe(0);
+
+    // Test 3: Create audio effect on track (append)
     const compResult = await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: { deviceName: "Compressor", path: "t0" },
@@ -43,7 +66,7 @@ describe("ppal-create-device", () => {
     expect(comp.deviceId).toBeDefined();
     expect(typeof comp.deviceIndex).toBe("number");
 
-    // Test 3: Verify created device via read
+    // Test 4: Verify created device via read
     await sleep(100);
     const verifyResult = await ctx.client!.callTool({
       name: "ppal-read-device",
@@ -54,7 +77,7 @@ describe("ppal-create-device", () => {
     expect(String(verified.id)).toBe(String(comp.deviceId));
     expect(verified.type).toContain("Compressor");
 
-    // Test 4: Create MIDI effect
+    // Test 5: Create MIDI effect
     const arpResult = await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: { deviceName: "Arpeggiator", path: "t0" },
@@ -81,7 +104,7 @@ describe("ppal-create-device", () => {
 
     expect(master.deviceId).toBeDefined();
 
-    // Test 5: Error for invalid device name
+    // Test 7: Error for invalid device name
     // Note: Tool errors are returned as text, not JSON
     const invalidResult = await ctx.client!.callTool({
       name: "ppal-create-device",
@@ -91,6 +114,55 @@ describe("ppal-create-device", () => {
 
     expect(invalidText).toContain("InvalidDeviceName123");
     expect(invalidText.toLowerCase()).toContain("invalid");
+
+    // Test 8: Error when inserting audio effect before instrument on MIDI track
+    // Track t1 "Drums" has an instrument (Cyndal Kit) - can't insert audio effect before it
+    const audioBeforeInstrumentResult = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Compressor", path: "t1/d0" },
+    });
+    const audioBeforeInstrumentText = extractToolResultText(
+      audioBeforeInstrumentResult,
+    );
+
+    expect(audioBeforeInstrumentText).toContain("could not insert");
+    expect(audioBeforeInstrumentText).toContain("Compressor");
+    expect(audioBeforeInstrumentText).toContain("t1/d0");
+
+    // Test 9: MIDI effect CAN be inserted before instrument
+    const midiBeforeInstrumentResult = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Arpeggiator", path: "t1/d0" },
+    });
+    const midiBeforeInstrument = parseToolResult<CreateDeviceResult>(
+      midiBeforeInstrumentResult,
+    );
+
+    expect(midiBeforeInstrument.deviceId).toBeDefined();
+    expect(midiBeforeInstrument.deviceIndex).toBe(0);
+
+    // Test 10: Inserting at position 1 on empty track succeeds
+    // Live API allows this - the device ends up at index 1 (sparse indices allowed)
+    const emptyTrack2Result = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi" },
+    });
+    const emptyTrack2 = parseToolResult<{ id: string; trackIndex: number }>(
+      emptyTrack2Result,
+    );
+    const position1Path = `t${emptyTrack2.trackIndex}/d1`;
+
+    await sleep(100);
+
+    const position1Result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Compressor", path: position1Path },
+    });
+    const position1Device =
+      parseToolResult<CreateDeviceResult>(position1Result);
+
+    expect(position1Device.deviceId).toBeDefined();
+    expect(position1Device.deviceIndex).toBe(1);
   });
 });
 

@@ -165,6 +165,8 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
   // Always reset config before each test (even when reusing connection)
   beforeEach(async () => {
     await resetConfig();
+    // Small delay to ensure Max processes the config message before test runs
+    await sleep(50);
   });
 
   teardown(async () => {

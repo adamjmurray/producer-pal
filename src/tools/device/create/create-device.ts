@@ -76,9 +76,15 @@ function createDeviceAtPath(
     );
   }
 
+  // Fallback to append when inserting at position 0 on empty container
+  // (Live API fails with position=0 on empty device chains)
+  const deviceCount = container.getChildren("devices").length;
+  const effectivePosition =
+    position === 0 && deviceCount === 0 ? null : position;
+
   const result =
-    position != null
-      ? (container.call("insert_device", deviceName, position) as [
+    effectivePosition != null
+      ? (container.call("insert_device", deviceName, effectivePosition) as [
           string,
           string | number,
         ])
