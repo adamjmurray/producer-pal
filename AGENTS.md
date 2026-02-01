@@ -159,7 +159,6 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Implications of test file classification:**
 
-- **Knowledge base**: Excluded from `kb:small` (smaller context for LLMs)
 - **Duplication limits**: Higher threshold (4.5%) vs source code (0.4%)
 - **Line limits**: Only `*.test.*` and `*-test-case.ts` files get 650 lines max
   (ignoring blanks/comments); test helpers use the standard 325 line limit

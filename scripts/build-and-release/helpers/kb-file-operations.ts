@@ -2,20 +2,26 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { KbConfig } from "./kb-config.ts";
 
+export interface FindFilesOptions {
+  excludePaths?: string[];
+  filter?: RegExp;
+}
+
 /**
- * Recursively finds all files in a directory, excluding specified paths
+ * Recursively finds all files in a directory
  * @param config - Configuration object with ignorePatterns
  * @param dir - Directory to search
- * @param excludePaths - Array of relative paths to exclude
+ * @param options - Options for excluding paths and filtering files
  * @param baseDir - Base directory for computing relative paths (defaults to dir)
  * @returns Array of file paths
  */
 export async function findAllFiles(
   config: KbConfig,
   dir: string,
-  excludePaths: string[] = [],
+  options: FindFilesOptions = {},
   baseDir: string = dir,
 ): Promise<string[]> {
+  const { excludePaths = [], filter } = options;
   const files: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -40,10 +46,13 @@ export async function findAllFiles(
     }
 
     if (entry.isDirectory()) {
-      files.push(
-        ...(await findAllFiles(config, fullPath, excludePaths, baseDir)),
-      );
+      files.push(...(await findAllFiles(config, fullPath, options, baseDir)));
     } else if (entry.isFile()) {
+      // Apply filter if specified
+      if (filter && !filter.test(entry.name)) {
+        continue;
+      }
+
       files.push(fullPath);
     }
   }
@@ -80,66 +89,4 @@ export async function copyFile(
     // Regular copy for non-code files
     await fs.copyFile(sourcePath, targetPath);
   }
-}
-
-/**
- * Writes a concatenated file from multiple source files
- * @param config - Configuration object with codeExts and projectRoot
- * @param outputPath - Output file path
- * @param sourceFiles - Array of source file paths
- * @returns Number of files concatenated
- */
-export async function writeConcatenatedFile(
-  config: KbConfig,
-  outputPath: string,
-  sourceFiles: string[],
-): Promise<number> {
-  let concatenatedContent = "";
-  let fileCount = 0;
-
-  for (const sourcePath of sourceFiles) {
-    const relativePath = path.relative(config.projectRoot, sourcePath);
-    const fileContent = await fs.readFile(sourcePath, "utf8");
-
-    if (fileCount > 0) {
-      concatenatedContent += "\n\n";
-    }
-
-    concatenatedContent += `// ========================================\n`;
-    concatenatedContent += `// FILE: ${relativePath}\n`;
-    concatenatedContent += `// ----------------------------------------\n`;
-    concatenatedContent += fileContent;
-
-    fileCount++;
-  }
-
-  await fs.writeFile(outputPath, concatenatedContent, "utf8");
-
-  return fileCount;
-}
-
-/**
- * Determines output filename with appropriate extension
- * @param config - Configuration object with codeExts
- * @param groupName - Group name
- * @param sourceFiles - Source files in the group
- * @returns Output filename with extension
- */
-export function determineOutputFilename(
-  config: KbConfig,
-  groupName: string,
-  sourceFiles: string[],
-): string {
-  let outputFileName = groupName;
-
-  if (!outputFileName.includes(".")) {
-    // Add extension based on primary content type
-    const hasCodeFile = sourceFiles.some((f) =>
-      config.codeExts.includes(path.extname(f)),
-    );
-
-    outputFileName += hasCodeFile ? ".js" : ".md";
-  }
-
-  return outputFileName;
 }
