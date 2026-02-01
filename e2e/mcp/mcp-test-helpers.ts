@@ -239,4 +239,6 @@ export interface ReadClipResult {
   pitchShift?: number;
   warping?: boolean;
   warpMode?: string;
+  warpMarkers?: Array<{ sampleTime: number; beatTime: number }>;
+  firstStart?: string;
 }

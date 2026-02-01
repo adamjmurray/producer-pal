@@ -167,6 +167,28 @@ describe("ppal-read-device", () => {
     expect(nested.id).toBeDefined();
     expect(nested.type).toContain("Drift");
   });
+
+  it("reads rack macros and deactivated state", async () => {
+    // Test macros: t1/d0 "Layered Bass" has 1 mapped macro
+    const macroResult = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t1/d0" },
+    });
+    const macroRack = parseToolResult<ReadDeviceResult>(macroResult);
+
+    expect(macroRack.macros).toBeDefined();
+    expect(macroRack.macros!.hasMappings).toBe(true);
+
+    // Test deactivated: t7/d0 entire chain is deactivated
+    const deactivatedResult = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t7/d0" },
+    });
+    const deactivatedDevice =
+      parseToolResult<ReadDeviceResult>(deactivatedResult);
+
+    expect(deactivatedDevice.deactivated).toBe(true);
+  });
 });
 
 interface ReadDeviceResult {
@@ -174,6 +196,8 @@ interface ReadDeviceResult {
   type?: string;
   name?: string;
   collapsed?: boolean;
+  deactivated?: boolean;
+  macros?: { count: number; hasMappings: boolean };
   parameters?: Array<{
     id: string;
     name: string;

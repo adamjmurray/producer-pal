@@ -131,6 +131,37 @@ describe("ppal-read-clip", () => {
     expect(arrClip.arrangementLength).toBeDefined();
   });
 
+  it("reads clips with offset loops and warp markers", async () => {
+    // Test offset loop: t3/s1 has start=2|1, loopStart=1|1
+    const offsetResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 3, sceneIndex: 1 },
+    });
+    const offsetClip = parseToolResult<ReadClipResult>(offsetResult);
+
+    expect(offsetClip.start).toBe("2|1");
+    expect(offsetClip.looping).toBe(true);
+    expect(offsetClip.type).toBe("midi");
+
+    // Test warp markers: t4/s0 has custom warp markers
+    const warpResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 4, sceneIndex: 0, include: ["warp-markers"] },
+    });
+    const warpClip = parseToolResult<ReadClipResult>(warpResult);
+
+    expect(warpClip.warpMarkers).toBeDefined();
+    expect(Array.isArray(warpClip.warpMarkers)).toBe(true);
+    expect(warpClip.warpMarkers!.length).toBeGreaterThan(0);
+    // Warp markers have sampleTime and beatTime
+    expect(typeof warpClip.warpMarkers![0]!.sampleTime).toBe("number");
+    expect(typeof warpClip.warpMarkers![0]!.beatTime).toBe("number");
+
+    // Test firstStart: t4/s0 has firstStart≠start per spec
+    // firstStart is only included when it differs from start
+    expect(typeof warpClip.firstStart).toBe("string");
+  });
+
   it("handles empty slots and errors correctly", async () => {
     // Test 1: Read empty slot (t8 is empty track with no clips)
     const emptyResult = await ctx.client!.callTool({

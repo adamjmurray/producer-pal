@@ -66,6 +66,21 @@ describe("ppal-read-live-set", () => {
     // Return tracks: 2 in e2e-test-set (A-Delay, B-Reverb)
     expect(Array.isArray(returnParsed.returnTracks)).toBe(true);
     expect(returnParsed.returnTracks?.length).toBe(2);
+
+    // Test 4: With locators include
+    const locatorsResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["locators"] },
+    });
+    const locatorsParsed = parseToolResult<ReadLiveSetResult>(locatorsResult);
+
+    // 4 locators in e2e-test-set: Intro@1|1, Verse@9|1, Chorus@17|1, Bridge@33|1
+    expect(Array.isArray(locatorsParsed.locators)).toBe(true);
+    expect(locatorsParsed.locators?.length).toBe(4);
+    expect(locatorsParsed.locators?.[0]?.name).toBe("Intro");
+    expect(locatorsParsed.locators?.[0]?.time).toBe("1|1");
+    expect(locatorsParsed.locators?.[1]?.name).toBe("Verse");
+    expect(locatorsParsed.locators?.[1]?.time).toBe("9|1");
   });
 });
 
@@ -87,4 +102,5 @@ interface ReadLiveSetResult {
     instrument?: { id: string; name: string } | null;
   }>;
   returnTracks?: Array<{ id: string; name: string; trackIndex: number }>;
+  locators?: Array<{ id: string; name: string; time: string }>;
 }

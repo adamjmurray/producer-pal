@@ -150,6 +150,35 @@ describe("ppal-read-track", () => {
 
     expect(ppalTrack.hasProducerPalDevice).toBe(true);
   });
+
+  it("reads group track relationships and routing", async () => {
+    // Test group: t9 is parent of t10
+    const parentResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 9, category: "regular" },
+    });
+    const parentTrack = parseToolResult<ReadTrackResult>(parentResult);
+
+    expect(parentTrack.isGroup).toBe(true);
+
+    const childResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 10, category: "regular" },
+    });
+    const childTrack = parseToolResult<ReadTrackResult>(childResult);
+
+    expect(childTrack.groupId).toBe(parentTrack.id);
+
+    // Test routing: t4 outputs to t6 "FX Bus"
+    const routingResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 4, category: "regular", include: ["routings"] },
+    });
+    const routedTrack = parseToolResult<ReadTrackResult>(routingResult);
+
+    expect(routedTrack.outputRoutingType).toBeDefined();
+    expect(routedTrack.outputRoutingType?.name).toContain("FX Bus");
+  });
 });
 
 interface LiveSetResult {
@@ -168,6 +197,8 @@ interface ReadTrackResult {
   trackIndex?: number | null;
   returnTrackIndex?: number | null;
   hasProducerPalDevice?: boolean;
+  isGroup?: boolean;
+  groupId?: string;
   color?: string;
   sessionClips?: Array<{ id: string; name: string; slotIndex: number }>;
   arrangementClips?: Array<{ id: string; position: string; length: string }>;
@@ -178,4 +209,5 @@ interface ReadTrackResult {
   gainDb?: number;
   pan?: number;
   sends?: Array<{ name: string; gainDb: number }>;
+  outputRoutingType?: { name: string; outputId: string };
 }
