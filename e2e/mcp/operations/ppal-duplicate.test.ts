@@ -17,8 +17,7 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-duplicate", () => {
-  it("duplicates tracks", async () => {
-    // Test 1: Basic track duplication
+  it("duplicates a single track", async () => {
     const readTracksResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
@@ -49,13 +48,23 @@ describe("ppal-duplicate", () => {
     const afterDup = parseToolResult<ReadLiveSetResult>(afterDupResult);
 
     expect(afterDup.tracks.length).toBe(initialTrackCount + 1);
+  });
 
-    // Test 2: Track duplication with count
+  it("duplicates tracks with count and options", async () => {
+    // Setup: Get current tracks
+    const readResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const liveSet = parseToolResult<ReadLiveSetResult>(readResult);
+    const firstTrackId = liveSet.tracks[0]!.id;
+
+    // Test 1: Track duplication with count
     const dupMultipleResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "track",
-        id: afterDup.tracks[0]!.id,
+        id: firstTrackId,
         count: 2,
       },
     });
@@ -68,7 +77,7 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
-    // Test 3: Track duplication with name and withoutClips
+    // Test 2: Track duplication with name and withoutClips
     const readAgainResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},

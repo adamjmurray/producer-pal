@@ -14,11 +14,11 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-update-live-set", () => {
-  it("updates live set settings and verifies with read", async () => {
+  it("updates tempo and time signature", async () => {
     // Store original values to restore later
     const initialRead = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
+      arguments: {},
     });
     const initial = parseToolResult<ReadResult>(initialRead);
     const originalTempo = initial.tempo;
@@ -74,8 +74,19 @@ describe("ppal-update-live-set", () => {
       name: "ppal-update-live-set",
       arguments: { timeSignature: originalTimeSig },
     });
+  });
 
-    // Test 3: Set scale
+  it("updates scale and multiple parameters", async () => {
+    // Store original values to restore later
+    const initialRead = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const initial = parseToolResult<ReadResult>(initialRead);
+    const originalTempo = initial.tempo;
+    const originalTimeSig = initial.timeSignature;
+
+    // Test 1: Set scale
     const scaleUpdate = await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: { scale: "D Minor" },
@@ -86,10 +97,7 @@ describe("ppal-update-live-set", () => {
     expect(scaleResult.scalePitches).toBeDefined();
     expect(Array.isArray(scaleResult.scalePitches)).toBe(true);
 
-    // Verify scale is set (read doesn't include scale unless scale_mode is enabled)
-    // The update response includes the scale info
-
-    // Test 4: Disable scale (empty string)
+    // Test 2: Disable scale (empty string)
     const disableScale = await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: { scale: "" },
@@ -98,7 +106,7 @@ describe("ppal-update-live-set", () => {
 
     expect(disableResult.scale).toBe(""); // Empty string means scale disabled
 
-    // Test 5: Update multiple parameters at once
+    // Test 3: Update multiple parameters at once
     const multiUpdate = await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: {

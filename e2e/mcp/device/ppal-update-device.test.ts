@@ -15,7 +15,7 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-update-device", () => {
-  it("updates device properties and verifies changes", async () => {
+  it("updates device name and collapsed state", async () => {
     // Setup: Create a Compressor on track 0
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
 
@@ -64,8 +64,13 @@ describe("ppal-update-device", () => {
 
     // When collapsed is false, the property may be omitted (undefined) or false
     expect(expandedDevice.collapsed).toBeFalsy();
+  });
 
-    // Test 4: Get params and update a numeric param value
+  it("updates device parameters", async () => {
+    // Setup: Create a Compressor on track 0
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+
+    // Test 1: Get params and update a numeric param value
     const paramsResult = await ctx.client!.callTool({
       name: "ppal-read-device",
       arguments: { deviceId, include: ["param-values"], paramSearch: "ratio" },
@@ -103,7 +108,7 @@ describe("ppal-update-device", () => {
 
     expect(updatedRatio?.value).toBe(newRatio);
 
-    // Test 5: Update device by path instead of ID
+    // Test 2: Update device by path instead of ID
     // Note: Single device updates return an unwrapped object, not an array
     const byPathResult = await ctx.client!.callTool({
       name: "ppal-update-device",
@@ -118,10 +123,14 @@ describe("ppal-update-device", () => {
 
     expect(byPathArray.length).toBeGreaterThan(0);
     expect(byPathArray[0]!.id).toBeDefined();
+  });
 
-    // Test 6: Create second device and update multiple via comma-separated IDs
+  it("updates multiple devices in batch", async () => {
+    // Setup: Create two devices on track 0
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
     const deviceId2 = await createTestDevice(ctx.client!, "EQ Eight", "t0");
 
+    // Test 1: Update multiple via comma-separated IDs
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: `${deviceId}, ${deviceId2}`, collapsed: true },
@@ -131,7 +140,7 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 7: Update non-existent device - should return empty or warning
+    // Test 2: Update non-existent device - should return empty or warning
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: "99999", name: "Won't Work" },

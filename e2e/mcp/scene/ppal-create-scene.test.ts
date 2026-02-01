@@ -14,15 +14,7 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-create-scene", () => {
-  it("creates scenes with various options", async () => {
-    // Get initial scene count
-    const initialResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: {},
-    });
-    const initial = parseToolResult<LiveSetResult>(initialResult);
-    const initialSceneCount = initial.sceneCount ?? 0;
-
+  it("creates scenes with properties", async () => {
     // Test 1: Create single scene at index 0
     const basicResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
@@ -97,8 +89,18 @@ describe("ppal-create-scene", () => {
     const timeSigScene = parseToolResult<ReadSceneResult>(verifyTimeSig);
 
     expect(timeSigScene.timeSignature).toBe("3/4");
+  });
 
-    // Test 6: Create multiple scenes with count
+  it("creates multiple scenes in batch", async () => {
+    // Get initial scene count
+    const initialResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const initial = parseToolResult<LiveSetResult>(initialResult);
+    const initialSceneCount = initial.sceneCount ?? 0;
+
+    // Test 1: Create multiple scenes with count
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: { sceneIndex: 5, count: 2 },
@@ -112,7 +114,7 @@ describe("ppal-create-scene", () => {
     expect(batch[0]!.sceneIndex).toBe(5);
     expect(batch[1]!.sceneIndex).toBe(6);
 
-    // Test 7: Create multiple scenes with name (auto-numbered)
+    // Test 2: Create multiple scenes with name (auto-numbered)
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: { sceneIndex: 7, count: 2, name: "Multi" },
@@ -136,7 +138,7 @@ describe("ppal-create-scene", () => {
     expect(firstScene.name).toContain("Multi");
     expect(secondScene.name).toContain("Multi");
 
-    // Test 8: Verify final scene count increased
+    // Verify scene count increased
     const finalResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
@@ -144,7 +146,7 @@ describe("ppal-create-scene", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalSceneCount = final.sceneCount ?? 0;
 
-    // Created: 1 basic + 1 named + 1 colored + 1 tempo + 1 timeSig + 2 batch + 2 multiName = 9
+    // Created: 2 batch + 2 multiName = 4
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
   });
 });

@@ -11,8 +11,8 @@ import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
 const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-read-live-set", () => {
-  it("reads live set info with default and custom include params", async () => {
-    // Test 1: Default call (no include param)
+  it("reads basic live set info and tracks", async () => {
+    // Test: Default call (no include param)
     const defaultResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
@@ -40,8 +40,10 @@ describe("ppal-read-live-set", () => {
 
     // Instruments included by default (can be null for audio tracks)
     expect("instrument" in (firstTrack ?? {})).toBe(true);
+  });
 
-    // Test 2: With scenes include
+  it("reads live set with scenes include", async () => {
+    // Test: With scenes include
     const scenesResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: { include: ["scenes"] },
@@ -50,13 +52,16 @@ describe("ppal-read-live-set", () => {
 
     expect(Array.isArray(scenesParsed.scenes)).toBe(true);
     expect(scenesParsed.scenes?.length).toBeGreaterThanOrEqual(1);
+
     const firstScene = scenesParsed.scenes?.[0];
 
     expect(firstScene?.id).toBeDefined();
     expect(typeof firstScene?.name).toBe("string");
     expect(typeof firstScene?.sceneIndex).toBe("number");
+  });
 
-    // Test 3: With return-tracks include
+  it("reads return tracks and locators", async () => {
+    // Test 1: With return-tracks include
     const returnResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: { include: ["return-tracks"] },
@@ -67,7 +72,7 @@ describe("ppal-read-live-set", () => {
     expect(Array.isArray(returnParsed.returnTracks)).toBe(true);
     expect(returnParsed.returnTracks?.length).toBe(2);
 
-    // Test 4: With locators include
+    // Test 2: With locators include
     const locatorsResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: { include: ["locators"] },

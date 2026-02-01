@@ -14,15 +14,7 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-create-track", () => {
-  it("creates tracks of various types with different options", async () => {
-    // Get initial track count
-    const initialResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: {},
-    });
-    const initial = parseToolResult<LiveSetResult>(initialResult);
-    const initialTrackCount = initial.tracks?.length ?? 0;
-
+  it("creates midi, audio, and return tracks", async () => {
     // Test 1: Create single MIDI track (default type)
     const midiResult = await ctx.client!.callTool({
       name: "ppal-create-track",
@@ -33,7 +25,6 @@ describe("ppal-create-track", () => {
     expect(midi.id).toBeDefined();
     expect(typeof midi.trackIndex).toBe("number");
 
-    // Verify track exists
     await sleep(100);
     const verifyMidi = await ctx.client!.callTool({
       name: "ppal-read-track",
@@ -72,7 +63,6 @@ describe("ppal-create-track", () => {
     expect(returnTrack.id).toBeDefined();
     expect(typeof returnTrack.returnTrackIndex).toBe("number");
 
-    // Verify return track exists
     await sleep(100);
     const verifyReturn = await ctx.client!.callTool({
       name: "ppal-read-track",
@@ -84,8 +74,10 @@ describe("ppal-create-track", () => {
     const returnRead = parseToolResult<ReadTrackResult>(verifyReturn);
 
     expect(returnRead.id).toBeDefined();
+  });
 
-    // Test 4: Create track with custom name
+  it("creates tracks with custom properties", async () => {
+    // Test 1: Create track with custom name
     const namedResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { name: "Test Synth Lead" },
@@ -101,7 +93,7 @@ describe("ppal-create-track", () => {
 
     expect(namedTrack.name).toBe("Test Synth Lead");
 
-    // Test 5: Create track with color
+    // Test 2: Create track with color
     const colorResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { name: "Colored Track", color: "#FF0000" },
@@ -118,7 +110,7 @@ describe("ppal-create-track", () => {
     // Color may be quantized to Live's palette, but should be set
     expect(coloredTrack.color).toBeDefined();
 
-    // Test 6: Create track with mute: true
+    // Test 3: Create track with mute: true
     const mutedResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { name: "Muted Track", mute: true },
@@ -135,7 +127,26 @@ describe("ppal-create-track", () => {
     // State may be "muted" or "muted-also-via-solo" if another track is soloed
     expect(mutedTrack.state).toMatch(/^muted/);
 
-    // Test 7: Create multiple tracks with count
+    // Test 4: Create track at specific index
+    const atIndexResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { trackIndex: 0, name: "First Position" },
+    });
+    const atIndex = parseToolResult<CreateTrackResult>(atIndexResult);
+
+    expect(atIndex.trackIndex).toBe(0);
+  });
+
+  it("creates multiple tracks in batch", async () => {
+    // Get initial track count
+    const initialResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const initial = parseToolResult<LiveSetResult>(initialResult);
+    const initialTrackCount = initial.tracks?.length ?? 0;
+
+    // Test 1: Create multiple tracks with count
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { count: 2 },
@@ -147,7 +158,7 @@ describe("ppal-create-track", () => {
     expect(batch[0]!.id).toBeDefined();
     expect(batch[1]!.id).toBeDefined();
 
-    // Test 8: Create multiple tracks with comma-separated names
+    // Test 2: Create multiple tracks with comma-separated names
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { count: 2, name: "Kick,Snare" },
@@ -172,16 +183,7 @@ describe("ppal-create-track", () => {
     expect(kickTrack.name).toBe("Kick");
     expect(snareTrack.name).toBe("Snare");
 
-    // Test 9: Create track at specific index
-    const atIndexResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { trackIndex: 0, name: "First Position" },
-    });
-    const atIndex = parseToolResult<CreateTrackResult>(atIndexResult);
-
-    expect(atIndex.trackIndex).toBe(0);
-
-    // Verify final track count increased
+    // Verify track count increased
     const finalResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
@@ -189,7 +191,7 @@ describe("ppal-create-track", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalTrackCount = final.tracks?.length ?? 0;
 
-    // Created: 1 midi + 1 audio + 1 named + 1 colored + 1 muted + 2 batch + 2 multi-name + 1 at-index = 10
+    // Created: 2 batch + 2 multi-name = 4
     expect(finalTrackCount).toBeGreaterThan(initialTrackCount);
   });
 });

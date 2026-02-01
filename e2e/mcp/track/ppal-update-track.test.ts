@@ -16,24 +16,14 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-update-track", () => {
-  it("updates track properties and verifies changes", async () => {
-    // Get first track ID
+  it("updates track name, color, and gain", async () => {
+    // Setup: Get track IDs
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
-    const secondTrackId = liveSet.tracks![1]!.id;
-
-    // Unsolo t5 which is soloed by default in e2e-test-set
-    // This ensures mute/solo tests work correctly
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
-    });
-
-    await sleep(100);
 
     // Test 1: Update track name
     await ctx.client!.callTool({
@@ -80,23 +70,26 @@ describe("ppal-update-track", () => {
     const gainTrack = parseToolResult<ReadTrackResult>(afterGain);
 
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
+  });
 
-    // Test 4: Update pan (stereo mode)
+  it("updates track mute, solo, and arm states", async () => {
+    // Setup: Get track IDs and unsolo t5
+    const liveSetResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
+    const trackId = liveSet.tracks![0]!.id;
+
+    // Unsolo t5 which is soloed by default in e2e-test-set
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, pan: 0.5 },
+      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
     });
 
     await sleep(100);
-    const afterPan = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
-    });
-    const panTrack = parseToolResult<ReadTrackResult>(afterPan);
 
-    expect(panTrack.pan).toBeCloseTo(0.5, 1);
-
-    // Test 5: Update mute state
+    // Test 1: Update mute state
     await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { ids: trackId, mute: true },
@@ -117,7 +110,7 @@ describe("ppal-update-track", () => {
       arguments: { ids: trackId, mute: false },
     });
 
-    // Test 6: Update solo state
+    // Test 2: Update solo state
     await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { ids: trackId, solo: true },
@@ -138,7 +131,7 @@ describe("ppal-update-track", () => {
       arguments: { ids: trackId, solo: false },
     });
 
-    // Test 7: Update arm state
+    // Test 3: Update arm state
     await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { ids: trackId, arm: true },
@@ -158,8 +151,80 @@ describe("ppal-update-track", () => {
       name: "ppal-update-track",
       arguments: { ids: trackId, arm: false },
     });
+  });
 
-    // Test 8: Batch update multiple tracks
+  it("updates track pan and panning mode", async () => {
+    // Setup: Get track ID
+    const liveSetResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
+    const trackId = liveSet.tracks![0]!.id;
+
+    // Test 1: Update pan (stereo mode)
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { ids: trackId, pan: 0.5 },
+    });
+
+    await sleep(100);
+    const afterPan = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId, include: ["mixer"] },
+    });
+    const panTrack = parseToolResult<ReadTrackResult>(afterPan);
+
+    expect(panTrack.pan).toBeCloseTo(0.5, 1);
+
+    // Test 2: Update panning mode to split
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: {
+        ids: trackId,
+        panningMode: "split",
+        leftPan: -0.5,
+        rightPan: 0.5,
+      },
+    });
+
+    await sleep(100);
+    const afterSplit = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId, include: ["mixer"] },
+    });
+    const splitTrack = parseToolResult<ReadTrackResult>(afterSplit);
+
+    expect(splitTrack.panningMode).toBe("split");
+    expect(splitTrack.leftPan).toBeCloseTo(-0.5, 1);
+    expect(splitTrack.rightPan).toBeCloseTo(0.5, 1);
+
+    // Return to stereo mode
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { ids: trackId, panningMode: "stereo", pan: 0 },
+    });
+  });
+
+  it("updates multiple tracks in batch", async () => {
+    // Setup: Get track IDs and unsolo t5
+    const liveSetResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
+    const trackId = liveSet.tracks![0]!.id;
+    const secondTrackId = liveSet.tracks![1]!.id;
+
+    // Unsolo t5 which is soloed by default
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
+    });
+
+    await sleep(100);
+
+    // Test: Batch update multiple tracks
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { ids: `${trackId}, ${secondTrackId}`, mute: true },
@@ -189,36 +254,18 @@ describe("ppal-update-track", () => {
       name: "ppal-update-track",
       arguments: { ids: `${trackId}, ${secondTrackId}`, mute: false },
     });
+  });
 
-    // Test 9: Update panning mode to split
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        ids: trackId,
-        panningMode: "split",
-        leftPan: -0.5,
-        rightPan: 0.5,
-      },
+  it("updates send levels and monitoring", async () => {
+    // Setup: Get track ID
+    const liveSetResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
     });
+    const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
+    const trackId = liveSet.tracks![0]!.id;
 
-    await sleep(100);
-    const afterSplit = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
-    });
-    const splitTrack = parseToolResult<ReadTrackResult>(afterSplit);
-
-    expect(splitTrack.panningMode).toBe("split");
-    expect(splitTrack.leftPan).toBeCloseTo(-0.5, 1);
-    expect(splitTrack.rightPan).toBeCloseTo(0.5, 1);
-
-    // Return to stereo mode
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { ids: trackId, panningMode: "stereo", pan: 0 },
-    });
-
-    // Test 10: Update monitoring state
+    // Test 1: Update monitoring state
     await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { ids: trackId, monitoringState: "in" },
@@ -239,11 +286,7 @@ describe("ppal-update-track", () => {
       arguments: { ids: trackId, monitoringState: "auto" },
     });
 
-    // Note: arrangementFollower: false cannot be tested reliably because
-    // a track only stops following arrangement when a session clip is launched.
-    // The back_to_arranger property can only trigger "go back to arrangement".
-
-    // Test 11: Send operations - first create a return track
+    // Test 2: Send operations - first create a return track
     const returnResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { type: "return", name: "A-TestReturn" },
