@@ -1,6 +1,8 @@
 /**
  * E2E tests for ppal-update-track tool
  * Updates track properties - these modifications persist within the session.
+ * Uses: e2e-test-set (note: t5 is soloed by default, must unsolo first)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -23,6 +25,15 @@ describe("ppal-update-track", () => {
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
     const secondTrackId = liveSet.tracks![1]!.id;
+
+    // Unsolo t5 which is soloed by default in e2e-test-set
+    // This ensures mute/solo tests work correctly
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
+    });
+
+    await sleep(100);
 
     // Test 1: Update track name
     await ctx.client!.callTool({

@@ -1,6 +1,7 @@
 /**
  * E2E tests for ppal-read-live-set tool
- * Automatically opens the basic-midi-4-track Live Set before each test.
+ * Uses: e2e-test-set (12 tracks + 2 returns, 8 scenes)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -25,9 +26,9 @@ describe("ppal-read-live-set", () => {
     expect(typeof defaultParsed.sceneCount).toBe("number");
     expect(defaultParsed.sceneCount).toBeGreaterThanOrEqual(1);
 
-    // Tracks included by default (4 music tracks + 1 Producer Pal device track = 5 total)
+    // Tracks included by default (12 regular tracks in e2e-test-set)
     expect(Array.isArray(defaultParsed.tracks)).toBe(true);
-    expect(defaultParsed.tracks?.length).toBeGreaterThanOrEqual(1);
+    expect(defaultParsed.tracks?.length).toBe(12);
 
     // Verify track structure
     const firstTrack = defaultParsed.tracks?.[0];
@@ -62,11 +63,9 @@ describe("ppal-read-live-set", () => {
     });
     const returnParsed = parseToolResult<ReadLiveSetResult>(returnResult);
 
-    // Return tracks may or may not exist in the test set, but the property should be present
-    expect(
-      returnParsed.returnTracks === undefined ||
-        Array.isArray(returnParsed.returnTracks),
-    ).toBe(true);
+    // Return tracks: 2 in e2e-test-set (A-Delay, B-Reverb)
+    expect(Array.isArray(returnParsed.returnTracks)).toBe(true);
+    expect(returnParsed.returnTracks?.length).toBe(2);
   });
 });
 

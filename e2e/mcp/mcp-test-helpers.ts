@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const SAMPLE_FILE = resolve(
   __dirname,
-  "../../evals/live-sets/samples/sample.aiff",
+  "../live-sets/samples/sample.aiff",
 );
 
 /**
@@ -70,7 +70,7 @@ export function getToolWarnings(result: unknown): string[] {
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
 export const LIVE_SET_PATH =
-  "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
+  "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
 
 /**
  * Configuration options that can be set via the /config endpoint
@@ -177,13 +177,13 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
 }
 
 interface CreateDeviceResult {
-  deviceId: string | number;
-  deviceIndex: number;
+  id: string;
+  deviceIndex: number | null;
 }
 
 /**
  * Creates a device for testing and waits for state to settle.
- * Returns the deviceId as a string for use in subsequent assertions.
+ * Returns the device id as a string for use in subsequent assertions.
  */
 export async function createTestDevice(
   client: Client,
@@ -198,7 +198,7 @@ export async function createTestDevice(
 
   await sleep(100);
 
-  return String(created.deviceId);
+  return String(created.id);
 }
 
 // ============================================================================

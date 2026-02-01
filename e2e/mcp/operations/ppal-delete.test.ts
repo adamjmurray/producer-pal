@@ -1,6 +1,8 @@
 /**
  * E2E tests for ppal-delete tool
  * Deletes tracks, scenes, clips, devices, and drum pads in the Live Set.
+ * Uses: e2e-test-set (Producer Pal is on t11)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -89,10 +91,10 @@ describe("ppal-delete", () => {
     expect(deletedReturn.deleted).toBe(true);
 
     // Test 4: Error when trying to delete Producer Pal host track
-    // Track index 4 hosts the Producer Pal device in basic-midi-4-track
+    // Track index 11 hosts the Producer Pal device in e2e-test-set
     const readHostTrack = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 4 },
+      arguments: { trackIndex: 11 },
     });
     const hostTrack = parseToolResult<{ id: string }>(readHostTrack);
 
@@ -148,10 +150,19 @@ describe("ppal-delete", () => {
     expect(deletedScenes[0]!.deleted).toBe(true);
     expect(deletedScenes[1]!.deleted).toBe(true);
 
+    // Use empty MIDI track for clip tests (t8 has no clips but has "No Output" routing)
+    // For devices, use t7 (Racks track) which has proper routing
+    const emptyMidiTrack = 8;
+    const deviceTestTrack = 7;
+
     // Test 7: Delete single clip by ID
     const createClip = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { view: "session", trackIndex: 0, sceneIndex: "0" },
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "0",
+      },
     });
     const clip = parseToolResult<CreateClipResult>(createClip);
 
@@ -179,13 +190,21 @@ describe("ppal-delete", () => {
     // Test 8: Delete multiple clips
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { view: "session", trackIndex: 0, sceneIndex: "1" },
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "1",
+      },
     });
     const clip1 = parseToolResult<CreateClipResult>(createClip1);
 
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { view: "session", trackIndex: 1, sceneIndex: "1" },
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "2",
+      },
     });
     const clip2 = parseToolResult<CreateClipResult>(createClip2);
 
@@ -201,8 +220,12 @@ describe("ppal-delete", () => {
     expect(deletedClips[0]!.deleted).toBe(true);
     expect(deletedClips[1]!.deleted).toBe(true);
 
-    // Test 9: Delete device by ID
-    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    // Test 9: Delete device by ID (use device test track with proper routing)
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Compressor",
+      `t${deviceTestTrack}`,
+    );
 
     const deleteDevice = await ctx.client!.callTool({
       name: "ppal-delete",
@@ -222,11 +245,10 @@ describe("ppal-delete", () => {
 
     expect(verifyDeviceText.toLowerCase()).toMatch(/error|not found|invalid/);
 
-    // Test 10: Delete device by path
-    // Create device on track 1, then delete it by path
+    // Test 10: Delete device by path (use device test track)
     const pathDeviceResult = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { deviceName: "EQ Eight", path: "t1" },
+      arguments: { deviceName: "EQ Eight", path: `t${deviceTestTrack}` },
     });
     const pathDevice = parseToolResult<{ deviceIndex: number }>(
       pathDeviceResult,
@@ -236,18 +258,21 @@ describe("ppal-delete", () => {
 
     const deleteByPath = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { path: `t1/d${pathDevice.deviceIndex}`, type: "device" },
+      arguments: {
+        path: `t${deviceTestTrack}/d${pathDevice.deviceIndex}`,
+        type: "device",
+      },
     });
     const deletedByPath = parseToolResult<DeleteResult>(deleteByPath);
 
     expect(deletedByPath.deleted).toBe(true);
 
-    // Test 11: Delete multiple devices
-    const device1Id = await createTestDevice(ctx.client!, "Auto Filter", "t2");
+    // Test 11: Delete multiple devices (use available tracks)
+    const device1Id = await createTestDevice(ctx.client!, "Auto Filter", "t10");
     const device2Id = await createTestDevice(
       ctx.client!,
       "Chorus-Ensemble",
-      "t3",
+      `t${deviceTestTrack}`,
     );
 
     const deleteMultipleDevices = await ctx.client!.callTool({
@@ -263,11 +288,10 @@ describe("ppal-delete", () => {
     expect(deletedDevices[1]!.deleted).toBe(true);
 
     // Test 12: Delete drum pad by path
-    // The drum rack is nested inside an instrument rack on track 0:
-    // t0/d0 (instrument-rack) -> c0 (chain) -> d0 (drum-rack) -> pC1 (drum pad)
+    // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
     const deleteDrumPad = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { path: "t0/d0/c0/d0/pC1", type: "drum-pad" },
+      arguments: { path: "t0/d0/pC1", type: "drum-pad" },
     });
     const deletedDrumPad = parseToolResult<DeleteResult>(deleteDrumPad);
 

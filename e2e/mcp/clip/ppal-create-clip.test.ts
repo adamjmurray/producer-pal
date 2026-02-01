@@ -1,6 +1,8 @@
 /**
  * E2E tests for ppal-create-clip tool
  * Creates MIDI and audio clips in session and arrangement views.
+ * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -22,12 +24,15 @@ describe("ppal-create-clip", () => {
     "creates clips of various types with different options",
     { timeout: 60000 },
     async () => {
+      // Use t8 "9-MIDI" which is empty in e2e-test-set
+      const emptyMidiTrack = 8;
+
       // Test 1: Create session MIDI clip (minimal params)
       const minimalResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "0",
         },
       });
@@ -46,7 +51,7 @@ describe("ppal-create-clip", () => {
 
       expect(minimalClip.type).toBe("midi");
       expect(minimalClip.view).toBe("session");
-      expect(minimalClip.trackIndex).toBe(0);
+      expect(minimalClip.trackIndex).toBe(emptyMidiTrack);
       expect(minimalClip.sceneIndex).toBe(0);
 
       // Test 2: Create session clip with notes
@@ -54,7 +59,7 @@ describe("ppal-create-clip", () => {
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "1",
           notes: "C3 D3 E3 1|1",
         },
@@ -77,7 +82,7 @@ describe("ppal-create-clip", () => {
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "2",
           name: "Test Clip",
         },
@@ -98,7 +103,7 @@ describe("ppal-create-clip", () => {
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "3",
           color: "#FF0000",
         },
@@ -115,13 +120,13 @@ describe("ppal-create-clip", () => {
       // Color may be quantized to Live's palette, but should be set
       expect(coloredClip.color).toBeDefined();
 
-      // Test 5: Create arrangement clip
+      // Test 5: Create arrangement clip (use position 41|1 which is empty)
       const arrangementResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "arrangement",
-          trackIndex: 0,
-          arrangementStart: "1|1",
+          trackIndex: emptyMidiTrack,
+          arrangementStart: "41|1",
         },
       });
       const arrangement = parseToolResult<CreateClipResult>(arrangementResult);
@@ -137,15 +142,15 @@ describe("ppal-create-clip", () => {
         parseToolResult<ReadClipResult>(verifyArrangement);
 
       expect(arrangementClip.view).toBe("arrangement");
-      expect(arrangementClip.arrangementStart).toBe("1|1");
+      expect(arrangementClip.arrangementStart).toBe("41|1");
 
       // Test 6: Create clip with length
       const lengthResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 1,
-          sceneIndex: "0",
+          trackIndex: emptyMidiTrack,
+          sceneIndex: "4",
           length: "2:0.0",
         },
       });
@@ -165,8 +170,8 @@ describe("ppal-create-clip", () => {
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 1,
-          sceneIndex: "1",
+          trackIndex: emptyMidiTrack,
+          sceneIndex: "5",
           looping: true,
         },
       });
@@ -181,12 +186,12 @@ describe("ppal-create-clip", () => {
 
       expect(readLoopingClip.looping).toBe(true);
 
-      // Test 8: Create multiple session clips
+      // Test 8: Create multiple session clips (use t10 Child track which has no clips)
       const multiSessionResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 1,
+          trackIndex: 10,
           sceneIndex: "2,3,4",
         },
       });
@@ -198,13 +203,13 @@ describe("ppal-create-clip", () => {
       expect(multiSession[1]?.id).toBeDefined();
       expect(multiSession[2]?.id).toBeDefined();
 
-      // Test 9: Create multiple arrangement clips
+      // Test 9: Create multiple arrangement clips (use empty positions)
       const multiArrangementResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "arrangement",
-          trackIndex: 1,
-          arrangementStart: "5|1,9|1,13|1",
+          trackIndex: emptyMidiTrack,
+          arrangementStart: "45|1,49|1,53|1",
         },
       });
       const multiArrangement = parseToolResult<CreateClipResult[]>(
@@ -221,14 +226,14 @@ describe("ppal-create-clip", () => {
       });
       const firstClip = parseToolResult<ReadClipResult>(verifyFirst);
 
-      expect(firstClip.arrangementStart).toBe("5|1");
+      expect(firstClip.arrangementStart).toBe("45|1");
 
-      // Test 10: Create clip with time signature
+      // Test 10: Create clip with time signature (use t7 Racks track which has no clips)
       const timeSigResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 2,
+          trackIndex: 7,
           sceneIndex: "0",
           timeSignature: "3/4",
         },

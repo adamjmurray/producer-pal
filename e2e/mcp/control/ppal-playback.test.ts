@@ -74,11 +74,14 @@ describe("ppal-playback", () => {
     expect(stopped2.currentTime).toBe("1|1");
 
     // Test 6: Create session clips for session view tests
+    // Use empty track t8 (9-MIDI) to avoid conflicts with pre-populated clips
+    const emptyMidiTrack = 8;
+
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
         view: "session",
-        trackIndex: 0,
+        trackIndex: emptyMidiTrack,
         sceneIndex: "0",
         notes: "C3 1|1",
         length: "1:0.0",
@@ -90,8 +93,8 @@ describe("ppal-playback", () => {
       name: "ppal-create-clip",
       arguments: {
         view: "session",
-        trackIndex: 1,
-        sceneIndex: "0",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "1",
         notes: "D3 1|1",
         length: "1:0.0",
       },

@@ -1,6 +1,8 @@
 /**
  * E2E tests for ppal-duplicate tool
  * Tests duplicating tracks, scenes, clips, and devices.
+ * Uses: e2e-test-set (t8 is empty MIDI track, t7 is empty MIDI track for clip destinations)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/ppal-duplicate.test.ts
  */
@@ -139,13 +141,17 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates clips", async () => {
+    // Use empty tracks for clip tests
+    const emptyMidiTrack = 8;
+    const emptyMidiTrack2 = 7;
+
     // Test 1: Session clip to session
-    // First create a clip to duplicate
+    // First create a clip to duplicate on empty track
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
         view: "session",
-        trackIndex: 0,
+        trackIndex: emptyMidiTrack,
         sceneIndex: "0",
         notes: "C3 D3 E3 F3 1|1",
         length: "1:0.0",
@@ -161,7 +167,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: 1,
+        toTrackIndex: emptyMidiTrack2,
         toSceneIndex: "0",
       },
     });
@@ -169,19 +175,19 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.trackIndex).toBe(1);
+    expect(dupClipSession.trackIndex).toBe(emptyMidiTrack2);
     expect(dupClipSession.sceneIndex).toBe(0);
 
     await sleep(100);
 
-    // Test 2: Session clip to multiple session slots
+    // Test 2: Session clip to multiple session slots (use empty track)
     const dupClipMultiSlotsResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: 2,
+        toTrackIndex: 10, // t10 Child track has no clips
         toSceneIndex: "0,1,2",
       },
     });
@@ -196,13 +202,13 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
-    // Test 3: Arrangement clip duplication
+    // Test 3: Arrangement clip duplication (use empty positions)
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
         view: "arrangement",
-        trackIndex: 0,
-        arrangementStart: "1|1",
+        trackIndex: emptyMidiTrack,
+        arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",
         length: "2:0.0",
       },
@@ -270,9 +276,16 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates devices", async () => {
+    // Use t7 (Racks track) which has an Instrument Rack but proper routing
+    const testTrack = 7;
+
     // Test 1: Duplicate device within same track
     // First create a device to duplicate
-    const deviceId = await createTestDevice(ctx.client!, "Auto Filter", "t0");
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Auto Filter",
+      `t${testTrack}`,
+    );
 
     const dupDeviceResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
@@ -298,14 +311,18 @@ describe("ppal-duplicate", () => {
     expect(readDupDevice.type).toContain("Auto Filter");
 
     // Test 2: Duplicate device to different track
-    const device2Id = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const device2Id = await createTestDevice(
+      ctx.client!,
+      "Compressor",
+      `t${testTrack}`,
+    );
 
     const dupDeviceToTrackResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "device",
         id: device2Id,
-        toPath: "t1",
+        toPath: "t10", // Child track has one device (Operator)
       },
     });
     const dupDeviceToTrack = parseToolResult<DuplicateDeviceResult>(

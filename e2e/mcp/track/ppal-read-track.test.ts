@@ -1,6 +1,7 @@
 /**
  * E2E tests for ppal-read-track tool
- * Uses: basic-midi-4-track Live Set (4 MIDI tracks + 1 Producer Pal host track = 5 total)
+ * Uses: e2e-test-set (12 tracks: t0-t3 MIDI, t4-t6 Audio, t7-t8 MIDI, t9 Group, t10-t11 MIDI)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -118,7 +119,7 @@ describe("ppal-read-track", () => {
       "trackIndex 999 does not exist",
     );
 
-    // Test 10: Verify all music tracks are MIDI type
+    // Test 10: Verify first 4 tracks are MIDI type (Drums, Bass, Keys, Lead)
     for (let i = 0; i < 4; i++) {
       const trackResult = await ctx.client!.callTool({
         name: "ppal-read-track",
@@ -130,23 +131,24 @@ describe("ppal-read-track", () => {
       expect(track.trackIndex).toBe(i);
     }
 
-    // Test 11: Find Producer Pal host track
-    let foundHostTrack = false;
+    // Test 11: Verify audio tracks exist (t4, t5, t6 are Audio 1, Audio 2, FX Bus)
+    const audioTrackResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 4, category: "regular" },
+    });
+    const audioTrack = parseToolResult<ReadTrackResult>(audioTrackResult);
 
-    for (let i = 0; i < (liveSet.tracks?.length ?? 0); i++) {
-      const trackResult = await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { trackIndex: i, category: "regular" },
-      });
-      const track = parseToolResult<ReadTrackResult>(trackResult);
+    expect(audioTrack.type).toBe("audio");
+    expect(audioTrack.trackIndex).toBe(4);
 
-      if (track.hasProducerPalDevice) {
-        foundHostTrack = true;
-        break;
-      }
-    }
+    // Test 12: Find Producer Pal host track (t11 "PPAL" in e2e-test-set)
+    const ppalTrackResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 11, category: "regular" },
+    });
+    const ppalTrack = parseToolResult<ReadTrackResult>(ppalTrackResult);
 
-    expect(foundHostTrack).toBe(true);
+    expect(ppalTrack.hasProducerPalDevice).toBe(true);
   });
 });
 

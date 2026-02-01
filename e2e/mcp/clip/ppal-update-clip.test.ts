@@ -1,6 +1,8 @@
 /**
  * E2E tests for ppal-update-clip tool
  * Creates clips, updates them, and verifies changes.
+ * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -21,12 +23,15 @@ describe("ppal-update-clip", () => {
     "updates clip properties and verifies changes",
     { timeout: 60000 },
     async () => {
+      // Use t8 "9-MIDI" which is empty in e2e-test-set
+      const emptyMidiTrack = 8;
+
       // Setup: Create clips for testing
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "0",
           notes: "C3 D3 1|1",
           looping: true,
@@ -39,7 +44,7 @@ describe("ppal-update-clip", () => {
         name: "ppal-create-clip",
         arguments: {
           view: "session",
-          trackIndex: 0,
+          trackIndex: emptyMidiTrack,
           sceneIndex: "1",
           notes: "E3 F3 1|1",
         },
@@ -225,13 +230,13 @@ describe("ppal-update-clip", () => {
       expect(quantizedClip.notes).toBeDefined();
 
       // Test 9: Update arrangement clip position (arrangementStart)
-      // Create an arrangement clip for this test
+      // Create an arrangement clip for this test (use empty positions on emptyMidiTrack)
       const arrCreateResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
           view: "arrangement",
-          trackIndex: 1,
-          arrangementStart: "1|1",
+          trackIndex: emptyMidiTrack,
+          arrangementStart: "41|1",
           notes: "C3 1|1",
           length: "2:0.0",
         },
@@ -245,7 +250,7 @@ describe("ppal-update-clip", () => {
         name: "ppal-update-clip",
         arguments: {
           ids: arrClip.id,
-          arrangementStart: "5|1",
+          arrangementStart: "45|1",
         },
       });
       const movedClip = parseToolResult<{ id: string }>(moveResult);
@@ -259,7 +264,7 @@ describe("ppal-update-clip", () => {
       });
       const movedClipResult = parseToolResult<ReadClipResult>(verifyMove);
 
-      expect(movedClipResult.arrangementStart).toBe("5|1");
+      expect(movedClipResult.arrangementStart).toBe("45|1");
       expect(movedClipResult.view).toBe("arrangement");
 
       // Test 10: Update arrangement clip length (arrangementLength)

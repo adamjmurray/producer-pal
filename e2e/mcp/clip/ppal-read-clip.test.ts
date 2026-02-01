@@ -1,6 +1,7 @@
 /**
  * E2E tests for ppal-read-clip tool
- * Creates clips then reads them to verify properties.
+ * Uses: e2e-test-set with pre-populated clips
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -12,126 +13,144 @@ import {
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
-  sleep,
 } from "../mcp-test-helpers";
 
-const ctx = setupMcpTestContext();
+// Use once: true since we're only reading pre-populated clips
+const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-read-clip", () => {
-  it("reads clips by various methods with different include params", async () => {
-    // Setup: Create a MIDI clip with notes for testing
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
-        name: "Test Read Clip",
-        notes: "C3 D3 E3 F3 1|1",
-        looping: true,
-        length: "2:0.0",
-      },
-    });
-    const created = parseToolResult<{ id: string }>(createResult);
-
-    await sleep(100);
-
-    // Test 1: Read MIDI clip by clipId - verify all core properties
-    const byIdResult = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: created.id },
-    });
-    const byIdClip = parseToolResult<ReadClipResult>(byIdResult);
-
-    expect(byIdClip.id).toBe(created.id);
-    expect(byIdClip.type).toBe("midi");
-    expect(byIdClip.name).toBe("Test Read Clip");
-    expect(byIdClip.view).toBe("session");
-    expect(byIdClip.timeSignature).toBeDefined();
-    expect(byIdClip.looping).toBe(true);
-    expect(byIdClip.start).toBeDefined();
-    expect(byIdClip.end).toBeDefined();
-    expect(byIdClip.length).toBe("2:0");
-    expect(byIdClip.trackIndex).toBe(0);
-    expect(byIdClip.sceneIndex).toBe(0);
-    expect(byIdClip.noteCount).toBe(4);
-
-    // Test 2: Read clip by trackIndex + sceneIndex
-    const byPositionResult = await ctx.client!.callTool({
+  it("reads MIDI clips with various properties", async () => {
+    // Test 1: Read MIDI clip by position (t0/s0 "Beat" - looping drum pattern)
+    const midiResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { trackIndex: 0, sceneIndex: 0 },
     });
-    const byPositionClip = parseToolResult<ReadClipResult>(byPositionResult);
+    const midiClip = parseToolResult<ReadClipResult>(midiResult);
 
-    expect(byPositionClip.id).toBe(created.id);
-    expect(byPositionClip.name).toBe("Test Read Clip");
+    expect(midiClip.id).toBeDefined();
+    expect(midiClip.type).toBe("midi");
+    expect(midiClip.name).toBe("Beat");
+    expect(midiClip.view).toBe("session");
+    expect(midiClip.looping).toBe(true);
+    expect(midiClip.length).toBe("1:0");
+    expect(midiClip.trackIndex).toBe(0);
+    expect(midiClip.sceneIndex).toBe(0);
+    expect(midiClip.noteCount).toBeGreaterThan(0);
 
-    // Test 3: Read with default include (clip-notes) - verify notes string present
+    // Test 2: Read clip by clipId
+    const byIdResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: midiClip.id! },
+    });
+    const byIdClip = parseToolResult<ReadClipResult>(byIdResult);
+
+    expect(byIdClip.id).toBe(midiClip.id);
+    expect(byIdClip.name).toBe("Beat");
+
+    // Test 3: Read non-looping MIDI clip (t2/s0 "Chords")
+    const nonLoopingResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 2, sceneIndex: 0 },
+    });
+    const nonLoopingClip = parseToolResult<ReadClipResult>(nonLoopingResult);
+
+    expect(nonLoopingClip.name).toBe("Chords");
+    expect(nonLoopingClip.looping).toBe(false);
+
+    // Test 4: Read with include: ["clip-notes"] - verify notes string present
     const withNotesResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["clip-notes"] },
+      arguments: { trackIndex: 0, sceneIndex: 0, include: ["clip-notes"] },
     });
     const withNotesClip = parseToolResult<ReadClipResult>(withNotesResult);
 
     expect(withNotesClip.notes).toBeDefined();
-    // Notes should contain the pitches we created
-    expect(withNotesClip.notes).toMatch(/C3/);
+    // Should contain drum pad notes (C1, D1 etc for kick/snare)
+    expect(withNotesClip.notes).toMatch(/[CD]1/);
 
-    // Test 4: Read with include: ["color"] - verify hex color format
+    // Test 5: Read with include: ["color"] - verify hex color format
     const withColorResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["color"] },
+      arguments: { trackIndex: 0, sceneIndex: 0, include: ["color"] },
     });
     const withColorClip = parseToolResult<ReadClipResult>(withColorResult);
 
-    // Color should be in hex format
     expect(withColorClip.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
 
-    // Test 5: Read arrangement clip - verify arrangement properties
-    const createArrangementResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        view: "arrangement",
-        trackIndex: 0,
-        arrangementStart: "5|1",
-        length: "4:0.0",
-      },
-    });
-    const createdArrangement = parseToolResult<{ id: string }>(
-      createArrangementResult,
-    );
-
-    await sleep(100);
-    const arrangementResult = await ctx.client!.callTool({
+  it("reads audio clips with warp and pitch properties", async () => {
+    // Test 1: Read warped audio clip (t4/s0 "sample" - warped, looping)
+    const warpedResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: createdArrangement.id },
+      arguments: { trackIndex: 4, sceneIndex: 0 },
     });
-    const arrangementClip = parseToolResult<ReadClipResult>(arrangementResult);
+    const warpedClip = parseToolResult<ReadClipResult>(warpedResult);
 
-    expect(arrangementClip.view).toBe("arrangement");
-    expect(arrangementClip.arrangementStart).toBe("5|1");
-    expect(arrangementClip.arrangementLength).toBeDefined();
+    expect(warpedClip.type).toBe("audio");
+    expect(warpedClip.name).toBe("sample");
+    expect(warpedClip.looping).toBe(true);
+    expect(warpedClip.warping).toBe(true);
+    expect(warpedClip.warpMode).toBe("beats");
 
-    // Test 6: Read empty slot (valid track/scene but no clip) - verify id === null and warning
-    // Use track 3 which should exist but have no clips in basic-midi-4-track
+    // Test 2: Read unwarped, pitch-shifted audio clip (t5/s0 "sample copy")
+    const unwarpedResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 5, sceneIndex: 0 },
+    });
+    const unwarpedClip = parseToolResult<ReadClipResult>(unwarpedResult);
+
+    expect(unwarpedClip.type).toBe("audio");
+    expect(unwarpedClip.name).toBe("sample copy");
+    expect(unwarpedClip.looping).toBe(false);
+    expect(unwarpedClip.warping).toBe(false);
+    expect(unwarpedClip.pitchShift).toBe(7); // +7 semitones per spec
+    expect(unwarpedClip.gainDb).toBeCloseTo(-2.31, 1);
+  });
+
+  it("reads arrangement clips", async () => {
+    // Read arrangement clip from t0 at position 1|1 ("Arr Beat")
+    // First get the clip ID from reading the track's arrangement clips
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 0, include: ["arrangement-clips"] },
+    });
+    const track = parseToolResult<TrackWithClips>(trackResult);
+
+    expect(track.arrangementClips).toBeDefined();
+    expect(track.arrangementClips!.length).toBeGreaterThan(0);
+
+    const arrClipId = track.arrangementClips![0]!.id;
+    const arrResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: arrClipId },
+    });
+    const arrClip = parseToolResult<ReadClipResult>(arrResult);
+
+    expect(arrClip.view).toBe("arrangement");
+    expect(arrClip.arrangementStart).toBe("1|1");
+    expect(arrClip.arrangementLength).toBeDefined();
+  });
+
+  it("handles empty slots and errors correctly", async () => {
+    // Test 1: Read empty slot (t8 is empty track with no clips)
     const emptyResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 3, sceneIndex: 0 },
+      arguments: { trackIndex: 8, sceneIndex: 0 },
     });
     const emptyClip = parseToolResult<ReadClipResult>(emptyResult);
 
     expect(emptyClip.id).toBeNull();
     expect(emptyClip.type).toBeNull();
-    expect(emptyClip.trackIndex).toBe(3);
+    expect(emptyClip.trackIndex).toBe(8);
     expect(emptyClip.sceneIndex).toBe(0);
 
     // Verify warning is emitted for empty slot
     const warnings = getToolWarnings(emptyResult);
 
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toBe("WARNING: no clip at trackIndex 3, sceneIndex 0");
+    expect(warnings[0]).toBe("WARNING: no clip at trackIndex 8, sceneIndex 0");
 
-    // Test 7: Non-existent scene throws error
+    // Test 2: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { trackIndex: 0, sceneIndex: 999 },
@@ -142,7 +161,7 @@ describe("ppal-read-clip", () => {
       "sceneIndex 999 does not exist",
     );
 
-    // Test 8: Non-existent track throws error
+    // Test 3: Non-existent track throws error
     const invalidTrackResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { trackIndex: 999, sceneIndex: 0 },
@@ -154,3 +173,7 @@ describe("ppal-read-clip", () => {
     );
   });
 });
+
+interface TrackWithClips {
+  arrangementClips?: Array<{ id: string; position: string; length: string }>;
+}

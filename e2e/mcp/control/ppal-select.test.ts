@@ -86,11 +86,14 @@ describe("ppal-select", () => {
     expect(scene.selectedScene.sceneId).toBeDefined();
 
     // Test 8: Create a clip and select it
+    // Use empty track t8 (9-MIDI) to avoid conflicts with pre-populated clips
+    const emptyMidiTrack = 8;
+
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
         view: "session",
-        trackIndex: 0,
+        trackIndex: emptyMidiTrack,
         sceneIndex: "0",
         notes: "C3 1|1",
         length: "1:0.0",
