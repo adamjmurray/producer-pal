@@ -102,11 +102,10 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Update tool error handling**: Update tools (update-clip, update-track,
   update-device, etc.) should NOT throw errors for invalid parameter
   combinations or incompatible operations. Instead:
-  - Emit a warning via `console.error()` with prefix "Warning:" or tool name
+  - Emit a warning via `console.warn()`
   - Skip the operation and continue processing
   - This allows partial successes when updating multiple items
-  - Example:
-    `console.error("Warning: quantize parameter ignored for audio clip")`
+  - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
@@ -201,8 +200,8 @@ functions for clarity.
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`
-  - Use `console.error()` to see output in CLI tool results (appears as WARNING)
-  - `console.log()` does NOT appear in CLI output
+  - Use `console.warn()` to see output in CLI tool results (appears as WARNING)
+  - `console.log()` and `console.error()` do NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
   `npm run build` (verifies all production artifacts compile successfully). This
