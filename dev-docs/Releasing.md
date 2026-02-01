@@ -154,6 +154,20 @@ After testing succeeds:
 - [ ] Create audio clip from sample
 - [ ] Start/stop playback
 
+### MCP Tools E2E Tests
+
+Launch Ableton Live, then run:
+
+```sh
+npm run e2e:mcp
+```
+
+It takes a few minutes. Don't try to use Ableton Live while this is happening,
+because these tests use the real MCP tools to manipulate Live and reload a test
+Set in between tests. These tests should pass consistently.
+
+Note: These tests currently only work on macOS.
+
 ### Built-in Chat UI - E2E Tests
 
 Run the automated Playwright tests (requires Ableton Live running with the
@@ -164,7 +178,8 @@ npm run ui:test
 ```
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
-models. See `e2e/webui/README.md` for details.
+models. See `e2e/webui/README.md` for details. These tests can be flakey, so
+manually check on anything that fails.
 
 Note: These tests require an `.env` file with API keys.
 
