@@ -92,7 +92,7 @@
     "marked": "^17.0.1",
     "openai": "^6.17.0",
     "preact": "^10.28.3",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",
