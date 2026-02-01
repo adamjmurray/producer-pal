@@ -1,7 +1,7 @@
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  updateClipSelection,
   updateDeviceSelection,
   updateHighlightedClipSlot,
   updateSceneSelection,
@@ -147,20 +147,12 @@ export function select(
 
   // Update clip selection
   if (clipId !== undefined) {
-    const clipAPI = validateIdType(clipId, "clip", "select");
-
-    songView.setProperty("detail_clip", clipAPI.id);
-
-    // For session clips, also highlight the clip slot
-    if (clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null) {
-      updateHighlightedClipSlot({
-        songView,
-        clipSlot: {
-          trackIndex: clipAPI.trackIndex,
-          sceneIndex: clipAPI.clipSlotIndex,
-        },
-      });
-    }
+    updateClipSelection({
+      appView,
+      songView,
+      clipId,
+      requestedView: view,
+    });
   }
 
   // Update device selection

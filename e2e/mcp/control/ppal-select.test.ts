@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -104,6 +105,17 @@ describe("ppal-select", () => {
     const withClip = parseToolResult<ViewState>(selectClipResult);
 
     expect(withClip.selectedClipId).toBe(createdClip.id);
+
+    // Test 8b: Select session clip with conflicting view arg - should warn
+    const conflictingViewResult = await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { clipId: createdClip.id, view: "arrangement" },
+    });
+    const conflictWarnings = getToolWarnings(conflictingViewResult);
+
+    expect(conflictWarnings.length).toBe(1);
+    expect(conflictWarnings[0]).toContain("ignoring view");
+    expect(conflictWarnings[0]).toContain("requires session view");
 
     // Test 9: Create a device and select it
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
