@@ -38,3 +38,4 @@ report/
 
 # Live .asd files for audio samples
 evals/live-sets/samples/*.asd
+e2e/live-sets/samples/*.asd
