@@ -7,7 +7,7 @@ interface CreateDeviceArgs {
 }
 
 interface CreateDeviceResult {
-  deviceId: string | number;
+  id: string;
   deviceIndex: number | null;
 }
 
@@ -93,10 +93,11 @@ function createDeviceAtPath(
           string | number,
         ]);
 
-  const deviceId = result[1];
-  const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;
+  const rawId = result[1];
+  const id = rawId ? String(rawId) : null;
+  const device = id ? LiveAPI.from(`id ${id}`) : null;
 
-  if (!device?.exists()) {
+  if (!id || !device?.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";
 
     throw new Error(
@@ -105,7 +106,7 @@ function createDeviceAtPath(
   }
 
   return {
-    deviceId,
+    id,
     deviceIndex: device.deviceIndex,
   };
 }

@@ -227,7 +227,7 @@ describe("createDevice", () => {
           "Compressor",
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 2,
         });
       });
@@ -247,7 +247,7 @@ describe("createDevice", () => {
           1,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 1,
         });
       });
@@ -275,7 +275,7 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -296,7 +296,7 @@ describe("createDevice", () => {
           "Compressor",
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -315,7 +315,7 @@ describe("createDevice", () => {
           "Limiter",
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -335,7 +335,7 @@ describe("createDevice", () => {
           "insert_device",
           "Compressor",
         );
-        expect((result as { deviceId: string }).deviceId).toBe("device123");
+        expect((result as { id: string }).id).toBe("device123");
       });
 
       it("should create device in chain via path with position", () => {
@@ -365,7 +365,7 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -397,7 +397,7 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -455,8 +455,8 @@ describe("createDevice", () => {
         ).toThrow('could not insert "Compressor" at end in path "t0/d0/c0"');
       });
 
-      it("should throw error with position when insert_device returns falsy deviceId", () => {
-        // Return undefined as deviceId to trigger the null branch
+      it("should throw error with position when insert_device returns falsy id", () => {
+        // Return undefined as id to trigger the null branch
         liveApiCall.mockReturnValue(["id", undefined]);
 
         expect(() =>

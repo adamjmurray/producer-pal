@@ -53,7 +53,7 @@ describe("ppal-create-device", () => {
     });
     const eq = parseToolResult<CreateDeviceResult>(eqResult);
 
-    expect(eq.deviceId).toBeDefined();
+    expect(eq.id).toBeDefined();
     expect(eq.deviceIndex).toBe(0);
 
     // Test 3: Create audio effect on track (append)
@@ -63,18 +63,18 @@ describe("ppal-create-device", () => {
     });
     const comp = parseToolResult<CreateDeviceResult>(compResult);
 
-    expect(comp.deviceId).toBeDefined();
+    expect(comp.id).toBeDefined();
     expect(typeof comp.deviceIndex).toBe("number");
 
     // Test 4: Verify created device via read
     await sleep(100);
     const verifyResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: comp.deviceId },
+      arguments: { deviceId: comp.id },
     });
     const verified = parseToolResult<ReadDeviceResult>(verifyResult);
 
-    expect(String(verified.id)).toBe(String(comp.deviceId));
+    expect(verified.id).toBe(comp.id);
     expect(verified.type).toContain("Compressor");
 
     // Test 5: Create MIDI effect
@@ -84,12 +84,12 @@ describe("ppal-create-device", () => {
     });
     const arp = parseToolResult<CreateDeviceResult>(arpResult);
 
-    expect(arp.deviceId).toBeDefined();
+    expect(arp.id).toBeDefined();
 
     await sleep(100);
     const verifyArp = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: arp.deviceId },
+      arguments: { deviceId: arp.id },
     });
     const arpDevice = parseToolResult<ReadDeviceResult>(verifyArp);
 
@@ -102,7 +102,7 @@ describe("ppal-create-device", () => {
     });
     const master = parseToolResult<CreateDeviceResult>(masterResult);
 
-    expect(master.deviceId).toBeDefined();
+    expect(master.id).toBeDefined();
 
     // Test 7: Error for invalid device name
     // Note: Tool errors are returned as text, not JSON
@@ -138,7 +138,7 @@ describe("ppal-create-device", () => {
       midiBeforeInstrumentResult,
     );
 
-    expect(midiBeforeInstrument.deviceId).toBeDefined();
+    expect(midiBeforeInstrument.id).toBeDefined();
     expect(midiBeforeInstrument.deviceIndex).toBe(0);
 
     // Test 10: Inserting at position 1 on empty track succeeds
@@ -161,7 +161,7 @@ describe("ppal-create-device", () => {
     const position1Device =
       parseToolResult<CreateDeviceResult>(position1Result);
 
-    expect(position1Device.deviceId).toBeDefined();
+    expect(position1Device.id).toBeDefined();
     expect(position1Device.deviceIndex).toBe(1);
 
     // Test 11: Create device at position 0 on empty chain inside rack
@@ -186,7 +186,7 @@ describe("ppal-create-device", () => {
     });
     const rack = parseToolResult<CreateDeviceResult>(rackResult);
 
-    expect(rack.deviceId).toBeDefined();
+    expect(rack.id).toBeDefined();
 
     await sleep(100);
 
@@ -200,7 +200,7 @@ describe("ppal-create-device", () => {
     });
     const chainDevice = parseToolResult<CreateDeviceResult>(chainDeviceResult);
 
-    expect(chainDevice.deviceId).toBeDefined();
+    expect(chainDevice.id).toBeDefined();
     expect(chainDevice.deviceIndex).toBe(0);
   });
 });
@@ -212,7 +212,7 @@ interface ListDevicesResult {
 }
 
 interface CreateDeviceResult {
-  deviceId: string | number;
+  id: string;
   deviceIndex: number;
 }
 
