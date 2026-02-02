@@ -47,21 +47,20 @@ export async function assertWithLlmJudge(
   defaultProvider: EvalProvider,
   cliOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult> {
-  const targetTurn =
-    assertion.turn === "last" || assertion.turn == null
-      ? turns.at(-1)
-      : turns[assertion.turn];
-
-  if (!targetTurn) {
+  if (turns.length === 0) {
     return {
       assertion,
       passed: false,
-      message: "No turn available for LLM judge evaluation",
-      details: { error: "No turn found" },
+      message: "No turns available for LLM judge evaluation",
+      details: { error: "No turns found" },
     };
   }
 
-  const judgePrompt = buildJudgePrompt(assertion, targetTurn);
+  // Determine which turn to highlight (null means evaluate full conversation)
+  const targetTurnIndex =
+    assertion.turn === "last" || assertion.turn == null ? null : assertion.turn;
+
+  const judgePrompt = buildJudgePrompt(assertion, turns, targetTurnIndex);
 
   // CLI override > assertion-level > scenario default
   const provider =
@@ -99,27 +98,46 @@ export async function assertWithLlmJudge(
 /**
  * Build the prompt for the judge LLM
  *
+ * Includes full conversation history so the judge can evaluate multi-turn workflows.
+ *
  * @param assertion - The LLM judge assertion config
- * @param turn - The turn to evaluate
+ * @param turns - All conversation turns
+ * @param targetTurnIndex - Specific turn to evaluate, or null for full conversation
  * @returns Formatted prompt string
  */
 function buildJudgePrompt(
   assertion: LlmJudgeAssertion,
-  turn: EvalTurnResult,
+  turns: EvalTurnResult[],
+  targetTurnIndex: number | null,
 ): string {
-  const toolCallsSummary =
-    turn.toolCalls.length > 0
-      ? turn.toolCalls
-          .map((tc) => `- ${tc.name}(${JSON.stringify(tc.args)})`)
-          .join("\n")
-      : "(no tool calls)";
+  // Build full conversation transcript
+  const conversationTranscript = turns
+    .map((turn, i) => {
+      const toolCallsSummary =
+        turn.toolCalls.length > 0
+          ? turn.toolCalls
+              .map((tc) => `  - ${tc.name}(${JSON.stringify(tc.args)})`)
+              .join("\n")
+          : "  (no tool calls)";
 
-  return `User request: ${turn.userMessage}
+      return `[Turn ${i + 1}]
+User: ${turn.userMessage}
+Assistant: ${turn.assistantResponse}
+Tool calls:
+${toolCallsSummary}`;
+    })
+    .join("\n\n");
 
-Assistant response: ${turn.assistantResponse}
+  // If evaluating a specific turn, note it
+  const turnNote =
+    targetTurnIndex != null
+      ? `\n\nNote: Evaluating Turn ${targetTurnIndex + 1} specifically.`
+      : "";
 
-Tool calls made:
-${toolCallsSummary}
+  return `Full conversation:
+
+${conversationTranscript}
+${turnNote}
 
 Evaluation criteria: ${assertion.prompt}`;
 }
