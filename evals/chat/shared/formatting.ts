@@ -82,10 +82,10 @@ export function formatToolCall(
  * Format a tool result for display
  *
  * @param result - Tool result text
- * @returns Formatted tool result string
+ * @returns Formatted tool result string (includes trailing newline for spacing)
  */
 export function formatToolResult(result: string | undefined): string {
-  return `   ↳ ${truncate(result, 160)}`;
+  return `   ↳ ${truncate(result, 160)}\n`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,4 +160,65 @@ export function truncate(
   const cutoff = Math.max(0, maxLength - suffix.length);
 
   return str.slice(0, cutoff) + suffix;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Eval output formatting
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SECTION_WIDTH = 60;
+const MAJOR_SEPARATOR = "=".repeat(SECTION_WIDTH);
+const MINOR_SEPARATOR = "-".repeat(SECTION_WIDTH);
+
+/**
+ * Format a scenario header box
+ *
+ * @param id - Scenario ID
+ * @param description - Scenario description
+ * @param provider - LLM provider
+ * @param model - Model name
+ * @returns Formatted header string
+ */
+export function formatScenarioHeader(
+  id: string,
+  description: string,
+  provider: string,
+  model: string,
+): string {
+  return `
+${MAJOR_SEPARATOR}
+| SCENARIO: ${id}
+| Description: ${description}
+| Provider: ${provider}
+| Model: ${model}`;
+}
+
+/**
+ * Format a turn header
+ *
+ * @param turnNumber - Turn number (1-indexed)
+ * @returns Formatted turn header
+ */
+export function formatTurnHeader(turnNumber: number): string {
+  return `${MINOR_SEPARATOR}\nTURN ${turnNumber}`;
+}
+
+/**
+ * Format a major section header (e.g., EVALUATION)
+ *
+ * @param title - Section title
+ * @returns Formatted section header
+ */
+export function formatSectionHeader(title: string): string {
+  return `\n${MAJOR_SEPARATOR}\n${title}\n`;
+}
+
+/**
+ * Format a subsection header (e.g., Deterministic Checks)
+ *
+ * @param title - Subsection title
+ * @returns Formatted subsection header
+ */
+export function formatSubsectionHeader(title: string): string {
+  return `${MINOR_SEPARATOR}\n${title}`;
 }

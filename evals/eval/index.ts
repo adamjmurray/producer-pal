@@ -5,6 +5,7 @@
  */
 
 import { Command } from "commander";
+import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
@@ -13,7 +14,7 @@ import { setQuietMode } from "./helpers/output-config.ts";
 import { printResultsTable } from "./helpers/report-table.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import type { EvalScenarioResult } from "./types.ts";
+import type { EvalScenarioResult, LlmJudgeAssertion } from "./types.ts";
 
 export type { ModelSpec, ModelSpec as JudgeOverride };
 
@@ -173,13 +174,44 @@ async function runEvaluation(options: CliOptions): Promise<void> {
  */
 function printResult(result: EvalScenarioResult, modelKey: string): void {
   const status = result.passed ? "PASSED" : "FAILED";
-  const icon = result.passed ? "✓" : "✗";
 
-  console.log(`\n${icon} ${result.scenario.id} [${modelKey}]: ${status}`);
-  console.log(`  Duration: ${result.totalDurationMs}ms`);
+  // Calculate scores
+  const deterministicChecks = result.assertions.filter(
+    (a) => a.assertion.type !== "llm_judge",
+  );
+  const passedChecks = deterministicChecks.filter((a) => a.passed).length;
+  const llmJudgeResult = result.assertions.find(
+    (a) => a.assertion.type === "llm_judge",
+  );
+  const llmDetails = llmJudgeResult?.details as { score?: number } | undefined;
+  const llmScore = llmDetails?.score;
+  const llmAssertion = llmJudgeResult?.assertion as
+    | LlmJudgeAssertion
+    | undefined;
+  const llmMinScore = llmAssertion?.minScore ?? 3;
+
+  console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
+  console.log(`${modelKey}: ${result.scenario.id}\n`);
+  console.log(`Duration: ${result.totalDurationMs}ms`);
+  console.log(`Result: ${status}`);
+
+  // Build score line
+  const scoreParts: string[] = [];
+
+  if (llmScore != null) {
+    scoreParts.push(`LLM: ${llmScore}/5 (min: ${llmMinScore})`);
+  }
+
+  if (deterministicChecks.length > 0) {
+    scoreParts.push(`Checks: ${passedChecks}/${deterministicChecks.length}`);
+  }
+
+  if (scoreParts.length > 0) {
+    console.log(scoreParts.join(", "));
+  }
 
   if (result.error) {
-    console.log(`  Error: ${result.error}`);
+    console.log(`Error: ${result.error}`);
   }
 }
 

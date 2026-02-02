@@ -3,6 +3,11 @@
  */
 
 import {
+  formatScenarioHeader,
+  formatSectionHeader,
+  formatSubsectionHeader,
+} from "#evals/chat/shared/formatting.ts";
+import {
   assertToolCalled,
   assertState,
   assertWithLlmJudge,
@@ -66,10 +71,14 @@ export async function runScenario(
     // 2. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
 
-    console.log(`\nStarting scenario: ${scenario.id}`);
-    console.log(`Description: ${scenario.description}`);
-    console.log(`Provider: ${provider}`);
-    console.log(`Model: ${effectiveModel}`);
+    console.log(
+      formatScenarioHeader(
+        scenario.id,
+        scenario.description,
+        provider,
+        effectiveModel,
+      ),
+    );
 
     session = await createEvalSession({
       provider,
@@ -92,6 +101,8 @@ export async function runScenario(
     }
 
     // 4. Run assertions
+    console.log(formatSectionHeader("EVALUATION"));
+    console.log(formatSubsectionHeader("Deterministic Checks"));
     console.log(`\nRunning ${scenario.assertions.length} assertion(s)...`);
     const assertionResults = await runAssertions(
       scenario.assertions,

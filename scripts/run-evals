@@ -5,8 +5,8 @@
 
 set -e
 
-MODEL="claude-sonnet-4-5"
-JUDGE="claude-haiku-4-5"
+MODEL="gpt-5.2"
+JUDGE="gpt-5-mini
 
 SCENARIOS=(
   "connect-to-ableton"

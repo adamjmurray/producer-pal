@@ -2,6 +2,7 @@
  * Shared utilities for eval session implementations
  */
 
+import { formatTurnHeader } from "#evals/chat/shared/formatting.ts";
 import { isQuietMode } from "./output-config.ts";
 
 /**
@@ -13,6 +14,7 @@ import { isQuietMode } from "./output-config.ts";
 export function logTurnStart(turnNumber: number, message: string): void {
   if (isQuietMode()) return;
 
-  console.log(`\n[Turn ${turnNumber}] User: ${message}`);
-  console.log(`[Turn ${turnNumber}] Assistant:`);
+  console.log(`\n${formatTurnHeader(turnNumber)}`);
+  console.log(`\n[User]\n${message}\n`);
+  console.log(`[Assistant]`);
 }

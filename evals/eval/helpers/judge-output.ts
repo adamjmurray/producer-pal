@@ -2,6 +2,7 @@
  * Streaming output utilities for LLM judge
  */
 
+import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
 import { isQuietMode } from "./output-config.ts";
 
 /**
@@ -16,12 +17,13 @@ export function printJudgeHeader(
   model: string,
   criteria: string,
 ): void {
-  console.log(`\n[LLM Judge] ${provider}/${model}`);
+  console.log(`\n${formatSubsectionHeader("LLM Judgement")}`);
+  console.log(`\nModel: ${provider}/${model}`);
 
   if (isQuietMode()) return;
 
-  console.log(`[LLM Judge] Criteria: ${criteria}`);
-  process.stdout.write(`[LLM Judge] Response: `);
+  console.log(`Criteria: ${criteria}\n`);
+  process.stdout.write(`Response: `);
 }
 
 /**

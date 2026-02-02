@@ -13,6 +13,10 @@ import {
   DEBUG_SEPARATOR,
   debugLog,
   debugCall,
+  formatScenarioHeader,
+  formatTurnHeader,
+  formatSectionHeader,
+  formatSubsectionHeader,
 } from "./formatting.ts";
 
 describe("truncate", () => {
@@ -94,10 +98,10 @@ describe("formatToolCall", () => {
 });
 
 describe("formatToolResult", () => {
-  it("formats tool result with arrow prefix", () => {
+  it("formats tool result with arrow prefix and trailing newline", () => {
     const result = formatToolResult("Success");
 
-    expect(result).toBe("   ↳ Success");
+    expect(result).toBe("   ↳ Success\n");
   });
 
   it("truncates long results", () => {
@@ -107,18 +111,19 @@ describe("formatToolResult", () => {
     expect(result).toContain("   ↳ ");
     expect(result.length).toBeLessThan(200);
     expect(result).toContain("…");
+    expect(result).toMatch(/\n$/);
   });
 
   it("handles undefined result", () => {
     const result = formatToolResult(undefined);
 
-    expect(result).toBe("   ↳ ");
+    expect(result).toBe("   ↳ \n");
   });
 
   it("handles empty result", () => {
     const result = formatToolResult("");
 
-    expect(result).toBe("   ↳ ");
+    expect(result).toBe("   ↳ \n");
   });
 });
 
@@ -255,5 +260,103 @@ describe("debugCall", () => {
     expect(loggedOutput).toContain("value1");
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe("eval output formatting", () => {
+  describe("formatScenarioHeader", () => {
+    it("includes scenario id", () => {
+      const result = formatScenarioHeader(
+        "test-scenario",
+        "Test description",
+        "anthropic",
+        "claude-sonnet",
+      );
+
+      expect(result).toContain("SCENARIO: test-scenario");
+    });
+
+    it("includes description", () => {
+      const result = formatScenarioHeader(
+        "test-scenario",
+        "Test description",
+        "anthropic",
+        "claude-sonnet",
+      );
+
+      expect(result).toContain("Description: Test description");
+    });
+
+    it("includes provider and model", () => {
+      const result = formatScenarioHeader(
+        "test-scenario",
+        "Test description",
+        "anthropic",
+        "claude-sonnet",
+      );
+
+      expect(result).toContain("Provider: anthropic");
+      expect(result).toContain("Model: claude-sonnet");
+    });
+
+    it("uses box formatting with separators", () => {
+      const result = formatScenarioHeader(
+        "test-scenario",
+        "Test description",
+        "anthropic",
+        "claude-sonnet",
+      );
+
+      expect(result).toContain("=".repeat(60));
+      expect(result).toContain("|");
+    });
+  });
+
+  describe("formatTurnHeader", () => {
+    it("includes turn number", () => {
+      const result = formatTurnHeader(1);
+
+      expect(result).toContain("TURN 1");
+    });
+
+    it("includes separator line", () => {
+      const result = formatTurnHeader(1);
+
+      expect(result).toContain("-".repeat(60));
+    });
+
+    it("handles multi-digit turn numbers", () => {
+      const result = formatTurnHeader(10);
+
+      expect(result).toContain("TURN 10");
+    });
+  });
+
+  describe("formatSectionHeader", () => {
+    it("includes title", () => {
+      const result = formatSectionHeader("EVALUATION");
+
+      expect(result).toContain("EVALUATION");
+    });
+
+    it("uses major separator", () => {
+      const result = formatSectionHeader("EVALUATION");
+
+      expect(result).toContain("=".repeat(60));
+    });
+  });
+
+  describe("formatSubsectionHeader", () => {
+    it("includes title", () => {
+      const result = formatSubsectionHeader("Deterministic Checks");
+
+      expect(result).toContain("Deterministic Checks");
+    });
+
+    it("uses minor separator", () => {
+      const result = formatSubsectionHeader("Deterministic Checks");
+
+      expect(result).toContain("-".repeat(60));
+    });
   });
 });
