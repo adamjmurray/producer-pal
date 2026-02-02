@@ -3,6 +3,11 @@ import {
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
+  prepareSliceParams,
+  performSlicing,
+} from "#src/tools/operations/transform-clips/helpers/transform-clips-slicing-helpers.ts";
+import type { SlicingContext } from "#src/tools/operations/transform-clips/helpers/transform-clips-slicing-helpers.ts";
+import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -36,6 +41,8 @@ interface UpdateClipArgs {
   arrangementStart?: string;
   /** Bar:beat duration for arrangement span */
   arrangementLength?: string;
+  /** Bar:beat slice size (tiles clips into repeating segments) */
+  slice?: string;
   /** Audio clip gain in decibels (-70 to 24) */
   gainDb?: number;
   /** Audio clip pitch shift in semitones (-48 to 48) */
@@ -83,6 +90,7 @@ interface ClipResult {
  * @param args.looping - Enable looping for the clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Bar:beat duration for arrangement span
+ * @param args.slice - Bar:beat slice size (tiles clips into repeating segments)
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param args.warpMode - Audio clip warp mode
@@ -113,6 +121,7 @@ export function updateClip(
     looping,
     arrangementStart,
     arrangementLength,
+    slice,
     gainDb,
     pitchShift,
     warpMode,
@@ -136,9 +145,34 @@ export function updateClip(
   const clipIds = parseCommaSeparatedIds(ids);
 
   // Validate all IDs are clips, skip invalid ones
-  const clips = validateIdTypes(clipIds, "clip", "updateClip", {
+  let clips = validateIdTypes(clipIds, "clip", "updateClip", {
     skipInvalid: true,
   });
+
+  // Track warnings to emit each type only once
+  const warnings = new Set<string>();
+
+  // Filter arrangement clips for slicing
+  const arrangementClips = clips.filter(
+    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
+  );
+
+  // Prepare and perform slicing if requested
+  const sliceBeats = prepareSliceParams(slice, arrangementClips, warnings);
+
+  if (slice != null && sliceBeats != null && arrangementClips.length > 0) {
+    performSlicing(
+      arrangementClips,
+      sliceBeats,
+      clips,
+      warnings,
+      slice,
+      context as SlicingContext,
+    );
+    // After slicing, re-filter to get fresh clip objects
+    // (the clips array was modified by splice operations during re-scanning)
+    clips = clips.filter((clip) => clip.exists());
+  }
 
   // Parse and validate arrangement parameters
   const { arrangementStartBeats, arrangementLengthBeats } =
