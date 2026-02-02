@@ -101,9 +101,13 @@ export async function runScenario(
     }
 
     // 4. Run assertions
+    const checkCount = scenario.assertions.filter(
+      (a) => a.type !== "llm_judge",
+    ).length;
+
     console.log(formatSectionHeader("EVALUATION"));
     console.log(formatSubsectionHeader("Deterministic Checks"));
-    console.log(`\nRunning ${scenario.assertions.length} assertion(s)...`);
+    console.log(`\nRunning ${checkCount} check(s)...`);
     const assertionResults = await runAssertions(
       scenario.assertions,
       turns,

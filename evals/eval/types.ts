@@ -68,8 +68,20 @@ export interface StateAssertion {
   expect: Record<string, unknown> | ((result: unknown) => boolean);
 }
 
+/** Per-dimension minimum score thresholds */
+export interface DimensionMinScores {
+  accuracy?: number;
+  reasoning?: number;
+  efficiency?: number;
+  naturalness?: number;
+}
+
 /**
- * Use LLM to judge response quality
+ * Use LLM to judge response quality on 4 dimensions:
+ * - Accuracy: Did it do exactly what was requested?
+ * - Reasoning: Was its logic sound and did it pick the right tools?
+ * - Efficiency: Did it use minimal steps?
+ * - Naturalness: Did the interaction feel human-like?
  */
 export interface LlmJudgeAssertion {
   type: "llm_judge";
@@ -81,8 +93,10 @@ export interface LlmJudgeAssertion {
   judgeProvider?: EvalProvider;
   /** Model for judge */
   judgeModel?: string;
-  /** Minimum score (1-5) to pass (default: 3) */
+  /** Minimum overall score (1-5) to pass (default: 3) */
   minScore?: number;
+  /** Per-dimension minimum scores (optional, all must pass if specified) */
+  minScores?: DimensionMinScores;
 }
 
 /**

@@ -6,7 +6,7 @@ import type { ModelSpec } from "../index.ts";
 import type { EvalScenarioResult } from "../types.ts";
 
 interface JudgeDetails {
-  score?: number;
+  overall?: number;
 }
 
 /**
@@ -128,8 +128,8 @@ function getAverageScore(result: EvalScenarioResult): number | null {
     if (assertion.assertion.type === "llm_judge") {
       const details = assertion.details as JudgeDetails | undefined;
 
-      if (details?.score != null) {
-        scores.push(details.score);
+      if (details?.overall != null) {
+        scores.push(details.overall);
       }
     }
   }

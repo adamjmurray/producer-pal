@@ -13,6 +13,7 @@ import {
   finishJudgeOutput,
   printJudgeChunk,
   printJudgeHeader,
+  printJudgeResult,
 } from "./judge-output.ts";
 import {
   parseJudgeResponse,
@@ -65,5 +66,9 @@ export async function callOpenAIJudge(
 
   finishJudgeOutput();
 
-  return parseJudgeResponse(text.trim());
+  const result = parseJudgeResponse(text.trim());
+
+  printJudgeResult(result);
+
+  return result;
 }

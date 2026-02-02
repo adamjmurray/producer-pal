@@ -11,19 +11,48 @@ import type {
   EvalTurnResult,
   EvalAssertionResult,
   EvalProvider,
+  DimensionMinScores,
 } from "../types.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are evaluating an AI assistant's response for a music production task.
 
-Rate the response on a scale of 1-5:
+Rate the response on 4 dimensions using a 1-5 scale:
+
+**Accuracy** (Did it do exactly what was requested in Ableton?)
 1 = Completely wrong or failed to accomplish the task
 2 = Major issues, only partially accomplished the task
 3 = Acceptable with some issues
 4 = Good, accomplished the task well
 5 = Excellent, exceeded expectations
 
+**Reasoning** (Was its logic sound and did it pick the right tools?)
+1 = Nonsensical logic, wrong tools used
+2 = Flawed reasoning, poor tool choices
+3 = Acceptable reasoning with some gaps
+4 = Sound logic, appropriate tool usage
+5 = Excellent reasoning, optimal tool selection
+
+**Efficiency** (Did it use minimal steps?)
+1 = Extremely inefficient, many unnecessary steps
+2 = Inefficient, several redundant operations
+3 = Acceptable, minor inefficiencies
+4 = Efficient workflow
+5 = Optimal, no wasted steps
+
+**Naturalness** (Did the interaction feel human-like?)
+1 = Robotic, inappropriate responses
+2 = Stilted, misses social cues
+3 = Acceptable, some awkwardness
+4 = Natural, adapts well to context
+5 = Seamless, asks clarifications when needed, adapts to complexity
+
 You MUST respond with ONLY a JSON object in this exact format:
-{"score": <number>, "reasoning": "<brief explanation>"}
+{
+  "accuracy": {"score": <1-5>, "reasoning": "<brief explanation>"},
+  "reasoning": {"score": <1-5>, "reasoning": "<brief explanation>"},
+  "efficiency": {"score": <1-5>, "reasoning": "<brief explanation>"},
+  "naturalness": {"score": <1-5>, "reasoning": "<brief explanation>"}
+}
 
 Do not include any other text before or after the JSON.`;
 
@@ -75,14 +104,25 @@ export async function assertWithLlmJudge(
       assertion.prompt,
     );
     const minScore = assertion.minScore ?? 3;
-    const passed = judgeResult.score >= minScore;
+    const { passed, failedDimensions } = checkPassFail(
+      judgeResult,
+      minScore,
+      assertion.minScores,
+    );
+
+    const scoreStr = judgeResult.overall.toFixed(2);
+    let message = passed
+      ? `LLM judge score: ${scoreStr}/5 (min: ${minScore})`
+      : `LLM judge score ${scoreStr}/5 below minimum ${minScore}`;
+
+    if (failedDimensions.length > 0) {
+      message += ` [failed: ${failedDimensions.join(", ")}]`;
+    }
 
     return {
       assertion,
       passed,
-      message: passed
-        ? `LLM judge score: ${judgeResult.score}/5 (min: ${minScore})`
-        : `LLM judge score ${judgeResult.score}/5 below minimum ${minScore}`,
+      message,
       details: judgeResult,
     };
   } catch (error) {
@@ -93,6 +133,52 @@ export async function assertWithLlmJudge(
       details: { error: String(error) },
     };
   }
+}
+
+const DIMENSION_KEYS = [
+  "accuracy",
+  "reasoning",
+  "efficiency",
+  "naturalness",
+] as const;
+
+/**
+ * Check if the judge result passes all thresholds
+ *
+ * @param result - The judge result with dimension scores
+ * @param minOverall - Minimum overall score required
+ * @param minScores - Optional per-dimension minimums
+ * @returns Pass status and list of failed dimensions
+ */
+function checkPassFail(
+  result: JudgeResult,
+  minOverall: number,
+  minScores?: DimensionMinScores,
+): { passed: boolean; failedDimensions: string[] } {
+  const failedDimensions: string[] = [];
+
+  // Check overall score
+  if (result.overall < minOverall) {
+    failedDimensions.push(
+      `overall (${result.overall.toFixed(2)} < ${minOverall})`,
+    );
+  }
+
+  // Check per-dimension minimums if specified
+  if (minScores) {
+    for (const key of DIMENSION_KEYS) {
+      const minForDim = minScores[key];
+
+      if (minForDim != null && result[key].score < minForDim) {
+        failedDimensions.push(`${key} (${result[key].score} < ${minForDim})`);
+      }
+    }
+  }
+
+  return {
+    passed: failedDimensions.length === 0,
+    failedDimensions,
+  };
 }
 
 /**

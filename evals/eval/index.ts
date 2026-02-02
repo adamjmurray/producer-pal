@@ -183,8 +183,10 @@ function printResult(result: EvalScenarioResult, modelKey: string): void {
   const llmJudgeResult = result.assertions.find(
     (a) => a.assertion.type === "llm_judge",
   );
-  const llmDetails = llmJudgeResult?.details as { score?: number } | undefined;
-  const llmScore = llmDetails?.score;
+  const llmDetails = llmJudgeResult?.details as
+    | { overall?: number }
+    | undefined;
+  const llmScore = llmDetails?.overall;
   const llmAssertion = llmJudgeResult?.assertion as
     | LlmJudgeAssertion
     | undefined;
@@ -199,7 +201,7 @@ function printResult(result: EvalScenarioResult, modelKey: string): void {
   const scoreParts: string[] = [];
 
   if (llmScore != null) {
-    scoreParts.push(`LLM: ${llmScore}/5 (min: ${llmMinScore})`);
+    scoreParts.push(`LLM: ${llmScore.toFixed(2)}/5 (min: ${llmMinScore})`);
   }
 
   if (deterministicChecks.length > 0) {

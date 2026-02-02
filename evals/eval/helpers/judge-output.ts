@@ -3,6 +3,7 @@
  */
 
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
+import type { JudgeResult } from "./judge-response-parser.ts";
 import { isQuietMode } from "./output-config.ts";
 
 /**
@@ -44,4 +45,15 @@ export function finishJudgeOutput(): void {
   if (isQuietMode()) return;
 
   console.log("\n");
+}
+
+/**
+ * Print the overall score after parsing
+ *
+ * @param result - The parsed judge result with dimension scores
+ */
+export function printJudgeResult(result: JudgeResult): void {
+  if (isQuietMode()) return;
+
+  console.log(`\nOverall: ${result.overall.toFixed(2)}/5`);
 }
