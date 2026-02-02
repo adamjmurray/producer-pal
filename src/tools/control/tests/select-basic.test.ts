@@ -274,12 +274,97 @@ describe("view", () => {
       expect(result).toStrictEqual(expectViewState());
     });
 
-    it("deselects all clips when clipId is null", () => {
-      const result = select({ clipId: null });
+    it("highlights clip slot when selecting a session clip", () => {
+      // Mock a session clip with path that includes clip_slots
+      const mockSessionClip = {
+        exists: vi.fn().mockReturnValue(true),
+        _id: "id session_clip_123",
+        trackIndex: 2,
+        clipSlotIndex: 3,
+      };
 
-      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 0");
-      // Result reflects actual readViewState(), which returns default (no clip selected)
-      expect(result).toStrictEqual(expectViewState());
+      Object.defineProperty(mockSessionClip, "id", {
+        get: function () {
+          return this._id;
+        },
+      });
+
+      Object.defineProperty(mockSessionClip, "type", {
+        get: function () {
+          return "Clip";
+        },
+      });
+
+      // Mock the clip slot lookup
+      const mockClipSlot = {
+        exists: vi.fn().mockReturnValue(true),
+        _id: "id clipslot_456",
+      };
+
+      Object.defineProperty(mockClipSlot, "id", {
+        get: function () {
+          return this._id;
+        },
+      });
+
+      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(function (
+        path: string,
+      ) {
+        if (path === "live_app view") {
+          return {
+            getProperty: vi.fn().mockReturnValue(1),
+            call: vi.fn().mockReturnValue(0),
+          };
+        }
+
+        if (path === "live_set view") {
+          return {
+            set: liveApiSet,
+            setProperty: vi.fn((property: string, value: unknown) =>
+              liveApiSet(property, value),
+            ),
+          };
+        }
+
+        if (path === "id session_clip_123") {
+          return mockSessionClip;
+        }
+
+        if (path === "live_set tracks 2 clip_slots 3") {
+          return mockClipSlot;
+        }
+
+        if (path === "live_set view selected_track") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view selected_scene") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view detail_clip") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view highlighted_clip_slot") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        return { exists: vi.fn().mockReturnValue(false) };
+      });
+
+      liveApiType.mockReturnValue("Clip");
+      select({ clipId: "id session_clip_123" });
+
+      // Verify both detail_clip and highlighted_clip_slot were set
+      expect(liveApiSet).toHaveBeenCalledWith(
+        "detail_clip",
+        "id session_clip_123",
+      );
+      expect(liveApiSet).toHaveBeenCalledWith(
+        "highlighted_clip_slot",
+        "id clipslot_456",
+      );
     });
   });
 
@@ -452,6 +537,58 @@ describe("view", () => {
           },
         }),
       );
+    });
+
+    it("skips instrument selection when no track is selected", () => {
+      // Mock no selected track in the read state
+      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(function (
+        path: string,
+      ) {
+        if (path === "live_app view") {
+          return {
+            getProperty: vi.fn().mockReturnValue(1), // session view
+            call: vi.fn().mockReturnValue(0), // no special views visible
+          };
+        }
+
+        if (path === "live_set view") {
+          return mockSongView;
+        }
+
+        if (path === "live_set view selected_track") {
+          // No track is selected
+          return {
+            exists: vi.fn().mockReturnValue(false),
+          };
+        }
+
+        if (path === "live_set view selected_scene") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view detail_clip") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        if (path === "live_set view highlighted_clip_slot") {
+          return { exists: vi.fn().mockReturnValue(false) };
+        }
+
+        // Default fallback for any other LiveAPI object
+        return {
+          exists: vi.fn().mockReturnValue(false),
+          call: liveApiCall,
+          get: vi.fn(),
+          set: liveApiSet,
+        };
+      });
+
+      const result = select({ instrument: true });
+
+      // Should not call select_instrument since no track is selected
+      expect(liveApiCall).not.toHaveBeenCalledWith("select_instrument");
+      // Result reflects actual readViewState() with no track selected
+      expect(result).toStrictEqual(expectViewState());
     });
   });
 

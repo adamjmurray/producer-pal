@@ -17,6 +17,7 @@ export default defineConfig({
     alias: {
       "#webui": join(__dirname, "../webui/src"),
       "#src": join(__dirname, "../src"),
+      "#evals": join(__dirname, "../evals"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mocks/mock-chat-ui-html.ts",
@@ -26,7 +27,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.ts", "webui/**/*.test.ts", "webui/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.ts",
+      "webui/**/*.test.ts",
+      "webui/**/*.test.tsx",
+      "evals/**/*.test.ts",
+    ],
     setupFiles: ["src/test/test-setup.ts"],
     clearMocks: true,
     restoreMocks: true,
@@ -40,12 +46,13 @@ export default defineConfig({
         "json",
         "html",
       ],
-      include: ["src/**", "webui/**"],
+      include: ["src/**", "webui/**", "evals/**"],
       exclude: [
         // ignore files that are not feasible to test
 
-        // ignore OS metadata files
+        // ignore OS metadata files and git placeholders
         "**/.DS_Store",
+        "**/.gitkeep",
 
         // ignore typedefs:
         "**/*.d.ts",
@@ -80,6 +87,61 @@ export default defineConfig({
 
         // ignore test mocks:
         "src/test/mocks/**",
+
+        // evals: Targeted exclusions for code requiring live LLM/MCP connections.
+        // Tested: assertions/{helpers,tool-call,response,state}.ts,
+        //         chat/shared/formatting.ts, eval/helpers/judge-response-parser.ts
+
+        // Chat CLI - LLM provider implementations (require live APIs)
+        "evals/chat/anthropic.ts",
+        "evals/chat/anthropic/**",
+        "evals/chat/gemini.ts",
+        "evals/chat/gemini/**",
+        "evals/chat/openai/**",
+        "evals/chat/openrouter/**",
+        "evals/chat/index.ts",
+
+        // Chat CLI - shared code requiring MCP/LLM connections
+        "evals/chat/shared/mcp.ts",
+        "evals/chat/shared/api/chat-api-base.ts",
+        "evals/chat/shared/api/responses-api-base.ts",
+        "evals/chat/shared/api/chat-streaming.ts",
+        "evals/chat/shared/api/responses-streaming.ts",
+        "evals/chat/shared/tool-execution.ts",
+        "evals/chat/shared/message-source.ts",
+        "evals/chat/shared/readline.ts",
+        "evals/chat/shared/thinking-maps.ts",
+        "evals/chat/shared/types.ts",
+
+        // Eval orchestration (integration code)
+        "evals/eval/index.ts",
+        "evals/eval/run-scenario.ts",
+        "evals/eval/eval-session.ts",
+        "evals/eval/open-live-set.ts",
+        "evals/eval/load-scenarios.ts",
+        "evals/eval/types.ts",
+
+        // LLM-dependent assertions
+        "evals/eval/assertions/llm-judge.ts",
+        "evals/eval/assertions/index.ts",
+
+        // LLM-dependent session helpers and eval output
+        "evals/eval/helpers/anthropic-session.ts",
+        "evals/eval/helpers/eval-session-base.ts",
+        "evals/eval/helpers/openai-session.ts",
+        "evals/eval/helpers/report-table.ts",
+
+        // Judge helpers (require live LLM APIs)
+        "evals/eval/helpers/judge/**",
+
+        // Scenario definitions (test data, not logic)
+        "evals/eval/scenario-defs/**",
+
+        // Ableton Live Set files (binary project files)
+        "evals/live-sets/**",
+
+        // Shared LLM utilities
+        "evals/shared/**",
       ],
       reportOnFailure: true,
 

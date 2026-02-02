@@ -35,8 +35,8 @@ export function handleArrangementLengthOperation({
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.error(
-      `Warning: arrangementLength parameter ignored for session clip (id ${clip.id})`,
+    console.warn(
+      `arrangementLength parameter ignored for session clip (id ${clip.id})`,
     );
 
     return updatedClips;

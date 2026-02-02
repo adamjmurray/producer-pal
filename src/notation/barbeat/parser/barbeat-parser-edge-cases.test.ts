@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as parser from "./barbeat-parser.js";
+import * as parser from "./barbeat-parser.ts";
 
 describe("BarBeatScript Parser - edge cases", () => {
   describe("velocity range edge cases", () => {

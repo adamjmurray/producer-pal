@@ -22,14 +22,12 @@ export function verifyColorQuantization(
     if (actualColor?.toUpperCase() !== requestedColor.toUpperCase()) {
       const objectType = object.type;
 
-      console.error(
-        `Note: Requested ${objectType.toLowerCase()} color ${requestedColor} was mapped to nearest palette color ${actualColor}. Live uses a fixed color palette.`,
+      console.warn(
+        `Requested ${objectType.toLowerCase()} color ${requestedColor} was mapped to nearest palette color ${actualColor}. Live uses a fixed color palette.`,
       );
     }
   } catch (error) {
     // If getColor fails, log warning but don't break the tool
-    console.error(
-      `Warning: Could not verify color quantization: ${errorMessage(error)}`,
-    );
+    console.warn(`Could not verify color quantization: ${errorMessage(error)}`);
   }
 }

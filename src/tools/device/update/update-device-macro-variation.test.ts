@@ -56,32 +56,28 @@ describe("updateDevice - macroVariation", () => {
   });
 
   it("should reject non-rack devices with error", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "456",
       macroVariation: "create",
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macro variations only available on rack devices",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "456" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should reject out-of-range variation index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "load",
       macroVariationIndex: 5,
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: variation index 5 out of range (3 available)",
     );
     expect(liveApiSet).not.toHaveBeenCalledWithThis(
@@ -90,8 +86,6 @@ describe("updateDevice - macroVariation", () => {
       expect.anything(),
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should call store_variation for 'create'", () => {
@@ -190,14 +184,13 @@ describe("updateDevice - macroVariation", () => {
   });
 
   it("should warn and ignore when macroVariationIndex provided alone", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariationIndex: 2,
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
     expect(liveApiSet).not.toHaveBeenCalledWithThis(
@@ -206,54 +199,45 @@ describe("updateDevice - macroVariation", () => {
       expect.anything(),
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should warn and skip when 'load' provided without index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "load",
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should warn and skip when 'delete' provided without index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "delete",
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should warn but still create when 'create' provided with index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "create",
       macroVariationIndex: 1,
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -261,20 +245,17 @@ describe("updateDevice - macroVariation", () => {
       "store_variation",
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should warn but still revert when 'revert' provided with index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "revert",
       macroVariationIndex: 1,
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariationIndex ignored for 'revert'",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -282,20 +263,17 @@ describe("updateDevice - macroVariation", () => {
       "recall_last_used_variation",
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 
   it("should warn but still randomize when 'randomize' provided with index", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const result = updateDevice({
       ids: "123",
       macroVariation: "randomize",
       macroVariationIndex: 1,
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       "updateDevice: macroVariationIndex ignored for 'randomize'",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -303,7 +281,5 @@ describe("updateDevice - macroVariation", () => {
       "randomize_macros",
     );
     expect(result).toStrictEqual({ id: "123" });
-
-    consoleSpy.mockRestore();
   });
 });

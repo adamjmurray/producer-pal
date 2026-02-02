@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Eval CLI - delegates to TypeScript implementation in evals/eval/
+# Usage: ./scripts/eval [options]
+#
+# Examples:
+#   ./scripts/eval -l                             # List available scenarios
+#   ./scripts/eval -p gemini -t create-drum-beat  # Run specific scenario
+#   ./scripts/eval -p gemini -o json              # Output as JSON
+#   ./scripts/eval -p gemini -s                   # Skip Live Set setup
+
+exec npx tsx --env-file=.env evals/eval/index.ts "$@"

@@ -53,7 +53,7 @@ export function wrapDevicesInRack({
   const devices = resolveDevices(items, isIdBased);
 
   if (devices.length === 0) {
-    console.error("Warning: wrapInRack: no devices found");
+    console.warn("wrapInRack: no devices found");
 
     return null;
   }
@@ -74,7 +74,7 @@ export function wrapDevicesInRack({
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
 
   if (!container?.exists()) {
-    console.error("Warning: wrapInRack: target container does not exist");
+    console.warn("wrapInRack: target container does not exist");
 
     return null;
   }
@@ -106,8 +106,8 @@ export function wrapDevicesInRack({
         const result = rack.call("insert_chain");
 
         if (!Array.isArray(result) || result[0] !== "id") {
-          console.error(
-            `Warning: wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
+          console.warn(
+            `wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
           );
         }
       }
@@ -146,10 +146,10 @@ function resolveDevices(items: string[], isIdBased: boolean): LiveAPI[] {
       if (type.endsWith("Device")) {
         devices.push(device);
       } else {
-        console.error(`wrapInRack: "${item}" is not a device (type: ${type})`);
+        console.warn(`wrapInRack: "${item}" is not a device (type: ${type})`);
       }
     } else {
-      console.error(`wrapInRack: device not found at "${item}"`);
+      console.warn(`wrapInRack: device not found at "${item}"`);
     }
   }
 
@@ -199,9 +199,7 @@ function determineRackType(devices: LiveAPI[]): string | null {
     types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) &&
     types.has(LIVE_API_DEVICE_TYPE_MIDI_EFFECT)
   ) {
-    console.error(
-      "Warning: wrapInRack: cannot mix MIDI and Audio effects in one rack",
-    );
+    console.warn("wrapInRack: cannot mix MIDI and Audio effects in one rack");
 
     return null;
   }
@@ -214,7 +212,7 @@ function determineRackType(devices: LiveAPI[]): string | null {
     return "midi-effect-rack";
   }
 
-  console.error("Warning: wrapInRack: no valid effect devices found");
+  console.warn("wrapInRack: no valid effect devices found");
 
   return null;
 }

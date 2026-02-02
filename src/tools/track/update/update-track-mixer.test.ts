@@ -324,7 +324,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should warn when setting pan in split mode", () => {
-    const errorSpy = vi.spyOn(console, "error");
+    const errorSpy = vi.spyOn(console, "warn");
 
     mockLiveApiGet({
       mixer_1: {
@@ -345,7 +345,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should warn when setting leftPan/rightPan in stereo mode", () => {
-    const errorSpy = vi.spyOn(console, "error");
+    const errorSpy = vi.spyOn(console, "warn");
 
     mockLiveApiGet({
       mixer_1: {

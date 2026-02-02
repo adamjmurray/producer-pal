@@ -59,7 +59,7 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should warn when no clips found in arrangement range", () => {
-    const consoleErrorSpy = setupNoClipsInArrangementMocks(0);
+    setupNoClipsInArrangementMocks(0);
 
     const result = transformClips({
       arrangementTrackIndex: "0",
@@ -69,7 +69,8 @@ describe("transformClips - arrangement", () => {
     });
 
     expect(result).toStrictEqual({ clipIds: [], seed: 12345 });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("no clips found in arrangement range"),
     );
   });

@@ -5,6 +5,7 @@ import {
   children,
   createTrackResult,
   createTrackResultArray,
+  expectDeleteDeviceCalls,
   liveApiCall,
   liveApiId,
   liveApiPath,
@@ -158,22 +159,7 @@ describe("duplicate - track duplication", () => {
       0,
     );
 
-    // Verify delete_device was called for each device (backwards)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      2,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      1,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
-      "delete_device",
-      0,
-    );
+    expectDeleteDeviceCalls("live_set tracks 1", 3);
   });
 
   it.each([
@@ -406,7 +392,7 @@ describe("duplicate - track duplication", () => {
         setupRouteToSourceMock({ inputRoutingName: "Audio In", arm: 1 }),
       );
 
-      const consoleSpy = vi.spyOn(console, "error");
+      vi.mocked(outlet).mockClear();
 
       duplicate({
         type: "track",
@@ -422,11 +408,10 @@ describe("duplicate - track duplication", () => {
       );
 
       // Verify the arm warning was NOT emitted since it was already armed
-      expect(consoleSpy).not.toHaveBeenCalledWith(
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
         "routeToSource: Armed the source track",
       );
-
-      consoleSpy.mockRestore();
     });
   });
 });

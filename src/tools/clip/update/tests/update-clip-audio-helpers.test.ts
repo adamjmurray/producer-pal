@@ -247,8 +247,9 @@ describe("revealAudioContentAtPosition", () => {
   });
 
   it("should handle warped clips with looping workaround", () => {
+    // Mock ID uses "id X" format to match production LiveAPI.id behavior
     const sourceClip: MockClip = {
-      id: "source-123",
+      id: "id source-123",
       getProperty: vi.fn((prop) => {
         if (prop === "warping") return 1;
 
@@ -273,7 +274,7 @@ describe("revealAudioContentAtPosition", () => {
       {},
     );
 
-    // Should duplicate to arrangement
+    // Should duplicate to arrangement (clip.id already has "id " prefix)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id source-123",

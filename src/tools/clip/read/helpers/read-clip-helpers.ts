@@ -10,6 +10,75 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "#src/tools/constants.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+
+/** Result type for resolveClip - either found clip or null response for empty slot */
+export type ResolveClipResult =
+  | { found: true; clip: LiveAPI }
+  | { found: false; emptySlotResponse: EmptySlotResponse };
+
+interface EmptySlotResponse {
+  id: null;
+  type: null;
+  name: null;
+  trackIndex: number;
+  sceneIndex: number;
+}
+
+/**
+ * Resolve clip from either clipId or trackIndex/sceneIndex
+ * @param clipId - Clip ID if provided
+ * @param trackIndex - Track index (required if clipId not provided)
+ * @param sceneIndex - Scene index (required if clipId not provided)
+ * @returns Object with either found clip or empty slot response
+ */
+export function resolveClip(
+  clipId: string | null,
+  trackIndex: number | null,
+  sceneIndex: number | null,
+): ResolveClipResult {
+  if (clipId != null) {
+    return { found: true, clip: validateIdType(clipId, "clip", "readClip") };
+  }
+
+  // Validate track exists
+  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+
+  if (!track.exists()) {
+    throw new Error(`trackIndex ${trackIndex} does not exist`);
+  }
+
+  // Validate scene exists
+  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+
+  if (!scene.exists()) {
+    throw new Error(`sceneIndex ${sceneIndex} does not exist`);
+  }
+
+  // Track and scene exist - check if clip slot has a clip
+  const clip = LiveAPI.from(
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+  );
+
+  if (!clip.exists()) {
+    console.warn(
+      `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
+    );
+
+    return {
+      found: false,
+      emptySlotResponse: {
+        id: null,
+        type: null,
+        name: null,
+        trackIndex: trackIndex as number,
+        sceneIndex: sceneIndex as number,
+      },
+    };
+  }
+
+  return { found: true, clip };
+}
 
 interface WarpMarker {
   sampleTime: number;
@@ -65,7 +134,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
     }
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
-    console.error(
+    console.warn(
       `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
     );
   }

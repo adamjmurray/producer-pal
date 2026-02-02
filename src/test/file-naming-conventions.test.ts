@@ -1,6 +1,10 @@
 import { readdirSync, statSync } from "node:fs";
-import { join, basename, extname } from "node:path";
+import { join, basename, extname, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, "..", "..");
 
 function getAllFiles(dir: string, files: string[] = []): string[] {
   const entries = readdirSync(dir);
@@ -66,7 +70,7 @@ describe("File naming conventions", () => {
 
       if (!isKebabCase(nameWithoutExt)) {
         violations.push({
-          file: file.replace(process.cwd() + "/", ""),
+          file: file.replace(rootDir + "/", ""),
           reason: `"${nameWithoutExt}" is not kebab-case`,
         });
       }
@@ -91,7 +95,7 @@ describe("File naming conventions", () => {
 
       if (!hasValidDots(name)) {
         violations.push({
-          file: file.replace(process.cwd() + "/", ""),
+          file: file.replace(rootDir + "/", ""),
           reason: `Uses dots incorrectly (use hyphens instead)`,
         });
       }

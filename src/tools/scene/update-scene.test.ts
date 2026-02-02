@@ -195,12 +195,12 @@ describe("updateScene", () => {
 
   it("should log warning when scene ID doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = updateScene({ ids: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateScene: id "nonexistent" does not exist',
     );
   });
@@ -217,12 +217,12 @@ describe("updateScene", () => {
       }
     });
     liveApiType.mockReturnValue("Scene");
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = updateScene({ ids: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123" });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'updateScene: id "nonexistent" does not exist',
     );
     expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
@@ -267,7 +267,7 @@ describe("updateScene", () => {
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Mock getProperty to return quantized color (different from input)
       liveApiGet.mockImplementation(function (prop) {
@@ -284,7 +284,7 @@ describe("updateScene", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Note: Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -292,7 +292,7 @@ describe("updateScene", () => {
 
     it("should not emit warning when color matches exactly", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Mock getProperty to return exact color (same as input)
       liveApiGet.mockImplementation(function (prop) {
@@ -315,7 +315,7 @@ describe("updateScene", () => {
 
     it("should not verify color if color parameter is not provided", async () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "error");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       updateScene({
         ids: "123",

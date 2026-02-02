@@ -1,13 +1,13 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
 import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.ts";
-import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.js";
+import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 
 describe("Modulation Branch Coverage", () => {
   beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {

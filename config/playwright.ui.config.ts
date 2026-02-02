@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "../tests/webui",
+  testDir: "../e2e/webui",
   fullyParallel: true,
   forbidOnly: false,
   retries: 0,

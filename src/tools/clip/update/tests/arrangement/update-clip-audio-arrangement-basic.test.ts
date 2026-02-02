@@ -59,7 +59,8 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       assertSourceClipEndMarker(cId, 14.0);
       assertDuplicateClipCalled(cId, endTime);
       assertRevealedClipMarkers(rId, endTime, 14.0);
-      expect(result).toStrictEqual([{ id: cId }, { id: rId }]);
+      // Result IDs use "id X" format to match production LiveAPI.id behavior
+      expect(result).toStrictEqual([{ id: `id ${cId}` }, { id: `id ${rId}` }]);
     },
   );
 });

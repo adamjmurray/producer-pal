@@ -227,7 +227,7 @@ describe("createDevice", () => {
           "Compressor",
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 2,
         });
       });
@@ -247,12 +247,20 @@ describe("createDevice", () => {
           1,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 1,
         });
       });
 
       it("should create device on return track via path", () => {
+        // Mock existing device so position is passed (not fallback to append)
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "devices") return ["id", "existing-device"];
+          if (prop === "chains") return ["id", "chain-0"];
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
         liveApiPath.mockReturnValue("live_set return_tracks 0 devices 0");
 
         const result = createDevice({
@@ -267,7 +275,28 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
+          deviceIndex: 0,
+        });
+      });
+
+      it("should fallback to append when position is 0 on empty container", () => {
+        // Default mock returns empty devices array
+        liveApiPath.mockReturnValue("live_set tracks 0 devices 0");
+
+        const result = createDevice({
+          path: "t0/d0",
+          deviceName: "Compressor",
+        });
+
+        // Should call insert_device WITHOUT position (append mode)
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ _path: "live_set tracks 0" }),
+          "insert_device",
+          "Compressor",
+        );
+        expect(result).toStrictEqual({
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -286,7 +315,7 @@ describe("createDevice", () => {
           "Limiter",
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -306,10 +335,18 @@ describe("createDevice", () => {
           "insert_device",
           "Compressor",
         );
-        expect((result as { deviceId: string }).deviceId).toBe("device123");
+        expect((result as { id: string }).id).toBe("device123");
       });
 
       it("should create device in chain via path with position", () => {
+        // Mock existing device so position is passed (not fallback to append)
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "devices") return ["id", "existing-device"];
+          if (prop === "chains") return ["id", "chain-0"];
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
         liveApiPath.mockReturnValue(
           "live_set tracks 0 devices 0 chains 0 devices 0",
         );
@@ -328,12 +365,20 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
 
       it("should create device in return chain via path", () => {
+        // Mock existing device so position is passed (not fallback to append)
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "devices") return ["id", "existing-device"];
+          if (prop === "chains") return ["id", "chain-0"];
+          if (prop === "can_have_drum_pads") return [0];
+
+          return [];
+        });
         liveApiPath.mockReturnValue(
           "live_set tracks 0 devices 0 return_chains 0 devices 0",
         );
@@ -352,7 +397,7 @@ describe("createDevice", () => {
           0,
         );
         expect(result).toStrictEqual({
-          deviceId: "device123",
+          id: "device123",
           deviceIndex: 0,
         });
       });
@@ -410,8 +455,8 @@ describe("createDevice", () => {
         ).toThrow('could not insert "Compressor" at end in path "t0/d0/c0"');
       });
 
-      it("should throw error with position when insert_device returns falsy deviceId", () => {
-        // Return undefined as deviceId to trigger the null branch
+      it("should throw error with position when insert_device returns falsy id", () => {
+        // Return undefined as id to trigger the null branch
         liveApiCall.mockReturnValue(["id", undefined]);
 
         expect(() =>

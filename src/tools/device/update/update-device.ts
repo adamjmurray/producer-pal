@@ -164,7 +164,7 @@ function updateMultipleTargets(
     const resolved = resolveItem(item);
 
     if (!resolved) {
-      console.error(`updateDevice: target not found at ${itemType} "${item}"`);
+      console.warn(`updateDevice: target not found at ${itemType} "${item}"`);
       continue;
     }
 
@@ -204,7 +204,7 @@ function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
   try {
     return resolvePathToTarget(path);
   } catch (e) {
-    console.error(`updateDevice: ${errorMessage(e)}`);
+    console.warn(`updateDevice: ${errorMessage(e)}`);
 
     return null;
   }
@@ -281,7 +281,7 @@ function updateTarget(
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    console.error(`Warning: cannot update ${type} objects`);
+    console.warn(`cannot update ${type} objects`);
 
     return null;
   }
@@ -297,14 +297,14 @@ function updateTarget(
         Boolean(options.isDrumPadPath),
       );
     } else {
-      console.error(`Warning: cannot move ${type}`);
+      console.warn(`cannot move ${type}`);
     }
   }
 
   // Name works on devices and chains, but DrumPad names are read-only
   if (options.name != null) {
     if (type === "DrumPad") {
-      console.error("updateDevice: 'name' is read-only for DrumPad");
+      console.warn("updateDevice: 'name' is read-only for DrumPad");
     } else {
       target.set("name", options.name);
     }
@@ -443,7 +443,7 @@ function updateNonDeviceProperties(
       if (midiNote != null) {
         target.set("out_note", midiNote);
       } else {
-        console.error(`updateDevice: invalid note name "${mappedPitch}"`);
+        console.warn(`updateDevice: invalid note name "${mappedPitch}"`);
       }
     }
   } else {

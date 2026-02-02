@@ -145,7 +145,7 @@ export function hasUnexecutedFunctionCalls(
  */
 export function shouldMergeWithLastPart(
   part: TextPart,
-  lastPart: unknown | undefined,
+  lastPart: unknown,
 ): boolean {
   const lastPartAny = lastPart as TextPart | undefined;
 

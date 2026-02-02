@@ -4,7 +4,7 @@ import type {
 } from "./modulation-evaluator-helpers.ts";
 import { parseFrequency, type PeriodObject } from "./modulation-frequency.ts";
 import * as waveforms from "./modulation-waveforms.ts";
-import type { ExpressionNode } from "./parser/modulation-parser.js";
+import type { ExpressionNode } from "./parser/modulation-parser.ts";
 
 export type EvaluateExpressionFn = (
   node: ExpressionNode,

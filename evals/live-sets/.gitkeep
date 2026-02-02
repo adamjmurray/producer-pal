@@ -1,0 +1,5 @@
+# Ableton Live Set files for evaluation scenarios
+#
+# Ableton stores projects as: {name} Project/{name}.als
+# In scenarios, use the short name: liveSet: "my-project"
+# This resolves to: evals/live-sets/my-project Project/my-project.als

@@ -14,20 +14,20 @@ complete.
 
 ```bash
 # Show server info (default)
-node scripts/cli.ts
+node scripts/ppal-client.ts
 
 # List available tools
-node scripts/cli.ts tools/list
+node scripts/ppal-client.ts tools/list
 
 # Call a tool with JSON arguments
-node scripts/cli.ts tools/call ppal-read-live-set '{}'
-node scripts/cli.ts tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStart": "5|1"}'
+node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'
+node scripts/ppal-client.ts tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStart": "5|1"}'
 
 # Use a different server URL
-node scripts/cli.ts http://localhost:6274/mcp tools/list
+node scripts/ppal-client.ts http://localhost:6274/mcp tools/list
 
 # Show help
-node scripts/cli.ts --help
+node scripts/ppal-client.ts --help
 ```
 
 ### Testing Workflow
@@ -62,7 +62,7 @@ Not included in production builds.
 
 ```bash
 # Multiple operation types on live_set tempo
-node scripts/cli.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -71,7 +71,7 @@ node scripts/cli.ts tools/call ppal-raw-live-api '{
 }'
 
 # Explore track properties
-node scripts/cli.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
   "path": "live_set tracks 0",
   "operations": [
     {"type": "info"},
@@ -80,7 +80,7 @@ node scripts/cli.ts tools/call ppal-raw-live-api '{
 }'
 
 # Navigate and modify
-node scripts/cli.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "set", "property": "name", "value": "My Track"},
@@ -173,7 +173,7 @@ npm run dev
 npm run test:watch
 
 # Terminal 3: Test specific functionality
-node scripts/cli.ts tools/call ppal-read-live-set '{}'
+node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'
 ```
 
 ### Full Validation
@@ -192,7 +192,7 @@ npm run test:coverage
 npm run format:check
 
 # Manual testing
-node scripts/test-claude-desktop-extension.ts
+node scripts/test/test-claude-desktop-extension.ts
 ```
 
 ## Debugging Tips
@@ -202,7 +202,7 @@ node scripts/test-claude-desktop-extension.ts
 For desktop extension debugging:
 
 ```bash
-ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test-claude-desktop-extension.ts
+ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test/test-claude-desktop-extension.ts
 ```
 
 ### Check Log Files

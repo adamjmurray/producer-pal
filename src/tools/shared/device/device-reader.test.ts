@@ -391,7 +391,7 @@ describe("device-reader", () => {
     });
 
     it("returns empty object when max recursion depth exceeded", () => {
-      const consoleSpy = vi.spyOn(console, "error");
+      const consoleSpy = vi.spyOn(console, "warn");
       const device = {
         id: "device_1",
         path: "live_set tracks 0 devices 0",

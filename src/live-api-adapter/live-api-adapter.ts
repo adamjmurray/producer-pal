@@ -1,5 +1,3 @@
-/// <reference path="../types/live-api.d.ts" />
-/// <reference path="../types/max-globals.d.ts" />
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
@@ -37,6 +35,11 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { memory } from "#src/tools/workflow/memory.ts";
+
+// Configure 2 outlets: MCP responses (0) and warnings (1)
+outlets = 2;
+setoutletassist(0, "tool call results");
+setoutletassist(1, "tool call warnings");
 
 const context: ToolContext = {
   projectNotes: {
@@ -119,7 +122,7 @@ function callTool(toolName: string, args: object): unknown {
   const tool = tools[toolName];
 
   if (!tool) {
-    throw new Error(`Unknown tool: ${tool}`);
+    throw new Error(`Unknown tool: ${toolName}`);
   }
 
   return tool(args);
@@ -132,7 +135,8 @@ let isCompactOutputEnabled = true;
  *
  * @param enabled - Whether to enable compact output
  */
-export function compactOutput(enabled: boolean): void {
+export function compactOutput(enabled: unknown): void {
+  // console.log(`Setting isCompactOutputEnabled ${Boolean(enabled)}`);
   isCompactOutputEnabled = Boolean(enabled);
 }
 
@@ -141,7 +145,8 @@ export function compactOutput(enabled: boolean): void {
  *
  * @param enabled - Whether to enable small model mode
  */
-export function smallModelMode(enabled: boolean): void {
+export function smallModelMode(enabled: unknown): void {
+  // console.log(`[v8] Setting smallModelMode ${Boolean(enabled)}`);
   context.smallModelMode = Boolean(enabled);
 }
 
@@ -150,7 +155,8 @@ export function smallModelMode(enabled: boolean): void {
  *
  * @param enabled - Whether to enable project notes
  */
-export function projectNotesEnabled(enabled: boolean): void {
+export function projectNotesEnabled(enabled: unknown): void {
+  // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
   context.projectNotes.enabled = Boolean(enabled);
 }
 
@@ -159,28 +165,35 @@ export function projectNotesEnabled(enabled: boolean): void {
  *
  * @param writable - Whether project notes should be writable
  */
-export function projectNotesWritable(writable: boolean): void {
+export function projectNotesWritable(writable: unknown): void {
+  // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
   context.projectNotes.writable = Boolean(writable);
 }
 
 /**
  * Set the project notes content
  *
- * @param _text - Unused parameter (needed for integration with the Max patch)
  * @param content - Project notes content
  */
-export function projectNotes(_text: string, content: string | undefined): void {
-  context.projectNotes.content = content ?? "";
+export function projectNotes(content: unknown): void {
+  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
+  const value = content === "bang" ? "" : String(content ?? "");
+
+  // console.log(`[v8] Setting projectNotes "${value}"`);
+  context.projectNotes.content = value;
 }
 
 /**
  * Set the sample folder path
  *
- * @param _text - Unused parameter (needed for integration with the Max patch)
  * @param path - Sample folder path
  */
-export function sampleFolder(_text: string, path: string): void {
-  context.sampleFolder = path || null;
+export function sampleFolder(path: unknown): void {
+  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
+  const value = path === "bang" ? "" : String(path ?? "");
+
+  // console.log(`[v8] Setting sampleFolder "${value}"`);
+  context.sampleFolder = value;
 }
 
 /**
@@ -236,7 +249,7 @@ export async function mcp_request(
   requestId: string,
   tool: string,
   argsJSON: string,
-  contextJSON: string | null | undefined,
+  contextJSON?: string | null,
 ): Promise<void> {
   let result;
 
@@ -255,7 +268,7 @@ export async function mcp_request(
             ? contextError.message
             : String(contextError);
 
-        console.error(`Warning: Failed to parse contextJSON: ${message}`);
+        console.warn(`Failed to parse contextJSON: ${message}`);
       }
     }
 

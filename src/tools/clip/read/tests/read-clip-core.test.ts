@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as consoleModule from "#src/shared/v8-max-console.ts";
 import {
-  liveApiCall,
   liveApiId,
   liveApiPath,
   liveApiType,
@@ -10,6 +10,7 @@ import {
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
+  expectGetNotesExtendedCall,
   setupMidiClipMock,
   setupNotesMock,
 } from "./read-clip-test-helpers.ts";
@@ -30,14 +31,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -71,14 +65,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -115,14 +102,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      4,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
@@ -153,14 +133,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      3,
-    );
+    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip", 3);
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
@@ -168,8 +141,16 @@ describe("readClip", () => {
     expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
 
-  it("returns null values when no clip exists", () => {
-    liveApiId.mockReturnValue("id 0");
+  it("returns null values and emits warning when no clip exists at valid track/scene", () => {
+    const consoleSpy = vi.spyOn(consoleModule, "warn");
+
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+      // Track and scene exist, but clip does not
+      if (this._path === "live_set tracks 2") return "track2";
+      if (this._path === "live_set scenes 3") return "scene3";
+
+      return "id 0"; // Clip doesn't exist
+    });
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
 
     expect(result).toStrictEqual({
@@ -179,6 +160,32 @@ describe("readClip", () => {
       trackIndex: 2,
       sceneIndex: 3,
     });
+
+    // Verify warning is emitted
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "no clip at trackIndex 2, sceneIndex 3",
+    );
+  });
+
+  it("throws when track does not exist", () => {
+    liveApiId.mockReturnValue("id 0");
+
+    expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
+      "trackIndex 99 does not exist",
+    );
+  });
+
+  it("throws when scene does not exist", () => {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+      // Track exists, but scene does not
+      if (this._path === "live_set tracks 0") return "track0";
+
+      return "id 0";
+    });
+
+    expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
+      "sceneIndex 99 does not exist",
+    );
   });
 
   it("handles audio clips correctly", () => {

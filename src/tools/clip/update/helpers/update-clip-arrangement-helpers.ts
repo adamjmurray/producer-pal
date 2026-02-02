@@ -14,12 +14,18 @@ interface HandleArrangementStartArgs {
 }
 
 /**
- * Handle moving arrangement clips to a new position
+ * Handle moving arrangement clips to a new position.
+ *
+ * Uses soft failure: on duplication failure, logs warning and returns original clip ID.
+ * This allows update operations to continue processing other clips/parameters.
+ * Compare to transform operations (shuffle/slice) which use hard failure (throw)
+ * since they require all-or-nothing semantics.
+ *
  * @param args - Operation arguments
  * @param args.clip - The clip to move
  * @param args.arrangementStartBeats - New position in beats
  * @param args.tracksWithMovedClips - Track of clips moved per track
- * @returns The new clip ID after move
+ * @returns The new clip ID after move, or original ID on failure
  */
 export function handleArrangementStartOperation({
   clip,
@@ -30,8 +36,8 @@ export function handleArrangementStartOperation({
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.error(
-      `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
+    console.warn(
+      `arrangementStart parameter ignored for session clip (id ${clip.id})`,
     );
 
     return clip.id;
@@ -41,9 +47,7 @@ export function handleArrangementStartOperation({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    console.error(
-      `Warning: could not determine trackIndex for clip ${clip.id}`,
-    );
+    console.warn(`could not determine trackIndex for clip ${clip.id}`);
 
     return clip.id;
   }
@@ -55,15 +59,26 @@ export function handleArrangementStartOperation({
 
   tracksWithMovedClips.set(trackIndex, moveCount);
 
+  // Format clip ID for Live API (requires "id X" format)
+  const formattedClipId = clip.id.startsWith("id ") ? clip.id : `id ${clip.id}`;
+
+  // duplicate_clip_to_arrangement returns ["id", number] array format
   const newClipResult = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${clip.id}`,
+    formattedClipId,
     arrangementStartBeats,
-  ) as string;
+  ) as [string, number];
   const newClip = LiveAPI.from(newClipResult);
 
+  // Verify duplicate succeeded before deleting original
+  if (!newClip.exists()) {
+    console.warn(`failed to duplicate clip ${clip.id} - original preserved`);
+
+    return clip.id;
+  }
+
   // Delete original clip
-  track.call("delete_clip", `id ${clip.id}`);
+  track.call("delete_clip", formattedClipId);
 
   // Return the new clip ID
   return newClip.id;
@@ -112,7 +127,7 @@ export function handleArrangementOperations({
       arrangementStartBeats,
       tracksWithMovedClips,
     });
-    currentClip = LiveAPI.from(`id ${finalClipId}`);
+    currentClip = LiveAPI.from(finalClipId);
   }
 
   // Handle arrangementLength SECOND

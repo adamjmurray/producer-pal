@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
+  applyScale,
+  applyTempo,
   cleanupTempClip,
   extendSongIfNeeded,
   parseScale,
@@ -273,6 +275,112 @@ describe("update-live-set-helpers", () => {
       expect(() => parseScale("C InvalidScale")).toThrow(
         "Invalid scale name 'InvalidScale'",
       );
+    });
+  });
+
+  describe("applyTempo", () => {
+    it("should set tempo on live set for valid value", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 120, result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 120);
+      expect(result.tempo).toBe(120);
+    });
+
+    it("should accept minimum tempo of 20 BPM", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 20, result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 20);
+      expect(result.tempo).toBe(20);
+    });
+
+    it("should accept maximum tempo of 999 BPM", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 999, result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 999);
+      expect(result.tempo).toBe(999);
+    });
+
+    it("should warn and not set tempo below 20 BPM", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 19, result);
+
+      expect(mockLiveSet.set).not.toHaveBeenCalled();
+      expect(result.tempo).toBeUndefined();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "tempo must be between 20.0 and 999.0 BPM",
+      );
+    });
+
+    it("should warn and not set tempo above 999 BPM", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 1000, result);
+
+      expect(mockLiveSet.set).not.toHaveBeenCalled();
+      expect(result.tempo).toBeUndefined();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "tempo must be between 20.0 and 999.0 BPM",
+      );
+    });
+  });
+
+  describe("applyScale", () => {
+    it("should disable scale mode when empty string is passed", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "", result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 0);
+      expect(result.scale).toBe("");
+    });
+
+    it("should set scale properties for valid scale string", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "C Major", result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 0);
+      expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Major");
+      expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 1);
+      expect(result.scale).toBe("C Major");
+    });
+
+    it("should handle sharp root notes", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "F# Minor", result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
+      expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
+      expect(result.scale).toBe("F# Minor");
+    });
+
+    it("should handle flat root notes", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "Bb Dorian", result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
+      expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
+      expect(result.scale).toBe("Bb Dorian");
     });
   });
 });

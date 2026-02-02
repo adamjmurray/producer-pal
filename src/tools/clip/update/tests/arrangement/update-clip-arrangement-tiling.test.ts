@@ -4,6 +4,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockContext,
@@ -11,11 +12,6 @@ import {
   setupMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
@@ -235,7 +231,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const setCallsByClip: Record<string, Record<string, unknown>> = {};
 
     liveApiSet.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       prop: string,
       value: unknown,
     ) {
@@ -292,7 +288,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const trackIndex = 0;
 
     // Override liveApiId for this test to handle new clip IDs
-    liveApiId.mockImplementation(function (this: MockContext) {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._path === "id 1000" || this._id === "1000") {
         return "1000";
       }
@@ -356,9 +352,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       }
     });
 
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    vi.mocked(outlet).mockClear();
 
     const result = updateClip(
       {
@@ -383,11 +377,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     );
 
     // Should NOT emit envelope warning (preserves envelopes via non-destructive tiling)
-    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
       expect.stringContaining("Automation envelopes were lost"),
     );
-
-    consoleErrorSpy.mockRestore();
 
     // Should return original + 2 full tiles (4 beats each)
     expect(result).toStrictEqual([

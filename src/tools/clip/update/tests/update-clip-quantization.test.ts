@@ -88,32 +88,26 @@ describe("handleQuantization", () => {
 
   it("should warn and skip for audio clips", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
 
     handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("quantize parameter ignored for audio clip"),
     );
     expect(mockClip.call).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
   it("should warn and skip when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
 
     handleQuantization(mockClip, { quantize: 1 });
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("quantizeGrid is required"),
     );
     expect(mockClip.call).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
   it("should call quantize with correct grid value and amount", () => {
@@ -138,9 +132,6 @@ describe("handleQuantization", () => {
 
   it("should warn and skip when quantizePitch is invalid note name", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
 
     handleQuantization(mockClip, {
       quantize: 1,
@@ -148,11 +139,11 @@ describe("handleQuantization", () => {
       quantizePitch: "invalid",
     });
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining('invalid note name "invalid"'),
     );
     expect(mockClip.call).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
   it("should set swing_amount before quantizing and restore after", () => {

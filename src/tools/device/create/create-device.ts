@@ -7,7 +7,7 @@ interface CreateDeviceArgs {
 }
 
 interface CreateDeviceResult {
-  deviceId: string | number;
+  id: string;
   deviceIndex: number | null;
 }
 
@@ -76,9 +76,15 @@ function createDeviceAtPath(
     );
   }
 
+  // Fallback to append when inserting at position 0 on empty container
+  // (Live API fails with position=0 on empty device chains)
+  const deviceCount = container.getChildren("devices").length;
+  const effectivePosition =
+    position === 0 && deviceCount === 0 ? null : position;
+
   const result =
-    position != null
-      ? (container.call("insert_device", deviceName, position) as [
+    effectivePosition != null
+      ? (container.call("insert_device", deviceName, effectivePosition) as [
           string,
           string | number,
         ])
@@ -87,10 +93,11 @@ function createDeviceAtPath(
           string | number,
         ]);
 
-  const deviceId = result[1];
-  const device = deviceId ? LiveAPI.from(`id ${deviceId}`) : null;
+  const rawId = result[1];
+  const id = rawId ? String(rawId) : null;
+  const device = id ? LiveAPI.from(`id ${id}`) : null;
 
-  if (!device?.exists()) {
+  if (!id || !device?.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";
 
     throw new Error(
@@ -99,7 +106,7 @@ function createDeviceAtPath(
   }
 
   return {
-    deviceId,
+    id,
     deviceIndex: device.deviceIndex,
   };
 }

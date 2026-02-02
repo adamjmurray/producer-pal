@@ -1,17 +1,17 @@
 {
-  "threshold": 0.4,
+  "threshold": 0.3,
   "reporters": ["console"],
   "ignore": [
     "**/node_modules/**",
-    "**/barbeat-parser.js",
-    "**/modulation-parser.js",
+    "**/generated-*-parser.js",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*-test-helpers.ts",
     "**/*-test-case.ts",
     "**/test-cases/**",
     "**/test-utils/**",
-    "**/tests/**"
+    "**/tests/**",
+    "**/e2e/**"
   ],
   "path": ["../src", "../webui/src"]
 }

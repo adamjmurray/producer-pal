@@ -9,9 +9,9 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   processWarpMarkers,
+  resolveClip,
   WARP_MODE_MAPPING,
 } from "./helpers/read-clip-helpers.ts";
 
@@ -97,27 +97,14 @@ export function readClip(
     );
   }
 
-  // Support "id {id}" (such as returned by childIds()) and id values directly
-  let clip: LiveAPI;
+  // Resolve clip from ID or location
+  const resolved = resolveClip(clipId, trackIndex, sceneIndex);
 
-  if (clipId != null) {
-    // Validate the clip ID is actually a clip
-    clip = validateIdType(clipId, "clip", "readClip");
-  } else {
-    clip = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-    );
-
-    if (!clip.exists()) {
-      return {
-        id: null,
-        type: null,
-        name: null,
-        trackIndex,
-        sceneIndex,
-      };
-    }
+  if (!resolved.found) {
+    return resolved.emptySlotResponse;
   }
+
+  const clip = resolved.clip;
 
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
@@ -127,6 +114,7 @@ export function readClip(
   ) as number;
 
   const isLooping = (clip.getProperty("looping") as number) > 0;
+  const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
   const lengthBeats = clip.getProperty("length") as number; // Live API already gives us the effective length!
 
   const clipName = clip.getProperty("name") as string;
@@ -140,6 +128,7 @@ export function readClip(
   // Calculate start and end based on looping state
   const { startBeats, endBeats } = getActiveClipBounds(
     isLooping,
+    isMidiClip,
     startMarkerBeats,
     loopStartBeats,
     endMarkerBeats,
@@ -176,7 +165,7 @@ export function readClip(
 
   const result: ReadClipResult = {
     id: clip.id,
-    type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
+    type: isMidiClip ? "midi" : "audio",
     ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
@@ -369,6 +358,7 @@ function addClipLocationProperties(
 /**
  * Get the active start and end beats based on looping state
  * @param isLooping - Whether the clip is looping
+ * @param isMidiClip - Whether the clip is a MIDI clip (vs audio)
  * @param startMarkerBeats - Start marker position in beats
  * @param loopStartBeats - Loop start position in beats
  * @param endMarkerBeats - End marker position in beats
@@ -378,6 +368,7 @@ function addClipLocationProperties(
  */
 function getActiveClipBounds(
   isLooping: boolean,
+  isMidiClip: boolean,
   startMarkerBeats: number,
   loopStartBeats: number,
   endMarkerBeats: number,
@@ -387,13 +378,14 @@ function getActiveClipBounds(
   const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
   const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
 
-  // Sanity check for non-looping clips
-  if (!isLooping) {
+  // Sanity check for non-looping MIDI clips only
+  // (audio clips have length based on sample duration, not end_marker - start_marker)
+  if (!isLooping && isMidiClip) {
     const derivedStart = endBeats - lengthBeats;
 
     if (Math.abs(derivedStart - startBeats) > 0.001) {
-      console.error(
-        `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
+      console.warn(
+        `Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
       );
     }
   }

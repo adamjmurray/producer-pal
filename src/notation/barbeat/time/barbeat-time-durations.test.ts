@@ -239,13 +239,13 @@ describe("barBeatDurationToAbletonBeats", () => {
 
   it("throws error for invalid integer+fraction format", () => {
     expect(() => barBeatDurationToAbletonBeats("abc+1/2", 4, 4)).toThrow(
-      "Invalid integer+fraction format",
+      "Invalid duration format",
     );
     expect(() => barBeatDurationToAbletonBeats("1+1/0", 4, 4)).toThrow(
-      "Invalid fraction: division by zero",
+      "Invalid duration format: division by zero",
     );
     expect(() => barBeatDurationToAbletonBeats("1+a/2", 4, 4)).toThrow(
-      "Invalid integer+fraction format",
+      "Invalid duration format",
     );
   });
 });

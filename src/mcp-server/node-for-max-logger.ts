@@ -1,5 +1,4 @@
 import Max from "max-api";
-import { parseMaxBoolean } from "./max-input-helpers.ts";
 
 const now = (): string => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
@@ -8,10 +7,7 @@ const format = (loggerArgs: unknown[]): string =>
 
 let verbose = false;
 
-Max.addHandler(
-  "verbose",
-  (input: unknown) => (verbose = parseMaxBoolean(input)),
-);
+Max.addHandler("verbose", (input: unknown) => (verbose = Boolean(input)));
 
 export const log = (...args: unknown[]): void => {
   void Max.post(format(args));

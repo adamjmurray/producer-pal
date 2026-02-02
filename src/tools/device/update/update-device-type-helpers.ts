@@ -50,6 +50,6 @@ export function warnIfSet(
   type: string,
 ): void {
   if (value != null) {
-    console.error(`updateDevice: '${paramName}' not applicable to ${type}`);
+    console.warn(`updateDevice: '${paramName}' not applicable to ${type}`);
   }
 }

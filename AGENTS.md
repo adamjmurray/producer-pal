@@ -44,6 +44,8 @@ Key entry points:
 - Chat UI: `webui/src/main.tsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.ts`
+- Chat CLI: `evals/chat/index.ts`
+- Evaluation scenarios: `evals/eval/index.ts`
 
 See `dev-docs/Architecture.md` for detailed system design and
 `dev-docs/Chat-UI.md` for web UI architecture.
@@ -62,16 +64,19 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - **Import extensions**: Code in `src/` must include `.ts` file extensions in
   imports matching the actual file type (e.g., `import foo from './bar.ts'`).
-  Exception: Peggy-generated parser files use `.js` (e.g., `barbeat-parser.js`).
-  Code in `webui/` is bundled and must NEVER use file extensions in relative
-  imports (e.g., `import foo from './bar'`).
+  Peggy-generated parsers are wrapped in TypeScript files (e.g.,
+  `barbeat-parser.ts`) - import from the wrapper, not the `.js` file. Code in
+  `webui/` is bundled and must NEVER use file extensions in relative imports
+  (e.g., `import foo from './bar'`).
 
 - **Path aliases**: Use `#src/` for src imports (e.g.,
-  `import foo from '#src/shared/utils.ts'`) and `#webui/` for webui imports
-  (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
-  package subpath imports configured in package.json `"imports"` field. The `#`
-  prefix is required by Node.js for unbundled execution (build scripts, CLI
-  tools). Never use relative paths like `../../` when a path alias is available.
+  `import foo from '#src/shared/utils.ts'`), `#webui/` for webui imports (e.g.,
+  `import { App } from '#webui/components/App'`), and `#evals/` for evals
+  imports (e.g., `import { runScenario } from '#evals/eval/run-scenario.ts'`).
+  All use Node.js package subpath imports configured in package.json `"imports"`
+  field. The `#` prefix is required by Node.js for unbundled execution (build
+  scripts, CLI tools). Never use relative paths like `../../` when a path alias
+  is available.
 
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
@@ -97,11 +102,10 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Update tool error handling**: Update tools (update-clip, update-track,
   update-device, etc.) should NOT throw errors for invalid parameter
   combinations or incompatible operations. Instead:
-  - Emit a warning via `console.error()` with prefix "Warning:" or tool name
+  - Emit a warning via `console.warn()`
   - Skip the operation and continue processing
   - This allows partial successes when updating multiple items
-  - Example:
-    `console.error("Warning: quantize parameter ignored for audio clip")`
+  - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
@@ -155,7 +159,6 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Implications of test file classification:**
 
-- **Knowledge base**: Excluded from `kb:small` (smaller context for LLMs)
 - **Duplication limits**: Higher threshold (4.5%) vs source code (0.4%)
 - **Line limits**: Only `*.test.*` and `*-test-case.ts` files get 650 lines max
   (ignoring blanks/comments); test helpers use the standard 325 line limit
@@ -165,7 +168,7 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Scope:** All source code is type-checked via `npm run typecheck`:
 
-- `src/`, `scripts/`, and `webui/` use TypeScript (`.ts`/`.tsx` files)
+- `src/`, `scripts/`, `evals/`, and `webui/` use TypeScript (`.ts`/`.tsx` files)
 
 **Requirements:**
 
@@ -185,8 +188,8 @@ functions for clarity.
   check, and tests)
 - Direct tool invocation (upon request):
   ```
-  node scripts/cli.ts tools/list
-  node scripts/cli.ts tools/call tool-name '{"arg": "value"}'
+  node scripts/ppal-client.ts tools/list
+  node scripts/ppal-client.ts tools/call tool-name '{"arg": "value"}'
   ```
 - **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
   (verifies the AI can use tools correctly, not just that tools work):
@@ -196,8 +199,8 @@ functions for clarity.
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`
-  - Use `console.error()` to see output in CLI tool results (appears as WARNING)
-  - `console.log()` does NOT appear in CLI output
+  - Use `console.warn()` to see output in CLI tool results (appears as WARNING)
+  - `console.log()` and `console.error()` do NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
   `npm run build` (verifies all production artifacts compile successfully). This
@@ -207,9 +210,28 @@ functions for clarity.
   totals). Look for files with low coverage percentages to identify what needs
   tests.
 
+## MCP E2E Testing
+
+E2E tests for MCP tools are in `e2e/mcp/`. These tests open Ableton Live and
+verify tools via the MCP protocol.
+
+**Key pattern:** Use a single comprehensive `it()` test per tool with all
+assertions grouped together. This minimizes overhead since each test requires:
+
+- Opening/switching Live Sets (slow)
+- MCP connection setup
+- 30-60 second hook timeouts
+
+**Commands:**
+
+- `npm run e2e:mcp` - Run MCP e2e tests
+- `npm run e2e:mcp:watch` - Watch mode
+
+**Adding tests:** See `e2e/mcp/README.md` for prerequisites and patterns.
+
 ## Project Constraints
 
-- TypeScript for `src/`, `scripts/`, and `webui/`
+- TypeScript for `src/`, `scripts/`, `evals/`, and `webui/`
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution

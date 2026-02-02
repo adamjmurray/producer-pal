@@ -111,8 +111,8 @@ export function emitArrangementWarnings(
 
   for (const [trackIndex, count] of tracksWithMovedClips.entries()) {
     if (count > 1) {
-      console.error(
-        `Warning: ${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
+      console.warn(
+        `${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
       );
     }
   }

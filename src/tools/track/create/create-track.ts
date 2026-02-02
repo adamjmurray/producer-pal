@@ -130,7 +130,7 @@ function validateTrackCreation(
   }
 
   if (type === "return" && trackIndex != null) {
-    console.error(
+    console.warn(
       "createTrack: trackIndex is ignored for return tracks (always added at end)",
     );
   }

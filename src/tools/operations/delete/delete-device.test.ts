@@ -259,7 +259,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should warn when path is used with non-device/drum-pad type", () => {
-      const consoleSpy = vi.spyOn(console, "error");
+      const consoleSpy = vi.spyOn(console, "warn");
 
       liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         return this._id;
@@ -434,7 +434,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should warn when path resolves to device instead of drum-pad", () => {
-      const consoleSpy = vi.spyOn(console, "error");
+      const consoleSpy = vi.spyOn(console, "warn");
 
       // Path 0/0 resolves to device, not drum-pad - this results in no valid IDs
       expect(() => deleteObject({ path: "t0/d0", type: "drum-pad" })).toThrow(

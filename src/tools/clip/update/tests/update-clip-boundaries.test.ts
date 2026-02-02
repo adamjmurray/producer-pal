@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import {
+  setupAudioClipMock,
+  setupMidiClipMock,
+  setupMocks,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - Clip boundaries (shortening)", () => {
@@ -74,10 +78,6 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should warn when firstStart provided for non-looping clips", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -96,11 +96,11 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Warning: firstStart parameter ignored for non-looping clips",
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "firstStart parameter ignored for non-looping clips",
     );
 
-    consoleErrorSpy.mockRestore();
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -175,5 +175,42 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     );
 
     expect(result).toStrictEqual({ id: "123" });
+  });
+});
+
+describe("updateClip - derived start warning (MIDI vs audio)", () => {
+  beforeEach(() => {
+    setupMocks();
+  });
+
+  it("emits warning for non-looping MIDI clip with mismatched derived start", () => {
+    setupMidiClipMock("123", {
+      looping: 0,
+      start_marker: 0,
+      end_marker: 4,
+      length: 5, // derived start = 4 - 5 = -1 !== 0
+    });
+
+    updateClip({ ids: "123", length: "4:0" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Derived start"),
+    );
+  });
+
+  it("does NOT emit warning for non-looping audio clip with mismatched derived start", () => {
+    vi.mocked(outlet).mockClear();
+
+    setupAudioClipMock("123", {
+      looping: 0,
+      start_marker: 0,
+      end_marker: 0.131,
+      length: 0.262, // derived start = 0.131 - 0.262 = -0.131 !== 0
+    });
+
+    updateClip({ ids: "123", length: "1:0" });
+
+    expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
   });
 });

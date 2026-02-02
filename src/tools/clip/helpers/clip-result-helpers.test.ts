@@ -34,6 +34,7 @@ vi.mock(import("#src/tools/shared/live-set-helpers.ts"), () => ({
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   error: vi.fn(),
+  warn: vi.fn(),
   log: vi.fn(),
 }));
 
@@ -130,7 +131,7 @@ describe("clip-result-helpers", () => {
 
       emitArrangementWarnings(0, tracksWithMovedClips);
 
-      expect(console.error).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
     it("emits warning when track has more than 1 clip", () => {
@@ -138,8 +139,8 @@ describe("clip-result-helpers", () => {
 
       emitArrangementWarnings(0, tracksWithMovedClips);
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Warning: 3 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
+      expect(console.warn).toHaveBeenCalledWith(
+        "3 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
       );
     });
 
@@ -152,12 +153,12 @@ describe("clip-result-helpers", () => {
 
       emitArrangementWarnings(4, tracksWithMovedClips);
 
-      expect(console.error).toHaveBeenCalledTimes(2);
-      expect(console.error).toHaveBeenCalledWith(
-        "Warning: 2 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
+      expect(console.warn).toHaveBeenCalledTimes(2);
+      expect(console.warn).toHaveBeenCalledWith(
+        "2 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
       );
-      expect(console.error).toHaveBeenCalledWith(
-        "Warning: 4 clips on track 2 moved to the same position - later clips will overwrite earlier ones",
+      expect(console.warn).toHaveBeenCalledWith(
+        "4 clips on track 2 moved to the same position - later clips will overwrite earlier ones",
       );
     });
   });

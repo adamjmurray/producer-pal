@@ -106,7 +106,7 @@ export function transformClips(
   );
 
   if (clipIdArray.length === 0) {
-    console.error("Warning: no clips found in arrangement range");
+    console.warn("no clips found in arrangement range");
 
     return { clipIds: [], seed: actualSeed };
   }
@@ -117,7 +117,7 @@ export function transformClips(
   });
 
   if (clips.length === 0) {
-    console.error("Warning: no valid clips found");
+    console.warn("no valid clips found");
 
     return { clipIds: [], seed: actualSeed };
   }

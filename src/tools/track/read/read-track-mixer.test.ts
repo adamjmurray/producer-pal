@@ -398,7 +398,7 @@ describe("readTrack - mixer properties", () => {
   });
 
   it("warns when send count doesn't match return track count", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     setupMixerIdMock(createMixerPathIdMap());
     mockLiveApiGet(

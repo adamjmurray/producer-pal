@@ -4,6 +4,7 @@ import {
   liveApiCall,
   liveApiId,
   liveApiSet,
+  type MockLiveAPIContext,
   setupDeviceDuplicationMocks,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
@@ -23,11 +24,6 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 // Import the mocks after vi.mock
 import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/v8-max-console.ts";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-}
 
 describe("duplicate - device duplication", () => {
   beforeEach(() => {
@@ -128,8 +124,8 @@ describe("duplicate - device duplication", () => {
 
     duplicate({ type: "device", id: "device1", count: 3 });
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
-      "Warning: count parameter ignored for device duplication (only single copy supported)",
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      "count parameter ignored for device duplication (only single copy supported)",
     );
   });
 
@@ -185,7 +181,7 @@ describe("duplicate - device duplication", () => {
 
     // Mock id to return "0" for the temp device path (makes exists() return false)
     (liveApiId as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string {
       if (this._path === "live_set tracks 1 devices 0") {
         return "0"; // Makes exists() return false

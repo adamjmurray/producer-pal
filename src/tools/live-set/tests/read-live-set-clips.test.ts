@@ -124,6 +124,8 @@ describe("readLiveSet - clips", () => {
           return "live_set_id";
         case "live_set tracks 0":
           return "track1";
+        case "live_set scenes 0":
+          return "scene1";
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip1";
         case "id clip1":
@@ -280,6 +282,8 @@ describe("readLiveSet - clips", () => {
           return "live_set_id";
         case "live_set tracks 0":
           return "track1";
+        case "live_set scenes 0":
+          return "scene1";
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip1";
         case "id clip1":
@@ -361,6 +365,8 @@ describe("readLiveSet - clips", () => {
           return "live_set_id";
         case "live_set tracks 0":
           return "track1";
+        case "live_set scenes 0":
+          return "scene1";
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip1";
         case "id clip1":
@@ -416,7 +422,7 @@ describe("readLiveSet - clips", () => {
     expect(track.arrangementFollower).toBe(true);
   });
 
-  it("returns null values for non-existent track in minimal mode", () => {
+  it("throws for non-existent track in minimal mode", () => {
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this.path) {
         case "live_set":
@@ -436,20 +442,9 @@ describe("readLiveSet - clips", () => {
       },
     });
 
-    const result = readLiveSet({ include: ["session-clips"] });
-
-    // Track should have null id and type when it doesn't exist
-    const tracks = result.tracks as {
-      id: string | null;
-      type: string | null;
-      trackIndex: number;
-    }[];
-
-    expect(tracks).toBeDefined();
-    expect(tracks).toHaveLength(1);
-    expect(tracks[0]!.id).toBeNull();
-    expect(tracks[0]!.type).toBeNull();
-    expect(tracks[0]!.trackIndex).toBe(0);
+    expect(() => readLiveSet({ include: ["session-clips"] })).toThrow(
+      "readTrack: trackIndex 0 does not exist",
+    );
   });
 
   it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {

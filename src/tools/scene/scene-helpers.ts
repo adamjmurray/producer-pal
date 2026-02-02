@@ -7,7 +7,7 @@ import { parseTimeSignature } from "#src/tools/shared/utils.ts";
  */
 export function applyTempoProperty(
   scene: LiveAPI,
-  tempo: number | null | undefined,
+  tempo?: number | null,
 ): void {
   if (tempo === -1) {
     scene.set("tempo_enabled", false);
@@ -24,7 +24,7 @@ export function applyTempoProperty(
  */
 export function applyTimeSignatureProperty(
   scene: LiveAPI,
-  timeSignature: string | null | undefined,
+  timeSignature?: string | null,
 ): void {
   if (timeSignature === "disabled") {
     scene.set("time_signature_enabled", false);

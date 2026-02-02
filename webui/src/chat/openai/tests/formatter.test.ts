@@ -136,4 +136,62 @@ describe("formatOpenAIMessages", () => {
       },
     ]);
   });
+
+  it("skips system messages and does not add content parts", () => {
+    const testHistory = [
+      { role: "system" as const, content: "You are a helpful assistant" },
+      { role: "user" as const, content: "Hello" },
+      { role: "assistant" as const, content: "Hi there!" },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    // Should have user and model messages, system message should be skipped
+    expect(result).toHaveLength(2);
+    expect(result[0]!.role).toBe("user");
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "text", content: "Hello" },
+    ]);
+    expect(result[1]!.role).toBe("model");
+    expect(result[1]!.parts).toStrictEqual([
+      { type: "text", content: "Hi there!" },
+    ]);
+  });
+
+  it("skips tool messages and processes only user/assistant messages", () => {
+    const testHistory = [
+      { role: "user" as const, content: "Call a tool" },
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_123",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "tool" as const,
+        content: '{"result": "success"}',
+        tool_call_id: "call_123",
+      },
+      { role: "assistant" as const, content: "Tool returned success" },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    // User message, merged model messages (tool call + text response)
+    // Tool message is skipped, consecutive assistant messages are merged
+    expect(result).toHaveLength(2);
+    expect(result[0]!.role).toBe("user");
+    expect(result[1]!.role).toBe("model");
+    // Should have tool call and text in merged parts
+    expect(result[1]!.parts[0]!.type).toBe("tool");
+    expect(result[1]!.parts[1]).toStrictEqual({
+      type: "text",
+      content: "Tool returned success",
+    });
+  });
 });

@@ -32,7 +32,7 @@ interface DeleteArgs {
  * @param args.ids - Comma-separated list of object IDs
  * @param args.path - Comma-separated paths for device/drum-pad
  * @param args.type - Type of objects to delete
- * @param _context - Internal context object (unused)
+ * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
  */
 export function deleteObject(
@@ -51,7 +51,7 @@ export function deleteObject(
 
   // Handle path parameter - only valid for devices and drum-pads
   if (path && !PATH_SUPPORTED_TYPES.has(type)) {
-    console.error(
+    console.warn(
       `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
     );
   }
@@ -263,7 +263,7 @@ function resolvePathsToIds(paths: string[], type: string): string[] {
         ids.push(resolvedId);
       }
     } catch (e) {
-      console.error(`delete: ${errorMessage(e)}`);
+      console.warn(`delete: ${errorMessage(e)}`);
     }
   }
 
@@ -285,7 +285,7 @@ function resolvePathToId(
   // For drum-pad type, only accept drum-pad paths (no nested navigation)
   if (type === "drum-pad") {
     if (resolved.targetType !== "drum-pad") {
-      console.error(
+      console.warn(
         `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
       );
 
@@ -300,7 +300,7 @@ function resolvePathToId(
     );
 
     if (!result.target) {
-      console.error(`delete: drum-pad at path "${targetPath}" does not exist`);
+      console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
 
       return null;
     }
@@ -315,7 +315,7 @@ function resolvePathToId(
       const target = LiveAPI.from(resolved.liveApiPath);
 
       if (!target.exists()) {
-        console.error(`delete: device at path "${targetPath}" does not exist`);
+        console.warn(`delete: device at path "${targetPath}" does not exist`);
 
         return null;
       }
@@ -335,7 +335,7 @@ function resolvePathToId(
       );
 
       if (!result.target || result.targetType !== "device") {
-        console.error(`delete: device at path "${targetPath}" does not exist`);
+        console.warn(`delete: device at path "${targetPath}" does not exist`);
 
         return null;
       }
@@ -343,7 +343,7 @@ function resolvePathToId(
       return result.target.id;
     }
 
-    console.error(
+    console.warn(
       `delete: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
     );
 

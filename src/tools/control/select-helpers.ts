@@ -1,3 +1,5 @@
+import * as console from "#src/shared/v8-max-console.ts";
+import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 const MASTER_TRACK_PATH = "live_set master_track";
@@ -297,5 +299,56 @@ export function updateHighlightedClipSlot({
     if (clipSlotAPI.exists()) {
       songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
     }
+  }
+}
+
+interface UpdateClipSelectionOptions {
+  appView: LiveAPI;
+  songView: LiveAPI;
+  clipId: string;
+  requestedView?: "session" | "arrangement";
+}
+
+/**
+ * Update clip selection in Live, switching to the appropriate view
+ * @param options - Selection parameters
+ * @param options.appView - LiveAPI instance for live_app view
+ * @param options.songView - LiveAPI instance for live_set view
+ * @param options.clipId - Clip ID to select
+ * @param options.requestedView - User-requested view (may be overridden)
+ */
+export function updateClipSelection({
+  appView,
+  songView,
+  clipId,
+  requestedView,
+}: UpdateClipSelectionOptions): void {
+  const clipAPI = validateIdType(clipId, "clip", "select");
+  const isSessionClip =
+    clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null;
+  const requiredView = isSessionClip ? "session" : "arrangement";
+
+  // Warn if user explicitly requested a conflicting view
+  if (requestedView != null && requestedView !== requiredView) {
+    console.warn(
+      `Warning: ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
+    );
+  }
+
+  // Switch to appropriate view for the clip type
+  // (Live API ignores detail_clip set if in wrong view)
+  appView.call("show_view", toLiveApiView(requiredView));
+
+  songView.setProperty("detail_clip", clipAPI.id);
+
+  // For session clips, also highlight the clip slot
+  if (isSessionClip) {
+    updateHighlightedClipSlot({
+      songView,
+      clipSlot: {
+        trackIndex: clipAPI.trackIndex,
+        sceneIndex: clipAPI.clipSlotIndex,
+      },
+    });
   }
 }

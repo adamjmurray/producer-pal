@@ -5,6 +5,7 @@
 
 // Declare Max for Live global functions
 declare function post(...args: unknown[]): void;
+declare function outlet(outletNumber: number, ...args: unknown[]): void;
 declare const Dict:
   | {
       prototype: object;
@@ -82,8 +83,21 @@ export const error = (...args: unknown[]): void => {
   }
 };
 
-// Max has no concept of a warning, and we use console.error()
-// to emit warnings for our MCP tools anyway (we throw errors
-// for fatal errors), so alias console.warn to Max error()
-// TODO: prefer use of this for emitting warnings moving forward.
-export const warn = error;
+/**
+ * Log warning values to Max console and emit to outlet 1 for MCP capture.
+ * Emits to outlet(1) to pass the warning string to the MCP response.
+ * Falls back to console.warn when outlet is not available.
+ * @param args - Values to log as warnings
+ */
+export const warn = (...args: unknown[]): void => {
+  const parts = args.map(str);
+
+  if (typeof outlet === "function") {
+    outlet(1, parts.join(" "));
+  } else if (
+    typeof console !== "undefined" &&
+    typeof console.warn === "function"
+  ) {
+    console.warn(...parts);
+  }
+};

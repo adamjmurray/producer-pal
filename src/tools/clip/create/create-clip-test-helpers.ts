@@ -2,12 +2,8 @@ import {
   liveApiCall,
   liveApiId,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-
-interface MockContext {
-  _path: string;
-  _id: string;
-}
 
 /**
  * Setup mocks for arrangement clip creation tests.
@@ -28,7 +24,7 @@ export function setupArrangementClipMocks(): void {
     return null;
   });
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === "id arrangement_clip") {
       return "arrangement_clip";
     }
@@ -60,7 +56,7 @@ export function setupAudioArrangementClipMocks(
     return null;
   });
 
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === "id arrangement_audio_clip") {
       return "arrangement_audio_clip";
     }

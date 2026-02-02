@@ -199,7 +199,7 @@ export function readDevice(
   } = options;
 
   if (depth > maxDepth) {
-    console.error(`Maximum recursion depth (${maxDepth}) exceeded`);
+    console.warn(`Maximum recursion depth (${maxDepth}) exceeded`);
 
     return {};
   }

@@ -33,7 +33,7 @@ export function stopPlaybackIfNeeded(liveSet: LiveAPI): boolean {
 
   if (isPlaying) {
     liveSet.call("stop_playing");
-    console.error("Playback stopped to modify locators");
+    console.warn("Playback stopped to modify locators");
 
     return true;
   }
@@ -70,8 +70,8 @@ export async function waitForPlayheadPosition(
   );
 
   if (!success) {
-    console.error(
-      `Warning: Playhead position did not reach target ${targetBeats} after waiting`,
+    console.warn(
+      `Playhead position did not reach target ${targetBeats} after waiting`,
     );
   }
 }
@@ -99,9 +99,7 @@ export async function deleteLocator(
 ): Promise<Record<string, unknown>> {
   // Validate that at least one identifier is provided
   if (locatorId == null && locatorTime == null && locatorName == null) {
-    console.error(
-      "Warning: delete requires locatorId, locatorTime, or locatorName",
-    );
+    console.warn("delete requires locatorId, locatorTime, or locatorName");
 
     return {
       operation: "skipped",
@@ -114,7 +112,7 @@ export async function deleteLocator(
     const matches = findLocatorsByName(liveSet, locatorName);
 
     if (matches.length === 0) {
-      console.error(
+      console.warn(
         `No locators found with name: ${locatorName}, skipping delete`,
       );
 
@@ -150,7 +148,7 @@ export async function deleteLocator(
     const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      console.error(`Locator not found: ${locatorId}, skipping delete`);
+      console.warn(`Locator not found: ${locatorId}, skipping delete`);
 
       return {
         operation: "skipped",
@@ -170,7 +168,7 @@ export async function deleteLocator(
     const found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      console.error(
+      console.warn(
         `No locator found at position: ${locatorTime}, skipping delete`,
       );
 
@@ -217,7 +215,7 @@ export function renameLocator(
   }: RenameLocatorOptions,
 ): Record<string, unknown> {
   if (locatorName == null) {
-    console.error("Warning: locatorName is required for rename operation");
+    console.warn("locatorName is required for rename operation");
 
     return {
       operation: "skipped",
@@ -226,7 +224,7 @@ export function renameLocator(
   }
 
   if (locatorId == null && locatorTime == null) {
-    console.error("Warning: rename requires locatorId or locatorTime");
+    console.warn("rename requires locatorId or locatorTime");
 
     return {
       operation: "skipped",
@@ -240,7 +238,7 @@ export function renameLocator(
     found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      console.error(`Warning: locator not found: ${locatorId}`);
+      console.warn(`locator not found: ${locatorId}`);
 
       return {
         operation: "skipped",
@@ -259,7 +257,7 @@ export function renameLocator(
     found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      console.error(`Warning: no locator found at position: ${locatorTime}`);
+      console.warn(`no locator found at position: ${locatorTime}`);
 
       return {
         operation: "skipped",

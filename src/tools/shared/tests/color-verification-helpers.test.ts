@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
-  error: vi.fn(),
+  warn: vi.fn(),
 }));
 
 describe("verifyColorQuantization", () => {
@@ -20,7 +20,7 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#FF0000");
 
-      expect(console.error).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
     it("should not emit warning with case-insensitive match", () => {
@@ -31,7 +31,7 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#ff0000");
 
-      expect(console.error).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
     it("should not emit warning when lowercase requested matches uppercase actual", () => {
@@ -42,7 +42,7 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#abcdef");
 
-      expect(console.error).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
   });
 
@@ -55,8 +55,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#FF0000");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
     });
 
@@ -68,8 +68,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#00FF00");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested scene color #00FF00 was mapped to nearest palette color #1AFF2F. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested scene color #00FF00 was mapped to nearest palette color #1AFF2F. Live uses a fixed color palette.",
       );
     });
 
@@ -81,8 +81,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#0000FF");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested clip color #0000FF was mapped to nearest palette color #1A2F96. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested clip color #0000FF was mapped to nearest palette color #1A2F96. Live uses a fixed color palette.",
       );
     });
 
@@ -94,8 +94,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#ff0000");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested track color #ff0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested track color #ff0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
     });
   });
@@ -111,8 +111,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#FF0000");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Warning: Could not verify color quantization: Failed to read color",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Could not verify color quantization: Failed to read color",
       );
     });
 
@@ -124,8 +124,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#FF0000");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested track color #FF0000 was mapped to nearest palette color null. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested track color #FF0000 was mapped to nearest palette color null. Live uses a fixed color palette.",
       );
     });
 
@@ -137,8 +137,8 @@ describe("verifyColorQuantization", () => {
 
       verifyColorQuantization(mockObject, "#00FF00");
 
-      expect(console.error).toHaveBeenCalledWith(
-        "Note: Requested scene color #00FF00 was mapped to nearest palette color undefined. Live uses a fixed color palette.",
+      expect(console.warn).toHaveBeenCalledWith(
+        "Requested scene color #00FF00 was mapped to nearest palette color undefined. Live uses a fixed color palette.",
       );
     });
   });

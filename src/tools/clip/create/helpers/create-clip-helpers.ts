@@ -104,9 +104,7 @@ export function convertTimingParameters(
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && looping === false) {
-    console.error(
-      "Warning: firstStart parameter ignored for non-looping clips",
-    );
+    console.warn("firstStart parameter ignored for non-looping clips");
   }
 
   // Convert length parameter to end position

@@ -56,7 +56,7 @@ export function validateIdTypes(
     // Check existence
     if (!object.exists()) {
       if (skipInvalid) {
-        console.error(`${toolName}: id "${id}" does not exist`);
+        console.warn(`${toolName}: id "${id}" does not exist`);
         continue;
       } else {
         throw new Error(`${toolName} failed: id "${id}" does not exist`);
@@ -65,7 +65,7 @@ export function validateIdTypes(
 
     if (!isTypeMatch(object.type, expectedType)) {
       if (skipInvalid) {
-        console.error(
+        console.warn(
           `${toolName}: id "${id}" is not a ${expectedType} (found ${object.type})`,
         );
         continue;

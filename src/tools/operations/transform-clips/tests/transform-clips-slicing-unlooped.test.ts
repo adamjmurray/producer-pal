@@ -7,6 +7,7 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import {
@@ -15,11 +16,6 @@ import {
   setupSlicingClipBaseMocks,
   setupUnloopedClipSlicingMocks,
 } from "./transform-clips-slicing-test-helpers.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 interface SetCall {
   id: string | undefined;
@@ -38,7 +34,7 @@ describe("transformClips - slicing unlooped clips", () => {
     const setCalls: SetCall[] = [];
 
     liveApiSet.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       prop: string,
       value: unknown,
     ) {
@@ -84,7 +80,10 @@ describe("transformClips - slicing unlooped clips", () => {
     });
 
     // Setup liveApiGet with warping support for audio clips
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -119,7 +118,7 @@ describe("transformClips - slicing unlooped clips", () => {
     });
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ...args: unknown[]
     ) {
@@ -136,7 +135,7 @@ describe("transformClips - slicing unlooped clips", () => {
     });
 
     liveApiSet.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       prop: string,
       value: unknown,
     ) {
@@ -184,10 +183,10 @@ describe("transformClips - slicing unlooped clips", () => {
     const duplicateCalls: Array<{ id: string | undefined; position: number }> =
       [];
 
-    liveApiId.mockImplementation(function (this: MockContext): string {
+    liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
       return this._path === "id clip_45" ? clipId : this._id!;
     });
-    liveApiPath.mockImplementation(function (this: MockContext) {
+    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === clipId) return "live_set tracks 0 arrangement_clips 0";
       if (this._id?.startsWith("holding_")) return "live_set tracks 0 arr 1";
       if (this._id?.startsWith("moved_")) return "live_set tracks 0 arr 1";
@@ -196,7 +195,7 @@ describe("transformClips - slicing unlooped clips", () => {
 
       return this._path!;
     });
-    liveApiType.mockImplementation(function (this: MockContext) {
+    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
       return this._id === clipId ? "Clip" : undefined;
     });
 
@@ -228,7 +227,7 @@ describe("transformClips - slicing unlooped clips", () => {
     });
 
     liveApiCall.mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
       method: string,
       ...args: unknown[]
     ) {

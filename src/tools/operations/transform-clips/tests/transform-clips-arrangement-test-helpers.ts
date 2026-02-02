@@ -1,30 +1,23 @@
-import type { MockInstance } from "vitest";
-import { vi } from "vitest";
 import {
   liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiType,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-
-interface MockContext {
-  _path?: string;
-  _id?: string;
-  id?: string;
-}
 
 /**
  * Setup mocks for testing error scenarios with no clips in arrangement.
  * @param trackIndex - Track index to mock (default: 0)
- * @returns Console error spy
  */
-export function setupNoClipsInArrangementMocks(
-  trackIndex = 0,
-): MockInstance<typeof console.error> {
-  liveApiType.mockImplementation(function (this: MockContext) {
+export function setupNoClipsInArrangementMocks(trackIndex = 0): void {
+  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "Track";
   });
-  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+  liveApiGet.mockImplementation(function (
+    this: MockLiveAPIContext,
+    prop: string,
+  ) {
     if (this._path === "live_set") {
       if (prop === "signature_numerator") return [4];
       if (prop === "signature_denominator") return [4];
@@ -38,8 +31,6 @@ export function setupNoClipsInArrangementMocks(
 
     return [0];
   });
-
-  return vi.spyOn(console, "error");
 }
 
 /**
@@ -47,18 +38,21 @@ export function setupNoClipsInArrangementMocks(
  * @param trackIndex - Track index that doesn't exist
  */
 export function setupNonExistentTrackMocks(trackIndex: number): void {
-  liveApiId.mockImplementation(function (this: MockContext) {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     if (this._path === `live_set tracks ${trackIndex}`) return "0";
 
     return this._id ?? "";
   });
   liveApiType.mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     // Track doesn't exist - return undefined
     return undefined;
   });
-  liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+  liveApiGet.mockImplementation(function (
+    this: MockLiveAPIContext,
+    prop: string,
+  ) {
     if (this._path === "live_set") {
       if (prop === "signature_numerator") return [4];
       if (prop === "signature_denominator") return [4];
@@ -86,7 +80,7 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
      * @this - Mock context
      * @returns Mock ID
      */
-    function (this: MockContext): string {
+    function (this: MockLiveAPIContext): string {
       for (const clip of clips) {
         if (this._path === `id ${clip.id}`) {
           return clip.id;
@@ -102,7 +96,7 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
      * @this - Mock context
      * @returns Mock ID or undefined
      */
-    function (this: MockContext): string | undefined {
+    function (this: MockLiveAPIContext): string | undefined {
       const idx = this._id ? clipIds.indexOf(this._id) : -1;
 
       if (idx !== -1) {
@@ -118,7 +112,7 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
      * @this - Mock context
      * @returns Mock ID or undefined
      */
-    function (this: MockContext): string | undefined {
+    function (this: MockLiveAPIContext): string | undefined {
       if (this._path === "live_set tracks 0") {
         return "Track";
       }
@@ -137,7 +131,7 @@ export function setupArrangementClipMocks(clips: ClipConfig[]): void {
      * @param prop - Property name
      * @returns Mock property value array
      */
-    function (this: MockContext, prop: string): unknown[] {
+    function (this: MockLiveAPIContext, prop: string): unknown[] {
       // LiveSet time signature
       if (this._path === "live_set") {
         if (prop === "signature_numerator") return [4];

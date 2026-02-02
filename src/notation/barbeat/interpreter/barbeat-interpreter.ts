@@ -6,8 +6,8 @@ import {
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
 } from "#src/notation/barbeat/barbeat-config.ts";
-import * as parser from "#src/notation/barbeat/parser/barbeat-parser.js";
-import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.js";
+import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,
@@ -335,8 +335,8 @@ export function interpretNotation(
 
     // Warn if pitches buffered but never emitted
     if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
-      console.error(
-        `Warning: ${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
+      console.warn(
+        `${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
       );
     }
 

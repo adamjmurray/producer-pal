@@ -101,21 +101,16 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should warn when mute is used on a Device", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         mute: true,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'mute' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -151,39 +146,29 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should warn when color is used on a DrumPad", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "790",
         color: "#FF0000",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'color' not applicable to DrumPad",
       );
       expect(result).toStrictEqual({ id: "790" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should warn when color is used on a Device", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         color: "#FF0000",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'color' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -203,39 +188,29 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should warn when chokeGroup is used on a Chain", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "456",
         chokeGroup: 1,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'chokeGroup' not applicable to Chain",
       );
       expect(result).toStrictEqual({ id: "456" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should warn when chokeGroup is used on a Device", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "123",
         chokeGroup: 1,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'chokeGroup' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -268,16 +243,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should warn for invalid note name in mappedPitch", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "789",
         mappedPitch: "InvalidNote",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         'updateDevice: invalid note name "InvalidNote"',
       );
       expect(liveApiSet).not.toHaveBeenCalledWithThis(
@@ -286,64 +258,47 @@ describe("updateDevice - Chain and DrumPad support", () => {
         expect.anything(),
       );
       expect(result).toStrictEqual({ id: "789" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should warn when mappedPitch is used on a Chain", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "456",
         mappedPitch: "C3",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'mappedPitch' not applicable to Chain",
       );
       expect(result).toStrictEqual({ id: "456" });
-
-      consoleSpy.mockRestore();
     });
   });
 
   describe("device-only properties on non-devices", () => {
     it("should warn when collapsed is used on a Chain", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "456",
         collapsed: true,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'collapsed' not applicable to Chain",
       );
       expect(result).toStrictEqual({ id: "456" });
-
-      consoleSpy.mockRestore();
     });
 
     it("should warn when params is used on a DrumPad", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "790",
         params: '{"789": 0.5}',
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'params' not applicable to DrumPad",
       );
       expect(result).toStrictEqual({ id: "790" });
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -389,16 +344,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should warn when name is used on a DrumPad (read-only)", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       const result = updateDevice({
         ids: "790",
         name: "Hi-Hat",
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "updateDevice: 'name' is read-only for DrumPad",
       );
       expect(liveApiSet).not.toHaveBeenCalledWith(
@@ -407,8 +359,6 @@ describe("updateDevice - Chain and DrumPad support", () => {
         expect.anything(),
       );
       expect(result).toStrictEqual({ id: "790" });
-
-      consoleSpy.mockRestore();
     });
   });
 });

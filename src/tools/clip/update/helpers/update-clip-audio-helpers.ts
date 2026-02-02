@@ -33,8 +33,8 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 //       const sampleRate = clip.getProperty("sample_rate");
 
 //       if (!sampleLength || !sampleRate) {
-//         console.error(
-//           `Warning: Missing sample properties for unwarped clip ${clip.id}`,
+//         console.warn(
+//           `Missing sample properties for unwarped clip ${clip.id}`,
 //         );
 //         return 0;
 //       }
@@ -42,7 +42,7 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 //       const tempo = liveSet.getProperty("tempo");
 
 //       if (!tempo) {
-//         console.error(`Warning: Could not get tempo from live_set`);
+//         console.warn(`Could not get tempo from live_set`);
 //         return 0;
 //       }
 
@@ -61,8 +61,8 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 //     if (markers.length < 2) return markers[0].beat_time;
 //     return markers[markers.length - 2].beat_time;
 //   } catch (error) {
-//     console.error(
-//       `Warning: Failed to get actual audio end for clip ${clip.id}: ${error.message}`,
+//     console.warn(
+//       `Failed to get actual audio end for clip ${clip.id}: ${error.message}`,
 //     );
 //     return 0;
 //   }
@@ -90,8 +90,8 @@ function revealUnwarpedAudioContent(
 ): LiveAPI {
   const filePath = sourceClip.getProperty("file_path") as string;
 
-  console.error(
-    `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
+  console.warn(
+    `Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
   );
   // Create temp clip in session holding area; length=newEndMarker to include all content
   const { clip: tempClip, slot: tempSlot } = createAudioClipInSession(
@@ -176,10 +176,17 @@ export function revealAudioContentAtPosition(
     // Warped: duplicate and use looping workaround
     const duplicateResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
+      sourceClip.id,
       targetPosition,
     ) as string;
     const revealedClip = LiveAPI.from(duplicateResult);
+
+    // Verify duplicate succeeded before proceeding
+    if (!revealedClip.exists()) {
+      throw new Error(
+        `Failed to duplicate clip ${sourceClip.id} for audio content reveal`,
+      );
+    }
 
     setClipMarkersWithLoopingWorkaround(revealedClip, {
       loopStart: newStartMarker,
@@ -273,15 +280,15 @@ export function handleWarpMarkerOperation(
   clip: LiveAPI,
   warpOp: string,
   warpBeatTime: number | undefined,
-  warpSampleTime?: number | undefined,
-  warpDistance?: number | undefined,
+  warpSampleTime?: number,
+  warpDistance?: number,
 ): void {
   // Validate audio clip
   const hasAudioFile = clip.getProperty("file_path") != null;
 
   if (!hasAudioFile) {
-    console.error(
-      `Warning: warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+    console.warn(
+      `warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
     );
 
     return;
@@ -289,7 +296,7 @@ export function handleWarpMarkerOperation(
 
   // Validate required parameters per operation
   if (warpBeatTime == null) {
-    console.error(`Warning: warpBeatTime required for ${warpOp} operation`);
+    console.warn(`warpBeatTime required for ${warpOp} operation`);
 
     return;
   }
@@ -308,7 +315,7 @@ export function handleWarpMarkerOperation(
 
     case "move": {
       if (warpDistance == null) {
-        console.error("Warning: warpDistance required for move operation");
+        console.warn("warpDistance required for move operation");
 
         return;
       }

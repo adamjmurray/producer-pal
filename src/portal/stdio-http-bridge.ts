@@ -11,9 +11,10 @@ import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { VERSION } from "#src/shared/version.ts";
 import { logger } from "./file-logger.ts";
 
-const SETUP_URL = "https://producer-pal.org";
+const SETUP_URL = "https://producer-pal.org/installation";
 
 interface BridgeOptions {
   timeout?: number;
@@ -95,23 +96,21 @@ export class StdioHttpBridge {
   }
 
   private _createSetupErrorResponse() {
-    return formatErrorResponse(`❌ Cannot connect to Producer Pal in Ableton Live.
-The Producer Pal tools cannot work without an Ableton Live connection.
-It requires Live version 12.2 or higher with Max for Live (e.g. Ableton Live Suite 12.2+).
+    return formatErrorResponse(`❌ Cannot connect to Ableton Live.
 
-For Producer Pal to work, the user must ensure:
-1. Ableton Live is running (version 12.2+ with Max for Live)
-2. The [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd) has been added to the Ableton Live Set
-3. The device has successfully loaded and shows "Producer Pal Running"
+Ensure Ableton Live 12.3+ is running with the Producer Pal Max for Live device loaded.
+Tell the user to check ${SETUP_URL} for setup instructions.
 
-Direct the user to the [documentation site](${SETUP_URL}) for guidance.`);
+(Producer Pal ${VERSION})`);
   }
 
   private _createMisconfiguredUrlResponse() {
-    return formatErrorResponse(`❌ Invalid URL for the Producer Pal Desktop Extension.
-We cannot even attempt to connect to Producer Pal inside Ableton Live because the configured URL "${this.httpUrl.replace(/\/mcp$/, "")}" is not a valid URL.
-The user must provide a valid URL in the configuration settings for the Claude Desktop Extension for Producer Pal.
-The default URL value is http://localhost:3350`);
+    return formatErrorResponse(`❌ Invalid MCP server URL: "${this.httpUrl.replace(/\/mcp$/, "")}"
+
+The URL must include protocol (e.g. http://localhost:3350).
+Tell the user to check ${SETUP_URL} for configuration help.
+
+(Producer Pal ${VERSION})`);
   }
 
   private async _ensureHttpConnection(): Promise<void> {

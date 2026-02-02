@@ -32,7 +32,7 @@ export function parseTransposeValues(
   }
 
   if (transposeMin != null || transposeMax != null) {
-    console.error("Warning: transposeValues ignores transposeMin/transposeMax");
+    console.warn("transposeValues ignores transposeMin/transposeMax");
   }
 
   return transposeValuesArray;

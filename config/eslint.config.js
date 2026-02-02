@@ -95,6 +95,17 @@ const baseRules = {
   "no-eval": "error", // Never use eval()
   "no-new-func": "error", // Never use new Function()
 
+  // Path resolution - use import.meta.url for reliable paths
+  "no-restricted-properties": [
+    "error",
+    {
+      object: "process",
+      property: "cwd",
+      message:
+        "Use import.meta.url with fileURLToPath/dirname instead of process.cwd()",
+    },
+  ],
+
   // Vertical spacing - enforces blank lines at logical locations
   "@stylistic/padding-line-between-statements": [
     "error",
@@ -270,6 +281,9 @@ const tsOnlyRules = {
   "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
   "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T
   "@typescript-eslint/no-deprecated": "error", // Flag usage of @deprecated APIs
+  "@typescript-eslint/no-redundant-type-constituents": "error", // Catch | null | undefined where one is redundant
+  "@typescript-eslint/no-duplicate-type-constituents": "error", // Catch duplicate union members
+  "@typescript-eslint/prefer-as-const": "error", // Use `as const` for literal assertions
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
@@ -293,8 +307,7 @@ export default [
       "npm/**",
       "release/**",
       "test-results/**",
-      "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
-      "src/notation/modulation/parser/modulation-parser.js", // Generated parser
+      "**/generated-*-parser.js", // Generated parsers
       "**/*.d.ts", // TypeScript declaration files
     ],
   },
@@ -401,6 +414,70 @@ export default [
     },
   },
 
+  // Evals TypeScript files (LLM evaluation framework)
+  {
+    files: ["evals/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: ["./evals/tsconfig.json"],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: ["./evals/tsconfig.json"],
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      ...jsdocRules,
+      ...tsOnlyRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Require JSDoc for ALL functions in evals (not just exported)
+  {
+    files: ["evals/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            FunctionDeclaration: true,
+            FunctionExpression: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: false, // Handled via contexts below
+          },
+          // Contexts for arrow functions assigned to variables (not inline callbacks)
+          contexts: ["VariableDeclarator > ArrowFunctionExpression"],
+        },
+      ],
+    },
+  },
+
   // src TypeScript files (portal and future migrations)
   {
     files: ["src/**/*.ts"],
@@ -454,7 +531,7 @@ export default [
 
   // Node.js code
   {
-    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts"],
+    files: ["src/**/*.{js,mjs,ts}", "scripts/**/*.ts", "evals/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -464,7 +541,7 @@ export default [
 
   // Playwright docs tests (JavaScript)
   {
-    files: ["tests/docs/**/*.{js,mjs}"],
+    files: ["e2e/docs/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",
@@ -490,13 +567,13 @@ export default [
 
   // Playwright UI tests (TypeScript)
   {
-    files: ["tests/webui/**/*.ts"],
+    files: ["e2e/webui/**/*.ts", "e2e/docs/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2024,
         sourceType: "module",
-        project: "./tests/webui/tsconfig.json",
+        project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
       },
       globals: {
         ...globals.node,
@@ -505,7 +582,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: "./tests/webui/tsconfig.json",
+          project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
         },
         node: true,
       },
@@ -522,6 +599,45 @@ export default [
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       "no-loop-func": "off", // Common pattern in Playwright tests
+    },
+  },
+
+  // MCP E2E tests (TypeScript with vitest)
+  {
+    files: ["e2e/mcp/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: "module",
+        project: "./e2e/mcp/tsconfig.json",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./e2e/mcp/tsconfig.json",
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      vitest: vitestPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...vitestPlugin.configs.recommended.rules,
     },
   },
 
@@ -568,13 +684,12 @@ export default [
   },
 
   // Require .ts extensions for src TypeScript imports
-  // Parser files (.js) are exempt since they're generated JavaScript
+  // Only the parser wrappers are exempt (they import generated .js files)
   {
     files: ["src/**/*.ts"],
     ignores: [
-      "src/**/parser/*.ts", // Parser test files import .js files
-      "src/**/interpreter/*.ts", // Interpreter imports parser
-      "src/**/modulation/**/*.ts", // Modulation files import parser (includes tests/)
+      "src/notation/barbeat/parser/barbeat-parser.ts",
+      "src/notation/modulation/parser/modulation-parser.ts",
     ],
     rules: {
       "import/extensions": [
@@ -696,12 +811,25 @@ export default [
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
+  // E2E MCP tests - override max-expects and prefer-to-have-length
+  // Comprehensive tests have many assertions and often compare dynamic values
+  {
+    files: ["e2e/mcp/**/*.test.ts"],
+    rules: {
+      "vitest/max-expects": "off",
+      "vitest/prefer-to-have-length": "off",
+    },
+  },
 
   // Max file size rules
   {
     files: [
       "src/**/*.ts",
       "scripts/**/*.ts",
+      "evals/**/*.ts",
+      "e2e/mcp/**/*.ts",
+      "e2e/webui/**/*.ts",
+      "e2e/docs/**/*.ts",
       "webui/**/*.ts",
       "webui/**/*.tsx",
     ],

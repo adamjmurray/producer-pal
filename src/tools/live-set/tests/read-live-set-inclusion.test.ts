@@ -77,7 +77,7 @@ describe("readLiveSet - inclusion", () => {
 
     liveApiCall.mockImplementation(function (method) {
       if (method === "get_version_string") {
-        return "12.2";
+        return "12.3";
       }
 
       return null;

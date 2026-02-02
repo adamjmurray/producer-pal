@@ -41,9 +41,7 @@ export function withoutNulls(
  * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
  * @returns Array of trimmed ID strings
  */
-export function parseCommaSeparatedIds(
-  ids: string | null | undefined,
-): string[] {
+export function parseCommaSeparatedIds(ids?: string | null): string[] {
   if (ids == null) return [];
 
   return ids
@@ -58,9 +56,7 @@ export function parseCommaSeparatedIds(
  * @returns Array of integer indices
  * @throws If any index is not a valid integer
  */
-export function parseCommaSeparatedIndices(
-  indices: string | null | undefined,
-): number[] {
+export function parseCommaSeparatedIndices(indices?: string | null): number[] {
   if (indices == null) return [];
 
   return indices
@@ -83,9 +79,7 @@ export function parseCommaSeparatedIndices(
  * @param values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
  * @returns Array of valid float values (NaN values are filtered out)
  */
-export function parseCommaSeparatedFloats(
-  values: string | null | undefined,
-): number[] {
+export function parseCommaSeparatedFloats(values?: string | null): number[] {
   if (values == null) return [];
 
   return values

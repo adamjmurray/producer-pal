@@ -1,13 +1,20 @@
 import * as console from "#src/shared/v8-max-console.ts";
 
 /**
- * Perform shuffling of arrangement clips
+ * Perform shuffling of arrangement clips.
+ *
+ * Uses hard failure (throws) since shuffle requires all-or-nothing semantics.
+ * Note: If a failure occurs mid-operation, clips may be left in the holding area
+ * (at positions starting from holdingAreaStartBeats). This is a known limitation
+ * as implementing rollback would add significant complexity.
+ *
  * @param arrangementClips - Array of arrangement clip objects
  * @param clips - Array to update with fresh clips after shuffling
  * @param warnings - Set to track warnings already issued
  * @param rng - Random number generator function
  * @param context - Context object with holdingAreaStartBeats
  * @param context.holdingAreaStartBeats - Start position for temporary holding area
+ * @throws Error if clip duplication fails during shuffle
  */
 export function performShuffling(
   arrangementClips: LiveAPI[],
@@ -18,7 +25,7 @@ export function performShuffling(
 ): void {
   if (arrangementClips.length === 0) {
     if (!warnings.has("shuffle-no-arrangement")) {
-      console.error("Warning: shuffleOrder requires arrangement clips");
+      console.warn("shuffleOrder requires arrangement clips");
       warnings.add("shuffle-no-arrangement");
     }
 
@@ -67,23 +74,32 @@ export function performShuffling(
   });
 
   // Move all clips to holding area first
-  // Store trackIndex before entering loop (all arrangement clips are on same track)
-  const firstArrangementClip = arrangementClips[0] as LiveAPI;
-  const trackIndexForShuffle = firstArrangementClip.trackIndex;
+  // Track all track indices for multi-track support
+  const seenTrackIndices = new Set<number>();
 
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
+
+    if (trackIndex != null) {
+      seenTrackIndices.add(trackIndex);
+    }
+
     const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
     const holdingPos = context.holdingAreaStartBeats + index * 100;
     const result = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${clip.id}`,
+      clip.id,
       holdingPos,
     ) as string;
     const tempClip = LiveAPI.from(result);
 
+    // Verify duplicate succeeded before deleting original
+    if (!tempClip.exists()) {
+      throw new Error(`Failed to duplicate clip ${clip.id} during shuffle`);
+    }
+
     // Delete original
-    track.call("delete_clip", `id ${clip.id}`);
+    track.call("delete_clip", clip.id);
 
     return {
       tempClip,
@@ -94,23 +110,37 @@ export function performShuffling(
 
   // Move clips from holding area to shuffled positions
   for (const { tempClip, track, targetPosition } of holdingPositions) {
-    track.call(
+    const finalResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${tempClip.id}`,
+      tempClip.id,
       targetPosition,
-    );
-    track.call("delete_clip", `id ${tempClip.id}`);
+    ) as string;
+    const finalClip = LiveAPI.from(finalResult);
+
+    // Verify duplicate succeeded before deleting temp clip
+    if (!finalClip.exists()) {
+      throw new Error(
+        `Failed to move clip ${tempClip.id} from holding during shuffle`,
+      );
+    }
+
+    track.call("delete_clip", tempClip.id);
   }
 
   // After shuffling, the clips in the array are stale (they were deleted and recreated)
-  // Re-scan to get fresh clip objects
-  const track = LiveAPI.from(`live_set tracks ${trackIndexForShuffle}`);
-  const freshClipIds = track.getChildIds("arrangement_clips");
-  const freshClips = freshClipIds.map((id) => LiveAPI.from(id));
+  // Re-scan ALL tracks that had clips (not just the first track)
+  const allFreshClips: LiveAPI[] = [];
+
+  for (const trackIndex of seenTrackIndices) {
+    const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+    const freshClipIds = track.getChildIds("arrangement_clips");
+
+    allFreshClips.push(...freshClipIds.map((id) => LiveAPI.from(id)));
+  }
 
   // Replace all stale clips with fresh ones
   clips.length = 0;
-  clips.push(...freshClips);
+  clips.push(...allFreshClips);
 }
 
 /**

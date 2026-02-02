@@ -7,7 +7,7 @@ import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = process.cwd();
+const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
 
@@ -29,13 +29,13 @@ export default defineConfig({
     {
       name: "rename-output",
       closeBundle() {
-        const outDir = join(process.cwd(), "max-for-live-device");
+        const outDir = join(rootDir, "max-for-live-device");
         const oldPath = join(outDir, "index.html");
         const newPath = join(outDir, "chat-ui.html");
         try {
           renameSync(oldPath, newPath);
           console.log(
-            `Renamed ${oldPath.replace(process.cwd() + "/", "")} -> ${newPath.replace(process.cwd() + "/", "")}`,
+            `Renamed ${oldPath.replace(rootDir + "/", "")} -> ${newPath.replace(rootDir + "/", "")}`,
           );
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
@@ -46,7 +46,7 @@ export default defineConfig({
     {
       name: "add-license-header",
       closeBundle() {
-        const outDir = join(process.cwd(), "max-for-live-device");
+        const outDir = join(rootDir, "max-for-live-device");
         const filePath = join(outDir, "chat-ui.html");
 
         try {
@@ -69,7 +69,7 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
           const contentWithHeader = licenseHeader + content;
           writeFileSync(filePath, contentWithHeader, "utf-8");
           console.log(
-            `Added license header to ${filePath.replace(process.cwd() + "/", "")}`,
+            `Added license header to ${filePath.replace(rootDir + "/", "")}`,
           );
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);

@@ -20,7 +20,7 @@ function configureSourceTrackInput(
   sourceTrack.set("arm", 1);
 
   if (currentArm !== 1) {
-    console.error(`routeToSource: Armed the source track`);
+    console.warn(`routeToSource: Armed the source track`);
   }
 
   const currentInputType = sourceTrack.getProperty(
@@ -42,12 +42,12 @@ function configureSourceTrackInput(
         identifier: noInput.identifier,
       });
       // Warn that input routing changed
-      console.error(
-        `Warning: Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
+      console.warn(
+        `Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
       );
     } else {
-      console.error(
-        `Warning: Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
+      console.warn(
+        `Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
       );
     }
   }
@@ -106,8 +106,8 @@ export function findRoutingOptionForDuplicateNames(
   );
 
   if (sourcePosition === -1) {
-    console.error(
-      `Warning: Could not find source track in duplicate name list for "${sourceTrackName}"`,
+    console.warn(
+      `Could not find source track in duplicate name list for "${sourceTrackName}"`,
     );
 
     return;
@@ -144,8 +144,8 @@ function findSourceRouting(
     );
 
     if (!sourceRouting) {
-      console.error(
-        `Warning: Could not route to "${sourceTrackName}" due to duplicate track names. ` +
+      console.warn(
+        `Could not route to "${sourceTrackName}" due to duplicate track names. ` +
           `Consider renaming tracks to have unique names.`,
       );
     }
@@ -187,8 +187,8 @@ function applyOutputRouting(
       [];
 
     if (matchingNames.length === 0) {
-      console.error(
-        `Warning: Could not find track "${sourceTrackName}" in routing options`,
+      console.warn(
+        `Could not find track "${sourceTrackName}" in routing options`,
       );
     }
   }

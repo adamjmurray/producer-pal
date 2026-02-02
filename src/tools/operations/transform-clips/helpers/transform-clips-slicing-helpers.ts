@@ -77,10 +77,17 @@ function sliceUnloopedMidiContent(
     (sliceContentStart, sliceContentEnd, slicePosition) => {
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
+        sourceClip.id,
         slicePosition,
       ) as string;
       const sliceClip = LiveAPI.from(duplicateResult);
+
+      // Verify duplicate succeeded before proceeding
+      if (!sliceClip.exists()) {
+        throw new Error(
+          `Failed to duplicate clip ${sourceClip.id} for MIDI slice at ${slicePosition}`,
+        );
+      }
 
       setClipMarkersWithLoopingWorkaround(sliceClip, {
         startMarker: sliceContentStart,
@@ -143,7 +150,7 @@ export function prepareSliceParams(
 
   if (arrangementClips.length === 0) {
     if (!warnings.has("slice-no-arrangement")) {
-      console.error("Warning: slice requires arrangement clips");
+      console.warn("slice requires arrangement clips");
       warnings.add("slice-no-arrangement");
     }
 
@@ -177,13 +184,20 @@ interface SlicedClipRange {
 }
 
 /**
- * Perform slicing of arrangement clips
+ * Perform slicing of arrangement clips.
+ *
+ * Uses hard failure (throws) since slice requires all-or-nothing semantics.
+ * Note: If a failure occurs mid-operation, partially created slices may remain
+ * in the arrangement. This is a known limitation as implementing rollback would
+ * add significant complexity.
+ *
  * @param arrangementClips - Array of arrangement clips to slice
  * @param sliceBeats - Slice duration in Ableton beats
  * @param clips - Array to update with fresh clips after slicing
  * @param _warnings - Set to track warnings (unused, kept for consistent signature)
  * @param slice - Original slice parameter for error messages
  * @param _context - Internal context object
+ * @throws Error if clip duplication fails during slicing
  */
 export function performSlicing(
   arrangementClips: LiveAPI[],
@@ -250,8 +264,17 @@ export function performSlicing(
       _context as TilingContext,
     );
 
+    // Verify holding clip was created before deleting original
+    const holdingClip = LiveAPI.from(holdingClipId);
+
+    if (!holdingClip.exists()) {
+      throw new Error(
+        `Failed to create holding clip for ${originalClipId} during slicing`,
+      );
+    }
+
     // Delete original clip before moving from holding
-    track.call("delete_clip", `id ${originalClipId}`);
+    track.call("delete_clip", originalClipId);
     // Move shortened clip from holding back to original position
     const movedClip = moveClipFromHolding(
       holdingClipId,

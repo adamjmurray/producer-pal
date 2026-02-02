@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   type FolderEntry,
   mockFolderStructure,
@@ -206,18 +206,12 @@ describe("readSamples", () => {
         "/samples/": entries,
       });
 
-      // Mock console.error
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
       readSamples({}, context);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(outlet).toHaveBeenCalledWith(
+        1,
         "Stopped scanning for samples at 1000 files. Consider using a smaller sample folder.",
       );
-
-      consoleSpy.mockRestore();
     });
 
     it("should stop scanning nested folders when limit is reached", () => {

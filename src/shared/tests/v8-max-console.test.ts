@@ -14,18 +14,22 @@ const g = globalThis as Record<string, unknown>;
 describe("v8-max-console", () => {
   let consoleLogSpy: MockInstance;
   let consoleErrorSpy: MockInstance;
+  let consoleWarnSpy: MockInstance;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
     // Clean up any global mocks for Max environment
     delete g.post;
     delete g.error;
+    delete g.outlet;
   });
 
   describe("Max environment simulation", () => {
@@ -172,35 +176,45 @@ describe("v8-max-console", () => {
   });
 
   describe("warn", () => {
-    it("logs error strings", () => {
-      warn("error message");
-      expect(consoleErrorSpy).toHaveBeenCalledWith("error message");
+    it("logs warning strings", () => {
+      warn("warning message");
+      expect(consoleWarnSpy).toHaveBeenCalledWith("warning message");
     });
 
-    it("logs error numbers", () => {
+    it("logs warning numbers", () => {
       warn(404);
-      expect(consoleErrorSpy).toHaveBeenCalledWith("404");
+      expect(consoleWarnSpy).toHaveBeenCalledWith("404");
     });
 
-    it("logs error objects", () => {
-      warn({ code: "ERR_001", message: "Something went wrong" });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "{code: ERR_001, message: Something went wrong}",
+    it("logs warning objects", () => {
+      warn({ code: "WARN_001", message: "Something needs attention" });
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "{code: WARN_001, message: Something needs attention}",
       );
     });
 
-    it("logs error arrays", () => {
-      warn(["error1", "error2"]);
-      expect(consoleErrorSpy).toHaveBeenCalledWith("[error1, error2]");
+    it("logs warning arrays", () => {
+      warn(["warning1", "warning2"]);
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[warning1, warning2]");
     });
 
-    it("logs multiple error arguments", () => {
-      warn("Error:", 500, { status: "failed" });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Error:",
+    it("logs multiple warning arguments", () => {
+      warn("Warning:", 500, { status: "pending" });
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Warning:",
         "500",
-        "{status: failed}",
+        "{status: pending}",
       );
+    });
+
+    it("uses outlet() when in Max environment", () => {
+      const mockOutlet = vi.fn();
+
+      g.outlet = mockOutlet;
+
+      warn("test warning");
+      expect(mockOutlet).toHaveBeenCalledWith(1, "test warning");
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
   });
 });

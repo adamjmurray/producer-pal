@@ -249,14 +249,14 @@ describe("transport", () => {
 
   it("should log warning when clip doesn't exist for play-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = playback({
       action: "play-session-clips",
       clipIds: "nonexistent_clip",
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'playback: id "nonexistent_clip" does not exist',
     );
     expect(result).toBeDefined(); // Operation continues but with no clips played
@@ -444,14 +444,14 @@ describe("transport", () => {
 
   it("should log warning when clip doesn't exist for stop-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
-    const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = playback({
       action: "stop-session-clips",
       clipIds: "nonexistent_clip",
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       'playback: id "nonexistent_clip" does not exist',
     );
     expect(result).toBeDefined(); // Operation continues but with no clips stopped

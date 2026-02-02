@@ -20,7 +20,7 @@ vi.mock(
   }),
 );
 
-function setupBasicMocks(version = "12.2", idMap: Record<string, string> = {}) {
+function setupBasicMocks(version = "12.3", idMap: Record<string, string> = {}) {
   liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
     return idMap[this._path ?? ""] ?? this._id ?? "";
   });
@@ -162,7 +162,7 @@ describe("connect", () => {
   });
 
   it("detects instruments on non-host tracks and provides appropriate suggestion", () => {
-    setupBasicMocks("12.2", {
+    setupBasicMocks("12.3", {
       live_set: "live_set_id",
       "live_set tracks 0": "track0",
       "live_set tracks 1": "track1",
@@ -191,7 +191,7 @@ describe("connect", () => {
   });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
-    setupBasicMocks("12.2", {
+    setupBasicMocks("12.3", {
       live_set: "live_set_id",
       "live_set tracks 0": "track0",
       "live_set tracks 1": "track1",
@@ -217,7 +217,7 @@ describe("connect", () => {
   });
 
   it("handles null host track index gracefully", () => {
-    setupBasicMocks("12.2", {
+    setupBasicMocks("12.3", {
       live_set: "live_set_id",
       "live_set tracks 0": "track0",
     });
@@ -242,7 +242,7 @@ describe("connect", () => {
   });
 
   it("handles empty Live Set correctly", () => {
-    setupBasicMocks("12.2", { live_set: "live_set_id" });
+    setupBasicMocks("12.3", { live_set: "live_set_id" });
     mockLiveApiGet(createLiveSetConfig({ name: "Empty Live Set" }));
     vi.mocked(getHostTrackIndex).mockReturnValue(null);
 
@@ -296,7 +296,7 @@ describe("connect", () => {
 
   it("skips non-instrument devices when searching for instruments", () => {
     // Test that the inner loop continues when a device is not an instrument (effect device)
-    setupBasicMocks("12.2", {
+    setupBasicMocks("12.3", {
       live_set: "live_set_id",
       "live_set tracks 0": "track0",
       "live_set tracks 0 devices 0": "effect_device",
@@ -327,7 +327,7 @@ describe("connect", () => {
 
   it("breaks outer loop after finding first instrument", () => {
     // Test the outer break when foundAnyInstrument is true
-    setupBasicMocks("12.2", {
+    setupBasicMocks("12.3", {
       live_set: "live_set_id",
       "live_set tracks 0": "track0",
       "live_set tracks 1": "track1",

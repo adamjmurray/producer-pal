@@ -117,10 +117,10 @@ jobs:
           BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
 
           # Extract thresholds from config
-          MIN_STATEMENTS=$(node scripts/get-thresholds.ts coverage statements)
-          MIN_BRANCHES=$(node scripts/get-thresholds.ts coverage branches)
-          MIN_FUNCTIONS=$(node scripts/get-thresholds.ts coverage functions)
-          MIN_LINES=$(node scripts/get-thresholds.ts coverage lines)
+          MIN_STATEMENTS=$(node scripts/build-and-release/get-thresholds.ts coverage statements)
+          MIN_BRANCHES=$(node scripts/build-and-release/get-thresholds.ts coverage branches)
+          MIN_FUNCTIONS=$(node scripts/build-and-release/get-thresholds.ts coverage functions)
+          MIN_LINES=$(node scripts/build-and-release/get-thresholds.ts coverage lines)
 
           cat > /tmp/summary.md << EOF
           ## Unit Test Coverage
@@ -194,13 +194,13 @@ jobs:
       - name: Check parser is up-to-date
         run: |
           # Create a backup of the current parsers
-          cp src/notation/barbeat/parser/barbeat-parser.js barbeat-parser-backup.js
+          cp src/notation/barbeat/parser/generated-barbeat-parser.js barbeat-parser-backup.js
 
           # Regenerate the parser
           npm run parser:build
 
           # Compare the newly generated parsers with the checked-in versions
-          if ! diff -q src/notation/barbeat/parser/barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
+          if ! diff -q src/notation/barbeat/parser/generated-barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
             echo "Error: The checked-in bbs parser does not match the generated parser."
             echo "Please run 'npm run parser:build' and commit the changes."
             rm barbeat-parser-backup.js
@@ -223,9 +223,11 @@ jobs:
           npm run duplication 2>&1 | tee duplication-output.txt
 
           # Extract duplication thresholds from config
-          MAX_SOURCE=$(node scripts/get-thresholds.ts duplication source)
-          MAX_TESTS=$(node scripts/get-thresholds.ts duplication tests)
-          MAX_SCRIPTS=$(node scripts/get-thresholds.ts duplication scripts)
+          MAX_SOURCE=$(node scripts/build-and-release/get-thresholds.ts duplication source)
+          MAX_TESTS=$(node scripts/build-and-release/get-thresholds.ts duplication tests)
+          MAX_SCRIPTS=$(node scripts/build-and-release/get-thresholds.ts duplication scripts)
+          MAX_EVALS=$(node scripts/build-and-release/get-thresholds.ts duplication evals)
+          MAX_E2E=$(node scripts/build-and-release/get-thresholds.ts duplication e2e)
 
           # Format duplication report as markdown table
           cat > /tmp/summary.md << EOF
@@ -237,6 +239,8 @@ jobs:
           grep "^Source " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | ${MAX_SOURCE}% | \3 | \1 |/" >> /tmp/summary.md
           grep "^Tests " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | ${MAX_TESTS}% | \3 | \1 |/" >> /tmp/summary.md
           grep "^Scripts " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \2% | ${MAX_SCRIPTS}% | \3 | \1 |/" >> /tmp/summary.md
+          grep "^Evals " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Evals | \2% | ${MAX_EVALS}% | \3 | \1 |/" >> /tmp/summary.md
+          grep "^E2E " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| E2E | \2% | ${MAX_E2E}% | \3 | \1 |/" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY

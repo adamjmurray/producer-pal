@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import type { Mock, MockInstance } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Mock } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
@@ -9,19 +9,15 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   setupScenePath,
   setupTrackPath,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
-interface MockContext {
-  _path?: string;
-  _id?: string;
-}
-
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track2") {
         return "live_set tracks 1"; // Second "Synth" track (sourceTrackIndex)
@@ -74,7 +70,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
     // Mock IDs for creation order - track2 has higher ID than track0
     (liveApiId as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string {
       if (this._path === "live_set tracks 0" || this._id === "id track0") {
         return "100";
@@ -108,7 +104,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
   it("should handle unique track names without crashing (backward compatibility)", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
@@ -162,12 +158,8 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should warn when track is not found in routing options", () => {
-    const consoleSpy: MockInstance = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
@@ -212,8 +204,9 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     // Should warn about not finding the track
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Warning: Could not find track "NonExistentTrack" in routing options',
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'Could not find track "NonExistentTrack" in routing options',
     );
 
     // Should not set output routing with NonExistentTrack identifier
@@ -223,15 +216,13 @@ describe("duplicate - routeToSource with duplicate track names", () => {
         identifier: expect.stringContaining("NonExistent"),
       }),
     );
-
-    consoleSpy.mockRestore();
   });
 });
 
 describe("duplicate - switchView functionality", () => {
   it("should switch to arrangement view when duplicating to arrangement destination", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
@@ -251,11 +242,11 @@ describe("duplicate - switchView functionality", () => {
     });
 
     const originalPath = (liveApiPath as Mock).getMockImplementation() as
-      | ((this: MockContext) => string | undefined)
+      | ((this: MockLiveAPIContext) => string | undefined)
       | undefined;
 
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._path === "id live_set tracks 0 arrangement_clips 0") {
         return "live_set tracks 0 arrangement_clips 0";
@@ -285,7 +276,7 @@ describe("duplicate - switchView functionality", () => {
 
   it("should switch to session view when duplicating to session destination", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "clip1") {
         return "live_set tracks 0 clip_slots 0 clip";
@@ -319,7 +310,7 @@ describe("duplicate - switchView functionality", () => {
 
   it("should switch to session view when duplicating tracks", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";
@@ -366,7 +357,7 @@ describe("duplicate - switchView functionality", () => {
 
   it("should work with multiple duplicates when switchView=true", () => {
     (liveApiPath as Mock).mockImplementation(function (
-      this: MockContext,
+      this: MockLiveAPIContext,
     ): string | undefined {
       if (this._id === "track1") {
         return "live_set tracks 0";

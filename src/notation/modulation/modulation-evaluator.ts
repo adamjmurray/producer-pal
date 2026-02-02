@@ -8,7 +8,7 @@ import {
   type NoteProperties,
   type ModulationResult,
 } from "./modulation-evaluator-helpers.ts";
-import * as parser from "./parser/modulation-parser.js";
+import * as parser from "./parser/modulation-parser.ts";
 
 /**
  * Apply modulations to a list of notes in-place
@@ -33,9 +33,7 @@ export function applyModulations(
   try {
     ast = parser.parse(modulationString);
   } catch (error) {
-    console.error(
-      `Warning: Failed to parse modulation string: ${errorMessage(error)}`,
-    );
+    console.warn(`Failed to parse modulation string: ${errorMessage(error)}`);
 
     return; // Early return - no point processing notes if parsing failed
   }
@@ -252,9 +250,7 @@ export function evaluateModulation(
   try {
     ast = parser.parse(modulationString);
   } catch (error) {
-    console.error(
-      `Warning: Failed to parse modulation string: ${errorMessage(error)}`,
-    );
+    console.warn(`Failed to parse modulation string: ${errorMessage(error)}`);
 
     return {};
   }

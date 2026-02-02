@@ -6,7 +6,7 @@ import type {
   ExpressionNode,
   ModulationAssignment,
   PitchRange,
-} from "./parser/modulation-parser.js";
+} from "./parser/modulation-parser.ts";
 
 export interface TimeRange {
   start: number;
@@ -107,8 +107,8 @@ function processAssignment(
   assignment: ModulationAssignment,
   position: number,
   pitch: number | undefined,
-  bar: number | null | undefined,
-  beat: number | null | undefined,
+  bar: number | undefined,
+  beat: number | undefined,
   numerator: number,
   denominator: number,
   clipTimeRange: TimeRange | undefined,
@@ -159,8 +159,8 @@ function processAssignment(
 
     return { value, pitchRange };
   } catch (error) {
-    console.error(
-      `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+    console.warn(
+      `Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
     );
 
     return { skip: true };
@@ -180,8 +180,8 @@ function processAssignment(
  */
 function calculateActiveTimeRange(
   assignment: ModulationAssignment,
-  bar: number | null | undefined,
-  beat: number | null | undefined,
+  bar: number | undefined,
+  beat: number | undefined,
   numerator: number,
   denominator: number,
   clipTimeRange: TimeRange | undefined,

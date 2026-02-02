@@ -41,6 +41,10 @@ appServer
       `Producer Pal ${VERSION} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );
     void Max.outlet("version", VERSION);
+
+    // We need to use our own started event because the Node for Max started
+    // occurs too early, before our message handlers are registered.
+    void Max.outlet("started");
   })
   .on("error", (error: ServerError) => {
     throw new Error(

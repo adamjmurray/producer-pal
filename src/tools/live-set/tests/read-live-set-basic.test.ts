@@ -31,6 +31,8 @@ describe("readLiveSet - basic reading", () => {
           return "scene1";
         case "live_set scenes 1":
           return "scene2";
+        case "live_set scenes 2":
+          return "scene3";
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip1";
         case "live_set tracks 0 clip_slots 2 clip":
@@ -77,7 +79,7 @@ describe("readLiveSet - basic reading", () => {
         signature_denominator: 4,
         tempo: 120,
         tracks: children("track1", "track2", "track3"),
-        scenes: children("scene1", "scene2"),
+        scenes: children("scene1", "scene2", "scene3"),
       },
       "live_set tracks 0": {
         has_midi_input: 1,
@@ -126,6 +128,17 @@ describe("readLiveSet - basic reading", () => {
         time_signature_numerator: -1,
         time_signature_denominator: -1,
         time_signature_enabled: 0,
+      },
+      "live_set scenes 2": {
+        name: "Scene 3",
+        color: 255, // Blue
+        is_empty: 0,
+        is_triggered: 0,
+        tempo: 120,
+        tempo_enabled: 1,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        time_signature_enabled: 1,
       },
     });
 
@@ -217,6 +230,14 @@ describe("readLiveSet - basic reading", () => {
           sceneIndex: 1,
           clipCount: 0,
           triggered: true,
+        },
+        {
+          id: "scene3",
+          name: "Scene 3 (3)",
+          sceneIndex: 2,
+          clipCount: 1,
+          tempo: 120,
+          timeSignature: "4/4",
         },
       ],
     });

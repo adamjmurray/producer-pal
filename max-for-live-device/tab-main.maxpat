@@ -10,10 +10,34 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 878.0, 197.0, 609.0, 526.0 ],
+		"rect" : [ 827.0, 206.0, 505.0, 487.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-6",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "outputvalue" ],
+					"patching_rect" : [ 370.0, 199.0, 77.0, 22.0 ],
+					"text" : "t outputvalue"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-44",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 370.0, 162.0, 95.0, 22.0 ],
+					"text" : "r ---node-started"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"annotation" : "Open the built-in AI chat UI in a web browser.",
 					"annotation_name" : "Open Chat UI",
@@ -58,7 +82,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 397.0, 309.0, 15.0, 15.0 ],
+					"patching_rect" : [ 370.0, 242.0, 15.0, 15.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 77.0, 103.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
@@ -140,37 +164,13 @@
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-15",
-					"linecount" : 7,
-					"maxclass" : "comment",
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 459.0, 169.0, 130.0, 100.0 ],
-					"text" : "The [pipe]s attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
-				}
-
-			}
-, 			{
-				"box" : 				{
 					"id" : "obj-75",
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 397.0, 390.0, 104.0, 22.0 ],
+					"patching_rect" : [ 370.0, 281.0, 104.0, 22.0 ],
 					"text" : "chatUIEnabled $1"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-73",
-					"maxclass" : "newobj",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 397.0, 348.0, 61.0, 22.0 ],
-					"text" : "pipe 1000"
 				}
 
 			}
@@ -180,7 +180,7 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 392.0, 293.0, 87.0, 18.0 ],
+					"patching_rect" : [ 387.0, 242.0, 87.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 93.0, 102.0, 79.397429999999986, 18.0 ],
 					"text" : "Enable Chat UI",
@@ -194,7 +194,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 397.0, 431.0, 89.0, 22.0 ],
+					"patching_rect" : [ 370.0, 322.0, 89.0, 22.0 ],
 					"text" : "s ---node-script"
 				}
 
@@ -244,7 +244,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 305.0, 169.0, 72.0, 22.0 ],
+					"patching_rect" : [ 267.0, 123.0, 72.0, 22.0 ],
 					"text" : "prepend set"
 				}
 
@@ -257,7 +257,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 305.0, 121.0, 102.0, 35.0 ],
+					"patching_rect" : [ 267.0, 75.0, 102.0, 35.0 ],
 					"text" : "combine v X.Y.Z @triggers 1"
 				}
 
@@ -337,7 +337,7 @@
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 340.0, 84.0, 67.0, 22.0 ],
+					"patching_rect" : [ 302.0, 38.0, 67.0, 22.0 ],
 					"text" : "r ---version"
 				}
 
@@ -349,7 +349,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 305.0, 199.5, 78.0, 21.0 ],
+					"patching_rect" : [ 267.0, 154.0, 78.0, 21.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 182.0, 28.0, 54.0, 21.0 ],
 					"text" : "vX.Y.Z",
@@ -423,8 +423,22 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-73", 0 ],
+					"destination" : [ "obj-75", 0 ],
 					"source" : [ "obj-37", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-6", 0 ],
+					"source" : [ "obj-44", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-37", 0 ],
+					"source" : [ "obj-6", 0 ]
 				}
 
 			}
@@ -439,13 +453,6 @@
 				"patchline" : 				{
 					"destination" : [ "obj-35", 1 ],
 					"source" : [ "obj-71", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-75", 0 ],
-					"source" : [ "obj-73", 0 ]
 				}
 
 			}

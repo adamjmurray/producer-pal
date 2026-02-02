@@ -44,9 +44,20 @@ The version bump script updates the following:
 
 ## Step 0: Checklist before releasing
 
-- [ ] All code is committed
-- [ ] All commits in the local dev branch are pushed to github
-- [ ] The PR build is green
+In the `dev` branch:
+
+- [ ] All remote changes (e.g. dependabot) are pulled
+- [ ] Dependencies are up to date (`npm i`)
+- [ ] All local changes are committed
+- [ ] All local commits are pushed to GitHub
+- [ ] The PR to `main` has a green build
+- [ ] MCP e2e tests pass locally (see below)
+
+### MCP E2E Tests
+
+Run `npm run build && npm run e2e:mcp` with Ableton Live open. It takes a few
+minutes Don't use Live while this runs because the tests manipulate it directly.
+Requires macOS.
 
 ## Step 1: Build Release Files
 
@@ -100,13 +111,19 @@ test steps. If issues are found, see
 
 ## Step 4: Publish to npm / test npx
 
-1. Publish the package:
+1. Login to NPM:
+
+   ```sh
+   npm login
+   ```
+
+2. Publish the package:
 
    ```sh
    cd npm && npm publish
    ```
 
-2. Test the published package with LM Studio or another MCP client:
+3. Test the published package with LM Studio or another MCP client:
 
    ```json
    "producer-pal": {
@@ -115,7 +132,7 @@ test steps. If issues are found, see
    }
    ```
 
-3. Connect and confirm `ppal-read-live-set` is called
+4. Connect and confirm `ppal-read-live-set` is called
 
 See [Publishing to npm](#publishing-to-npm) for more details and
 troubleshooting.
@@ -144,7 +161,7 @@ After testing succeeds:
    - Fresh Live Set with downloaded `Producer_Pal.amxd`
    - Leave `producer-pal-portal.js` in Downloads folder
 
-### Claude Desktop - Full Sanity Check
+### Claude Desktop - Sanity Check
 
 - [ ] Connect and read Live Set
 - [ ] Create MIDI clip
@@ -163,7 +180,8 @@ npm run ui:test
 ```
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
-models. See `tests/webui/README.md` for details.
+models. See `e2e/webui/README.md` for details. These tests can be flakey, so
+manually check on anything that fails.
 
 Note: These tests require an `.env` file with API keys.
 

@@ -28,6 +28,37 @@ interface TimeSignature {
 }
 
 /**
+ * Determine start_marker value with bounds checking
+ * @param firstStartBeats - First start position in beats
+ * @param startBeats - Start position in beats
+ * @param endMarker - Clip end marker (content boundary)
+ * @returns start_marker value or null if not applicable
+ */
+function determineStartMarker(
+  firstStartBeats: number | null,
+  startBeats: number | null,
+  endMarker: number,
+): number | null {
+  if (firstStartBeats != null) {
+    if (firstStartBeats < endMarker) {
+      return firstStartBeats;
+    }
+
+    console.warn(
+      `firstStart parameter ignored - exceeds clip content boundary (${firstStartBeats} >= ${endMarker})`,
+    );
+
+    return null;
+  }
+
+  if (startBeats != null && startBeats < endMarker) {
+    return startBeats;
+  }
+
+  return null;
+}
+
+/**
  * Calculate beat positions from bar|beat notation
  * @param args - Calculation arguments
  * @param args.start - Start position in bar|beat notation
@@ -51,7 +82,6 @@ export function calculateBeatPositions({
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
-  let startMarkerBeats: number | null = null;
 
   // Convert start to beats if provided
   if (start != null) {
@@ -78,13 +108,14 @@ export function calculateBeatPositions({
         // For non-looping clips, derive from end_marker - length
         const currentEndMarker = clip.getProperty("end_marker") as number;
         const currentStartMarker = clip.getProperty("start_marker") as number;
+        const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
 
         startBeats = currentEndMarker - lengthBeats;
 
-        // Sanity check: warn if derived start doesn't match start_marker
-        if (Math.abs(startBeats - currentStartMarker) > 0.001) {
-          console.error(
-            `Warning: Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
+        // Sanity check for MIDI clips only - audio clips have length based on sample duration
+        if (isMidiClip && Math.abs(startBeats - currentStartMarker) > 0.001) {
+          console.warn(
+            `Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
           );
         }
       }
@@ -104,12 +135,11 @@ export function calculateBeatPositions({
 
   // Determine start_marker value (must be < end_marker content boundary)
   const endMarker = clip.getProperty("end_marker") as number;
-
-  if (firstStartBeats != null && firstStartBeats < endMarker) {
-    startMarkerBeats = firstStartBeats;
-  } else if (startBeats != null && startBeats < endMarker) {
-    startMarkerBeats = startBeats;
-  }
+  const startMarkerBeats = determineStartMarker(
+    firstStartBeats,
+    startBeats,
+    endMarker,
+  );
 
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
 }

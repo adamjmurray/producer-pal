@@ -7,6 +7,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
+  type MockLiveAPIContext,
   setupArrangementClipMocks,
   setupArrangementDuplicationMock,
   setupSessionClipPath,
@@ -14,14 +15,10 @@ import {
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import type { Mock } from "vitest";
 
-interface MockContext {
-  _id?: string;
-}
-
 /** Mock liveApiId to return session clip path format for clip1 */
 function setupClip1SessionId(): void {
   (liveApiId as Mock).mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
   ): string | undefined {
     if (this._id === "clip1") return "live_set/tracks/0/clip_slots/0/clip";
 

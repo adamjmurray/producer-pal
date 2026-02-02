@@ -43,16 +43,12 @@ describe("readScene", () => {
     });
   });
 
-  it("returns null values when no scene exists", () => {
+  it("throws when no scene exists", () => {
     liveApiId.mockReturnValue("id 0");
 
-    const result = readScene({ sceneIndex: 99 });
-
-    expect(result).toStrictEqual({
-      id: null,
-      name: null,
-      sceneIndex: 99,
-    });
+    expect(() => readScene({ sceneIndex: 99 })).toThrow(
+      "readScene: sceneIndex 99 does not exist",
+    );
   });
 
   it("handles disabled tempo and time signature", () => {

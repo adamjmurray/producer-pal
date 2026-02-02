@@ -36,8 +36,8 @@ function expandRepeatPattern(
   const step = stepValue ?? currentDuration;
 
   if (times > 100) {
-    console.error(
-      `WARNING: Repeat pattern generates ${times} notes, which may be excessive`,
+    console.warn(
+      `Repeat pattern generates ${times} notes, which may be excessive`,
     );
   }
 
@@ -220,14 +220,12 @@ export function handlePitchEmission(
     if (positions.length === 1) {
       const pos = assertDefined(positions[0], "single position");
 
-      console.error(
-        `Warning: Time position ${pos.bar}|${pos.beat} has no pitches`,
-      );
+      console.warn(`Time position ${pos.bar}|${pos.beat} has no pitches`);
     } else if (positions.length > 0) {
       const pos = assertDefined(positions[0], "first position");
 
-      console.error(
-        `Warning: Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,
+      console.warn(
+        `Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,
       );
     }
 
@@ -235,8 +233,8 @@ export function handlePitchEmission(
   }
 
   if (state.stateChangedSinceLastPitch) {
-    console.error(
-      "Warning: state change after pitch(es) but before time position won't affect this group",
+    console.warn(
+      "state change after pitch(es) but before time position won't affect this group",
     );
   }
 

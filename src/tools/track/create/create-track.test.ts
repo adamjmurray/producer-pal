@@ -12,7 +12,7 @@ import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   log: vi.fn(),
-  error: vi.fn(),
+  warn: vi.fn(),
 }));
 
 describe("createTrack", () => {
@@ -407,7 +407,7 @@ describe("createTrack", () => {
     it("should warn when trackIndex provided for return track", () => {
       createTrack({ type: "return", trackIndex: 5, name: "Ignored Index" });
 
-      expect(console.error).toHaveBeenCalledWith(
+      expect(console.warn).toHaveBeenCalledWith(
         "createTrack: trackIndex is ignored for return tracks (always added at end)",
       );
       // Should still create the track

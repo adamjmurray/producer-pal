@@ -1,17 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiSet,
+  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import { setupClipMocks } from "./transform-clips-test-helpers.ts";
-
-interface MockContext {
-  _id?: string;
-  _path?: string;
-}
 
 interface TestNote {
   id: string;
@@ -57,7 +53,7 @@ function setupNoteCaptureMock(
   const allCaptured: TestNote[][] = [];
 
   liveApiCall.mockImplementation(function (
-    this: MockContext,
+    this: MockLiveAPIContext,
     method: string,
     ..._args: unknown[]
   ) {
@@ -108,11 +104,14 @@ describe("transformClips - modifications", () => {
     });
     // Add audio-specific props
     const origGet = liveApiGet.getMockImplementation() as (
-      this: MockContext,
+      this: MockLiveAPIContext,
       prop: string,
     ) => unknown[];
 
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (
         this._id === clipId &&
         ["gain", "pitch_coarse", "pitch_fine"].includes(prop)
@@ -136,12 +135,11 @@ describe("transformClips - modifications", () => {
   it("should warn when no valid clips found", () => {
     liveApiId.mockReturnValue("id 0"); // Non-existent clips
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     const result = transformClips({ clipIds: "nonexistent", seed: 12345 });
 
     expect(result).toStrictEqual({ clipIds: [], seed: 12345 });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("no valid clips found"),
     );
   });
@@ -232,11 +230,14 @@ describe("transformClips - modifications", () => {
     });
     // Add audio pitch props
     const origGet = liveApiGet.getMockImplementation() as (
-      this: MockContext,
+      this: MockLiveAPIContext,
       prop: string,
     ) => unknown[];
 
-    liveApiGet.mockImplementation(function (this: MockContext, prop: string) {
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
       if (
         this._id === clipId &&
         ["pitch_coarse", "pitch_fine"].includes(prop)
@@ -263,8 +264,6 @@ describe("transformClips - modifications", () => {
     setupClipMocks(clipId);
     setupNoteCaptureMock(clipId);
 
-    const consoleErrorSpy = vi.spyOn(console, "error");
-
     transformClips({
       clipIds: clipId,
       transposeValues: "-12, 0, 12",
@@ -273,7 +272,8 @@ describe("transformClips - modifications", () => {
       seed: 12345,
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("transposeValues ignores transposeMin"),
     );
   });

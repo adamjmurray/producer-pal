@@ -1,7 +1,7 @@
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  updateClipSelection,
   updateDeviceSelection,
   updateHighlightedClipSlot,
   updateSceneSelection,
@@ -17,7 +17,7 @@ interface SelectArgs {
   trackIndex?: number;
   sceneId?: string;
   sceneIndex?: number;
-  clipId?: string | null;
+  clipId?: string;
   deviceId?: string;
   instrument?: boolean;
   clipSlot?: { trackIndex: number; sceneIndex: number };
@@ -147,15 +147,12 @@ export function select(
 
   // Update clip selection
   if (clipId !== undefined) {
-    if (clipId === null) {
-      // Deselect all clips
-      songView.set("detail_clip", "id 0");
-    } else {
-      // Select specific clip and validate it's a clip
-      const clipAPI = validateIdType(clipId, "clip", "select");
-
-      songView.setProperty("detail_clip", clipAPI.id);
-    }
+    updateClipSelection({
+      appView,
+      songView,
+      clipId,
+      requestedView: view,
+    });
   }
 
   // Update device selection

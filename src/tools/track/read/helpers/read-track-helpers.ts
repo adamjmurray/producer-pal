@@ -142,11 +142,7 @@ export function readTrackMinimal({
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
-    return {
-      id: null,
-      type: null,
-      trackIndex,
-    };
+    throw new Error(`readTrack: trackIndex ${trackIndex} does not exist`);
   }
 
   const isMidiTrack = (track.getProperty("has_midi_input") as number) > 0;
@@ -186,30 +182,18 @@ export function readTrackMinimal({
 }
 
 /**
- * Handle track that doesn't exist
+ * Handle track that doesn't exist by throwing an error
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
- * @returns Result object for non-existent track
+ * @throws Error indicating the track does not exist
  */
 export function handleNonExistentTrack(
   category: string,
   trackIndex: number | null,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {
-    id: null,
-    type: null,
-    name: null,
-  };
+): never {
+  const indexType = category === "return" ? "returnTrackIndex" : "trackIndex";
 
-  if (category === "regular") {
-    result.trackIndex = trackIndex;
-  } else if (category === "return") {
-    result.returnTrackIndex = trackIndex;
-  } else if (category === "master") {
-    result.trackIndex = null;
-  }
-
-  return result;
+  throw new Error(`readTrack: ${indexType} ${trackIndex} does not exist`);
 }
 
 /**
@@ -449,7 +433,7 @@ export function readMixerProperties(
 
     // Warn if send count doesn't match return track count
     if (sends.length !== names.length) {
-      console.error(
+      console.warn(
         `Send count (${sends.length}) doesn't match return track count (${names.length})`,
       );
     }
