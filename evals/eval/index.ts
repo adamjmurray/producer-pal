@@ -25,6 +25,7 @@ interface CliOptions {
   model: string[];
   judge?: string;
   list?: boolean;
+  all?: boolean;
   skipSetup?: boolean;
   quiet?: boolean;
 }
@@ -68,6 +69,7 @@ program
     "Skip Live Set setup (use existing MCP connection)",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
+  .option("-a, --all", "Run all scenarios")
   .action(async (options: CliOptions) => {
     if (options.list) {
       printList();
@@ -100,15 +102,24 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   setQuietMode(options.quiet ?? false);
 
   if (options.model.length === 0) {
-    console.error("Error: -m, --model is required when running tests");
-    process.exit(1);
+    program.error("-m, --model is required when running tests");
+  }
+
+  if (!options.all && options.test.length === 0) {
+    program.error("must specify -t, --test <id> or -a, --all");
+  }
+
+  if (options.all && options.test.length > 0) {
+    program.error("--all and --test cannot be used together");
   }
 
   try {
     // Parse all model specs upfront
     const modelSpecs = options.model.map(parseModelArg);
 
-    const scenarios = loadScenarios({ testIds: options.test });
+    const scenarios = loadScenarios({
+      testIds: options.all ? undefined : options.test,
+    });
 
     if (scenarios.length === 0) {
       console.error("No scenarios to run.");
