@@ -142,6 +142,38 @@ v100 C3 3|1 v0 C3 1|1 v80    // exit deletion mode with v80
 C3 4|1                       // this C3 is NOT deleted (v80 still active)
 \`\`\`
 
+### Modulations
+
+Apply dynamic transformations to note properties. Add \`modulations\` parameter to create-clip or update-clip.
+
+**Syntax:** \`[pitch] [time] parameter operator expression\` (one per line)
+- **Pitch selector:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches, persists until changed
+- **Time selector:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
+- **Parameters:** velocity (1-127), timing (beats), duration (beats), probability (0-1)
+- **Operators:** \`+=\` (add to value), \`=\` (set value)
+- **Expression:** arithmetic (+, -, *, /) with numbers, waveforms, and current note values
+
+**Waveforms** output -1.0 to 1.0, evaluated at each note's position:
+- \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
+- \`noise()\` - random value per note
+- \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
+- Frequency uses period notation: \`1t\` = 1 bar, \`4t\` = 4 bars, \`0:2t\` = 2 beats
+
+**Current note values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`
+
+\`\`\`
+velocity += 20 * cos(2t)      // cycle every 2 bars
+timing += 0.05 * noise()      // humanize timing
+velocity += ramp(0, 60)       // fade in over clip
+C1-C2 velocity += 30          // accent bass notes
+1|1-2|4 velocity = 100        // forte in bars 1-2
+velocity = note.velocity / 2  // halve existing velocity
+\`\`\`
+
+Modulations with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
+
+To apply modulations to existing notes without changing them, use update-clip with noteUpdateMode=merge and omit the notes parameter.
+
 ## Working with Ableton Live
 
 **Views and Playback:**
