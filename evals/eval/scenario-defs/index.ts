@@ -7,4 +7,7 @@
  */
 
 export { connectToAbleton } from "./connect-to-ableton.ts";
-export { createDrumBeat } from "./create-drum-beat.ts";
+export { createAndEditClip } from "./create-and-edit-clip.ts";
+export { duplicateAndTransform } from "./duplicate-and-transform.ts";
+export { projectNotesWorkflow } from "./project-notes-workflow.ts";
+export { trackAndDeviceWorkflow } from "./track-and-device-workflow.ts";

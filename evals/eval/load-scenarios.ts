@@ -2,14 +2,25 @@
  * Scenario loader - loads and filters evaluation scenarios
  */
 
-import { connectToAbleton } from "./scenario-defs/connect-to-ableton.ts";
-import { createDrumBeat } from "./scenario-defs/create-drum-beat.ts";
+import {
+  connectToAbleton,
+  createAndEditClip,
+  duplicateAndTransform,
+  projectNotesWorkflow,
+  trackAndDeviceWorkflow,
+} from "./scenario-defs/index.ts";
 import type { EvalScenario } from "./types.ts";
 
 /**
  * All registered scenarios
  */
-const allScenarios: EvalScenario[] = [connectToAbleton, createDrumBeat];
+const allScenarios: EvalScenario[] = [
+  connectToAbleton,
+  createAndEditClip,
+  trackAndDeviceWorkflow,
+  projectNotesWorkflow,
+  duplicateAndTransform,
+];
 
 export interface LoadScenariosOptions {
   /** Filter to specific test/scenario IDs */

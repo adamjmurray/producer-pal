@@ -15,63 +15,136 @@
 - **Use natural language** - "add fills every 4 bars", not "add notes at 4|1"
 - **Rate honestly** - we're trying to find issues and compare LLMs
 
-## Evaluation Tests
+## Evaluation Scenarios
 
-### 1. Connection Workflow
+### Scenario 1: Connection & Project Overview
 
-- Attempt connection with Ableton not running (should guide user)
-- "Connect to Ableton" with Live running
+**Exercises:** `ppal-connect`, `ppal-read-live-set`, `ppal-update-live-set`
 
-### 2. Empty → 4-Track 8-Bar Beat
+| Turn | Prompt                                                   | Features Tested                           |
+| ---- | -------------------------------------------------------- | ----------------------------------------- |
+| 1    | "Connect to Ableton"                                     | Connection, skills retrieval, set summary |
+| 2    | "Set the tempo to 128 BPM and the time signature to 6/8" | Tempo update, time signature update       |
 
-"Create a 4-track beat with drums, bass, chords, and lead melody, 8 bars"
+---
 
-### 3. Add Missing Lead
+### Scenario 2: Track & Device Workflow
 
-Start with drums/bass/chords setup, ask to "add a lead that fits"
+**Exercises:** `ppal-create-track`, `ppal-read-track`, `ppal-update-track`,
+`ppal-create-device`, `ppal-update-device`
 
-### 4. 64-Bar Drum Loop
+| Turn | Prompt                                                              | Features Tested                   |
+| ---- | ------------------------------------------------------------------- | --------------------------------- |
+| 1    | "Connect to Ableton"                                                | Setup                             |
+| 2    | "Create a MIDI track called 'Synth Lead'"                           | Track creation with name          |
+| 3    | "Add a Wavetable instrument to it and set the filter cutoff to 50%" | Device creation, parameter update |
+| 4    | "Mute that track and set its color to purple"                       | Track property updates            |
 
-"Create a 64-bar drum track"
+---
 
-### 5. Progressive Drum Refinement
+### Scenario 3: Clip Creation & Editing
 
-Three steps:
+**Exercises:** `ppal-create-clip`, `ppal-read-clip`, `ppal-update-clip`
 
-1. "Create a 4-bar drum loop with constant hi-hats"
-2. "Add fills every 4 bars"
-3. "Make some hats skip occasionally"
+| Turn | Prompt                                                                  | Features Tested               |
+| ---- | ----------------------------------------------------------------------- | ----------------------------- |
+| 1    | "Connect to Ableton"                                                    | Setup                         |
+| 2    | "Create a 4-bar drum clip with kick on every beat and snare on 2 and 4" | MIDI clip creation, notes     |
+| 3    | "Add hi-hats on every 8th note"                                         | Clip note update (merge mode) |
+| 4    | "Quantize the notes to 1/16"                                            | Quantization                  |
 
-### 6. Bass Syncopation Evolution
+---
 
-Two steps:
+### Scenario 4: Scene & Playback Workflow
 
-1. "Create a simple bass line on quarter notes"
-2. "Make it more syncopated"
+**Exercises:** `ppal-create-scene`, `ppal-read-scene`, `ppal-update-scene`,
+`ppal-playback`
 
-### 7. Scene Variation
+| Turn | Prompt                                         | Features Tested           |
+| ---- | ---------------------------------------------- | ------------------------- |
+| 1    | "Connect to Ableton"                           | Setup                     |
+| 2    | "Create a scene called 'Intro' with tempo 100" | Scene creation with tempo |
+| 3    | "Play that scene"                              | Scene playback            |
+| 4    | "Stop playback"                                | Stop command              |
 
-Start with drum/bass/chords/lead scene, ask "create a variation of the scene"
+---
 
-### 8. Session → Arrangement
+### Scenario 5: Duplication & Transformation
 
-"Take these session clips and arrange them into a song structure"
+**Exercises:** `ppal-duplicate`, `ppal-transform-clips`
 
-### 9. Playback
+| Turn | Prompt                                               | Features Tested             |
+| ---- | ---------------------------------------------------- | --------------------------- |
+| 1    | "Connect to Ableton"                                 | Setup                       |
+| 2    | "Duplicate the Drums track"                          | Track duplication           |
+| 3    | "Duplicate the first clip 4 times"                   | Clip duplication with count |
+| 4    | "Slice those clips into 8 segments and shuffle them" | Transform: slice + shuffle  |
 
-- "Play this scene"
-- "Play the arrangement from bar 8"
+---
 
-### 10. Duplication
+### Scenario 6: Audio Sample Workflow
 
-- "Duplicate this bass track"
-- "Make another layer for the drums so we can make polyrhythms" - should create
-  a track that routes MIDI to the source track
+**Exercises:** `ppal-read-samples`, `ppal-create-clip` (audio),
+`ppal-update-clip` (audio)
 
-### 11. Memory Read/Write
+| Turn | Prompt                                      | Features Tested               |
+| ---- | ------------------------------------------- | ----------------------------- |
+| 1    | "Connect to Ableton"                        | Setup                         |
+| 2    | "Show me available drum samples"            | Sample folder listing, search |
+| 3    | "Create an audio clip using kick.wav"       | Audio clip from sample        |
+| 4    | "Pitch shift it up 5 semitones and loop it" | Audio properties, warping     |
 
-Write project notes, then later ask "what did I say about X?"
+---
 
-### 12. Deletion
+### Scenario 7: Selection & Navigation
 
-"Delete the last track I created"
+**Exercises:** `ppal-select`, `ppal-read-track`, `ppal-read-device`
+
+| Turn | Prompt                                       | Features Tested                 |
+| ---- | -------------------------------------------- | ------------------------------- |
+| 1    | "Connect to Ableton"                         | Setup                           |
+| 2    | "Select the Bass track and show its devices" | Track selection, device reading |
+| 3    | "Switch to arrangement view"                 | View switching                  |
+| 4    | "Select the first clip in arrangement"       | Arrangement clip selection      |
+
+---
+
+### Scenario 8: Memory & Cleanup
+
+**Exercises:** `ppal-memory`, `ppal-delete`
+
+| Turn | Prompt                                                           | Features Tested     |
+| ---- | ---------------------------------------------------------------- | ------------------- |
+| 1    | "Connect to Ableton"                                             | Setup               |
+| 2    | "Save a note: 'This project uses C minor with jazzy 7th chords'" | Project notes write |
+| 3    | "What notes do I have saved about this project?"                 | Project notes read  |
+| 4    | "Delete the last track"                                          | Track deletion      |
+
+---
+
+## Tool Coverage Summary
+
+| Tool                   | Scenarios |
+| ---------------------- | --------- |
+| `ppal-connect`         | 1-8 (all) |
+| `ppal-read-live-set`   | 1         |
+| `ppal-update-live-set` | 1         |
+| `ppal-create-track`    | 2         |
+| `ppal-read-track`      | 7         |
+| `ppal-update-track`    | 2         |
+| `ppal-create-clip`     | 3, 6      |
+| `ppal-read-clip`       | 3         |
+| `ppal-update-clip`     | 3, 6      |
+| `ppal-create-device`   | 2         |
+| `ppal-read-device`     | 7         |
+| `ppal-update-device`   | 2         |
+| `ppal-create-scene`    | 4         |
+| `ppal-read-scene`      | 4         |
+| `ppal-update-scene`    | 4         |
+| `ppal-delete`          | 8         |
+| `ppal-duplicate`       | 5         |
+| `ppal-transform-clips` | 5         |
+| `ppal-playback`        | 4         |
+| `ppal-select`          | 7         |
+| `ppal-memory`          | 8         |
+| `ppal-read-samples`    | 6         |
