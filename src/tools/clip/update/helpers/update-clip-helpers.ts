@@ -9,6 +9,7 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
+import { applyModulationsToExistingNotes } from "./update-clip-modulation-helpers.ts";
 import { handleQuantization } from "./update-clip-quantization-helpers.ts";
 import {
   calculateBeatPositions,
@@ -174,8 +175,20 @@ function handleNoteUpdates(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | null {
-  if (notationString == null) {
+  // Only skip if BOTH are null
+  if (notationString == null && modulationString == null) {
     return null;
+  }
+
+  // Handle modulations-only case (no notes parameter provided)
+  if (notationString == null) {
+    // modulationString must be defined here (we returned above if both are null)
+    return applyModulationsToExistingNotes(
+      clip,
+      modulationString as string,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
   }
 
   let combinedNotationString = notationString;

@@ -180,4 +180,91 @@ describe("updateClip - Note update modes", () => {
       expect.anything(),
     );
   });
+
+  it("should apply modulations to existing notes without notes param", () => {
+    setupMidiClipMock("123");
+
+    // Seed the mock with pre-existing notes in Live API format (with extra properties)
+    // The Live API returns note_id, mute, release_velocity which must be stripped
+    const existingNotes = [
+      {
+        note_id: 100,
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        mute: 0,
+        probability: 1,
+        velocity_deviation: 0,
+        release_velocity: 64,
+      },
+      {
+        note_id: 101,
+        pitch: 64,
+        start_time: 1,
+        duration: 1,
+        velocity: 100,
+        mute: 0,
+        probability: 1,
+        velocity_deviation: 0,
+        release_velocity: 64,
+      },
+    ];
+
+    let currentNotes: unknown[] = [...existingNotes];
+
+    liveApiCall.mockImplementation(function (
+      method: string,
+      ...args: unknown[]
+    ) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: currentNotes });
+      }
+
+      if (method === "remove_notes_extended") {
+        currentNotes = [];
+      }
+
+      if (method === "add_new_notes") {
+        currentNotes = (args[0] as { notes: typeof existingNotes }).notes;
+      }
+
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      modulations: "velocity = 50",
+      // No notes param, no noteUpdateMode
+    });
+
+    // Notes should still exist with modified velocity
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+
+    // Verify add_new_notes was called with modified notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 50,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 1,
+            duration: 1,
+            velocity: 50,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+  });
 });

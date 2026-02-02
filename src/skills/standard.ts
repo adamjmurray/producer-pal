@@ -172,7 +172,7 @@ velocity = note.velocity / 2  // halve existing velocity
 
 Modulations with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
 
-To apply modulations to existing notes without changing them, use update-clip with noteUpdateMode=merge and omit the notes parameter.
+To apply modulations to existing notes without adding new notes, use update-clip with just the modulations parameter.
 
 ## Working with Ableton Live
 

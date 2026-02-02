@@ -1,0 +1,72 @@
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import type { NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+
+/**
+ * Convert a raw note from the Live API to a NoteEvent for add_new_notes.
+ * The Live API returns extra properties (note_id, mute, release_velocity)
+ * that must be stripped before passing to add_new_notes.
+ * @param rawNote - Note object from get_notes_extended
+ * @returns NoteEvent compatible with add_new_notes
+ */
+function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
+  return {
+    pitch: rawNote.pitch as number,
+    start_time: rawNote.start_time as number,
+    duration: rawNote.duration as number,
+    velocity: rawNote.velocity as number,
+    probability: rawNote.probability as number,
+    velocity_deviation: rawNote.velocity_deviation as number,
+  };
+}
+
+/**
+ * Apply modulations to existing notes without changing the notes themselves.
+ * Used when modulations param is provided but notes param is omitted.
+ * @param clip - The clip to update
+ * @param modulationString - Modulation expressions to apply
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Final note count
+ */
+export function applyModulationsToExistingNotes(
+  clip: LiveAPI,
+  modulationString: string,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number {
+  const existingNotesResult = JSON.parse(
+    clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
+  );
+  const rawNotes = (existingNotesResult?.notes ?? []) as Record<
+    string,
+    unknown
+  >[];
+
+  if (rawNotes.length === 0) {
+    console.warn("modulations ignored: clip has no notes to modulate");
+
+    return 0;
+  }
+
+  // Convert raw notes to NoteEvent format (strips extra Live API properties)
+  const notes: NoteEvent[] = rawNotes.map(toNoteEvent);
+
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+  clip.call("add_new_notes", { notes });
+
+  const lengthBeats = clip.getProperty("length") as number;
+  const actualNotesResult = JSON.parse(
+    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
+  );
+
+  return actualNotesResult?.notes?.length ?? 0;
+}
