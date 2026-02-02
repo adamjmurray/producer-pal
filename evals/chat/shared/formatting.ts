@@ -214,7 +214,7 @@ export function formatSectionHeader(title: string): string {
 }
 
 /**
- * Format a subsection header (e.g., Deterministic Checks)
+ * Format a subsection header (e.g., Correctness Checks)
  *
  * @param title - Subsection title
  * @returns Formatted subsection header

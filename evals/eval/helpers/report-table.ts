@@ -4,10 +4,8 @@
 
 import type { ModelSpec } from "../index.ts";
 import type { EvalScenarioResult } from "../types.ts";
-
-interface JudgeDetails {
-  overall?: number;
-}
+import { computeCorrectnessScore } from "./correctness-score.ts";
+import type { JudgeResult } from "./judge-response-parser.ts";
 
 /**
  * Print results as a formatted table
@@ -116,20 +114,29 @@ export function printResultsTable(
 }
 
 /**
- * Get the average LLM judge score from a scenario result
+ * Get the combined average of all 5 dimensions (correctness + 4 LLM judge)
  *
  * @param result - The scenario result
- * @returns Average score or null if no judge assertions
+ * @returns Combined average score
  */
 function getAverageScore(result: EvalScenarioResult): number | null {
   const scores: number[] = [];
 
+  // Add correctness score
+  scores.push(computeCorrectnessScore(result.assertions));
+
+  // Add LLM judge dimension scores
   for (const assertion of result.assertions) {
     if (assertion.assertion.type === "llm_judge") {
-      const details = assertion.details as JudgeDetails | undefined;
+      const details = assertion.details as JudgeResult | undefined;
 
-      if (details?.overall != null) {
-        scores.push(details.overall);
+      if (details) {
+        scores.push(
+          details.accuracy.score,
+          details.reasoning.score,
+          details.efficiency.score,
+          details.naturalness.score,
+        );
       }
     }
   }

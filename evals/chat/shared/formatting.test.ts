@@ -348,13 +348,13 @@ describe("eval output formatting", () => {
 
   describe("formatSubsectionHeader", () => {
     it("includes title", () => {
-      const result = formatSubsectionHeader("Deterministic Checks");
+      const result = formatSubsectionHeader("Correctness Checks");
 
-      expect(result).toContain("Deterministic Checks");
+      expect(result).toContain("Correctness Checks");
     });
 
     it("uses minor separator", () => {
-      const result = formatSubsectionHeader("Deterministic Checks");
+      const result = formatSubsectionHeader("Correctness Checks");
 
       expect(result).toContain("-".repeat(60));
     });

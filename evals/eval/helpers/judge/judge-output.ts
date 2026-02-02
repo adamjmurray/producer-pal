@@ -3,8 +3,8 @@
  */
 
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import type { JudgeResult } from "./judge-response-parser.ts";
-import { isQuietMode } from "./output-config.ts";
+import type { JudgeResult } from "../judge-response-parser.ts";
+import { isQuietMode } from "../output-config.ts";
 
 /**
  * Print judge info (model, criteria)
@@ -48,12 +48,10 @@ export function finishJudgeOutput(): void {
 }
 
 /**
- * Print the overall score after parsing
+ * Print the overall score after parsing (no-op, scores shown in dimension table)
  *
- * @param result - The parsed judge result with dimension scores
+ * @param _result - The parsed judge result (unused)
  */
-export function printJudgeResult(result: JudgeResult): void {
-  if (isQuietMode()) return;
-
-  console.log(`\nOverall: ${result.overall.toFixed(2)}/5`);
+export function printJudgeResult(_result: JudgeResult): void {
+  // Scores are now shown in the dimension table in the summary
 }

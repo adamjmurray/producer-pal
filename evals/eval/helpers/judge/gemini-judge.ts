@@ -8,15 +8,15 @@ import {
   validateApiKey,
 } from "#evals/shared/provider-configs.ts";
 import {
+  parseJudgeResponse,
+  type JudgeResult,
+} from "../judge-response-parser.ts";
+import {
   finishJudgeOutput,
   printJudgeChunk,
   printJudgeHeader,
   printJudgeResult,
 } from "./judge-output.ts";
-import {
-  parseJudgeResponse,
-  type JudgeResult,
-} from "./judge-response-parser.ts";
 
 /**
  * Call Gemini as the LLM judge with streaming output

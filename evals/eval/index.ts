@@ -10,6 +10,8 @@ import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
+import { computeCorrectnessScore } from "./helpers/correctness-score.ts";
+import type { JudgeResult } from "./helpers/judge-response-parser.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
 import { printResultsTable } from "./helpers/report-table.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
@@ -175,18 +177,12 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 function printResult(result: EvalScenarioResult, modelKey: string): void {
   const status = result.passed ? "PASSED" : "FAILED";
 
-  // Calculate scores
-  const deterministicChecks = result.assertions.filter(
-    (a) => a.assertion.type !== "llm_judge",
-  );
-  const passedChecks = deterministicChecks.filter((a) => a.passed).length;
+  // Get scores
+  const correctness = computeCorrectnessScore(result.assertions);
   const llmJudgeResult = result.assertions.find(
     (a) => a.assertion.type === "llm_judge",
   );
-  const llmDetails = llmJudgeResult?.details as
-    | { overall?: number }
-    | undefined;
-  const llmScore = llmDetails?.overall;
+  const llmDetails = llmJudgeResult?.details as JudgeResult | undefined;
   const llmAssertion = llmJudgeResult?.assertion as
     | LlmJudgeAssertion
     | undefined;
@@ -197,23 +193,62 @@ function printResult(result: EvalScenarioResult, modelKey: string): void {
   console.log(`Duration: ${result.totalDurationMs}ms`);
   console.log(`Result: ${status}`);
 
-  // Build score line
-  const scoreParts: string[] = [];
-
-  if (llmScore != null) {
-    scoreParts.push(`LLM: ${llmScore.toFixed(2)}/5 (min: ${llmMinScore})`);
-  }
-
-  if (deterministicChecks.length > 0) {
-    scoreParts.push(`Checks: ${passedChecks}/${deterministicChecks.length}`);
-  }
-
-  if (scoreParts.length > 0) {
-    console.log(scoreParts.join(", "));
-  }
-
   if (result.error) {
     console.log(`Error: ${result.error}`);
+  }
+
+  // Print dimension table
+  printDimensionTable(correctness, llmDetails, llmMinScore);
+}
+
+/**
+ * Print the dimension score table
+ *
+ * @param correctness - Correctness score from deterministic checks
+ * @param llmDetails - LLM judge result with dimension scores
+ * @param minScore - Minimum score threshold
+ */
+function printDimensionTable(
+  correctness: number,
+  llmDetails: JudgeResult | undefined,
+  minScore: number,
+): void {
+  console.log(`\n┌───────────────┬───────┐`);
+  console.log(`│ Dimension     │ Score │`);
+  console.log(`├───────────────┼───────┤`);
+  console.log(`│ Correctness   │ ${correctness.toFixed(2).padStart(5)} │`);
+
+  const scores = [correctness];
+
+  if (llmDetails) {
+    console.log(
+      `│ Accuracy      │ ${llmDetails.accuracy.score.toFixed(2).padStart(5)} │`,
+    );
+    console.log(
+      `│ Reasoning     │ ${llmDetails.reasoning.score.toFixed(2).padStart(5)} │`,
+    );
+    console.log(
+      `│ Efficiency    │ ${llmDetails.efficiency.score.toFixed(2).padStart(5)} │`,
+    );
+    console.log(
+      `│ Naturalness   │ ${llmDetails.naturalness.score.toFixed(2).padStart(5)} │`,
+    );
+    scores.push(
+      llmDetails.accuracy.score,
+      llmDetails.reasoning.score,
+      llmDetails.efficiency.score,
+      llmDetails.naturalness.score,
+    );
+  }
+
+  const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+  console.log(`├───────────────┼───────┤`);
+  console.log(`│ Average       │ ${average.toFixed(2).padStart(5)} │`);
+  console.log(`└───────────────┴───────┘`);
+
+  if (llmDetails) {
+    console.log(`\nMin score: ${minScore}`);
   }
 }
 

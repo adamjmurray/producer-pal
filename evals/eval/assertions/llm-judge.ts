@@ -2,10 +2,10 @@
  * LLM-as-judge assertion - use an LLM to evaluate response quality
  */
 
-import { callAnthropicJudge } from "../helpers/anthropic-judge.ts";
-import { callGeminiJudge } from "../helpers/gemini-judge.ts";
+import { callAnthropicJudge } from "../helpers/judge/anthropic-judge.ts";
+import { callGeminiJudge } from "../helpers/judge/gemini-judge.ts";
+import { callOpenAIJudge } from "../helpers/judge/openai-judge.ts";
 import type { JudgeResult } from "../helpers/judge-response-parser.ts";
-import { callOpenAIJudge } from "../helpers/openai-judge.ts";
 import type {
   LlmJudgeAssertion,
   EvalTurnResult,
@@ -110,13 +110,10 @@ export async function assertWithLlmJudge(
       assertion.minScores,
     );
 
-    const scoreStr = judgeResult.overall.toFixed(2);
-    let message = passed
-      ? `LLM judge score: ${scoreStr}/5 (min: ${minScore})`
-      : `LLM judge score ${scoreStr}/5 below minimum ${minScore}`;
+    let message = passed ? "LLM judge passed" : "LLM judge failed";
 
     if (failedDimensions.length > 0) {
-      message += ` [failed: ${failedDimensions.join(", ")}]`;
+      message += `: ${failedDimensions.join(", ")}`;
     }
 
     return {

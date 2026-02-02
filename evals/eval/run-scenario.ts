@@ -18,6 +18,7 @@ import {
   getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
+import { computeCorrectnessBreakdown } from "./helpers/correctness-score.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import type {
@@ -100,22 +101,46 @@ export async function runScenario(
       });
     }
 
-    // 4. Run assertions
-    const checkCount = scenario.assertions.filter(
+    // 4. Run assertions - split into correctness checks and LLM judge
+    const correctnessAssertions = scenario.assertions.filter(
       (a) => a.type !== "llm_judge",
-    ).length;
+    );
+    const judgeAssertions = scenario.assertions.filter(
+      (a) => a.type === "llm_judge",
+    );
 
     console.log(formatSectionHeader("EVALUATION"));
-    console.log(formatSubsectionHeader("Deterministic Checks"));
-    console.log(`\nRunning ${checkCount} check(s)...`);
-    const assertionResults = await runAssertions(
-      scenario.assertions,
+    console.log(formatSubsectionHeader("Correctness Checks"));
+    console.log(`\nRunning ${correctnessAssertions.length} check(s)...`);
+
+    // Run correctness checks first
+    const correctnessResults = await runAssertions(
+      correctnessAssertions,
       turns,
       session,
       provider,
       judgeOverride,
     );
 
+    // Print correctness summary
+    const { earned, max, score } =
+      computeCorrectnessBreakdown(correctnessResults);
+
+    if (max > 0) {
+      console.log(
+        `\nCorrectness: ${earned}/${max} points (${score.toFixed(2)}/5)`,
+      );
+    }
+
+    // Run LLM judge assertions (without printing pass/fail)
+    const judgeResults = await runJudgeAssertions(
+      judgeAssertions,
+      turns,
+      provider,
+      judgeOverride,
+    );
+
+    const assertionResults = [...correctnessResults, ...judgeResults];
     const passed = assertionResults.every((r) => r.passed);
 
     return {
@@ -142,37 +167,31 @@ export async function runScenario(
 }
 
 /**
- * Run all assertions for a scenario
+ * Run correctness assertions (non-LLM judge)
  *
  * @param assertions - Assertions to run
  * @param turns - Completed conversation turns
  * @param session - Active evaluation session
- * @param provider - LLM provider being used
- * @param judgeOverride - Optional judge LLM override
+ * @param _provider - LLM provider (unused, kept for signature compatibility)
+ * @param _judgeOverride - Judge override (unused, kept for signature compatibility)
  * @returns Array of assertion results
  */
 async function runAssertions(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   session: EvalSession,
-  provider: EvalProvider,
-  judgeOverride?: JudgeOverride,
+  _provider: EvalProvider,
+  _judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
-    const result = await runAssertion(
-      assertion,
-      turns,
-      session,
-      provider,
-      judgeOverride,
-    );
+    const result = await runCorrectnessAssertion(assertion, turns, session);
 
     results.push(result);
 
-    // Show all results in verbose mode, only LLM judge results in quiet mode
-    if (!isQuietMode() || assertion.type === "llm_judge") {
+    // Show results in verbose mode
+    if (!isQuietMode()) {
       const status = result.passed ? "✓" : "✗";
 
       console.log(`  ${status} ${result.message}`);
@@ -183,21 +202,50 @@ async function runAssertions(
 }
 
 /**
- * Run a single assertion
+ * Run LLM judge assertions (without printing pass/fail status)
+ *
+ * @param assertions - Judge assertions to run
+ * @param turns - Completed conversation turns
+ * @param provider - LLM provider being used
+ * @param judgeOverride - Optional judge LLM override
+ * @returns Array of assertion results
+ */
+async function runJudgeAssertions(
+  assertions: EvalAssertion[],
+  turns: EvalTurnResult[],
+  provider: EvalProvider,
+  judgeOverride?: JudgeOverride,
+): Promise<EvalAssertionResult[]> {
+  const results: EvalAssertionResult[] = [];
+
+  for (const assertion of assertions) {
+    if (assertion.type === "llm_judge") {
+      const result = await assertWithLlmJudge(
+        assertion,
+        turns,
+        provider,
+        judgeOverride,
+      );
+
+      results.push(result);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Run a single correctness assertion (non-LLM judge)
  *
  * @param assertion - The assertion to evaluate
  * @param turns - Completed conversation turns
  * @param session - Active evaluation session
- * @param provider - LLM provider being used
- * @param judgeOverride - Optional judge LLM override
  * @returns Assertion result
  */
-async function runAssertion(
+async function runCorrectnessAssertion(
   assertion: EvalAssertion,
   turns: EvalTurnResult[],
   session: EvalSession,
-  provider: EvalProvider,
-  judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult> {
   switch (assertion.type) {
     case "tool_called":
@@ -205,14 +253,6 @@ async function runAssertion(
 
     case "state":
       return await assertState(assertion, session.mcpClient);
-
-    case "llm_judge":
-      return await assertWithLlmJudge(
-        assertion,
-        turns,
-        provider,
-        judgeOverride,
-      );
 
     case "response_contains":
       return assertResponseContains(assertion, turns);

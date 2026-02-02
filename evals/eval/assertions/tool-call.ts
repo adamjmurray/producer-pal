@@ -27,12 +27,15 @@ export function assertToolCalled(
 ): EvalAssertionResult {
   const targetTurns = getTargetTurns(turns, assertion.turn);
 
-  const matchingCalls = targetTurns
+  // First filter by name only (for correctness scoring)
+  const nameMatchingCalls = targetTurns
     .flatMap((t) => t.toolCalls)
-    .filter((tc) => tc.name === assertion.tool)
-    .filter(
-      (tc) => assertion.args == null || exactMatch(tc.args, assertion.args),
-    );
+    .filter((tc) => tc.name === assertion.tool);
+
+  // Then filter by args
+  const matchingCalls = nameMatchingCalls.filter(
+    (tc) => assertion.args == null || exactMatch(tc.args, assertion.args),
+  );
 
   const count = matchingCalls.length;
   const expectedCount = normalizeCount(assertion.count);
@@ -51,6 +54,12 @@ export function assertToolCalled(
     message: passed
       ? `Tool ${assertion.tool} called ${count} time(s)${argsDesc}`
       : `Expected ${assertion.tool} to be called ${formatExpectedCount(expectedCount)}${argsDesc}, got ${count}`,
-    details: { matchingCalls, count, expectedCount },
+    details: {
+      matchingCalls,
+      count,
+      expectedCount,
+      nameMatchCount: nameMatchingCalls.length,
+      argsSpecified: assertion.args != null,
+    },
   };
 }
