@@ -7,6 +7,7 @@ import {
   formatSectionHeader,
   formatSubsectionHeader,
 } from "#evals/chat/shared/formatting.ts";
+import { resetConfig, setConfig } from "#evals/shared/config.ts";
 import {
   assertToolCalled,
   assertState,
@@ -69,7 +70,13 @@ export async function runScenario(
       await openLiveSet(liveSetPath);
     }
 
-    // 2. Create evaluation session
+    // 2. Apply scenario config if specified
+    if (scenario.config) {
+      if (!isQuietMode()) console.log(`Applying scenario config...`);
+      await setConfig(scenario.config);
+    }
+
+    // 3. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
 
     console.log(
@@ -87,7 +94,7 @@ export async function runScenario(
       instructions: scenario.instructions,
     });
 
-    // 3. Run each message turn
+    // 4. Run each message turn
     for (const [i, message] of scenario.messages.entries()) {
       const turnStart = Date.now();
       const turnResult = await session.sendMessage(message, i + 1);
@@ -101,7 +108,7 @@ export async function runScenario(
       });
     }
 
-    // 4. Run assertions - split into correctness checks and LLM judge
+    // 5. Run assertions - split into correctness checks and LLM judge
     const correctnessAssertions = scenario.assertions.filter(
       (a) => a.type !== "llm_judge",
     );
@@ -162,6 +169,13 @@ export async function runScenario(
   } finally {
     if (session) {
       await session.close();
+    }
+
+    // Reset config to defaults after scenario completes
+    try {
+      await resetConfig();
+    } catch {
+      // Ignore reset errors - scenario result is already determined
     }
   }
 }

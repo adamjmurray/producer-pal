@@ -2,8 +2,13 @@
  * Type definitions for the Producer Pal evaluation system
  */
 
+import type { ConfigOptions } from "#evals/shared/config.ts";
+
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
+
+// Re-export ConfigOptions for convenience
+export type { ConfigOptions };
 
 export type EvalProvider = "anthropic" | "google" | "openai" | "openrouter";
 
@@ -29,6 +34,9 @@ export interface EvalScenario {
 
   /** Optional system instructions */
   instructions?: string;
+
+  /** Optional config to apply before running scenario */
+  config?: ConfigOptions;
 }
 
 /**

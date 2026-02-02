@@ -9,6 +9,13 @@ export const projectNotesWorkflow: EvalScenario = {
   description: "Write and read project notes",
   liveSet: "basic-midi-4-track",
 
+  // Enable project notes feature for this scenario
+  config: {
+    useProjectNotes: true,
+    projectNotes: "",
+    projectNotesWritable: true,
+  },
+
   messages: [
     "Connect to Ableton Live",
     "Save a note: 'This project uses C minor with jazzy 7th chords'",

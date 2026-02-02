@@ -11,9 +11,18 @@ import {
   type McpConnection,
 } from "#evals/chat/shared/mcp.ts";
 import { openLiveSet } from "#evals/eval/open-live-set.ts";
+import {
+  CONFIG_URL,
+  resetConfig,
+  setConfig,
+  type ConfigOptions,
+} from "#evals/shared/config.ts";
 
 // Re-export for use in tests
 export { extractToolResultText };
+
+// Re-export config utilities for use in tests
+export { CONFIG_URL, resetConfig, setConfig, type ConfigOptions };
 
 // Sample file for audio clip tests - resolve relative to this file's location
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -68,56 +77,8 @@ export function getToolWarnings(result: unknown): string[] {
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
-export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
 export const LIVE_SET_PATH =
   "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
-
-/**
- * Configuration options that can be set via the /config endpoint
- */
-export interface ConfigOptions {
-  useProjectNotes?: boolean;
-  projectNotes?: string;
-  projectNotesWritable?: boolean;
-  smallModelMode?: boolean;
-  jsonOutput?: boolean;
-  sampleFolder?: string;
-}
-
-/**
- * Update server config via the /config endpoint
- */
-export async function setConfig(options: ConfigOptions): Promise<void> {
-  const response = await fetch(CONFIG_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to set config: ${response.status}`);
-  }
-}
-
-/**
- * Reset server config to e2e test defaults:
- * - smallModelMode: false
- * - useProjectNotes: false
- * - projectNotes: ""
- * - projectNotesWritable: false
- * - jsonOutput: true (JSON output for easy parsing in tests)
- * - sampleFolder: ""
- */
-export async function resetConfig(): Promise<void> {
-  await setConfig({
-    smallModelMode: false,
-    useProjectNotes: false,
-    projectNotes: "",
-    projectNotesWritable: false,
-    jsonOutput: true,
-    sampleFolder: "",
-  });
-}
 
 /**
  * Sleep for a specified number of milliseconds.
