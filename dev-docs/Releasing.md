@@ -44,10 +44,20 @@ The version bump script updates the following:
 
 ## Step 0: Checklist before releasing
 
-- [ ] All code is committed
-- [ ] All commits in the local dev branch are pushed to github
-- [ ] The PR build is green
-- [ ] MCP e2e tests pass: `npm run build:all && npm run e2e:mcp`
+In the `dev` branch:
+
+- [ ] All remote changes (e.g. dependabot) are pulled
+- [ ] Dependencies are up to date (`npm i`)
+- [ ] All local changes are committed
+- [ ] All local commits are pushed to GitHub
+- [ ] The PR to `main` has a green build
+- [ ] MCP e2e tests pass locally (see below)
+
+### MCP E2E Tests
+
+Run `npm run build && npm run e2e:mcp` with Ableton Live open. It takes a few
+minutes Don't use Live while this runs because the tests manipulate it directly.
+Requires macOS.
 
 ## Step 1: Build Release Files
 
@@ -153,20 +163,6 @@ After testing succeeds:
 - [ ] Read samples
 - [ ] Create audio clip from sample
 - [ ] Start/stop playback
-
-### MCP Tools E2E Tests
-
-Launch Ableton Live, then run:
-
-```sh
-npm run e2e:mcp
-```
-
-It takes a few minutes. Don't try to use Ableton Live while this is happening,
-because these tests use the real MCP tools to manipulate Live and reload a test
-Set in between tests. These tests should pass consistently.
-
-Note: These tests currently only work on macOS.
 
 ### Built-in Chat UI - E2E Tests
 
