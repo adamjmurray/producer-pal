@@ -54,6 +54,9 @@ function createItemsArray(): KbItem[] {
 
     // Eval scenarios
     { src: "evals/eval/scenario-defs", isDir: true },
+
+    // Peggy grammars (parser definitions)
+    { src: "src", isDir: true, filter: /\.peggy$/ },
   ];
 }
 
