@@ -111,13 +111,19 @@ test steps. If issues are found, see
 
 ## Step 4: Publish to npm / test npx
 
-1. Publish the package:
+1. Login to NPM:
+
+   ```sh
+   npm login
+   ```
+
+2. Publish the package:
 
    ```sh
    cd npm && npm publish
    ```
 
-2. Test the published package with LM Studio or another MCP client:
+3. Test the published package with LM Studio or another MCP client:
 
    ```json
    "producer-pal": {
@@ -126,7 +132,7 @@ test steps. If issues are found, see
    }
    ```
 
-3. Connect and confirm `ppal-read-live-set` is called
+4. Connect and confirm `ppal-read-live-set` is called
 
 See [Publishing to npm](#publishing-to-npm) for more details and
 troubleshooting.
