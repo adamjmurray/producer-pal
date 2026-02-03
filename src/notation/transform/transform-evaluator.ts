@@ -245,13 +245,13 @@ function applyDeviationTransform(
 
   if (transforms.deviation.operator === "set") {
     note.velocity_deviation = Math.max(
-      0,
+      -127,
       Math.min(127, transforms.deviation.value),
     );
   } else {
     // operator === "add"
     note.velocity_deviation = Math.max(
-      0,
+      -127,
       Math.min(
         127,
         (note.velocity_deviation ?? 0) + transforms.deviation.value,

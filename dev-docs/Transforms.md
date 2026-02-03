@@ -89,7 +89,7 @@ Access note properties in modulation expressions using the `note.` prefix:
 - `note.pitch` - MIDI pitch (0-127)
 - `note.start` - Start time in musical beats (absolute, from clip start)
 - `note.velocity` - Current velocity value (1-127)
-- `note.deviation` - Velocity deviation (0-127)
+- `note.deviation` - Velocity deviation (-127 to 127)
 - `note.duration` - Duration in beats
 - `note.probability` - Probability (0.0-1.0)
 

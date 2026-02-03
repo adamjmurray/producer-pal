@@ -35,7 +35,23 @@ describe("applyTransforms deviation parameter", () => {
     expect(notes[0]!.velocity_deviation).toBe(25);
   });
 
-  it("clamps deviation to minimum 0", () => {
+  it("clamps deviation to minimum -127", () => {
+    const notes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        velocity_deviation: -100,
+        probability: 1,
+      },
+    ];
+
+    applyTransforms(notes, "deviation += -50", 4, 4);
+    expect(notes[0]!.velocity_deviation).toBe(-127);
+  });
+
+  it("allows negative deviation values", () => {
     const notes = [
       {
         pitch: 60,
@@ -47,8 +63,8 @@ describe("applyTransforms deviation parameter", () => {
       },
     ];
 
-    applyTransforms(notes, "deviation += -50", 4, 4);
-    expect(notes[0]!.velocity_deviation).toBe(0);
+    applyTransforms(notes, "deviation = -50", 4, 4);
+    expect(notes[0]!.velocity_deviation).toBe(-50);
   });
 
   it("clamps deviation to maximum 127", () => {
