@@ -215,13 +215,6 @@ functions for clarity.
 E2E tests for MCP tools are in `e2e/mcp/`. These tests open Ableton Live and
 verify tools via the MCP protocol.
 
-**Key pattern:** Use a single comprehensive `it()` test per tool with all
-assertions grouped together. This minimizes overhead since each test requires:
-
-- Opening/switching Live Sets (slow)
-- MCP connection setup
-- 30-60 second hook timeouts
-
 **Commands:**
 
 - `npm run e2e:mcp` - Run MCP e2e tests
