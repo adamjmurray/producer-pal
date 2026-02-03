@@ -275,7 +275,7 @@ G4-G5 velocity += 20`;
       pitch: 60,
       start: 2.5,
       velocity: 100,
-      velocityDeviation: 10,
+      deviation: 10,
       duration: 0.5,
       probability: 0.8,
     };
@@ -319,9 +319,9 @@ G4-G5 velocity += 20`;
       expect(result.duration!.value).toBe(1);
     });
 
-    it("evaluates note.velocityDeviation variable", () => {
+    it("evaluates note.deviation variable", () => {
       const result = evaluateTransform(
-        "velocity += note.velocityDeviation",
+        "velocity += note.deviation",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },
@@ -373,7 +373,7 @@ G4-G5 velocity += 20`;
 
     it("combines variables in arithmetic expressions", () => {
       const result = evaluateTransform(
-        "velocity += note.pitch + note.velocityDeviation",
+        "velocity += note.pitch + note.deviation",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },
@@ -425,7 +425,7 @@ G4-G5 velocity += 20`;
 
     it("uses variables in parenthesized expressions", () => {
       const result = evaluateTransform(
-        "velocity = (note.pitch + note.velocityDeviation) * 2",
+        "velocity = (note.pitch + note.deviation) * 2",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },
