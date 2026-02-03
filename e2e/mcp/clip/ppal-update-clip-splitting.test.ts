@@ -1,5 +1,5 @@
 /**
- * E2E tests for ppal-update-clip slicing functionality.
+ * E2E tests for ppal-update-clip splitting functionality.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
  * See: e2e/live-sets/e2e-test-set-spec.md
  */
@@ -16,8 +16,8 @@ import {
 const ctx = setupMcpTestContext();
 const emptyMidiTrack = 8;
 
-/** Normalize slice results - update-clip returns object for 1 clip, array for many */
-function parseSliceResult(result: unknown): Array<{ id: string }> {
+/** Normalize split results - update-clip returns object for 1 clip, array for many */
+function parseSplitResult(result: unknown): Array<{ id: string }> {
   const parsed = parseToolResult<{ id: string } | Array<{ id: string }>>(
     result as Awaited<ReturnType<NonNullable<typeof ctx.client>["callTool"]>>,
   );
@@ -44,17 +44,17 @@ async function createMidiClip(
   return parseToolResult<{ id: string }>(result).id;
 }
 
-async function sliceClip(
+async function splitClip(
   ids: string,
-  slice: string,
+  split: string,
   extra?: Record<string, unknown>,
 ): Promise<Array<{ id: string }>> {
   const result = await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids, slice, ...extra },
+    arguments: { ids, split, ...extra },
   });
 
-  return parseSliceResult(result);
+  return parseSplitResult(result);
 }
 
 async function readClip(
@@ -69,11 +69,12 @@ async function readClip(
   return parseToolResult<ReadClipResult>(result);
 }
 
-describe("ppal-update-clip slicing", () => {
+describe("ppal-update-clip splitting", () => {
   it(
-    "slices looped MIDI clip into 1-bar segments",
+    "splits looped MIDI clip into 1-bar segments",
     { timeout: 60000 },
     async () => {
+      // Create 4-bar clip
       const clipId = await createMidiClip("49|1", {
         notes: "C3 D3 E3 F3 1|1",
         length: "4:0.0",
@@ -81,25 +82,26 @@ describe("ppal-update-clip slicing", () => {
       });
 
       await sleep(200);
-      const sliced = await sliceClip(clipId, "1:0.0");
+      // Split at bars 2, 3, and 4 to create 4 equal 1-bar segments
+      const split = await splitClip(clipId, "2|1, 3|1, 4|1");
 
-      expect(sliced.length).toBe(4);
+      expect(split.length).toBe(4);
 
       await sleep(100);
-      const first = await readClip(sliced[0]!.id);
+      const first = await readClip(split[0]!.id);
 
       expect(first.arrangementStart).toBe("49|1");
       expect(first.arrangementLength).toBe("1:0");
 
-      for (let i = 1; i < sliced.length; i++) {
-        const clip = await readClip(sliced[i]!.id);
+      for (let i = 1; i < split.length; i++) {
+        const clip = await readClip(split[i]!.id);
 
         expect(clip.arrangementStart).toBe(`${49 + i}|1`);
       }
     },
   );
 
-  it("slices unlooped MIDI clip and reveals hidden content", async () => {
+  it("splits unlooped MIDI clip and reveals hidden content", async () => {
     const clipId = await createMidiClip("57|1", {
       notes: "1|1 C3\n2|1 D3\n3|1 E3\n4|1 F3",
       length: "4:0.0",
@@ -107,21 +109,23 @@ describe("ppal-update-clip slicing", () => {
     });
 
     await sleep(200);
+    // Shorten clip to hide some content
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { ids: clipId, arrangementLength: "2:0.0" },
     });
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "1:0.0");
+    // Split at bar 2 (creates 2 segments from the shortened 2-bar clip)
+    const split = await splitClip(clipId, "2|1");
 
-    expect(sliced.length).toBeGreaterThanOrEqual(2);
+    expect(split.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("slices warped audio clip", async () => {
+  it("splits warped audio clip", async () => {
     const trackResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { type: "audio", name: "Slicing Audio Test" },
+      arguments: { type: "audio", name: "Splitting Audio Test" },
     });
     const track = parseToolResult<CreateTrackResult>(trackResult);
 
@@ -140,18 +144,19 @@ describe("ppal-update-clip slicing", () => {
     const clipId = parseToolResult<{ id: string }>(clipResult).id;
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "1:0.0");
+    // Split at bar 2
+    const split = await splitClip(clipId, "2|1");
 
-    expect(sliced.length).toBeGreaterThanOrEqual(1);
+    expect(split.length).toBeGreaterThanOrEqual(1);
 
     await sleep(100);
-    const clip = await readClip(sliced[0]!.id);
+    const clip = await readClip(split[0]!.id);
 
     expect(clip.type).toBe("audio");
     expect(clip.arrangementStart).toBe("65|1");
   });
 
-  it("preserves total note count across slices", async () => {
+  it("preserves total note count across splits", async () => {
     const clipId = await createMidiClip("73|1", {
       notes: "1|1 C3\n2|1 D3\n3|1 E3\n4|1 F3",
       length: "4:0.0",
@@ -159,13 +164,14 @@ describe("ppal-update-clip slicing", () => {
     });
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "1:0.0");
+    // Split into 4 equal 1-bar segments
+    const split = await splitClip(clipId, "2|1, 3|1, 4|1");
 
-    expect(sliced.length).toBe(4);
+    expect(split.length).toBe(4);
 
     let totalNotes = 0;
 
-    for (const s of sliced) {
+    for (const s of split) {
       await sleep(50);
       totalNotes += (await readClip(s.id, ["clip-notes"])).noteCount ?? 0;
     }
@@ -173,7 +179,7 @@ describe("ppal-update-clip slicing", () => {
     expect(totalNotes).toBeGreaterThanOrEqual(4);
   });
 
-  it("applies other updates along with slicing", async () => {
+  it("applies other updates along with splitting", async () => {
     const clipId = await createMidiClip("81|1", {
       notes: "C3 1|1",
       length: "2:0.0",
@@ -181,12 +187,13 @@ describe("ppal-update-clip slicing", () => {
     });
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "1:0.0", { name: "Sliced Section" });
+    // Split at bar 2 and also rename
+    const split = await splitClip(clipId, "2|1", { name: "Split Section" });
 
-    expect(sliced.length).toBe(2);
+    expect(split.length).toBe(2);
 
     await sleep(100);
-    expect((await readClip(sliced[0]!.id)).name).toBe("Sliced Section");
+    expect((await readClip(split[0]!.id)).name).toBe("Split Section");
   });
 
   it("returns session clip unchanged with warning", async () => {
@@ -203,12 +210,13 @@ describe("ppal-update-clip slicing", () => {
     const clipId = parseToolResult<{ id: string }>(result).id;
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "1:0.0");
+    // Session clips should not be split
+    const split = await splitClip(clipId, "2|1");
 
-    expect(sliced[0]?.id).toBe(clipId);
+    expect(split[0]?.id).toBe(clipId);
   });
 
-  it("slices multiple clips in one call", async () => {
+  it("splits multiple clips in one call", async () => {
     const clip1Id = await createMidiClip("89|1", {
       notes: "C3 1|1",
       length: "2:0.0",
@@ -221,12 +229,13 @@ describe("ppal-update-clip slicing", () => {
     });
 
     await sleep(200);
-    const sliced = await sliceClip(`${clip1Id},${clip2Id}`, "1:0.0");
+    // Split both 2-bar clips at bar 2
+    const split = await splitClip(`${clip1Id},${clip2Id}`, "2|1");
 
-    expect(sliced.length).toBe(4);
+    expect(split.length).toBe(4);
   });
 
-  it("slices into half-bar segments", async () => {
+  it("splits at half-bar position", async () => {
     const clipId = await createMidiClip("97|1", {
       notes: "C3 D3 E3 F3 1|1",
       length: "2:0.0",
@@ -234,11 +243,12 @@ describe("ppal-update-clip slicing", () => {
     });
 
     await sleep(200);
-    const sliced = await sliceClip(clipId, "0:2.0");
+    // Split at beat 3 of bar 1, bar 2, and beat 3 of bar 2 (4 segments of 2 beats each)
+    const split = await splitClip(clipId, "1|3, 2|1, 2|3");
 
-    expect(sliced.length).toBe(4);
+    expect(split.length).toBe(4);
 
     await sleep(100);
-    expect((await readClip(sliced[0]!.id)).arrangementLength).toBe("0:2");
+    expect((await readClip(split[0]!.id)).arrangementLength).toBe("0:2");
   });
 });

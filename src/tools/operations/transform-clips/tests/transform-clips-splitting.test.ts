@@ -1,33 +1,33 @@
 /**
- * Smoke tests for transform-clips slicing integration.
- * Comprehensive slicing tests are in arrangement-slicing.test.ts
+ * Smoke tests for transform-clips splitting integration.
+ * Comprehensive splitting tests are in arrangement-splitting.test.ts
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
-import { setupLoopedClipSlicingMocks } from "#src/tools/shared/arrangement/arrangement-slicing-test-helpers.ts";
+import { setupLoopedClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
 
-describe("transformClips - slicing smoke tests", () => {
+describe("transformClips - splitting smoke tests", () => {
   beforeEach(() => {
     liveApiCall.mockReset();
     liveApiGet.mockReset();
   });
 
-  it("should call slicing helpers when slice parameter is provided", () => {
+  it("should call splitting helpers when split parameter is provided", () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSlicingMocks(clipId);
+    setupLoopedClipSplittingMocks(clipId);
 
     transformClips(
       {
         clipIds: clipId,
-        slice: "1:0.0", // 1 bar = 4 beats slice
+        split: "2|1, 3|1", // Split at bar 2 and bar 3
         seed: 12345,
       },
       { holdingAreaStartBeats: 40000 },
     );
 
-    // Should call duplicate_clip_to_arrangement (slicing is active)
+    // Should call duplicate_clip_to_arrangement (splitting is active)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.any(String),
@@ -35,15 +35,15 @@ describe("transformClips - slicing smoke tests", () => {
     );
   });
 
-  it("should return sliced clips in result", () => {
+  it("should return split clips in result", () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSlicingMocks(clipId);
+    setupLoopedClipSplittingMocks(clipId);
 
     const result = transformClips(
       {
         clipIds: clipId,
-        slice: "1:0.0",
+        split: "2|1",
         seed: 12345,
       },
       { holdingAreaStartBeats: 40000 },

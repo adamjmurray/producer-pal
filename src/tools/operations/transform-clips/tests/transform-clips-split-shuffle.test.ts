@@ -9,8 +9,8 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 
-describe("transformClips - slice + shuffle combination", () => {
-  it("should handle slice + shuffle without stale object errors", () => {
+describe("transformClips - split + shuffle combination", () => {
+  it("should handle split + shuffle without stale object errors", () => {
     const clip1Id = "clip_1";
     const clip2Id = "clip_2";
 
@@ -36,7 +36,7 @@ describe("transformClips - slice + shuffle combination", () => {
         return "live_set tracks 0 arrangement_clips 1";
       }
 
-      // All generated clips (sliced and shuffled) need valid paths
+      // All generated clips (split and shuffled) need valid paths
       if (
         this._id?.startsWith("holding_") ||
         this._id?.startsWith("moved_") ||
@@ -55,7 +55,7 @@ describe("transformClips - slice + shuffle combination", () => {
       }
     });
 
-    const slicedClips: string[] = [];
+    const splitClips: string[] = [];
     const shuffledClips: string[] = [];
     let isShufflePhase = false;
 
@@ -87,12 +87,12 @@ describe("transformClips - slice + shuffle combination", () => {
     }
 
     /**
-     * Mock properties for sliced clip objects
+     * Mock properties for split clip objects
      * @param prop - Property name to retrieve
      * @param clipId - Clip ID
      * @returns Mock property value
      */
-    function mockSlicedClipProperties(
+    function mockSplitClipProperties(
       prop: string,
       clipId: string | undefined,
     ): number[] | null {
@@ -150,14 +150,14 @@ describe("transformClips - slice + shuffle combination", () => {
 
       const clipResult =
         mockClipProperties(prop, this._id) ??
-        mockSlicedClipProperties(prop, this._id) ??
+        mockSplitClipProperties(prop, this._id) ??
         mockShuffledClipProperties(prop, this._id);
 
       if (clipResult) return clipResult;
 
       // Track arrangement_clips query
       if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
-        if (slicedClips.length > 0) {
+        if (splitClips.length > 0) {
           if (shuffledClips.length > 0) {
             return ["id", ...shuffledClips.flatMap((id) => [id, "id"])].slice(
               0,
@@ -165,10 +165,7 @@ describe("transformClips - slice + shuffle combination", () => {
             );
           }
 
-          return ["id", ...slicedClips.flatMap((id) => [id, "id"])].slice(
-            0,
-            -1,
-          );
+          return ["id", ...splitClips.flatMap((id) => [id, "id"])].slice(0, -1);
         }
 
         return ["id", clip1Id, "id", clip2Id];
@@ -188,7 +185,7 @@ describe("transformClips - slice + shuffle combination", () => {
 
         if (position >= 40000) {
           // Holding area - detect shuffle phase by position > 40000
-          // Slicing uses exactly 40000, shuffle uses 40000, 40100, 40200, etc.
+          // Splitting uses exactly 40000, shuffle uses 40000, 40100, 40200, etc.
           if (position > 40000) {
             isShufflePhase = true;
           }
@@ -205,15 +202,15 @@ describe("transformClips - slice + shuffle combination", () => {
           return ["id", shuffleId];
         }
 
-        // Slicing operation - creating tile clips
-        const sliceId =
-          slicedClips.length === 0
-            ? `moved_${slicedClips.length + 1}`
-            : `tile_${slicedClips.length + 1}`;
+        // Splitting operation - creating tile clips
+        const splitId =
+          splitClips.length === 0
+            ? `moved_${splitClips.length + 1}`
+            : `tile_${splitClips.length + 1}`;
 
-        slicedClips.push(sliceId);
+        splitClips.push(splitId);
 
-        return ["id", sliceId];
+        return ["id", splitId];
       }
 
       if (method === "delete_clip") {
@@ -224,11 +221,11 @@ describe("transformClips - slice + shuffle combination", () => {
       return [null];
     });
 
-    // Execute slice + shuffle
+    // Execute split + shuffle
     const result = transformClips(
       {
         clipIds: `${clip1Id},${clip2Id}`,
-        slice: "0:1.0", // 1 beat slices
+        split: "1|2", // Split at beat 2 of bar 1 (1 beat into each 2-beat clip)
         shuffleOrder: true,
         seed: 12345,
       },

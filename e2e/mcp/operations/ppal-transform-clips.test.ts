@@ -1,6 +1,10 @@
 /**
  * E2E tests for ppal-transform-clips tool
- * Tests slicing, shuffling, and randomization of clips.
+ * Tests splitting, shuffling, and randomization of clips.
+ *
+ * NOTE: This tool is hidden from MCP and these tests are skipped.
+ * The slicing tests are out of date due to the slice → split refactor
+ * (now uses comma-separated bar|beat positions instead of uniform slice sizes).
  *
  * Run with: npm run e2e:mcp
  */

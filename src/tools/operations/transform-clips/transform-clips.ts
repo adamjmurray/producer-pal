@@ -1,9 +1,9 @@
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  prepareSliceParams,
-  performSlicing,
-} from "#src/tools/shared/arrangement/arrangement-slicing.ts";
-import type { SlicingContext } from "#src/tools/shared/arrangement/arrangement-slicing.ts";
+  prepareSplitParams,
+  performSplitting,
+} from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import type { SplittingContext } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseTransposeValues,
@@ -18,7 +18,7 @@ interface TransformClipsArgs {
   arrangementTrackIndex?: string;
   arrangementStart?: string;
   arrangementLength?: string;
-  slice?: string;
+  split?: string;
   shuffleOrder?: boolean;
   gainDbMin?: number;
   gainDbMax?: number;
@@ -46,7 +46,7 @@ interface TransformClipsResult {
  * @param args.arrangementTrackIndex - Track index for arrangement clips
  * @param args.arrangementStart - Start position for arrangement selection
  * @param args.arrangementLength - Length for arrangement selection
- * @param args.slice - Slice clips before shuffling
+ * @param args.split - Split clips at specified positions before shuffling
  * @param args.shuffleOrder - Shuffle order strategy
  * @param args.gainDbMin - Minimum gain in dB
  * @param args.gainDbMax - Maximum gain in dB
@@ -69,7 +69,7 @@ export function transformClips(
     arrangementTrackIndex,
     arrangementStart,
     arrangementLength,
-    slice,
+    split,
     shuffleOrder,
     gainDbMin,
     gainDbMax,
@@ -84,7 +84,7 @@ export function transformClips(
     probability,
     seed,
   }: TransformClipsArgs = {},
-  context: Partial<SlicingContext> = {},
+  context: Partial<SplittingContext> = {},
 ): TransformClipsResult {
   // Generate seed if not provided (do this early so it's available for return)
   const actualSeed = seed ?? Date.now();
@@ -130,20 +130,19 @@ export function transformClips(
     (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
   );
 
-  // Prepare slice parameters if needed
-  const sliceBeats = prepareSliceParams(slice, arrangementClips, warnings);
+  // Prepare split parameters if needed
+  const splitPoints = prepareSplitParams(split, arrangementClips, warnings);
 
-  // Slice clips if requested
-  if (slice != null && sliceBeats != null && arrangementClips.length > 0) {
-    performSlicing(
+  // Split clips if requested
+  if (split != null && splitPoints != null && arrangementClips.length > 0) {
+    performSplitting(
       arrangementClips,
-      sliceBeats,
+      splitPoints,
       clips,
       warnings,
-      slice,
-      context as SlicingContext,
+      context as SplittingContext,
     );
-    // After slicing, re-filter arrangement clips to get fresh objects
+    // After splitting, re-filter arrangement clips to get fresh objects
     // (the clips array was modified by splice operations during re-scanning)
     const freshArrangementClips = clips.filter(
       (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,

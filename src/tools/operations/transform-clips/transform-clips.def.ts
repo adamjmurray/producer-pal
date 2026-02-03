@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { MAX_SLICES } from "#src/tools/constants.ts";
+import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   title: "Transform Clips",
 
   description:
-    "Slice clips into repeating segments, shuffle arrangement positions, and/or randomize parameters for multiple clips efficiently",
+    "Split clips at specified positions, shuffle arrangement positions, and/or randomize parameters for multiple clips efficiently",
 
   annotations: {
     readOnlyHint: false,
@@ -36,11 +36,11 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .describe(
         "bar:beat duration (e.g., '4:0.0') for arrangement range length",
       ),
-    slice: z
+    split: z
       .string()
       .optional()
       .describe(
-        `bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (max ${MAX_SLICES} slices total)`,
+        `comma-separated bar|beat positions to split clip (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points`,
       ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
 
@@ -126,7 +126,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   smallModelModeConfig: {
     toolDescription: "Randomize velocity and probability for MIDI clips",
     excludeParams: [
-      "slice",
+      "split",
       "shuffleOrder",
       "transposeMin",
       "transposeMax",

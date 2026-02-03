@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_SLICES } from "#src/tools/constants.ts";
+import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -52,11 +52,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
       ),
-    slice: z
+    split: z
       .string()
       .optional()
       .describe(
-        `bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (max ${MAX_SLICES} slices total, arrangement clips only)`,
+        `comma-separated bar|beat positions to split clip (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only`,
       ),
 
     // Audio clip parameters
@@ -169,7 +169,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "quantizePitch",
       "firstStart",
       "modulations",
-      "slice",
+      "split",
     ],
     descriptionOverrides: {
       arrangementLength:

@@ -14,19 +14,19 @@ interface MockLiveApiContext {
   type: string;
 }
 
-interface SlicingBaseMockOptions {
+interface SplittingBaseMockOptions {
   path?: string;
   generatedPrefixes?: string[];
 }
 
 /**
- * Setup basic clip mocks for slicing tests
+ * Setup basic clip mocks for splitting tests
  * @param clipId - The clip ID to mock
  * @param opts - Options
  */
-export function setupSlicingClipBaseMocks(
+export function setupSplittingClipBaseMocks(
   clipId: string,
-  opts: SlicingBaseMockOptions = {},
+  opts: SplittingBaseMockOptions = {},
 ): void {
   const {
     path = "live_set tracks 0 arrangement_clips 0",
@@ -133,7 +133,7 @@ function getGeneratedClipProp(
   return null;
 }
 
-interface SlicingClipProps {
+interface SplittingClipProps {
   isMidi?: boolean;
   looping?: boolean;
   startTime?: number;
@@ -144,14 +144,14 @@ interface SlicingClipProps {
 }
 
 /**
- * Setup liveApiGet mock for slicing tests with looped clip
+ * Setup liveApiGet mock for splitting tests with looped clip
  * @param clipId - The clip ID
  * @param clipProps - Clip properties
  * @param generatedPrefixes - Prefixes for generated clips
  */
-export function setupSlicingClipGetMock(
+export function setupSplittingClipGetMock(
   clipId: string,
-  clipProps: SlicingClipProps = {},
+  clipProps: SplittingClipProps = {},
   generatedPrefixes: string[] = [],
 ): void {
   const {
@@ -212,7 +212,7 @@ export function setupSlicingClipGetMock(
   );
 }
 
-interface SlicingCallMockOptions {
+interface SplittingCallMockOptions {
   holdingPrefix?: string;
   movedPrefix?: string;
   tilePrefix?: string;
@@ -224,27 +224,27 @@ interface DuplicateCall {
   id: string | undefined;
 }
 
-interface SlicingCallState {
+interface SplittingCallState {
   callCount: number;
   duplicateCalls: DuplicateCall[];
   setCalls: unknown[];
 }
 
 /**
- * Create a liveApiCall mock for slicing operations
+ * Create a liveApiCall mock for splitting operations
  * @param opts - Options
  * @returns State object for tracking mock calls
  */
-export function createSlicingCallMock(
-  opts: SlicingCallMockOptions = {},
-): SlicingCallState {
+export function createSplittingCallMock(
+  opts: SplittingCallMockOptions = {},
+): SplittingCallState {
   const {
     holdingPrefix = "holding_",
     movedPrefix = "moved_",
     tilePrefix = "tile_",
   } = opts;
 
-  const state: SlicingCallState = {
+  const state: SplittingCallState = {
     callCount: 0,
     duplicateCalls: [],
     setCalls: [],
@@ -285,42 +285,42 @@ export function createSlicingCallMock(
 }
 
 /**
- * Setup all mocks for a standard looped clip slicing test
+ * Setup all mocks for a standard looped clip splitting test
  * @param clipId - The clip ID
- * @param clipProps - Clip properties (see setupSlicingClipGetMock)
+ * @param clipProps - Clip properties (see setupSplittingClipGetMock)
  * @returns State object for tracking calls
  */
-export function setupLoopedClipSlicingMocks(
+export function setupLoopedClipSplittingMocks(
   clipId: string,
-  clipProps: SlicingClipProps = {},
-): { callState: SlicingCallState } {
+  clipProps: SplittingClipProps = {},
+): { callState: SplittingCallState } {
   const generatedPrefixes = ["holding_", "moved_", "tile_"];
 
-  setupSlicingClipBaseMocks(clipId, { generatedPrefixes });
-  setupSlicingClipGetMock(
+  setupSplittingClipBaseMocks(clipId, { generatedPrefixes });
+  setupSplittingClipGetMock(
     clipId,
     { looping: true, ...clipProps },
     generatedPrefixes,
   );
-  const callState = createSlicingCallMock();
+  const callState = createSplittingCallMock();
 
   return { callState };
 }
 
 /**
- * Setup all mocks for an unlooped clip slicing test
+ * Setup all mocks for an unlooped clip splitting test
  * @param clipId - The clip ID
- * @param clipProps - Clip properties (see setupSlicingClipGetMock)
+ * @param clipProps - Clip properties (see setupSplittingClipGetMock)
  * @returns State object for tracking calls
  */
-export function setupUnloopedClipSlicingMocks(
+export function setupUnloopedClipSplittingMocks(
   clipId: string,
-  clipProps: SlicingClipProps = {},
-): { callState: SlicingCallState } {
+  clipProps: SplittingClipProps = {},
+): { callState: SplittingCallState } {
   const generatedPrefixes = ["holding_", "moved_", "slice_"];
 
-  setupSlicingClipBaseMocks(clipId, { generatedPrefixes });
-  setupSlicingClipGetMock(
+  setupSplittingClipBaseMocks(clipId, { generatedPrefixes });
+  setupSplittingClipGetMock(
     clipId,
     {
       looping: false,
@@ -331,7 +331,7 @@ export function setupUnloopedClipSlicingMocks(
     },
     generatedPrefixes,
   );
-  const callState = createSlicingCallMock({ tilePrefix: "slice_" });
+  const callState = createSplittingCallMock({ tilePrefix: "slice_" });
 
   return { callState };
 }
@@ -341,7 +341,7 @@ interface TwoClipBaseMockOptions {
 }
 
 /**
- * Setup base mocks for two clips in slicing tests.
+ * Setup base mocks for two clips in splitting tests.
  * Used when testing scenarios with a primary clip and a secondary/following clip.
  * @param clip1Id - First clip ID
  * @param clip2Id - Second clip ID
