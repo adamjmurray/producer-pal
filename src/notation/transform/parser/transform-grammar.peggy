@@ -73,6 +73,7 @@ parameter
   / "timing" { return "timing"; }
   / "duration" { return "duration"; }
   / "probability" { return "probability"; }
+  / "deviation" { return "deviation"; }
 
 expression
   = additive
@@ -107,7 +108,7 @@ variable
   }
 
 propertyName
-  = "velocityDeviation" { return "velocityDeviation"; }
+  = "deviation" { return "deviation"; }
   / "velocity" { return "velocity"; }
   / "probability" { return "probability"; }
   / "duration" { return "duration"; }

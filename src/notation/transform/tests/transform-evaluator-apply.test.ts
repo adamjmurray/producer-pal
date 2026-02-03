@@ -576,7 +576,7 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(50);
     });
 
-    it("applies transform using note.velocityDeviation variable", () => {
+    it("applies transform using note.deviation variable", () => {
       const notes = [
         {
           pitch: 60,
@@ -588,7 +588,7 @@ probability += -0.2`;
         },
       ];
 
-      applyTransforms(notes, "velocity += note.velocityDeviation", 4, 4);
+      applyTransforms(notes, "velocity += note.deviation", 4, 4);
       expect(notes[0]!.velocity).toBe(120);
     });
 

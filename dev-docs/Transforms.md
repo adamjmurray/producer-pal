@@ -69,7 +69,7 @@ ramp(start, end, [speed]); // linear ramp over clip/time range
 
 - **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
   line in `modulations` string)
-- **Parameters**: velocity, timing, duration, probability
+- **Parameters**: velocity, timing, duration, probability, deviation
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
   - `=` Set/replace the value (absolute modulation)
@@ -89,7 +89,7 @@ Access note properties in modulation expressions using the `note.` prefix:
 - `note.pitch` - MIDI pitch (0-127)
 - `note.start` - Start time in musical beats (absolute, from clip start)
 - `note.velocity` - Current velocity value (1-127)
-- `note.velocityDeviation` - Velocity deviation
+- `note.deviation` - Velocity deviation (-127 to 127)
 - `note.duration` - Duration in beats
 - `note.probability` - Probability (0.0-1.0)
 
@@ -199,7 +199,7 @@ duration = note.duration * note.probability
 velocity = note.velocity * cos(1t)
 
 // Use note properties in expressions
-velocity = (note.pitch + note.velocityDeviation) / 2
+velocity = (note.pitch + note.deviation) / 2
 ```
 
 ### Variable Periods

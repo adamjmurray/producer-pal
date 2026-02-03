@@ -64,6 +64,7 @@ export function applyTransforms(
     applyTimingTransform(note, transforms);
     applyDurationTransform(note, transforms);
     applyProbabilityTransform(note, transforms);
+    applyDeviationTransform(note, transforms);
   }
 }
 
@@ -130,7 +131,7 @@ function buildNoteProperties(
     pitch: note.pitch,
     start: note.start_time * (timeSigDenominator / 4),
     velocity: note.velocity,
-    velocityDeviation: note.velocity_deviation ?? 0,
+    deviation: note.velocity_deviation ?? 0,
     duration: note.duration,
     probability: note.probability,
   };
@@ -225,6 +226,36 @@ function applyProbabilityTransform(
     note.probability = Math.max(
       0.0,
       Math.min(1.0, (note.probability ?? 1.0) + transforms.probability.value),
+    );
+  }
+}
+
+/**
+ * Apply deviation transform to a note
+ * @param note - Note to modify
+ * @param transforms - Transform results
+ */
+function applyDeviationTransform(
+  note: NoteEvent,
+  transforms: Record<string, TransformResult>,
+): void {
+  if (transforms.deviation == null) {
+    return;
+  }
+
+  if (transforms.deviation.operator === "set") {
+    note.velocity_deviation = Math.max(
+      -127,
+      Math.min(127, transforms.deviation.value),
+    );
+  } else {
+    // operator === "add"
+    note.velocity_deviation = Math.max(
+      -127,
+      Math.min(
+        127,
+        (note.velocity_deviation ?? 0) + transforms.deviation.value,
+      ),
     );
   }
 }

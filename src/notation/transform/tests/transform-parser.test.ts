@@ -60,7 +60,7 @@ describe("Transform Parser", () => {
 
     it("parses all parameter types", () => {
       const result = parser.parse(
-        "velocity += 1\ntiming += 2\nduration += 3\nprobability += 4",
+        "velocity += 1\ntiming += 2\nduration += 3\nprobability += 4\ndeviation += 5",
       );
 
       expect(result).toStrictEqual([
@@ -91,6 +91,13 @@ describe("Transform Parser", () => {
           parameter: "probability",
           operator: "add",
           expression: 4,
+        },
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "deviation",
+          operator: "add",
+          expression: 5,
         },
       ]);
     });
