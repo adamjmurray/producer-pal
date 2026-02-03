@@ -1,5 +1,5 @@
 /**
- * Waveform generator functions for modulation system.
+ * Waveform generator functions for transform system.
  * All waveforms at phase 0 start at peak (1.0) and descend.
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */

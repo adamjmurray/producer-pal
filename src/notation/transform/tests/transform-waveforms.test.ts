@@ -6,9 +6,9 @@ import {
   square,
   noise,
   ramp,
-} from "#src/notation/modulation/modulation-waveforms.ts";
+} from "#src/notation/transform/transform-waveforms.ts";
 
-describe("Modulation Waveforms", () => {
+describe("Transform Waveforms", () => {
   describe("cos()", () => {
     it("starts at 1.0 at phase 0", () => {
       expect(cos(0)).toBeCloseTo(1.0, 10);

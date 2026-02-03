@@ -1,4 +1,4 @@
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import type { NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
@@ -22,17 +22,17 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
 }
 
 /**
- * Apply modulations to existing notes without changing the notes themselves.
- * Used when modulations param is provided but notes param is omitted.
+ * Apply transforms to existing notes without changing the notes themselves.
+ * Used when transforms param is provided but notes param is omitted.
  * @param clip - The clip to update
- * @param modulationString - Modulation expressions to apply
+ * @param transformString - Transform expressions to apply
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Final note count
  */
-export function applyModulationsToExistingNotes(
+export function applyTransformsToExistingNotes(
   clip: LiveAPI,
-  modulationString: string,
+  transformString: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number {
@@ -45,7 +45,7 @@ export function applyModulationsToExistingNotes(
   >[];
 
   if (rawNotes.length === 0) {
-    console.warn("modulations ignored: clip has no notes to modulate");
+    console.warn("transforms ignored: clip has no notes to transform");
 
     return 0;
   }
@@ -53,12 +53,7 @@ export function applyModulationsToExistingNotes(
   // Convert raw notes to NoteEvent format (strips extra Live API properties)
   const notes: NoteEvent[] = rawNotes.map(toNoteEvent);
 
-  applyModulations(
-    notes,
-    modulationString,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  applyTransforms(notes, transformString, timeSigNumerator, timeSigDenominator);
 
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   clip.call("add_new_notes", { notes });

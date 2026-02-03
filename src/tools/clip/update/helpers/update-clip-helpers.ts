@@ -1,6 +1,6 @@
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
@@ -9,12 +9,12 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
-import { applyModulationsToExistingNotes } from "./update-clip-modulation-helpers.ts";
 import { handleQuantization } from "./update-clip-quantization-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
 } from "./update-clip-timing-helpers.ts";
+import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -161,7 +161,7 @@ function buildClipPropertiesToSet({
  * Handle note updates (merge or replace)
  * @param clip - The clip to update
  * @param notationString - The notation string to apply
- * @param modulationString - Modulation expressions to apply to notes
+ * @param transformString - Transform expressions to apply to notes
  * @param noteUpdateMode - 'merge' or 'replace'
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -170,22 +170,22 @@ function buildClipPropertiesToSet({
 function handleNoteUpdates(
   clip: LiveAPI,
   notationString: string | undefined,
-  modulationString: string | undefined,
+  transformString: string | undefined,
   noteUpdateMode: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | null {
   // Only skip if BOTH are null
-  if (notationString == null && modulationString == null) {
+  if (notationString == null && transformString == null) {
     return null;
   }
 
-  // Handle modulations-only case (no notes parameter provided)
+  // Handle transforms-only case (no notes parameter provided)
   if (notationString == null) {
-    // modulationString must be defined here (we returned above if both are null)
-    return applyModulationsToExistingNotes(
+    // transformString must be defined here (we returned above if both are null)
+    return applyTransformsToExistingNotes(
       clip,
-      modulationString as string,
+      transformString as string,
       timeSigNumerator,
       timeSigDenominator,
     );
@@ -215,13 +215,8 @@ function handleNoteUpdates(
     timeSigDenominator,
   });
 
-  // Apply modulations to notes if provided
-  applyModulations(
-    notes,
-    modulationString,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  // Apply transforms to notes if provided
+  applyTransforms(notes, transformString, timeSigNumerator, timeSigDenominator);
 
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
@@ -242,7 +237,7 @@ function handleNoteUpdates(
 export interface ProcessSingleClipUpdateParams {
   clip: LiveAPI;
   notationString?: string;
-  modulationString?: string;
+  transformString?: string;
   noteUpdateMode: string;
   name?: string;
   color?: string;
@@ -275,7 +270,7 @@ export interface ProcessSingleClipUpdateParams {
  * @param params - Parameters object containing all update parameters
  * @param params.clip - The clip to update
  * @param params.notationString - Musical notation string
- * @param params.modulationString - Modulation expressions to apply
+ * @param params.transformString - Transform expressions to apply
  * @param params.noteUpdateMode - Note update mode (merge or replace)
  * @param params.name - Clip name
  * @param params.color - Clip color
@@ -308,7 +303,7 @@ export function processSingleClipUpdate(
   const {
     clip,
     notationString,
-    modulationString,
+    transformString,
     noteUpdateMode,
     name,
     color,
@@ -397,7 +392,7 @@ export function processSingleClipUpdate(
   finalNoteCount = handleNoteUpdates(
     clip,
     notationString,
-    modulationString,
+    transformString,
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,

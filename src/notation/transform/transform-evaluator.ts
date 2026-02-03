@@ -2,38 +2,38 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import type { NoteEvent } from "../types.ts";
+import * as parser from "./parser/transform-parser.ts";
 import {
-  evaluateModulationAST,
+  evaluateTransformAST,
   type NoteContext,
   type NoteProperties,
-  type ModulationResult,
-} from "./modulation-evaluator-helpers.ts";
-import * as parser from "./parser/modulation-parser.ts";
+  type TransformResult,
+} from "./transform-evaluator-helpers.ts";
 
 /**
- * Apply modulations to a list of notes in-place
- * @param notes - Notes to modulate
- * @param modulationString - Modulation expression string
+ * Apply transforms to a list of notes in-place
+ * @param notes - Notes to transform
+ * @param transformString - Transform expression string
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  */
-export function applyModulations(
+export function applyTransforms(
   notes: NoteEvent[],
-  modulationString: string | undefined,
+  transformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): void {
-  if (!modulationString || notes.length === 0) {
+  if (!transformString || notes.length === 0) {
     return;
   }
 
-  // Parse the modulation string once before processing notes
+  // Parse the transform string once before processing notes
   let ast;
 
   try {
-    ast = parser.parse(modulationString);
+    ast = parser.parse(transformString);
   } catch (error) {
-    console.warn(`Failed to parse modulation string: ${errorMessage(error)}`);
+    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 
     return; // Early return - no point processing notes if parsing failed
   }
@@ -56,14 +56,14 @@ export function applyModulations(
 
     const noteProperties = buildNoteProperties(note, timeSigDenominator);
 
-    // Evaluate modulations for this note using the pre-parsed AST
-    const modulations = evaluateModulationAST(ast, noteContext, noteProperties);
+    // Evaluate transforms for this note using the pre-parsed AST
+    const transforms = evaluateTransformAST(ast, noteContext, noteProperties);
 
-    // Apply modulations with operator semantics and range clamping
-    applyVelocityModulation(note, modulations);
-    applyTimingModulation(note, modulations);
-    applyDurationModulation(note, modulations);
-    applyProbabilityModulation(note, modulations);
+    // Apply transforms with operator semantics and range clamping
+    applyVelocityTransform(note, transforms);
+    applyTimingTransform(note, transforms);
+    applyDurationTransform(note, transforms);
+    applyProbabilityTransform(note, transforms);
   }
 }
 
@@ -74,7 +74,7 @@ export function applyModulations(
  * @param timeSigDenominator - Time signature denominator
  * @param clipStartTime - Clip start time
  * @param clipEndTime - Clip end time
- * @returns Note context for modulation evaluation
+ * @returns Note context for transform evaluation
  */
 function buildNoteContext(
   note: NoteEvent,
@@ -137,123 +137,123 @@ function buildNoteProperties(
 }
 
 /**
- * Apply velocity modulation to a note
+ * Apply velocity transform to a note
  * @param note - Note to modify
- * @param modulations - Modulation results
+ * @param transforms - Transform results
  */
-function applyVelocityModulation(
+function applyVelocityTransform(
   note: NoteEvent,
-  modulations: Record<string, ModulationResult>,
+  transforms: Record<string, TransformResult>,
 ): void {
-  if (modulations.velocity == null) {
+  if (transforms.velocity == null) {
     return;
   }
 
-  if (modulations.velocity.operator === "set") {
-    note.velocity = Math.max(1, Math.min(127, modulations.velocity.value));
+  if (transforms.velocity.operator === "set") {
+    note.velocity = Math.max(1, Math.min(127, transforms.velocity.value));
   } else {
     // operator === "add"
     note.velocity = Math.max(
       1,
-      Math.min(127, note.velocity + modulations.velocity.value),
+      Math.min(127, note.velocity + transforms.velocity.value),
     );
   }
 }
 
 /**
- * Apply timing modulation to a note
+ * Apply timing transform to a note
  * @param note - Note to modify
- * @param modulations - Modulation results
+ * @param transforms - Transform results
  */
-function applyTimingModulation(
+function applyTimingTransform(
   note: NoteEvent,
-  modulations: Record<string, ModulationResult>,
+  transforms: Record<string, TransformResult>,
 ): void {
-  if (modulations.timing == null) {
+  if (transforms.timing == null) {
     return;
   }
 
-  // Timing modulates start_time directly (in Ableton beats)
-  if (modulations.timing.operator === "set") {
-    note.start_time = modulations.timing.value;
+  // Timing transforms start_time directly (in Ableton beats)
+  if (transforms.timing.operator === "set") {
+    note.start_time = transforms.timing.value;
   } else {
     // operator === "add"
-    note.start_time += modulations.timing.value;
+    note.start_time += transforms.timing.value;
   }
 }
 
 /**
- * Apply duration modulation to a note
+ * Apply duration transform to a note
  * @param note - Note to modify
- * @param modulations - Modulation results
+ * @param transforms - Transform results
  */
-function applyDurationModulation(
+function applyDurationTransform(
   note: NoteEvent,
-  modulations: Record<string, ModulationResult>,
+  transforms: Record<string, TransformResult>,
 ): void {
-  if (modulations.duration == null) {
+  if (transforms.duration == null) {
     return;
   }
 
   // operator is "set" or "add"
   note.duration =
-    modulations.duration.operator === "set"
-      ? Math.max(0.001, modulations.duration.value)
-      : Math.max(0.001, note.duration + modulations.duration.value);
+    transforms.duration.operator === "set"
+      ? Math.max(0.001, transforms.duration.value)
+      : Math.max(0.001, note.duration + transforms.duration.value);
 }
 
 /**
- * Apply probability modulation to a note
+ * Apply probability transform to a note
  * @param note - Note to modify
- * @param modulations - Modulation results
+ * @param transforms - Transform results
  */
-function applyProbabilityModulation(
+function applyProbabilityTransform(
   note: NoteEvent,
-  modulations: Record<string, ModulationResult>,
+  transforms: Record<string, TransformResult>,
 ): void {
-  if (modulations.probability == null) {
+  if (transforms.probability == null) {
     return;
   }
 
-  if (modulations.probability.operator === "set") {
+  if (transforms.probability.operator === "set") {
     note.probability = Math.max(
       0.0,
-      Math.min(1.0, modulations.probability.value),
+      Math.min(1.0, transforms.probability.value),
     );
   } else {
     // operator === "add"
     note.probability = Math.max(
       0.0,
-      Math.min(1.0, (note.probability ?? 1.0) + modulations.probability.value),
+      Math.min(1.0, (note.probability ?? 1.0) + transforms.probability.value),
     );
   }
 }
 
 /**
- * Evaluate a modulation expression for a specific note context
- * @param modulationString - Modulation expression string
+ * Evaluate a transform expression for a specific note context
+ * @param transformString - Transform expression string
  * @param noteContext - Note context for evaluation
  * @param noteProperties - Note properties for variable access
- * @returns Modulation results keyed by parameter name
+ * @returns Transform results keyed by parameter name
  */
-export function evaluateModulation(
-  modulationString: string,
+export function evaluateTransform(
+  transformString: string,
   noteContext: NoteContext,
   noteProperties?: NoteProperties,
-): Record<string, ModulationResult> {
-  if (!modulationString) {
+): Record<string, TransformResult> {
+  if (!transformString) {
     return {};
   }
 
   let ast;
 
   try {
-    ast = parser.parse(modulationString);
+    ast = parser.parse(transformString);
   } catch (error) {
-    console.warn(`Failed to parse modulation string: ${errorMessage(error)}`);
+    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 
     return {};
   }
 
-  return evaluateModulationAST(ast, noteContext, noteProperties);
+  return evaluateTransformAST(ast, noteContext, noteProperties);
 }

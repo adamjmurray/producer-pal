@@ -142,9 +142,9 @@ v100 C3 3|1 v0 C3 1|1 v80    // exit deletion mode with v80
 C3 4|1                       // this C3 is NOT deleted (v80 still active)
 \`\`\`
 
-### Modulations
+### Transforms
 
-Apply dynamic transformations to note properties. Add \`modulations\` parameter to create-clip or update-clip.
+Apply dynamic transforms to note properties. Add \`transforms\` parameter to create-clip or update-clip.
 
 **Syntax:** \`[pitch] [time] parameter operator expression\` (one per line)
 - **Pitch selector:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches, persists until changed
@@ -170,9 +170,9 @@ C1-C2 velocity += 30          // accent bass notes
 velocity = note.velocity / 2  // halve existing velocity
 \`\`\`
 
-Modulations with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
+Transforms with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
 
-To apply modulations to existing notes without adding new notes, use update-clip with just the modulations parameter.
+To apply transforms to existing notes without adding new notes, use update-clip with just the transforms parameter.
 
 ## Working with Ableton Live
 

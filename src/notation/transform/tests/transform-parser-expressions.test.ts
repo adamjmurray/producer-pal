@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { FunctionNode } from "#src/notation/modulation/parser/modulation-parser.ts";
-import * as parser from "#src/notation/modulation/parser/modulation-parser.ts";
+import type { FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
+import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
-describe("Modulation Parser - Expressions", () => {
+describe("Transform Parser - Expressions", () => {
   describe("function calls", () => {
     it("parses cos with frequency", () => {
       const result = parser.parse("velocity += cos(1t)");
@@ -366,7 +366,7 @@ describe("Modulation Parser - Expressions", () => {
       });
     });
 
-    it("parses unipolar envelope (offset + modulation)", () => {
+    it("parses unipolar envelope (offset + transform)", () => {
       const result = parser.parse("velocity += 20 + 20 * cos(2:0t)");
 
       expect(result[0]!.expression).toStrictEqual({
@@ -384,7 +384,7 @@ describe("Modulation Parser - Expressions", () => {
       });
     });
 
-    it("parses amplitude modulation", () => {
+    it("parses amplitude transform", () => {
       const result = parser.parse("velocity += 30 * cos(4:0t) * cos(1t)");
 
       expect(result[0]!.expression).toStrictEqual({

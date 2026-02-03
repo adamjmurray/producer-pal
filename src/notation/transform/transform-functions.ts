@@ -1,10 +1,10 @@
+import type { ExpressionNode } from "./parser/transform-parser.ts";
 import type {
   TimeRange,
   NoteProperties,
-} from "./modulation-evaluator-helpers.ts";
-import { parseFrequency, type PeriodObject } from "./modulation-frequency.ts";
-import * as waveforms from "./modulation-waveforms.ts";
-import type { ExpressionNode } from "./parser/modulation-parser.ts";
+} from "./transform-evaluator-helpers.ts";
+import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
+import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
   node: ExpressionNode,

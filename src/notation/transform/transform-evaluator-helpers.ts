@@ -1,12 +1,12 @@
 import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { evaluateFunction } from "./modulation-functions.ts";
 import type {
   ExpressionNode,
-  ModulationAssignment,
+  TransformAssignment,
   PitchRange,
-} from "./parser/modulation-parser.ts";
+} from "./parser/transform-parser.ts";
+import { evaluateFunction } from "./transform-functions.ts";
 
 export interface TimeRange {
   start: number;
@@ -29,7 +29,7 @@ export interface NoteContext {
 
 export type NoteProperties = Record<string, number | undefined>;
 
-export interface ModulationResult {
+export interface TransformResult {
   operator: "add" | "set";
   value: number;
 }
@@ -41,21 +41,21 @@ type ProcessAssignmentResult =
 type TimeRangeResult = { skip: true } | { skip?: false; timeRange: TimeRange };
 
 /**
- * Evaluate a pre-parsed modulation AST for a specific note context
- * @param ast - Pre-parsed modulation AST
+ * Evaluate a pre-parsed transform AST for a specific note context
+ * @param ast - Pre-parsed transform AST
  * @param noteContext - Note context for evaluation
  * @param noteProperties - Note properties for variable access
- * @returns Record of modulation results keyed by parameter name
+ * @returns Record of transform results keyed by parameter name
  */
-export function evaluateModulationAST(
-  ast: ModulationAssignment[],
+export function evaluateTransformAST(
+  ast: TransformAssignment[],
   noteContext: NoteContext,
   noteProperties: NoteProperties = {},
-): Record<string, ModulationResult> {
+): Record<string, TransformResult> {
   const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
   const { numerator, denominator } = timeSig;
 
-  const result: Record<string, ModulationResult> = {};
+  const result: Record<string, TransformResult> = {};
   let currentPitchRange: PitchRange | null = null; // Track persistent pitch range context
 
   for (const assignment of ast) {
@@ -90,8 +90,8 @@ export function evaluateModulationAST(
 }
 
 /**
- * Process a single modulation assignment
- * @param assignment - Modulation assignment to process
+ * Process a single transform assignment
+ * @param assignment - Transform assignment to process
  * @param position - Note position in beats
  * @param pitch - Note pitch (optional)
  * @param bar - Note bar number (optional)
@@ -104,7 +104,7 @@ export function evaluateModulationAST(
  * @returns Assignment result or skip indicator
  */
 function processAssignment(
-  assignment: ModulationAssignment,
+  assignment: TransformAssignment,
   position: number,
   pitch: number | undefined,
   bar: number | undefined,
@@ -160,7 +160,7 @@ function processAssignment(
     return { value, pitchRange };
   } catch (error) {
     console.warn(
-      `Failed to evaluate modulation for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+      `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
     );
 
     return { skip: true };
@@ -169,7 +169,7 @@ function processAssignment(
 
 /**
  * Calculate active time range for an assignment
- * @param assignment - Modulation assignment
+ * @param assignment - Transform assignment
  * @param bar - Note bar number (optional)
  * @param beat - Note beat number (optional)
  * @param numerator - Time signature numerator
@@ -179,7 +179,7 @@ function processAssignment(
  * @returns Time range result or skip indicator
  */
 function calculateActiveTimeRange(
-  assignment: ModulationAssignment,
+  assignment: TransformAssignment,
   bar: number | undefined,
   beat: number | undefined,
   numerator: number,

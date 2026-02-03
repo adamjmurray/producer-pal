@@ -689,7 +689,7 @@ export default [
     files: ["src/**/*.ts"],
     ignores: [
       "src/notation/barbeat/parser/barbeat-parser.ts",
-      "src/notation/modulation/parser/modulation-parser.ts",
+      "src/notation/transform/parser/transform-parser.ts",
     ],
     rules: {
       "import/extensions": [

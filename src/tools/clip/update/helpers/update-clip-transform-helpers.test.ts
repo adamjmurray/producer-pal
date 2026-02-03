@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyModulationsToExistingNotes } from "./update-clip-modulation-helpers.ts";
+import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
 // Helper to create raw notes as returned by Live API (with extra properties)
 function rawNote(pitch: number, startTime: number, noteId: number) {
@@ -16,13 +16,13 @@ function rawNote(pitch: number, startTime: number, noteId: number) {
   };
 }
 
-describe("update-clip-modulation-helpers", () => {
+describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("applyModulationsToExistingNotes", () => {
-    it("should apply modulations to existing notes", () => {
+  describe("applyTransformsToExistingNotes", () => {
+    it("should apply transforms to existing notes", () => {
       // Live API returns notes with extra properties (note_id, mute, release_velocity)
       // that must be stripped before passing to add_new_notes
       const existingNotes = [
@@ -51,7 +51,7 @@ describe("update-clip-modulation-helpers", () => {
         }),
       };
 
-      const result = applyModulationsToExistingNotes(
+      const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
         "velocity = 50",
         4,
@@ -70,7 +70,7 @@ describe("update-clip-modulation-helpers", () => {
         "add_new_notes",
         expect.objectContaining({ notes: expect.any(Array) }),
       );
-      // Verify modulations were applied (velocity set to 50)
+      // Verify transforms were applied (velocity set to 50)
       expect(addedNotes).toHaveLength(3);
 
       for (const note of addedNotes) {
@@ -99,7 +99,7 @@ describe("update-clip-modulation-helpers", () => {
         }),
       };
 
-      const result = applyModulationsToExistingNotes(
+      const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
         "velocity = 50",
         4,
@@ -109,7 +109,7 @@ describe("update-clip-modulation-helpers", () => {
       expect(result).toBe(0);
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("modulations ignored: clip has no notes"),
+        expect.stringContaining("transforms ignored: clip has no notes"),
       );
       // Should NOT call remove_notes_extended or add_new_notes
       expect(mockClip.call).not.toHaveBeenCalledWith(

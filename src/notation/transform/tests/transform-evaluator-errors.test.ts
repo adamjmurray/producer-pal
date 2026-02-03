@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyModulations,
-  evaluateModulation,
-} from "#src/notation/modulation/modulation-evaluator.ts";
+  applyTransforms,
+  evaluateTransform,
+} from "#src/notation/transform/transform-evaluator.ts";
 import {
   evaluateExpression,
-  evaluateModulationAST,
-} from "#src/notation/modulation/modulation-evaluator-helpers.ts";
-import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.ts";
-import { evaluateFunction } from "#src/notation/modulation/modulation-functions.ts";
+  evaluateTransformAST,
+} from "#src/notation/transform/transform-evaluator-helpers.ts";
+import type { TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
+import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 
-describe("Modulation Evaluator Error Handling", () => {
-  describe("applyModulations parsing errors", () => {
-    it("handles invalid modulation string gracefully", () => {
+describe("Transform Evaluator Error Handling", () => {
+  describe("applyTransforms parsing errors", () => {
+    it("handles invalid transform string gracefully", () => {
       const notes = [
         {
           start_time: 0,
@@ -24,17 +24,17 @@ describe("Modulation Evaluator Error Handling", () => {
       ];
 
       // Invalid syntax should trigger parse error
-      applyModulations(notes, "invalid @@ syntax", 4, 4);
+      applyTransforms(notes, "invalid @@ syntax", 4, 4);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Failed to parse modulation string"),
+        expect.stringContaining("Failed to parse transform string"),
       );
       // Notes should be unchanged
       expect(notes[0]!.velocity).toBe(100);
     });
 
-    it("handles completely malformed modulation string", () => {
+    it("handles completely malformed transform string", () => {
       const notes = [
         {
           start_time: 0,
@@ -45,23 +45,23 @@ describe("Modulation Evaluator Error Handling", () => {
         },
       ];
 
-      applyModulations(notes, "{ this is not valid", 4, 4);
+      applyTransforms(notes, "{ this is not valid", 4, 4);
 
       expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(notes[0]!.velocity).toBe(100);
     });
   });
 
-  describe("evaluateModulation parsing errors", () => {
-    it("handles invalid modulation string gracefully", () => {
-      const result = evaluateModulation("invalid @@ syntax", {
+  describe("evaluateTransform parsing errors", () => {
+    it("handles invalid transform string gracefully", () => {
+      const result = evaluateTransform("invalid @@ syntax", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Failed to parse modulation string"),
+        expect.stringContaining("Failed to parse transform string"),
       );
       expect(result).toStrictEqual({});
     });
@@ -70,7 +70,7 @@ describe("Modulation Evaluator Error Handling", () => {
   describe("variable reference errors", () => {
     it("returns empty object when variable is not available", () => {
       // Try to reference a note variable that doesn't exist
-      const result = evaluateModulation("velocity += note.nonexistent", {
+      const result = evaluateTransform("velocity += note.nonexistent", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -81,7 +81,7 @@ describe("Modulation Evaluator Error Handling", () => {
     });
 
     it("evaluates successfully when variable is available", () => {
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += note.pitch",
         {
           position: 0,
@@ -98,7 +98,7 @@ describe("Modulation Evaluator Error Handling", () => {
 
   describe("unknown waveform function errors", () => {
     it("handles unknown function gracefully", () => {
-      const result = evaluateModulation("velocity += unknown_func(1t)", {
+      const result = evaluateTransform("velocity += unknown_func(1t)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -108,7 +108,7 @@ describe("Modulation Evaluator Error Handling", () => {
     });
 
     it("handles typo in waveform name", () => {
-      const result = evaluateModulation("velocity += coss(1t)", {
+      const result = evaluateTransform("velocity += coss(1t)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -120,7 +120,7 @@ describe("Modulation Evaluator Error Handling", () => {
 
   describe("function argument validation", () => {
     it("handles ramp without speed gracefully when speed is zero", () => {
-      const result = evaluateModulation("velocity += ramp(0, 100, 0)", {
+      const result = evaluateTransform("velocity += ramp(0, 100, 0)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
@@ -131,7 +131,7 @@ describe("Modulation Evaluator Error Handling", () => {
     });
 
     it("handles waveform with zero period gracefully", () => {
-      const result = evaluateModulation("velocity += cos(0)", {
+      const result = evaluateTransform("velocity += cos(0)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -141,7 +141,7 @@ describe("Modulation Evaluator Error Handling", () => {
     });
 
     it("handles waveform with negative period gracefully", () => {
-      const result = evaluateModulation("velocity += cos(-1)", {
+      const result = evaluateTransform("velocity += cos(-1)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
@@ -194,7 +194,7 @@ describe("Modulation Evaluator Error Handling", () => {
     });
   });
 
-  describe("direct evaluateModulationAST with unknown function", () => {
+  describe("direct evaluateTransformAST with unknown function", () => {
     it("handles unknown waveform function in AST", () => {
       const ast = [
         {
@@ -210,8 +210,8 @@ describe("Modulation Evaluator Error Handling", () => {
         },
       ];
 
-      const result = evaluateModulationAST(
-        ast as unknown as ModulationAssignment[],
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },

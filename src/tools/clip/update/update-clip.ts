@@ -19,8 +19,8 @@ interface UpdateClipArgs {
   ids?: string;
   /** Musical notation string */
   notes?: string;
-  /** Modulation expressions (parameter: expression per line) */
-  modulations?: string;
+  /** Transform expressions (parameter: expression per line) */
+  transforms?: string;
   /** How to handle existing notes: 'replace' or 'merge' */
   noteUpdateMode?: string;
   /** Optional clip name */
@@ -79,7 +79,7 @@ interface ClipResult {
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
- * @param args.modulations - Modulation expressions (parameter: expression per line)
+ * @param args.transforms - Transform expressions (parameter: expression per line)
  * @param args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
@@ -110,7 +110,7 @@ export function updateClip(
   {
     ids,
     notes: notationString,
-    modulations: modulationString,
+    transforms: transformString,
     noteUpdateMode = "merge",
     name,
     color,
@@ -186,7 +186,7 @@ export function updateClip(
     processSingleClipUpdate({
       clip,
       notationString,
-      modulationString,
+      transformString,
       noteUpdateMode,
       name,
       color,

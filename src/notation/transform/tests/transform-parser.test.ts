@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import type {
   BinaryOpNode,
   FunctionNode,
-} from "#src/notation/modulation/parser/modulation-parser.ts";
-import * as parser from "#src/notation/modulation/parser/modulation-parser.ts";
+} from "#src/notation/transform/parser/transform-parser.ts";
+import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
-describe("Modulation Parser", () => {
+describe("Transform Parser", () => {
   describe("basic structure", () => {
     it("parses an empty input", () => {
       expect(parser.parse("")).toStrictEqual([]);
@@ -382,7 +382,7 @@ describe("Modulation Parser", () => {
       expect(fn.args[1]).toBe(0.5);
     });
 
-    it("parses pulse width modulation", () => {
+    it("parses pulse width transform", () => {
       const result = parser.parse("velocity += 20 * square(2t, 0, 0.25)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
@@ -392,7 +392,7 @@ describe("Modulation Parser", () => {
       expect(fn.args[2]).toBe(0.25);
     });
 
-    it("parses multi-parameter modulation", () => {
+    it("parses multi-parameter transform", () => {
       const result = parser.parse(
         "velocity += 20 * cos(1:0t) + 10 * noise()\ntiming += 0.03 * noise()\nprobability += 0.2 * cos(0:2t)",
       );

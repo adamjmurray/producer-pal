@@ -19,10 +19,10 @@ reach out directly.
 
 ## In Progress
 
-### 1.4 - MIDI Modulation
+### 1.4 - MIDI Transforms
 
 Enhance the `ppal-create-clip` and `ppal-update-clip` tools with flexible MIDI
-modulation features:
+transform features:
 
 - Apply ramps, curves, and LFO shapes to MIDI velocity, start time, duration,
   and other note properties

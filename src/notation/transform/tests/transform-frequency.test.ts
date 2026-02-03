@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   parseFrequency,
   type PeriodObject,
-} from "#src/notation/modulation/modulation-frequency.ts";
+} from "#src/notation/transform/transform-frequency.ts";
 
-describe("Modulation Period Parser", () => {
+describe("Transform Period Parser", () => {
   describe("beat-only periods in 4/4", () => {
     it("parses 1t as 1 beat period", () => {
       const freq: PeriodObject = { type: "period", bars: 0, beats: 1 };
@@ -182,13 +182,13 @@ describe("Modulation Period Parser", () => {
   });
 
   describe("real-world examples", () => {
-    it("1:0t in 4/4 = 4 beats (one bar modulation)", () => {
+    it("1:0t in 4/4 = 4 beats (one bar transform)", () => {
       const freq: PeriodObject = { type: "period", bars: 1, beats: 0 };
 
       expect(parseFrequency(freq, 4)).toBe(4);
     });
 
-    it("4:0t in 4/4 = 16 beats (four bar modulation)", () => {
+    it("4:0t in 4/4 = 16 beats (four bar transform)", () => {
       const freq: PeriodObject = { type: "period", bars: 4, beats: 0 };
 
       expect(parseFrequency(freq, 4)).toBe(16);

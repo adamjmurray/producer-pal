@@ -1,11 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
-import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.ts";
-import type { ModulationAssignment } from "#src/notation/modulation/parser/modulation-parser.ts";
+import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { evaluateTransformAST } from "#src/notation/transform/transform-evaluator-helpers.ts";
+import type { TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 
-describe("Modulation Branch Coverage", () => {
+describe("Transform Branch Coverage", () => {
   beforeEach(() => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
@@ -14,14 +14,14 @@ describe("Modulation Branch Coverage", () => {
     vi.restoreAllMocks();
   });
 
-  describe("modulation-evaluator.js branch coverage", () => {
+  describe("transform-evaluator.js branch coverage", () => {
     it("handles malformed bar|beat string from abletonBeatsToBarBeat", () => {
       // Mock abletonBeatsToBarBeat to return malformed string
       vi.spyOn(barBeatTime, "abletonBeatsToBarBeat").mockReturnValue(
         "malformed",
       );
 
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += 50",
         {
           position: 0,
@@ -38,7 +38,7 @@ describe("Modulation Branch Coverage", () => {
     it("handles empty bar|beat string from abletonBeatsToBarBeat", () => {
       vi.spyOn(barBeatTime, "abletonBeatsToBarBeat").mockReturnValue("");
 
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += 30",
         {
           position: 2,
@@ -53,10 +53,10 @@ describe("Modulation Branch Coverage", () => {
     });
   });
 
-  describe("modulation-functions.js branch coverage", () => {
+  describe("transform-functions.js branch coverage", () => {
     it("handles ramp with zero time range duration (end = start)", () => {
       // When timeRange.end === timeRange.start, duration is 0, phase should default to 0
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += ramp(0, 100)",
         {
           position: 5,
@@ -73,7 +73,7 @@ describe("Modulation Branch Coverage", () => {
 
     it("handles ramp with negative time range duration (end < start)", () => {
       // When timeRange.end < timeRange.start, duration is negative, phase should default to 0
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += ramp(20, 80)",
         {
           position: 3,
@@ -89,7 +89,7 @@ describe("Modulation Branch Coverage", () => {
     });
 
     it("handles ramp with zero duration and speed parameter", () => {
-      const result = evaluateModulation(
+      const result = evaluateTransform(
         "velocity += ramp(0, 100, 2)",
         {
           position: 7,
@@ -105,7 +105,7 @@ describe("Modulation Branch Coverage", () => {
     });
   });
 
-  describe("modulation-evaluator-helpers.js branch coverage", () => {
+  describe("transform-evaluator-helpers.js branch coverage", () => {
     it("handles assignment with pitch range that filters out the note", () => {
       // When a note is outside the pitch range, assignment is skipped
       // and assignmentResult.value will be null/undefined
@@ -119,8 +119,8 @@ describe("Modulation Branch Coverage", () => {
         },
       ];
 
-      const result = evaluateModulationAST(
-        ast as unknown as ModulationAssignment[],
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
         {
           position: 0,
           pitch: 60, // C4 - outside the range
@@ -150,8 +150,8 @@ describe("Modulation Branch Coverage", () => {
         },
       ];
 
-      const result = evaluateModulationAST(
-        ast as unknown as ModulationAssignment[],
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
         {
           position: 0,
           bar: 1, // Before the time range starts
@@ -178,8 +178,8 @@ describe("Modulation Branch Coverage", () => {
         },
       ];
 
-      const result = evaluateModulationAST(
-        ast as unknown as ModulationAssignment[],
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
         {
           position: 0,
           pitch: 60, // Outside the pitch range

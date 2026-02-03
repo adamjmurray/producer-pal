@@ -75,10 +75,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
 
-    modulations: z
+    transforms: z
       .string()
       .optional()
-      .describe("modulation expressions (parameter: expression per line)"),
+      .describe("transform expressions (parameter: expression per line)"),
 
     sampleFile: z
       .string()
@@ -98,6 +98,6 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   smallModelModeConfig: {
-    excludeParams: ["modulations"],
+    excludeParams: ["transforms"],
   },
 });

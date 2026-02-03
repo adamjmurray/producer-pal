@@ -1,6 +1,6 @@
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -33,8 +33,8 @@ export interface CreateClipArgs {
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
   notes?: string | null;
-  /** Modulation expressions */
-  modulations?: string | null;
+  /** Transform expressions */
+  transforms?: string | null;
   /** Absolute path to audio file (audio clips only) */
   sampleFile?: string | null;
   /** Base name for the clips */
@@ -70,7 +70,7 @@ interface PreparedClipData {
  * @param args.sceneIndex - Scene index(es), comma-separated for multiple
  * @param args.arrangementStart - Bar|beat position(s), comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
- * @param args.modulations - Modulation expressions
+ * @param args.transforms - Transform expressions
  * @param args.sampleFile - Absolute path to audio file (audio clips only)
  * @param args.name - Base name for the clips
  * @param args.color - Color in #RRGGBB hex format
@@ -91,7 +91,7 @@ export function createClip(
     sceneIndex = null,
     arrangementStart = null,
     notes: notationString = null,
-    modulations: modulationString = null,
+    transforms: transformString = null,
     sampleFile = null,
     name = null,
     color = null,
@@ -165,7 +165,7 @@ export function createClip(
   const { notes, clipLength: initialClipLength } = prepareClipData(
     sampleFile,
     notationString,
-    modulationString,
+    transformString,
     endBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -319,7 +319,7 @@ function createClips(
  * Prepares clip data (notes and initial length) based on clip type
  * @param sampleFile - Audio file path (if audio clip)
  * @param notationString - MIDI notation string (if MIDI clip)
- * @param modulationString - Modulation expressions to apply to notes
+ * @param transformString - Transform expressions to apply to notes
  * @param endBeats - End position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -328,7 +328,7 @@ function createClips(
 function prepareClipData(
   sampleFile: string | null,
   notationString: string | null,
-  modulationString: string | null,
+  transformString: string | null,
   endBeats: number | null,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -342,10 +342,10 @@ function prepareClipData(
         })
       : [];
 
-  // Apply modulations to notes if provided
-  applyModulations(
+  // Apply transforms to notes if provided
+  applyTransforms(
     notes,
-    modulationString ?? undefined,
+    transformString ?? undefined,
     timeSigNumerator,
     timeSigDenominator,
   );

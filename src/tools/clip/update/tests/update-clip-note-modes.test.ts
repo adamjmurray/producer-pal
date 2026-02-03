@@ -181,7 +181,7 @@ describe("updateClip - Note update modes", () => {
     );
   });
 
-  it("should apply modulations to existing notes without notes param", () => {
+  it("should apply transforms to existing notes without notes param", () => {
     setupMidiClipMock("123");
 
     // Seed the mock with pre-existing notes in Live API format (with extra properties)
@@ -234,7 +234,7 @@ describe("updateClip - Note update modes", () => {
 
     const result = updateClip({
       ids: "123",
-      modulations: "velocity = 50",
+      transforms: "velocity = 50",
       // No notes param, no noteUpdateMode
     });
 

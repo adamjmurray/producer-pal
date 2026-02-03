@@ -1,6 +1,6 @@
 /**
- * Type declarations for peggy-generated modulation parser.
- * The actual parser is generated from modulation-grammar.peggy.
+ * Type declarations for peggy-generated transform parser.
+ * The actual parser is generated from transform-grammar.peggy.
  */
 
 export {
@@ -53,8 +53,8 @@ export interface TimeRange {
   endBeat: number;
 }
 
-/** Modulation assignment produced by the parser */
-export interface ModulationAssignment {
+/** Transform assignment produced by the parser */
+export interface TransformAssignment {
   parameter: string;
   operator: "add" | "set";
   expression: ExpressionNode;
@@ -62,8 +62,8 @@ export interface ModulationAssignment {
   timeRange?: TimeRange;
 }
 
-/** Parse a modulation expression string into an AST */
+/** Parse a transform expression string into an AST */
 export function parse(
   input: string,
   options?: ParseOptions,
-): ModulationAssignment[];
+): TransformAssignment[];

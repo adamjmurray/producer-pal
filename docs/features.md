@@ -163,6 +163,18 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
   1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
   bars 3-10)
 
+### Note Transforms
+
+Apply dynamic transforms to MIDI note properties using expressions:
+
+- **Parameters**: velocity (1-127), timing (beats), duration (beats),
+  probability (0-1)
+- **Operators**: `+=` (add to value), `=` (set value)
+- **Waveforms**: cos, tri, saw, square, noise, ramp
+- **Selectors**: Filter by pitch range (C3-C5) or time range (1|1-2|4)
+
+Use the `transforms` parameter in `ppal-create-clip` or `ppal-update-clip`.
+
 ## Sample Browser
 
 ### Read Samples (`ppal-read-samples`)
