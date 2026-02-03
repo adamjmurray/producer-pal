@@ -5,8 +5,8 @@ import {
 import {
   prepareSliceParams,
   performSlicing,
-} from "#src/tools/operations/transform-clips/helpers/transform-clips-slicing-helpers.ts";
-import type { SlicingContext } from "#src/tools/operations/transform-clips/helpers/transform-clips-slicing-helpers.ts";
+} from "#src/tools/shared/arrangement/arrangement-slicing.ts";
+import type { SlicingContext } from "#src/tools/shared/arrangement/arrangement-slicing.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,

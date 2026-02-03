@@ -1,4 +1,4 @@
-import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
+import { revealAudioContentAtPosition } from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
