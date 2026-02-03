@@ -21,8 +21,8 @@ reach out directly.
 
 ### 1.4 - MIDI Modulation
 
-Enhance the `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips`
-tools with flexible MIDI modulation features:
+Enhance the `ppal-create-clip` and `ppal-update-clip` tools with flexible MIDI
+modulation features:
 
 - Apply ramps, curves, and LFO shapes to MIDI velocity, start time, duration,
   and other note properties
@@ -50,8 +50,8 @@ Also added support for:
 - Audio clip support with a `read-samples` tool to scan folders for samples
 - Track mixer control: gain, panning, and sends
 - Arrangement clip positioning and length control
-- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
-  randomizing clips
+- Experimental clip slicing, shuffling, and randomizing features (since removed
+  or integrated into `ppal-update-clip`)
 
 ### 1.1 - Built-in chat UI (November 2025)
 

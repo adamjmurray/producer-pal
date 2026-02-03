@@ -191,14 +191,6 @@ limitation).
 - Remove tracks, return tracks, scenes, clips, or devices
 - Bulk delete multiple objects
 
-### Transform Clips (`ppal-transform-clips`)
-
-- Slice up arrangement clips
-- Shuffle arrangement clip slice order
-- Randomize audio clip gain
-- Randomize transpose for audio and MIDI clips
-- Randomize MIDI note velocity, duration, and probability
-
 ## Selection State and View Control
 
 ### Select (`ppal-select`)

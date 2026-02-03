@@ -25,7 +25,6 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import { readSamples } from "#src/tools/samples/read-samples.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
@@ -85,11 +84,6 @@ const tools: Record<string, (args: unknown) => unknown> = {
     initHoldingArea();
 
     return updateClip(args as any, context);
-  },
-  "ppal-transform-clips": (args) => {
-    initHoldingArea();
-
-    return transformClips(args as any, context);
   },
   "ppal-create-device": (args) => createDevice(args as any, context),
   "ppal-read-device": (args) => readDevice(args as any, context),
