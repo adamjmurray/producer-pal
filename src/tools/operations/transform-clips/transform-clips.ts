@@ -1,4 +1,9 @@
 import * as console from "#src/shared/v8-max-console.ts";
+import {
+  prepareSliceParams,
+  performSlicing,
+} from "#src/tools/shared/arrangement/arrangement-slicing.ts";
+import type { SlicingContext } from "#src/tools/shared/arrangement/arrangement-slicing.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseTransposeValues,
@@ -7,11 +12,6 @@ import {
 } from "./helpers/transform-clips-helpers.ts";
 import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.ts";
 import { performShuffling } from "./helpers/transform-clips-shuffling-helpers.ts";
-import {
-  prepareSliceParams,
-  performSlicing,
-} from "./helpers/transform-clips-slicing-helpers.ts";
-import type { SlicingContext } from "./helpers/transform-clips-slicing-helpers.ts";
 
 interface TransformClipsArgs {
   clipIds?: string;

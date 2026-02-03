@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_SLICES } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -50,6 +51,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "Lengthening to expose hidden content recreates clip (envelope loss). " +
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
+      ),
+    slice: z
+      .string()
+      .optional()
+      .describe(
+        `bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (max ${MAX_SLICES} slices total, arrangement clips only)`,
       ),
 
     // Audio clip parameters
@@ -162,6 +169,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "quantizePitch",
       "firstStart",
       "modulations",
+      "slice",
     ],
     descriptionOverrides: {
       arrangementLength:
