@@ -145,6 +145,7 @@ create.
 - Add/remove MIDI notes and change note pitch, timing, velocity, and probability
 - Change audio clip gain, pitch shift, warp settings, and warp markers
 - Move clips and change their length in the Arrangement
+- Split arrangement clips at specified positions
 - Update multiple clips at once
 
 ### Custom Music Notation
