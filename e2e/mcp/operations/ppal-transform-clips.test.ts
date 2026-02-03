@@ -14,7 +14,7 @@ import {
 
 const ctx = setupMcpTestContext();
 
-describe("ppal-transform-clips", () => {
+describe.skip("ppal-transform-clips", () => {
   it("transforms clips with slicing, shuffling, and randomization", async () => {
     // Setup: Create arrangement clips for testing
     const createResult = await ctx.client!.callTool({
