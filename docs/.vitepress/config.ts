@@ -58,6 +58,7 @@ export default defineConfig({
         text: "Reference",
         items: [
           { text: "Features", link: "/features" },
+          { text: "Limitations", link: "/limitations" },
           { text: "Roadmap", link: "/roadmap" },
           { text: "Known Issues", link: "/known-issues" },
           { text: "Troubleshooting", link: "/installation/troubleshooting" },
