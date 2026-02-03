@@ -17,8 +17,6 @@ Official website: <a href="https://producer-pal.org">producer-pal.org</a>
    [installation guide](https://producer-pal.org/installation) for your AI
 3. **Create**: Say "connect to ableton" and start making music
 
-
-
 ## Contributing
 
 Star ⭐️ the repo to help others discover Producer Pal!
