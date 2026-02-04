@@ -9,19 +9,16 @@ import {
 } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import type { TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
+import {
+  createTestNote,
+  DEFAULT_CONTEXT,
+  expectTransformError,
+} from "./transform-evaluator-test-helpers.ts";
 
 describe("Transform Evaluator Error Handling", () => {
   describe("applyTransforms parsing errors", () => {
     it("handles invalid transform string gracefully", () => {
-      const notes = [
-        {
-          start_time: 0,
-          pitch: 60,
-          velocity: 100,
-          duration: 1,
-          probability: 1,
-        },
-      ];
+      const notes = createTestNote();
 
       // Invalid syntax should trigger parse error
       applyTransforms(notes, "invalid @@ syntax", 4, 4);
@@ -35,15 +32,7 @@ describe("Transform Evaluator Error Handling", () => {
     });
 
     it("handles completely malformed transform string", () => {
-      const notes = [
-        {
-          start_time: 0,
-          pitch: 60,
-          velocity: 100,
-          duration: 1,
-          probability: 1,
-        },
-      ];
+      const notes = createTestNote();
 
       applyTransforms(notes, "{ this is not valid", 4, 4);
 
@@ -54,10 +43,7 @@ describe("Transform Evaluator Error Handling", () => {
 
   describe("evaluateTransform parsing errors", () => {
     it("handles invalid transform string gracefully", () => {
-      const result = evaluateTransform("invalid @@ syntax", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform("invalid @@ syntax", DEFAULT_CONTEXT);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -70,23 +56,13 @@ describe("Transform Evaluator Error Handling", () => {
   describe("variable reference errors", () => {
     it("returns empty object when variable is not available", () => {
       // Try to reference a note variable that doesn't exist
-      const result = evaluateTransform("velocity += note.nonexistent", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      // Should log error but return empty result for this parameter
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
+      expectTransformError("velocity += note.nonexistent");
     });
 
     it("evaluates successfully when variable is available", () => {
       const result = evaluateTransform(
         "velocity += note.pitch",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        DEFAULT_CONTEXT,
         { pitch: 60 },
       );
 
@@ -98,31 +74,18 @@ describe("Transform Evaluator Error Handling", () => {
 
   describe("unknown waveform function errors", () => {
     it("handles unknown function gracefully", () => {
-      const result = evaluateTransform("velocity += unknown_func(1t)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
+      expectTransformError("velocity += unknown_func(1t)");
     });
 
     it("handles typo in waveform name", () => {
-      const result = evaluateTransform("velocity += coss(1t)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
+      expectTransformError("velocity += coss(1t)");
     });
   });
 
   describe("function argument validation", () => {
     it("handles ramp without speed gracefully when speed is zero", () => {
       const result = evaluateTransform("velocity += ramp(0, 100, 0)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
+        ...DEFAULT_CONTEXT,
         clipTimeRange: { start: 0, end: 4 },
       });
 
@@ -131,23 +94,11 @@ describe("Transform Evaluator Error Handling", () => {
     });
 
     it("handles waveform with zero period gracefully", () => {
-      const result = evaluateTransform("velocity += cos(0)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
+      expectTransformError("velocity += cos(0)");
     });
 
     it("handles waveform with negative period gracefully", () => {
-      const result = evaluateTransform("velocity += cos(-1)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
+      expectTransformError("velocity += cos(-1)");
     });
   });
 
@@ -271,54 +222,14 @@ describe("Transform Evaluator Error Handling", () => {
   });
 
   describe("math function error handling", () => {
-    it("handles round with no arguments", () => {
-      const result = evaluateTransform("velocity = round()", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-    });
-
-    it("handles floor with no arguments", () => {
-      const result = evaluateTransform("velocity = floor()", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-    });
-
-    it("handles abs with no arguments", () => {
-      const result = evaluateTransform("velocity = abs()", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-    });
-
-    it("handles min with only one argument", () => {
-      const result = evaluateTransform("velocity = min(60)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-    });
-
-    it("handles max with only one argument", () => {
-      const result = evaluateTransform("velocity = max(60)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    it.each([
+      ["round()", "round with no arguments"],
+      ["floor()", "floor with no arguments"],
+      ["abs()", "abs with no arguments"],
+      ["min(60)", "min with only one argument"],
+      ["max(60)", "max with only one argument"],
+    ])("handles %s error", (expr) => {
+      expectTransformError(`velocity = ${expr}`);
     });
   });
 });
