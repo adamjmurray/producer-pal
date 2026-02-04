@@ -101,6 +101,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),
+    code: z
+      .string()
+      .optional()
+      .describe(
+        "JavaScript code to transform notes. Receives (notes, context), returns notes array",
+      ),
 
     // Quantization parameters
     quantize: z
@@ -170,6 +176,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "firstStart",
       "transforms",
       "split",
+      "code",
     ],
     descriptionOverrides: {
       arrangementLength:

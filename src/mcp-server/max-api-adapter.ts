@@ -8,6 +8,11 @@ import {
   MAX_ERROR_DELIMITER,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import {
+  completeCodeExecRequest,
+  handleNotesData,
+  registerCodeExecRequest,
+} from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
 
 interface McpResponseContent {
@@ -57,12 +62,22 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
   const contextJSON = JSON.stringify({ silenceWavPath });
   const requestId = crypto.randomUUID();
 
+  // Check if this is a code execution request
+  const argsWithCode = args as { code?: string };
+  const hasCodeExec = typeof argsWithCode.code === "string";
+
   console.info(
-    `Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]`,
+    `Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]${hasCodeExec ? " [code-exec]" : ""}`,
   );
 
   // Return a promise that will be resolved when Max responds or timeout
   return new Promise((resolve) => {
+    // For code execution, register with the protocol handler
+    // The resolve will be called after the full notes_data -> apply_notes flow
+    if (hasCodeExec) {
+      registerCodeExecRequest(requestId, argsWithCode.code as string, resolve);
+    }
+
     // Send the request to Max as JSON (with context)
     // If outlet fails, resolve immediately with error (don't wait for timeout)
     Max.outlet("mcp_request", requestId, tool, argsJSON, contextJSON).catch(
@@ -113,15 +128,21 @@ function handleLiveApiResult(...args: unknown[]): void {
 
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
+  // Check for code execution request first
+  const codeExecState = completeCodeExecRequest(requestId);
+
+  // Get the regular pending request
   const pendingRequest = pendingRequests.get(requestId);
 
+  // Use code exec resolve if available, otherwise use regular pending request
+  const resolve = codeExecState?.resolve ?? pendingRequest?.resolve;
+
   if (pendingRequest) {
-    const { resolve, timeout } = pendingRequest;
-
-    clearTimeout(timeout);
-
+    clearTimeout(pendingRequest.timeout);
     pendingRequests.delete(requestId);
+  }
 
+  if (resolve) {
     try {
       // Find the delimiter
       const delimiterIndex = params.indexOf(MAX_ERROR_DELIMITER);
@@ -184,6 +205,16 @@ function handleLiveApiResult(...args: unknown[]): void {
 }
 
 Max.addHandler("mcp_response", handleLiveApiResult);
+
+// Handler for notes_data messages from V8 during code execution
+Max.addHandler("notes_data", (...args: unknown[]) => {
+  const [requestId, notesDataJson] = args as [string, string];
+
+  console.info(`notes_data(requestId=${requestId})`);
+  handleNotesData(requestId, notesDataJson).catch((error) => {
+    console.error(`Error handling notes_data: ${String(error)}`);
+  });
+});
 
 /**
  * Set the timeout for testing purposes

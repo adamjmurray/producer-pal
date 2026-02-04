@@ -34,6 +34,10 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { memory } from "#src/tools/workflow/memory.ts";
+import {
+  handleApplyNotes,
+  handleCodeExecIfNeeded,
+} from "./code-exec-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -230,6 +234,21 @@ function sendResponse(requestId: string, result: object): void {
   outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
 }
 
+/**
+ * Handle apply_notes message from Node after code execution
+ *
+ * @param requestId - Request identifier
+ * @param applyNotesJson - JSON string of ApplyNotesMessage
+ */
+export function apply_notes(requestId: string, applyNotesJson: string): void {
+  handleApplyNotes(
+    requestId,
+    applyNotesJson,
+    sendResponse,
+    isCompactOutputEnabled,
+  );
+}
+
 // Handle messages from Node for Max
 /**
  * Handle MCP request from Node for Max
@@ -248,7 +267,7 @@ export async function mcp_request(
   let result;
 
   try {
-    const args = JSON.parse(argsJSON);
+    const args = JSON.parse(argsJSON) as Record<string, unknown>;
 
     // Merge incoming context (if provided) into existing context
     if (contextJSON != null) {
@@ -264,6 +283,12 @@ export async function mcp_request(
 
         console.warn(`Failed to parse contextJSON: ${message}`);
       }
+    }
+
+    // Check if this is a code execution request
+    if (handleCodeExecIfNeeded(requestId, tool, args)) {
+      // Code execution initiated - response will come via apply_notes handler
+      return;
     }
 
     try {
