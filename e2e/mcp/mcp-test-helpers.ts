@@ -37,7 +37,14 @@ export const SAMPLE_FILE = resolve(
  * Requires jsonOutput: true in config (set by resetConfig).
  */
 export function parseToolResult<T>(result: unknown): T {
-  return JSON.parse(extractToolResultText(result)) as T;
+  const text = extractToolResultText(result);
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON response. Raw text:", text);
+    throw error;
+  }
 }
 
 /**
