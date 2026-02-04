@@ -159,12 +159,12 @@ Apply dynamic transforms to clip properties. Add \`transforms\` parameter to cre
 - \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
 - \`noise()\` - random value per note
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
-- Frequency uses period notation: \`1t\` = 1 bar, \`4t\` = 4 bars, \`0:2t\` = 2 beats
+- Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 
 **Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
 
 \`\`\`
-velocity += 20 * cos(2t)      // cycle every 2 bars
+velocity += 20 * cos(2t)      // cycle every 2 beats
 timing += 0.05 * noise()      // humanize timing
 velocity += ramp(0, 60)       // fade in over clip
 C1-C2 velocity += 30          // accent bass notes
@@ -174,10 +174,8 @@ velocity = max(60, note.velocity) // ensure minimum velocity
 gain = audio.gain - 6         // reduce audio clip by 6 dB
 \`\`\`
 
-Transforms with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
-
-To apply transforms to existing notes without adding new notes, use update-clip with just the transforms parameter.
-MIDI parameters are ignored for audio clips, and audio parameters are ignored for MIDI clips.
+\`+=\` compounds on repeated calls; use \`=\` for idempotent values. To transform existing notes, use update-clip with just transforms.
+Cross-type parameters ignored (MIDI params on audio clips, audio params on MIDI clips).
 
 ## Working with Ableton Live
 

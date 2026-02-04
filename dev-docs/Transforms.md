@@ -78,8 +78,8 @@ max(a, b, ...); // maximum of 2+ values
 - **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
   line in `modulations` string)
 - **Parameters**:
-  - MIDI clips: velocity, timing, duration, probability, deviation
-  - Audio clips: gain
+  - MIDI clips: velocity, timing, duration, probability, deviation, pitch
+  - Audio clips: gain, pitchShift
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
   - `=` Set/replace the value (absolute modulation)
@@ -89,8 +89,15 @@ max(a, b, ...); // maximum of 2+ values
     inclusive)
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
   `1|1-2|1 velocity += 10`)
-- **Range clamping**: Applied after modulation (velocity 1-127, probability
-  0.0-1.0, etc.)
+- **Range clamping**: Applied after modulation:
+  - velocity: 1-127
+  - timing: unclamped (can shift notes before/after original position)
+  - probability: 0.0-1.0
+  - duration: 0.001 minimum
+  - deviation: -127 to 127
+  - pitch: 0-127 (rounded to integer)
+  - gain: -70 to 24 dB
+  - pitchShift: -48 to 48 semitones
 
 ## Variables
 
@@ -110,6 +117,7 @@ Access note properties in expressions using the `note.` prefix:
 Access audio clip properties in expressions using the `audio.` prefix:
 
 - `audio.gain` - Current gain in dB (-70 to 24)
+- `audio.pitchShift` - Current pitch shift in semitones (-48 to 48)
 
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
@@ -199,7 +207,7 @@ velocity = abs(note.pitch - 60) * 2;
 velocity = min(max(note.velocity, 40), 100);
 
 // Alternating pattern (every other beat)
-gain = -6 * (floor(note.start) % 2);
+velocity = 60 + 40 * (floor(note.start) % 2);
 ```
 
 ### Pitch Filtering
@@ -277,7 +285,26 @@ duration = note.duration * note.probability
 timing += note.start / 100`;
 ```
 
-### Audio Clip Gain
+### Pitch Transforms (MIDI)
+
+```javascript
+// Transpose up an octave
+pitch += 12;
+
+// Set all notes to middle C
+pitch = 60;
+
+// Random pitch variation (±6 semitones)
+pitch += round(12 * noise());
+
+// Octave based on velocity (louder = higher)
+pitch += floor(note.velocity / 32) * 12;
+
+// Quantize to pentatonic-ish (every 2 semitones)
+pitch = floor(note.pitch / 2) * 2;
+```
+
+### Audio Clip Transforms
 
 ```javascript
 // Set gain to -6 dB
@@ -292,4 +319,13 @@ gain = audio.gain - 6;
 // Clamps to valid range (-70 to +24 dB)
 gain = -100; // clamps to -70
 gain = 50; // clamps to +24
+
+// Pitch shift up 5 semitones
+pitchShift = 5;
+
+// Transpose down an octave
+pitchShift = -12;
+
+// Self-reference: shift relative to current
+pitchShift = audio.pitchShift + 7;
 ```
