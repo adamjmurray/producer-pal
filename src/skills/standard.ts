@@ -149,8 +149,8 @@ Apply dynamic transforms to clip properties. Add \`transforms\` parameter to cre
 **Syntax:** \`[pitch] [time] parameter operator expression\` (one per line)
 - **Pitch selector:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches, persists until changed
 - **Time selector:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
-- **MIDI parameters:** velocity (1-127), timing (beats), duration (beats), probability (0-1)
-- **Audio parameters:** gain (-70 to 24 dB)
+- **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
+- **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
 - **Expression:** arithmetic (+, -, *, /) with numbers, waveforms, and current values
 
@@ -160,7 +160,7 @@ Apply dynamic transforms to clip properties. Add \`transforms\` parameter to cre
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
 - Frequency uses period notation: \`1t\` = 1 bar, \`4t\` = 4 bars, \`0:2t\` = 2 beats
 
-**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\` (MIDI), \`audio.gain\` (audio)
+**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
 
 \`\`\`
 velocity += 20 * cos(2t)      // cycle every 2 bars
