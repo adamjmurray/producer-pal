@@ -345,3 +345,64 @@ describe("ppal-clip-transforms (midi parameters)", () => {
     expect(notes).not.toContain("v100-"); // No range when deviation ≤ 0
   });
 });
+
+// =============================================================================
+// Cross-Type Transform Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (cross-type handling)", () => {
+  it("ignores MIDI transforms on audio clips", async () => {
+    const { clipId } = await createAudioTrackWithClip("Audio Ignore MIDI");
+
+    // Set gain to known value first
+    await applyTransform(clipId, "gain = -6");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // Apply MIDI-only transform - should be silently ignored, gain unchanged
+    await applyTransform(clipId, "velocity = 64");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // Mixed transform - gain should apply, velocity ignored
+    await applyTransform(clipId, "velocity = 100\ngain = -12");
+    expect(await readClipGain(clipId)).toBeCloseTo(-12, 0);
+  });
+
+  it("ignores gain transforms on MIDI clips", async () => {
+    // Create clip with non-default velocity so we can verify it's unchanged
+    const clipId = await createMidiClip(5, "v80 C3 1|1");
+
+    // Apply gain-only transform - should be silently ignored
+    await applyTransform(clipId, "gain = -6");
+    const notes = await readClipNotes(clipId);
+
+    // Notes should be unchanged (v80 is non-default so it shows)
+    expect(notes).toContain("v80");
+    expect(notes).toContain("C3");
+  });
+
+  it("ignores note.* variables in audio context without error", async () => {
+    const { clipId } = await createAudioTrackWithClip("Audio Note Var");
+
+    // Set gain to known value
+    await applyTransform(clipId, "gain = -6");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // Try to use note.pitch in gain expression - should be ignored, not error
+    await applyTransform(clipId, "gain = note.pitch");
+
+    // Gain should remain at -6 (transform was ignored)
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+  });
+
+  it("ignores audio.* variables in MIDI context without error", async () => {
+    const clipId = await createMidiClip(6, "v80 C3 1|1");
+
+    // Try to use audio.gain in velocity expression - should be ignored, not error
+    await applyTransform(clipId, "velocity = audio.gain");
+    const notes = await readClipNotes(clipId);
+
+    // Velocity should be unchanged (transform was ignored)
+    expect(notes).toContain("v80");
+    expect(notes).toContain("C3");
+  });
+});
