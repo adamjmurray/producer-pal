@@ -1,3 +1,4 @@
+import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
@@ -9,7 +10,7 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "#src/tools/constants.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 
 // Re-export from shared location for backwards compatibility
 export { revealAudioContentAtPosition } from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
@@ -71,6 +72,36 @@ export function setAudioParameters(
   if (warping !== undefined) {
     clip.set("warping", warping ? 1 : 0);
   }
+}
+
+/**
+ * Apply transforms to audio clip gain
+ * @param clip - The audio clip
+ * @param transformString - Transform expressions
+ * @returns Whether gain was modified
+ */
+export function applyAudioTransforms(
+  clip: LiveAPI,
+  transformString: string | undefined,
+): boolean {
+  if (!transformString) {
+    return false;
+  }
+
+  const currentLiveGain = clip.getProperty("gain") as number;
+  const currentGainDb = liveGainToDb(currentLiveGain);
+
+  const newGainDb = applyAudioTransform(currentGainDb, transformString);
+
+  if (newGainDb != null && newGainDb !== currentGainDb) {
+    const newLiveGain = dbToLiveGain(newGainDb);
+
+    clip.set("gain", newLiveGain);
+
+    return true;
+  }
+
+  return false;
 }
 
 /**

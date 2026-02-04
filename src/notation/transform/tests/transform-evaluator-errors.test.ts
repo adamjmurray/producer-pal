@@ -155,7 +155,7 @@ describe("Transform Evaluator Error Handling", () => {
     it("throws error for missing variable in note properties", () => {
       expect(() => {
         evaluateExpression(
-          { type: "variable", name: "missing" },
+          { type: "variable", namespace: "note", name: "missing" },
           0,
           4,
           4,
@@ -182,7 +182,7 @@ describe("Transform Evaluator Error Handling", () => {
 
     it("works correctly with valid variable reference", () => {
       const result = evaluateExpression(
-        { type: "variable", name: "pitch" },
+        { type: "variable", namespace: "note", name: "pitch" },
         0,
         4,
         4,
@@ -191,6 +191,19 @@ describe("Transform Evaluator Error Handling", () => {
       );
 
       expect(result).toBe(60);
+    });
+
+    it("throws error for audio variable in MIDI context", () => {
+      expect(() => {
+        evaluateExpression(
+          { type: "variable", namespace: "audio", name: "gain" },
+          0,
+          4,
+          4,
+          { start: 0, end: 4 },
+          {},
+        );
+      }).toThrow("Cannot use audio.gain variable in MIDI note context");
     });
   });
 

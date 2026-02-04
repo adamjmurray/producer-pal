@@ -74,6 +74,7 @@ parameter
   / "duration" { return "duration"; }
   / "probability" { return "probability"; }
   / "deviation" { return "deviation"; }
+  / "gain" { return "gain"; }
 
 expression
   = additive
@@ -103,17 +104,23 @@ primary
   / "(" _ expr:expression _ ")" { return expr; }
 
 variable
-  = "note." name:propertyName {
-    return { type: "variable", name };
+  = "audio." name:audioPropertyName {
+    return { type: "variable", namespace: "audio", name };
+  }
+  / "note." name:notePropertyName {
+    return { type: "variable", namespace: "note", name };
   }
 
-propertyName
+notePropertyName
   = "deviation" { return "deviation"; }
   / "velocity" { return "velocity"; }
   / "probability" { return "probability"; }
   / "duration" { return "duration"; }
   / "pitch" { return "pitch"; }
   / "start" { return "start"; }
+
+audioPropertyName
+  = "gain" { return "gain"; }
 
 functionCall
   = name:functionName "(" _ args:argumentList? _ ")" {

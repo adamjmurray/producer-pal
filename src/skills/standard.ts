@@ -144,22 +144,23 @@ C3 4|1                       // this C3 is NOT deleted (v80 still active)
 
 ### Transforms
 
-Apply dynamic transforms to note properties. Add \`transforms\` parameter to create-clip or update-clip.
+Apply dynamic transforms to clip properties. Add \`transforms\` parameter to create-clip or update-clip.
 
 **Syntax:** \`[pitch] [time] parameter operator expression\` (one per line)
 - **Pitch selector:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches, persists until changed
 - **Time selector:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
-- **Parameters:** velocity (1-127), timing (beats), duration (beats), probability (0-1)
+- **MIDI parameters:** velocity (1-127), timing (beats), duration (beats), probability (0-1)
+- **Audio parameters:** gain (-70 to 24 dB)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
-- **Expression:** arithmetic (+, -, *, /) with numbers, waveforms, and current note values
+- **Expression:** arithmetic (+, -, *, /) with numbers, waveforms, and current values
 
-**Waveforms** output -1.0 to 1.0, evaluated at each note's position:
+**Waveforms** output -1.0 to 1.0, evaluated at each note's position (or once for audio clips):
 - \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
 - \`noise()\` - random value per note
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
 - Frequency uses period notation: \`1t\` = 1 bar, \`4t\` = 4 bars, \`0:2t\` = 2 beats
 
-**Current note values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`
+**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\` (MIDI), \`audio.gain\` (audio)
 
 \`\`\`
 velocity += 20 * cos(2t)      // cycle every 2 bars
@@ -168,11 +169,13 @@ velocity += ramp(0, 60)       // fade in over clip
 C1-C2 velocity += 30          // accent bass notes
 1|1-2|4 velocity = 100        // forte in bars 1-2
 velocity = note.velocity / 2  // halve existing velocity
+gain = audio.gain - 6         // reduce audio clip by 6 dB
 \`\`\`
 
 Transforms with \`+=\` compound on repeated calls - only re-apply intentionally. Use \`=\` for idempotent values.
 
 To apply transforms to existing notes without adding new notes, use update-clip with just the transforms parameter.
+MIDI parameters are ignored for audio clips, and audio parameters are ignored for MIDI clips.
 
 ## Working with Ableton Live
 

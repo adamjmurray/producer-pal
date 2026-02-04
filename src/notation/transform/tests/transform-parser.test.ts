@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   BinaryOpNode,
   FunctionNode,
+  VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
@@ -408,6 +409,98 @@ describe("Transform Parser", () => {
       expect(result[0]!.parameter).toBe("velocity");
       expect(result[1]!.parameter).toBe("timing");
       expect(result[2]!.parameter).toBe("probability");
+    });
+  });
+
+  describe("gain parameter (audio)", () => {
+    it("parses gain parameter with set operator", () => {
+      const result = parser.parse("gain = -6");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "gain",
+          operator: "set",
+          expression: -6,
+        },
+      ]);
+    });
+
+    it("parses gain parameter with add operator", () => {
+      const result = parser.parse("gain += 3");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "gain",
+          operator: "add",
+          expression: 3,
+        },
+      ]);
+    });
+
+    it("parses gain with expression", () => {
+      const result = parser.parse("gain = -12 + 6");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("add");
+      expect(expr.left).toBe(-12);
+      expect(expr.right).toBe(6);
+    });
+  });
+
+  describe("variable namespaces", () => {
+    it("parses note.velocity with namespace", () => {
+      const result = parser.parse("velocity = note.velocity + 10");
+      const expr = result[0]!.expression as BinaryOpNode;
+      const variable = expr.left as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "note",
+        name: "velocity",
+      });
+    });
+
+    it("parses audio.gain with namespace", () => {
+      const result = parser.parse("gain = audio.gain - 6");
+      const expr = result[0]!.expression as BinaryOpNode;
+      const variable = expr.left as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "audio",
+        name: "gain",
+      });
+    });
+
+    it("parses all note properties with namespace", () => {
+      const properties = [
+        "velocity",
+        "pitch",
+        "deviation",
+        "probability",
+        "duration",
+        "start",
+      ];
+
+      for (const prop of properties) {
+        const result = parser.parse(`velocity = note.${prop}`);
+        const variable = result[0]!.expression as VariableNode;
+
+        expect(variable.namespace).toBe("note");
+        expect(variable.name).toBe(prop);
+      }
+    });
+
+    it("rejects invalid audio property", () => {
+      expect(() => parser.parse("gain = audio.velocity")).toThrow();
+    });
+
+    it("rejects invalid note property", () => {
+      expect(() => parser.parse("velocity = note.gain")).toThrow();
     });
   });
 });

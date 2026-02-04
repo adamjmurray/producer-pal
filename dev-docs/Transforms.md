@@ -69,7 +69,9 @@ ramp(start, end, [speed]); // linear ramp over clip/time range
 
 - **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
   line in `modulations` string)
-- **Parameters**: velocity, timing, duration, probability, deviation
+- **Parameters**:
+  - MIDI clips: velocity, timing, duration, probability, deviation
+  - Audio clips: gain
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
   - `=` Set/replace the value (absolute modulation)
@@ -82,9 +84,11 @@ ramp(start, end, [speed]); // linear ramp over clip/time range
 - **Range clamping**: Applied after modulation (velocity 1-127, probability
   0.0-1.0, etc.)
 
-## Note Property Variables
+## Variables
 
-Access note properties in modulation expressions using the `note.` prefix:
+### Note Properties (MIDI clips)
+
+Access note properties in expressions using the `note.` prefix:
 
 - `note.pitch` - MIDI pitch (0-127)
 - `note.start` - Start time in musical beats (absolute, from clip start)
@@ -93,8 +97,18 @@ Access note properties in modulation expressions using the `note.` prefix:
 - `note.duration` - Duration in beats
 - `note.probability` - Probability (0.0-1.0)
 
+### Audio Properties (audio clips)
+
+Access audio clip properties in expressions using the `audio.` prefix:
+
+- `audio.gain` - Current gain in dB (-70 to 24)
+
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
+
+**Note:** Variables from the wrong context will cause an error (e.g., using
+`note.velocity` in an audio clip transform or `audio.gain` in a MIDI clip
+transform).
 
 ## Operators
 
@@ -229,4 +243,21 @@ probability += 0.2 * cos(0:2t)`;
 modulations: `velocity = note.pitch
 duration = note.duration * note.probability
 timing += note.start / 100`;
+```
+
+### Audio Clip Gain
+
+```javascript
+// Set gain to -6 dB
+gain = -6;
+
+// Add 3 dB
+gain += 3;
+
+// Self-reference: reduce by 6 dB
+gain = audio.gain - 6;
+
+// Clamps to valid range (-70 to +24 dB)
+gain = -100; // clamps to -70
+gain = 50; // clamps to +24
 ```

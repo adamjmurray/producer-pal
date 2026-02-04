@@ -6,6 +6,7 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
+  applyAudioTransforms,
   handleWarpMarkerOperation,
   revealAudioContentAtPosition,
   setAudioParameters,
@@ -146,6 +147,62 @@ describe("setAudioParameters", () => {
     expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 0);
     expect(liveApiSet).toHaveBeenCalledWith("warp_mode", 4);
     expect(liveApiSet).toHaveBeenCalledWith("warping", 1);
+  });
+});
+
+describe("applyAudioTransforms", () => {
+  let mockClip: MockClip;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClip = {
+      getProperty: vi.fn(),
+      set: liveApiSet,
+    };
+  });
+
+  it("should return false when no transform string provided", () => {
+    const result = applyAudioTransforms(mockClip, undefined);
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should return false when transform string is empty", () => {
+    const result = applyAudioTransforms(mockClip, "");
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should apply gain transform and return true", () => {
+    // Live gain 0.4 ≈ 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = -6");
+
+    expect(result).toBe(true);
+    expect(mockClip.getProperty).toHaveBeenCalledWith("gain");
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+  });
+
+  it("should return false when gain is unchanged", () => {
+    // Live gain ~0.4 ≈ 0 dB, transform sets to 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = audio.gain");
+
+    expect(result).toBe(false);
+  });
+
+  it("should return false when only MIDI parameters present", () => {
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "velocity += 10");
+
+    expect(result).toBe(false);
+    // Note: getProperty is still called to read current gain before checking transforms
+    expect(liveApiSet).not.toHaveBeenCalled();
   });
 });
 

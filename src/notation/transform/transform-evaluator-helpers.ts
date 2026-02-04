@@ -299,6 +299,13 @@ export function evaluateExpression(
 
   // Variable lookup
   if (node.type === "variable") {
+    // Audio variables cannot be used in MIDI note context
+    if (node.namespace === "audio") {
+      throw new Error(
+        `Cannot use audio.${node.name} variable in MIDI note context`,
+      );
+    }
+
     if (noteProperties[node.name] == null) {
       throw new Error(
         `Variable "note.${node.name}" is not available in this context`,

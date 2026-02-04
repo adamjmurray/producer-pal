@@ -6,6 +6,7 @@ import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
+  applyAudioTransforms,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
@@ -386,13 +387,14 @@ export function processSingleClipUpdate(
 
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+    applyAudioTransforms(clip, transformString);
   }
 
-  // Handle note updates
+  // Handle note updates (transforms already applied for audio clips above)
   finalNoteCount = handleNoteUpdates(
     clip,
     notationString,
-    transformString,
+    isAudioClip ? undefined : transformString,
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,
