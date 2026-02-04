@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolWarnings,
   parseToolResult,
   type ReadClipResult,
   SAMPLE_FILE,
@@ -70,16 +71,19 @@ async function readClipPitchShift(clipId: string): Promise<number> {
   return clip.pitchShift!;
 }
 
-/** Applies a transform to a clip. */
+/** Applies a transform to a clip. Returns the raw result for warning inspection. */
 async function applyTransform(
   clipId: string,
   transform: string,
-): Promise<void> {
-  await ctx.client!.callTool({
+): Promise<unknown> {
+  const result = await ctx.client!.callTool({
     name: "ppal-update-clip",
     arguments: { ids: clipId, transforms: transform },
   });
+
   await sleep(100);
+
+  return result;
 }
 
 /** Sets clip gain directly (not via transform). */
@@ -593,61 +597,89 @@ describe("ppal-clip-transforms (midi pitch)", () => {
 // =============================================================================
 
 describe("ppal-clip-transforms (cross-type handling)", () => {
-  it("ignores MIDI transforms on audio clips", async () => {
+  it("ignores MIDI transforms on audio clips with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Ignore MIDI");
 
     // Set gain to known value first
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Apply MIDI-only transform - should be silently ignored, gain unchanged
-    await applyTransform(clipId, "velocity = 64");
+    // Apply MIDI-only transform - should emit warning, gain unchanged
+    let result = await applyTransform(clipId, "velocity = 64");
+    let warnings = getToolWarnings(result);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("velocity"))).toBe(
+      true,
+    );
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Apply pitch transform - should be silently ignored (pitch is MIDI-only)
-    await applyTransform(clipId, "pitch += 12");
+    // Apply pitch transform - should emit warning (pitch is MIDI-only)
+    result = await applyTransform(clipId, "pitch += 12");
+    warnings = getToolWarnings(result);
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("pitch"))).toBe(true);
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Mixed transform - gain should apply, velocity ignored
-    await applyTransform(clipId, "velocity = 100\ngain = -12");
+    // Mixed transform - gain should apply, velocity ignored with warning
+    result = await applyTransform(clipId, "velocity = 100\ngain = -12");
+    warnings = getToolWarnings(result);
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("velocity"))).toBe(
+      true,
+    );
     expect(await readClipGain(clipId)).toBeCloseTo(-12, 0);
   });
 
-  it("ignores gain transforms on MIDI clips", async () => {
+  it("ignores gain transforms on MIDI clips with warnings", async () => {
     // Create clip with non-default velocity so we can verify it's unchanged
     const clipId = await createMidiClip(5, "v80 C3 1|1");
 
-    // Apply gain-only transform - should be silently ignored
-    await applyTransform(clipId, "gain = -6");
-    const notes = await readClipNotes(clipId);
+    // Apply gain-only transform - should emit warning
+    const result = await applyTransform(clipId, "gain = -6");
+    const warnings = getToolWarnings(result);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("gain"))).toBe(true);
 
     // Notes should be unchanged (v80 is non-default so it shows)
+    const notes = await readClipNotes(clipId);
+
     expect(notes).toContain("v80");
     expect(notes).toContain("C3");
   });
 
-  it("ignores note.* variables in audio context without error", async () => {
+  it("ignores note.* variables in audio context with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Note Var");
 
     // Set gain to known value
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Try to use note.pitch in gain expression - should be ignored, not error
-    await applyTransform(clipId, "gain = note.pitch");
+    // Try to use note.pitch in gain expression - should emit warning
+    const result = await applyTransform(clipId, "gain = note.pitch");
+    const warnings = getToolWarnings(result);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("note"))).toBe(true);
 
     // Gain should remain at -6 (transform was ignored)
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
   });
 
-  it("ignores audio.* variables in MIDI context without error", async () => {
+  it("ignores audio.* variables in MIDI context with warnings", async () => {
     const clipId = await createMidiClip(6, "v80 C3 1|1");
 
-    // Try to use audio.gain in velocity expression - should be ignored, not error
-    await applyTransform(clipId, "velocity = audio.gain");
-    const notes = await readClipNotes(clipId);
+    // Try to use audio.gain in velocity expression - should emit warning
+    const result = await applyTransform(clipId, "velocity = audio.gain");
+    const warnings = getToolWarnings(result);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.toLowerCase().includes("audio"))).toBe(true);
 
     // Velocity should be unchanged (transform was ignored)
+    const notes = await readClipNotes(clipId);
+
     expect(notes).toContain("v80");
     expect(notes).toContain("C3");
   });

@@ -83,6 +83,27 @@ export function getToolWarnings(result: unknown): string[] {
     .map((item) => item.text ?? "");
 }
 
+/**
+ * Result from parsing a tool response, including any warnings.
+ */
+export interface ToolResultWithWarnings<T> {
+  data: T;
+  warnings: string[];
+}
+
+/**
+ * Parse a tool result as JSON and extract any warnings.
+ * Useful when tests need to verify both the result AND warning messages.
+ */
+export function parseToolResultWithWarnings<T>(
+  result: unknown,
+): ToolResultWithWarnings<T> {
+  return {
+    data: parseToolResult<T>(result),
+    warnings: getToolWarnings(result),
+  };
+}
+
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 export const LIVE_SET_PATH =
   "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";

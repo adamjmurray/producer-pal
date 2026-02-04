@@ -10,6 +10,9 @@ import {
   type TransformResult,
 } from "./transform-evaluator-helpers.ts";
 
+// Audio-only parameters that should be skipped for MIDI clips
+const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
+
 /**
  * Apply transforms to a list of notes in-place
  * @param notes - Notes to transform
@@ -36,6 +39,13 @@ export function applyTransforms(
     console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 
     return; // Early return - no point processing notes if parsing failed
+  }
+
+  // Check for audio parameters and warn
+  const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
+
+  if (hasAudioParams) {
+    console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
   }
 
   // Calculate the overall clip timeRange in musical beats
