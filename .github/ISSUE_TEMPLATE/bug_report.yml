@@ -1,0 +1,111 @@
+# .github/ISSUE_TEMPLATE/bug_report.yml
+name: Bug Report
+description: Report something that isn't working correctly
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Crashing
+        - Broken feature
+        - Partially working feature
+        - Annoyance
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Every time (consistent)
+        - Sometimes (random)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead
+      placeholder: |
+        What I did:
+        What happened:
+        What I expected:
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description:
+        For consistent issues, list exact steps. For random issues, describe any
+        patterns you've noticed.
+      placeholder: |
+        1. 
+        2. 
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: ppal-version
+    attributes:
+      label: Producer Pal version
+      placeholder: "e.g., 1.3.6"
+    validations:
+      required: true
+
+  - type: input
+    id: ableton-version
+    attributes:
+      label: Ableton Live version
+      placeholder: "e.g., 12.3.5"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: "e.g., macOS 15.2, Windows 11 24H2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: processor
+    attributes:
+      label: Processor type
+      options:
+        - Apple Silicon (M1/M2/M3/M4)
+        - Intel (Mac)
+        - Intel/AMD (Windows)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: ram
+    attributes:
+      label: RAM
+      placeholder: "e.g., 16 GB"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description:
+        Optional — logs, screenshots, Max console output, anything else relevant
+    validations:
+      required: false
