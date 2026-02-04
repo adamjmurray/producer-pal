@@ -1,5 +1,5 @@
-// Auto-generated lookup table from Ableton Live (513 samples)
-// Collected: 2025-11-18T16:38:45.776Z
+// Lookup table from Ableton Live clip gain (529 samples)
+// Extended 2026-02-03 with low-range samples (-69.7 to -65.7 dB)
 // One entry per line for better diff-ability and reduced line count
 
 export interface LookupEntry {
@@ -9,6 +9,21 @@ export interface LookupEntry {
 
 export const LOOKUP_TABLE: LookupEntry[] = [
   { gain: 0, dB: null },
+  { gain: 0.00011, dB: -69.7 },
+  { gain: 0.000125, dB: -69.7 },
+  { gain: 0.00015, dB: -69.6 },
+  { gain: 0.0002, dB: -69.5 },
+  { gain: 0.00025, dB: -69.3 },
+  { gain: 0.0003, dB: -69.2 },
+  { gain: 0.0004, dB: -68.9 },
+  { gain: 0.0005, dB: -68.7 },
+  { gain: 0.0006, dB: -68.4 },
+  { gain: 0.0007, dB: -68.2 },
+  { gain: 0.0008, dB: -68.0 },
+  { gain: 0.0009, dB: -67.8 },
+  { gain: 0.001, dB: -67.5 },
+  { gain: 0.00125, dB: -67.0 },
+  { gain: 0.0015, dB: -66.5 },
   { gain: 0.001953125, dB: -65.7 },
   { gain: 0.00390625, dB: -62.9 },
   { gain: 0.005859375, dB: -60.7 },

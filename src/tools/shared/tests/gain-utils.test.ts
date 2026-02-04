@@ -3,8 +3,8 @@ import { liveGainToDb, dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 describe("gain-utils", () => {
   describe("liveGainToDb", () => {
-    it("should return -Infinity for gain = 0", () => {
-      expect(liveGainToDb(0)).toBe(-Infinity);
+    it("should return -70 for gain = 0", () => {
+      expect(liveGainToDb(0)).toBe(-70);
     });
 
     it("should return ~0 dB for gain = 0.4 (unity)", () => {
@@ -41,8 +41,8 @@ describe("gain-utils", () => {
       expect(result2).toBeLessThan(-35);
     });
 
-    it("should return -Infinity for negative gain values", () => {
-      expect(liveGainToDb(-0.1)).toBe(-Infinity);
+    it("should return -70 for negative gain values", () => {
+      expect(liveGainToDb(-0.1)).toBe(-70);
     });
 
     it("should return 24 dB for gain values greater than 1", () => {

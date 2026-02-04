@@ -836,7 +836,7 @@ export default [
     ignores: [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "src/tools/shared/gain-lookup-table.ts", // Auto-generated data
+      "src/tools/shared/clip-gain-lookup-table.ts", // Auto-generated data
     ],
     rules: {
       "max-lines": [

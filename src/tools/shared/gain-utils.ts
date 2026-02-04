@@ -8,26 +8,26 @@
  * @module gain-utils
  */
 
-import { LOOKUP_TABLE, type LookupEntry } from "./gain-lookup-table.ts";
+import { LOOKUP_TABLE, type LookupEntry } from "./clip-gain-lookup-table.ts";
 
 /**
  * Converts Ableton Live's normalized gain parameter (0-1) to decibels (dB).
  *
  * Uses a lookup table with linear interpolation for high accuracy across the full range.
- * The table contains 513 precisely measured samples from Live.
+ * The table contains precisely measured samples from Live.
  *
  * Accuracy: < 0.5 dB error everywhere, < 0.1 dB in critical mixing range (-18 to +24 dB)
  * @param gain - Normalized gain value from Live API (0 to 1)
- * @returns Decibel value (-Infinity to 24 dB)
+ * @returns Decibel value (-70 to 24 dB)
  * @example
  * liveGainToDb(0.4)   // ~0.0 dB (unity gain)
  * liveGainToDb(0.5)   // ~4.0 dB
  * liveGainToDb(1.0)   // 24.0 dB
- * liveGainToDb(0.0)   // -Infinity
+ * liveGainToDb(0.0)   // -70
  */
 export function liveGainToDb(gain: number): number {
   if (gain <= 0) {
-    return -Infinity;
+    return -70;
   }
 
   if (gain >= 1) {
@@ -53,15 +53,15 @@ export function liveGainToDb(gain: number): number {
   const upper = LOOKUP_TABLE[upperIndex] as LookupEntry;
 
   // Handle edge cases with null/invalid dB values
-  if (lower.dB === null || lower.dB === -Infinity) {
-    if (upper.dB === null || upper.dB === -Infinity) {
-      return -Infinity;
+  if (lower.dB === null) {
+    if (upper.dB === null) {
+      return -70;
     }
 
     return upper.dB;
   }
 
-  if (upper.dB === null || upper.dB === -Infinity) {
+  if (upper.dB === null) {
     return lower.dB;
   }
 
