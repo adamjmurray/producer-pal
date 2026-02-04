@@ -67,9 +67,14 @@ export default defineConfig({
         "**/*.css",
         "**/*.svg",
 
-        // peggy grammars and generated parsers
+        // peggy grammars, generated parsers, and their TypeScript wrappers
         "**/*.peggy",
         "**/*-parser.js",
+        "**/barbeat-parser.ts",
+        "**/transform-parser.ts",
+
+        // ES2023 polyfills (for Max v8 only, installation code can't be tested in Node)
+        "src/polyfills/es2023-array.ts",
 
         // test helper functions
         "**/*-test-helpers.ts",

@@ -36,6 +36,11 @@ type MockLiveAPIConstructor = Mock<(path?: string) => MockLiveAPIInstance> & {
 const getGlobalLiveAPI = (): MockLiveAPIConstructor =>
   (globalThis as unknown as { LiveAPI: MockLiveAPIConstructor }).LiveAPI;
 
+// Common path constants for mock implementations
+const PATH_LIVE_APP_VIEW = "live_app view";
+const PATH_LIVE_SET_VIEW = "live_set view";
+const PATH_SELECTED_TRACK = "live_set view selected_track";
+
 interface MockAppView {
   call: Mock;
   _id: string;
@@ -90,14 +95,14 @@ export function setupSelectMocks(): SelectMocks {
   const mockAppView: MockAppView = {
     call: liveApiCall,
     _id: "app_view_id",
-    _path: "live_app view",
+    _path: PATH_LIVE_APP_VIEW,
   };
 
   const mockSongView: MockSongView = {
     set: liveApiSet,
     call: liveApiCall,
     _id: "song_view_id",
-    _path: "live_set view",
+    _path: PATH_LIVE_SET_VIEW,
   };
 
   const mockTrackAPI: MockTrackAPI = {
@@ -105,7 +110,7 @@ export function setupSelectMocks(): SelectMocks {
     category: "regular",
     trackIndex: 1,
     _id: "id track_id_123",
-    _path: "live_set view selected_track",
+    _path: PATH_SELECTED_TRACK,
   };
 
   // Set up mock implementations
@@ -140,13 +145,13 @@ export function setupSelectMocks(): SelectMocks {
     );
 
     // Mock some specific properties based on path
-    if (path === "live_app view") {
+    if (path === PATH_LIVE_APP_VIEW) {
       Object.assign(self, mockAppView);
       (self.getProperty as Mock).mockReturnValue(1); // Default to session view
       (self.call as Mock).mockReturnValue(0); // Default to no special views visible
-    } else if (path === "live_set view") {
+    } else if (path === PATH_LIVE_SET_VIEW) {
       Object.assign(self, mockSongView);
-    } else if (path === "live_set view selected_track") {
+    } else if (path === PATH_SELECTED_TRACK) {
       Object.assign(self, mockTrackAPI);
       (self.exists as Mock).mockReturnValue(false); // Default to no track selected
       self.trackIndex = null;
@@ -256,5 +261,87 @@ export function expectViewState(changes: Partial<ViewState> = {}): ViewState {
   return {
     ...getDefaultViewState(),
     ...changes,
+  };
+}
+
+interface SessionClipMockOptions {
+  appViewCall?: Mock;
+}
+
+/**
+ * Create mocked session clip and clip slot objects for testing
+ * @param liveApiSetMock - Mock function for liveApiSet
+ * @param options - Optional configuration
+ * @returns Function to use as LiveAPI mock implementation
+ */
+export function createSessionClipMockImpl(
+  liveApiSetMock: Mock,
+  options: SessionClipMockOptions = {},
+): (path: string) => Record<string, unknown> {
+  const mockSessionClip = {
+    exists: vi.fn().mockReturnValue(true),
+    _id: "id session_clip_123",
+    trackIndex: 2,
+    clipSlotIndex: 3,
+  };
+
+  Object.defineProperty(mockSessionClip, "id", {
+    get() {
+      return this._id;
+    },
+  });
+
+  Object.defineProperty(mockSessionClip, "type", {
+    get() {
+      return "Clip";
+    },
+  });
+
+  const mockClipSlot = {
+    exists: vi.fn().mockReturnValue(true),
+    _id: "id clipslot_456",
+  };
+
+  Object.defineProperty(mockClipSlot, "id", {
+    get() {
+      return this._id;
+    },
+  });
+
+  return function (path: string) {
+    if (path === PATH_LIVE_APP_VIEW) {
+      return {
+        getProperty: vi.fn().mockReturnValue(1),
+        call: options.appViewCall ?? vi.fn().mockReturnValue(0),
+      };
+    }
+
+    if (path === PATH_LIVE_SET_VIEW) {
+      return {
+        set: liveApiSetMock,
+        setProperty: vi.fn((property: string, value: unknown) =>
+          liveApiSetMock(property, value),
+        ),
+      };
+    }
+
+    if (path === "id session_clip_123") {
+      return mockSessionClip;
+    }
+
+    if (path === "live_set tracks 2 clip_slots 3") {
+      return mockClipSlot;
+    }
+
+    if (
+      path === PATH_SELECTED_TRACK ||
+      path === "live_set view selected_scene" ||
+      path === "live_set view detail_clip" ||
+      path === "live_set view highlighted_clip_slot"
+    ) {
+      return { exists: vi.fn().mockReturnValue(false) };
+    }
+
+    return { exists: vi.fn().mockReturnValue(false) };
   };
 }

@@ -12,6 +12,7 @@ import {
   setupSelectMocks,
   getDefaultViewState,
   expectViewState,
+  createSessionClipMockImpl,
   type SelectMocks,
 } from "./select-test-helpers.ts";
 
@@ -274,89 +275,32 @@ describe("view", () => {
       expect(result).toStrictEqual(expectViewState());
     });
 
-    it("highlights clip slot when selecting a session clip", () => {
-      // Mock a session clip with path that includes clip_slots
-      const mockSessionClip = {
-        exists: vi.fn().mockReturnValue(true),
-        _id: "id session_clip_123",
-        trackIndex: 2,
-        clipSlotIndex: 3,
-      };
+    it("warns when requesting conflicting view for session clip", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      Object.defineProperty(mockSessionClip, "id", {
-        get: function () {
-          return this._id;
-        },
-      });
-
-      Object.defineProperty(mockSessionClip, "type", {
-        get: function () {
-          return "Clip";
-        },
-      });
-
-      // Mock the clip slot lookup
-      const mockClipSlot = {
-        exists: vi.fn().mockReturnValue(true),
-        _id: "id clipslot_456",
-      };
-
-      Object.defineProperty(mockClipSlot, "id", {
-        get: function () {
-          return this._id;
-        },
-      });
-
-      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(function (
-        path: string,
-      ) {
-        if (path === "live_app view") {
-          return {
-            getProperty: vi.fn().mockReturnValue(1),
-            call: vi.fn().mockReturnValue(0),
-          };
-        }
-
-        if (path === "live_set view") {
-          return {
-            set: liveApiSet,
-            setProperty: vi.fn((property: string, value: unknown) =>
-              liveApiSet(property, value),
-            ),
-          };
-        }
-
-        if (path === "id session_clip_123") {
-          return mockSessionClip;
-        }
-
-        if (path === "live_set tracks 2 clip_slots 3") {
-          return mockClipSlot;
-        }
-
-        if (path === "live_set view selected_track") {
-          return { exists: vi.fn().mockReturnValue(false) };
-        }
-
-        if (path === "live_set view selected_scene") {
-          return { exists: vi.fn().mockReturnValue(false) };
-        }
-
-        if (path === "live_set view detail_clip") {
-          return { exists: vi.fn().mockReturnValue(false) };
-        }
-
-        if (path === "live_set view highlighted_clip_slot") {
-          return { exists: vi.fn().mockReturnValue(false) };
-        }
-
-        return { exists: vi.fn().mockReturnValue(false) };
-      });
-
+      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(
+        createSessionClipMockImpl(liveApiSet, { appViewCall: liveApiCall }),
+      );
       liveApiType.mockReturnValue("Clip");
+
+      // Request arrangement view for a session clip - should warn
+      select({ clipId: "id session_clip_123", view: "arrangement" });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("ignoring view"),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("highlights clip slot when selecting a session clip", () => {
+      (g.LiveAPI as ReturnType<typeof vi.fn>).mockImplementation(
+        createSessionClipMockImpl(liveApiSet),
+      );
+      liveApiType.mockReturnValue("Clip");
+
       select({ clipId: "id session_clip_123" });
 
-      // Verify both detail_clip and highlighted_clip_slot were set
       expect(liveApiSet).toHaveBeenCalledWith(
         "detail_clip",
         "id session_clip_123",
