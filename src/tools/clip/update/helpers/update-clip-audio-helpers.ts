@@ -75,10 +75,10 @@ export function setAudioParameters(
 }
 
 /**
- * Apply transforms to audio clip gain
+ * Apply transforms to audio clip gain and pitchShift
  * @param clip - The audio clip
  * @param transformString - Transform expressions
- * @returns Whether gain was modified
+ * @returns Whether any audio property was modified
  */
 export function applyAudioTransforms(
   clip: LiveAPI,
@@ -88,20 +88,42 @@ export function applyAudioTransforms(
     return false;
   }
 
+  // Read current values
   const currentLiveGain = clip.getProperty("gain") as number;
   const currentGainDb = liveGainToDb(currentLiveGain);
 
-  const newGainDb = applyAudioTransform(currentGainDb, transformString);
+  const pitchCoarse = clip.getProperty("pitch_coarse") as number;
+  const pitchFine = clip.getProperty("pitch_fine") as number;
+  const currentPitchShift = pitchCoarse + pitchFine / 100;
 
-  if (newGainDb != null && newGainDb !== currentGainDb) {
-    const newLiveGain = dbToLiveGain(newGainDb);
+  // Apply transforms
+  const result = applyAudioTransform(
+    currentGainDb,
+    currentPitchShift,
+    transformString,
+  );
+
+  let modified = false;
+
+  // Apply gain if changed
+  if (result.gain != null && result.gain !== currentGainDb) {
+    const newLiveGain = dbToLiveGain(result.gain);
 
     clip.set("gain", newLiveGain);
-
-    return true;
+    modified = true;
   }
 
-  return false;
+  // Apply pitchShift if changed
+  if (result.pitchShift != null && result.pitchShift !== currentPitchShift) {
+    const newPitchCoarse = Math.floor(result.pitchShift);
+    const newPitchFine = Math.round((result.pitchShift - newPitchCoarse) * 100);
+
+    clip.set("pitch_coarse", newPitchCoarse);
+    clip.set("pitch_fine", newPitchFine);
+    modified = true;
+  }
+
+  return modified;
 }
 
 /**

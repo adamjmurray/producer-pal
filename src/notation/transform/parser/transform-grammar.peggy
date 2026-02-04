@@ -75,6 +75,7 @@ parameter
   / "probability" { return "probability"; }
   / "deviation" { return "deviation"; }
   / "gain" { return "gain"; }
+  / "pitchShift" { return "pitchShift"; }
 
 expression
   = additive
@@ -121,6 +122,7 @@ notePropertyName
 
 audioPropertyName
   = "gain" { return "gain"; }
+  / "pitchShift" { return "pitchShift"; }
 
 functionCall
   = name:functionName "(" _ args:argumentList? _ ")" {

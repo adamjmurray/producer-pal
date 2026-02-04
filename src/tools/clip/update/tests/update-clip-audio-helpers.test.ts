@@ -204,6 +204,58 @@ describe("applyAudioTransforms", () => {
     // Note: getProperty is still called to read current gain before checking transforms
     expect(liveApiSet).not.toHaveBeenCalled();
   });
+
+  it("should apply pitchShift transform and return true", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "pitchShift = 5.5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 50);
+  });
+
+  it("should return false when pitchShift is unchanged", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 5;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    // Current pitchShift is 5.0, set to same value
+    const result = applyAudioTransforms(
+      mockClip,
+      "pitchShift = audio.pitchShift",
+    );
+
+    expect(result).toBe(false);
+    expect(liveApiSet).not.toHaveBeenCalled();
+  });
+
+  it("should apply both gain and pitchShift transforms", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "gain = -6\npitchShift = 5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 0);
+  });
 });
 
 describe("handleWarpMarkerOperation", () => {

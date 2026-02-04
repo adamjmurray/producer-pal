@@ -59,6 +59,17 @@ async function readClipGain(clipId: string): Promise<number> {
   return clip.gainDb!;
 }
 
+/** Reads clip and returns pitchShift value. */
+async function readClipPitchShift(clipId: string): Promise<number> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId, include: ["warp-markers"] },
+  });
+  const clip = parseToolResult<ReadClipResult>(result);
+
+  return clip.pitchShift!;
+}
+
 /** Applies a transform to a clip. */
 async function applyTransform(
   clipId: string,
@@ -79,6 +90,77 @@ async function setClipGain(clipId: string, gainDb: number): Promise<void> {
   });
   await sleep(100);
 }
+
+describe("ppal-clip-transforms (audio pitchShift)", () => {
+  it("sets pitchShift to constant values", async () => {
+    const { clipId } = await createAudioTrackWithClip("PitchShift Constants");
+
+    // Set to +5 semitones
+    await applyTransform(clipId, "pitchShift = 5");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(5, 1);
+
+    // Set to -12 semitones
+    await applyTransform(clipId, "pitchShift = -12");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(-12, 1);
+
+    // Set to 0 semitones
+    await applyTransform(clipId, "pitchShift = 0");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(0, 1);
+  });
+
+  it("sets pitchShift with decimal values", async () => {
+    const { clipId } = await createAudioTrackWithClip("PitchShift Decimals");
+
+    // Set to 5.5 semitones
+    await applyTransform(clipId, "pitchShift = 5.5");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(5.5, 1);
+
+    // Set to -3.25 semitones
+    await applyTransform(clipId, "pitchShift = -3.25");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(-3.25, 1);
+  });
+
+  it("sets pitchShift using math expressions and operators", async () => {
+    const { clipId } = await createAudioTrackWithClip("PitchShift Math");
+
+    // Set to 5, then add 2
+    await applyTransform(clipId, "pitchShift = 5");
+    await applyTransform(clipId, "pitchShift += 2");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(7, 1);
+
+    // Reference current value
+    await applyTransform(clipId, "pitchShift = audio.pitchShift * 2");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(14, 1);
+  });
+
+  it("clamps pitchShift to valid range (-48 to 48)", async () => {
+    const { clipId } = await createAudioTrackWithClip("PitchShift Clamping");
+
+    // Exact minimum (-48)
+    await applyTransform(clipId, "pitchShift = -48");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(-48, 1);
+
+    // Below minimum clamps to -48
+    await applyTransform(clipId, "pitchShift = -60");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(-48, 1);
+
+    // Exact maximum (48)
+    await applyTransform(clipId, "pitchShift = 48");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(48, 1);
+
+    // Above maximum clamps to 48
+    await applyTransform(clipId, "pitchShift = 60");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(48, 1);
+  });
+
+  it("applies combined gain and pitchShift transforms", async () => {
+    const { clipId } = await createAudioTrackWithClip("Combined Transforms");
+
+    await applyTransform(clipId, "gain = -6\npitchShift = 5");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(5, 1);
+  });
+});
 
 describe("ppal-clip-transforms (audio gain)", () => {
   it("sets gain to constant values", async () => {

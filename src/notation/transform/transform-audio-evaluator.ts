@@ -11,6 +11,10 @@ import { evaluateFunction } from "./transform-functions.ts";
 const MIN_GAIN_DB = -70;
 const MAX_GAIN_DB = 24;
 
+// Constants for pitch shift clamping
+const MIN_PITCH_SHIFT = -48;
+const MAX_PITCH_SHIFT = 48;
+
 // MIDI-only parameters that should be skipped for audio clips
 const MIDI_PARAMETERS = new Set([
   "velocity",
@@ -22,20 +26,28 @@ const MIDI_PARAMETERS = new Set([
 
 export interface AudioProperties {
   gain: number;
+  pitchShift: number;
+}
+
+export interface AudioTransformResult {
+  gain: number | null;
+  pitchShift: number | null;
 }
 
 /**
- * Apply gain transform to an audio clip
+ * Apply audio transforms to a clip (gain and/or pitchShift)
  * @param currentGainDb - Current gain in dB
+ * @param currentPitchShift - Current pitch shift in semitones
  * @param transformString - Transform expression string
- * @returns New gain in dB, or null if no gain transform applied
+ * @returns Object with new gain and pitchShift values, or null for unchanged
  */
 export function applyAudioTransform(
   currentGainDb: number,
+  currentPitchShift: number,
   transformString: string | undefined,
-): number | null {
+): AudioTransformResult {
   if (!transformString) {
-    return null;
+    return { gain: null, pitchShift: null };
   }
 
   let ast: TransformAssignment[];
@@ -45,7 +57,7 @@ export function applyAudioTransform(
   } catch (error) {
     console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 
-    return null;
+    return { gain: null, pitchShift: null };
   }
 
   // Check for MIDI parameters and warn
@@ -57,41 +69,67 @@ export function applyAudioTransform(
     );
   }
 
-  // Filter to gain-only assignments
-  const gainAssignments = ast.filter((a) => a.parameter === "gain");
+  // Filter to audio-only assignments (gain and pitchShift)
+  const audioAssignments = ast.filter(
+    (a) => a.parameter === "gain" || a.parameter === "pitchShift",
+  );
 
-  if (gainAssignments.length === 0) {
-    return null;
+  if (audioAssignments.length === 0) {
+    return { gain: null, pitchShift: null };
   }
 
   // Build audio properties for variable access
-  const audioProperties: AudioProperties = { gain: currentGainDb };
+  const audioProperties: AudioProperties = {
+    gain: currentGainDb,
+    pitchShift: currentPitchShift,
+  };
 
   let newGainDb = currentGainDb;
+  let newPitchShift = currentPitchShift;
+  let gainModified = false;
+  let pitchShiftModified = false;
 
-  for (const assignment of gainAssignments) {
+  for (const assignment of audioAssignments) {
     try {
       const value = evaluateAudioExpression(
         assignment.expression,
         audioProperties,
       );
 
-      if (assignment.operator === "set") {
-        newGainDb = value;
-      } else {
-        // operator === "add"
-        newGainDb += value;
-      }
+      if (assignment.parameter === "gain") {
+        if (assignment.operator === "set") {
+          newGainDb = value;
+        } else {
+          newGainDb += value;
+        }
 
-      // Update for subsequent transforms
-      audioProperties.gain = newGainDb;
+        audioProperties.gain = newGainDb;
+        gainModified = true;
+      } else if (assignment.parameter === "pitchShift") {
+        if (assignment.operator === "set") {
+          newPitchShift = value;
+        } else {
+          newPitchShift += value;
+        }
+
+        audioProperties.pitchShift = newPitchShift;
+        pitchShiftModified = true;
+      }
     } catch (error) {
-      console.warn(`Failed to evaluate gain transform: ${errorMessage(error)}`);
+      console.warn(
+        `Failed to evaluate ${assignment.parameter} transform: ${errorMessage(error)}`,
+      );
     }
   }
 
-  // Clamp to valid range
-  return Math.max(MIN_GAIN_DB, Math.min(MAX_GAIN_DB, newGainDb));
+  return {
+    gain: gainModified
+      ? Math.max(MIN_GAIN_DB, Math.min(MAX_GAIN_DB, newGainDb))
+      : null,
+    pitchShift: pitchShiftModified
+      ? Math.max(MIN_PITCH_SHIFT, Math.min(MAX_PITCH_SHIFT, newPitchShift))
+      : null,
+  };
 }
 
 type BinaryOpNode = {
