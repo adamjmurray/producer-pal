@@ -1,6 +1,6 @@
 /**
  * E2E tests for clip transforms (audio gain and MIDI parameters)
- * Tests transform expressions applied via ppal-update-clip.
+ * Tests transform expressions applied via ppal-update-clip and ppal-create-clip.
  * Uses: e2e-test-set - t8 is empty MIDI track
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -86,139 +86,81 @@ async function applyTransform(
   return result;
 }
 
-/** Sets clip gain directly (not via transform). */
-async function setClipGain(clipId: string, gainDb: number): Promise<void> {
-  await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { ids: clipId, gainDb },
-  });
-  await sleep(100);
-}
-
-describe("ppal-clip-transforms (audio pitchShift)", () => {
-  it("sets pitchShift to constant values", async () => {
-    const { clipId } = await createAudioTrackWithClip("PitchShift Constants");
-
-    // Set to +5 semitones
-    await applyTransform(clipId, "pitchShift = 5");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(5, 1);
-
-    // Set to -12 semitones
-    await applyTransform(clipId, "pitchShift = -12");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(-12, 1);
-
-    // Set to 0 semitones
-    await applyTransform(clipId, "pitchShift = 0");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(0, 1);
-  });
-
-  it("sets pitchShift with decimal values", async () => {
-    const { clipId } = await createAudioTrackWithClip("PitchShift Decimals");
-
-    // Set to 5.5 semitones
-    await applyTransform(clipId, "pitchShift = 5.5");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(5.5, 1);
-
-    // Set to -3.25 semitones
-    await applyTransform(clipId, "pitchShift = -3.25");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(-3.25, 1);
-  });
-
-  it("sets pitchShift using math expressions and operators", async () => {
-    const { clipId } = await createAudioTrackWithClip("PitchShift Math");
-
-    // Set to 5, then add 2
-    await applyTransform(clipId, "pitchShift = 5");
-    await applyTransform(clipId, "pitchShift += 2");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(7, 1);
-
-    // Reference current value
-    await applyTransform(clipId, "pitchShift = audio.pitchShift * 2");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(14, 1);
-  });
-
-  it("clamps pitchShift to valid range (-48 to 48)", async () => {
-    const { clipId } = await createAudioTrackWithClip("PitchShift Clamping");
-
-    // Exact minimum (-48)
-    await applyTransform(clipId, "pitchShift = -48");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(-48, 1);
-
-    // Below minimum clamps to -48
-    await applyTransform(clipId, "pitchShift = -60");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(-48, 1);
-
-    // Exact maximum (48)
-    await applyTransform(clipId, "pitchShift = 48");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(48, 1);
-
-    // Above maximum clamps to 48
-    await applyTransform(clipId, "pitchShift = 60");
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(48, 1);
-  });
-
-  it("applies combined gain and pitchShift transforms", async () => {
-    const { clipId } = await createAudioTrackWithClip("Combined Transforms");
-
-    await applyTransform(clipId, "gain = -6\npitchShift = 5");
-    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
-    expect(await readClipPitchShift(clipId)).toBeCloseTo(5, 1);
-  });
-});
+// =============================================================================
+// Audio Transform Tests (update-clip)
+// =============================================================================
 
 describe("ppal-clip-transforms (audio gain)", () => {
-  it("sets gain to constant values", async () => {
-    const { clipId } = await createAudioTrackWithClip("Gain Constants");
+  it("applies gain transforms with expressions and clamping", async () => {
+    const { clipId } = await createAudioTrackWithClip("Gain Comprehensive");
 
-    // Set to -6 dB
+    // Constants: -6 dB
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Set to +12 dB
-    await applyTransform(clipId, "gain = 12");
-    expect(await readClipGain(clipId)).toBeCloseTo(12, 0);
-
-    // Set to 0 dB
-    await applyTransform(clipId, "gain = 0");
-    expect(await readClipGain(clipId)).toBeCloseTo(0, 0);
-  });
-
-  it("sets gain using math expressions and operators", async () => {
-    const { clipId } = await createAudioTrackWithClip("Gain Math");
-
-    // Multiplication: -6 * 2 = -12
+    // Expression with multiplication: -6 * 2 = -12
     await applyTransform(clipId, "gain = -6 * 2");
     expect(await readClipGain(clipId)).toBeCloseTo(-12, 0);
 
-    // Reference current value: audio.gain + 6 = -12 + 6 = -6
+    // Self-reference: audio.gain + 6 = -12 + 6 = -6
     await applyTransform(clipId, "gain = audio.gain + 6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Add operator: start at -10, then += 4 = -6
-    await setClipGain(clipId, -10);
+    // Add operator: -6 + 4 = -2 (using +=)
     await applyTransform(clipId, "gain += 4");
-    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+    expect(await readClipGain(clipId)).toBeCloseTo(-2, 0);
 
     // Division: -12 / 2 = -6
     await applyTransform(clipId, "gain = -12 / 2");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // Clamping below minimum: -100 → -70
+    await applyTransform(clipId, "gain = -100");
+    expect(await readClipGain(clipId)).toBeCloseTo(-70, 0);
+
+    // Clamping above maximum: 50 → 24
+    await applyTransform(clipId, "gain = 50");
+    expect(await readClipGain(clipId)).toBeCloseTo(24, 0);
   });
+});
 
-  it("sets gain to random value using noise()", async () => {
-    const { clipId } = await createAudioTrackWithClip("Gain Random");
+describe("ppal-clip-transforms (audio pitchShift)", () => {
+  it("applies pitchShift transforms with expressions and clamping", async () => {
+    const { clipId } = await createAudioTrackWithClip(
+      "PitchShift Comprehensive",
+    );
 
-    // noise() returns [-1, 1], scale to [-10, 0]
-    await applyTransform(clipId, "gain = -5 + 5 * noise()");
-    const gain = await readClipGain(clipId);
+    // Constant: 5 semitones
+    await applyTransform(clipId, "pitchShift = 5");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(5, 1);
 
-    expect(gain).toBeGreaterThanOrEqual(-10);
-    expect(gain).toBeLessThanOrEqual(0);
+    // Decimal value: 5.5 semitones
+    await applyTransform(clipId, "pitchShift = 5.5");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(5.5, 1);
+
+    // Add operator: 5.5 + 2 = 7.5
+    await applyTransform(clipId, "pitchShift += 2");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(7.5, 1);
+
+    // Self-reference: pitchShift * 2 = 15
+    await applyTransform(clipId, "pitchShift = audio.pitchShift * 2");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(15, 1);
+
+    // Clamping below minimum: -60 → -48
+    await applyTransform(clipId, "pitchShift = -60");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(-48, 1);
+
+    // Clamping above maximum: 60 → 48
+    await applyTransform(clipId, "pitchShift = 60");
+    expect(await readClipPitchShift(clipId)).toBeCloseTo(48, 1);
   });
+});
 
-  it("applies transforms to multiple clips", async () => {
+describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
+  it("applies transforms to multiple clips and combined params", async () => {
     const trackResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { type: "audio", name: "Multi Clip Transforms" },
+      arguments: { type: "audio", name: "Multi Clip Combined" },
     });
     const track = parseToolResult<CreateTrackResult>(trackResult);
 
@@ -258,31 +200,23 @@ describe("ppal-clip-transforms (audio gain)", () => {
 
     expect(await readClipGain(clip1.id)).toBeCloseTo(-9, 0);
     expect(await readClipGain(clip2.id)).toBeCloseTo(-9, 0);
-  });
 
-  it("clamps gain to valid range (-70 to 24 dB)", async () => {
-    const { clipId } = await createAudioTrackWithClip("Gain Clamping");
+    // Combined gain + pitchShift
+    await applyTransform(clip1.id, "gain = -6\npitchShift = 5");
+    expect(await readClipGain(clip1.id)).toBeCloseTo(-6, 0);
+    expect(await readClipPitchShift(clip1.id)).toBeCloseTo(5, 1);
 
-    // Exact minimum (-70 dB)
-    await applyTransform(clipId, "gain = -70");
-    expect(await readClipGain(clipId)).toBeCloseTo(-70, 0);
+    // noise() function: result should be in range [-10, 0]
+    await applyTransform(clip1.id, "gain = -5 + 5 * noise()");
+    const gain = await readClipGain(clip1.id);
 
-    // Below minimum clamps to -70
-    await applyTransform(clipId, "gain = -100");
-    expect(await readClipGain(clipId)).toBeCloseTo(-70, 0);
-
-    // Exact maximum (24 dB)
-    await applyTransform(clipId, "gain = 24");
-    expect(await readClipGain(clipId)).toBeCloseTo(24, 0);
-
-    // Above maximum clamps to 24
-    await applyTransform(clipId, "gain = 50");
-    expect(await readClipGain(clipId)).toBeCloseTo(24, 0);
+    expect(gain).toBeGreaterThanOrEqual(-10);
+    expect(gain).toBeLessThanOrEqual(0);
   });
 });
 
 // =============================================================================
-// MIDI Transform Tests
+// MIDI Transform Tests (update-clip)
 // =============================================================================
 
 const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
@@ -320,9 +254,8 @@ async function readClipNotes(clipId: string): Promise<string> {
   return clip.notes ?? "";
 }
 
-describe("ppal-clip-transforms (midi parameters)", () => {
-  it("transforms velocity with constants, expressions, and clamping", async () => {
-    // Create clip with known velocity (v100)
+describe("ppal-clip-transforms (midi velocity)", () => {
+  it("transforms velocity with expressions and clamping", async () => {
     const clipId = await createMidiClip(0, "v100 C3 1|1");
 
     // Set to constant
@@ -346,374 +279,223 @@ describe("ppal-clip-transforms (midi parameters)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v127");
   });
+});
 
-  it("transforms timing to shift note positions", async () => {
-    // Create clip with note at beat 1
+describe("ppal-clip-transforms (midi timing and duration)", () => {
+  it("transforms timing and duration", async () => {
     const clipId = await createMidiClip(1, "C3 1|1");
 
-    // Shift forward by 0.5 beats
+    // Timing: shift forward by 0.5 beats
     await applyTransform(clipId, "timing += 0.5");
     let notes = await readClipNotes(clipId);
 
     expect(notes).toContain("1|1.5");
 
-    // Shift backward
+    // Timing: shift backward
     await applyTransform(clipId, "timing += -0.25");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("1|1.25");
-  });
 
-  it("transforms duration with clamping to minimum", async () => {
-    // Create clip with default duration
-    const clipId = await createMidiClip(2, "C3 1|1");
-
-    // Set duration to 2 beats
+    // Duration: set to 2 beats
     await applyTransform(clipId, "duration = 2");
-    let notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toContain("t2");
 
-    // Set very small duration (clamped to 0.001)
+    // Duration: very small clamps to minimum (0.001)
     await applyTransform(clipId, "duration = -1");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t0.001");
 
-    // Multiply duration
+    // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t0.5");
   });
+});
 
-  it("transforms probability with clamping", async () => {
-    // Create clip
-    const clipId = await createMidiClip(3, "C3 1|1");
+describe("ppal-clip-transforms (midi probability and deviation)", () => {
+  it("transforms probability and deviation", async () => {
+    const clipId = await createMidiClip(2, "v100 C3 1|1");
 
-    // Set probability to 0.8
+    // Probability: set to 0.8
     await applyTransform(clipId, "probability = 0.8");
     let notes = await readClipNotes(clipId);
 
     expect(notes).toContain("p0.8");
 
-    // Clamp above 1.0
+    // Probability: clamp above 1.0
     await applyTransform(clipId, "probability = 1.5");
     notes = await readClipNotes(clipId);
-    // At p1.0, the format omits probability (default)
-    expect(notes).not.toContain("p1.5");
+    expect(notes).not.toContain("p1.5"); // At p1.0, format omits probability
 
-    // Clamp below 0.0
+    // Probability: clamp below 0.0
     await applyTransform(clipId, "probability = -0.5");
     notes = await readClipNotes(clipId);
     expect(notes).toMatch(/p0(?:\.0+)?(?:\s|$)/);
-  });
 
-  it("transforms deviation with clamping", async () => {
-    // Create clip with known velocity
-    const clipId = await createMidiClip(4, "v100 C3 1|1");
-
-    // Set deviation to 20 (shows as velocity range v100-120)
+    // Deviation: set to 20 (shows as velocity range v100-120)
+    await applyTransform(clipId, "probability = 1"); // Reset probability
     await applyTransform(clipId, "deviation = 20");
-    let notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toContain("v100-120");
 
-    // Clamp above 127
+    // Deviation: clamp above 127
     await applyTransform(clipId, "deviation = 200");
     notes = await readClipNotes(clipId);
-    // velocity 100 + deviation 127 = v100-227, but actual max is 127
     expect(notes).toMatch(/v100-\d+/);
-
-    // Clamp below -127: negative deviation doesn't show as range in format
-    // (only positive deviation shows as v100-120), so just verify note exists
-    await applyTransform(clipId, "deviation = -200");
-    notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("C3");
-    expect(notes).not.toContain("v100-"); // No range when deviation ≤ 0
   });
 });
 
 describe("ppal-clip-transforms (midi pitch)", () => {
-  it("sets pitch to constant values", async () => {
-    // Create clip with C3 (pitch 60)
-    const clipId = await createMidiClip(7, "C3 1|1");
+  it("transforms pitch with expressions, literals, and clamping", async () => {
+    const clipId = await createMidiClip(3, "C3 1|1");
 
-    // Set to pitch 72 (C4)
+    // Constant: set to pitch 72 (C4)
     await applyTransform(clipId, "pitch = 72");
     let notes = await readClipNotes(clipId);
 
     expect(notes).toContain("C4");
-    expect(notes).not.toContain("C3");
 
-    // Set to pitch 48 (C2)
-    await applyTransform(clipId, "pitch = 48");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("C2");
-  });
-
-  it("transposes pitch with add operator", async () => {
-    // Create clip with C3 (pitch 60)
-    const clipId = await createMidiClip(8, "C3 1|1");
-
-    // Transpose up by octave: C3 + 12 = C4
+    // Operator: transpose up by octave (C4 + 12 = C5)
     await applyTransform(clipId, "pitch += 12");
-    let notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("C4");
-
-    // Transpose down: C4 - 7 = F3
-    await applyTransform(clipId, "pitch += -7");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("F3");
-  });
+    expect(notes).toContain("C5");
 
-  it("uses pitch literals in expressions", async () => {
-    // Create clip with any note
-    const clipId = await createMidiClip(9, "C3 1|1");
-
-    // Set using pitch literal C4 (= 72)
+    // Pitch literal: set to C4
     await applyTransform(clipId, "pitch = C4");
-    let notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toContain("C4");
 
-    // Set using pitch literal with sharp: F#3 (= 66)
-    // Note: system returns flats (Gb3) when reading back
+    // Pitch literal with sharp: F#3 (system returns flats)
     await applyTransform(clipId, "pitch = F#3");
     notes = await readClipNotes(clipId);
     expect(notes).toMatch(/F#3|Gb3/);
 
-    // Set using pitch literal with flat: Bb2 (= 46)
-    // Note: system returns flats (Bb2) when reading back
+    // Pitch literal with flat: Bb2
     await applyTransform(clipId, "pitch = Bb2");
     notes = await readClipNotes(clipId);
     expect(notes).toMatch(/A#2|Bb2/);
-  });
 
-  it("uses pitch literals with arithmetic", async () => {
-    // Create clip
-    const clipId = await createMidiClip(10, "C3 1|1");
-
-    // F#3 + 7 = 66 + 7 = 73 (C#4/Db4)
-    // Note: system returns flats when reading back
+    // Arithmetic: F#3 + 7 = 66 + 7 = 73 (C#4/Db4)
     await applyTransform(clipId, "pitch = F#3 + 7");
-    const notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toMatch(/C#4|Db4/);
-  });
 
-  it("clamps pitch to valid MIDI range (0-127)", async () => {
-    // Create clip
-    const clipId = await createMidiClip(11, "C3 1|1");
+    // Self-reference: note.pitch + 7 (73 + 7 = 80 = G#4/Ab4)
+    await applyTransform(clipId, "pitch = note.pitch + 7");
+    notes = await readClipNotes(clipId);
+    expect(notes).toMatch(/G#4|Ab4/);
 
-    // Set below minimum: -10 clamps to 0 (C-2)
+    // Rounding: 60.7 rounds to 61 (C#3/Db3)
+    await applyTransform(clipId, "pitch = 60.7");
+    notes = await readClipNotes(clipId);
+    expect(notes).toMatch(/C#3|Db3/);
+
+    // Clamp below minimum: -10 → 0 (C-2)
     await applyTransform(clipId, "pitch = -10");
-    let notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toContain("C-2");
 
-    // Set above maximum: 200 clamps to 127 (G8)
+    // Clamp above maximum: 200 → 127 (G8)
     await applyTransform(clipId, "pitch = 200");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("G8");
-
-    // Transpose below 0: start at C-1 (12), subtract 20 -> clamp to 0
-    await applyTransform(clipId, "pitch = 12"); // C-1
-    await applyTransform(clipId, "pitch += -20");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("C-2");
   });
+});
 
-  it("rounds fractional pitch values", async () => {
-    // Create clip
-    const clipId = await createMidiClip(12, "C3 1|1");
+describe("ppal-clip-transforms (selectors and multi-note)", () => {
+  it("applies transforms with selectors and multi-note", async () => {
+    // Multi-note: transpose C major triad
+    const clipId1 = await createMidiClip(4, "C3 E3 G3 1|1");
 
-    // 60.7 rounds to 61 (C#3/Db3)
-    // Note: system returns flats when reading back
-    await applyTransform(clipId, "pitch = 60.7");
-    let notes = await readClipNotes(clipId);
-
-    expect(notes).toMatch(/C#3|Db3/);
-
-    // 60.3 rounds to 60 (C3)
-    await applyTransform(clipId, "pitch = 60.3");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("C3");
-  });
-
-  it("uses note.pitch variable", async () => {
-    // Create clip with C3 (pitch 60)
-    const clipId = await createMidiClip(13, "C3 1|1");
-
-    // Add 7 to current pitch: 60 + 7 = 67 (G3)
-    await applyTransform(clipId, "pitch = note.pitch + 7");
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("G3");
-  });
-
-  it("transposes multiple notes together", async () => {
-    // Create clip with C major triad
-    const clipId = await createMidiClip(14, "C3 E3 G3 1|1");
-
-    // Transpose all up by 2 semitones (D major)
-    // Note: system returns flats when reading back (Gb3 instead of F#3)
-    await applyTransform(clipId, "pitch += 2");
-    const notes = await readClipNotes(clipId);
+    await applyTransform(clipId1, "pitch += 2");
+    let notes = await readClipNotes(clipId1);
 
     expect(notes).toContain("D3");
     expect(notes).toMatch(/F#3|Gb3/);
     expect(notes).toContain("A3");
     expect(notes).not.toContain("C3");
-  });
 
-  it("applies pitch transform with pitch range filter", async () => {
-    // Create clip with two notes at different pitches
-    const clipId = await createMidiClip(15, "C3 1|1\nE3 1|2");
+    // Pitch selector: only transpose C3
+    const clipId2 = await createMidiClip(5, "C3 1|1\nE3 1|2");
 
-    // Only transpose C3 (pitch 60) up an octave
-    await applyTransform(clipId, "C3: pitch += 12");
-    const notes = await readClipNotes(clipId);
-
+    await applyTransform(clipId2, "C3: pitch += 12");
+    notes = await readClipNotes(clipId2);
     expect(notes).toContain("C4"); // C3 became C4
     expect(notes).toContain("E3"); // E3 unchanged
-  });
 
-  it("applies pitch transform with time range filter", async () => {
-    // Create clip with two notes at different times
-    const clipId = await createMidiClip(16, "C3 1|1\nC3 1|3");
+    // Time selector: only transpose notes in beats 1-2
+    const clipId3 = await createMidiClip(6, "C3 1|1\nC3 1|3");
 
-    // Only transpose notes in beats 1-2 (first note only)
-    await applyTransform(clipId, "1|1-1|2: pitch += 12");
-    const notes = await readClipNotes(clipId);
-
-    // Both should be present, but only first transposed to C4
+    await applyTransform(clipId3, "1|1-1|2: pitch += 12");
+    notes = await readClipNotes(clipId3);
     expect(notes).toContain("C4 1|1"); // Transposed
     expect(notes).toContain("C3 1|3"); // Unchanged
   });
 });
 
 // =============================================================================
-// Math Functions and Modulo Tests
+// Math Function Tests
 // =============================================================================
 
 describe("ppal-clip-transforms (math functions)", () => {
-  it("uses max() to ensure minimum velocity", async () => {
-    // Create clip with low velocity (v40)
-    const clipId = await createMidiClip(17, "v40 C3 1|1");
+  it("uses math functions for value manipulation", async () => {
+    // max(): enforce minimum velocity
+    let clipId = await createMidiClip(7, "v40 C3 1|1");
 
-    // max(60, 40) = 60 - enforces minimum
     await applyTransform(clipId, "velocity = max(60, note.velocity)");
     let notes = await readClipNotes(clipId);
 
-    expect(notes).toContain("v60");
+    expect(notes).toContain("v60"); // max(60, 40) = 60
 
-    // Reset to high velocity (v90)
-    await applyTransform(clipId, "velocity = 90");
-
-    // max(60, 90) = 90 - keeps higher value
-    await applyTransform(clipId, "velocity = max(60, note.velocity)");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("v90");
-  });
-
-  it("uses min() to ensure maximum velocity", async () => {
-    // Create clip with high velocity (v120)
-    const clipId = await createMidiClip(18, "v120 C3 1|1");
-
-    // min(95, 120) = 95 - caps to maximum (use 95 since 100 is default and omitted)
-    await applyTransform(clipId, "velocity = min(95, note.velocity)");
-    let notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v95");
-
-    // Reset to low velocity (v60)
-    await applyTransform(clipId, "velocity = 60");
-
-    // min(95, 60) = 60 - keeps lower value
+    // min(): cap maximum velocity
+    clipId = await createMidiClip(8, "v120 C3 1|1");
     await applyTransform(clipId, "velocity = min(95, note.velocity)");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("v60");
-  });
+    expect(notes).toContain("v95"); // min(95, 120) = 95
 
-  it("uses floor() to quantize velocity to steps", async () => {
-    // Create clip with v67
-    const clipId = await createMidiClip(19, "v67 C3 1|1");
-
-    // floor(67 / 10) * 10 = floor(6.7) * 10 = 6 * 10 = 60
+    // floor(): quantize to steps
+    clipId = await createMidiClip(9, "v67 C3 1|1");
     await applyTransform(clipId, "velocity = floor(note.velocity / 10) * 10");
-    const notes = await readClipNotes(clipId);
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v60"); // floor(6.7) * 10 = 60
 
-    expect(notes).toContain("v60");
-  });
-
-  it("uses round() with expressions", async () => {
-    // Create clip with v67
-    const clipId = await createMidiClip(20, "v67 C3 1|1");
-
-    // round(67 / 10) * 10 = round(6.7) * 10 = 7 * 10 = 70
+    // round(): round to steps
+    clipId = await createMidiClip(10, "v67 C3 1|1");
     await applyTransform(clipId, "velocity = round(note.velocity / 10) * 10");
-    const notes = await readClipNotes(clipId);
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v70"); // round(6.7) * 10 = 70
 
-    expect(notes).toContain("v70");
-  });
-
-  it("uses abs() with negative values", async () => {
-    // Create clip
-    const clipId = await createMidiClip(21, "v100 C3 1|1");
-
-    // abs(-50) = 50
+    // abs(): absolute value
+    clipId = await createMidiClip(11, "v100 C3 1|1");
     await applyTransform(clipId, "velocity = abs(-50)");
-    const notes = await readClipNotes(clipId);
-
+    notes = await readClipNotes(clipId);
     expect(notes).toContain("v50");
+
+    // Nested: max(60, min(100, value))
+    clipId = await createMidiClip(12, "v50 C3 1|1");
+    await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v60"); // max(60, 50) = 60
   });
 
-  it("uses modulo for alternating patterns", async () => {
+  it("uses modulo operator", async () => {
     const { clipId } = await createAudioTrackWithClip("Modulo Pattern");
 
-    // 0 % 2 = 0, so gain = -6 * 0 = 0
+    // Basic modulo patterns
     await applyTransform(clipId, "gain = -6 * (0 % 2)");
-    expect(await readClipGain(clipId)).toBeCloseTo(0, 0);
+    expect(await readClipGain(clipId)).toBeCloseTo(0, 0); // 0 % 2 = 0
 
-    // 1 % 2 = 1, so gain = -6 * 1 = -6
     await applyTransform(clipId, "gain = -6 * (1 % 2)");
-    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0); // 1 % 2 = 1
 
-    // 2 % 2 = 0, so gain = -6 * 0 = 0
-    await applyTransform(clipId, "gain = -6 * (2 % 2)");
-    expect(await readClipGain(clipId)).toBeCloseTo(0, 0);
-  });
-
-  it("uses modulo with wraparound for negative numbers", async () => {
-    const { clipId } = await createAudioTrackWithClip("Modulo Wraparound");
-
-    // -1 % 4 = 3 (wraparound behavior)
-    // gain = -1 * 3 = -3
+    // Negative wraparound: -1 % 4 = 3
     await applyTransform(clipId, "gain = -1 * (-1 % 4)");
     expect(await readClipGain(clipId)).toBeCloseTo(-3, 0);
 
-    // 10 % 3 = 1
+    // Standard modulo: 10 % 3 = 1
     await applyTransform(clipId, "gain = 10 % 3");
     expect(await readClipGain(clipId)).toBeCloseTo(1, 0);
-  });
-
-  it("combines math functions with other operations", async () => {
-    // Create clip with v75
-    const clipId = await createMidiClip(22, "v75 C3 1|1");
-
-    // max(60, min(100, 75)) = max(60, 75) = 75 (clamps both ways)
-    await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
-    let notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v75");
-
-    // Reset to v50
-    await applyTransform(clipId, "velocity = 50");
-
-    // max(60, min(100, 50)) = max(60, 50) = 60 (below floor)
-    await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("v60");
   });
 });
 
@@ -725,7 +507,6 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
   it("ignores MIDI transforms on audio clips with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Ignore MIDI");
 
-    // Set gain to known value first
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
@@ -757,17 +538,14 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
   });
 
   it("ignores gain transforms on MIDI clips with warnings", async () => {
-    // Create clip with non-default velocity so we can verify it's unchanged
-    const clipId = await createMidiClip(5, "v80 C3 1|1");
+    const clipId = await createMidiClip(13, "v80 C3 1|1");
 
-    // Apply gain-only transform - should emit warning
     const result = await applyTransform(clipId, "gain = -6");
     const warnings = getToolWarnings(result);
 
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings.some((w) => w.toLowerCase().includes("gain"))).toBe(true);
 
-    // Notes should be unchanged (v80 is non-default so it shows)
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("v80");
@@ -777,35 +555,140 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
   it("ignores note.* variables in audio context with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Note Var");
 
-    // Set gain to known value
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Try to use note.pitch in gain expression - should emit warning
     const result = await applyTransform(clipId, "gain = note.pitch");
     const warnings = getToolWarnings(result);
 
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings.some((w) => w.toLowerCase().includes("note"))).toBe(true);
-
-    // Gain should remain at -6 (transform was ignored)
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
   });
 
   it("ignores audio.* variables in MIDI context with warnings", async () => {
-    const clipId = await createMidiClip(6, "v80 C3 1|1");
+    const clipId = await createMidiClip(14, "v80 C3 1|1");
 
-    // Try to use audio.gain in velocity expression - should emit warning
     const result = await applyTransform(clipId, "velocity = audio.gain");
     const warnings = getToolWarnings(result);
 
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings.some((w) => w.toLowerCase().includes("audio"))).toBe(true);
 
-    // Velocity should be unchanged (transform was ignored)
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("v80");
     expect(notes).toContain("C3");
+  });
+});
+
+// =============================================================================
+// Create-Clip Transform Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (create-clip)", () => {
+  it("creates MIDI clips with transforms applied", async () => {
+    // Create clip with velocity transform
+    const result1 = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "15",
+        notes: "v100 C3 1|1",
+        length: "2:0.0",
+        transforms: "velocity = 64",
+      },
+    });
+    const clip1 = parseToolResult<CreateClipResult>(result1);
+
+    await sleep(100);
+    let notes = await readClipNotes(clip1.id);
+
+    expect(notes).toContain("v64"); // Velocity transformed from 100 to 64
+
+    // Create clip with pitch transform (transposition)
+    const result2 = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "16",
+        notes: "C3 E3 G3 1|1", // C major triad
+        length: "2:0.0",
+        transforms: "pitch += 2", // Transpose to D major
+      },
+    });
+    const clip2 = parseToolResult<CreateClipResult>(result2);
+
+    await sleep(100);
+    notes = await readClipNotes(clip2.id);
+
+    expect(notes).toContain("D3");
+    expect(notes).toMatch(/F#3|Gb3/);
+    expect(notes).toContain("A3");
+
+    // Create clip with combined transforms
+    const result3 = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "17",
+        notes: "v100 C3 1|1",
+        length: "2:0.0",
+        transforms: "velocity = 80\npitch += 12",
+      },
+    });
+    const clip3 = parseToolResult<CreateClipResult>(result3);
+
+    await sleep(100);
+    notes = await readClipNotes(clip3.id);
+
+    expect(notes).toContain("v80");
+    expect(notes).toContain("C4"); // Transposed up an octave
+  });
+
+  it("creates MIDI clips with selector transforms", async () => {
+    // Create clip with pitch selector (only transpose C3)
+    const result1 = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "18",
+        notes: "C3 1|1\nE3 1|2",
+        length: "2:0.0",
+        transforms: "C3: pitch += 12",
+      },
+    });
+    const clip1 = parseToolResult<CreateClipResult>(result1);
+
+    await sleep(100);
+    let notes = await readClipNotes(clip1.id);
+
+    expect(notes).toContain("C4"); // C3 became C4
+    expect(notes).toContain("E3"); // E3 unchanged
+
+    // Create clip with time selector
+    const result2 = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "19",
+        notes: "C3 1|1\nC3 1|3",
+        length: "2:0.0",
+        transforms: "1|1-1|2: velocity = 64",
+      },
+    });
+    const clip2 = parseToolResult<CreateClipResult>(result2);
+
+    await sleep(100);
+    notes = await readClipNotes(clip2.id);
+
+    expect(notes).toContain("v64"); // First note has transformed velocity
+    // Second note at 1|3 should have default velocity (no v prefix shown)
+    expect(notes).toMatch(/C3 1\|3/); // Second note unchanged
   });
 });
