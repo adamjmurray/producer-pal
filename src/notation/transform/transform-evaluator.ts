@@ -65,6 +65,7 @@ export function applyTransforms(
     applyDurationTransform(note, transforms);
     applyProbabilityTransform(note, transforms);
     applyDeviationTransform(note, transforms);
+    applyPitchTransform(note, transforms);
   }
 }
 
@@ -258,6 +259,28 @@ function applyDeviationTransform(
       ),
     );
   }
+}
+
+/**
+ * Apply pitch transform to a note
+ * @param note - Note to modify
+ * @param transforms - Transform results
+ */
+function applyPitchTransform(
+  note: NoteEvent,
+  transforms: Record<string, TransformResult>,
+): void {
+  if (transforms.pitch == null) {
+    return;
+  }
+
+  const newPitch =
+    transforms.pitch.operator === "set"
+      ? transforms.pitch.value
+      : note.pitch + transforms.pitch.value;
+
+  // Round to integer (MIDI pitch must be integer) then clamp to 0-127
+  note.pitch = Math.max(0, Math.min(127, Math.round(newPitch)));
 }
 
 /**

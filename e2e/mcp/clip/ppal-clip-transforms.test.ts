@@ -428,6 +428,166 @@ describe("ppal-clip-transforms (midi parameters)", () => {
   });
 });
 
+describe("ppal-clip-transforms (midi pitch)", () => {
+  it("sets pitch to constant values", async () => {
+    // Create clip with C3 (pitch 60)
+    const clipId = await createMidiClip(7, "C3 1|1");
+
+    // Set to pitch 72 (C4)
+    await applyTransform(clipId, "pitch = 72");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C4");
+    expect(notes).not.toContain("C3");
+
+    // Set to pitch 48 (C2)
+    await applyTransform(clipId, "pitch = 48");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("C2");
+  });
+
+  it("transposes pitch with add operator", async () => {
+    // Create clip with C3 (pitch 60)
+    const clipId = await createMidiClip(8, "C3 1|1");
+
+    // Transpose up by octave: C3 + 12 = C4
+    await applyTransform(clipId, "pitch += 12");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C4");
+
+    // Transpose down: C4 - 7 = F3
+    await applyTransform(clipId, "pitch += -7");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("F3");
+  });
+
+  it("uses pitch literals in expressions", async () => {
+    // Create clip with any note
+    const clipId = await createMidiClip(9, "C3 1|1");
+
+    // Set using pitch literal C4 (= 72)
+    await applyTransform(clipId, "pitch = C4");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C4");
+
+    // Set using pitch literal with sharp: F#3 (= 66)
+    // Note: system returns flats (Gb3) when reading back
+    await applyTransform(clipId, "pitch = F#3");
+    notes = await readClipNotes(clipId);
+    expect(notes).toMatch(/F#3|Gb3/);
+
+    // Set using pitch literal with flat: Bb2 (= 46)
+    // Note: system returns flats (Bb2) when reading back
+    await applyTransform(clipId, "pitch = Bb2");
+    notes = await readClipNotes(clipId);
+    expect(notes).toMatch(/A#2|Bb2/);
+  });
+
+  it("uses pitch literals with arithmetic", async () => {
+    // Create clip
+    const clipId = await createMidiClip(10, "C3 1|1");
+
+    // F#3 + 7 = 66 + 7 = 73 (C#4/Db4)
+    // Note: system returns flats when reading back
+    await applyTransform(clipId, "pitch = F#3 + 7");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toMatch(/C#4|Db4/);
+  });
+
+  it("clamps pitch to valid MIDI range (0-127)", async () => {
+    // Create clip
+    const clipId = await createMidiClip(11, "C3 1|1");
+
+    // Set below minimum: -10 clamps to 0 (C-2)
+    await applyTransform(clipId, "pitch = -10");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C-2");
+
+    // Set above maximum: 200 clamps to 127 (G8)
+    await applyTransform(clipId, "pitch = 200");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("G8");
+
+    // Transpose below 0: start at C-1 (12), subtract 20 -> clamp to 0
+    await applyTransform(clipId, "pitch = 12"); // C-1
+    await applyTransform(clipId, "pitch += -20");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("C-2");
+  });
+
+  it("rounds fractional pitch values", async () => {
+    // Create clip
+    const clipId = await createMidiClip(12, "C3 1|1");
+
+    // 60.7 rounds to 61 (C#3/Db3)
+    // Note: system returns flats when reading back
+    await applyTransform(clipId, "pitch = 60.7");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toMatch(/C#3|Db3/);
+
+    // 60.3 rounds to 60 (C3)
+    await applyTransform(clipId, "pitch = 60.3");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("C3");
+  });
+
+  it("uses note.pitch variable", async () => {
+    // Create clip with C3 (pitch 60)
+    const clipId = await createMidiClip(13, "C3 1|1");
+
+    // Add 7 to current pitch: 60 + 7 = 67 (G3)
+    await applyTransform(clipId, "pitch = note.pitch + 7");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("G3");
+  });
+
+  it("transposes multiple notes together", async () => {
+    // Create clip with C major triad
+    const clipId = await createMidiClip(14, "C3 E3 G3 1|1");
+
+    // Transpose all up by 2 semitones (D major)
+    // Note: system returns flats when reading back (Gb3 instead of F#3)
+    await applyTransform(clipId, "pitch += 2");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("D3");
+    expect(notes).toMatch(/F#3|Gb3/);
+    expect(notes).toContain("A3");
+    expect(notes).not.toContain("C3");
+  });
+
+  it("applies pitch transform with pitch range filter", async () => {
+    // Create clip with two notes at different pitches
+    const clipId = await createMidiClip(15, "C3 1|1\nE3 1|2");
+
+    // Only transpose C3 (pitch 60) up an octave
+    await applyTransform(clipId, "C3 pitch += 12");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C4"); // C3 became C4
+    expect(notes).toContain("E3"); // E3 unchanged
+  });
+
+  it("applies pitch transform with time range filter", async () => {
+    // Create clip with two notes at different times
+    const clipId = await createMidiClip(16, "C3 1|1\nC3 1|3");
+
+    // Only transpose notes in beats 1-2 (first note only)
+    await applyTransform(clipId, "1|1-1|2 pitch += 12");
+    const notes = await readClipNotes(clipId);
+
+    // Both should be present, but only first transposed to C4
+    expect(notes).toContain("C4 1|1"); // Transposed
+    expect(notes).toContain("C3 1|3"); // Unchanged
+  });
+});
+
 // =============================================================================
 // Cross-Type Transform Tests
 // =============================================================================
@@ -442,6 +602,10 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
 
     // Apply MIDI-only transform - should be silently ignored, gain unchanged
     await applyTransform(clipId, "velocity = 64");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // Apply pitch transform - should be silently ignored (pitch is MIDI-only)
+    await applyTransform(clipId, "pitch += 12");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
     // Mixed transform - gain should apply, velocity ignored

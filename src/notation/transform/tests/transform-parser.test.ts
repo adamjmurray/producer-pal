@@ -61,7 +61,7 @@ describe("Transform Parser", () => {
 
     it("parses all parameter types", () => {
       const result = parser.parse(
-        "velocity += 1\ntiming += 2\nduration += 3\nprobability += 4\ndeviation += 5",
+        "velocity += 1\ntiming += 2\nduration += 3\nprobability += 4\ndeviation += 5\npitch += 6",
       );
 
       expect(result).toStrictEqual([
@@ -99,6 +99,13 @@ describe("Transform Parser", () => {
           parameter: "deviation",
           operator: "add",
           expression: 5,
+        },
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "pitch",
+          operator: "add",
+          expression: 6,
         },
       ]);
     });
@@ -501,6 +508,139 @@ describe("Transform Parser", () => {
 
     it("rejects invalid note property", () => {
       expect(() => parser.parse("velocity = note.gain")).toThrow();
+    });
+  });
+
+  describe("pitch parameter", () => {
+    it("parses pitch parameter with set operator", () => {
+      const result = parser.parse("pitch = 60");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "pitch",
+          operator: "set",
+          expression: 60,
+        },
+      ]);
+    });
+
+    it("parses pitch parameter with add operator", () => {
+      const result = parser.parse("pitch += 12");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "pitch",
+          operator: "add",
+          expression: 12,
+        },
+      ]);
+    });
+
+    it("parses negative pitch offset", () => {
+      const result = parser.parse("pitch += -12");
+
+      expect(result[0]!.expression).toBe(-12);
+    });
+
+    it("parses pitch with pitch range filter", () => {
+      const result = parser.parse("C3 pitch += 12");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 60,
+        endPitch: 60,
+      });
+      expect(result[0]!.parameter).toBe("pitch");
+    });
+
+    it("parses pitch with time range filter", () => {
+      const result = parser.parse("1|1-2|4 pitch += 12");
+
+      expect(result[0]!.timeRange).toStrictEqual({
+        startBar: 1,
+        startBeat: 1,
+        endBar: 2,
+        endBeat: 4,
+      });
+      expect(result[0]!.parameter).toBe("pitch");
+    });
+  });
+
+  describe("pitch literals in expressions", () => {
+    it("parses pitch literal C3 (middle C)", () => {
+      const result = parser.parse("pitch = C3");
+
+      expect(result[0]!.expression).toBe(60);
+    });
+
+    it("parses pitch literal with sharp", () => {
+      const result = parser.parse("pitch = C#3");
+
+      expect(result[0]!.expression).toBe(61);
+    });
+
+    it("parses pitch literal with flat", () => {
+      const result = parser.parse("pitch = Db3");
+
+      expect(result[0]!.expression).toBe(61);
+    });
+
+    it("parses pitch literal in arithmetic expression", () => {
+      const result = parser.parse("pitch = C3 + 7");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("add");
+      expect(expr.left).toBe(60);
+      expect(expr.right).toBe(7);
+    });
+
+    it("parses pitch literal with negative octave", () => {
+      const result = parser.parse("pitch = C-1");
+
+      expect(result[0]!.expression).toBe(12);
+    });
+
+    it("parses lowest valid pitch literal C-2", () => {
+      const result = parser.parse("pitch = C-2");
+
+      expect(result[0]!.expression).toBe(0);
+    });
+
+    it("parses highest valid pitch literal G8", () => {
+      const result = parser.parse("pitch = G8");
+
+      expect(result[0]!.expression).toBe(127);
+    });
+
+    it("throws on pitch literal out of range (too high)", () => {
+      expect(() => parser.parse("pitch = C9")).toThrow(/outside valid range/);
+    });
+
+    it("throws on pitch literal out of range (too low)", () => {
+      expect(() => parser.parse("pitch = C-3")).toThrow(/outside valid range/);
+    });
+
+    it("parses pitch literal in complex expression", () => {
+      const result = parser.parse("pitch = (C3 + G3) / 2");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("divide");
+      expect((expr.left as BinaryOpNode).type).toBe("add");
+      expect((expr.left as BinaryOpNode).left).toBe(60);
+      expect((expr.left as BinaryOpNode).right).toBe(67);
+      expect(expr.right).toBe(2);
+    });
+
+    it("parses pitch literal with note variable", () => {
+      const result = parser.parse("pitch = C3 + note.pitch");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("add");
+      expect(expr.left).toBe(60);
+      expect((expr.right as VariableNode).name).toBe("pitch");
     });
   });
 });

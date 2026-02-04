@@ -22,6 +22,7 @@ const MIDI_PARAMETERS = new Set([
   "duration",
   "probability",
   "deviation",
+  "pitch",
 ]);
 
 export interface AudioProperties {
@@ -65,7 +66,7 @@ export function applyAudioTransform(
 
   if (hasMidiParams) {
     console.warn(
-      "MIDI parameters (velocity, timing, duration, probability, deviation) ignored for audio clips",
+      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
     );
   }
 

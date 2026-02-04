@@ -48,6 +48,15 @@ pitch
     throw new Error(`MIDI pitch ${pitch} (${pitchClass.name}${octave}) outside valid range 0-127`);
   }
 
+pitchLiteral
+  = pitchClass:pitchClass octave:signedInt {
+    const pitch = (octave + 2) * 12 + pitchClass.value;
+    if (pitch >= 0 && pitch <= 127) {
+      return pitch;
+    }
+    throw new Error(`MIDI pitch ${pitch} (${pitchClass.name}${octave}) outside valid range 0-127`);
+  }
+
 pitchClass
   = pc:("C#" / "Db" / "D#" / "Eb" / "F#" / "Gb" / "G#" / "Ab" / "A#" / "Bb" /
         "C" / "D" / "E" / "F" / "G" / "A" / "B") {
@@ -69,13 +78,14 @@ operator
   / "+=" { return "add"; }
 
 parameter
-  = "velocity" { return "velocity"; }
+  = "pitchShift" { return "pitchShift"; }
+  / "pitch" { return "pitch"; }
+  / "velocity" { return "velocity"; }
   / "timing" { return "timing"; }
   / "duration" { return "duration"; }
   / "probability" { return "probability"; }
   / "deviation" { return "deviation"; }
   / "gain" { return "gain"; }
-  / "pitchShift" { return "pitchShift"; }
 
 expression
   = additive
@@ -101,6 +111,7 @@ multiplicative
 primary
   = functionCall
   / variable
+  / pitchLiteral
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
