@@ -4,7 +4,7 @@ import { evaluateTransform } from "#src/notation/transform/transform-evaluator.t
 describe("Transform Evaluator", () => {
   describe("pitch filtering", () => {
     it("applies transform to matching pitch", () => {
-      const result = evaluateTransform("C3 velocity += 10", {
+      const result = evaluateTransform("C3: velocity += 10", {
         position: 0,
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
@@ -14,7 +14,7 @@ describe("Transform Evaluator", () => {
     });
 
     it("skips transform for non-matching pitch", () => {
-      const result = evaluateTransform("C3 velocity += 10", {
+      const result = evaluateTransform("C3: velocity += 10", {
         position: 0,
         pitch: 61,
         timeSig: { numerator: 4, denominator: 4 },
@@ -34,7 +34,7 @@ describe("Transform Evaluator", () => {
     });
 
     it("persists pitch across multiple lines", () => {
-      const result = evaluateTransform("C3 velocity += 10\ntiming += 0.05", {
+      const result = evaluateTransform("C3: velocity += 10\ntiming += 0.05", {
         position: 0,
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
@@ -45,8 +45,8 @@ describe("Transform Evaluator", () => {
     });
 
     it("resets pitch when specified again", () => {
-      const modString = `C3 velocity += 10
-C#3 velocity += 20`;
+      const modString = `C3: velocity += 10
+C#3: velocity += 20`;
       const result1 = evaluateTransform(modString, {
         position: 0,
         pitch: 60,
@@ -65,7 +65,7 @@ C#3 velocity += 20`;
     });
 
     it("applies transform to pitch within range", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10", {
+      const result = evaluateTransform("C3-C5: velocity += 10", {
         position: 0,
         pitch: 72, // C4 is within C3-C5
         timeSig: { numerator: 4, denominator: 4 },
@@ -75,7 +75,7 @@ C#3 velocity += 20`;
     });
 
     it("applies transform to pitch at range start", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10", {
+      const result = evaluateTransform("C3-C5: velocity += 10", {
         position: 0,
         pitch: 60, // C3 is at start
         timeSig: { numerator: 4, denominator: 4 },
@@ -85,7 +85,7 @@ C#3 velocity += 20`;
     });
 
     it("applies transform to pitch at range end", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10", {
+      const result = evaluateTransform("C3-C5: velocity += 10", {
         position: 0,
         pitch: 84, // C5 is at end
         timeSig: { numerator: 4, denominator: 4 },
@@ -95,7 +95,7 @@ C#3 velocity += 20`;
     });
 
     it("skips transform for pitch below range", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10", {
+      const result = evaluateTransform("C3-C5: velocity += 10", {
         position: 0,
         pitch: 59, // B2 is below C3
         timeSig: { numerator: 4, denominator: 4 },
@@ -105,7 +105,7 @@ C#3 velocity += 20`;
     });
 
     it("skips transform for pitch above range", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10", {
+      const result = evaluateTransform("C3-C5: velocity += 10", {
         position: 0,
         pitch: 85, // C#5 is above C5
         timeSig: { numerator: 4, denominator: 4 },
@@ -115,19 +115,22 @@ C#3 velocity += 20`;
     });
 
     it("persists pitch range across multiple lines", () => {
-      const result = evaluateTransform("C3-C5 velocity += 10\ntiming += 0.05", {
-        position: 0,
-        pitch: 72, // C4 within range
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform(
+        "C3-C5: velocity += 10\ntiming += 0.05",
+        {
+          position: 0,
+          pitch: 72, // C4 within range
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+      );
 
       expect(result.velocity!.value).toBe(10);
       expect(result.timing!.value).toBe(0.05);
     });
 
     it("updates pitch range when specified again", () => {
-      const modString = `C3-C5 velocity += 10
-G4-G5 velocity += 20`;
+      const modString = `C3-C5: velocity += 10
+G4-G5: velocity += 20`;
 
       const result1 = evaluateTransform(modString, {
         position: 0,
@@ -157,7 +160,7 @@ G4-G5 velocity += 20`;
 
   describe("time range filtering", () => {
     it("applies transform within time range", () => {
-      const result = evaluateTransform("1|1-2|1 velocity += 10", {
+      const result = evaluateTransform("1|1-2|1: velocity += 10", {
         position: 0,
         bar: 1,
         beat: 2,
@@ -168,7 +171,7 @@ G4-G5 velocity += 20`;
     });
 
     it("skips transform outside time range (before)", () => {
-      const result = evaluateTransform("2|1-3|1 velocity += 10", {
+      const result = evaluateTransform("2|1-3|1: velocity += 10", {
         position: 0,
         bar: 1,
         beat: 4,
@@ -179,7 +182,7 @@ G4-G5 velocity += 20`;
     });
 
     it("skips transform outside time range (after)", () => {
-      const result = evaluateTransform("1|1-2|1 velocity += 10", {
+      const result = evaluateTransform("1|1-2|1: velocity += 10", {
         position: 0,
         bar: 3,
         beat: 1,
@@ -190,7 +193,7 @@ G4-G5 velocity += 20`;
     });
 
     it("applies at range boundaries", () => {
-      const modString = "1|1-2|4 velocity += 10";
+      const modString = "1|1-2|4: velocity += 10";
 
       const atStart = evaluateTransform(modString, {
         position: 0,
@@ -214,7 +217,7 @@ G4-G5 velocity += 20`;
 
   describe("combined pitch and time filtering", () => {
     it("applies when both pitch and time match", () => {
-      const result = evaluateTransform("C3 1|1-2|1 velocity += 10", {
+      const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
         position: 0,
         pitch: 60,
         bar: 1,
@@ -226,7 +229,7 @@ G4-G5 velocity += 20`;
     });
 
     it("skips when pitch matches but time doesn't", () => {
-      const result = evaluateTransform("C3 1|1-2|1 velocity += 10", {
+      const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
         position: 0,
         pitch: 60,
         bar: 3,
@@ -238,7 +241,7 @@ G4-G5 velocity += 20`;
     });
 
     it("skips when time matches but pitch doesn't", () => {
-      const result = evaluateTransform("C3 1|1-2|1 velocity += 10", {
+      const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
         position: 0,
         pitch: 61,
         bar: 1,
@@ -438,7 +441,7 @@ G4-G5 velocity += 20`;
 
     it("uses variables with pitch filtering", () => {
       const result = evaluateTransform(
-        "C3 velocity = note.velocity / 2",
+        "C3: velocity = note.velocity / 2",
         {
           position: 0,
           pitch: 60,
@@ -452,7 +455,7 @@ G4-G5 velocity += 20`;
 
     it("uses variables with time range filtering", () => {
       const result = evaluateTransform(
-        "1|1-2|1 velocity = note.pitch",
+        "1|1-2|1: velocity = note.pitch",
         {
           position: 0,
           bar: 1,

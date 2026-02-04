@@ -118,7 +118,7 @@ describe("applyTransforms deviation parameter", () => {
       },
     ];
 
-    applyTransforms(notes, "C3 deviation = 30", 4, 4);
+    applyTransforms(notes, "C3: deviation = 30", 4, 4);
     expect(notes[0]!.velocity_deviation).toBe(30);
     expect(notes[1]!.velocity_deviation).toBe(10); // unchanged
   });

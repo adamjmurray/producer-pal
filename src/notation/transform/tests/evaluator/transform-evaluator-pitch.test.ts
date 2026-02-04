@@ -270,7 +270,7 @@ describe("applyTransforms - pitch transforms", () => {
         },
       ];
 
-      applyTransforms(notes, "C3 pitch += 12", 4, 4); // Only transpose C3 (60)
+      applyTransforms(notes, "C3: pitch += 12", 4, 4); // Only transpose C3 (60)
       expect(notes[0]!.pitch).toBe(72); // Was 60, now 72
       expect(notes[1]!.pitch).toBe(72); // Unchanged (wasn't in C3 range)
     });
@@ -293,7 +293,7 @@ describe("applyTransforms - pitch transforms", () => {
         },
       ];
 
-      applyTransforms(notes, "1|1-1|4 pitch += 12", 4, 4);
+      applyTransforms(notes, "1|1-1|4: pitch += 12", 4, 4);
       expect(notes[0]!.pitch).toBe(72); // In time range
       expect(notes[1]!.pitch).toBe(60); // Out of time range
     });

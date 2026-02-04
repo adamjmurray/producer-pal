@@ -146,9 +146,10 @@ C3 4|1                       // this C3 is NOT deleted (v80 still active)
 
 Apply dynamic transforms to clip properties. Add \`transforms\` parameter to create-clip or update-clip.
 
-**Syntax:** \`[pitch] [time] parameter operator expression\` (one per line)
-- **Pitch selector:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches, persists until changed
-- **Time selector:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
+**Syntax:** \`[selector:] parameter operator expression\` (one per line)
+- **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
+- **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
+- **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
 - **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
@@ -164,14 +165,14 @@ Apply dynamic transforms to clip properties. Add \`transforms\` parameter to cre
 **Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
 
 \`\`\`
-velocity += 20 * cos(2t)      // cycle every 2 beats
-timing += 0.05 * noise()      // humanize timing
-velocity += ramp(0, 60)       // fade in over clip
-C1-C2 velocity += 30          // accent bass notes
-1|1-2|4 velocity = 100        // forte in bars 1-2
-velocity = note.velocity / 2  // halve existing velocity
+velocity += 20 * cos(2t)       // cycle every 2 beats
+timing += 0.05 * noise()       // humanize timing
+velocity += ramp(0, 60)        // fade in over clip
+C1-C2: velocity += 30          // accent bass notes
+1|1-2|4: velocity = 100        // forte in bars 1-2
+velocity = note.velocity / 2   // halve existing velocity
 velocity = max(60, note.velocity) // ensure minimum velocity
-gain = audio.gain - 6         // reduce audio clip by 6 dB
+gain = audio.gain - 6          // reduce audio clip by 6 dB
 \`\`\`
 
 \`+=\` compounds on repeated calls; use \`=\` for idempotent values. To transform existing notes, use update-clip with just transforms.

@@ -408,7 +408,7 @@ probability += -0.2`;
         },
       ];
 
-      applyTransforms(notes, "C3 velocity += 20", 4, 4);
+      applyTransforms(notes, "C3: velocity += 20", 4, 4);
       expect(notes[0]!.velocity).toBe(120);
       expect(notes[1]!.velocity).toBe(100); // unchanged
     });
@@ -463,7 +463,7 @@ probability += -0.2`;
         }, // bar 3, beat 1
       ];
 
-      applyTransforms(notes, "1|1-2|4 velocity += 20", 4, 4);
+      applyTransforms(notes, "1|1-2|4: velocity += 20", 4, 4);
       expect(notes[0]!.velocity).toBe(120); // in range
       expect(notes[1]!.velocity).toBe(120); // in range
       expect(notes[2]!.velocity).toBe(100); // out of range

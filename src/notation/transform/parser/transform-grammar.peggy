@@ -23,8 +23,14 @@ start
     return assignments;
   }
 
+rangeSelector
+  = pitchRange:pitchRange _ timeRange:timeRange? { return { pitchRange, timeRange: timeRange ?? null }; }
+  / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
+
 assignment
-  = pitchRange:pitchRange? _ timeRange:timeRange? _ parameter:parameter _ operator:operator _ expression:expression {
+  = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
+    const pitchRange = ranges?.[0]?.pitchRange ?? null;
+    const timeRange = ranges?.[0]?.timeRange ?? null;
     return { pitchRange, timeRange, parameter, operator, expression };
   }
 

@@ -571,7 +571,7 @@ describe("ppal-clip-transforms (midi pitch)", () => {
     const clipId = await createMidiClip(15, "C3 1|1\nE3 1|2");
 
     // Only transpose C3 (pitch 60) up an octave
-    await applyTransform(clipId, "C3 pitch += 12");
+    await applyTransform(clipId, "C3: pitch += 12");
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("C4"); // C3 became C4
@@ -583,7 +583,7 @@ describe("ppal-clip-transforms (midi pitch)", () => {
     const clipId = await createMidiClip(16, "C3 1|1\nC3 1|3");
 
     // Only transpose notes in beats 1-2 (first note only)
-    await applyTransform(clipId, "1|1-1|2 pitch += 12");
+    await applyTransform(clipId, "1|1-1|2: pitch += 12");
     const notes = await readClipNotes(clipId);
 
     // Both should be present, but only first transposed to C4
