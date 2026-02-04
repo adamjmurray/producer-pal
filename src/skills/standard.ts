@@ -152,7 +152,8 @@ Apply dynamic transforms to clip properties. Add \`transforms\` parameter to cre
 - **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
-- **Expression:** arithmetic (+, -, *, /) with numbers, waveforms, and current values
+- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
+- **Math functions:** round(x), floor(x), abs(x), min(a,b,...), max(a,b,...)
 
 **Waveforms** output -1.0 to 1.0, evaluated at each note's position (or once for audio clips):
 - \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
@@ -169,6 +170,7 @@ velocity += ramp(0, 60)       // fade in over clip
 C1-C2 velocity += 30          // accent bass notes
 1|1-2|4 velocity = 100        // forte in bars 1-2
 velocity = note.velocity / 2  // halve existing velocity
+velocity = max(60, note.velocity) // ensure minimum velocity
 gain = audio.gain - 6         // reduce audio clip by 6 dB
 \`\`\`
 

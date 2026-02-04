@@ -134,7 +134,7 @@ export function applyAudioTransform(
 }
 
 type BinaryOpNode = {
-  type: "add" | "subtract" | "multiply" | "divide";
+  type: "add" | "subtract" | "multiply" | "divide" | "modulo";
   left: ExpressionNode;
   right: ExpressionNode;
 };
@@ -172,7 +172,8 @@ function evaluateAudioExpression(
     node.type === "add" ||
     node.type === "subtract" ||
     node.type === "multiply" ||
-    node.type === "divide"
+    node.type === "divide" ||
+    node.type === "modulo"
   ) {
     return evaluateBinaryOp(node, audioProperties);
   }
@@ -228,6 +229,10 @@ function evaluateBinaryOp(
       return left * right;
     case "divide":
       return right === 0 ? 0 : left / right;
+    case "modulo":
+      // Modulo by zero yields 0 (same as division)
+      // Use wraparound behavior: ((val % n) + n) % n
+      return right === 0 ? 0 : ((left % right) + right) % right;
   }
 }
 

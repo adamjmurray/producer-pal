@@ -106,6 +106,9 @@ multiplicative
   / left:primary _ "/" _ right:multiplicative {
     return { type: "divide", left, right };
   }
+  / left:primary _ "%" _ right:multiplicative {
+    return { type: "modulo", left, right };
+  }
   / primary
 
 primary
@@ -141,7 +144,12 @@ functionCall
   }
 
 functionName
-  = "cos" { return "cos"; }
+  = "round" { return "round"; }
+  / "floor" { return "floor"; }
+  / "abs" { return "abs"; }
+  / "min" { return "min"; }
+  / "max" { return "max"; }
+  / "cos" { return "cos"; }
   / "tri" { return "tri"; }
   / "saw" { return "saw"; }
   / "square" { return "square"; }

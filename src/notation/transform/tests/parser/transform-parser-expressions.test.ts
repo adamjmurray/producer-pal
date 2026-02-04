@@ -424,4 +424,128 @@ describe("Transform Parser - Expressions", () => {
       });
     });
   });
+
+  describe("math functions", () => {
+    it("parses round with single argument", () => {
+      const result = parser.parse("velocity += round(10.7)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "round",
+        args: [10.7],
+      });
+    });
+
+    it("parses floor with expression argument", () => {
+      const result = parser.parse("velocity += floor(note.velocity / 10)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "floor",
+        args: [
+          {
+            type: "divide",
+            left: { type: "variable", namespace: "note", name: "velocity" },
+            right: 10,
+          },
+        ],
+      });
+    });
+
+    it("parses abs with negative number", () => {
+      const result = parser.parse("velocity += abs(-5)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "abs",
+        args: [-5],
+      });
+    });
+
+    it("parses min with two arguments", () => {
+      const result = parser.parse("velocity = min(127, note.velocity)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "min",
+        args: [127, { type: "variable", namespace: "note", name: "velocity" }],
+      });
+    });
+
+    it("parses max with three arguments", () => {
+      const result = parser.parse("velocity = max(60, note.velocity, 100)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "max",
+        args: [
+          60,
+          { type: "variable", namespace: "note", name: "velocity" },
+          100,
+        ],
+      });
+    });
+
+    it("parses nested math functions", () => {
+      const result = parser.parse("velocity = abs(floor(note.velocity / 2))");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "abs",
+        args: [
+          {
+            type: "function",
+            name: "floor",
+            args: [
+              {
+                type: "divide",
+                left: { type: "variable", namespace: "note", name: "velocity" },
+                right: 2,
+              },
+            ],
+          },
+        ],
+      });
+    });
+  });
+
+  describe("modulo operator", () => {
+    it("parses basic modulo", () => {
+      const result = parser.parse("velocity += 10 % 3");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "modulo",
+        left: 10,
+        right: 3,
+      });
+    });
+
+    it("parses modulo with same precedence as multiply/divide", () => {
+      const result = parser.parse("velocity += 10 + 5 % 3");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "add",
+        left: 10,
+        right: {
+          type: "modulo",
+          left: 5,
+          right: 3,
+        },
+      });
+    });
+
+    it("parses chained modulo right-to-left", () => {
+      const result = parser.parse("velocity += 10 % 7 % 3");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "modulo",
+        left: 10,
+        right: {
+          type: "modulo",
+          left: 7,
+          right: 3,
+        },
+      });
+    });
+  });
 });

@@ -21,7 +21,7 @@ export interface VariableNode {
 
 /** Binary operation node */
 export interface BinaryOpNode {
-  type: "add" | "subtract" | "multiply" | "divide";
+  type: "add" | "subtract" | "multiply" | "divide" | "modulo";
   left: ExpressionNode;
   right: ExpressionNode;
 }

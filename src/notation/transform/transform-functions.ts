@@ -42,6 +42,34 @@ export function evaluateFunction(
     return waveforms.noise();
   }
 
+  // Math functions - single argument (round, floor, abs)
+  if (name === "round" || name === "floor" || name === "abs") {
+    return evaluateMathFunction(
+      name,
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
+  // Math functions - variadic (min, max)
+  if (name === "min" || name === "max") {
+    return evaluateMinMax(
+      name,
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
   // ramp() is special - it uses timeRange instead of period
   if (name === "ramp") {
     return evaluateRamp(
@@ -283,4 +311,91 @@ function parsePeriod(
   }
 
   return period;
+}
+
+/**
+ * Evaluate single-argument math function (round, floor, abs)
+ * @param name - Function name
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Math function result
+ */
+function evaluateMathFunction(
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length === 0) {
+    throw new Error(`Function ${name}() requires one argument`);
+  }
+
+  const value = evaluateExpression(
+    args[0] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
+
+  switch (name) {
+    case "round":
+      return Math.round(value);
+    case "floor":
+      return Math.floor(value);
+    case "abs":
+      return Math.abs(value);
+    default:
+      throw new Error(`Unknown math function: ${name}()`);
+  }
+}
+
+/**
+ * Evaluate min/max function (variadic - accepts 2+ arguments)
+ * @param name - Function name ("min" or "max")
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Min or max of all arguments
+ */
+function evaluateMinMax(
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length < 2) {
+    throw new Error(`Function ${name}() requires at least 2 arguments`);
+  }
+
+  const values = args.map((arg) =>
+    evaluateExpression(
+      arg,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+    ),
+  );
+
+  return name === "min" ? Math.min(...values) : Math.max(...values);
 }

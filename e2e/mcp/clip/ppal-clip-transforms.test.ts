@@ -593,6 +593,131 @@ describe("ppal-clip-transforms (midi pitch)", () => {
 });
 
 // =============================================================================
+// Math Functions and Modulo Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (math functions)", () => {
+  it("uses max() to ensure minimum velocity", async () => {
+    // Create clip with low velocity (v40)
+    const clipId = await createMidiClip(17, "v40 C3 1|1");
+
+    // max(60, 40) = 60 - enforces minimum
+    await applyTransform(clipId, "velocity = max(60, note.velocity)");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v60");
+
+    // Reset to high velocity (v90)
+    await applyTransform(clipId, "velocity = 90");
+
+    // max(60, 90) = 90 - keeps higher value
+    await applyTransform(clipId, "velocity = max(60, note.velocity)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v90");
+  });
+
+  it("uses min() to ensure maximum velocity", async () => {
+    // Create clip with high velocity (v120)
+    const clipId = await createMidiClip(18, "v120 C3 1|1");
+
+    // min(95, 120) = 95 - caps to maximum (use 95 since 100 is default and omitted)
+    await applyTransform(clipId, "velocity = min(95, note.velocity)");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v95");
+
+    // Reset to low velocity (v60)
+    await applyTransform(clipId, "velocity = 60");
+
+    // min(95, 60) = 60 - keeps lower value
+    await applyTransform(clipId, "velocity = min(95, note.velocity)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v60");
+  });
+
+  it("uses floor() to quantize velocity to steps", async () => {
+    // Create clip with v67
+    const clipId = await createMidiClip(19, "v67 C3 1|1");
+
+    // floor(67 / 10) * 10 = floor(6.7) * 10 = 6 * 10 = 60
+    await applyTransform(clipId, "velocity = floor(note.velocity / 10) * 10");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v60");
+  });
+
+  it("uses round() with expressions", async () => {
+    // Create clip with v67
+    const clipId = await createMidiClip(20, "v67 C3 1|1");
+
+    // round(67 / 10) * 10 = round(6.7) * 10 = 7 * 10 = 70
+    await applyTransform(clipId, "velocity = round(note.velocity / 10) * 10");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v70");
+  });
+
+  it("uses abs() with negative values", async () => {
+    // Create clip
+    const clipId = await createMidiClip(21, "v100 C3 1|1");
+
+    // abs(-50) = 50
+    await applyTransform(clipId, "velocity = abs(-50)");
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v50");
+  });
+
+  it("uses modulo for alternating patterns", async () => {
+    const { clipId } = await createAudioTrackWithClip("Modulo Pattern");
+
+    // 0 % 2 = 0, so gain = -6 * 0 = 0
+    await applyTransform(clipId, "gain = -6 * (0 % 2)");
+    expect(await readClipGain(clipId)).toBeCloseTo(0, 0);
+
+    // 1 % 2 = 1, so gain = -6 * 1 = -6
+    await applyTransform(clipId, "gain = -6 * (1 % 2)");
+    expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
+
+    // 2 % 2 = 0, so gain = -6 * 0 = 0
+    await applyTransform(clipId, "gain = -6 * (2 % 2)");
+    expect(await readClipGain(clipId)).toBeCloseTo(0, 0);
+  });
+
+  it("uses modulo with wraparound for negative numbers", async () => {
+    const { clipId } = await createAudioTrackWithClip("Modulo Wraparound");
+
+    // -1 % 4 = 3 (wraparound behavior)
+    // gain = -1 * 3 = -3
+    await applyTransform(clipId, "gain = -1 * (-1 % 4)");
+    expect(await readClipGain(clipId)).toBeCloseTo(-3, 0);
+
+    // 10 % 3 = 1
+    await applyTransform(clipId, "gain = 10 % 3");
+    expect(await readClipGain(clipId)).toBeCloseTo(1, 0);
+  });
+
+  it("combines math functions with other operations", async () => {
+    // Create clip with v75
+    const clipId = await createMidiClip(22, "v75 C3 1|1");
+
+    // max(60, min(100, 75)) = max(60, 75) = 75 (clamps both ways)
+    await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
+    let notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v75");
+
+    // Reset to v50
+    await applyTransform(clipId, "velocity = 50");
+
+    // max(60, min(100, 50)) = max(60, 50) = 60 (below floor)
+    await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v60");
+  });
+});
+
+// =============================================================================
 // Cross-Type Transform Tests
 // =============================================================================
 

@@ -3,12 +3,20 @@
 ## Function Signatures
 
 ```javascript
+// Waveforms
 cos(frequency, [phase]); // cosine wave
 tri(frequency, [phase]); // triangle wave
 saw(frequency, [phase]); // sawtooth wave
 square(frequency, [phase], [pulseWidth]); // square wave
 noise(); // random per note
 ramp(start, end, [speed]); // linear ramp over clip/time range
+
+// Math functions
+round(value); // round to nearest integer
+floor(value); // round down to integer
+abs(value); // absolute value
+min(a, b, ...); // minimum of 2+ values
+max(a, b, ...); // maximum of 2+ values
 ```
 
 ## Parameters
@@ -118,6 +126,8 @@ Functions can be combined using standard arithmetic operators:
 - Subtraction: `-`
 - Multiplication: `*`
 - Division: `/` (division by zero yields 0, not an error)
+- Modulo: `%` (uses wraparound behavior for negative numbers, modulo by zero
+  yields 0)
 
 Parentheses for grouping: `(expression)`
 
@@ -168,6 +178,28 @@ velocity += ramp(0, 127, 2);
 
 // Combine ramp with periodic modulation
 velocity += ramp(20, 100) + 10 * noise();
+```
+
+### Math Functions
+
+```javascript
+// Round to nearest semitone
+pitch += round(12 * noise());
+
+// Ensure minimum velocity
+velocity = max(60, note.velocity);
+
+// Quantize velocity to steps of 10
+velocity = floor(note.velocity / 10) * 10;
+
+// Absolute pitch distance from C3
+velocity = abs(note.pitch - 60) * 2;
+
+// Clamp velocity to range
+velocity = min(max(note.velocity, 40), 100);
+
+// Alternating pattern (every other beat)
+gain = -6 * (floor(note.start) % 2);
 ```
 
 ### Pitch Filtering

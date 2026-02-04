@@ -269,4 +269,56 @@ describe("Transform Evaluator Error Handling", () => {
       expect(typeof result).toBe("number");
     });
   });
+
+  describe("math function error handling", () => {
+    it("handles round with no arguments", () => {
+      const result = evaluateTransform("velocity = round()", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result).toStrictEqual({});
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    });
+
+    it("handles floor with no arguments", () => {
+      const result = evaluateTransform("velocity = floor()", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result).toStrictEqual({});
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    });
+
+    it("handles abs with no arguments", () => {
+      const result = evaluateTransform("velocity = abs()", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result).toStrictEqual({});
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    });
+
+    it("handles min with only one argument", () => {
+      const result = evaluateTransform("velocity = min(60)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result).toStrictEqual({});
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    });
+
+    it("handles max with only one argument", () => {
+      const result = evaluateTransform("velocity = max(60)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result).toStrictEqual({});
+      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+    });
+  });
 });
