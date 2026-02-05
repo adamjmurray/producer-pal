@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature Request
+    url: https://github.com/adamjmurray/producer-pal/discussions/categories/feature-requests
+    about:
+      Suggest new features or improvements (I maintain the roadmap, but I'm
+      happy to hear ideas)
+  - name: Question
+    url: https://github.com/adamjmurray/producer-pal/discussions/categories/questions
+    about: Ask for help or clarification

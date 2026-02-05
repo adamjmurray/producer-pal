@@ -135,7 +135,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the MIT License.",
+      message: "Released under the AGPL-3.0 License.",
       copyright:
         'Copyright © 2025-present <a href="https://adammurray.link">Adam Murray</a>',
     },

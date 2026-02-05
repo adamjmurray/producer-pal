@@ -71,13 +71,12 @@ After installation:
 
 ## Why Producer Pal?
 
-Producer Pal is **completely open source** (MIT license) and will remain **free
-forever**.
+Producer Pal is **completely open source** (AGPL-3.0 license) and will remain
+**free forever**.
 
 - No subscriptions or paywalls
 - All development happens publicly on GitHub
 - You can review the entire codebase before installing
-- Fork it, modify it, use it commercially. The permissive license gives you
-  complete freedom
+- Fork it, modify it, and share your changes with the community
 
 You own your tools. Producer Pal will never lock features behind a paywall.

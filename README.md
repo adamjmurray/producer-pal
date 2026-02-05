@@ -37,16 +37,13 @@ Star ⭐️ the repo to help others discover Producer Pal!
 
 Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
 
-## Open Source & Free Forever
+## Open Source
 
-Producer Pal is **completely open source** under the [MIT license](./LICENSE).
-This means:
+Producer Pal is open source software licensed under the
+[GNU Affero General Public License (AGPL-3.0)](./LICENSE). This means:
 
-- **Free forever** - No subscriptions, no paywalls, no "premium" features.
-- **Developed in the open** - All development happens publicly on GitHub. Review
-  the entire codebase before installing.
-- **Do whatever you want** - Fork it, modify it, use it commercially - the
-  permissive [MIT license](./LICENSE) gives you full freedom.
-
-**You own your tools.** Producer Pal will never lock features behind a paywall
-or change its licensing model.
+- Free to use (no subscriptions, paywalls, or “premium” features)
+- Source code is public and development happens on GitHub
+- Forks and modifications are allowed under AGPL
+- If you host a modified version (including SaaS), you must provide the source
+  to users

@@ -3,7 +3,6 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-
 import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 import { runAnthropic } from "./anthropic.ts";
