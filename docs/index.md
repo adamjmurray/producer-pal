@@ -37,7 +37,7 @@ features:
 
   - title: Open Source & Free Forever
     details:
-      AGPL-3.0 licensed and developed completely in the open. No subscriptions,
+      GPL-3.0 licensed and developed completely in the open. No subscriptions,
       no paywalls, no premium features.
 ---
 

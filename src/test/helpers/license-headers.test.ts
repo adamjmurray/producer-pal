@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..", "..");
+const rootDir = join(__dirname, "..", "..", "..");
 
 const SOURCE_DIRS = ["src", "webui/src", "evals", "e2e", "scripts", "config"];
 
@@ -19,7 +19,7 @@ const EXCLUDED_FILES = [
 ];
 
 const EXPECTED_HEADER_START = "// Producer Pal";
-const EXPECTED_SPDX = "// SPDX-License-Identifier: AGPL-3.0-or-later";
+const EXPECTED_SPDX = "// SPDX-License-Identifier: GPL-3.0-or-later";
 
 function getAllSourceFiles(dir: string, files: string[] = []): string[] {
   let entries: string[];
@@ -126,7 +126,7 @@ describe("License headers", () => {
           `  // Producer Pal\n` +
           `  // Copyright (C) <year> <author>\n` +
           `  // AI assistance: <AI tool> (<company>)  (if AI-assisted)\n` +
-          `  // SPDX-License-Identifier: AGPL-3.0-or-later`,
+          `  // SPDX-License-Identifier: GPL-3.0-or-later`,
       );
     }
 

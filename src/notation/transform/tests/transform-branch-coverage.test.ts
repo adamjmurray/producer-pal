@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
