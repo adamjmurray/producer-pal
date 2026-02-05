@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Utilities for converting between Ableton Live's normalized gain parameter (0-1)
  * and decibel (dB) values.

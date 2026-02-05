@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Type declarations for Max for Live's LiveAPI class and custom extensions.
  * LiveAPI is a global class available in the Max for Live V8 JavaScript environment.

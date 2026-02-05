@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";

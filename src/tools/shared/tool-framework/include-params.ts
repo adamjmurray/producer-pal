@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // String constants for include options
 const DRUM_PADS = "drum-pads";
 const DRUM_MAPS = "drum-maps";

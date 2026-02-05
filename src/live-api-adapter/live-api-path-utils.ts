@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Parse an ID or path value to a path string for LiveAPI constructor
  * @param idOrPath - ID number/string, path string, or ["id", "123"] array

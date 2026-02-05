@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiCall, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {

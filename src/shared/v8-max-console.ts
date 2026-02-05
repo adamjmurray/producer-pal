@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
 // Note: this is for Max v8 runtime only, meaning is can be used with src/live-api-adapter and src/tools code.
 // There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code

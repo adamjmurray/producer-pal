@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Type declarations for Rollup/Vite virtual modules.
  * These are generated at build time and don't exist as real files.

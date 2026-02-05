@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";

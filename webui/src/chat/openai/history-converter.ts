@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Converters between OpenAI Chat Completions and Responses API conversation formats.
  * Useful for migrating saved chat history between API formats.

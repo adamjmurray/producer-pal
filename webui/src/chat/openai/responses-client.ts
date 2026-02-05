@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Client for OpenAI Responses API with MCP tool support.
  * Uses the newer responses.create() API that supports Codex models.

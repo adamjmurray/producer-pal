@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { updateDrumPadSoloStates } from "./device-reader-drum-helpers.ts";

@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Converts object to compact JavaScript literal syntax with unquoted keys
  * - Unquoted keys (where valid JS identifiers)

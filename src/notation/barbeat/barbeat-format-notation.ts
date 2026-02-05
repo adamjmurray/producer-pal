@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import type { NoteEvent } from "../types.ts";
 import {

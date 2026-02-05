@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Provider } from "#webui/types/settings";
 import { RandomnessSlider } from "./controls/RandomnessSlider";
 import { ThinkingSettings } from "./controls/ThinkingSettings";

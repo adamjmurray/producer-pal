@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Interface } from "node:readline";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { ReasoningEffort } from "openai/resources/shared";

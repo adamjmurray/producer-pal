@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";

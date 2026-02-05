@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { readFile } from "node:fs/promises";
 import type { Interface } from "node:readline";
 import { isExitCommand, question } from "./readline.ts";

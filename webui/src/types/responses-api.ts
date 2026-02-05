@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Types for OpenAI Responses API
  * Used by ResponsesClient for conversation with OpenAI's newer API format
