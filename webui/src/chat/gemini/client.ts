@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai/web";
 import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";

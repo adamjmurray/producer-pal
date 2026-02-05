@@ -58,7 +58,7 @@ See `dev-docs/Architecture.md` for detailed system design and
   ```typescript
   // Producer Pal
   // Copyright (C) <year> <author>
-  // SPDX-License-Identifier: AGPL-3.0-or-later
+  // SPDX-License-Identifier: GPL-3.0-or-later
   ```
 
   List all authors who contributed to the file. New files should include the

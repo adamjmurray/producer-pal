@@ -71,7 +71,7 @@ After installation:
 
 ## Why Producer Pal?
 
-Producer Pal is **completely open source** (AGPL-3.0 license) and will remain
+Producer Pal is **completely open source** (GPL-3.0 license) and will remain
 **free forever**.
 
 - No subscriptions or paywalls
