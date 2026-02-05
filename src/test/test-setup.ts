@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions.ts";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";

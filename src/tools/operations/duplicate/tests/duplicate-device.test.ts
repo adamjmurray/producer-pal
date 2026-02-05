@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {

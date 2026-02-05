@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Smoke tests for update-clip splitting integration.
  * Comprehensive splitting tests are in arrangement-splitting.test.ts

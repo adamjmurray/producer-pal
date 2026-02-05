@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Extract error message from an unknown caught error.
  * In strict mode, caught errors are typed as `unknown`.

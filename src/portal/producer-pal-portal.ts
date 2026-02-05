@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";

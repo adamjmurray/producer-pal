@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { readdirSync, statSync } from "node:fs";
 import { join, basename, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

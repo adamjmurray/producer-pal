@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Shared mock setup for duplicate tests
 // This file is referenced in each test file's vi.mock() calls
 import { vi } from "vitest";

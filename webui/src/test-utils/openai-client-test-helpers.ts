@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { vi } from "vitest";
 import type { OpenAIClient } from "#webui/chat/openai/client";

@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Message chunking constants
 export const MAX_ERROR_DELIMITER = "$$___MAX_ERRORS___$$";
 export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit

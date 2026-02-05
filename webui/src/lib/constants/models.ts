@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Model presets for each provider.
  * Convention: First item in each list is the default model for that provider.

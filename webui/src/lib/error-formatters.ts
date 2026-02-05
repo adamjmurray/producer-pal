@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Normalizes an error into a string message with "Error:" prefix
  * @param {unknown} error - Error object or message

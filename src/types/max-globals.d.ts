@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Type declarations for Max/MSP V8 JavaScript environment globals.
  * These are available in the Max for Live runtime but not in Node.js.

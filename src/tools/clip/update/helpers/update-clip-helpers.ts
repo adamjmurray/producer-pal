@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";

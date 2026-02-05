@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import { readParameter, readParameterBasic } from "./device-display-helpers.ts";
 import { processDrumPads } from "./device-reader-drum-helpers.ts";

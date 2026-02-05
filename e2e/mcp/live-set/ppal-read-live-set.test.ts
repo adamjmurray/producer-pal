@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * E2E tests for ppal-read-live-set tool
  * Uses: e2e-test-set (12 tracks + 2 returns, 8 scenes)

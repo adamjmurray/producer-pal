@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 

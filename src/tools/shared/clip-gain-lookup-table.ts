@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Lookup table from Ableton Live clip gain (529 samples)
 // Extended 2026-02-03 with low-range samples (-69.7 to -65.7 dB)
 // One entry per line for better diff-ability and reduced line count

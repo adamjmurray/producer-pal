@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";

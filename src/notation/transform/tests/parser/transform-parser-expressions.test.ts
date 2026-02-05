@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it } from "vitest";
 import type { FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";

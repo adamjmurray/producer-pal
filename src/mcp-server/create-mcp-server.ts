@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/version.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";

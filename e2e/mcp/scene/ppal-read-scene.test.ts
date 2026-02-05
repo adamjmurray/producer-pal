@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * E2E tests for ppal-read-scene tool
  * Uses: e2e-test-set (8 scenes with various tempo/time sig overrides)
