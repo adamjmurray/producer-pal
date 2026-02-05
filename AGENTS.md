@@ -52,6 +52,20 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 ## Critical Coding Rules
 
+- **License headers**: All source files must have an SPDX license header at the
+  top (after any shebang). Format:
+
+  ```typescript
+  // Producer Pal
+  // Copyright (C) <year> <author>
+  // AI assistance: <AI tool> (<company>)
+  // SPDX-License-Identifier: AGPL-3.0-or-later
+  ```
+
+  List all authors who contributed to the file. New files should include the
+  current year and the contributor's name. When AI tools modify a file, add the
+  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`).
+
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
 

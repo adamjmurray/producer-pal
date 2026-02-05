@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * E2E tests for ppal-update-clip splitting functionality.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)

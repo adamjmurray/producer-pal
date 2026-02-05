@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { GeminiClientConfig } from "#webui/chat/gemini/client";
 import type { OpenAIClientConfig } from "#webui/chat/openai/client";
 import type { ResponsesClientConfig } from "#webui/chat/openai/responses-client";

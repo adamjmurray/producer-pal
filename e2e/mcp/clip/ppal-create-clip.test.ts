@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * E2E tests for ppal-create-clip tool
  * Creates MIDI and audio clips in session and arrangement views.

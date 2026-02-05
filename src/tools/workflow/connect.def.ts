@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefConnect = defineTool("ppal-connect", {

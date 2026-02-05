@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Outputs coverage and duplication thresholds from config files.
  * Used by GitHub Actions to populate summary tables.

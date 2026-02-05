@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import * as console from "#src/shared/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";

@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
 import {

@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * OpenAI-compatible LLM judge for evaluations
  * Supports both OpenAI and OpenRouter providers

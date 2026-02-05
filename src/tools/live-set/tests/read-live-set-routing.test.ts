@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it } from "vitest";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";

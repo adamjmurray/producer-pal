@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * ES2023 "change array by copy" polyfills for Max v8 object.
  * Max v8 supports ES2022 + partial ES2023 but lacks these methods.

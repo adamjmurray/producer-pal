@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ChatOptions } from "../shared/types.ts";
 import { runOpenRouterChat } from "./chat.ts";
 import { runOpenRouterResponses } from "./responses.ts";

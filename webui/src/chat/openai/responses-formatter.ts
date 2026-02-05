@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Formatter for OpenAI Responses API conversation items.
  * Converts Responses API format to UI-friendly UIMessage format.
