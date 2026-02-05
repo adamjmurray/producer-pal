@@ -1,3 +1,8 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Protocol handler for code execution multi-step communication.
  * Manages the Node-V8 back-and-forth for sandboxed code execution.

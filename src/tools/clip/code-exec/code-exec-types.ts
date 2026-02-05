@@ -1,3 +1,8 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Type definitions for code execution feature.
  * These types are shared between Node (MCP server) and V8 (Live API adapter).
