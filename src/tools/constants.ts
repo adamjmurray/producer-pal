@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
 export const MAX_CLIP_BEATS = 1_000_000;

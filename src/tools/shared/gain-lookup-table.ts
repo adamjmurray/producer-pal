@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Auto-generated lookup table from Ableton Live (513 samples)
 // Collected: 2025-11-18T16:38:45.776Z
 // One entry per line for better diff-ability and reduced line count

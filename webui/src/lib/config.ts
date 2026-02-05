@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export const SYSTEM_INSTRUCTION = `You are an AI music composition assistant for Ableton Live.
 Help users create, edit, and arrange music using the Producer Pal tools.
 You can read and modify tracks, clips, scenes, and MIDI notes.

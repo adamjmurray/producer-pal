@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 const PPAL_CONNECT = "ppal-connect";
 const PPAL_READ_LIVE_SET = "ppal-read-live-set";
 

@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Extract simplified path from Live API canonical path
  * @param liveApiPath - e.g., "live_set tracks 1 devices 0 chains 2"

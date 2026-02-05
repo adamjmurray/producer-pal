@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * E2E tests for ppal-read-track tool
  * Uses: e2e-test-set (12 tracks: t0-t3 MIDI, t4-t6 Audio, t7-t8 MIDI, t9 Group, t10-t11 MIDI)

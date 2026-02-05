@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateModulation } from "#src/notation/modulation/modulation-evaluator.ts";
 import { evaluateModulationAST } from "#src/notation/modulation/modulation-evaluator-helpers.ts";

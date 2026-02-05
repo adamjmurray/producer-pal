@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState, useCallback } from "preact/hooks";
 import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
 import type { Provider } from "#webui/types/settings";

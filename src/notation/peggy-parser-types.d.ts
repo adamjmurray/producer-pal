@@ -1,3 +1,7 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Shared type declarations for peggy-generated parsers.
  * Import these in parser-specific .d.ts files.
