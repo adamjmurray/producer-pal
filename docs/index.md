@@ -37,9 +37,8 @@ features:
 
   - title: Open Source & Free Forever
     details:
-      MIT licensed and developed completely in the open. No subscriptions, no
-      paywalls, no premium features. Fork it, modify it, use it however you
-      want.
+      AGPL-3.0 licensed and developed completely in the open. No subscriptions,
+      no paywalls, no premium features.
 ---
 
 <div class="get-started-wrapper">
