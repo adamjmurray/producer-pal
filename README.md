@@ -40,10 +40,9 @@ Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
 ## Open Source
 
 Producer Pal is open source software licensed under the
-[GNU Affero General Public License (AGPL-3.0)](./LICENSE). This means:
+[GNU General Public License (GPL-3.0)](./LICENSE). This means:
 
-- Free to use (no subscriptions, paywalls, or “premium” features)
+- Free to use (no subscriptions, paywalls, or "premium" features)
 - Source code is public and development happens on GitHub
-- Forks and modifications are allowed under AGPL
-- If you host a modified version (including SaaS), you must provide the source
-  to users
+- Forks and modifications are allowed under GPL
+- Redistributed versions (modified or not) must remain open source

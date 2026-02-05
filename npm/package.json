@@ -20,7 +20,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "license": "AGPL-3.0",
+  "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/adamjmurray/producer-pal"

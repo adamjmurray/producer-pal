@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";

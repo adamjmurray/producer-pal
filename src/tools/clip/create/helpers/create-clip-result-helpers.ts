@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
