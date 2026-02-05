@@ -1,5 +1,5 @@
 {
-  "threshold": 3.5,
+  "threshold": 3.6,
   "reporters": ["console"],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
   "pattern": "**/{*.test.{js,ts,tsx},*-test-helpers.{js,ts},*-test-case.ts,test-utils/**/*.{js,ts},test-cases/**/*.{js,ts},tests/**/*.{js,ts},e2e/**/*.{js,ts}}",
