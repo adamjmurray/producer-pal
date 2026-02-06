@@ -59,7 +59,7 @@ Max.addHandler("timeoutMs", (input: unknown) => {
  */
 function callLiveApi(tool: string, args: object): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
-  const contextJSON = JSON.stringify({ silenceWavPath });
+  const contextJSON = JSON.stringify({ silenceWavPath, timeoutMs });
   const requestId = crypto.randomUUID();
 
   console.info(

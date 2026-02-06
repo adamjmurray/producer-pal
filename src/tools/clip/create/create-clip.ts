@@ -14,6 +14,10 @@ import {
   getClipNoteCount,
 } from "#src/tools/clip/code-exec/code-exec-helpers.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  computeLoopDeadline,
+  isDeadlineExceeded,
+} from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
   parseTimeSignature,
@@ -119,6 +123,8 @@ export async function createClip(
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
+  const deadline = computeLoopDeadline(_context.timeoutMs);
+
   // Parse position lists
   const sceneIndices = parseSceneIndexList(sceneIndex);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
@@ -207,11 +213,12 @@ export async function createClip(
     songTimeSigDenominator,
     length,
     sampleFile,
+    deadline,
   );
 
   // Apply code execution to created clips if code param provided
   if (code != null) {
-    await applyCodeToCreatedClips(createdClips, code);
+    await applyCodeToCreatedClips(createdClips, code, deadline);
   }
 
   // Handle automatic playback and view switching
@@ -229,13 +236,22 @@ export async function createClip(
  *
  * @param clipResults - Array of created clip result objects
  * @param code - User-provided JavaScript code body
+ * @param deadline - Absolute deadline timestamp, or null if no deadline
  */
 async function applyCodeToCreatedClips(
   clipResults: object[],
   code: string,
+  deadline: number | null,
 ): Promise<void> {
-  for (const result of clipResults) {
-    const clipResult = result as { id?: string; noteCount?: number };
+  for (let i = 0; i < clipResults.length; i++) {
+    if (isDeadlineExceeded(deadline)) {
+      console.warn(
+        `Deadline exceeded after applying code to ${i} of ${clipResults.length} clips`,
+      );
+      break;
+    }
+
+    const clipResult = clipResults[i] as { id?: string; noteCount?: number };
     const clipId = clipResult.id;
 
     if (clipId == null) {
@@ -290,6 +306,7 @@ async function applyCodeToCreatedClips(
  * @param songTimeSigDenominator - Song time signature denominator
  * @param length - Original length parameter
  * @param sampleFile - Audio file path
+ * @param deadline - Absolute deadline timestamp, or null if no deadline
  * @returns Array of created clips
  */
 function createClips(
@@ -313,6 +330,7 @@ function createClips(
   songTimeSigDenominator: number,
   length: string | null,
   sampleFile: string | null,
+  deadline: number | null,
 ): object[] {
   const createdClips: object[] = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
@@ -320,6 +338,13 @@ function createClips(
   const clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
+    if (isDeadlineExceeded(deadline)) {
+      console.warn(
+        `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
+      );
+      break;
+    }
+
     const clipName = buildClipName(name, count, i);
 
     // Get position for this iteration

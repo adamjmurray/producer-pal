@@ -15,6 +15,10 @@ import {
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
+  computeLoopDeadline,
+  isDeadlineExceeded,
+} from "#src/tools/clip/helpers/loop-deadline.ts";
+import {
   prepareSplitParams,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
@@ -127,6 +131,8 @@ export async function updateClip(
   }: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
+  const deadline = computeLoopDeadline(context.timeoutMs);
+
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
   }
@@ -164,6 +170,13 @@ export async function updateClip(
   const tracksWithMovedClips = new Map<number, number>();
 
   for (const clip of mutableClips) {
+    if (isDeadlineExceeded(deadline)) {
+      console.warn(
+        `Deadline exceeded after updating ${updatedClips.length} of ${mutableClips.length} clips`,
+      );
+      break;
+    }
+
     processSingleClipUpdate({
       clip,
       notationString,
@@ -200,7 +213,7 @@ export async function updateClip(
 
   // Apply code execution as final step (after notes, transforms, arrangement ops)
   if (code != null) {
-    await applyCodeToUpdatedClips(updatedClips, code);
+    await applyCodeToUpdatedClips(updatedClips, code, deadline);
   }
 
   return unwrapSingleResult(updatedClips);
@@ -212,12 +225,22 @@ export async function updateClip(
  *
  * @param updatedClips - Array of clip results with final IDs
  * @param code - User-provided JavaScript code body
+ * @param deadline - Absolute deadline timestamp, or null if no deadline
  */
 async function applyCodeToUpdatedClips(
   updatedClips: ClipResult[],
   code: string,
+  deadline: number | null,
 ): Promise<void> {
-  for (const clipResult of updatedClips) {
+  for (let i = 0; i < updatedClips.length; i++) {
+    if (isDeadlineExceeded(deadline)) {
+      console.warn(
+        `Deadline exceeded after applying code to ${i} of ${updatedClips.length} clips`,
+      );
+      break;
+    }
+
+    const clipResult = updatedClips[i] as ClipResult;
     const clip = LiveAPI.from(["id", clipResult.id]);
 
     if (!clip.exists()) {
