@@ -3,13 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import {
-  applyNotesToClip,
-  getClipLocationInfo,
-  getClipNoteCount,
-} from "#src/tools/clip/code-exec/code-exec-helpers.ts";
+import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import {
   validateAndParseArrangementParams,
   emitArrangementWarnings,
@@ -177,6 +172,8 @@ export async function updateClip(
       break;
     }
 
+    const prevLen = updatedClips.length;
+
     processSingleClipUpdate({
       clip,
       notationString,
@@ -207,64 +204,21 @@ export async function updateClip(
       updatedClips,
       tracksWithMovedClips,
     });
+
+    // Apply code to each newly added clip result
+    if (code != null) {
+      for (let j = prevLen; j < updatedClips.length; j++) {
+        const clipResult = updatedClips[j] as ClipResult;
+        const noteCount = await applyCodeToSingleClip(clipResult.id, code);
+
+        if (noteCount != null) {
+          clipResult.noteCount = noteCount;
+        }
+      }
+    }
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
-  // Apply code execution as final step (after notes, transforms, arrangement ops)
-  if (code != null) {
-    await applyCodeToUpdatedClips(updatedClips, code, deadline);
-  }
-
   return unwrapSingleResult(updatedClips);
-}
-
-/**
- * Apply code execution to already-updated clips as a post-processing step.
- * Runs after all other updates (notes, transforms, arrangement ops).
- *
- * @param updatedClips - Array of clip results with final IDs
- * @param code - User-provided JavaScript code body
- * @param deadline - Absolute deadline timestamp, or null if no deadline
- */
-async function applyCodeToUpdatedClips(
-  updatedClips: ClipResult[],
-  code: string,
-  deadline: number | null,
-): Promise<void> {
-  for (let i = 0; i < updatedClips.length; i++) {
-    if (isDeadlineExceeded(deadline)) {
-      console.warn(
-        `Deadline exceeded, code not applied to ${updatedClips.length - i} of ${updatedClips.length} clips`,
-      );
-      break;
-    }
-
-    // Cast safe: loop bounds guarantee valid index
-    const clipResult = updatedClips[i] as ClipResult;
-    const clip = LiveAPI.from(["id", clipResult.id]);
-
-    if (!clip.exists()) {
-      continue;
-    }
-
-    const location = getClipLocationInfo(clip);
-    const result = await executeNoteCode(
-      clip,
-      code,
-      location.view,
-      location.sceneIndex,
-      location.arrangementStartBeats,
-    );
-
-    if (result.success) {
-      applyNotesToClip(clip, result.notes);
-    } else {
-      console.warn(
-        `Code execution failed for clip ${clipResult.id}: ${result.error}`,
-      );
-    }
-
-    clipResult.noteCount = getClipNoteCount(clip);
-  }
 }

@@ -2,17 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import {
-  applyNotesToClip,
-  getClipLocationInfo,
-  getClipNoteCount,
-} from "#src/tools/clip/code-exec/code-exec-helpers.ts";
+import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
   computeLoopDeadline,
@@ -191,8 +186,8 @@ export async function createClip(
     timeSigDenominator,
   );
 
-  // Create clips
-  const createdClips = createClips(
+  // Create clips (and apply code to each clip inline)
+  const createdClips = await createClips(
     view,
     trackIndex,
     sceneIndices,
@@ -214,12 +209,8 @@ export async function createClip(
     length,
     sampleFile,
     deadline,
+    code,
   );
-
-  // Apply code execution to created clips if code param provided
-  if (code != null) {
-    await applyCodeToCreatedClips(createdClips, code, deadline);
-  }
 
   // Handle automatic playback and view switching
   handleAutoPlayback(auto, view, sceneIndices, trackIndex);
@@ -229,59 +220,6 @@ export async function createClip(
   }
 
   return unwrapSingleResult(createdClips);
-}
-
-/**
- * Apply code-generated notes to newly created clips
- *
- * @param clipResults - Array of created clip result objects
- * @param code - User-provided JavaScript code body
- * @param deadline - Absolute deadline timestamp, or null if no deadline
- */
-async function applyCodeToCreatedClips(
-  clipResults: object[],
-  code: string,
-  deadline: number | null,
-): Promise<void> {
-  for (let i = 0; i < clipResults.length; i++) {
-    if (isDeadlineExceeded(deadline)) {
-      console.warn(
-        `Deadline exceeded, code not applied to ${clipResults.length - i} of ${clipResults.length} clips`,
-      );
-      break;
-    }
-
-    const clipResult = clipResults[i] as { id?: string; noteCount?: number };
-    const clipId = clipResult.id;
-
-    if (clipId == null) {
-      continue;
-    }
-
-    const clip = LiveAPI.from(["id", clipId]);
-
-    if (!clip.exists()) {
-      continue;
-    }
-
-    const location = getClipLocationInfo(clip);
-    const codeResult = await executeNoteCode(
-      clip,
-      code,
-      location.view,
-      location.sceneIndex,
-      location.arrangementStartBeats,
-    );
-
-    if (codeResult.success) {
-      applyNotesToClip(clip, codeResult.notes);
-      clipResult.noteCount = getClipNoteCount(clip);
-    } else {
-      console.warn(
-        `Code execution failed for clip ${clipId}: ${codeResult.error}`,
-      );
-    }
-  }
 }
 
 /**
@@ -307,9 +245,10 @@ async function applyCodeToCreatedClips(
  * @param length - Original length parameter
  * @param sampleFile - Audio file path
  * @param deadline - Absolute deadline timestamp, or null if no deadline
+ * @param code - JavaScript code to generate notes, or null
  * @returns Array of created clips
  */
-function createClips(
+async function createClips(
   view: string,
   trackIndex: number,
   sceneIndices: number[],
@@ -331,7 +270,8 @@ function createClips(
   length: string | null,
   sampleFile: string | null,
   deadline: number | null,
-): object[] {
+  code: string | null,
+): Promise<object[]> {
   const createdClips: object[] = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
   const count = positions.length;
@@ -387,6 +327,17 @@ function createClips(
       );
 
       createdClips.push(clipResult);
+
+      // Apply code execution to the newly created clip
+      const clipId = code != null ? (clipResult as { id?: string }).id : null;
+
+      if (clipId != null && code != null) {
+        const noteCount = await applyCodeToSingleClip(clipId, code);
+
+        if (noteCount != null) {
+          (clipResult as { noteCount?: number }).noteCount = noteCount;
+        }
+      }
     } catch (error) {
       // Emit warning with position info
       const position =
