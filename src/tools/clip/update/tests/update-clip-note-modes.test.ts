@@ -43,10 +43,10 @@ describe("updateClip - Note update modes", () => {
     setupMocks();
   });
 
-  it("should filter out v0 notes when updating clips", () => {
+  it("should filter out v0 notes when updating clips", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
       noteUpdateMode: "replace",
@@ -80,10 +80,10 @@ describe("updateClip - Note update modes", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
-  it("should handle clips with all v0 notes filtered out during update", () => {
+  it("should handle clips with all v0 notes filtered out during update", async () => {
     setupMidiClipMock("123");
 
-    updateClip({
+    await updateClip({
       ids: "123",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
       noteUpdateMode: "replace",
@@ -103,10 +103,10 @@ describe("updateClip - Note update modes", () => {
     );
   });
 
-  it("should replace notes when noteUpdateMode is 'replace'", () => {
+  it("should replace notes when noteUpdateMode is 'replace'", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "C3 1|1",
       noteUpdateMode: "replace",
@@ -117,7 +117,7 @@ describe("updateClip - Note update modes", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
-  it("should add to existing notes when noteUpdateMode is 'merge'", () => {
+  it("should add to existing notes when noteUpdateMode is 'merge'", async () => {
     setupMidiClipMock("123");
 
     // Mock empty existing notes, then return added notes on subsequent calls
@@ -140,7 +140,7 @@ describe("updateClip - Note update modes", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "C3 1|1",
       noteUpdateMode: "merge",
@@ -151,7 +151,7 @@ describe("updateClip - Note update modes", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
-  it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
+  it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", async () => {
     setupMidiClipMock("123");
 
     // Mock empty existing notes
@@ -165,7 +165,7 @@ describe("updateClip - Note update modes", () => {
       return {};
     });
 
-    updateClip({
+    await updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // All notes filtered out
       noteUpdateMode: "merge",
@@ -185,7 +185,7 @@ describe("updateClip - Note update modes", () => {
     );
   });
 
-  it("should apply transforms to existing notes without notes param", () => {
+  it("should apply transforms to existing notes without notes param", async () => {
     setupMidiClipMock("123");
 
     // Seed the mock with pre-existing notes in Live API format (with extra properties)
@@ -236,7 +236,7 @@ describe("updateClip - Note update modes", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       transforms: "velocity = 50",
       // No notes param, no noteUpdateMode

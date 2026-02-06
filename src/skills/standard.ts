@@ -2,6 +2,38 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+const codeTransformsSkills = `
+
+### Code Transforms
+
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. The \`code\` value is the function body only. It runs as:
+\`(function(notes, context) { <code> })(notes, context)\`
+
+Example \`code\` value:
+\`\`\`javascript
+return notes.filter(n => n.pitch >= 60).map(n => ({
+  ...n,
+  velocity: Math.min(127, n.velocity + 20)
+}));
+\`\`\`
+
+**Note properties (required: pitch, start):**
+- \`pitch\`: 0-127 (60 = C3)
+- \`start\`: beats from clip start
+- \`duration\`: beats (default: 1)
+- \`velocity\`: 1-127 (default: 100)
+- \`velocityDeviation\`: 0-127 (default: 0)
+- \`probability\`: 0-1 (default: 1)
+
+**Context properties:**
+- \`track\`: { index, name, type, color }
+- \`clip\`: { id, name, length, timeSignature, looping }
+- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`liveSet\`: { tempo, scale?, timeSignature }
+- \`beatsPerBar\`: number
+
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
+
 export const skills = `# Producer Pal Skills
 
 You can now compose music in Ableton Live using Producer Pal tools and the bar|beat notation system.
@@ -181,7 +213,7 @@ gain = audio.gain - 6          // reduce audio clip by 6 dB
 
 \`+=\` compounds on repeated calls; use \`=\` for idempotent values. To transform existing notes, use update-clip with just transforms.
 Cross-type parameters ignored (MIDI params on audio clips, audio params on MIDI clips).
-
+${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Working with Ableton Live
 
 **Views and Playback:**

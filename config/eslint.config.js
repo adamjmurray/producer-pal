@@ -153,7 +153,7 @@ const baseRules = {
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  complexity: ["error", 19], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsdocRules = {

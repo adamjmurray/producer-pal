@@ -21,14 +21,16 @@ describe("updateClip - Basic operations", () => {
     setupMocks();
   });
 
-  it("should throw error when ids is missing", () => {
-    expect(() => updateClip({})).toThrow("updateClip failed: ids is required");
-    expect(() => updateClip({ name: "Test" })).toThrow(
+  it("should throw error when ids is missing", async () => {
+    await expect(updateClip({})).rejects.toThrow(
+      "updateClip failed: ids is required",
+    );
+    await expect(updateClip({ name: "Test" })).rejects.toThrow(
       "updateClip failed: ids is required",
     );
   });
 
-  it("should default to merge mode when noteUpdateMode not provided", () => {
+  it("should default to merge mode when noteUpdateMode not provided", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -64,7 +66,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Should default to merge mode when noteUpdateMode not specified
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "D3 1|2",
     });
@@ -82,10 +84,10 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
   });
 
-  it("should log warning when clip ID doesn't exist", () => {
+  it("should log warning when clip ID doesn't exist", async () => {
     liveApiId.mockReturnValue("id 0");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "nonexistent",
       notes: "1|1 60",
       noteUpdateMode: "replace",
@@ -98,10 +100,10 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
-  it("should update a single session clip by ID", () => {
+  it("should update a single session clip by ID", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       name: "Updated Clip",
       color: "#FF0000",
@@ -127,7 +129,7 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should update a single arrangement clip by ID", () => {
+  it("should update a single arrangement clip by ID", async () => {
     mockLiveApiGet({
       789: {
         is_arrangement_clip: 1,
@@ -138,7 +140,7 @@ describe("updateClip - Basic operations", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       name: "Arrangement Clip",
       start: "1|3", // 2 beats = bar 1 beat 3 in 4/4
@@ -164,7 +166,7 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "789" });
   });
 
-  it("should switch to Arranger view when updating arrangement clips", () => {
+  it("should switch to Arranger view when updating arrangement clips", async () => {
     mockLiveApiGet({
       999: {
         is_arrangement_clip: 1,
@@ -175,7 +177,7 @@ describe("updateClip - Basic operations", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "999",
       name: "Test Arrangement Clip",
     });
@@ -184,7 +186,7 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "999" });
   });
 
-  it("should update multiple clips by comma-separated IDs", () => {
+  it("should update multiple clips by comma-separated IDs", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -196,7 +198,7 @@ describe("updateClip - Basic operations", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123, 456",
       color: "#00FF00",
       looping: false,
@@ -237,10 +239,10 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
-  it("should update time signature when provided", () => {
+  it("should update time signature when provided", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       timeSignature: "6/8",
     });
@@ -258,10 +260,10 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
+  it("should replace existing notes with real bar|beat parsing in 4/4 time", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "v80 t2 C4 1|1 v120 t1 D4 1|3",
       noteUpdateMode: "replace",
@@ -289,10 +291,10 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
-  it("should parse notes using provided time signature with real bar|beat parsing", () => {
+  it("should parse notes using provided time signature with real bar|beat parsing", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       timeSignature: "6/8",
       notes: "C3 1|1 D3 2|1",
@@ -324,13 +326,13 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
-  it("should parse notes using clip's current time signature when timeSignature not provided", () => {
+  it("should parse notes using clip's current time signature when timeSignature not provided", async () => {
     setupMidiClipMock("123", {
       signature_numerator: 3,
       signature_denominator: 4,
     }); // 3/4 time
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
       noteUpdateMode: "replace",
@@ -350,10 +352,10 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
-  it("should handle complex drum pattern with real bar|beat parsing", () => {
+  it("should handle complex drum pattern with real bar|beat parsing", async () => {
     setupMidiClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes:
         "v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
@@ -400,14 +402,14 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 5 });
   });
 
-  it("should throw error for invalid time signature format", () => {
+  it("should throw error for invalid time signature format", async () => {
     setupMidiClipMock("123");
 
-    expect(() =>
+    await expect(
       updateClip({
         ids: "123",
         timeSignature: "invalid",
       }),
-    ).toThrow("Time signature must be in format");
+    ).rejects.toThrow("Time signature must be in format");
   });
 });

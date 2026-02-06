@@ -17,12 +17,12 @@ describe("updateClip - splitting smoke tests", () => {
     liveApiGet.mockReset();
   });
 
-  it("should call splitting helpers when split parameter is provided", () => {
+  it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 
     setupLoopedClipSplittingMocks(clipId);
 
-    updateClip(
+    await updateClip(
       {
         ids: clipId,
         split: "2|1, 3|1", // Split at bar 2 and bar 3
@@ -38,12 +38,12 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
-  it("should apply other updates after splitting", () => {
+  it("should apply other updates after splitting", async () => {
     const clipId = "clip_1";
 
     setupLoopedClipSplittingMocks(clipId);
 
-    updateClip(
+    await updateClip(
       {
         ids: clipId,
         split: "2|1",

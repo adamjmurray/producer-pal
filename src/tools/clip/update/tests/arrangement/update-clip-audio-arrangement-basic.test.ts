@@ -40,7 +40,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
   it.each(testCases)(
     "should extend to target length (clip %s: %s)",
-    (clipId, revealedClipId, sourceEndTime, name) => {
+    async (clipId, revealedClipId, sourceEndTime, name) => {
       const cId = clipId as string;
       const rId = revealedClipId as string;
       const endTime = sourceEndTime as number;
@@ -55,7 +55,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         name: clipName,
       });
 
-      const result = updateClip(
+      const result = await updateClip(
         { ids: cId, arrangementLength: "3:2" },
         mockContext,
       );

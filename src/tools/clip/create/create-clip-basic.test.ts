@@ -11,50 +11,54 @@ import {
 import { createClip } from "./create-clip.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when required parameters are missing", () => {
-    expect(() => createClip({} as Parameters<typeof createClip>[0])).toThrow(
-      "createClip failed: view parameter is required",
-    );
+  it("should throw error when required parameters are missing", async () => {
+    await expect(
+      createClip({} as Parameters<typeof createClip>[0]),
+    ).rejects.toThrow("createClip failed: view parameter is required");
     // Note: trackIndex validation is handled by TypeScript at compile time
-    expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
+    await expect(
+      createClip({ view: "session", trackIndex: 0 }),
+    ).rejects.toThrow(
       "createClip failed: sceneIndex is required when view is 'session'",
     );
-    expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
+    await expect(
+      createClip({ view: "arrangement", trackIndex: 0 }),
+    ).rejects.toThrow(
       "createClip failed: arrangementStart is required when view is 'arrangement'",
     );
   });
 
-  it("should throw error for invalid sceneIndex format", () => {
-    expect(() =>
+  it("should throw error for invalid sceneIndex format", async () => {
+    await expect(
       createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "invalid",
       }),
-    ).toThrow(
+    ).rejects.toThrow(
       'createClip failed: Invalid index "invalid" - must be a valid integer',
     );
   });
 
-  it("should validate time signature early when provided", () => {
-    expect(() =>
+  it("should validate time signature early when provided", async () => {
+    await expect(
       createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         timeSignature: "invalid",
       }),
-    ).toThrow("Time signature must be in format");
+    ).rejects.toThrow("Time signature must be in format");
   });
 
-  it("should read time signature from song when not provided", () => {
+  it("should read time signature from song when not provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 3, signature_denominator: 4 },
       Clip: { length: 6 }, // 2 bars in 3/4 time = 6 beats
     });
 
-    const result = createClip({
+    const result = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -96,12 +100,12 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should parse notes using provided time signature", () => {
+  it("should parse notes using provided time signature", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -135,12 +139,12 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", () => {
+  it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -175,13 +179,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should create clip with specified length", () => {
+  it("should create clip with specified length", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -196,13 +200,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should create clip with specified length for looping clips", () => {
+  it("should create clip with specified length for looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -217,13 +221,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should calculate clip length from notes when markers not provided", () => {
+  it("should calculate clip length from notes when markers not provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -237,13 +241,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should handle time signatures with denominators other than 4", () => {
+  it("should handle time signatures with denominators other than 4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -281,13 +285,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should create 1-bar clip when empty in 4/4 time", () => {
+  it("should create 1-bar clip when empty in 4/4 time", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -300,13 +304,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should create 1-bar clip when empty in 6/8 time", () => {
+  it("should create 1-bar clip when empty in 6/8 time", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -319,13 +323,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should use 1-bar clip length when notes are empty in 4/4", () => {
+  it("should use 1-bar clip length when notes are empty in 4/4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -339,13 +343,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should set loop_end to clip length for empty clips (not 0)", () => {
+  it("should set loop_end to clip length for empty clips (not 0)", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -357,13 +361,13 @@ describe("createClip - basic validation and time signatures", () => {
     expect(liveApiSet).toHaveBeenCalledWith("end_marker", 4);
   });
 
-  it("should round up to next bar based on latest note start in 4/4", () => {
+  it("should round up to next bar based on latest note start in 4/4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -377,13 +381,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should round up to next bar based on latest note start in 6/8", () => {
+  it("should round up to next bar based on latest note start in 6/8", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -397,13 +401,13 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should round up to next bar when note start is in next bar", () => {
+  it("should round up to next bar when note start is in next bar", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -417,14 +421,14 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("warns when firstStart is used with non-looping clips", () => {
+  it("warns when firstStart is used with non-looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       Clip: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -441,14 +445,14 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("sets playing_position when firstStart is used with looping clips", () => {
+  it("sets playing_position when firstStart is used with looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       Clip: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",

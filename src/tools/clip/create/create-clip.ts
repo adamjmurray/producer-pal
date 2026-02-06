@@ -7,7 +7,12 @@ import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.t
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  computeLoopDeadline,
+  isDeadlineExceeded,
+} from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
   parseTimeSignature,
@@ -59,6 +64,8 @@ export interface CreateClipArgs {
   auto?: string | null;
   /** Automatically switch to the appropriate view */
   switchView?: boolean;
+  /** JavaScript code to generate notes (MIDI clips only) */
+  code?: string | null;
 }
 
 interface PreparedClipData {
@@ -85,10 +92,11 @@ interface PreparedClipData {
  * @param args.looping - Enable looping for the clip
  * @param args.auto - Automatic playback action
  * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param _context - Internal context object (unused)
  * @returns Single clip object when one position, array when multiple positions
  */
-export function createClip(
+export async function createClip(
   {
     view,
     trackIndex,
@@ -106,9 +114,12 @@ export function createClip(
     looping = null,
     auto = null,
     switchView,
+    code = null,
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
-): object | object[] {
+): Promise<object | object[]> {
+  const deadline = computeLoopDeadline(_context.timeoutMs);
+
   // Parse position lists
   const sceneIndices = parseSceneIndexList(sceneIndex);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
@@ -175,8 +186,8 @@ export function createClip(
     timeSigDenominator,
   );
 
-  // Create clips
-  const createdClips = createClips(
+  // Create clips (and apply code to each clip inline)
+  const createdClips = await createClips(
     view,
     trackIndex,
     sceneIndices,
@@ -197,6 +208,8 @@ export function createClip(
     songTimeSigDenominator,
     length,
     sampleFile,
+    deadline,
+    code,
   );
 
   // Handle automatic playback and view switching
@@ -231,9 +244,11 @@ export function createClip(
  * @param songTimeSigDenominator - Song time signature denominator
  * @param length - Original length parameter
  * @param sampleFile - Audio file path
+ * @param deadline - Absolute deadline timestamp, or null if no deadline
+ * @param code - JavaScript code to generate notes, or null
  * @returns Array of created clips
  */
-function createClips(
+async function createClips(
   view: string,
   trackIndex: number,
   sceneIndices: number[],
@@ -254,13 +269,22 @@ function createClips(
   songTimeSigDenominator: number,
   length: string | null,
   sampleFile: string | null,
-): object[] {
+  deadline: number | null,
+  code: string | null,
+): Promise<object[]> {
   const createdClips: object[] = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
   const count = positions.length;
   const clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
+    if (isDeadlineExceeded(deadline)) {
+      console.warn(
+        `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
+      );
+      break;
+    }
+
     const clipName = buildClipName(name, count, i);
 
     // Get position for this iteration
@@ -303,6 +327,17 @@ function createClips(
       );
 
       createdClips.push(clipResult);
+
+      // Apply code execution to the newly created clip
+      const clipId = code != null ? (clipResult as { id?: string }).id : null;
+
+      if (clipId != null && code != null) {
+        const noteCount = await applyCodeToSingleClip(clipId, code);
+
+        if (noteCount != null) {
+          (clipResult as { noteCount?: number }).noteCount = noteCount;
+        }
+      }
     } catch (error) {
       // Emit warning with position info
       const position =

@@ -75,7 +75,7 @@ function setupUnloopedTilingMocks({
 }
 
 describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => {
-  it("should tile unlooped clip with chunks matching current arrangement length", () => {
+  it("should tile unlooped clip with chunks matching current arrangement length", async () => {
     const clipId = "800";
     const tileIds = ["801", "802", "803", "804", "805"];
 
@@ -99,7 +99,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       },
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats (3.5 bars)
       mockContext,
     );
@@ -138,7 +138,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     ]);
   });
 
-  it("should tile from shorter visible region with appropriate chunk size", () => {
+  it("should tile from shorter visible region with appropriate chunk size", async () => {
     const clipId = "810";
     const tileIds = ["811", "812", "813", "814", "815", "816"];
 
@@ -162,7 +162,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       },
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );
@@ -187,7 +187,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     expect((result as { id: string }[])[0]).toStrictEqual({ id: clipId });
   });
 
-  it("should handle start_marker offset correctly when tiling", () => {
+  it("should handle start_marker offset correctly when tiling", async () => {
     const clipId = "820";
     // 5 IDs needed: 3 full tiles (direct) + 1 partial tile (holding + move = 2 calls)
     const tileIds = ["821", "822", "823", "824", "825"];
@@ -212,7 +212,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
       },
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );

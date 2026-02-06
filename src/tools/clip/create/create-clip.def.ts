@@ -84,6 +84,17 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("transform expressions (parameter: expression per line)"),
 
+    ...(process.env.ENABLE_CODE_EXEC === "true"
+      ? {
+          code: z
+            .string()
+            .optional()
+            .describe(
+              "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
+            ),
+        }
+      : {}),
+
     sampleFile: z
       .string()
       .optional()
@@ -102,6 +113,6 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms"],
+    excludeParams: ["transforms", "code"],
   },
 });

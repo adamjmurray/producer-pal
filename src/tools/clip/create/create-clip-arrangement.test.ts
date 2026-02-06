@@ -13,10 +13,10 @@ import { createClip } from "./create-clip.ts";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 describe("createClip - arrangement view", () => {
-  it("should create a single clip in arrangement", () => {
+  it("should create a single clip in arrangement", async () => {
     setupArrangementClipMocks();
 
-    const result = createClip({
+    const result = await createClip({
       view: "arrangement",
       trackIndex: 0,
       arrangementStart: "3|1",
@@ -45,10 +45,10 @@ describe("createClip - arrangement view", () => {
     });
   });
 
-  it("should create arrangement clips at specified positions", () => {
+  it("should create arrangement clips at specified positions", async () => {
     setupArrangementClipMocks();
 
-    const result = createClip({
+    const result = await createClip({
       view: "arrangement",
       trackIndex: 0,
       arrangementStart: "3|1,4|1,5|1", // Three explicit positions
@@ -101,19 +101,19 @@ describe("createClip - arrangement view", () => {
     ]);
   });
 
-  it("should throw error when track doesn't exist", () => {
+  it("should throw error when track doesn't exist", async () => {
     liveApiId.mockReturnValue("id 0");
 
-    expect(() =>
+    await expect(
       createClip({
         view: "arrangement",
         trackIndex: 99,
         arrangementStart: "3|1",
       }),
-    ).toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("createClip failed: track 99 does not exist");
   });
 
-  it("should emit warning and return empty array when arrangement clip creation fails", () => {
+  it("should emit warning and return empty array when arrangement clip creation fails", async () => {
     liveApiId.mockReturnValue("id 1");
     liveApiCall.mockReturnValue("id 999");
 
@@ -130,7 +130,7 @@ describe("createClip - arrangement view", () => {
     });
 
     // Runtime errors during clip creation are now warnings, not fatal errors
-    const result = createClip({
+    const result = await createClip({
       view: "arrangement",
       trackIndex: 0,
       arrangementStart: "1|1",
