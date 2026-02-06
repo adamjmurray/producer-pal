@@ -41,6 +41,45 @@ const envVarReplacements = {
   "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
 };
 
+// When code execution is disabled, substitute the real code-exec modules with
+// lightweight stubs that export the same interface but always return errors/no-ops.
+// This eliminates the node:vm import and all execution logic from production bundles.
+// IMPORTANT: If the stub files in src/tools/clip/code-exec/*-disabled.ts are renamed
+// or moved, update the replacement paths below to match.
+const codeExecAliases =
+  process.env.ENABLE_CODE_EXEC !== "true"
+    ? [
+        {
+          find: "#src/live-api-adapter/code-exec-v8-protocol.ts",
+          replacement: join(
+            rootDir,
+            "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
+          ),
+        },
+        {
+          find: "./code-exec-v8-protocol.ts",
+          replacement: join(
+            rootDir,
+            "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
+          ),
+        },
+        {
+          find: "./code-executor.ts",
+          replacement: join(
+            rootDir,
+            "src/tools/clip/code-exec/code-executor-disabled.ts",
+          ),
+        },
+        {
+          find: "./code-exec-protocol.ts",
+          replacement: join(
+            rootDir,
+            "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
+          ),
+        },
+      ]
+    : [];
+
 const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
@@ -62,7 +101,10 @@ export default [
     },
     plugins: [
       alias({
-        entries: [{ find: "#src", replacement: join(rootDir, "src") }],
+        entries: [
+          ...codeExecAliases,
+          { find: "#src", replacement: join(rootDir, "src") },
+        ],
       }),
       replace({
         ...envVarReplacements,
@@ -97,7 +139,10 @@ export default [
       // and
       // (!) "this" has been rewritten to "undefined" in node_modules/zod
       alias({
-        entries: [{ find: "#src", replacement: join(rootDir, "src") }],
+        entries: [
+          ...codeExecAliases,
+          { find: "#src", replacement: join(rootDir, "src") },
+        ],
       }),
       replace({
         ...envVarReplacements,

@@ -3,10 +3,56 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 
+/**
+ * Assert that a sandbox result is a failure and narrow the type.
+ *
+ * @param result - The sandbox result to check
+ */
+function expectFailure(
+  result: SandboxResult,
+): asserts result is { success: false; error: string } {
+  expect(result.success).toBe(false);
+}
+
 describe("code-executor", () => {
+  const originalEnv = process.env.ENABLE_CODE_EXEC;
+
+  beforeEach(() => {
+    process.env.ENABLE_CODE_EXEC = "true";
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.ENABLE_CODE_EXEC;
+    } else {
+      process.env.ENABLE_CODE_EXEC = originalEnv;
+    }
+  });
+
+  describe("defense-in-depth guard", () => {
+    it("should reject execution when ENABLE_CODE_EXEC is not set", () => {
+      delete process.env.ENABLE_CODE_EXEC;
+
+      const result = executeSandboxedCode("1 + 1");
+
+      expectFailure(result);
+      expect(result.error).toContain("not enabled");
+    });
+
+    it("should reject execution when ENABLE_CODE_EXEC is not 'true'", () => {
+      process.env.ENABLE_CODE_EXEC = "false";
+
+      const result = executeSandboxedCode("1 + 1");
+
+      expectFailure(result);
+      expect(result.error).toContain("not enabled");
+    });
+  });
+
   describe("basic execution", () => {
     it("should execute code and return result", () => {
       const result = executeSandboxedCode("1 + 2");
@@ -55,22 +101,22 @@ describe("code-executor", () => {
     it("should return error for syntax errors", () => {
       const result = executeSandboxedCode("return notes.map(n => {");
 
-      expect(result.success).toBe(false);
-      expect(!result.success && result.error).toContain("Code execution error");
+      expectFailure(result);
+      expect(result.error).toContain("Code execution error");
     });
 
     it("should return error on timeout", () => {
       const result = executeSandboxedCode("while(true) {}", {}, 10);
 
-      expect(result.success).toBe(false);
-      expect(!result.success && result.error).toContain("timed out");
+      expectFailure(result);
+      expect(result.error).toContain("timed out");
     });
 
     it("should return error for runtime exceptions", () => {
       const result = executeSandboxedCode('throw new Error("test error")');
 
-      expect(result.success).toBe(false);
-      expect(!result.success && result.error).toContain("test error");
+      expectFailure(result);
+      expect(result.error).toContain("test error");
     });
 
     it("should return undefined result for no return value", () => {

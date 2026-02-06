@@ -49,6 +49,11 @@ export function executeSandboxedCode(
   globals: Record<string, unknown> = {},
   timeoutMs: number = CODE_EXEC_TIMEOUT_MS,
 ): SandboxResult {
+  // Defense-in-depth: reject execution if code exec is not enabled at build time
+  if (process.env.ENABLE_CODE_EXEC !== "true") {
+    return { success: false, error: "Code execution is not enabled" };
+  }
+
   // Create sandbox with safe globals and deep-copied user globals
   const sandbox: Record<string, unknown> = { ...SAFE_GLOBALS };
 

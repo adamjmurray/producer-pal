@@ -89,6 +89,9 @@ export default defineConfig({
         // ignore V8 protocol code (runs in Max's V8, depends on LiveAPI globals):
         "src/live-api-adapter/code-exec-v8-protocol.ts",
 
+        // ignore disabled stubs (build-time substitutions, not runtime code):
+        "src/tools/clip/code-exec/*-disabled.ts",
+
         // ignore loggers:
         "src/portal/file-logger.ts",
 
