@@ -4,23 +4,35 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
-import { computeLoopDeadline, isDeadlineExceeded } from "./loop-deadline.ts";
+import {
+  computeLoopDeadline,
+  isDeadlineExceeded,
+  LOOP_DEADLINE_BUFFER_MS,
+} from "./loop-deadline.ts";
 
 describe("computeLoopDeadline", () => {
   it("should return null when timeoutMs is undefined", () => {
     expect(computeLoopDeadline(undefined)).toBeNull();
   });
 
-  it("should return deadline offset by timeoutMs minus CODE_EXEC_TIMEOUT_MS", () => {
+  it("should return deadline offset by timeoutMs minus buffer", () => {
     const before = Date.now();
     const deadline = computeLoopDeadline(30_000);
     const after = Date.now();
 
     expect(deadline).toBeGreaterThanOrEqual(
-      before + 30_000 - CODE_EXEC_TIMEOUT_MS,
+      before + 30_000 - LOOP_DEADLINE_BUFFER_MS,
     );
-    expect(deadline).toBeLessThanOrEqual(after + 30_000 - CODE_EXEC_TIMEOUT_MS);
+    expect(deadline).toBeLessThanOrEqual(
+      after + 30_000 - LOOP_DEADLINE_BUFFER_MS,
+    );
+  });
+
+  it("should return an immediately-exceeded deadline for timeoutMs=0", () => {
+    const deadline = computeLoopDeadline(0);
+
+    expect(deadline).not.toBeNull();
+    expect(isDeadlineExceeded(deadline!)).toBe(true);
   });
 });
 

@@ -246,7 +246,7 @@ async function applyCodeToCreatedClips(
   for (let i = 0; i < clipResults.length; i++) {
     if (isDeadlineExceeded(deadline)) {
       console.warn(
-        `Deadline exceeded after applying code to ${i} of ${clipResults.length} clips`,
+        `Deadline exceeded, code not applied to ${clipResults.length - i} of ${clipResults.length} clips`,
       );
       break;
     }

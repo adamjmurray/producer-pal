@@ -235,11 +235,12 @@ async function applyCodeToUpdatedClips(
   for (let i = 0; i < updatedClips.length; i++) {
     if (isDeadlineExceeded(deadline)) {
       console.warn(
-        `Deadline exceeded after applying code to ${i} of ${updatedClips.length} clips`,
+        `Deadline exceeded, code not applied to ${updatedClips.length - i} of ${updatedClips.length} clips`,
       );
       break;
     }
 
+    // Cast safe: loop bounds guarantee valid index
     const clipResult = updatedClips[i] as ClipResult;
     const clip = LiveAPI.from(["id", clipResult.id]);
 
