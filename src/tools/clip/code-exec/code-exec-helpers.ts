@@ -29,9 +29,10 @@ import type {
  * @returns Array of notes in code-facing format
  */
 export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
+  const lengthBeats = clip.getProperty("length") as number;
   const notesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
-  );
+    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
+  ) as { notes?: NoteEvent[] } | null;
   const notes: NoteEvent[] = notesResult?.notes ?? [];
 
   return notes.map(noteEventToCodeNote);

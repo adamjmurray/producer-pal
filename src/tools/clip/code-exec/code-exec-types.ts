@@ -87,8 +87,5 @@ export type SandboxResult =
   | { success: true; result: unknown }
   | { success: false; error: string };
 
-/** Maximum clips allowed when code execution is used */
-export const MAX_CODE_EXEC_CLIPS = 20;
-
 /** Timeout for code execution per clip (milliseconds) */
 export const CODE_EXEC_TIMEOUT_MS = 2000;

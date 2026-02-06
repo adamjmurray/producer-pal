@@ -15,35 +15,35 @@ type MockClip = any;
 type MockLiveSet = any;
 
 describe("QUANTIZE_GRID", () => {
-  it("should map 1/4 to grid value 1", async () => {
+  it("should map 1/4 to grid value 1", () => {
     expect(QUANTIZE_GRID["1/4"]).toBe(1);
   });
 
-  it("should map 1/8 to grid value 2", async () => {
+  it("should map 1/8 to grid value 2", () => {
     expect(QUANTIZE_GRID["1/8"]).toBe(2);
   });
 
-  it("should map 1/8T to grid value 3", async () => {
+  it("should map 1/8T to grid value 3", () => {
     expect(QUANTIZE_GRID["1/8T"]).toBe(3);
   });
 
-  it("should map 1/8+1/8T to grid value 4", async () => {
+  it("should map 1/8+1/8T to grid value 4", () => {
     expect(QUANTIZE_GRID["1/8+1/8T"]).toBe(4);
   });
 
-  it("should map 1/16 to grid value 5", async () => {
+  it("should map 1/16 to grid value 5", () => {
     expect(QUANTIZE_GRID["1/16"]).toBe(5);
   });
 
-  it("should map 1/16T to grid value 6", async () => {
+  it("should map 1/16T to grid value 6", () => {
     expect(QUANTIZE_GRID["1/16T"]).toBe(6);
   });
 
-  it("should map 1/16+1/16T to grid value 7", async () => {
+  it("should map 1/16+1/16T to grid value 7", () => {
     expect(QUANTIZE_GRID["1/16+1/16T"]).toBe(7);
   });
 
-  it("should map 1/32 to grid value 8", async () => {
+  it("should map 1/32 to grid value 8", () => {
     expect(QUANTIZE_GRID["1/32"]).toBe(8);
   });
 });
@@ -78,19 +78,19 @@ describe("handleQuantization", () => {
     liveApiCall.mockReturnValue(["id", 0]);
   });
 
-  it("should do nothing when quantize is undefined", async () => {
+  it("should do nothing when quantize is undefined", () => {
     handleQuantization(mockClip, { quantize: undefined, quantizeGrid: "1/16" });
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should do nothing when quantize is not provided", async () => {
+  it("should do nothing when quantize is not provided", () => {
     handleQuantization(mockClip, { quantizeGrid: "1/16" });
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip for audio clips", async () => {
+  it("should warn and skip for audio clips", () => {
     mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
 
     handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
@@ -102,7 +102,7 @@ describe("handleQuantization", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when quantizeGrid is not provided", async () => {
+  it("should warn and skip when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, { quantize: 1 });
@@ -114,7 +114,7 @@ describe("handleQuantization", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should call quantize with correct grid value and amount", async () => {
+  it("should call quantize with correct grid value and amount", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, { quantize: 0.75, quantizeGrid: "1/16" });
@@ -122,7 +122,7 @@ describe("handleQuantization", () => {
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 5, 0.75);
   });
 
-  it("should call quantize_pitch when quantizePitch is provided", async () => {
+  it("should call quantize_pitch when quantizePitch is provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, {
@@ -134,7 +134,7 @@ describe("handleQuantization", () => {
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 2, 1);
   });
 
-  it("should warn and skip when quantizePitch is invalid note name", async () => {
+  it("should warn and skip when quantizePitch is invalid note name", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, {
@@ -150,7 +150,7 @@ describe("handleQuantization", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should set swing_amount before quantizing and restore after", async () => {
+  it("should set swing_amount before quantizing and restore after", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, {
@@ -165,7 +165,7 @@ describe("handleQuantization", () => {
     expect(mockLiveSet.set).toHaveBeenNthCalledWith(2, "swing_amount", 0.25);
   });
 
-  it("should use 0 for swing when quantizeSwing is not provided", async () => {
+  it("should use 0 for swing when quantizeSwing is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
@@ -173,7 +173,7 @@ describe("handleQuantization", () => {
     expect(mockLiveSet.set).toHaveBeenNthCalledWith(1, "swing_amount", 0);
   });
 
-  it("should restore swing_amount even if quantize throws", async () => {
+  it("should restore swing_amount even if quantize throws", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
     mockClip.call.mockImplementation(() => {
       throw new Error("Quantize failed");

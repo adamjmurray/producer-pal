@@ -5,7 +5,7 @@
 
 /**
  * General-purpose sandboxed JavaScript code executor.
- * Uses Node's vm module to run code with timeout and security isolation.
+ * Uses Node's vm module to run code with timeout and a controlled execution scope.
  */
 
 import vm from "node:vm";

@@ -94,17 +94,19 @@ describe("code-exec-helpers", () => {
         ],
       };
       const mockClip = {
+        getProperty: vi.fn().mockReturnValue(8),
         call: vi.fn().mockReturnValue(JSON.stringify(mockNotes)),
       };
 
       const result = extractNotesFromClip(mockClip as unknown as LiveAPI);
 
+      expect(mockClip.getProperty).toHaveBeenCalledWith("length");
       expect(mockClip.call).toHaveBeenCalledWith(
         "get_notes_extended",
         0,
         128,
         0,
-        expect.any(Number),
+        8,
       );
       expect(result).toHaveLength(2);
       expect(result[0]).toStrictEqual({
@@ -119,6 +121,7 @@ describe("code-exec-helpers", () => {
 
     it("should return empty array for empty clip", () => {
       const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4),
         call: vi.fn().mockReturnValue(JSON.stringify({ notes: [] })),
       };
 

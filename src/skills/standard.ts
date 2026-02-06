@@ -30,7 +30,9 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 - \`clip\`: { id, name, length, timeSignature, looping }
 - \`location\`: { view, sceneIndex?, arrangementStart? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
-- \`beatsPerBar\`: number`;
+- \`beatsPerBar\`: number
+
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
 
 export const skills = `# Producer Pal Skills
 

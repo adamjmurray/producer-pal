@@ -136,11 +136,6 @@ export async function updateClip(
     skipInvalid: true,
   });
 
-  // Code execution path: transform notes via sandboxed JS
-  if (code != null) {
-    return await updateClipsWithCode(clips, code);
-  }
-
   // Standard update path
   const warnings = new Set<string>();
   let mutableClips = clips;
@@ -203,23 +198,32 @@ export async function updateClip(
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
+  // Apply code execution as final step (after notes, transforms, arrangement ops)
+  if (code != null) {
+    await applyCodeToUpdatedClips(updatedClips, code);
+  }
+
   return unwrapSingleResult(updatedClips);
 }
 
 /**
- * Update clips using sandboxed code execution
+ * Apply code execution to already-updated clips as a post-processing step.
+ * Runs after all other updates (notes, transforms, arrangement ops).
  *
- * @param clips - Array of validated clip objects
+ * @param updatedClips - Array of clip results with final IDs
  * @param code - User-provided JavaScript code body
- * @returns Updated clip results
  */
-async function updateClipsWithCode(
-  clips: LiveAPI[],
+async function applyCodeToUpdatedClips(
+  updatedClips: ClipResult[],
   code: string,
-): Promise<ClipResult | ClipResult[]> {
-  const results: ClipResult[] = [];
+): Promise<void> {
+  for (const clipResult of updatedClips) {
+    const clip = LiveAPI.from(["id", clipResult.id]);
 
-  for (const clip of clips) {
+    if (!clip.exists()) {
+      continue;
+    }
+
     const location = getClipLocationInfo(clip);
     const result = await executeNoteCode(
       clip,
@@ -233,12 +237,10 @@ async function updateClipsWithCode(
       applyNotesToClip(clip, result.notes);
     } else {
       console.warn(
-        `Code execution failed for clip ${clip.id}: ${result.error}`,
+        `Code execution failed for clip ${clipResult.id}: ${result.error}`,
       );
     }
 
-    results.push({ id: clip.id, noteCount: getClipNoteCount(clip) });
+    clipResult.noteCount = getClipNoteCount(clip);
   }
-
-  return unwrapSingleResult(results);
 }
