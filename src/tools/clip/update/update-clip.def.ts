@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
-import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -109,6 +109,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ? {
           code: z
             .string()
+            .max(MAX_CODE_LENGTH)
             .optional()
             .describe(
               "JS function body: receives (notes, context), returns notes array (see Skills for properties)",

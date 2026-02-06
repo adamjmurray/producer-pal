@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -88,6 +89,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       ? {
           code: z
             .string()
+            .max(MAX_CODE_LENGTH)
             .optional()
             .describe(
               "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",

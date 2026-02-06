@@ -14,9 +14,12 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
+import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import {
   type CreateClipResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -202,6 +205,38 @@ describe("ppal-code-exec", () => {
 
       expect(readClip.noteCount, `${label}: should have 0 notes`).toBe(0);
     }
+  });
+
+  it("rejects code exceeding MAX_CODE_LENGTH", async () => {
+    const tooLongCode = "x".repeat(MAX_CODE_LENGTH + 1);
+
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "10",
+        code: tooLongCode,
+      },
+    });
+
+    expect(isToolError(createResult)).toBe(true);
+    expect(getToolErrorMessage(createResult)).toContain(
+      String(MAX_CODE_LENGTH),
+    );
+
+    const updateResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: "1",
+        code: tooLongCode,
+      },
+    });
+
+    expect(isToolError(updateResult)).toBe(true);
+    expect(getToolErrorMessage(updateResult)).toContain(
+      String(MAX_CODE_LENGTH),
+    );
   });
 
   it("filters malformed notes and clamps values to valid ranges", async () => {
