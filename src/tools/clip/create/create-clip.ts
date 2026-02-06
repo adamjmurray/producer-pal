@@ -2,11 +2,17 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import {
+  applyNotesToClip,
+  getClipLocationInfo,
+  getClipNoteCount,
+} from "#src/tools/clip/code-exec/code-exec-helpers.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
@@ -59,6 +65,8 @@ export interface CreateClipArgs {
   auto?: string | null;
   /** Automatically switch to the appropriate view */
   switchView?: boolean;
+  /** JavaScript code to generate notes (MIDI clips only) */
+  code?: string | null;
 }
 
 interface PreparedClipData {
@@ -85,10 +93,11 @@ interface PreparedClipData {
  * @param args.looping - Enable looping for the clip
  * @param args.auto - Automatic playback action
  * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param _context - Internal context object (unused)
  * @returns Single clip object when one position, array when multiple positions
  */
-export function createClip(
+export async function createClip(
   {
     view,
     trackIndex,
@@ -106,9 +115,10 @@ export function createClip(
     looping = null,
     auto = null,
     switchView,
+    code = null,
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
-): object | object[] {
+): Promise<object | object[]> {
   // Parse position lists
   const sceneIndices = parseSceneIndexList(sceneIndex);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
@@ -199,6 +209,11 @@ export function createClip(
     sampleFile,
   );
 
+  // Apply code execution to created clips if code param provided
+  if (code != null) {
+    await applyCodeToCreatedClips(createdClips, code);
+  }
+
   // Handle automatic playback and view switching
   handleAutoPlayback(auto, view, sceneIndices, trackIndex);
 
@@ -207,6 +222,50 @@ export function createClip(
   }
 
   return unwrapSingleResult(createdClips);
+}
+
+/**
+ * Apply code-generated notes to newly created clips
+ *
+ * @param clipResults - Array of created clip result objects
+ * @param code - User-provided JavaScript code body
+ */
+async function applyCodeToCreatedClips(
+  clipResults: object[],
+  code: string,
+): Promise<void> {
+  for (const result of clipResults) {
+    const clipResult = result as { id?: string; noteCount?: number };
+    const clipId = clipResult.id;
+
+    if (clipId == null) {
+      continue;
+    }
+
+    const clip = LiveAPI.from(["id", clipId]);
+
+    if (!clip.exists()) {
+      continue;
+    }
+
+    const location = getClipLocationInfo(clip);
+    const codeResult = await executeNoteCode(
+      clip,
+      code,
+      location.view,
+      location.sceneIndex,
+      location.arrangementStartBeats,
+    );
+
+    if (codeResult.success) {
+      applyNotesToClip(clip, codeResult.notes);
+      clipResult.noteCount = getClipNoteCount(clip);
+    } else {
+      console.warn(
+        `Code execution failed for clip ${clipId}: ${codeResult.error}`,
+      );
+    }
+  }
 }
 
 /**

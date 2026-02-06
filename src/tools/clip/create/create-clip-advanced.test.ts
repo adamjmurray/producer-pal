@@ -13,7 +13,7 @@ import {
 import { createClip } from "./create-clip.ts";
 
 describe("createClip - advanced features", () => {
-  it("should set time signature when provided", () => {
+  it("should set time signature when provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: {
@@ -22,7 +22,7 @@ describe("createClip - advanced features", () => {
       },
     });
 
-    const result = createClip({
+    const result = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -46,13 +46,13 @@ describe("createClip - advanced features", () => {
     });
   });
 
-  it("should calculate correct clip length based on note start position", () => {
+  it("should calculate correct clip length based on note start position", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -66,20 +66,20 @@ describe("createClip - advanced features", () => {
     );
   });
 
-  it("should return single object for single position and array for multiple positions", () => {
+  it("should return single object for single position and array for multiple positions", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
 
-    const singleResult = createClip({
+    const singleResult = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       name: "Single",
     });
 
-    const arrayResult = createClip({
+    const arrayResult = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "1,2",
@@ -107,13 +107,13 @@ describe("createClip - advanced features", () => {
     });
   });
 
-  it("should filter out v0 notes when creating clips", () => {
+  it("should filter out v0 notes when creating clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    const result = createClip({
+    const result = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -154,13 +154,13 @@ describe("createClip - advanced features", () => {
     }); // C3 and E3, D3 filtered out
   });
 
-  it("should handle clips with all v0 notes filtered out", () => {
+  it("should handle clips with all v0 notes filtered out", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -173,13 +173,13 @@ describe("createClip - advanced features", () => {
     );
   });
 
-  it("should set start and firstStart when provided", () => {
+  it("should set start and firstStart when provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -203,13 +203,13 @@ describe("createClip - advanced features", () => {
   });
 
   describe("switchView functionality", () => {
-    it("should switch to session view when creating session clips with switchView=true", () => {
+    it("should switch to session view when creating session clips with switchView=true", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -224,7 +224,7 @@ describe("createClip - advanced features", () => {
       });
     });
 
-    it("should switch to arrangement view when creating arrangement clips with switchView=true", () => {
+    it("should switch to arrangement view when creating arrangement clips with switchView=true", async () => {
       mockLiveApiGet({
         Track: { exists: () => true },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -246,7 +246,7 @@ describe("createClip - advanced features", () => {
         return this._id;
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
@@ -261,13 +261,13 @@ describe("createClip - advanced features", () => {
       });
     });
 
-    it("should not switch views when switchView=false", () => {
+    it("should not switch views when switchView=false", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      createClip({
+      await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -280,13 +280,13 @@ describe("createClip - advanced features", () => {
       );
     });
 
-    it("should work with multiple clips when switchView=true", () => {
+    it("should work with multiple clips when switchView=true", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0,1",

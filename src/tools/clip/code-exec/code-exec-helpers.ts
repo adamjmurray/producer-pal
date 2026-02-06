@@ -14,6 +14,7 @@ import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import type {
   CodeClipContext,
   CodeExecutionContext,
+  CodeExecutionResult,
   CodeLiveSetContext,
   CodeLocationContext,
   CodeNote,
@@ -130,6 +131,114 @@ export function getClipNoteCount(clip: LiveAPI): number {
   );
 
   return notesResult?.notes?.length ?? 0;
+}
+
+/**
+ * Validate a raw sandbox result as a notes array.
+ * Filters out invalid notes and clamps values to valid ranges.
+ *
+ * @param result - Raw result from sandbox execution
+ * @returns Validated CodeExecutionResult
+ */
+export function validateCodeNotes(result: unknown): CodeExecutionResult {
+  if (!Array.isArray(result)) {
+    return {
+      success: false,
+      error: `Code must return an array of notes, got ${typeof result}`,
+    };
+  }
+
+  const validatedNotes: CodeNote[] = [];
+
+  for (const note of result) {
+    const validated = validateAndSanitizeNote(note);
+
+    if (validated.valid) {
+      validatedNotes.push(validated.note);
+    }
+    // Invalid notes are silently filtered out
+  }
+
+  return { success: true, notes: validatedNotes };
+}
+
+/**
+ * Validate and sanitize a note from user code.
+ * Returns a valid note with clamped values, or invalid if note is malformed.
+ *
+ * @param note - The note object to validate
+ * @returns Valid note with sanitized values, or invalid marker
+ */
+export function validateAndSanitizeNote(
+  note: unknown,
+): { valid: true; note: CodeNote } | { valid: false } {
+  if (typeof note !== "object" || note === null) {
+    return { valid: false };
+  }
+
+  const n = note as Record<string, unknown>;
+
+  // Check required properties exist and are numbers
+  if (
+    typeof n.pitch !== "number" ||
+    typeof n.start !== "number" ||
+    typeof n.duration !== "number" ||
+    typeof n.velocity !== "number"
+  ) {
+    return { valid: false };
+  }
+
+  // Validate ranges (start can be negative for notes before clip start)
+  if (n.duration <= 0) {
+    return { valid: false };
+  }
+
+  // Sanitize by clamping values
+  const sanitized: CodeNote = {
+    pitch: Math.max(0, Math.min(127, Math.round(n.pitch))),
+    start: n.start,
+    duration: Math.max(0.001, n.duration),
+    velocity: Math.max(1, Math.min(127, Math.round(n.velocity))),
+    velocityDeviation: Math.max(
+      0,
+      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
+    ),
+    probability: Math.max(
+      0,
+      Math.min(1, n.probability == null ? 1 : Number(n.probability)),
+    ),
+  };
+
+  return { valid: true, note: sanitized };
+}
+
+/**
+ * Determine the view and location info for a clip.
+ *
+ * @param clip - LiveAPI clip object
+ * @returns View, scene index, and arrangement start info
+ */
+export function getClipLocationInfo(clip: LiveAPI): {
+  view: "session" | "arrangement";
+  sceneIndex?: number;
+  arrangementStartBeats?: number;
+} {
+  const isArrangement = (clip.getProperty("is_arrangement_clip") as number) > 0;
+
+  if (isArrangement) {
+    const startBeats = clip.getProperty("start_time") as number;
+
+    return { view: "arrangement", arrangementStartBeats: startBeats };
+  }
+
+  // Session clip — extract scene index from path
+  const clipPath = clip.path;
+  const slotMatch = clipPath.match(/clip_slots (\d+)/);
+  const sceneIndex = slotMatch?.[1]
+    ? Number.parseInt(slotMatch[1], 10)
+    : undefined;
+
+  return { view: "session", sceneIndex };
 }
 
 // --- Private helpers ---

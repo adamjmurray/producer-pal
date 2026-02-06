@@ -38,10 +38,7 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { memory } from "#src/tools/workflow/memory.ts";
-import {
-  handleApplyNotes,
-  handleCodeExecIfNeeded,
-} from "./code-exec-v8-protocol.ts";
+import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -239,18 +236,13 @@ function sendResponse(requestId: string, result: object): void {
 }
 
 /**
- * Handle apply_notes message from Node after code execution
+ * Handle code_exec_result message from Node after sandboxed code execution
  *
  * @param requestId - Request identifier
- * @param applyNotesJson - JSON string of ApplyNotesMessage
+ * @param resultJson - JSON string of SandboxResult
  */
-export function apply_notes(requestId: string, applyNotesJson: string): void {
-  handleApplyNotes(
-    requestId,
-    applyNotesJson,
-    sendResponse,
-    isCompactOutputEnabled,
-  );
+export function code_exec_result(requestId: string, resultJson: string): void {
+  handleCodeExecResult(requestId, resultJson);
 }
 
 // Handle messages from Node for Max
@@ -287,12 +279,6 @@ export async function mcp_request(
 
         console.warn(`Failed to parse contextJSON: ${message}`);
       }
-    }
-
-    // Check if this is a code execution request
-    if (handleCodeExecIfNeeded(requestId, tool, args)) {
-      // Code execution initiated - response will come via apply_notes handler
-      return;
     }
 
     try {

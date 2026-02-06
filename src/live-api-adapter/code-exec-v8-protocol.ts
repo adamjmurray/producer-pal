@@ -4,266 +4,182 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * V8-side protocol handling for code execution feature.
- * Manages the multi-step communication with Node for sandboxed code execution.
+ * V8-side async utility for requesting code execution from Node.
+ * V8 sends code + globals to Node, awaits the sandboxed result via Promise.
  */
 
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
-import {
-  formatErrorResponse,
-  formatSuccessResponse,
-} from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  applyNotesToClip,
+  validateCodeNotes,
   buildCodeExecutionContext,
   extractNotesFromClip,
-  getClipNoteCount,
 } from "#src/tools/clip/code-exec/code-exec-helpers.ts";
 import type {
-  ApplyNotesMessage,
-  NotesDataMessage,
+  CodeExecutionContext,
+  CodeExecutionResult,
+  CodeNote,
+  SandboxResult,
 } from "#src/tools/clip/code-exec/code-exec-types.ts";
 
+// Declare global Task type from Max for Live environment
+declare const Task: new (callback: () => void) => {
+  schedule: (ms: number) => void;
+};
+
 interface PendingCodeExec {
-  tool: string;
-  args: Record<string, unknown>;
-  clips: LiveAPI[];
-  view: "session" | "arrangement";
-  sceneIndex?: number;
-  arrangementStartBeats?: number;
+  resolve: (result: SandboxResult) => void;
+  timeoutTask: { cancel: () => void };
 }
+
+/** Timeout for awaiting code execution result from Node */
+const CODE_EXEC_AWAIT_TIMEOUT_MS = 10_000;
 
 /** Map of pending code execution requests by requestId */
 const pendingCodeExecs = new Map<string, PendingCodeExec>();
 
+/** Simple counter for generating unique request IDs */
+let nextRequestId = 1;
+
 /**
- * Send notes_data message to Node for code execution
+ * Generate a unique request ID for code execution.
  *
- * @param requestId - Request identifier
- * @param notesData - Notes and context data
+ * @returns Unique request ID string
  */
-function sendNotesData(requestId: string, notesData: NotesDataMessage): void {
-  outlet(0, "notes_data", requestId, JSON.stringify(notesData));
+function generateRequestId(): string {
+  return `code-exec-${nextRequestId++}`;
 }
 
 /**
- * Handle apply_notes message from Node after code execution
+ * Request code execution from Node's sandboxed VM.
+ * Sends the code and globals to Node, awaits the result via Promise.
+ *
+ * @param code - JavaScript code to execute (pre-wrapped by caller)
+ * @param globals - Named values to inject into the sandbox scope
+ * @returns Promise resolving to the sandbox execution result
+ */
+export function requestCodeExecution(
+  code: string,
+  globals: Record<string, unknown> = {},
+): Promise<SandboxResult> {
+  const requestId = generateRequestId();
+
+  return new Promise((resolve) => {
+    // Set up timeout using Max Task
+    const timeoutCallback = (): void => {
+      if (pendingCodeExecs.has(requestId)) {
+        pendingCodeExecs.delete(requestId);
+        resolve({
+          success: false,
+          error: `Code execution timed out after ${CODE_EXEC_AWAIT_TIMEOUT_MS}ms`,
+        });
+      }
+    };
+
+    const task = new Task(timeoutCallback);
+
+    task.schedule(CODE_EXEC_AWAIT_TIMEOUT_MS);
+
+    pendingCodeExecs.set(requestId, {
+      resolve,
+      timeoutTask: { cancel: () => task.schedule(-1) },
+    });
+
+    // Send request to Node
+    const request = JSON.stringify({ code, globals });
+
+    outlet(0, "code_exec_request", requestId, request);
+  });
+}
+
+/**
+ * Handle code_exec_result message from Node.
+ * Resolves the pending Promise for the matching request ID.
  *
  * @param requestId - Request identifier
- * @param applyNotesJson - JSON string of ApplyNotesMessage
- * @param sendResponse - Function to send response back to Node
- * @param isCompactOutputEnabled - Whether compact output is enabled
+ * @param resultJson - JSON string of SandboxResult
  */
-export function handleApplyNotes(
+export function handleCodeExecResult(
   requestId: string,
-  applyNotesJson: string,
-  sendResponse: (requestId: string, result: object) => void,
-  isCompactOutputEnabled: boolean,
+  resultJson: string,
 ): void {
-  const state = pendingCodeExecs.get(requestId);
+  const pending = pendingCodeExecs.get(requestId);
 
-  if (!state) {
-    console.error(`Received apply_notes for unknown request: ${requestId}`);
+  if (!pending) {
+    console.error(
+      `Received code_exec_result for unknown request: ${requestId}`,
+    );
 
     return;
   }
 
   pendingCodeExecs.delete(requestId);
-
-  let applyData: ApplyNotesMessage;
+  pending.timeoutTask.cancel();
 
   try {
-    applyData = JSON.parse(applyNotesJson) as ApplyNotesMessage;
+    const result = JSON.parse(resultJson) as SandboxResult;
+
+    pending.resolve(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    sendResponse(
-      requestId,
-      formatErrorResponse(`Failed to parse apply_notes: ${message}`),
-    );
-
-    return;
-  }
-
-  try {
-    // Apply transformed notes to each clip
-    const results: Array<{ id: string; noteCount?: number }> = [];
-
-    for (let i = 0; i < state.clips.length; i++) {
-      const clip = state.clips[i];
-
-      if (!clip) {
-        continue;
-      }
-
-      const clipData = applyData.clips[i];
-
-      if (clipData) {
-        applyNotesToClip(clip, clipData.notes);
-      }
-
-      results.push({
-        id: clip.id,
-        noteCount: getClipNoteCount(clip),
-      });
-    }
-
-    // Format and send success response
-    const output =
-      state.clips.length === 1 && results[0] ? results[0] : { clips: results };
-
-    sendResponse(
-      requestId,
-      formatSuccessResponse(
-        isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
-      ),
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    sendResponse(
-      requestId,
-      formatErrorResponse(`Error applying notes: ${message}`),
-    );
-  }
-}
-
-/**
- * Check if args contain code param and handle code execution flow
- *
- * @param requestId - Request identifier
- * @param tool - Tool name
- * @param args - Tool arguments
- * @returns True if code execution was initiated (caller should not call tool)
- */
-export function handleCodeExecIfNeeded(
-  requestId: string,
-  tool: string,
-  args: Record<string, unknown>,
-): boolean {
-  const code = args.code;
-
-  if (typeof code !== "string") {
-    return false;
-  }
-
-  // Only ppal-create-clip and ppal-update-clip support code execution
-  if (tool !== "ppal-create-clip" && tool !== "ppal-update-clip") {
-    console.warn(`code parameter ignored for tool: ${tool}`);
-
-    return false;
-  }
-
-  try {
-    // Resolve clip(s) and extract notes/context
-    const clips = resolveClipsForCodeExec(tool, args);
-
-    if (clips.length === 0) {
-      console.warn("No clips resolved for code execution");
-
-      return false;
-    }
-
-    // Determine view and location
-    const view =
-      (args.view as "session" | "arrangement" | undefined) ?? "session";
-    const sceneIndex = args.sceneIndex as number | undefined;
-    const arrangementStartBeats = args.arrangementStart as number | undefined;
-
-    // Store state for when apply_notes comes back
-    pendingCodeExecs.set(requestId, {
-      tool,
-      args,
-      clips,
-      view,
-      sceneIndex,
-      arrangementStartBeats,
+    pending.resolve({
+      success: false,
+      error: `Failed to parse code_exec_result: ${message}`,
     });
-
-    // Build context from first clip (shared context for all clips)
-    const firstClip = clips[0];
-
-    if (!firstClip) {
-      return false;
-    }
-
-    const codeExecContext = buildCodeExecutionContext(
-      firstClip,
-      view,
-      sceneIndex,
-      arrangementStartBeats,
-    );
-
-    // Extract notes from each clip
-    const clipData: NotesDataMessage["clips"] = clips.map((clip) => ({
-      clipId: clip.id,
-      notes: extractNotesFromClip(clip),
-    }));
-
-    // Send notes_data to Node for code execution
-    const notesData: NotesDataMessage = {
-      requestId,
-      clips: clipData,
-      context: codeExecContext,
-    };
-
-    sendNotesData(requestId, notesData);
-
-    return true; // Code execution initiated, don't call tool normally
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    console.warn(`Code execution setup failed: ${message}`);
-
-    return false; // Fall back to normal tool execution
   }
 }
 
 /**
- * Resolve clips for code execution
+ * Execute user code to transform notes for a clip.
+ * Wraps user code, sends to Node for sandboxed execution, validates result.
  *
- * @param tool - Tool name (ppal-create-clip or ppal-update-clip)
- * @param args - Tool arguments containing clip IDs
- * @returns Array of resolved LiveAPI clip objects
+ * @param clip - LiveAPI clip object
+ * @param userCode - User-provided JavaScript code body
+ * @param view - Session or arrangement view
+ * @param sceneIndex - Scene index (session only)
+ * @param arrangementStartBeats - Arrangement start position (arrangement only)
+ * @returns Promise resolving to validated CodeExecutionResult
  */
-function resolveClipsForCodeExec(
-  tool: string,
-  args: Record<string, unknown>,
-): LiveAPI[] {
-  const clips: LiveAPI[] = [];
+export async function executeNoteCode(
+  clip: LiveAPI,
+  userCode: string,
+  view: "session" | "arrangement",
+  sceneIndex?: number,
+  arrangementStartBeats?: number,
+): Promise<CodeExecutionResult> {
+  const notes = extractNotesFromClip(clip);
+  const context = buildCodeExecutionContext(
+    clip,
+    view,
+    sceneIndex,
+    arrangementStartBeats,
+  );
 
-  if (tool === "ppal-create-clip") {
-    // For create-clip, we need to create the clip first, then extract
-    // For now, just return empty - the notes will come from the code
-    // Actually, create-clip with code should create an empty clip first
-    // This is complex - for MVP, we'll handle this differently
-    // TODO: Support create-clip with code by creating empty clip first
-    console.warn("code parameter not yet supported for ppal-create-clip");
+  return await executeNoteCodeWithData(userCode, notes, context);
+}
 
-    return [];
+/**
+ * Execute user code with pre-extracted notes and context.
+ * Wraps user code, sends to Node for sandboxed execution, validates result.
+ *
+ * @param userCode - User-provided JavaScript code body
+ * @param notes - Array of notes to pass to the code
+ * @param context - Execution context to pass to the code
+ * @returns Promise resolving to validated CodeExecutionResult
+ */
+export async function executeNoteCodeWithData(
+  userCode: string,
+  notes: CodeNote[],
+  context: CodeExecutionContext,
+): Promise<CodeExecutionResult> {
+  // Wrap user code in a function that receives notes and context
+  const wrappedCode = `(function(notes, context) { ${userCode} })(notes, context)`;
+
+  const result = await requestCodeExecution(wrappedCode, { notes, context });
+
+  if (!result.success) {
+    return result;
   }
 
-  // For update-clip, resolve existing clips by ID
-  const ids = args.ids as string | undefined;
-
-  if (ids == null) {
-    return [];
-  }
-
-  const clipIds = ids.split(",").map((id) => id.trim());
-
-  for (const clipId of clipIds) {
-    try {
-      const clip = LiveAPI.from(["id", clipId]);
-
-      if (clip.exists()) {
-        clips.push(clip);
-      }
-    } catch {
-      // Skip invalid IDs
-    }
-  }
-
-  return clips;
+  return validateCodeNotes(result.result);
 }

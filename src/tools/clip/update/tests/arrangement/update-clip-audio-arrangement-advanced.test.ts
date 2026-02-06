@@ -26,7 +26,7 @@ import {
 // with silence if the audio runs out. This simplifies the logic and works reliably.
 
 describe("Unlooped audio clips - arrangementLength extension", () => {
-  it("should extend with start_marker offset (scenario: start_marker > 0)", () => {
+  it("should extend with start_marker offset (scenario: start_marker > 0)", async () => {
     const clipId = "705";
     const revealedClipId = "706";
 
@@ -40,7 +40,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio No Hidden start>firstStart",
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" },
       mockContext,
     );
@@ -57,7 +57,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     ]);
   });
 
-  it("should calculate correct markers with start_marker offset)", () => {
+  it("should calculate correct markers with start_marker offset)", async () => {
     const clipId = "716";
     const revealedClipId = "717";
 
@@ -71,7 +71,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       name: "Audio Hidden start>firstStart",
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" },
       mockContext,
     );
@@ -87,7 +87,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     ]);
   });
 
-  it("should extend unwarped audio clip to target length using session holding area", () => {
+  it("should extend unwarped audio clip to target length using session holding area", async () => {
     const trackIndex = 0;
     const clipId = "800";
     const tempSessionClipId = "801";
@@ -179,7 +179,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       return 1;
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" },
       mockContext,
     );
@@ -241,7 +241,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 });
 
 describe("Unlooped audio clips - move + lengthen combination", () => {
-  it("should lengthen relative to new position when move and lengthen are combined", () => {
+  it("should lengthen relative to new position when move and lengthen are combined", async () => {
     const trackIndex = 0;
     const clipId = "900";
     const movedClipId = "901";
@@ -337,7 +337,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       return 1;
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       {
         ids: clipId,
         arrangementStart: "3|1", // Move to position 8

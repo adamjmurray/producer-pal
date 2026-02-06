@@ -17,12 +17,12 @@ import { setupAudioArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
   describe("validation", () => {
-    it("should throw error when both sampleFile and notes are provided", () => {
+    it("should throw error when both sampleFile and notes are provided", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
       });
 
-      expect(() =>
+      await expect(
         createClip({
           view: "session",
           trackIndex: 0,
@@ -30,14 +30,14 @@ describe("createClip - audio clips", () => {
           sampleFile: "/path/to/audio.wav",
           notes: "C3 1|1",
         }),
-      ).toThrow(
+      ).rejects.toThrow(
         "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
       );
     });
   });
 
   describe("session view", () => {
-    it("should create audio clip in session view", () => {
+    it("should create audio clip in session view", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         Clip: { length: 16 }, // Mock audio file length (4 bars in 4/4)
@@ -51,7 +51,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -76,7 +76,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should create audio clip with name and color", () => {
+    it("should create audio clip with name and color", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         Clip: { length: 8 },
@@ -90,7 +90,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -128,7 +128,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should create multiple audio clips in successive scenes", () => {
+    it("should create multiple audio clips in successive scenes", async () => {
       mockLiveApiGet({
         LiveSet: { scenes: children("scene_0", "scene_1") }, // 2 existing scenes
         ClipSlot: { has_clip: 0 },
@@ -154,7 +154,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0,1",
@@ -190,7 +190,7 @@ describe("createClip - audio clips", () => {
       ]);
     });
 
-    it("should auto-create scenes for audio clips when needed", () => {
+    it("should auto-create scenes for audio clips when needed", async () => {
       mockLiveApiGet({
         LiveSet: { scenes: children("scene_0") }, // Only 1 existing scene
         ClipSlot: { has_clip: 0 },
@@ -207,7 +207,7 @@ describe("createClip - audio clips", () => {
         return this._id ?? "";
       });
 
-      createClip({
+      await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "1", // Scene doesn't exist yet
@@ -229,14 +229,14 @@ describe("createClip - audio clips", () => {
       );
     });
 
-    it("should emit warning and return empty array when scene index exceeds maximum", () => {
+    it("should emit warning and return empty array when scene index exceeds maximum", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         LiveSet: { signature_numerator: 4 },
       });
 
       // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: String(MAX_AUTO_CREATED_SCENES),
@@ -247,14 +247,14 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([]);
     });
 
-    it("should emit warning and return empty array when clip already exists", () => {
+    it("should emit warning and return empty array when clip already exists", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 1 }, // Clip already exists
         LiveSet: { signature_numerator: 4 },
       });
 
       // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -267,10 +267,10 @@ describe("createClip - audio clips", () => {
   });
 
   describe("arrangement view", () => {
-    it("should create audio clip in arrangement view", () => {
+    it("should create audio clip in arrangement view", async () => {
       setupAudioArrangementClipMocks();
 
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
@@ -293,10 +293,10 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should create audio clip with name and color in arrangement", () => {
+    it("should create audio clip with name and color in arrangement", async () => {
       setupAudioArrangementClipMocks({ clipLength: 16 });
 
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "5|1",
@@ -324,7 +324,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should create multiple audio clips at specified positions in arrangement", () => {
+    it("should create multiple audio clips at specified positions in arrangement", async () => {
       let clipCounter = 0;
 
       liveApiCall.mockImplementation((method, ..._args) => {
@@ -362,7 +362,7 @@ describe("createClip - audio clips", () => {
         arrangement_audio_clip_2: { length: 4 },
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1,2|1,3|1",
@@ -412,7 +412,7 @@ describe("createClip - audio clips", () => {
       ]);
     });
 
-    it("should emit warning and return empty array when arrangement position exceeds maximum", () => {
+    it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
       mockLiveApiGet({
         Track: { exists: () => true },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -420,7 +420,7 @@ describe("createClip - audio clips", () => {
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       // Runtime errors during clip creation are now warnings, not fatal errors
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "394202|1",
@@ -431,7 +431,7 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([]);
     });
 
-    it("should throw error when track does not exist", () => {
+    it("should throw error when track does not exist", async () => {
       // Mock liveApiId to return "id 0" which makes exists() return false
       liveApiId.mockReturnValue("id 0");
 
@@ -439,17 +439,17 @@ describe("createClip - audio clips", () => {
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      expect(() =>
+      await expect(
         createClip({
           view: "arrangement",
           trackIndex: 99,
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).toThrow("createClip failed: track 99 does not exist");
+      ).rejects.toThrow("createClip failed: track 99 does not exist");
     });
 
-    it("should emit warning and return empty array when audio clip creation fails", () => {
+    it("should emit warning and return empty array when audio clip creation fails", async () => {
       // Make track exist but clip creation fails (clip.exists() returns false)
       liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_audio_clip") {
@@ -479,7 +479,7 @@ describe("createClip - audio clips", () => {
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
@@ -492,7 +492,7 @@ describe("createClip - audio clips", () => {
   });
 
   describe("audio clip length handling", () => {
-    it("should use actual audio clip length from Live API", () => {
+    it("should use actual audio clip length from Live API", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         Clip: { length: 12.5 }, // Irregular audio length
@@ -506,7 +506,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -522,7 +522,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should report same length for multiple clips from same sample", () => {
+    it("should report same length for multiple clips from same sample", async () => {
       liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
@@ -547,7 +547,7 @@ describe("createClip - audio clips", () => {
         audio_clip_0_1: { length: 8 },
       });
 
-      const result = createClip({
+      const result = await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0,1",
@@ -573,7 +573,7 @@ describe("createClip - audio clips", () => {
   });
 
   describe("parameters ignored for audio clips", () => {
-    it("should not set timing parameters on audio clips", () => {
+    it("should not set timing parameters on audio clips", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         Clip: { length: 8 },
@@ -587,7 +587,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      createClip({
+      await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
@@ -607,7 +607,7 @@ describe("createClip - audio clips", () => {
       expect(liveApiSet).not.toHaveBeenCalledWith("looping");
     });
 
-    it("should not set time signature on audio clips", () => {
+    it("should not set time signature on audio clips", async () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
         Clip: { length: 8 },
@@ -621,7 +621,7 @@ describe("createClip - audio clips", () => {
         return this._id;
       });
 
-      createClip({
+      await createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",

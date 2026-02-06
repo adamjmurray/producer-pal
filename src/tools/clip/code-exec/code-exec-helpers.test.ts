@@ -10,9 +10,12 @@ import {
   buildCodeExecutionContext,
   codeNoteToNoteEvent,
   extractNotesFromClip,
+  getClipLocationInfo,
   getClipNoteCount,
   noteEventToCodeNote,
   applyNotesToClip,
+  validateAndSanitizeNote,
+  validateCodeNotes,
 } from "./code-exec-helpers.ts";
 
 describe("code-exec-helpers", () => {
@@ -362,6 +365,169 @@ describe("code-exec-helpers", () => {
       } finally {
         LiveAPI.from = originalFrom;
       }
+    });
+  });
+
+  describe("getClipLocationInfo", () => {
+    it("should return session view info for session clip", () => {
+      const mockClip = {
+        path: "live_set tracks 0 clip_slots 2 clip",
+        getProperty: vi.fn().mockReturnValue(0), // is_arrangement_clip = 0
+      };
+
+      const result = getClipLocationInfo(mockClip as unknown as LiveAPI);
+
+      expect(result).toStrictEqual({ view: "session", sceneIndex: 2 });
+    });
+
+    it("should return arrangement view info for arrangement clip", () => {
+      const mockClip = {
+        path: "live_set tracks 0 arrangement_clips 3",
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 16;
+
+          return 0;
+        }),
+      };
+
+      const result = getClipLocationInfo(mockClip as unknown as LiveAPI);
+
+      expect(result).toStrictEqual({
+        view: "arrangement",
+        arrangementStartBeats: 16,
+      });
+    });
+  });
+
+  describe("validateAndSanitizeNote", () => {
+    it("should validate a valid note", () => {
+      const result = validateAndSanitizeNote({
+        pitch: 60,
+        start: 0,
+        duration: 1,
+        velocity: 100,
+        velocityDeviation: 0,
+        probability: 1,
+      });
+
+      expect(result.valid).toBe(true);
+    });
+
+    it("should reject non-object values", () => {
+      expect(validateAndSanitizeNote(null).valid).toBe(false);
+      expect(validateAndSanitizeNote("string").valid).toBe(false);
+      expect(validateAndSanitizeNote(42).valid).toBe(false);
+    });
+
+    it("should reject notes missing required properties", () => {
+      expect(validateAndSanitizeNote({ pitch: 60 }).valid).toBe(false);
+      expect(
+        validateAndSanitizeNote({
+          pitch: 60,
+          start: 0,
+          duration: 1,
+        }).valid,
+      ).toBe(false);
+    });
+
+    it("should reject notes with zero or negative duration", () => {
+      expect(
+        validateAndSanitizeNote({
+          pitch: 60,
+          start: 0,
+          duration: 0,
+          velocity: 100,
+        }).valid,
+      ).toBe(false);
+      expect(
+        validateAndSanitizeNote({
+          pitch: 60,
+          start: 0,
+          duration: -1,
+          velocity: 100,
+        }).valid,
+      ).toBe(false);
+    });
+
+    it("should clamp pitch to 0-127", () => {
+      const low = validateAndSanitizeNote({
+        pitch: -10,
+        start: 0,
+        duration: 1,
+        velocity: 100,
+      });
+      const high = validateAndSanitizeNote({
+        pitch: 200,
+        start: 0,
+        duration: 1,
+        velocity: 100,
+      });
+
+      expect(low.valid && low.note.pitch).toBe(0);
+      expect(high.valid && high.note.pitch).toBe(127);
+    });
+
+    it("should clamp velocity to 1-127", () => {
+      const low = validateAndSanitizeNote({
+        pitch: 60,
+        start: 0,
+        duration: 1,
+        velocity: 0,
+      });
+      const high = validateAndSanitizeNote({
+        pitch: 60,
+        start: 0,
+        duration: 1,
+        velocity: 200,
+      });
+
+      expect(low.valid && low.note.velocity).toBe(1);
+      expect(high.valid && high.note.velocity).toBe(127);
+    });
+
+    it("should default optional properties", () => {
+      const result = validateAndSanitizeNote({
+        pitch: 60,
+        start: 0,
+        duration: 1,
+        velocity: 100,
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.valid && result.note.velocityDeviation).toBe(0);
+      expect(result.valid && result.note.probability).toBe(1);
+    });
+  });
+
+  describe("validateCodeNotes", () => {
+    it("should validate an array of notes", () => {
+      const result = validateCodeNotes([
+        { pitch: 60, start: 0, duration: 1, velocity: 100 },
+        { pitch: 72, start: 1, duration: 0.5, velocity: 90 },
+      ]);
+
+      expect(result.success).toBe(true);
+      expect(result.success && result.notes).toHaveLength(2);
+    });
+
+    it("should return error for non-array result", () => {
+      const result = validateCodeNotes("not an array");
+
+      expect(result.success).toBe(false);
+      expect(!result.success && result.error).toContain("must return an array");
+    });
+
+    it("should filter out invalid notes silently", () => {
+      const result = validateCodeNotes([
+        { pitch: 60, start: 0, duration: 1, velocity: 100 },
+        { pitch: 60 }, // missing required fields
+        null,
+        { pitch: 72, start: 1, duration: 1, velocity: 100 },
+      ]);
+
+      expect(result.success).toBe(true);
+      expect(result.success && result.notes).toHaveLength(2);
     });
   });
 });

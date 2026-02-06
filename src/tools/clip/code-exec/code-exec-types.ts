@@ -80,27 +80,12 @@ export type CodeExecutionResult =
   | { success: false; error: string };
 
 /**
- * Protocol message: V8 → Node with extracted notes and context.
+ * Result of sandboxed code execution (general-purpose).
+ * Returns raw result from the sandbox without note-specific validation.
  */
-export interface NotesDataMessage {
-  requestId: string;
-  clips: Array<{
-    clipId: string;
-    notes: CodeNote[];
-  }>;
-  context: CodeExecutionContext;
-}
-
-/**
- * Protocol message: Node → V8 with transformed notes.
- */
-export interface ApplyNotesMessage {
-  requestId: string;
-  clips: Array<{
-    clipId: string;
-    notes: CodeNote[];
-  }>;
-}
+export type SandboxResult =
+  | { success: true; result: unknown }
+  | { success: false; error: string };
 
 /** Maximum clips allowed when code execution is used */
 export const MAX_CODE_EXEC_CLIPS = 20;
