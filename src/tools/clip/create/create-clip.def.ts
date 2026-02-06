@@ -88,7 +88,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "JavaScript code to transform notes. Receives (notes, context), returns notes array - MIDI clips only",
+        "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
       ),
 
     sampleFile: z

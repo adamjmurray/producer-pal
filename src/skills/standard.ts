@@ -182,6 +182,35 @@ gain = audio.gain - 6          // reduce audio clip by 6 dB
 \`+=\` compounds on repeated calls; use \`=\` for idempotent values. To transform existing notes, use update-clip with just transforms.
 Cross-type parameters ignored (MIDI params on audio clips, audio params on MIDI clips).
 
+### Code Transforms
+
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript:
+
+\`\`\`javascript
+// Receives (notes, context), returns notes array
+(notes, context) => {
+  return notes.filter(n => n.pitch >= 60).map(n => ({
+    ...n,
+    velocity: Math.min(127, n.velocity + 20)
+  }));
+}
+\`\`\`
+
+**Note properties:**
+- \`pitch\`: 0-127 (60 = C3)
+- \`start\`: beats from clip start
+- \`duration\`: beats
+- \`velocity\`: 1-127
+- \`velocityDeviation\`: 0-127
+- \`probability\`: 0-1
+
+**Context properties:**
+- \`track\`: { index, name, type, color }
+- \`clip\`: { id, name, length, timeSignature, looping }
+- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`liveSet\`: { tempo, scale?, timeSignature }
+- \`beatsPerBar\`: number
+
 ## Working with Ableton Live
 
 **Views and Playback:**

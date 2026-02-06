@@ -109,7 +109,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "JavaScript code to transform notes. Receives (notes, context), returns notes array",
+        "JS function body: receives (notes, context), returns notes array (see Skills for properties)",
       ),
 
     // Quantization parameters
