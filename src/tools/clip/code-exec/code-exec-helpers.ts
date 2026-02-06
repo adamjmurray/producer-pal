@@ -8,6 +8,7 @@
  * Handles note extraction, context building, and note application.
  */
 
+import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
 import type { NoteEvent } from "#src/notation/types.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
@@ -179,17 +180,17 @@ export function validateAndSanitizeNote(
   const n = note as Record<string, unknown>;
 
   // Check required properties exist and are numbers
-  if (
-    typeof n.pitch !== "number" ||
-    typeof n.start !== "number" ||
-    typeof n.duration !== "number" ||
-    typeof n.velocity !== "number"
-  ) {
+  if (typeof n.pitch !== "number" || typeof n.start !== "number") {
     return { valid: false };
   }
 
+  // Default duration and velocity if not provided
+  const duration = typeof n.duration === "number" ? n.duration : 1;
+  const velocity =
+    typeof n.velocity === "number" ? n.velocity : DEFAULT_VELOCITY;
+
   // Validate ranges (start can be negative for notes before clip start)
-  if (n.duration <= 0) {
+  if (duration <= 0) {
     return { valid: false };
   }
 
@@ -197,8 +198,8 @@ export function validateAndSanitizeNote(
   const sanitized: CodeNote = {
     pitch: Math.max(0, Math.min(127, Math.round(n.pitch))),
     start: n.start,
-    duration: Math.max(0.001, n.duration),
-    velocity: Math.max(1, Math.min(127, Math.round(n.velocity))),
+    duration: Math.max(0.001, duration),
+    velocity: Math.max(1, Math.min(127, Math.round(velocity))),
     velocityDeviation: Math.max(
       0,
       Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),

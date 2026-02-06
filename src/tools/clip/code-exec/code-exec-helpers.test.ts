@@ -421,14 +421,17 @@ describe("code-exec-helpers", () => {
     });
 
     it("should reject notes missing required properties", () => {
+      expect(validateAndSanitizeNote({ start: 0 }).valid).toBe(false);
       expect(validateAndSanitizeNote({ pitch: 60 }).valid).toBe(false);
-      expect(
-        validateAndSanitizeNote({
-          pitch: 60,
-          start: 0,
-          duration: 1,
-        }).valid,
-      ).toBe(false);
+      expect(validateAndSanitizeNote({}).valid).toBe(false);
+    });
+
+    it("should default duration to 1 and velocity to 100", () => {
+      const result = validateAndSanitizeNote({ pitch: 60, start: 0 });
+
+      expect(result.valid).toBe(true);
+      expect(result.valid && result.note.duration).toBe(1);
+      expect(result.valid && result.note.velocity).toBe(100);
     });
 
     it("should reject notes with zero or negative duration", () => {
