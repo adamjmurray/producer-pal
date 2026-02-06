@@ -34,6 +34,13 @@ const terserOptions = {
   },
 };
 
+const envVarReplacements = {
+  "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
+    process.env.ENABLE_RAW_LIVE_API,
+  ),
+  "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
+};
+
 const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
@@ -58,9 +65,7 @@ export default [
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
       replace({
-        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
-          process.env.ENABLE_RAW_LIVE_API,
-        ),
+        ...envVarReplacements,
         preventAssignment: true,
       }),
       esbuild({
@@ -95,9 +100,7 @@ export default [
         entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
       replace({
-        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
-          process.env.ENABLE_RAW_LIVE_API,
-        ),
+        ...envVarReplacements,
         preventAssignment: true,
       }),
       esbuild({
@@ -155,9 +158,7 @@ export default [
         shebang: "#!/usr/bin/env node",
       }),
       replace({
-        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
-          process.env.ENABLE_RAW_LIVE_API,
-        ),
+        ...envVarReplacements,
         delimiters: ["", ""],
         'import pkceChallenge from "pkce-challenge";':
           'const pkceChallenge = () => { throw new Error("Authorization not supported - Producer Pal uses local HTTP communication only"); };',

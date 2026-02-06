@@ -23,6 +23,19 @@ export async function handleCodeExecRequest(
   requestId: string,
   requestJson: string,
 ): Promise<void> {
+  if (process.env.ENABLE_CODE_EXEC !== "true") {
+    console.error(
+      `code_exec_request rejected: ENABLE_CODE_EXEC is not set [requestId=${requestId}]`,
+    );
+
+    await sendCodeExecResult(requestId, {
+      success: false,
+      error: "Code execution is not enabled",
+    });
+
+    return;
+  }
+
   let code: string;
   let globals: Record<string, unknown>;
 

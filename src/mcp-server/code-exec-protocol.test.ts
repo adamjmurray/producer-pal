@@ -43,6 +43,20 @@ function parseSentResult(): {
 describe("code-exec-protocol", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ENABLE_CODE_EXEC = "true";
+  });
+
+  it("should reject requests when ENABLE_CODE_EXEC is not set", async () => {
+    delete process.env.ENABLE_CODE_EXEC;
+
+    const request = JSON.stringify({ code: "1 + 1", globals: {} });
+
+    await handleCodeExecRequest("req-blocked", request);
+
+    const result = parseSentResult();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("not enabled");
   });
 
   it("should execute code and send result back", async () => {
