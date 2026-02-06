@@ -17,8 +17,6 @@ interface SettingsScreenProps {
   setApiKey: (key: string) => void;
   baseUrl?: string;
   setBaseUrl?: (url: string) => void;
-  port?: number;
-  setPort?: (port: number) => void;
   model: string;
   setModel: (model: string) => void;
   thinking: string;
@@ -70,10 +68,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} props.setProvider - Function to update provider
  * @param {string} props.apiKey - API key for the provider
  * @param {Function} props.setApiKey - Function to update API key
- * @param {string} props.baseUrl - Base URL for custom provider
+ * @param {string} props.baseUrl - Base URL for custom and local providers
  * @param {Function} props.setBaseUrl - Function to update base URL
- * @param {number} props.port - Port for local provider
- * @param {Function} props.setPort - Function to update port
  * @param {string} props.model - Selected model
  * @param {Function} props.setModel - Function to update model
  * @param {string} props.thinking - Thinking mode setting
@@ -101,8 +97,6 @@ export function SettingsScreen({
   setApiKey,
   baseUrl,
   setBaseUrl,
-  port,
-  setPort,
   model,
   setModel,
   thinking,
@@ -143,8 +137,6 @@ export function SettingsScreen({
                   setApiKey={setApiKey}
                   baseUrl={baseUrl}
                   setBaseUrl={setBaseUrl}
-                  port={port}
-                  setPort={setPort}
                   model={model}
                   setModel={setModel}
                   providerLabel={providerLabel}

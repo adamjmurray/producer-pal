@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
-    port: 1234,
+    baseUrl: "http://localhost:1234/v1",
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
@@ -56,7 +56,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   ollama: {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
-    port: 11434,
+    baseUrl: "http://localhost:11434/v1",
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
@@ -84,6 +84,11 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
   if (newFormatData) {
     try {
       const parsed = JSON.parse(newFormatData);
+
+      // Migrate port to baseUrl for local providers
+      if (parsed.port && !parsed.baseUrl) {
+        parsed.baseUrl = `http://localhost:${parsed.port}/v1`;
+      }
 
       return { ...DEFAULT_SETTINGS[provider], ...parsed };
     } catch {
