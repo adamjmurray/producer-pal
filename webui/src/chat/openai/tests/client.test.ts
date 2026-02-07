@@ -111,6 +111,20 @@ describe("OpenAIClient constructor", () => {
   });
 });
 
+describe("OpenAIClient.initialize", () => {
+  it("sets mcpClient after initialization", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+
+    expect(client.mcpClient).toBeNull();
+
+    await client.initialize();
+
+    // After initialization, mcpClient should be set (via mocked MCP SDK)
+    expect(client.mcpClient).toBeDefined();
+    expect(client.mcpClient).not.toBeNull();
+  });
+});
+
 describe("OpenAIClient.buildStreamMessage", () => {
   let client: OpenAIClient;
 
