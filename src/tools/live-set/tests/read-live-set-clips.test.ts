@@ -24,32 +24,36 @@ function setupIdMock(pathMap: Record<string, string> = {}): void {
   });
 }
 
+function setupSingleTrackWithClip(setName: string): void {
+  setupIdMock({
+    "live_set tracks 0 clip_slots 0 clip": "clip1",
+    "id slot1 clip": "clip1",
+    clip1: "clip1",
+    "id clip1": "clip1",
+  });
+
+  mockLiveApiGet({
+    LiveSet: {
+      name: setName,
+      tracks: children("track1"),
+      scenes: [],
+    },
+    "live_set tracks 0": {
+      has_midi_input: 1,
+      name: "Test Track",
+      clip_slots: children("slot1"),
+      arrangement_clips: children("arr_clip1"),
+      devices: [],
+    },
+    "id slot1": {
+      clip: ["id", "clip1"],
+    },
+  });
+}
+
 describe("readLiveSet - clips", () => {
   it("passes clip loading parameters to readTrack", () => {
-    setupIdMock({
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
-      "id slot1 clip": "clip1",
-      clip1: "clip1",
-      "id clip1": "clip1",
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Clip Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-      },
-      "id slot1": {
-        clip: ["id", "clip1"],
-      },
-    });
+    setupSingleTrackWithClip("Clip Test Set");
 
     // Test with minimal clip loading (no session-clips or arrangement-clips in include)
     const result = readLiveSet({
@@ -67,30 +71,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("uses default parameter values when no arguments provided", () => {
-    setupIdMock({
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
-      "id slot1 clip": "clip1",
-      clip1: "clip1",
-      "id clip1": "clip1",
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Default Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-      },
-      "id slot1": {
-        clip: ["id", "clip1"],
-      },
-    });
+    setupSingleTrackWithClip("Default Test Set");
 
     // Call readLiveSet with no arguments to test defaults
     const result = readLiveSet();
