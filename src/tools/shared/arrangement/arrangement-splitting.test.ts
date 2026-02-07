@@ -321,6 +321,49 @@ describe("performSplitting", () => {
     );
   });
 
+  it("should rescan split clips replacing stale references with fresh ones", () => {
+    const clipId = "clip_1";
+
+    setupLoopedClipSplittingMocks(clipId);
+
+    // Override liveApiGet to return child clip IDs for track's arrangement_clips
+    const parentGet = liveApiGet.getMockImplementation();
+
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
+      // When the track is queried for arrangement_clips, return fresh clip IDs
+      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
+        return ["id", "fresh_1", "id", "fresh_2"];
+      }
+
+      // Fresh clips have start_time within the range of the original clip (0-16)
+      if (this._id === "fresh_1" && prop === "start_time") {
+        return [0.0];
+      }
+
+      if (this._id === "fresh_2" && prop === "start_time") {
+        return [4.0];
+      }
+
+      return parentGet?.call(this, prop) ?? [0];
+    });
+
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    const clips = [mockClip];
+    const warnings = new Set<string>();
+
+    performSplitting([mockClip], [4, 8], clips, warnings, {
+      holdingAreaStartBeats: 40000,
+    });
+
+    // clips array should now contain fresh clip references from rescan
+    expect(clips.length).toBeGreaterThanOrEqual(1);
+    // The original clip should have been replaced
+    expect(clips.some((c) => c.id === clipId)).toBe(false);
+  });
+
   it("should warn when MIDI duplication fails", () => {
     const clipId = "clip_1";
     let callCount = 0;
