@@ -39,6 +39,5 @@ docs/.vitepress/cache
 test-results
 report/
 
-# Live .asd files for audio samples
-evals/live-sets/samples/*.asd
-e2e/live-sets/samples/*.asd
+# Live project backups
+**/live-sets/**/Backup
