@@ -69,30 +69,26 @@ manipulation and basic Live Set management.
 
 ## Planned Features
 
-### 1.5 - Code Execution
+### 1.4.5 - Code Execution
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.6 - Customization
+### 1.5 - Customization and Small Model Optimization
 
 - Custom skills, system prompts, tool descriptions, and task-focused personas
   for experimentation and local model optimization
+- Make different personas to focus on different types of tasks, for better
+  results and less context window usage
+- Evaluation tools for comparing adjustments to customization settings
 
-### 1.7 - Harmony
+### 1.6 - Harmony
 
 - Chord notation
 - Pitches as scale/chord degrees of the current chord (instead of absolute
   pitches)
 - Microtonal support
 
-### 1.8 - Audio Editing and Synthesis
-
-- Reverse audio clips
-- Generate audio files on demand from a selection of synthesis algorithms and
-  arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
-- Generate novel DSP algorithms
-
-### 1.x - Misc
+### 1.x - Miscellaneous Features
 
 - Take lane support
 - Groove support
