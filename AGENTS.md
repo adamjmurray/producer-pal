@@ -18,9 +18,6 @@ npm run typecheck
 npm run format
 npm test
 
-# Parser rebuild (when modifying bar|beat grammar)
-npm run parser:build
-
 # Chat UI development
 npm run ui:build # Production build
 

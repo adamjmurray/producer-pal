@@ -28,7 +28,7 @@
     "build": "npm run parser:build && npm run ui:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
     "build:all": "ENABLE_RAW_LIVE_API=true ENABLE_CODE_EXEC=true npm run build",
     "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
-    "dev": "ENABLE_RAW_LIVE_API=true ENABLE_CODE_EXEC=true rollup -c config/rollup.config.mjs -w",
+    "dev": "npm run parser:build && ENABLE_RAW_LIVE_API=true ENABLE_CODE_EXEC=true rollup -c config/rollup.config.mjs -w",
     "test": "npm run test:setup && vitest run -c config/vitest.config.ts --reporter=./config/vitest-minimal-reporter.mjs --silent",
     "test:watch": "npm run test:setup && vitest -c config/vitest.config.ts --reporter=dot --silent",
     "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.ts --reporter=./config/vitest-minimal-reporter.mjs --silent",
