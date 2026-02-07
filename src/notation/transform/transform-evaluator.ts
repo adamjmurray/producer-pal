@@ -75,8 +75,8 @@ export function applyTransforms(
 
     // Apply transforms with operator semantics and range clamping
     applyVelocityTransform(note, transforms);
-    applyTimingTransform(note, transforms);
-    applyDurationTransform(note, transforms);
+    applyTimingTransform(note, transforms, timeSigDenominator);
+    applyDurationTransform(note, transforms, timeSigDenominator);
     applyProbabilityTransform(note, transforms);
     applyDeviationTransform(note, transforms);
     applyPitchTransform(note, transforms);
@@ -144,10 +144,10 @@ function buildNoteProperties(
 ): NoteProperties {
   return {
     pitch: note.pitch,
-    start: note.start_time * (timeSigDenominator / 4),
+    start: note.start_time * (timeSigDenominator / 4), // Convert to musical beats
     velocity: note.velocity,
     deviation: note.velocity_deviation ?? 0,
-    duration: note.duration,
+    duration: note.duration * (timeSigDenominator / 4), // Convert to musical beats
     probability: note.probability,
   };
 }
@@ -178,44 +178,57 @@ function applyVelocityTransform(
 
 /**
  * Apply timing transform to a note
+ * Transform values are in musical beats; convert to Ableton beats for storage
  * @param note - Note to modify
  * @param transforms - Transform results
+ * @param timeSigDenominator - Time signature denominator for beat conversion
  */
 function applyTimingTransform(
   note: NoteEvent,
   transforms: Record<string, TransformResult>,
+  timeSigDenominator: number,
 ): void {
   if (transforms.timing == null) {
     return;
   }
 
-  // Timing transforms start_time directly (in Ableton beats)
+  // Convert from musical beats (expression result) to Ableton beats (storage)
+  const musicalBeatsValue = transforms.timing.value;
+  const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
+
   if (transforms.timing.operator === "set") {
-    note.start_time = transforms.timing.value;
+    note.start_time = abletonBeatsValue;
   } else {
     // operator === "add"
-    note.start_time += transforms.timing.value;
+    note.start_time += abletonBeatsValue;
   }
 }
 
 /**
  * Apply duration transform to a note
+ * Transform values are in musical beats; convert to Ableton beats for storage
  * @param note - Note to modify
  * @param transforms - Transform results
+ * @param timeSigDenominator - Time signature denominator for beat conversion
  */
 function applyDurationTransform(
   note: NoteEvent,
   transforms: Record<string, TransformResult>,
+  timeSigDenominator: number,
 ): void {
   if (transforms.duration == null) {
     return;
   }
 
-  // operator is "set" or "add"
+  // Convert from musical beats (expression result) to Ableton beats (storage)
+  const musicalBeatsValue = transforms.duration.value;
+  const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
+
+  // Clamp minimum duration in Ableton beats
   note.duration =
     transforms.duration.operator === "set"
-      ? Math.max(0.001, transforms.duration.value)
-      : Math.max(0.001, note.duration + transforms.duration.value);
+      ? Math.max(0.001, abletonBeatsValue)
+      : Math.max(0.001, note.duration + abletonBeatsValue);
 }
 
 /**

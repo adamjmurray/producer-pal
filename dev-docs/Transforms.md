@@ -99,6 +99,57 @@ max(a, b, ...); // maximum of 2+ values
   - gain: -70 to 24 dB
   - pitchShift: -48 to 48 semitones
 
+## Units and Time Signatures
+
+All transform expressions evaluate in **musical beats**, where 1 beat equals the
+time signature denominator note value:
+
+- **4/4 time**: 1 musical beat = 1 quarter note
+- **3/4 time**: 1 musical beat = 1 quarter note
+- **6/8 time**: 1 musical beat = 1 eighth note
+- **2/2 time**: 1 musical beat = 1 half note
+
+This ensures that `timing += 1` always adds one beat in the current time
+signature, and period notation like `1t` behaves consistently across different
+time signatures.
+
+### Examples by Time Signature
+
+**In 4/4 time**:
+
+- `timing += 1` shifts by 1 quarter note
+- `duration = 2` sets to 2 quarter notes
+- `cos(1t)` completes one cycle per quarter note
+
+**In 6/8 time**:
+
+- `timing += 1` shifts by 1 eighth note
+- `duration = 6` sets to 6 eighth notes (1 bar)
+- `cos(1t)` completes one cycle per eighth note
+- `cos(1:0t)` completes one cycle per bar (6 eighth notes)
+
+**In 2/2 time**:
+
+- `timing += 1` shifts by 1 half note
+- `duration = 2` sets to 2 half notes (1 bar)
+- `cos(1t)` completes one cycle per half note
+
+### Note Property Units
+
+All note properties are exposed in musical beats:
+
+- `note.start` - Start time in musical beats
+- `note.duration` - Duration in musical beats
+- `note.pitch`, `note.velocity` - Natural units (0-127)
+- `note.probability` - Natural units (0-1)
+- `note.deviation` - Natural units (-127 to 127)
+
+### Internal Representation
+
+Ableton Live stores times and durations as quarter notes (Ableton beats).
+Producer Pal automatically converts between musical beats (used in transforms)
+and Ableton beats (stored in Live).
+
 ## Variables
 
 ### Note Properties (MIDI clips)
@@ -156,8 +207,10 @@ velocity += 20 * square(2t, 0, 0.25)
 // Combined functions
 velocity += 20 * cos(4:0t) + 10 * noise()
 
-// Swing timing
+// Swing timing (works consistently across all time signatures)
 timing += 0.05 * (cos(1t) - 1)
+// In 4/4: shifts by up to 0.05 quarter notes
+// In 6/8: shifts by up to 0.05 eighth notes
 
 // Unipolar envelope (adds 0 to 40)
 velocity += 20 + 20 * cos(2:0t)
