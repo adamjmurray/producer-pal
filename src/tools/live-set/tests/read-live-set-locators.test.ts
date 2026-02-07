@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -11,26 +12,54 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
+interface SetupLocatorReadMocksOptions {
+  cuePoints?: Record<string, { name: string; time: number }>;
+  cueChildren?: string[];
+  signatureNumerator?: number;
+}
+
+/**
+ * Setup liveApiId and mockLiveApiGet mocks for locator read tests.
+ * @param options - Configuration options
+ * @param options.cuePoints - Cue point data keyed by ID
+ * @param options.cueChildren - Override cue_points children list (defaults to cuePoints keys)
+ * @param options.signatureNumerator - Time signature numerator (defaults to 4)
+ */
+function setupLocatorReadMocks({
+  cuePoints = {},
+  cueChildren,
+  signatureNumerator = 4,
+}: SetupLocatorReadMocksOptions = {}): void {
+  const cueIds = cueChildren ?? Object.keys(cuePoints);
+
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+    if (this._path === "live_set") return "live_set_id";
+
+    for (const id of cueIds) {
+      if (this._path === `id ${id}`) return id;
+    }
+
+    return this._id;
+  });
+
+  mockLiveApiGet({
+    LiveSet: {
+      name: "Test Set",
+      tempo: 120,
+      signature_numerator: signatureNumerator,
+      signature_denominator: 4,
+      scale_mode: 0,
+      tracks: [],
+      scenes: [],
+      cue_points: cueIds.length > 0 ? children(...cueIds) : [],
+    },
+    ...cuePoints,
+  });
+}
+
 describe("readLiveSet - locators", () => {
   it("should not include locators by default", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Set",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        scale_mode: 0,
-        tracks: [],
-        scenes: [],
-        cue_points: children("cue1"),
-      },
-    });
+    setupLocatorReadMocks({ cueChildren: ["cue1"] });
 
     const result = readLiveSet({ include: [] });
 
@@ -38,32 +67,10 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should include locators when requested", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "id cue1") return "cue1";
-      if (this._path === "id cue2") return "cue2";
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Set",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        scale_mode: 0,
-        tracks: [],
-        scenes: [],
-        cue_points: children("cue1", "cue2"),
-      },
-      cue1: {
-        name: "Intro",
-        time: 0,
-      },
-      cue2: {
-        name: "Verse",
-        time: 16,
+    setupLocatorReadMocks({
+      cuePoints: {
+        cue1: { name: "Intro", time: 0 },
+        cue2: { name: "Verse", time: 16 },
       },
     });
 
@@ -76,24 +83,7 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should handle empty locators array", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Set",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        scale_mode: 0,
-        tracks: [],
-        scenes: [],
-        cue_points: [],
-      },
-    });
+    setupLocatorReadMocks();
 
     const result = readLiveSet({ include: ["locators"] });
 
@@ -101,28 +91,9 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should format locator times correctly in different time signatures", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "id cue1") return "cue1";
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Set",
-        tempo: 120,
-        signature_numerator: 3,
-        signature_denominator: 4,
-        scale_mode: 0,
-        tracks: [],
-        scenes: [],
-        cue_points: children("cue1"),
-      },
-      cue1: {
-        name: "Chorus",
-        time: 6, // 6 quarter notes = bar 3, beat 1 in 3/4
-      },
+    setupLocatorReadMocks({
+      cuePoints: { cue1: { name: "Chorus", time: 6 } },
+      signatureNumerator: 3,
     });
 
     const result = readLiveSet({ include: ["locators"] });
@@ -133,28 +104,8 @@ describe("readLiveSet - locators", () => {
   });
 
   it("should include locators with wildcard include", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "id cue1") return "cue1";
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Set",
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        scale_mode: 0,
-        tracks: [],
-        scenes: [],
-        cue_points: children("cue1"),
-      },
-      cue1: {
-        name: "Bridge",
-        time: 32,
-      },
+    setupLocatorReadMocks({
+      cuePoints: { cue1: { name: "Bridge", time: 32 } },
     });
 
     const result = readLiveSet({ include: ["*"] });

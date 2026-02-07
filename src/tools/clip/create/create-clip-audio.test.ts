@@ -15,6 +15,16 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "./create-clip.ts";
 import { setupAudioArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
+function mockClipIds(pathToIdMap: Record<string, string>): void {
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+    const pathMatch = pathToIdMap[this._path ?? ""];
+    if (pathMatch) return pathMatch;
+    const idMatch = this._id ? pathToIdMap[this._id] : undefined;
+    if (idMatch) return idMatch;
+    return this._id;
+  });
+}
+
 describe("createClip - audio clips", () => {
   describe("validation", () => {
     it("should throw error when both sampleFile and notes are provided", async () => {
@@ -43,13 +53,7 @@ describe("createClip - audio clips", () => {
         Clip: { length: 16 }, // Mock audio file length (4 bars in 4/4)
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        return this._id;
-      });
+      mockClipIds({ "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0" });
 
       const result = await createClip({
         view: "session",
@@ -82,13 +86,7 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        return this._id;
-      });
+      mockClipIds({ "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0" });
 
       const result = await createClip({
         view: "session",
@@ -137,21 +135,9 @@ describe("createClip - audio clips", () => {
       });
 
       // Mock clip IDs based on path
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        if (this._path === "live_set tracks 0 clip_slots 1 clip") {
-          return "audio_clip_0_1";
-        }
-
-        // When querying length, use the same ID
-        if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
-          return this._id;
-        }
-
-        return this._id;
+      mockClipIds({
+        "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0",
+        "live_set tracks 0 clip_slots 1 clip": "audio_clip_0_1",
       });
 
       const result = await createClip({
@@ -498,13 +484,7 @@ describe("createClip - audio clips", () => {
         Clip: { length: 12.5 }, // Irregular audio length
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        return this._id;
-      });
+      mockClipIds({ "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0" });
 
       const result = await createClip({
         view: "session",
@@ -523,21 +503,9 @@ describe("createClip - audio clips", () => {
     });
 
     it("should report same length for multiple clips from same sample", async () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        if (this._path === "live_set tracks 0 clip_slots 1 clip") {
-          return "audio_clip_0_1";
-        }
-
-        // When querying length with clip ID, return the same ID
-        if (this._id === "audio_clip_0_0" || this._id === "audio_clip_0_1") {
-          return this._id;
-        }
-
-        return this._id;
+      mockClipIds({
+        "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0",
+        "live_set tracks 0 clip_slots 1 clip": "audio_clip_0_1",
       });
 
       mockLiveApiGet({
@@ -579,13 +547,7 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        return this._id;
-      });
+      mockClipIds({ "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0" });
 
       await createClip({
         view: "session",
@@ -613,13 +575,7 @@ describe("createClip - audio clips", () => {
         Clip: { length: 8 },
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 clip_slots 0 clip") {
-          return "audio_clip_0_0";
-        }
-
-        return this._id;
-      });
+      mockClipIds({ "live_set tracks 0 clip_slots 0 clip": "audio_clip_0_0" });
 
       await createClip({
         view: "session",
