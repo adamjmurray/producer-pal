@@ -134,6 +134,51 @@ describe("update-clip-arrangement-helpers", () => {
       expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
     });
 
+    it("should warn and return original ID when duplication fails", () => {
+      liveApiPath.mockReturnValue("live_set tracks 0 arrangement_clips 0");
+
+      // duplicate_clip_to_arrangement returns "id 0" (non-existent)
+      liveApiCall.mockImplementation((method) => {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", 0];
+        }
+      });
+
+      liveApiId.mockImplementation(function (this: MockPathContext) {
+        return this._id;
+      });
+
+      const mockClip = {
+        id: "100",
+        getProperty: vi.fn((prop) => {
+          if (prop === "is_arrangement_clip") return 1;
+
+          return null;
+        }),
+        trackIndex: 0,
+      };
+
+      const tracksWithMovedClips = new Map<number, number>();
+
+      const result = handleArrangementStartOperation({
+        clip: mockClip as unknown as LiveAPI,
+        arrangementStartBeats: 8,
+        tracksWithMovedClips,
+      });
+
+      // Should warn about failure and return original clip ID
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "failed to duplicate clip 100 - original preserved",
+      );
+      expect(result).toBe("100");
+      // Should NOT call delete_clip since duplication failed
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_clip",
+        expect.anything(),
+      );
+    });
+
     it("should increment move count for multiple moves on same track", () => {
       const trackIndex = 1;
       const newClipId = "888";
