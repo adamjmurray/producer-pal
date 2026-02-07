@@ -23,18 +23,18 @@ start
     return assignments;
   }
 
-rangeSelector
+rangeSelector "range selector"
   = pitchRange:pitchRange _ timeRange:timeRange? { return { pitchRange, timeRange: timeRange ?? null }; }
   / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
-assignment
+assignment "parameter assignment"
   = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
     return { pitchRange, timeRange, parameter, operator, expression };
   }
 
-pitchRange
+pitchRange "pitch range"
   = startPitch:pitch "-" endPitch:pitch {
     if (endPitch < startPitch) {
       throw new Error(`Invalid pitch range: end pitch ${endPitch} is lower than start pitch ${startPitch}`);
@@ -69,7 +69,7 @@ pitchClass
     return { name: pc, value: PITCH_CLASS_VALUES[pc] };
   }
 
-timeRange
+timeRange "time range"
   = startBar:oneOrMoreInt "|" startBeat:oneOrMoreFloat "-" endBar:oneOrMoreInt "|" endBeat:oneOrMoreFloat {
     return {
       startBar,
@@ -83,7 +83,7 @@ operator
   = "=" { return "set"; }
   / "+=" { return "add"; }
 
-parameter
+parameter "parameter name"
   = "pitchShift" { return "pitchShift"; }
   / "pitch" { return "pitch"; }
   / "velocity" { return "velocity"; }
@@ -93,7 +93,7 @@ parameter
   / "deviation" { return "deviation"; }
   / "gain" { return "gain"; }
 
-expression
+expression "expression"
   = additive
 
 additive

@@ -507,7 +507,7 @@ probability += 0.2 * cos(0:2t)`;
       expect(result).toStrictEqual({});
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Failed to parse"),
+        expect.stringContaining("Transform parse error"),
       );
     });
 

@@ -411,6 +411,16 @@ describe("Transform Parser", () => {
     it("throws on unmatched closing parenthesis", () => {
       expect(() => parser.parse("velocity += 10 + 5)")).toThrow();
     });
+
+    it("provides labeled error for invalid parameter", () => {
+      // Labels help identify valid parameters instead of raw character classes
+      expect(() => parser.parse("invalid += 10")).toThrow();
+    });
+
+    it("provides labeled error for missing expression", () => {
+      // Labels help identify what's expected instead of raw character classes
+      expect(() => parser.parse("velocity +=")).toThrow();
+    });
   });
 
   describe("real-world examples from spec", () => {

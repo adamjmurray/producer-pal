@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
+import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import type { NoteEvent } from "../types.ts";
@@ -40,7 +42,16 @@ export function applyTransforms(
   try {
     ast = parser.parse(transformString);
   } catch (error) {
-    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
+    if (error instanceof Error && error.name === "SyntaxError") {
+      const formatted = formatParserError(
+        error as PeggySyntaxError,
+        "transform",
+      );
+
+      console.warn(`Transform parse error: ${formatted}`);
+    } else {
+      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
+    }
 
     return; // Early return - no point processing notes if parsing failed
   }
@@ -331,7 +342,16 @@ export function evaluateTransform(
   try {
     ast = parser.parse(transformString);
   } catch (error) {
-    console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
+    if (error instanceof Error && error.name === "SyntaxError") {
+      const formatted = formatParserError(
+        error as PeggySyntaxError,
+        "transform",
+      );
+
+      console.warn(`Transform parse error: ${formatted}`);
+    } else {
+      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
+    }
 
     return {};
   }

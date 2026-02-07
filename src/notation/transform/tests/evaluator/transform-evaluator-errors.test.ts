@@ -29,7 +29,7 @@ describe("Transform Evaluator Error Handling", () => {
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Failed to parse transform string"),
+        expect.stringContaining("Transform parse error"),
       );
       // Notes should be unchanged
       expect(notes[0]!.velocity).toBe(100);
@@ -51,7 +51,7 @@ describe("Transform Evaluator Error Handling", () => {
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Failed to parse transform string"),
+        expect.stringContaining("Transform parse error"),
       );
       expect(result).toStrictEqual({});
     });
