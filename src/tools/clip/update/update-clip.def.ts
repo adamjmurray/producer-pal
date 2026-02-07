@@ -64,13 +64,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
 
     // Audio clip parameters
-    gainDb: z
+    gainDb: z.coerce
       .number()
       .min(-70)
       .max(24)
       .optional()
       .describe("audio clip gain in decibels (ignored for MIDI)"),
-    pitchShift: z
+    pitchShift: z.coerce
       .number()
       .min(-48)
       .max(48)
@@ -118,7 +118,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       : {}),
 
     // Quantization parameters
-    quantize: z
+    quantize: z.coerce
       .number()
       .min(0)
       .max(1)
@@ -137,7 +137,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ])
       .optional()
       .describe("note grid (required with quantize)"),
-    quantizeSwing: z
+    quantizeSwing: z.coerce
       .number()
       .min(0)
       .max(1)
@@ -155,19 +155,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
       ),
-    warpBeatTime: z
+    warpBeatTime: z.coerce
       .number()
       .optional()
       .describe(
         "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
       ),
-    warpSampleTime: z
+    warpSampleTime: z.coerce
       .number()
       .optional()
       .describe(
         "sample time in seconds (optional for add - omit to preserve timing)",
       ),
-    warpDistance: z
+    warpDistance: z.coerce
       .number()
       .optional()
       .describe("beats to shift (+forward, -backward) for move operation"),

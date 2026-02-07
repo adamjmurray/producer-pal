@@ -48,7 +48,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
       ),
-    macroVariationIndex: z
+    macroVariationIndex: z.coerce
       .number()
       .int()
       .min(0)
@@ -56,7 +56,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         "Rack only: variation index for load/delete operations (0-based)",
       ),
-    macroCount: z
+    macroCount: z.coerce
       .number()
       .int()
       .min(0)
@@ -73,7 +73,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: z.string().optional().describe("color #RRGGBB (chains only)"),
-    chokeGroup: z
+    chokeGroup: z.coerce
       .number()
       .int()
       .min(0)

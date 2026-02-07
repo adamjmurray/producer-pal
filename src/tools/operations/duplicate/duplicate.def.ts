@@ -21,7 +21,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     id: z.coerce.string().describe("object to duplicate"),
 
-    count: z
+    count: z.coerce
       .number()
       .int()
       .min(1)
@@ -68,7 +68,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
-    toTrackIndex: z
+    toTrackIndex: z.coerce
       .number()
       .int()
       .min(0)

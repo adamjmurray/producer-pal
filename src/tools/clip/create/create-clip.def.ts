@@ -20,7 +20,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   inputSchema: {
     view: z.enum(["session", "arrangement"]).describe("location of the clip"),
 
-    trackIndex: z
+    trackIndex: z.coerce
       .number()
       .int()
       .min(0)
