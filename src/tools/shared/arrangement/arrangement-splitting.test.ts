@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -19,7 +20,51 @@ import {
   setupUnloopedClipSplittingMocks,
 } from "./arrangement-splitting-test-helpers.ts";
 
+const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+
+function createPerformContext(clipId: string): {
+  mockClip: LiveAPI;
+  clips: LiveAPI[];
+  warnings: Set<string>;
+} {
+  const mockClip = LiveAPI.from(`id ${clipId}`);
+  const clips = [mockClip];
+  const warnings = new Set<string>();
+
+  return { mockClip, clips, warnings };
+}
+
+function expectDuplicateCalled(): void {
+  expect(liveApiCall).toHaveBeenCalledWith(
+    "duplicate_clip_to_arrangement",
+    expect.any(String),
+    expect.any(Number),
+  );
+}
+
+function expectDuplicateNotCalled(): void {
+  expect(liveApiCall).not.toHaveBeenCalledWith(
+    "duplicate_clip_to_arrangement",
+    expect.any(String),
+    expect.any(Number),
+  );
+}
+
 describe("prepareSplitParams", () => {
+  function setupPrepareTest(): {
+    mockClip: LiveAPI;
+    warnings: Set<string>;
+  } {
+    const clipId = "clip_1";
+
+    setupSplittingClipBaseMocks(clipId);
+    setupSplittingClipGetMock(clipId, { looping: true });
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    const warnings = new Set<string>();
+
+    return { mockClip, warnings };
+  }
+
   beforeEach(() => {
     liveApiGet.mockReset();
   });
@@ -44,13 +89,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should warn and return null for invalid format", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     const result = prepareSplitParams("invalid", [mockClip], warnings);
 
@@ -59,13 +98,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should parse valid bar|beat positions", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     // 2|1 = 4 beats, 3|1 = 8 beats (in 4/4)
     const result = prepareSplitParams("2|1, 3|1", [mockClip], warnings);
@@ -75,13 +108,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should sort and deduplicate split points", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     // Out of order with duplicate
     const result = prepareSplitParams("3|1, 2|1, 2|1", [mockClip], warnings);
@@ -90,13 +117,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should filter out split points at clip start (1|1)", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     const result = prepareSplitParams("1|1, 2|1", [mockClip], warnings);
 
@@ -105,13 +126,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should warn when all split points are at or before clip start", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     const result = prepareSplitParams("1|1", [mockClip], warnings);
 
@@ -120,13 +135,7 @@ describe("prepareSplitParams", () => {
   });
 
   it("should warn when too many split points", () => {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
+    const { mockClip, warnings } = setupPrepareTest();
 
     // Create 33 split points (exceeds MAX_SPLIT_POINTS = 32)
     const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
@@ -149,22 +158,13 @@ describe("performSplitting", () => {
     const clipId = "clip_1";
 
     setupLoopedClipSplittingMocks(clipId);
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Split a 16-beat clip at 4 and 8 beats (2|1 and 3|1 in 4/4)
-    performSplitting([mockClip], [4, 8], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4, 8], clips, warnings, HOLDING_AREA);
 
     // Should create segments via duplication
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateCalled();
   });
 
   it("should skip clips where all split points are beyond clip length", () => {
@@ -176,44 +176,26 @@ describe("performSplitting", () => {
       endTime: 4.0, // 4-beat clip
       loopEnd: 4.0,
     });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Split points at 8 and 12 beats are beyond 4-beat clip
-    performSplitting([mockClip], [8, 12], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [8, 12], clips, warnings, HOLDING_AREA);
 
     // Should not create any duplicates
-    expect(liveApiCall).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateNotCalled();
   });
 
   it("should split unlooped MIDI clips by duplicating and setting markers", () => {
     const clipId = "clip_1";
 
     setupUnloopedClipSplittingMocks(clipId, { isMidi: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Split an 8-beat unlooped clip at 4 beats
-    performSplitting([mockClip], [4], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
 
     // Should duplicate for the second segment
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateCalled();
   });
 
   it("should skip clips with no trackIndex and emit warning", () => {
@@ -221,18 +203,12 @@ describe("performSplitting", () => {
 
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, { looping: true });
-
-    const mockClip = LiveAPI.from(`id ${clipId}`);
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Override trackIndex to be null
     Object.defineProperty(mockClip, "trackIndex", { get: () => null });
 
-    const clips = [mockClip];
-    const warnings = new Set<string>();
-
-    performSplitting([mockClip], [4], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
 
     // Should emit warning about trackIndex
     expect(outlet).toHaveBeenCalledWith(
@@ -267,14 +243,10 @@ describe("performSplitting", () => {
       }
     });
 
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Split points: 4 (valid), 12 (beyond clip end)
-    performSplitting([mockClip], [4, 12], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4, 12], clips, warnings, HOLDING_AREA);
 
     // With the source-copy algorithm for looped clips:
     // - Source copy at holding area: 1 duplicate
@@ -304,21 +276,13 @@ describe("performSplitting", () => {
       return originalGet?.call(this, prop) ?? [0];
     });
 
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
     // Split an 8-beat unlooped audio clip at 4 beats
-    performSplitting([mockClip], [4], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
 
     // Should duplicate for audio content reveal
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateCalled();
   });
 
   it("should warn when MIDI duplication fails", () => {
@@ -355,13 +319,9 @@ describe("performSplitting", () => {
       }
     });
 
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const clips = [mockClip];
-    const warnings = new Set<string>();
+    const { mockClip, clips, warnings } = createPerformContext(clipId);
 
-    performSplitting([mockClip], [4], clips, warnings, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
 
     // Should have attempted duplication
     expect(callCount).toBeGreaterThan(0);

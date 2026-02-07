@@ -1,45 +1,92 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { z, type ZodObject, type ZodRawShape } from "zod";
+import { z, type ZodRawShape } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { defineTool } from "./define-tool.ts";
+import { defineTool, type ToolOptions } from "./define-tool.ts";
 
-// Helper to create mock server with proper typing
-function createMockServer() {
-  return { registerTool: vi.fn() } as unknown as McpServer & {
-    registerTool: Mock;
-  };
+type MockServer = McpServer & { registerTool: Mock };
+
+function createMockServer(): MockServer {
+  return { registerTool: vi.fn() } as unknown as MockServer;
 }
 
-// Helper to extract shape from a Zod object schema (works with passthrough schemas)
-function getSchemaShape(schema: ZodObject<ZodRawShape>): ZodRawShape {
-  return schema.shape;
+/**
+ * Register a test tool with "test-tool" name and return mocks for assertions
+ * @param toolOptions - tool definition options
+ * @param options - registration options
+ * @param options.smallModelMode - whether to enable small model mode
+ * @param options.successMock - whether mockCallLiveApi resolves with success
+ * @returns mock server and callLiveApi mock
+ */
+function registerTestTool(
+  toolOptions: ToolOptions,
+  options?: { smallModelMode?: boolean; successMock?: boolean },
+) {
+  const mockServer = createMockServer();
+  const mockCallLiveApi = options?.successMock
+    ? vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "success" }],
+      })
+    : vi.fn();
+  const toolRegistrar = defineTool("test-tool", toolOptions);
+  const registerOptions =
+    options?.smallModelMode != null
+      ? { smallModelMode: options.smallModelMode }
+      : undefined;
+
+  toolRegistrar(mockServer, mockCallLiveApi, registerOptions);
+
+  return { mockServer, mockCallLiveApi };
+}
+
+/**
+ * Get the registered tool config from a mock server
+ * @param mockServer - mock MCP server
+ * @returns registered tool config object
+ */
+function getRegisteredConfig(mockServer: MockServer) {
+  return mockServer.registerTool.mock.calls[0]![1] as Record<string, unknown>;
+}
+
+/**
+ * Get the schema shape from a mock server's registered tool
+ * @param mockServer - mock MCP server
+ * @returns Zod schema shape of the registered tool
+ */
+function getRegisteredShape(mockServer: MockServer): ZodRawShape {
+  const config = getRegisteredConfig(mockServer);
+
+  return (config.inputSchema as { shape: ZodRawShape }).shape;
+}
+
+/**
+ * Get the tool handler from a mock server's registered tool
+ * @param mockServer - mock MCP server
+ * @returns async tool handler function
+ */
+function getRegisteredHandler(mockServer: MockServer) {
+  return mockServer.registerTool.mock.calls[0]![2] as (
+    args: Record<string, unknown>,
+  ) => Promise<{ content: Array<{ type: string; text: string }> }>;
 }
 
 describe("defineTool", () => {
   it("should register tool with correct config", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolName = "test-tool";
-    const toolOptions = {
+    const { mockServer } = registerTestTool({
       title: "Test Tool",
       description: "A test tool",
       inputSchema: {
         requiredParam: z.string(),
         optionalParam: z.number().optional(),
       },
-    };
-
-    const toolRegistrar = defineTool(toolName, toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi);
+    });
 
     expect(mockServer.registerTool).toHaveBeenCalledWith(
-      toolName,
+      "test-tool",
       expect.objectContaining({
         title: "Test Tool",
         description: "A test tool",
@@ -47,9 +94,7 @@ describe("defineTool", () => {
       expect.any(Function),
     );
 
-    // Verify schema shape matches (inputSchema is now a Zod object with passthrough)
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema);
+    const shape = getRegisteredShape(mockServer);
 
     expect(Object.keys(shape)).toStrictEqual([
       "requiredParam",
@@ -58,24 +103,16 @@ describe("defineTool", () => {
   });
 
   it("should call liveApi for valid input", async () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "success" }],
-    });
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        param: z.string(),
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: { param: z.string() },
       },
-    };
+      { successMock: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi);
-
-    const toolHandler = mockServer.registerTool.mock.calls[0]![2];
+    const toolHandler = getRegisteredHandler(mockServer);
 
     // Test valid input
     const validArgs = { param: "valid" };
@@ -88,10 +125,7 @@ describe("defineTool", () => {
   });
 
   it("should filter schema parameters when smallModelMode is enabled", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
+    const toolOptions: ToolOptions = {
       title: "Test Tool",
       description: "Test",
       inputSchema: {
@@ -104,13 +138,11 @@ describe("defineTool", () => {
       },
     };
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
+    const { mockServer } = registerTestTool(toolOptions, {
+      smallModelMode: true,
+    });
 
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
-
-    // Verify tool was registered with filtered schema
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema);
+    const shape = getRegisteredShape(mockServer);
 
     expect(Object.keys(shape)).toStrictEqual(["keepParam", "alsoKeep"]);
     expect(shape.keepParam).toBe(toolOptions.inputSchema.keepParam);
@@ -119,55 +151,44 @@ describe("defineTool", () => {
   });
 
   it("should use full schema when smallModelMode is disabled", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        keepParam: z.string(),
-        removeParam: z.number().optional(),
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          keepParam: z.string(),
+          removeParam: z.number().optional(),
+        },
+        smallModelModeConfig: {
+          excludeParams: ["removeParam"],
+        },
       },
-      smallModelModeConfig: {
-        excludeParams: ["removeParam"],
-      },
-    };
-
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
+      { smallModelMode: false },
+    );
 
     // Verify tool was registered with full schema (all params present)
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema);
+    const shape = getRegisteredShape(mockServer);
 
     expect(Object.keys(shape)).toStrictEqual(["keepParam", "removeParam"]);
   });
 
   it("should strip filtered parameters in smallModelMode", async () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "success" }],
-    });
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        allowedParam: z.string(),
-        filteredParam: z.number().optional(),
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          allowedParam: z.string(),
+          filteredParam: z.number().optional(),
+        },
+        smallModelModeConfig: {
+          excludeParams: ["filteredParam"],
+        },
       },
-      smallModelModeConfig: {
-        excludeParams: ["filteredParam"],
-      },
-    };
+      { smallModelMode: true, successMock: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
-
-    const toolHandler = mockServer.registerTool.mock.calls[0]![2];
+    const toolHandler = getRegisteredHandler(mockServer);
 
     // Try to use filtered parameter - Zod will strip it from validated data
     const args = {
@@ -188,54 +209,44 @@ describe("defineTool", () => {
   });
 
   it("should work normally without smallModelModeConfig", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        param1: z.string(),
-        param2: z.number().optional(),
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          param1: z.string(),
+          param2: z.number().optional(),
+        },
+        // No smallModelModeConfig
       },
-      // No smallModelModeConfig
-    };
-
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
+      { smallModelMode: true },
+    );
 
     // Should use original schema even in small model mode
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema);
+    const shape = getRegisteredShape(mockServer);
 
     expect(Object.keys(shape)).toStrictEqual(["param1", "param2"]);
   });
 
   it("should apply description overrides when smallModelMode is enabled", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        param1: z.string().describe("original description"),
-        param2: z.number().optional().describe("original number"),
-      },
-      smallModelModeConfig: {
-        descriptionOverrides: {
-          param1: "simplified",
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          param1: z.string().describe("original description"),
+          param2: z.number().optional().describe("original number"),
+        },
+        smallModelModeConfig: {
+          descriptionOverrides: {
+            param1: "simplified",
+          },
         },
       },
-    };
+      { smallModelMode: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
-
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema) as Record<
+    const shape = getRegisteredShape(mockServer) as Record<
       string,
       { description?: string }
     >;
@@ -248,29 +259,24 @@ describe("defineTool", () => {
   });
 
   it("should work with only descriptionOverrides (no excludeParams)", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        keepAll: z.string().describe("verbose description"),
-        alsoKeep: z.number().optional(),
-      },
-      smallModelModeConfig: {
-        descriptionOverrides: {
-          keepAll: "short",
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          keepAll: z.string().describe("verbose description"),
+          alsoKeep: z.number().optional(),
+        },
+        smallModelModeConfig: {
+          descriptionOverrides: {
+            keepAll: "short",
+          },
         },
       },
-    };
+      { smallModelMode: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
-
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-    const shape = getSchemaShape(registeredConfig.inputSchema) as Record<
+    const shape = getRegisteredShape(mockServer) as Record<
       string,
       { description?: string }
     >;
@@ -283,74 +289,52 @@ describe("defineTool", () => {
   });
 
   it("should apply toolDescription override when smallModelMode is enabled", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Original verbose tool description with many details",
-      inputSchema: {
-        param: z.string(),
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Original verbose tool description with many details",
+        inputSchema: { param: z.string() },
+        smallModelModeConfig: {
+          toolDescription: "Short description",
+        },
       },
-      smallModelModeConfig: {
-        toolDescription: "Short description",
-      },
-    };
+      { smallModelMode: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
+    const config = getRegisteredConfig(mockServer);
 
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: true });
-
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-
-    expect(registeredConfig.description).toBe("Short description");
+    expect(config.description).toBe("Short description");
   });
 
   it("should use original description when smallModelMode is disabled", () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn();
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Original verbose tool description",
-      inputSchema: {
-        param: z.string(),
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Original verbose tool description",
+        inputSchema: { param: z.string() },
+        smallModelModeConfig: {
+          toolDescription: "Short description",
+        },
       },
-      smallModelModeConfig: {
-        toolDescription: "Short description",
-      },
-    };
-
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi, { smallModelMode: false });
-
-    const registeredConfig = mockServer.registerTool.mock.calls[0]![1];
-
-    expect(registeredConfig.description).toBe(
-      "Original verbose tool description",
+      { smallModelMode: false },
     );
+
+    const config = getRegisteredConfig(mockServer);
+
+    expect(config.description).toBe("Original verbose tool description");
   });
 
   it("should warn when extra arguments are passed", async () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "success" }],
-    });
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        knownParam: z.string(),
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: { knownParam: z.string() },
       },
-    };
+      { successMock: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi);
-
-    const toolHandler = mockServer.registerTool.mock.calls[0]![2];
+    const toolHandler = getRegisteredHandler(mockServer);
 
     // Pass extra arguments that aren't in the schema
     const result = await toolHandler({
@@ -374,24 +358,18 @@ describe("defineTool", () => {
   });
 
   it("should coerce number to string when using z.coerce.string()", async () => {
-    const mockServer = createMockServer();
-    const mockCallLiveApi = vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "success" }],
-    });
-
-    const toolOptions = {
-      title: "Test Tool",
-      description: "Test",
-      inputSchema: {
-        sceneIndex: z.coerce.string(), // Use Zod coercion for transport-layer tolerance
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          sceneIndex: z.coerce.string(), // Use Zod coercion for transport-layer tolerance
+        },
       },
-    };
+      { successMock: true },
+    );
 
-    const toolRegistrar = defineTool("test-tool", toolOptions);
-
-    toolRegistrar(mockServer, mockCallLiveApi);
-
-    const toolHandler = mockServer.registerTool.mock.calls[0]![2];
+    const toolHandler = getRegisteredHandler(mockServer);
 
     // LLM sends number instead of string - Zod coerces it
     const result = await toolHandler({ sceneIndex: 0 });

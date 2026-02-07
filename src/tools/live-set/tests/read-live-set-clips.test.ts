@@ -13,44 +13,48 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
+function setupIdMock(pathMap: Record<string, string> = {}): void {
+  const fullMap: Record<string, string> = {
+    live_set: "live_set_id",
+    "live_set tracks 0": "track1",
+    ...pathMap,
+  };
+
+  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
+    return fullMap[this.path ?? ""] ?? "id 0";
+  });
+}
+
+function setupSingleTrackWithClip(setName: string): void {
+  setupIdMock({
+    "live_set tracks 0 clip_slots 0 clip": "clip1",
+    "id slot1 clip": "clip1",
+    clip1: "clip1",
+    "id clip1": "clip1",
+  });
+
+  mockLiveApiGet({
+    LiveSet: {
+      name: setName,
+      tracks: children("track1"),
+      scenes: [],
+    },
+    "live_set tracks 0": {
+      has_midi_input: 1,
+      name: "Test Track",
+      clip_slots: children("slot1"),
+      arrangement_clips: children("arr_clip1"),
+      devices: [],
+    },
+    "id slot1": {
+      clip: ["id", "clip1"],
+    },
+  });
+}
+
 describe("readLiveSet - clips", () => {
   it("passes clip loading parameters to readTrack", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 clip_slots 0 clip": // Path-based access
-          return "clip1";
-        case "id slot1 clip": // Direct access to slot1's clip
-          return "clip1";
-        case "clip1":
-          return "clip1";
-        case "id clip1":
-          return "clip1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Clip Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-      },
-      "id slot1": {
-        clip: ["id", "clip1"],
-      },
-    });
+    setupSingleTrackWithClip("Clip Test Set");
 
     // Test with minimal clip loading (no session-clips or arrangement-clips in include)
     const result = readLiveSet({
@@ -68,42 +72,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("uses default parameter values when no arguments provided", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 clip_slots 0 clip": // Path-based access
-          return "clip1";
-        case "id slot1 clip":
-          return "clip1";
-        case "clip1":
-          return "clip1";
-        case "id clip1":
-          return "clip1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Default Test Set",
-        tracks: children("track1"),
-        scenes: [],
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-      },
-      "id slot1": {
-        clip: ["id", "clip1"],
-      },
-    });
+    setupSingleTrackWithClip("Default Test Set");
 
     // Call readLiveSet with no arguments to test defaults
     const result = readLiveSet();
@@ -122,21 +91,10 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when session-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set tracks 0 clip_slots 0 clip":
-          return "clip1";
-        case "id clip1":
-          return "clip1";
-        default:
-          return "id 0";
-      }
+    setupIdMock({
+      "live_set scenes 0": "scene1",
+      "live_set tracks 0 clip_slots 0 clip": "clip1",
+      "id clip1": "clip1",
     });
 
     mockLiveApiGet({
@@ -203,19 +161,9 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when arrangement-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "arr_clip1":
-          return "arr_clip1";
-        case "id arr_clip1":
-          return "arr_clip1";
-        default:
-          return "id 0";
-      }
+    setupIdMock({
+      arr_clip1: "arr_clip1",
+      "id arr_clip1": "arr_clip1",
     });
 
     liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
@@ -280,25 +228,12 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when all-clips requested without regular-tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set tracks 0 clip_slots 0 clip":
-          return "clip1";
-        case "id clip1":
-          return "clip1";
-        case "arr_clip1":
-          return "arr_clip1";
-        case "id arr_clip1":
-          return "arr_clip1";
-        default:
-          return "id 0";
-      }
+    setupIdMock({
+      "live_set scenes 0": "scene1",
+      "live_set tracks 0 clip_slots 0 clip": "clip1",
+      "id clip1": "clip1",
+      arr_clip1: "arr_clip1",
+      "id arr_clip1": "arr_clip1",
     });
 
     liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
@@ -363,21 +298,10 @@ describe("readLiveSet - clips", () => {
   });
 
   it("uses full track info when regular-tracks explicitly included with clips", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set tracks 0 clip_slots 0 clip":
-          return "clip1";
-        case "id clip1":
-          return "clip1";
-        default:
-          return "id 0";
-      }
+    setupIdMock({
+      "live_set scenes 0": "scene1",
+      "live_set tracks 0 clip_slots 0 clip": "clip1",
+      "id clip1": "clip1",
     });
 
     mockLiveApiGet({
@@ -427,15 +351,8 @@ describe("readLiveSet - clips", () => {
   });
 
   it("throws for non-existent track in minimal mode", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "0"; // Non-existent track
-        default:
-          return "id 0";
-      }
+    setupIdMock({
+      "live_set tracks 0": "0", // Non-existent track
     });
 
     mockLiveApiGet({
@@ -452,16 +369,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "group_track";
-        default:
-          return "id 0";
-      }
-    });
+    setupIdMock({ "live_set tracks 0": "group_track" });
 
     mockLiveApiGet({
       LiveSet: {
@@ -498,16 +406,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns zero count for arrangement clips on group tracks when counting", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "group_track";
-        default:
-          return "id 0";
-      }
-    });
+    setupIdMock({ "live_set tracks 0": "group_track" });
 
     mockLiveApiGet({
       LiveSet: {
