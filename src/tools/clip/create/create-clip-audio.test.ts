@@ -18,9 +18,12 @@ import { setupAudioArrangementClipMocks } from "./create-clip-test-helpers.ts";
 function mockClipIds(pathToIdMap: Record<string, string>): void {
   liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     const pathMatch = pathToIdMap[this._path ?? ""];
+
     if (pathMatch) return pathMatch;
     const idMatch = this._id ? pathToIdMap[this._id] : undefined;
+
     if (idMatch) return idMatch;
+
     return this._id;
   });
 }

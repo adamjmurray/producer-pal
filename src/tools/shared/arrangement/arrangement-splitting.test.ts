@@ -30,6 +30,7 @@ function createPerformContext(clipId: string): {
   const mockClip = LiveAPI.from(`id ${clipId}`);
   const clips = [mockClip];
   const warnings = new Set<string>();
+
   return { mockClip, clips, warnings };
 }
 
@@ -55,10 +56,12 @@ describe("prepareSplitParams", () => {
     warnings: Set<string>;
   } {
     const clipId = "clip_1";
+
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, { looping: true });
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const warnings = new Set<string>();
+
     return { mockClip, warnings };
   }
 
@@ -153,6 +156,7 @@ describe("performSplitting", () => {
 
   it("should split looped clips at specified positions", () => {
     const clipId = "clip_1";
+
     setupLoopedClipSplittingMocks(clipId);
     const { mockClip, clips, warnings } = createPerformContext(clipId);
 
@@ -165,6 +169,7 @@ describe("performSplitting", () => {
 
   it("should skip clips where all split points are beyond clip length", () => {
     const clipId = "clip_1";
+
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, {
       looping: true,
@@ -182,6 +187,7 @@ describe("performSplitting", () => {
 
   it("should split unlooped MIDI clips by duplicating and setting markers", () => {
     const clipId = "clip_1";
+
     setupUnloopedClipSplittingMocks(clipId, { isMidi: true });
     const { mockClip, clips, warnings } = createPerformContext(clipId);
 
@@ -194,6 +200,7 @@ describe("performSplitting", () => {
 
   it("should skip clips with no trackIndex and emit warning", () => {
     const clipId = "clip_1";
+
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, { looping: true });
     const { mockClip, clips, warnings } = createPerformContext(clipId);
@@ -252,6 +259,7 @@ describe("performSplitting", () => {
 
   it("should split unlooped audio clips by revealing content", () => {
     const clipId = "clip_1";
+
     setupUnloopedClipSplittingMocks(clipId, { isMidi: false });
 
     // Audio splitting needs scene ID

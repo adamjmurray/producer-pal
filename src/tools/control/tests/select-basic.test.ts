@@ -136,7 +136,6 @@ function setupLiveAPIMock(
 }
 
 describe("view", () => {
-  let mockAppView: SelectMocks["mockAppView"];
   let mockSongView: SelectMocks["mockSongView"];
   let mockTrackAPI: SelectMocks["mockTrackAPI"];
 
@@ -144,7 +143,6 @@ describe("view", () => {
     vi.clearAllMocks();
     const mocks = setupSelectMocks();
 
-    mockAppView = mocks.mockAppView;
     mockSongView = mocks.mockSongView;
     mockTrackAPI = mocks.mockTrackAPI;
   });

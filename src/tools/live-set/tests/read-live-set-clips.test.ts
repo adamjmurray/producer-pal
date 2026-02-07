@@ -19,6 +19,7 @@ function setupIdMock(pathMap: Record<string, string> = {}): void {
     "live_set tracks 0": "track1",
     ...pathMap,
   };
+
   liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
     return fullMap[this.path ?? ""] ?? "id 0";
   });

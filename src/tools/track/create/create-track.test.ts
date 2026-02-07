@@ -19,11 +19,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-function expectTrackSet(
-  trackId: string,
-  prop: string,
-  value: unknown,
-): void {
+function expectTrackSet(trackId: string, prop: string, value: unknown): void {
   expect(liveApiSet).toHaveBeenCalledWithThis(
     expect.objectContaining({ path: `id ${trackId}` }),
     prop,
@@ -37,6 +33,7 @@ function expectTrackCreated(
   nthCall?: number,
 ): void {
   const matcher = expect.objectContaining({ path: "live_set" });
+
   if (nthCall != null) {
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       nthCall,
@@ -305,6 +302,7 @@ describe("createTrack", () => {
 
       expect(liveApiCall).toHaveBeenCalledTimes(2);
       const liveSetMatcher = expect.objectContaining({ path: "live_set" });
+
       expect(liveApiCall).toHaveBeenNthCalledWithThis(
         1,
         liveSetMatcher,
