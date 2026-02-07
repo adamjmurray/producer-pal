@@ -359,7 +359,9 @@ describe("performSplitting", () => {
     });
 
     // clips array should now contain fresh clip references from rescan
-    expect(clips.length).toBeGreaterThanOrEqual(1);
+    expect(clips).toHaveLength(2);
+    expect(clips.some((c) => c.id === "fresh_1")).toBe(true);
+    expect(clips.some((c) => c.id === "fresh_2")).toBe(true);
     // The original clip should have been replaced
     expect(clips.some((c) => c.id === clipId)).toBe(false);
   });

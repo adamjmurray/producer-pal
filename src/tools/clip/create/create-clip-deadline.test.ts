@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
@@ -19,6 +19,10 @@ const { isDeadlineExceeded } =
   await import("#src/tools/clip/helpers/loop-deadline.ts");
 
 describe("createClip - deadline exceeded", () => {
+  beforeEach(() => {
+    vi.mocked(isDeadlineExceeded).mockReturnValue(false);
+  });
+
   it("should stop creating clips when deadline is exceeded", async () => {
     setupArrangementClipMocks();
 
