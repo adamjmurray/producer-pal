@@ -50,26 +50,32 @@ function tileAudioContent({
 }): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
+  const contentLength = clipEndMarkerBeats - clipStartMarkerBeats;
+
   // Guard against zero-length content which would cause an infinite loop
-  if (clipEndMarkerBeats <= clipStartMarkerBeats) {
+  if (contentLength <= 0) {
     return updatedClips;
   }
 
-  let currentPosition = currentEndTime;
-  let currentContentOffset = clipStartMarkerBeats + currentArrangementLength;
-  const tileSize = currentArrangementLength;
+  // Scale factor: arrangement beats per content beat.
+  // For warped clips this is 1.0. For unwarped clips, arrangement length differs
+  // from content length because unwarped audio plays at its native sample rate.
+  const scaleFactor = currentArrangementLength / contentLength;
 
-  while (
-    currentPosition <
-    currentEndTime +
-      (arrangementLengthBeats - currentArrangementLength) -
-      EPSILON
-  ) {
-    const remainingSpace =
-      currentEndTime +
-      (arrangementLengthBeats - currentArrangementLength) -
-      currentPosition;
-    const tileLengthNeeded = Math.min(tileSize, remainingSpace);
+  let currentPosition = currentEndTime;
+  // Content offset wraps after the original clip's full content
+  let currentContentOffset = clipEndMarkerBeats;
+  const tileArrangementSize = currentArrangementLength;
+  const targetEnd =
+    currentEndTime + (arrangementLengthBeats - currentArrangementLength);
+
+  while (currentPosition < targetEnd - EPSILON) {
+    const remainingArrangement = targetEnd - currentPosition;
+    const tileArrangementNeeded = Math.min(
+      tileArrangementSize,
+      remainingArrangement,
+    );
+    const tileContentNeeded = tileArrangementNeeded / scaleFactor;
 
     // If we've run out of content, loop back to the start
     if (currentContentOffset >= clipEndMarkerBeats) {
@@ -78,10 +84,10 @@ function tileAudioContent({
 
     // Calculate how much content is available from current offset to end of clip
     const availableContent = clipEndMarkerBeats - currentContentOffset;
-    const actualTileLength = Math.min(tileLengthNeeded, availableContent);
+    const actualContentLength = Math.min(tileContentNeeded, availableContent);
 
     const tileStartMarker = currentContentOffset;
-    const tileEndMarker = tileStartMarker + actualTileLength;
+    const tileEndMarker = tileStartMarker + actualContentLength;
 
     const revealedClip = revealAudioContentAtPosition(
       clip,
@@ -94,8 +100,10 @@ function tileAudioContent({
 
     updatedClips.push({ id: revealedClip.id });
 
-    currentPosition += actualTileLength;
-    currentContentOffset += actualTileLength;
+    const actualArrangementLength = actualContentLength * scaleFactor;
+
+    currentPosition += actualArrangementLength;
+    currentContentOffset += actualContentLength;
   }
 
   return updatedClips;
@@ -216,21 +224,10 @@ export function handleUnloopedLengthening({
 
   // Audio clip handling - tile with chunks matching the current arrangement length
   // Each tile shows a different portion of the audio content
+  // Markers are in the audio file's beat grid for both warped and unwarped clips
   const isWarped = (clip.getProperty("warping") as number) === 1;
-  let clipStartMarkerBeats: number;
-  let clipEndMarkerBeats: number;
-
-  if (isWarped) {
-    clipStartMarkerBeats = clipStartMarker;
-    clipEndMarkerBeats = clip.getProperty("end_marker") as number;
-  } else {
-    const liveSet = LiveAPI.from("live_set");
-    const tempo = liveSet.getProperty("tempo") as number;
-
-    clipStartMarkerBeats = clipStartMarker * (tempo / 60);
-    clipEndMarkerBeats =
-      (clip.getProperty("end_marker") as number) * (tempo / 60);
-  }
+  const clipStartMarkerBeats = clipStartMarker;
+  const clipEndMarkerBeats = clip.getProperty("end_marker") as number;
 
   const targetEndMarker = clipStartMarkerBeats + arrangementLengthBeats;
 

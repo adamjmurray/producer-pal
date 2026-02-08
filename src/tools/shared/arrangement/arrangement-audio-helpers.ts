@@ -31,6 +31,7 @@ function revealUnwarpedAudioContent(
   console.warn(
     `Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
   );
+
   // Create temp clip in session holding area; length=newEndMarker to include all content
   const { clip: tempClip, slot: tempSlot } = createAudioClipInSession(
     track,

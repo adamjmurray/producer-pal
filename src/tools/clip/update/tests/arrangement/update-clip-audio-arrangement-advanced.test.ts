@@ -125,9 +125,9 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       return this._path;
     });
 
-    // Unwarped clip: 6 seconds of audio at 120 BPM = 12 beats of content
+    // Unwarped clip: markers at [0, 6] in audio-file beat grid
     // Arrangement shows 6 beats, extending to 12 beats = 6 more beats needed
-    // Content range in beats: [0, 12], offset=6 fits in one tile (6→12)
+    // Content wraps to start, tile uses markers [0, 6]
     mockLiveApiGet({
       [clipId]: {
         is_arrangement_clip: 1,
@@ -200,26 +200,26 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
 
-    // Session clip markers set to tile range [6, 12] (beats)
+    // Session clip markers set to tile range [0, 6] (audio-file beats)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_end",
-      12.0,
+      6.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_start",
-      6.0,
+      0.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "end_marker",
-      12.0,
+      6.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "start_marker",
-      6.0,
+      0.0,
     );
 
     expect(liveApiCall).toHaveBeenCalledWith(
