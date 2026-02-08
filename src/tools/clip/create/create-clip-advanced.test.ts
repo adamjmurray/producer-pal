@@ -11,6 +11,11 @@ import {
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { createClip } from "./create-clip.ts";
+import {
+  expectClipCreated,
+  expectNotesAdded,
+  note,
+} from "./create-clip-test-helpers.ts";
 
 describe("createClip - advanced features", () => {
   it("should set time signature when provided", async () => {
@@ -59,11 +64,7 @@ describe("createClip - advanced features", () => {
       notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4,
-    );
+    expectClipCreated(0, 0, 4);
   });
 
   it("should return single object for single position and array for multiple positions", async () => {
@@ -120,30 +121,7 @@ describe("createClip - advanced features", () => {
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 64,
-            start_time: 0,
-            duration: 1,
-            velocity: 80,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectNotesAdded(0, 0, [note(60, 0, 1), note(64, 0, 1, 80)]);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",

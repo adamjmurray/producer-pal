@@ -2,10 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { expect } from "vitest";
 import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
   liveApiId,
   liveApiPath,
+  liveApiSet,
   liveApiType,
   mockLiveApiGet,
   type MockLiveAPIContext,
@@ -109,6 +111,19 @@ export function setupCuePointMocks({
       tracks,
     },
   });
+}
+
+/**
+ * Assert that a Live set property was set via liveApiSet.
+ * @param property - Property name
+ * @param value - Expected value
+ */
+export function expectLiveSetProperty(property: string, value: unknown): void {
+  expect(liveApiSet).toHaveBeenCalledWithThis(
+    expect.objectContaining({ path: "live_set" }),
+    property,
+    value,
+  );
 }
 
 /**
