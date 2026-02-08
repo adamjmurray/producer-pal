@@ -246,6 +246,12 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       "delete_clip",
     );
 
+    // Should emit envelope loss warning for unwarped audio clip extension
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Envelopes will be lost in the revealed section"),
+    );
+
     expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });
