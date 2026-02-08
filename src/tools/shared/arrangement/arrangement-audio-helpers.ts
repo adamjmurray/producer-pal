@@ -114,7 +114,7 @@ export function revealAudioContentAtPosition(
     // Warped: duplicate and use looping workaround
     const duplicateResult = track.call(
       "duplicate_clip_to_arrangement",
-      sourceClip.id,
+      `id ${sourceClip.id}`,
       targetPosition,
     ) as string;
     const revealedClip = LiveAPI.from(duplicateResult);

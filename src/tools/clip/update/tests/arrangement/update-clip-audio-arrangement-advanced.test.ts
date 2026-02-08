@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
-  liveApiId,
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
@@ -20,13 +20,12 @@ import {
   assertRevealedClipMarkers,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
-// NOTE: After discovering that the Live API's warp_markers and end_marker properties
-// are unreliable for detecting hidden audio content, we changed the behavior to
-// always attempt to extend audio clips to the target length, letting Live fill
-// with silence if the audio runs out. This simplifies the logic and works reliably.
+// Audio clip lengthening uses a tiling approach: the existing content range is
+// repeated to fill the target length. When the content offset reaches the end
+// of the original range, it wraps back to the start.
 
 describe("Unlooped audio clips - arrangementLength extension", () => {
-  it("should extend with start_marker offset (scenario: start_marker > 0)", async () => {
+  it("should tile single chunk with start_marker offset (start_marker > 0)", async () => {
     const clipId = "705";
     const revealedClipId = "706";
 
@@ -48,16 +47,13 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     // targetEndMarker = startMarker + targetLength = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
     assertDuplicateClipCalled(clipId, 7.0);
-    // visibleContentEnd = startMarker + sourceEndTime = 1 + 7 = 8
-    assertRevealedClipMarkers(revealedClipId, 8.0, 15.0);
-    // Result IDs use "id X" format to match production LiveAPI.id behavior
-    expect(result).toStrictEqual([
-      { id: `id ${clipId}` },
-      { id: `id ${revealedClipId}` },
-    ]);
+    // Content range [1,8] wraps to start (offset=8 resets to 1)
+    // Single tile: markers 1→8, remaining=7 fits in one tile
+    assertRevealedClipMarkers(revealedClipId, 1.0, 8.0);
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
-  it("should calculate correct markers with start_marker offset)", async () => {
+  it("should tile multiple chunks with start_marker offset", async () => {
     const clipId = "716";
     const revealedClipId = "717";
 
@@ -78,12 +74,21 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     // targetEndMarker = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
-    // visibleContentEnd = 1 + 4 = 5
-    assertRevealedClipMarkers(revealedClipId, 5.0, 15.0);
-    // Result IDs use "id X" format to match production LiveAPI.id behavior
+    // Content range [1,5], tileSize=4, remaining=10 → 3 tiles:
+    // Tile 1: full (markers 1→5) at position 4
+    assertDuplicateClipCalled(clipId, 4.0);
+    assertRevealedClipMarkers(revealedClipId, 1.0, 5.0);
+    // Tile 2: full (markers 1→5) at position 8
+    assertDuplicateClipCalled(clipId, 8.0);
+    // Tile 3: partial (markers 1→3, 2 beats) at position 12
+    assertDuplicateClipCalled(clipId, 12.0);
+    assertRevealedClipMarkers(revealedClipId, 1.0, 3.0);
+    // 1 source clip + 3 tiles (mock returns same ID for all duplicates)
     expect(result).toStrictEqual([
-      { id: `id ${clipId}` },
-      { id: `id ${revealedClipId}` },
+      { id: clipId },
+      { id: revealedClipId },
+      { id: revealedClipId },
+      { id: revealedClipId },
     ]);
   });
 
@@ -120,13 +125,16 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       return this._path;
     });
 
+    // Unwarped clip: 6 seconds of audio at 120 BPM = 12 beats of content
+    // Arrangement shows 6 beats, extending to 12 beats = 6 more beats needed
+    // Content range in beats: [0, 12], offset=6 fits in one tile (6→12)
     mockLiveApiGet({
       [clipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
         looping: 0,
-        warping: 0, // Unwarped - key difference
+        warping: 0,
         start_time: 0.0,
         end_time: 6.0,
         start_marker: 0.0,
@@ -160,9 +168,9 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         looping: 0,
         warping: 0,
         start_time: 6.0,
-        end_time: 14.0,
+        end_time: 12.0,
         start_marker: 6.0,
-        end_marker: 14.0,
+        end_marker: 12.0,
         trackIndex,
       },
     });
@@ -179,8 +187,9 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       return 1;
     });
 
+    // Target 12 beats ("3:0") produces a single tile for the unwarped path
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
+      { ids: clipId, arrangementLength: "3:0" },
       mockContext,
     );
 
@@ -191,10 +200,11 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
 
+    // Session clip markers set to tile range [6, 12] (beats)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_end",
-      14.0,
+      12.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
@@ -204,7 +214,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "end_marker",
-      14.0,
+      12.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
@@ -264,18 +274,8 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       return this._path;
     });
 
-    // Mock the id getter to return "id X" format (matching production behavior)
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id) {
-        return `id ${this._id}`;
-      }
-
-      return this._id;
-    });
-
-    // Keys must use "id X" format to match what liveApiId returns
     mockLiveApiGet({
-      [`id ${clipId}`]: {
+      [clipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -290,7 +290,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
         name: "Audio for move+lengthen",
         trackIndex,
       },
-      [`id ${movedClipId}`]: {
+      [movedClipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -305,7 +305,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
         name: "Audio for move+lengthen",
         trackIndex,
       },
-      [`id ${revealedClipId}`]: {
+      [revealedClipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -346,7 +346,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       mockContext,
     );
 
-    // Move happened first - construct "id X" format to match production
+    // Move happened first
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
@@ -355,16 +355,13 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     expect(liveApiCall).toHaveBeenCalledWith("delete_clip", `id ${clipId}`);
 
-    // Lengthen used NEW position (12.0, not 4.0)
+    // Lengthen: tile at NEW position (12.0, not 4.0)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${movedClipId}`,
       12.0,
     );
 
-    expect(result).toStrictEqual([
-      { id: `id ${movedClipId}` },
-      { id: `id ${revealedClipId}` },
-    ]);
+    expect(result).toStrictEqual([{ id: movedClipId }, { id: revealedClipId }]);
   });
 });
