@@ -17,13 +17,13 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .string()
       .optional()
       .describe("provide this or trackIndex + sceneIndex"),
-    trackIndex: z
+    trackIndex: z.coerce
       .number()
       .int()
       .min(0)
       .optional()
       .describe("0-based index for session clips"),
-    sceneIndex: z
+    sceneIndex: z.coerce
       .number()
       .int()
       .min(0)

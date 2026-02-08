@@ -6,12 +6,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   liveApiCall,
   liveApiId,
-  liveApiSet,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
-import { setupCuePointMocks } from "./playback-test-helpers.ts";
+import {
+  expectLiveSetProperty,
+  setupCuePointMocks,
+} from "./playback-test-helpers.ts";
 
 describe("playback - locator support", () => {
   beforeEach(() => {
@@ -41,11 +43,7 @@ describe("playback - locator support", () => {
         startLocatorId: "locator-0",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "start_time",
-        16,
-      );
+      expectLiveSetProperty("start_time", 16);
       expect(liveApiCall).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,
@@ -92,11 +90,7 @@ describe("playback - locator support", () => {
         startLocatorName: "Chorus",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "start_time",
-        32,
-      );
+      expectLiveSetProperty("start_time", 32);
       expect(liveApiCall).toHaveBeenCalledWith("start_playing");
       expect(result.currentTime).toBe("9|1");
     });
@@ -144,16 +138,8 @@ describe("playback - locator support", () => {
         loopEndLocatorId: "locator-1",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_start",
-        16,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_length",
-        16, // 32 - 16 = 16 beats
-      );
+      expectLiveSetProperty("loop_start", 16);
+      expectLiveSetProperty("loop_length", 16); // 32 - 16 = 16 beats
       expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
@@ -202,16 +188,8 @@ describe("playback - locator support", () => {
         loopEndLocatorName: "Chorus",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_start",
-        16,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_length",
-        16,
-      );
+      expectLiveSetProperty("loop_start", 16);
+      expectLiveSetProperty("loop_length", 16);
       expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
@@ -276,21 +254,9 @@ describe("playback - locator support", () => {
         loopEndLocatorId: "locator-2",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "start_time",
-        16,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_start",
-        16,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "loop_length",
-        16,
-      );
+      expectLiveSetProperty("start_time", 16);
+      expectLiveSetProperty("loop_start", 16);
+      expectLiveSetProperty("loop_length", 16);
       expect(liveApiCall).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,

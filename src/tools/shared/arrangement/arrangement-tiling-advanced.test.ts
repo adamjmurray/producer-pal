@@ -26,10 +26,10 @@ describe("createPartialTile", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     liveApiCall.mockReturnValueOnce(["id", "200"]); // Holding clip
-    mockLiveApiGet({ "id 200": { end_time: 1000 } });
+    mockLiveApiGet({ 200: { end_time: 1000 } });
     liveApiCall.mockReturnValueOnce(["id", "300"]); // Temp clip
     liveApiCall.mockReturnValueOnce(["id", "400"]); // Final tile
-    mockLiveApiGet({ "id 400": { start_marker: 2, loop_start: 2 } });
+    mockLiveApiGet({ 400: { start_marker: 2, loop_start: 2 } });
 
     const result = createPartialTile(
       sourceClip as unknown as LiveAPI,
@@ -52,7 +52,7 @@ describe("createPartialTile", () => {
     // Mock createShortenedClipInHolding - clip needs to be longer than target for temp clip creation
     liveApiCall.mockReturnValueOnce(["id", "200"]);
     mockLiveApiGet({
-      "id 200": {
+      200: {
         end_time: 1000 + 10, // Longer than target length of 8
         start_marker: 1,
         loop_start: 4,
@@ -89,22 +89,22 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         loop_start: 0,
         loop_end: 4,
         start_marker: 0,
       },
-      "id 200": {
+      200: {
         end_time: 104,
         start_marker: 0,
         loop_start: 0,
       },
-      "id 201": {
+      201: {
         end_time: 108,
         start_marker: 0,
         loop_start: 0,
       },
-      "id 202": {
+      202: {
         end_time: 112,
         start_marker: 0,
         loop_start: 0,
@@ -156,9 +156,9 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": { loop_start: 0, loop_end: 4, start_marker: 0 },
-      "id 200": { end_time: 104, start_marker: 0, loop_start: 0 },
-      "id 201": { end_time: 108, start_marker: 0, loop_start: 0 },
+      100: { loop_start: 0, loop_end: 4, start_marker: 0 },
+      200: { end_time: 104, start_marker: 0, loop_start: 0 },
+      201: { end_time: 108, start_marker: 0, loop_start: 0 },
     });
 
     liveApiCall.mockReturnValue(["id", "200"]);
@@ -181,8 +181,8 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": { loop_start: 0, loop_end: 4, start_marker: 0 },
-      "id 200": { end_time: 104, start_marker: 0, loop_start: 0 },
+      100: { loop_start: 0, loop_end: 4, start_marker: 0 },
+      200: { end_time: 104, start_marker: 0, loop_start: 0 },
     });
 
     liveApiCall.mockReturnValueOnce(["id", "200"]);
@@ -207,12 +207,12 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         loop_start: 4,
         loop_end: 8,
         start_marker: 2,
       },
-      "id 200": {
+      200: {
         end_time: 104,
         start_marker: 2,
         loop_start: 4,
@@ -243,7 +243,7 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         loop_start: 0,
         loop_end: 4,
         start_marker: 0,
@@ -268,7 +268,7 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": { loop_start: 0, loop_end: 8, start_marker: 0 },
+      100: { loop_start: 0, loop_end: 8, start_marker: 0 },
     });
 
     liveApiCall.mockReturnValue(["id", "300"]);
@@ -291,22 +291,22 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         loop_start: 2,
         loop_end: 10,
         start_marker: 2,
       },
-      "id 200": {
+      200: {
         end_time: 104,
         start_marker: 2,
         loop_start: 2,
       },
-      "id 201": {
+      201: {
         end_time: 108,
         start_marker: 2,
         loop_start: 2,
       },
-      "id 202": {
+      202: {
         end_time: 112,
         start_marker: 2,
         loop_start: 2,
@@ -352,14 +352,14 @@ describe("tileClipToRange", () => {
     const track = MockLiveAPI.from("live_set tracks 0");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         loop_start: 0,
         loop_end: 4,
         start_marker: 0,
       },
-      "id 200": { end_time: 104, start_marker: 0, loop_start: 0 },
-      "id 201": { end_time: 108, start_marker: 0, loop_start: 0 },
-      "id 202": { end_time: 112, start_marker: 0, loop_start: 0 },
+      200: { end_time: 104, start_marker: 0, loop_start: 0 },
+      201: { end_time: 108, start_marker: 0, loop_start: 0 },
+      202: { end_time: 112, start_marker: 0, loop_start: 0 },
     });
 
     liveApiCall.mockReturnValueOnce(["id", "200"]);

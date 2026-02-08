@@ -16,6 +16,7 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import {
+  expectLiveSetProperty,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
@@ -59,11 +60,7 @@ describe("transport", () => {
       expect.objectContaining({ path: "live_set" }),
       "start_playing",
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_time",
-      16,
-    ); // bar 5 = 16 beats in 4/4
+    expectLiveSetProperty("start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "5|1",
@@ -95,21 +92,9 @@ describe("transport", () => {
       loopEnd: "7|1",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop_start",
-      8,
-    ); // bar 3 = 8 beats
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop_length",
-      16,
-    ); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
+    expectLiveSetProperty("loop", true);
+    expectLiveSetProperty("loop_start", 8); // bar 3 = 8 beats
+    expectLiveSetProperty("loop_length", 16); // 24 - 8 = 16 beats
     // Only loop settings should be called - no back_to_arranger calls for update-arrangement
     expect(liveApiSet).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
@@ -140,11 +125,7 @@ describe("transport", () => {
       startTime: "3|1",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_time",
-      6,
-    ); // bar 3 = 6 beats in 3/4
+    expectLiveSetProperty("start_time", 6); // bar 3 = 6 beats in 3/4
     expect(result.currentTime).toBe("3|1");
     // Loop is off, so no arrangementLoop property
     expect(result.arrangementLoop).toBeUndefined();
@@ -569,11 +550,7 @@ describe("transport", () => {
       expect.objectContaining({ path: "live_set" }),
       "stop_playing",
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_time",
-      0,
-    );
+    expectLiveSetProperty("start_time", 0);
     expect(result).toStrictEqual({
       playing: false,
       currentTime: "1|1",
@@ -598,11 +575,7 @@ describe("transport", () => {
     });
 
     // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop_length",
-      24,
-    );
+    expectLiveSetProperty("loop_length", 24);
     // Loop is off in the mock, so no arrangementLoop property
     expect(result.arrangementLoop).toBeUndefined();
   });
@@ -626,21 +599,9 @@ describe("transport", () => {
     });
 
     // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_time",
-      3,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop_start",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "loop_length",
-      6,
-    ); // 2 bars = 6 Ableton beats
+    expectLiveSetProperty("start_time", 3);
+    expectLiveSetProperty("loop_start", 0);
+    expectLiveSetProperty("loop_length", 6); // 2 bars = 6 Ableton beats
 
     expect(result.currentTime).toBe("2|1");
     // Loop is off in the mock (loop: 0), so no arrangementLoop property
@@ -667,11 +628,7 @@ describe("transport", () => {
       expect.objectContaining({ path: "live_set" }),
       "start_playing",
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_time",
-      0,
-    );
+    expectLiveSetProperty("start_time", 0);
     expect(result.currentTime).toBe("1|1");
   });
 });

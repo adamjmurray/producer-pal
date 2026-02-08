@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { expect } from "vitest";
 import {
   liveApiCall,
   liveApiId,
@@ -35,6 +36,74 @@ export function setupArrangementClipMocks(): void {
 
     return this._id;
   });
+}
+
+/**
+ * Create a note object for assertions against Live API add_new_notes calls.
+ * @param pitch - MIDI pitch number
+ * @param startTime - Start time in beats
+ * @param duration - Duration in beats
+ * @param velocity - Velocity (default: 100)
+ * @param probability - Probability (default: 1.0)
+ * @param velocityDeviation - Velocity deviation (default: 0)
+ * @returns Note object matching Live API format
+ */
+export function note(
+  pitch: number,
+  startTime: number,
+  duration: number,
+  velocity = 100,
+  probability = 1.0,
+  velocityDeviation = 0,
+): Record<string, number> {
+  return {
+    pitch,
+    start_time: startTime,
+    duration,
+    velocity,
+    probability,
+    velocity_deviation: velocityDeviation,
+  };
+}
+
+/**
+ * Assert that create_clip was called with the expected length.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ * @param expectedLength - Expected clip length in beats
+ */
+export function expectClipCreated(
+  trackIndex: number,
+  sceneIndex: number,
+  expectedLength: number,
+): void {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({
+      path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    }),
+    "create_clip",
+    expectedLength,
+  );
+}
+
+/**
+ * Assert that add_new_notes was called with the expected notes.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ * @param notes - Expected notes array
+ */
+export function expectNotesAdded(
+  trackIndex: number,
+  sceneIndex: number,
+  notes: Array<Record<string, number>>,
+): void {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({
+      path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+    }),
+    "add_new_notes",
+    { notes },
+  );
 }
 
 interface SetupAudioArrangementMocksOptions {

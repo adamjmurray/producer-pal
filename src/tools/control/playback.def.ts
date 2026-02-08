@@ -74,7 +74,7 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
-    sceneIndex: z
+    sceneIndex: z.coerce
       .number()
       .int()
       .min(0)

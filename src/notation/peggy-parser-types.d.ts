@@ -29,5 +29,16 @@ export class SyntaxError extends Error {
   name: "SyntaxError";
 }
 
+/** Peggy SyntaxError with detailed expected items for error formatting */
+export interface PeggySyntaxError extends Error {
+  name: "SyntaxError";
+  expected?: Array<{ type: string; value?: string; description?: string }>;
+  found: string | null;
+  location: {
+    start: { offset: number; line: number; column: number };
+    end: { offset: number; line: number; column: number };
+  };
+}
+
 /** Allowed start rules */
 export declare const StartRules: readonly string[];

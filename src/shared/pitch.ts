@@ -11,7 +11,7 @@
  * Output format: Uses flats (Db, Eb, Gb, Ab, Bb) per music theory convention.
  * Input format: Accepts both sharps and flats, case-insensitive.
  *
- * Note: src/notation/modulation/parser/modulation-grammar.peggy has an inline
+ * Note: src/notation/transform/parser/transform-grammar.peggy has an inline
  * copy of PITCH_CLASS_VALUES because Peggy cannot import JS modules.
  */
 

@@ -41,7 +41,14 @@ export const SAMPLE_FILE = resolve(
  * Requires jsonOutput: true in config (set by resetConfig).
  */
 export function parseToolResult<T>(result: unknown): T {
-  return JSON.parse(extractToolResultText(result)) as T;
+  const text = extractToolResultText(result);
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON response. Raw text:", text);
+    throw error;
+  }
 }
 
 /**
@@ -78,6 +85,27 @@ export function getToolWarnings(result: unknown): string[] {
   return typed.content
     .filter((item) => item.type === "text" && item.text?.startsWith("WARNING:"))
     .map((item) => item.text ?? "");
+}
+
+/**
+ * Result from parsing a tool response, including any warnings.
+ */
+export interface ToolResultWithWarnings<T> {
+  data: T;
+  warnings: string[];
+}
+
+/**
+ * Parse a tool result as JSON and extract any warnings.
+ * Useful when tests need to verify both the result AND warning messages.
+ */
+export function parseToolResultWithWarnings<T>(
+  result: unknown,
+): ToolResultWithWarnings<T> {
+  return {
+    data: parseToolResult<T>(result),
+    warnings: getToolWarnings(result),
+  };
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";

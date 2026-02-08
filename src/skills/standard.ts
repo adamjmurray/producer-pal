@@ -2,6 +2,38 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+const codeTransformsSkills = `
+
+### Code Transforms
+
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. The \`code\` value is the function body only. It runs as:
+\`(function(notes, context) { <code> })(notes, context)\`
+
+Example \`code\` value:
+\`\`\`javascript
+return notes.filter(n => n.pitch >= 60).map(n => ({
+  ...n,
+  velocity: Math.min(127, n.velocity + 20)
+}));
+\`\`\`
+
+**Note properties (required: pitch, start):**
+- \`pitch\`: 0-127 (60 = C3)
+- \`start\`: beats from clip start
+- \`duration\`: beats (default: 1)
+- \`velocity\`: 1-127 (default: 100)
+- \`velocityDeviation\`: 0-127 (default: 0)
+- \`probability\`: 0-1 (default: 1)
+
+**Context properties:**
+- \`track\`: { index, name, type, color }
+- \`clip\`: { id, name, length, timeSignature, looping }
+- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`liveSet\`: { tempo, scale?, timeSignature }
+- \`beatsPerBar\`: number
+
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
+
 export const skills = `# Producer Pal Skills
 
 You can now compose music in Ableton Live using Producer Pal tools and the bar|beat notation system.
@@ -146,6 +178,42 @@ v100 C3 3|1 v0 C3 1|1 v80    // exit deletion mode with v80
 C3 4|1                       // this C3 is NOT deleted (v80 still active)
 \`\`\`
 
+### Transforms
+
+Apply dynamic transforms to clip properties. Add \`transforms\` parameter to create-clip or update-clip.
+
+**Syntax:** \`[selector:] parameter operator expression\` (one per line)
+- **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
+- **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
+- **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
+- **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
+- **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
+- **Operators:** \`+=\` (add to value), \`=\` (set value)
+- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
+- **Math functions:** round(x), floor(x), abs(x), min(a,b,...), max(a,b,...)
+
+**Waveforms** output -1.0 to 1.0, evaluated at each note's position (or once for audio clips):
+- \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
+- \`noise()\` - random value per note
+- \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
+- Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+
+**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
+
+\`\`\`
+velocity += 20 * cos(2t)       // cycle every 2 beats
+timing += 0.05 * noise()       // humanize timing
+velocity += ramp(0, 60)        // fade in over clip
+C1-C2: velocity += 30          // accent bass notes
+1|1-2|4: velocity = 100        // forte in bars 1-2
+velocity = note.velocity / 2   // halve existing velocity
+velocity = max(60, note.velocity) // ensure minimum velocity
+gain = audio.gain - 6          // reduce audio clip by 6 dB
+\`\`\`
+
+\`+=\` compounds on repeated calls; use \`=\` for idempotent values. To transform existing notes, use update-clip with just transforms.
+Cross-type parameters ignored (MIDI params on audio clips, audio params on MIDI clips).
+${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Working with Ableton Live
 
 **Views and Playback:**

@@ -16,15 +16,39 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
+function expectNoteUpdateCalls(clipId: string, expectedNotes: unknown[]): void {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "get_notes_extended",
+    0,
+    128,
+    0,
+    1000000,
+  );
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "remove_notes_extended",
+    0,
+    128,
+    0,
+    1000000,
+  );
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "add_new_notes",
+    { notes: expectedNotes },
+  );
+}
+
 describe("updateClip - Advanced note operations", () => {
   beforeEach(() => {
     setupMocks();
   });
 
-  it("should set loop start when start is provided", () => {
+  it("should set loop start when start is provided", async () => {
     setupMidiClipMock("123", { looping: 1 });
 
-    updateClip({
+    await updateClip({
       ids: "123",
       start: "1|3",
     });
@@ -36,7 +60,7 @@ describe("updateClip - Advanced note operations", () => {
     );
   });
 
-  it("should delete specific notes with v0 when noteUpdateMode is 'merge'", () => {
+  it("should delete specific notes with v0 when noteUpdateMode is 'merge'", async () => {
     setupMidiClipMock("123");
 
     // Mock existing notes in the clip
@@ -57,7 +81,7 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
       noteUpdateMode: "merge",
@@ -99,7 +123,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
-  it("should handle v0 notes when no existing notes match", () => {
+  it("should handle v0 notes when no existing notes match", async () => {
     setupMidiClipMock("123");
 
     // Mock existing notes that don't match the v0 note
@@ -116,37 +140,17 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    updateClip({
+    await updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
       noteUpdateMode: "merge",
     });
 
     // Should still read existing notes and remove/add them back
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      { notes: [note(62, 1, { velocity: 80 })] }, // Original note preserved
-    );
+    expectNoteUpdateCalls("123", [note(62, 1, { velocity: 80 })]); // Original note preserved
   });
 
-  it("should call get_notes_extended in merge mode to format existing notes", () => {
+  it("should call get_notes_extended in merge mode to format existing notes", async () => {
     setupMidiClipMock("123");
 
     // Mock existing notes
@@ -161,37 +165,17 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    updateClip({
+    await updateClip({
       ids: "123",
       notes: "v100 C3 1|1",
       noteUpdateMode: "merge",
     });
 
     // Should call get_notes_extended in merge mode
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      { notes: [note(60, 0)] },
-    );
+    expectNoteUpdateCalls("123", [note(60, 0)]);
   });
 
-  it("should support bar copy with existing notes in merge mode", () => {
+  it("should support bar copy with existing notes in merge mode", async () => {
     setupMidiClipMock("123");
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
@@ -217,7 +201,7 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "@2=1", // Copy bar 1 to bar 2
       noteUpdateMode: "merge",
@@ -242,7 +226,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
   });
 
-  it("should report noteCount only for notes within clip playback region when length is set", () => {
+  it("should report noteCount only for notes within clip playback region when length is set", async () => {
     setupMidiClipMock("123", { length: 8 }); // 2 bars
 
     // Mock to track added notes and return subset based on length parameter
@@ -271,7 +255,7 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
       noteUpdateMode: "replace",
@@ -296,7 +280,7 @@ describe("updateClip - Advanced note operations", () => {
     );
   });
 
-  it("should support bar copy with v0 deletions in merge mode", () => {
+  it("should support bar copy with v0 deletions in merge mode", async () => {
     setupMidiClipMock("123");
 
     // Mock existing notes in bar 1
@@ -316,7 +300,7 @@ describe("updateClip - Advanced note operations", () => {
       return {};
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
       noteUpdateMode: "merge",
@@ -339,10 +323,10 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 
-  it("should update warp mode for audio clips", () => {
+  it("should update warp mode for audio clips", async () => {
     setupAudioClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       warpMode: "complex",
     });
@@ -356,10 +340,10 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should update warping on/off for audio clips", () => {
+  it("should update warping on/off for audio clips", async () => {
     setupAudioClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       warping: true,
     });
@@ -373,10 +357,10 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should update both warp mode and warping together", () => {
+  it("should update both warp mode and warping together", async () => {
     setupAudioClipMock("123");
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       warpMode: "beats",
       warping: false,

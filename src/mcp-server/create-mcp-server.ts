@@ -17,7 +17,6 @@ import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
-import { toolDefTransformClips } from "#src/tools/operations/transform-clips/transform-clips.def.ts";
 import { toolDefReadSamples } from "#src/tools/samples/read-samples.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
@@ -80,7 +79,6 @@ export function createMcpServer(
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
   addTool(toolDefUpdateClip);
-  addTool(toolDefTransformClips);
 
   addTool(toolDefCreateDevice);
   addTool(toolDefReadDevice);

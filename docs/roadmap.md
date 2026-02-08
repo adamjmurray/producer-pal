@@ -19,10 +19,10 @@ reach out directly.
 
 ## In Progress
 
-### 1.4 - MIDI Modulation
+### 1.4 - MIDI Transforms
 
-Enhance the `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips`
-tools with flexible MIDI modulation features:
+Enhance the `ppal-create-clip` and `ppal-update-clip` tools with flexible MIDI
+transform features:
 
 - Apply ramps, curves, and LFO shapes to MIDI velocity, start time, duration,
   and other note properties
@@ -50,8 +50,8 @@ Also added support for:
 - Audio clip support with a `read-samples` tool to scan folders for samples
 - Track mixer control: gain, panning, and sends
 - Arrangement clip positioning and length control
-- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
-  randomizing clips
+- Experimental clip slicing, shuffling, and randomizing features (since removed
+  or integrated into `ppal-update-clip`)
 
 ### 1.1 - Built-in chat UI (November 2025)
 
@@ -69,30 +69,26 @@ manipulation and basic Live Set management.
 
 ## Planned Features
 
-### 1.5 - Code Execution
+### 1.4.5 - Code Execution
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.6 - Customization
+### 1.5 - Customization and Small Model Optimization
 
 - Custom skills, system prompts, tool descriptions, and task-focused personas
   for experimentation and local model optimization
+- Make different personas to focus on different types of tasks, for better
+  results and less context window usage
+- Evaluation tools for comparing adjustments to customization settings
 
-### 1.7 - Harmony
+### 1.6 - Harmony
 
 - Chord notation
 - Pitches as scale/chord degrees of the current chord (instead of absolute
   pitches)
 - Microtonal support
 
-### 1.8 - Audio Editing and Synthesis
-
-- Reverse audio clips
-- Generate audio files on demand from a selection of synthesis algorithms and
-  arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
-- Generate novel DSP algorithms
-
-### 1.x - Misc
+### 1.x - Miscellaneous Features
 
 - Take lane support
 - Groove support

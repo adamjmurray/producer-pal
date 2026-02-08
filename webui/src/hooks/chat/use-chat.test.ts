@@ -168,6 +168,34 @@ function createRateLimitAdapter(onMessage?: (msg: string) => void) {
   };
 }
 
+/**
+ * Creates an adapter where sendMessage fails on second client creation (for retry tests).
+ * @param baseAdapter - Base adapter to extend
+ * @returns Adapter that throws on sendMessage after first client
+ */
+function createSendMessageFailingAdapter(
+  baseAdapter: typeof mockAdapter,
+): typeof mockAdapter {
+  let callCount = 0;
+
+  return {
+    ...baseAdapter,
+    createClient: vi.fn(() => {
+      callCount++;
+      const client = new MockChatClient();
+
+      if (callCount > 1) {
+        // eslint-disable-next-line require-yield -- Throws before yielding to test error handling
+        client.sendMessage = async function* () {
+          throw new Error("Network failure on retry");
+        };
+      }
+
+      return client;
+    }),
+  };
+}
+
 describe("useChat", () => {
   const defaultProps = {
     provider: "gemini" as const,
@@ -395,6 +423,38 @@ describe("useChat", () => {
       expect(firstPart).toHaveProperty("content");
       expect((firstPart as { content: string }).content).toBe("Hello");
     });
+
+    it("covers getChatHistory callback when sendMessage throws non-rate-limit error", async () => {
+      // Use an adapter that fails on first sendMessage (unlike retry which fails on second)
+      const errorAdapter = createSendMessageFailingAdapter(mockAdapter);
+
+      // Override callCount behavior: fail immediately
+      errorAdapter.createClient = vi.fn(() => {
+        const client = new MockChatClient();
+
+        // eslint-disable-next-line require-yield -- Throws before yielding
+        client.sendMessage = async function* () {
+          throw new Error("Network failure");
+        };
+
+        return client;
+      });
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: errorAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Error should be displayed via createErrorMessage with chatHistory
+      expect(errorAdapter.createErrorMessage).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.any(Array),
+      );
+      expect(result.current.isAssistantResponding).toBe(false);
+    });
   });
 
   describe("handleRetry", () => {
@@ -541,6 +601,34 @@ describe("useChat", () => {
       });
 
       expect(errorAdapter.createErrorMessage).toHaveBeenCalled();
+    });
+
+    it("covers getChatHistory callback when retry sendMessage throws non-rate-limit error", async () => {
+      const retryErrorAdapter = createSendMessageFailingAdapter(mockAdapter);
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: retryErrorAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      // Error path should call createErrorMessage with getChatHistory()
+      expect(retryErrorAdapter.createErrorMessage).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.any(Array),
+      );
     });
 
     it("sets isAssistantResponding to false after retry", async () => {

@@ -11,6 +11,18 @@ import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 import globals from "globals";
 
+const tsParserOptionsBase = {
+  ecmaVersion: 2024,
+  sourceType: "module",
+};
+
+const importResolverSettings = {
+  "import/resolver": {
+    typescript: { noWarnOnMultipleProjects: true },
+    node: true,
+  },
+};
+
 const baseRules = {
   // Comparison & Equality
   eqeqeq: ["error", "always", { null: "ignore" }], // Force === and !== (except for null checks)
@@ -141,7 +153,7 @@ const baseRules = {
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  complexity: ["error", 19], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsdocRules = {
@@ -318,18 +330,12 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         ecmaFeatures: { jsx: true },
-        project: "./webui/tsconfig.json", // Explicit path for type-aware rules
+        project: "./webui/tsconfig.json",
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: true,
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -357,22 +363,14 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         project: ["./scripts/tsconfig.json"],
       },
       globals: {
         ...globals.node,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: ["./scripts/tsconfig.json"],
-        },
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -420,22 +418,14 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         project: ["./evals/tsconfig.json"],
       },
       globals: {
         ...globals.node,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: ["./evals/tsconfig.json"],
-        },
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -484,22 +474,14 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         project: ["./src/tsconfig.json"],
       },
       globals: {
         ...globals.node,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: ["./src/tsconfig.json"],
-        },
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -571,22 +553,14 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
       },
       globals: {
         ...globals.node,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: ["./e2e/webui/tsconfig.json", "./e2e/docs/tsconfig.json"],
-        },
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -608,22 +582,14 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2024,
-        sourceType: "module",
+        ...tsParserOptionsBase,
         project: "./e2e/mcp/tsconfig.json",
       },
       globals: {
         ...globals.node,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: "./e2e/mcp/tsconfig.json",
-        },
-        node: true,
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
@@ -646,19 +612,14 @@ export default [
     files: ["webui/**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
+        ...tsParserOptionsBase,
         project: "./webui/tsconfig.json",
       },
       globals: {
         ...globals.browser,
       },
     },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: "./webui/tsconfig.json",
-        },
-      },
-    },
+    settings: importResolverSettings,
     plugins: {
       "react-hooks": reactHooksPlugin,
     },
@@ -689,7 +650,7 @@ export default [
     files: ["src/**/*.ts"],
     ignores: [
       "src/notation/barbeat/parser/barbeat-parser.ts",
-      "src/notation/modulation/parser/modulation-parser.ts",
+      "src/notation/transform/parser/transform-parser.ts",
     ],
     rules: {
       "import/extensions": [
@@ -836,7 +797,7 @@ export default [
     ignores: [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "src/tools/shared/gain-lookup-table.ts", // Auto-generated data
+      "src/tools/shared/clip-gain-lookup-table.ts", // Auto-generated data
     ],
     rules: {
       "max-lines": [

@@ -14,8 +14,17 @@ import {
 // Make sure the module's handler is registered
 import "./max-api-adapter.ts";
 
+// Mock the code-exec-protocol module so we can verify the handler delegates correctly
+vi.mock(import("./code-exec-protocol.ts"), () => ({
+  handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { handleCodeExecRequest } from "./code-exec-protocol.ts";
+
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;
+let codeExecRequestHandler: ((...args: unknown[]) => void) | undefined;
+
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "timeoutMs") as
@@ -24,6 +33,16 @@ const timeoutMsCall = (
 
 if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1] as (input: unknown) => void;
+}
+
+const codeExecCall = (
+  Max.addHandler as ReturnType<typeof vi.fn>
+).mock.calls.find((call: unknown[]) => call[0] === "code_exec_request") as
+  | unknown[]
+  | undefined;
+
+if (codeExecCall) {
+  codeExecRequestHandler = codeExecCall[1] as (...args: unknown[]) => void;
 }
 
 interface PendingRequestResult {
@@ -427,6 +446,46 @@ describe("Max API Adapter", () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0]!.text).toContain("Missing MAX_ERROR_DELIMITER");
+    });
+  });
+
+  describe("code_exec_request handler", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should register a code_exec_request handler", () => {
+      expect(codeExecRequestHandler).toBeDefined();
+    });
+
+    it("should delegate to handleCodeExecRequest with correct args", async () => {
+      vi.mocked(handleCodeExecRequest).mockResolvedValue(undefined);
+
+      codeExecRequestHandler!("req-123", '{"code":"1+1","globals":{}}');
+
+      // Allow the microtask to process
+      await vi.waitFor(() => {
+        expect(handleCodeExecRequest).toHaveBeenCalledWith(
+          "req-123",
+          '{"code":"1+1","globals":{}}',
+        );
+      });
+    });
+
+    it("should log error when handleCodeExecRequest rejects", async () => {
+      vi.mocked(handleCodeExecRequest).mockRejectedValue(
+        new Error("handler failed"),
+      );
+
+      codeExecRequestHandler!("req-456", '{"code":"bad"}');
+
+      // Allow the promise rejection to be caught and logged
+      await vi.waitFor(() => {
+        expect(Max.post).toHaveBeenCalledWith(
+          expect.stringContaining("Error handling code_exec_request"),
+          "error",
+        );
+      });
     });
   });
 });

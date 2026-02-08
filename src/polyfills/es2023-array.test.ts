@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   polyfillToReversed,
@@ -10,6 +10,62 @@ import {
   polyfillToSpliced,
   polyfillWith,
 } from "./es2023-array.ts";
+
+describe("ES2023 array polyfill prototype installation", () => {
+  // Save original methods
+  const origToSorted = Array.prototype.toSorted;
+  const origToReversed = Array.prototype.toReversed;
+  const origToSpliced = Array.prototype.toSpliced;
+  const origWith = Array.prototype.with;
+
+  beforeAll(() => {
+    // Remove native methods to allow polyfill installation
+    // Cast through unknown to avoid ts-expect-error for intentional delete
+    const proto = Array.prototype as unknown as Record<string, unknown>;
+
+    delete proto.toSorted;
+    delete proto.toReversed;
+    delete proto.toSpliced;
+    delete proto.with;
+  });
+
+  afterAll(() => {
+    // Restore original methods
+    Array.prototype.toSorted = origToSorted;
+    Array.prototype.toReversed = origToReversed;
+    Array.prototype.toSpliced = origToSpliced;
+    Array.prototype.with = origWith;
+  });
+
+  it("should install polyfills on Array.prototype when methods are missing", async () => {
+    // Verify methods were removed
+    expect(Array.prototype.toSorted).toBeUndefined();
+
+    // Dynamically re-import to trigger polyfill installation side effects.
+    // Using a variable prevents TypeScript from resolving the query-string module.
+    const suffix = "?install";
+
+    await import(/* @vite-ignore */ `./es2023-array.ts${suffix}`);
+
+    expect(Array.prototype.toSorted).toBeDefined();
+    expect([3, 1, 2].toSorted()).toStrictEqual([1, 2, 3]);
+  });
+
+  it("should install toReversed polyfill on Array.prototype", () => {
+    expect(Array.prototype.toReversed).toBeDefined();
+    expect([1, 2, 3].toReversed()).toStrictEqual([3, 2, 1]);
+  });
+
+  it("should install toSpliced polyfill on Array.prototype", () => {
+    expect(Array.prototype.toSpliced).toBeDefined();
+    expect([1, 2, 3, 4].toSpliced(1, 2)).toStrictEqual([1, 4]);
+  });
+
+  it("should install with polyfill on Array.prototype", () => {
+    expect(Array.prototype.with).toBeDefined();
+    expect([1, 2, 3].with(1, 99)).toStrictEqual([1, 99, 3]);
+  });
+});
 
 describe("ES2023 array polyfills", () => {
   describe("polyfillToSorted", () => {

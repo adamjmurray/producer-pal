@@ -6,24 +6,33 @@ import { describe, expect, it } from "vitest";
 import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 
+function setupAudioClipWithWarpMarkers(
+  warpMarkers: string,
+  name = "Warped Audio",
+): void {
+  mockLiveApiGet({
+    Clip: {
+      is_midi_clip: 0,
+      name,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      length: 4,
+      warp_mode: 4,
+      warping: 1,
+      warp_markers: warpMarkers,
+    },
+  });
+}
+
 describe("readClip - warp markers", () => {
   it("reads warp markers with direct array format", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 0,
-        name: "Warped Audio",
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        warp_mode: 4,
-        warping: 1,
-        warp_markers: JSON.stringify([
-          { sample_time: 0, beat_time: 0 },
-          { sample_time: 44100, beat_time: 1.0 },
-          { sample_time: 88200, beat_time: 2.0 },
-        ]),
-      },
-    });
+    setupAudioClipWithWarpMarkers(
+      JSON.stringify([
+        { sample_time: 0, beat_time: 0 },
+        { sample_time: 44100, beat_time: 1.0 },
+        { sample_time: 88200, beat_time: 2.0 },
+      ]),
+    );
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
@@ -38,23 +47,14 @@ describe("readClip - warp markers", () => {
   });
 
   it("reads warp markers with nested warp_markers property format", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 0,
-        name: "Warped Audio",
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        warp_mode: 4,
-        warping: 1,
-        warp_markers: JSON.stringify({
-          warp_markers: [
-            { sample_time: 0, beat_time: 0 },
-            { sample_time: 44100, beat_time: 1.0 },
-          ],
-        }),
-      },
-    });
+    setupAudioClipWithWarpMarkers(
+      JSON.stringify({
+        warp_markers: [
+          { sample_time: 0, beat_time: 0 },
+          { sample_time: 44100, beat_time: 1.0 },
+        ],
+      }),
+    );
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
@@ -68,18 +68,7 @@ describe("readClip - warp markers", () => {
   });
 
   it("handles empty warp markers gracefully", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 0,
-        name: "Audio No Markers",
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        warp_mode: 4,
-        warping: 1,
-        warp_markers: "",
-      },
-    });
+    setupAudioClipWithWarpMarkers("", "Audio No Markers");
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
@@ -90,18 +79,7 @@ describe("readClip - warp markers", () => {
   });
 
   it("handles invalid warp markers JSON gracefully", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 0,
-        name: "Audio Invalid JSON",
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        warp_mode: 4,
-        warping: 1,
-        warp_markers: "invalid json{",
-      },
-    });
+    setupAudioClipWithWarpMarkers("invalid json{", "Audio Invalid JSON");
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
@@ -112,18 +90,9 @@ describe("readClip - warp markers", () => {
   });
 
   it("does not include warp markers when not requested", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 0,
-        name: "Warped Audio",
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        warp_mode: 4,
-        warping: 1,
-        warp_markers: JSON.stringify([{ sample_time: 0, beat_time: 0 }]),
-      },
-    });
+    setupAudioClipWithWarpMarkers(
+      JSON.stringify([{ sample_time: 0, beat_time: 0 }]),
+    );
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     expect(result.warpMarkers).toBeUndefined();

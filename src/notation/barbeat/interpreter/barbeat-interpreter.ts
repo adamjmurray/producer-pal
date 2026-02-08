@@ -16,6 +16,8 @@ import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
+import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import type { NoteEvent, BarCopyNote } from "../../types.ts";
 import {
@@ -348,15 +350,12 @@ export function interpretNotation(
     return applyV0Deletions(events);
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
-      const parserError = error as Error & {
-        location?: { start?: { offset: number; line: number; column: number } };
-      };
-      const location = parserError.location ?? {};
-      const position = location.start
-        ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
-        : "at unknown position";
+      const formatted = formatParserError(
+        error as PeggySyntaxError,
+        "bar|beat",
+      );
 
-      throw new Error(`bar|beat syntax error ${position}: ${error.message}`);
+      throw new Error(formatted);
     }
 
     throw error;

@@ -4,12 +4,13 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { applyModulations } from "#src/notation/modulation/modulation-evaluator.ts";
+import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
+  applyAudioTransforms,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
@@ -18,6 +19,7 @@ import {
   calculateBeatPositions,
   getTimeSignature,
 } from "./update-clip-timing-helpers.ts";
+import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -164,7 +166,7 @@ function buildClipPropertiesToSet({
  * Handle note updates (merge or replace)
  * @param clip - The clip to update
  * @param notationString - The notation string to apply
- * @param modulationString - Modulation expressions to apply to notes
+ * @param transformString - Transform expressions to apply to notes
  * @param noteUpdateMode - 'merge' or 'replace'
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -173,13 +175,25 @@ function buildClipPropertiesToSet({
 function handleNoteUpdates(
   clip: LiveAPI,
   notationString: string | undefined,
-  modulationString: string | undefined,
+  transformString: string | undefined,
   noteUpdateMode: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | null {
-  if (notationString == null) {
+  // Only skip if BOTH are null
+  if (notationString == null && transformString == null) {
     return null;
+  }
+
+  // Handle transforms-only case (no notes parameter provided)
+  if (notationString == null) {
+    // transformString must be defined here (we returned above if both are null)
+    return applyTransformsToExistingNotes(
+      clip,
+      transformString as string,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
   }
 
   let combinedNotationString = notationString;
@@ -206,13 +220,8 @@ function handleNoteUpdates(
     timeSigDenominator,
   });
 
-  // Apply modulations to notes if provided
-  applyModulations(
-    notes,
-    modulationString,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  // Apply transforms to notes if provided
+  applyTransforms(notes, transformString, timeSigNumerator, timeSigDenominator);
 
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
@@ -233,7 +242,7 @@ function handleNoteUpdates(
 export interface ProcessSingleClipUpdateParams {
   clip: LiveAPI;
   notationString?: string;
-  modulationString?: string;
+  transformString?: string;
   noteUpdateMode: string;
   name?: string;
   color?: string;
@@ -266,7 +275,7 @@ export interface ProcessSingleClipUpdateParams {
  * @param params - Parameters object containing all update parameters
  * @param params.clip - The clip to update
  * @param params.notationString - Musical notation string
- * @param params.modulationString - Modulation expressions to apply
+ * @param params.transformString - Transform expressions to apply
  * @param params.noteUpdateMode - Note update mode (merge or replace)
  * @param params.name - Clip name
  * @param params.color - Clip color
@@ -299,7 +308,7 @@ export function processSingleClipUpdate(
   const {
     clip,
     notationString,
-    modulationString,
+    transformString,
     noteUpdateMode,
     name,
     color,
@@ -382,13 +391,14 @@ export function processSingleClipUpdate(
 
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+    applyAudioTransforms(clip, transformString);
   }
 
-  // Handle note updates
+  // Handle note updates (transforms already applied for audio clips above)
   finalNoteCount = handleNoteUpdates(
     clip,
     notationString,
-    modulationString,
+    isAudioClip ? undefined : transformString,
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,

@@ -1,6 +1,12 @@
 {
   "threshold": 0.3,
   "reporters": ["console"],
+  "ignorePattern": [
+    "// Producer Pal",
+    "// Copyright \\(C\\).*",
+    "// AI assistance:.*",
+    "// SPDX-License-Identifier:.*"
+  ],
   "ignore": [
     "**/node_modules/**",
     "**/generated-*-parser.js",

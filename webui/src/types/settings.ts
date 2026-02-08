@@ -48,11 +48,9 @@ export interface ProviderSettings {
   ollamaApiKey: string;
   customApiKey: string;
 
-  // Local provider ports
-  lmstudioPort: number;
-  ollamaPort: number;
-
-  // Custom provider base URL
+  // Base URLs for local and custom providers
+  lmstudioBaseUrl: string;
+  ollamaBaseUrl: string;
   customBaseUrl: string;
 
   // Common settings
@@ -68,10 +66,8 @@ export interface UseSettingsReturn {
   setProvider: (provider: Provider) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
-  baseUrl?: string; // Only for custom provider
+  baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
-  port?: number; // Only for lmstudio and ollama providers
-  setPort?: (port: number) => void;
   model: string;
   setModel: (model: string) => void;
   thinking: string;

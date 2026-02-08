@@ -24,7 +24,7 @@ start
 element
   = barCopy / timePoints / probability / velocity / duration / pitch
 
-barCopy
+barCopy "bar copy operation"
   = '@' 'clear' {
     return { clearBuffer: true };
   }
@@ -43,7 +43,7 @@ barOrRange
     return { bar: bar };
   }
 
-timePoints
+timePoints "time position"
   = bar:oneOrMoreInt "|" beats:beatList {
     return beats.map(beat => ({ bar, beat }));
   }
@@ -51,12 +51,12 @@ timePoints
     return beats.map(beat => ({ bar: null, beat }));
   }
 
-beatList
+beatList "beat list"
   = head:beatSpec tail:("," beatSpec)* {
     return [head, ...tail.map(t => t[1])];
   }
 
-beatSpec
+beatSpec "beat specification"
   = start:oneOrMoreFloat "x" times:oneOrMoreInt step:("@" unsignedFloat)? {
       const stepValue = step ? step[1] : null;
       if (stepValue === 0) {
@@ -66,7 +66,7 @@ beatSpec
     }
   / oneOrMoreFloat
 
-probability
+probability "probability value"
   = "p" val:unsignedDecimal {
     if (val >= 0.0 && val <= 1.0) {
       return { probability: val };
@@ -74,11 +74,11 @@ probability
     else throw new Error(`Note probability ${val} outside valid range 0.0-1.0`);
   }
 
-velocity
+velocity "velocity value"
   = "v" start:unsignedInt "-" end:unsignedInt {
     if (start >= 0 && start <= 127 && end >= 0 && end <= 127) {
-      return { 
-        velocityMin: Math.min(start, end), 
+      return {
+        velocityMin: Math.min(start, end),
         velocityMax: Math.max(start, end),
       };
     }
@@ -91,7 +91,7 @@ velocity
     else throw new Error(`MIDI velocity ${val} outside valid range 0-127`);
   }
 
-duration
+duration "duration value"
   = "t" bars:unsignedInt ":" beats:unsignedFloat {
     return { duration: `${bars}:${beats}` };  // String for bar:beat format
   }
@@ -99,14 +99,14 @@ duration
     return { duration: val };  // Number for beat-only (existing)
   }
 
-pitch
+pitch "note pitch"
   = pitchClass:pitchClass octave:signedInt {
     const name = `${pitchClass.name}${octave}`;
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
       return { pitch };
     }
-    else throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);    
+    else throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);
   }
 
 pitchClass

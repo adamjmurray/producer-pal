@@ -27,12 +27,22 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe(
         "track category: regular and return tracks have independent trackIndexes, master has no index",
       ),
-    trackIndex: z.number().int().min(0).optional().describe("0-based index"),
+    trackIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based index"),
     sceneId: z.coerce
       .string()
       .optional()
       .describe("select a scene with this or sceneIndex"),
-    sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
+    sceneIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based index"),
     clipId: z.coerce
       .string()
       .optional()

@@ -15,6 +15,31 @@ import {
 import { updateScene } from "./update-scene.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
+function expectSceneSet(
+  sceneId: string,
+  property: string,
+  value: unknown,
+): void {
+  expect(liveApiSet).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: sceneId }),
+    property,
+    value,
+  );
+}
+
+async function withConsoleSpy(
+  fn: (spy: ReturnType<typeof vi.spyOn>) => void,
+): Promise<void> {
+  const consoleModule = await import("#src/shared/v8-max-console.ts");
+  const consoleSpy = vi.spyOn(consoleModule, "warn");
+
+  try {
+    fn(consoleSpy);
+  } finally {
+    consoleSpy.mockRestore();
+  }
+}
+
 describe("updateScene", () => {
   beforeEach(() => {
     setupStandardIdMock();
@@ -42,41 +67,13 @@ describe("updateScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Updated Scene",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "color",
-      16711680,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "tempo",
-      140,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "tempo_enabled",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "time_signature_numerator",
-      3,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "time_signature_denominator",
-      4,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "time_signature_enabled",
-      true,
-    );
+    expectSceneSet("123", "name", "Updated Scene");
+    expectSceneSet("123", "color", 16711680);
+    expectSceneSet("123", "tempo", 140);
+    expectSceneSet("123", "tempo_enabled", true);
+    expectSceneSet("123", "time_signature_numerator", 3);
+    expectSceneSet("123", "time_signature_denominator", 4);
+    expectSceneSet("123", "time_signature_enabled", true);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -88,36 +85,12 @@ describe("updateScene", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 calls per scene
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "color",
-      65280,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "tempo",
-      120,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "tempo_enabled",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "456" }),
-      "color",
-      65280,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "456" }),
-      "tempo",
-      120,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "456" }),
-      "tempo_enabled",
-      true,
-    );
+    expectSceneSet("123", "color", 65280);
+    expectSceneSet("123", "tempo", 120);
+    expectSceneSet("123", "tempo_enabled", true);
+    expectSceneSet("456", "color", 65280);
+    expectSceneSet("456", "tempo", 120);
+    expectSceneSet("456", "tempo_enabled", true);
 
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
@@ -128,11 +101,7 @@ describe("updateScene", () => {
       name: "Prefixed ID Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Prefixed ID Scene",
-    );
+    expectSceneSet("123", "name", "Prefixed ID Scene");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -142,11 +111,7 @@ describe("updateScene", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Only Name Update",
-    );
+    expectSceneSet("123", "name", "Only Name Update");
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual({ id: "123" });
   });
@@ -157,11 +122,7 @@ describe("updateScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "tempo_enabled",
-      false,
-    );
+    expectSceneSet("123", "tempo_enabled", false);
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
     expect(result).toStrictEqual({ id: "123" });
   });
@@ -172,11 +133,7 @@ describe("updateScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "time_signature_enabled",
-      false,
-    );
+    expectSceneSet("123", "time_signature_enabled", false);
     expect(liveApiSet).not.toHaveBeenCalledWith(
       "time_signature_numerator",
       expect.any(Number),
@@ -270,65 +227,47 @@ describe("updateScene", () => {
 
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+      await withConsoleSpy((consoleSpy) => {
+        // Mock getProperty to return quantized color (different from input)
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "color") {
+            return [16725558]; // #FF3636 (quantized from #FF0000)
+          }
 
-      // Mock getProperty to return quantized color (different from input)
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "color") {
-          return [16725558]; // #FF3636 (quantized from #FF0000)
-        }
+          return null;
+        });
 
-        return null;
+        updateScene({ ids: "123", color: "#FF0000" });
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        );
       });
-
-      updateScene({
-        ids: "123",
-        color: "#FF0000",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
-      );
-
-      consoleSpy.mockRestore();
     });
 
     it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+      await withConsoleSpy((consoleSpy) => {
+        // Mock getProperty to return exact color (same as input)
+        liveApiGet.mockImplementation(function (prop) {
+          if (prop === "color") {
+            return [16711680]; // #FF0000 (exact match)
+          }
 
-      // Mock getProperty to return exact color (same as input)
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "color") {
-          return [16711680]; // #FF0000 (exact match)
-        }
+          return null;
+        });
 
-        return null;
+        updateScene({ ids: "123", color: "#FF0000" });
+
+        expect(consoleSpy).not.toHaveBeenCalled();
       });
-
-      updateScene({
-        ids: "123",
-        color: "#FF0000",
-      });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
 
     it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+      await withConsoleSpy((consoleSpy) => {
+        updateScene({ ids: "123", name: "No color update" });
 
-      updateScene({
-        ids: "123",
-        name: "No color update",
+        expect(consoleSpy).not.toHaveBeenCalled();
       });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
   });
 });

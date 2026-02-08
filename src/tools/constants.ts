@@ -6,7 +6,8 @@ export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
 export const MAX_CLIP_BEATS = 1_000_000;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
-export const MAX_SLICES = 64;
+export const MAX_SPLIT_POINTS = 32;
+export const MAX_CODE_LENGTH = 2500;
 
 // State string constants (6 valid states)
 export const STATE = {

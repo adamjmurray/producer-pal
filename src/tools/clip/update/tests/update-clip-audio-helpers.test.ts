@@ -10,6 +10,7 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
+  applyAudioTransforms,
   handleWarpMarkerOperation,
   revealAudioContentAtPosition,
   setAudioParameters,
@@ -153,6 +154,114 @@ describe("setAudioParameters", () => {
   });
 });
 
+describe("applyAudioTransforms", () => {
+  let mockClip: MockClip;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClip = {
+      getProperty: vi.fn(),
+      set: liveApiSet,
+    };
+  });
+
+  it("should return false when no transform string provided", () => {
+    const result = applyAudioTransforms(mockClip, undefined);
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should return false when transform string is empty", () => {
+    const result = applyAudioTransforms(mockClip, "");
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should apply gain transform and return true", () => {
+    // Live gain 0.4 ≈ 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = -6");
+
+    expect(result).toBe(true);
+    expect(mockClip.getProperty).toHaveBeenCalledWith("gain");
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+  });
+
+  it("should return false when gain is unchanged", () => {
+    // Live gain ~0.4 ≈ 0 dB, transform sets to 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = audio.gain");
+
+    expect(result).toBe(false);
+  });
+
+  it("should return false when only MIDI parameters present", () => {
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "velocity += 10");
+
+    expect(result).toBe(false);
+    // Note: getProperty is still called to read current gain before checking transforms
+    expect(liveApiSet).not.toHaveBeenCalled();
+  });
+
+  it("should apply pitchShift transform and return true", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "pitchShift = 5.5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 50);
+  });
+
+  it("should return false when pitchShift is unchanged", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 5;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    // Current pitchShift is 5.0, set to same value
+    const result = applyAudioTransforms(
+      mockClip,
+      "pitchShift = audio.pitchShift",
+    );
+
+    expect(result).toBe(false);
+    expect(liveApiSet).not.toHaveBeenCalled();
+  });
+
+  it("should apply both gain and pitchShift transforms", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "gain = -6\npitchShift = 5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 0);
+  });
+});
+
 describe("handleWarpMarkerOperation", () => {
   let mockClip: MockClip;
 
@@ -251,9 +360,8 @@ describe("revealAudioContentAtPosition", () => {
   });
 
   it("should handle warped clips with looping workaround", () => {
-    // Mock ID uses "id X" format to match production LiveAPI.id behavior
     const sourceClip: MockClip = {
-      id: "id source-123",
+      id: "source-123",
       getProperty: vi.fn((prop) => {
         if (prop === "warping") return 1;
 
@@ -278,7 +386,7 @@ describe("revealAudioContentAtPosition", () => {
       {},
     );
 
-    // Should duplicate to arrangement (clip.id already has "id " prefix)
+    // Should duplicate to arrangement (production adds "id " prefix to clip.id)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id source-123",

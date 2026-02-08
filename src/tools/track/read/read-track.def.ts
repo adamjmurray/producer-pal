@@ -25,7 +25,12 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       .describe(
         "regular and return tracks have independent trackIndexes, master has no index",
       ),
-    trackIndex: z.number().int().min(0).optional().describe("0-based index"),
+    trackIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based index"),
     include: z
       .array(
         z.enum([

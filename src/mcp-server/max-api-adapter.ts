@@ -12,6 +12,7 @@ import {
   MAX_ERROR_DELIMITER,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
 
 interface McpResponseContent {
@@ -58,7 +59,7 @@ Max.addHandler("timeoutMs", (input: unknown) => {
  */
 function callLiveApi(tool: string, args: object): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
-  const contextJSON = JSON.stringify({ silenceWavPath });
+  const contextJSON = JSON.stringify({ silenceWavPath, timeoutMs });
   const requestId = crypto.randomUUID();
 
   console.info(
@@ -118,14 +119,14 @@ function handleLiveApiResult(...args: unknown[]): void {
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
   const pendingRequest = pendingRequests.get(requestId);
+  const resolve = pendingRequest?.resolve;
 
   if (pendingRequest) {
-    const { resolve, timeout } = pendingRequest;
-
-    clearTimeout(timeout);
-
+    clearTimeout(pendingRequest.timeout);
     pendingRequests.delete(requestId);
+  }
 
+  if (resolve) {
     try {
       // Find the delimiter
       const delimiterIndex = params.indexOf(MAX_ERROR_DELIMITER);
@@ -188,6 +189,15 @@ function handleLiveApiResult(...args: unknown[]): void {
 }
 
 Max.addHandler("mcp_response", handleLiveApiResult);
+
+// Handler for code execution requests from V8
+Max.addHandler("code_exec_request", (...args: unknown[]) => {
+  const [requestId, requestJson] = args as [string, string];
+
+  handleCodeExecRequest(requestId, requestJson).catch((error) => {
+    console.error(`Error handling code_exec_request: ${String(error)}`);
+  });
+});
 
 /**
  * Set the timeout for testing purposes

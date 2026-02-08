@@ -187,16 +187,32 @@ interface MockOverrides {
 }
 
 /**
+ * Normalize "id X" format keys to bare numeric IDs.
+ * Leaves paths (e.g., "live_set tracks 0") and types (e.g., "Track") untouched.
+ * @param key - Override key to normalize
+ * @returns Bare ID or unchanged key
+ */
+function normalizeIdKey(key: string): string {
+  return /^id \d+$/.test(key) ? key.slice(3) : key;
+}
+
+/**
  * Mock the LiveAPI.get() method with optional custom overrides
- * @param overrides - Property overrides by object id/path/type
+ * @param overrides - Property overrides by object id/path/type (bare IDs preferred)
  */
 export function mockLiveApiGet(overrides: MockOverrides = {}): void {
+  const normalized: MockOverrides = {};
+
+  for (const [key, value] of Object.entries(overrides)) {
+    normalized[normalizeIdKey(key)] = value;
+  }
+
   liveApiGet.mockImplementation(function (
     this: { id: string; path: string; type: string },
     prop: string,
   ) {
     const overridesByProp =
-      overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
+      normalized[this.id] ?? normalized[this.path] ?? normalized[this.type];
 
     if (overridesByProp != null) {
       const override = overridesByProp[prop];

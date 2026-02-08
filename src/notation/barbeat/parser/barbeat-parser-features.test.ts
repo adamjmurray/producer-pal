@@ -92,6 +92,15 @@ describe("BarBeatScript Parser - parser features", () => {
     it("handles end of input errors", () => {
       expect(() => parser.parse("C")).toThrow("end of input");
     });
+
+    it("provides labeled error for invalid input", () => {
+      expect(() => parser.parse("invalid")).toThrow();
+    });
+
+    it("provides helpful labels for syntax errors", () => {
+      // Labels prevent overwhelming character class lists in error messages
+      expect(() => parser.parse("xyz")).toThrow();
+    });
   });
 
   describe("advanced parser features", () => {

@@ -208,9 +208,8 @@ export function buildAudioClipMock({
   // end_marker = startMarker + visibleLength (endTime)
   const endMarker = startMarker + endTime;
 
-  // Use "id X" format for keys to match liveApiId mock behavior
   return {
-    [`id ${clipId}`]: {
+    [clipId]: {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -269,9 +268,8 @@ export function buildRevealedClipMock({
   startMarker,
   endMarker,
 }: RevealedClipMockOptions): Record<string, RevealedClipMockData> {
-  // Use "id X" format for keys to match liveApiId mock behavior
   return {
-    [`id ${clipId}`]: {
+    [clipId]: {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -311,9 +309,8 @@ export function assertSourceClipEndMarker(
   clipId: string,
   expectedEndMarker: number,
 ): void {
-  // Context uses "id X" format to match liveApiId mock
   expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: `id ${clipId}` }),
+    expect.objectContaining({ id: clipId }),
     "end_marker",
     expectedEndMarker,
   );
@@ -347,8 +344,7 @@ export function assertRevealedClipMarkers(
   startMarker: number,
   endMarker: number,
 ): void {
-  // Context uses "id X" format to match liveApiId mock
-  const ctx = expect.objectContaining({ id: `id ${clipId}` });
+  const ctx = expect.objectContaining({ id: clipId });
 
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "looping", 1);
   expect(liveApiSet).toHaveBeenCalledWithThis(ctx, "loop_end", endMarker);
@@ -444,15 +440,6 @@ export function setupAudioArrangementTest({
   name = "Audio Clip",
 }: AudioArrangementTestOptions): void {
   setupArrangementClipPath(trackIndex, [clipId, revealedClipId]);
-
-  // Mock the id getter to return "id X" format (matching production behavior)
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id) {
-      return `id ${this._id}`;
-    }
-
-    return this._id;
-  });
 
   const sourceMock = buildAudioClipMock({
     clipId,

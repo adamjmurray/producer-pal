@@ -145,6 +145,7 @@ create.
 - Add/remove MIDI notes and change note pitch, timing, velocity, and probability
 - Change audio clip gain, pitch shift, warp settings, and warp markers
 - Move clips and change their length in the Arrangement
+- Split arrangement clips at specified positions
 - Update multiple clips at once
 
 ### Custom Music Notation
@@ -161,6 +162,18 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
   1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
   bars 3-10)
+
+### Transforms
+
+Apply complex changes to clips using math expressions:
+
+- **Transform MIDI notes**: velocity, pitch, timing, duration, probability
+- **Transform audio clips**: gain, pitch shift
+- **Shapes**: LFO-like waveforms (sine, tri, saw), linear ramps for fades,
+  random noise for humanization
+- **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
+  ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
+  `1|1-2|4 C3:`)
 
 ## Sample Browser
 
@@ -190,14 +203,6 @@ limitation).
 
 - Remove tracks, return tracks, scenes, clips, or devices
 - Bulk delete multiple objects
-
-### Transform Clips (`ppal-transform-clips`)
-
-- Slice up arrangement clips
-- Shuffle arrangement clip slice order
-- Randomize audio clip gain
-- Randomize transpose for audio and MIDI clips
-- Randomize MIDI note velocity, duration, and probability
 
 ## Selection State and View Control
 

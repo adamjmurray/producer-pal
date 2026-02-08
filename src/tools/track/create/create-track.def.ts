@@ -13,13 +13,18 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     destructiveHint: true,
   },
   inputSchema: {
-    trackIndex: z
+    trackIndex: z.coerce
       .number()
       .int()
       .min(-1)
       .optional()
       .describe("0-based index, -1 or omit to append"),
-    count: z.number().int().min(1).default(1).describe("number to create"),
+    count: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1)
+      .describe("number to create"),
     name: z.string().optional().describe("name (comma-separated for multiple)"),
     color: z.string().optional().describe("#RRGGBB (comma-separated cycles)"),
     type: z.enum(["midi", "audio", "return"]).default("midi").describe("type"),

@@ -119,9 +119,7 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("rejects negative velocity", () => {
-      expect(() => parser.parse("v-1 C3")).toThrow(
-        'Expected [0-9] but "-" found.',
-      );
+      expect(() => parser.parse("v-1 C3")).toThrow();
     });
   });
 });

@@ -18,9 +18,6 @@ npm run typecheck
 npm run format
 npm test
 
-# Parser rebuild (when modifying bar|beat grammar)
-npm run parser:build
-
 # Chat UI development
 npm run ui:build # Production build
 
@@ -58,11 +55,13 @@ See `dev-docs/Architecture.md` for detailed system design and
   ```typescript
   // Producer Pal
   // Copyright (C) <year> <author>
+  // AI assistance: <AI tool> (<company>)
   // SPDX-License-Identifier: GPL-3.0-or-later
   ```
 
   List all authors who contributed to the file. New files should include the
-  current year and the contributor's name.
+  current year and the contributor's name. When AI tools modify a file, add the
+  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`).
 
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
@@ -99,12 +98,14 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.
   For list-like inputs, use comma-separated strings
 
-- **Tool schema ID coercion**: Use `z.coerce.string()` instead of `z.string()`
-  for ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
-  `sceneIndex` when it accepts comma-separated values). This allows LLMs to pass
-  numeric IDs (like `id: 123`) which Zod automatically coerces to strings. The
-  MCP SDK validates schemas before our handler runs, so coercion must happen at
-  the schema level.
+- **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
+  ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
+  `sceneIndex` when it accepts comma-separated values). Use `z.coerce.number()`
+  instead of `z.number()` for numeric parameters (e.g., `trackIndex`,
+  `sceneIndex`, `count`, `tempo`, `gainDb`). This allows LLMs to pass values as
+  either strings or numbers (like `id: 123` or `trackIndex: "3"`) which Zod
+  automatically coerces. The MCP SDK validates schemas before our handler runs,
+  so coercion must happen at the schema level.
 
 - **Live API**: Use `src/live-api-adapter/live-api-extensions.ts` interface
   instead of raw `.get("property")?.[0]` calls
@@ -226,13 +227,6 @@ functions for clarity.
 
 E2E tests for MCP tools are in `e2e/mcp/`. These tests open Ableton Live and
 verify tools via the MCP protocol.
-
-**Key pattern:** Use a single comprehensive `it()` test per tool with all
-assertions grouped together. This minimizes overhead since each test requires:
-
-- Opening/switching Live Sets (slow)
-- MCP connection setup
-- 30-60 second hook timeouts
 
 **Commands:**
 

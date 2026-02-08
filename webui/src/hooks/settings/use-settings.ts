@@ -154,15 +154,13 @@ export function useSettings(): UseSettingsReturn {
       (value: ProviderSettings[K]) =>
         createProviderSetter(provider, providerStateSetters, key)(value);
 
+    const hasBaseUrl =
+      provider === "custom" || provider === "lmstudio" || provider === "ollama";
+
     return {
       setApiKey: createSetter("apiKey"),
       setModel: createSetter("model"),
-      setBaseUrl:
-        provider === "custom" ? createSetter("baseUrl") : (_url: string) => {},
-      setPort:
-        provider === "lmstudio" || provider === "ollama"
-          ? createSetter("port")
-          : (_port: number) => {},
+      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : (_url: string) => {},
       setThinking: createSetter("thinking"),
       setTemperature: createSetter("temperature"),
       setShowThoughts: createSetter("showThoughts"),
@@ -172,7 +170,6 @@ export function useSettings(): UseSettingsReturn {
     setApiKey,
     setModel,
     setBaseUrl,
-    setPort,
     setThinking,
     setTemperature,
     setShowThoughts,
@@ -194,18 +191,16 @@ export function useSettings(): UseSettingsReturn {
     setThinking(DEFAULT_SETTINGS[provider].thinking);
     setShowThoughts(true);
   }, [provider, setTemperature, setThinking, setShowThoughts]);
-  const isCustom = provider === "custom";
-  const isLocal = provider === "lmstudio" || provider === "ollama";
+  const hasBaseUrl =
+    provider === "custom" || provider === "lmstudio" || provider === "ollama";
 
   return {
     provider,
     setProvider,
     apiKey: currentSettings.apiKey,
     setApiKey,
-    baseUrl: isCustom ? currentSettings.baseUrl : undefined,
-    setBaseUrl: isCustom ? setBaseUrl : undefined,
-    port: isLocal ? currentSettings.port : undefined,
-    setPort: isLocal ? setPort : undefined,
+    baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,
+    setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
     setModel,
     thinking: currentSettings.thinking,

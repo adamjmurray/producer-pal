@@ -52,8 +52,6 @@ describe("App", () => {
     setApiKey: vi.fn(),
     baseUrl: "",
     setBaseUrl: vi.fn(),
-    port: 1234,
-    setPort: vi.fn(),
     model: "gemini-1.5-flash",
     setModel: vi.fn(),
     thinking: "default" as const,
@@ -341,41 +339,53 @@ describe("App", () => {
       expect(getOpenAIExtraParams().baseUrl).toBe("https://custom.api.com/v1");
     });
 
-    it("uses localhost baseUrl for lmstudio provider", () => {
+    it("uses baseUrl for lmstudio provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "lmstudio",
-        port: 1234,
+        baseUrl: "http://localhost:1234/v1",
       });
       render(<App />);
       expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
-    it("uses localhost baseUrl for ollama provider", () => {
+    it("uses baseUrl for ollama provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "ollama",
-        port: 11434,
+        baseUrl: "http://localhost:11434/v1",
       });
       render(<App />);
       expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");
     });
 
-    it("uses default port 1234 for lmstudio when port not specified", () => {
+    it("uses custom baseUrl for lmstudio on remote host", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "lmstudio",
-        port: undefined,
+        baseUrl: "http://192.168.1.100:1234/v1",
+      });
+      render(<App />);
+      expect(getOpenAIExtraParams().baseUrl).toBe(
+        "http://192.168.1.100:1234/v1",
+      );
+    });
+
+    it("falls back to default URL for lmstudio when baseUrl is undefined", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        baseUrl: undefined,
       });
       render(<App />);
       expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
-    it("uses default port 11434 for ollama when port not specified", () => {
+    it("falls back to default URL for ollama when baseUrl is undefined", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "ollama",
-        port: undefined,
+        baseUrl: undefined,
       });
       render(<App />);
       expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");

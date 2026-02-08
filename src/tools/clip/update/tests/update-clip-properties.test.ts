@@ -20,7 +20,7 @@ describe("updateClip - Properties and ID handling", () => {
     setupMocks();
   });
 
-  it("should handle 'id ' prefixed clip IDs", () => {
+  it("should handle 'id ' prefixed clip IDs", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -28,7 +28,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "id 123",
       name: "Prefixed ID Clip",
     });
@@ -41,7 +41,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should not update properties when not provided", () => {
+  it("should not update properties when not provided", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -49,7 +49,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       name: "Only Name Update",
     });
@@ -73,7 +73,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should handle boolean false values correctly", () => {
+  it("should handle boolean false values correctly", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -81,7 +81,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       looping: false,
     });
@@ -94,7 +94,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
+  it("should skip invalid clip IDs in comma-separated list and update valid ones", async () => {
     liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
       switch (this._path) {
         case "id 123":
@@ -115,7 +115,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123, nonexistent",
       name: "Test",
       noteUpdateMode: "replace",
@@ -129,7 +129,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
   });
 
-  it("should return single object for single ID and array for comma-separated IDs", () => {
+  it("should return single object for single ID and array for comma-separated IDs", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -141,14 +141,14 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const singleResult = updateClip({ ids: "123", name: "Single" });
-    const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
+    const singleResult = await updateClip({ ids: "123", name: "Single" });
+    const arrayResult = await updateClip({ ids: "123, 456", name: "Multiple" });
 
     expect(singleResult).toStrictEqual({ id: "123" });
     expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
-  it("should handle whitespace in comma-separated IDs", () => {
+  it("should handle whitespace in comma-separated IDs", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -165,7 +165,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
@@ -173,7 +173,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
-  it("should filter out empty IDs from comma-separated list", () => {
+  it("should filter out empty IDs from comma-separated list", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -185,7 +185,7 @@ describe("updateClip - Properties and ID handling", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123,,456,  ,",
       name: "Filtered",
     });
@@ -231,7 +231,7 @@ describe("updateClip - Properties and ID handling", () => {
         return null;
       });
 
-      updateClip({
+      await updateClip({
         ids: "123",
         color: "#FF0000",
       });
@@ -267,7 +267,7 @@ describe("updateClip - Properties and ID handling", () => {
         return null;
       });
 
-      updateClip({
+      await updateClip({
         ids: "123",
         color: "#FF0000",
       });
@@ -288,7 +288,7 @@ describe("updateClip - Properties and ID handling", () => {
         },
       });
 
-      updateClip({
+      await updateClip({
         ids: "123",
         name: "No color update",
       });

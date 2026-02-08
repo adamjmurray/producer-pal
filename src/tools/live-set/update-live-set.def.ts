@@ -13,7 +13,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     destructiveHint: true,
   },
   inputSchema: {
-    tempo: z.number().min(20).max(999).optional().describe("BPM"),
+    tempo: z.coerce.number().min(20).max(999).optional().describe("BPM"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
     scale: z
       .string()
