@@ -7,11 +7,13 @@
 
 I maintain the core tools and roadmap, but there's room to collaborate:
 
-- **Testing & evaluations** — automated end-to-end testing, LLM comparisons
-- **Small model optimization** — help make Ollama/LM Studio work better
-- **Voice interaction** — experimental bidirectional voice chat
-- **Documentation** — improvements and tutorials
 - **Bug reports** — especially reproducible LLM tool misuse
+- **Small model optimization** — help make Ollama/LM Studio work better
+- **Documentation** — improvements and tutorials
+- **Evaluations** — automated end-to-end behavior comparisons of different LLMs
+  and small model mode vs normal mode (basic framework is in place, needs a lot
+  more evals, and manual verification of eval effectiveness and eval results)
+- **Voice interaction** — experimental bidirectional voice chat
 
 Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
@@ -19,19 +21,37 @@ reach out directly.
 
 ## In Progress
 
+### 1.4.x - More Transforms
+
+- Apply curves
+- More flexible randomization: arbitrary min and max, randomly choose between a
+  set of choices (e.g. the notes of a chord)
+- More note properties available as variables (e.g. note.index within the MIDI
+  clip, clip.arrangementStart)
+- Ability to apply LFOs relative to the arrangement start instead of clip start
+- Code execution feature for the AI to generate custom algorithms for transforms
+  and MIDI note generation
+
+## Changelog
+
 ### 1.4 - MIDI Transforms
 
 Enhance the `ppal-create-clip` and `ppal-update-clip` tools with flexible MIDI
 transform features:
 
-- Apply ramps, curves, and LFO shapes to MIDI velocity, start time, duration,
-  and other note properties
-- Apply timing patterns like swing
-- Randomize velocity and timing
+- Apply ramps and LFO shapes to velocity, start time, duration, pitch, audio
+  gain and other note and audio properties
+- Randomize velocity and timing (and any of the other properties)
+- Apply timing patterns like swing to MIDI
+- Combine multiple transforms with mathematical expressions
 - Changes are applied directly to MIDI clips (the notes are modified). The
   results can be easily seen and edited by hand.
 
-## Changelog
+Also:
+
+- Split arrangement clips at the given position(s)
+- Support running Ollama on another computer (Ollama API URL is no longer
+  hard-coded to localhost)
 
 ### 1.3 - Device Control (December 2025 - January 2026)
 
@@ -50,8 +70,6 @@ Also added support for:
 - Audio clip support with a `read-samples` tool to scan folders for samples
 - Track mixer control: gain, panning, and sends
 - Arrangement clip positioning and length control
-- Experimental clip slicing, shuffling, and randomizing features (since removed
-  or integrated into `ppal-update-clip`)
 
 ### 1.1 - Built-in chat UI (November 2025)
 
@@ -68,10 +86,6 @@ Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
 
 ## Planned Features
-
-### 1.4.5 - Code Execution
-
-- Sandboxed JavaScript for algorithmic composition and transformation
 
 ### 1.5 - Customization and Small Model Optimization
 
@@ -92,5 +106,6 @@ manipulation and basic Live Set management.
 
 - Take lane support
 - Groove support
+- Support new Live API features as they become available
 - Persist conversations from the built-in chat UI and continue them later
 - Voice interface: Speak to Producer Pal instead of typing
