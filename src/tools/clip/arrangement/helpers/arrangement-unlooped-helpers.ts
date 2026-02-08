@@ -49,6 +49,12 @@ function tileAudioContent({
   context: ArrangementContext;
 }): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
+
+  // Guard against zero-length content which would cause an infinite loop
+  if (clipEndMarkerBeats <= clipStartMarkerBeats) {
+    return updatedClips;
+  }
+
   let currentPosition = currentEndTime;
   let currentContentOffset = clipStartMarkerBeats + currentArrangementLength;
   const tileSize = currentArrangementLength;
@@ -135,10 +141,14 @@ export function handleUnloopedLengthening({
   // Each tile shows a different portion of the clip content
   if (!isAudioClip) {
     const tileSize = currentArrangementLength;
+    const currentEndMarker = clip.getProperty("end_marker") as number;
     const targetEndMarker = clipStartMarker + arrangementLengthBeats;
 
-    // Extend source clip's end_marker to target
-    clip.set("end_marker", targetEndMarker);
+    // Extend source clip's end_marker to target (only if extending, never shrink)
+    if (targetEndMarker > currentEndMarker) {
+      clip.set("end_marker", targetEndMarker);
+    }
+
     updatedClips.push({ id: clip.id });
 
     // Create tiles for remaining space
@@ -225,7 +235,8 @@ export function handleUnloopedLengthening({
   const targetEndMarker = clipStartMarkerBeats + arrangementLengthBeats;
 
   // For warped clips, extend source clip's end_marker so it can show more content
-  if (isWarped) {
+  // Only extend, never shrink (preserve existing content boundary)
+  if (isWarped && targetEndMarker > clipEndMarkerBeats) {
     clip.set("end_marker", targetEndMarker);
   }
 

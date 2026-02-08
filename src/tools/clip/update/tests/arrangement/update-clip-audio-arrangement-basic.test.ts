@@ -4,13 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
-  mockContext,
-  setupAudioArrangementTest,
-  assertSourceClipEndMarker,
   assertDuplicateClipCalled,
   assertRevealedClipMarkers,
+  assertSourceClipEndMarker,
+  mockContext,
+  setupArrangementClipPath,
+  setupAudioArrangementTest,
+  setupDuplicateClipMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Audio clip lengthening uses a tiling approach: the existing content range is
@@ -97,4 +100,93 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       expect(result).toStrictEqual([{ id: cId }, { id: rId }, { id: rId }]);
     },
   );
+});
+
+describe("Unlooped audio clips - defensive guards", () => {
+  it("should not shrink end_marker when clip has more content than target", async () => {
+    const clipId = "700";
+    const revealedClipId = "701";
+    const trackIndex = 0;
+
+    setupArrangementClipPath(trackIndex, [clipId, revealedClipId]);
+
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 0.0,
+        end_time: 8.0,
+        start_marker: 0.0,
+        end_marker: 40.0, // Content far exceeds target of 14 beats
+        loop_start: 0.0,
+        loop_end: 40.0,
+        name: "Wide Audio Clip",
+        trackIndex,
+      },
+      [revealedClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        start_time: 8.0,
+        end_time: 14.0,
+        start_marker: 8.0,
+        end_marker: 14.0,
+        trackIndex,
+      },
+    });
+    setupDuplicateClipMock(revealedClipId);
+
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
+
+    // end_marker should NOT be shrunk from 40 to 14
+    expect(liveApiSet).not.toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: clipId }),
+      "end_marker",
+      expect.anything(),
+    );
+
+    // Should still create tiles
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+  });
+
+  it("should handle zero-length audio content without infinite loop", async () => {
+    const clipId = "710";
+    const trackIndex = 0;
+
+    setupArrangementClipPath(trackIndex, [clipId]);
+
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 0.0,
+        end_time: 4.0,
+        start_marker: 0.0,
+        end_marker: 0.0, // Zero-length content
+        loop_start: 0.0,
+        loop_end: 0.0,
+        name: "Zero Content Clip",
+        trackIndex,
+      },
+    });
+
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:2" },
+      mockContext,
+    );
+
+    // Should return just the source clip (no tiles from zero-length content)
+    // unwrapSingleResult returns a single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
+  });
 });

@@ -248,4 +248,50 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     expect(resultArray[0]).toStrictEqual({ id: clipId });
     expect(resultArray[4]).toStrictEqual({ id: "825" });
   });
+
+  it("should not shrink end_marker when clip has more content than target", async () => {
+    const clipId = "830";
+    const tileIds = ["831", "832", "833", "834", "835"];
+
+    setupUnloopedTilingMocks({
+      clipId,
+      tileIds,
+      clipProps: {
+        start_time: 0.0,
+        end_time: 3.0,
+        start_marker: 0.0,
+        end_marker: 20.0, // Content extends to beat 20 (beyond target 14)
+        loop_start: 0.0,
+        loop_end: 20.0,
+        name: "Wide Content Clip",
+      },
+      tileProps: {
+        start_time: 3.0,
+        end_time: 6.0,
+        start_marker: 0.0,
+        end_marker: 3.0,
+      },
+    });
+
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
+      mockContext,
+    );
+
+    // end_marker should NOT be shrunk from 20 to 14
+    expect(liveApiSet).not.toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: clipId }),
+      "end_marker",
+      expect.anything(),
+    );
+
+    // Tiles should still be created correctly
+    expect(result).toStrictEqual([
+      { id: clipId },
+      { id: "831" },
+      { id: "832" },
+      { id: "833" },
+      { id: "835" },
+    ]);
+  });
 });
