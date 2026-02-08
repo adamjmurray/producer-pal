@@ -152,7 +152,6 @@ export async function updateClip(
       arrangementClips,
       splitPoints,
       mutableClips,
-      warnings,
       context as SplittingContext,
     );
     mutableClips = mutableClips.filter((clip) => clip.exists());

@@ -14,10 +14,9 @@ import {
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
-  setupLoopedClipSplittingMocks,
+  setupClipSplittingMocks,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
-  setupUnloopedClipSplittingMocks,
 } from "./arrangement-splitting-test-helpers.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
@@ -25,13 +24,11 @@ const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
 function createPerformContext(clipId: string): {
   mockClip: LiveAPI;
   clips: LiveAPI[];
-  warnings: Set<string>;
 } {
   const mockClip = LiveAPI.from(`id ${clipId}`);
   const clips = [mockClip];
-  const warnings = new Set<string>();
 
-  return { mockClip, clips, warnings };
+  return { mockClip, clips };
 }
 
 function expectDuplicateCalled(): void {
@@ -157,11 +154,11 @@ describe("performSplitting", () => {
   it("should split looped clips at specified positions", () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSplittingMocks(clipId);
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
+    setupClipSplittingMocks(clipId);
+    const { mockClip, clips } = createPerformContext(clipId);
 
     // Split a 16-beat clip at 4 and 8 beats (2|1 and 3|1 in 4/4)
-    performSplitting([mockClip], [4, 8], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
 
     // Should create segments via duplication
     expectDuplicateCalled();
@@ -176,25 +173,52 @@ describe("performSplitting", () => {
       endTime: 4.0, // 4-beat clip
       loopEnd: 4.0,
     });
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
+    const { mockClip, clips } = createPerformContext(clipId);
 
     // Split points at 8 and 12 beats are beyond 4-beat clip
-    performSplitting([mockClip], [8, 12], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [8, 12], clips, HOLDING_AREA);
 
     // Should not create any duplicates
     expectDuplicateNotCalled();
   });
 
-  it("should split unlooped MIDI clips by duplicating and setting markers", () => {
+  it("should warn and abort when duplication fails", () => {
     const clipId = "clip_1";
 
-    setupUnloopedClipSplittingMocks(clipId, { isMidi: true });
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
+    setupSplittingClipBaseMocks(clipId);
+    setupSplittingClipGetMock(clipId, { looping: true });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Make duplicate_clip_to_arrangement return "0" (non-existent)
+    liveApiCall.mockImplementation(function (method: string) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return ["id", "0"];
+      }
+    });
+
+    performSplitting([mockClip], [4], clips, HOLDING_AREA);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Failed to duplicate"),
+    );
+  });
+
+  it("should split unlooped MIDI clips using unified algorithm", () => {
+    const clipId = "clip_1";
+
+    setupClipSplittingMocks(clipId, {
+      looping: false,
+      endTime: 8.0,
+      loopEnd: 8.0,
+      endMarker: 8.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
 
     // Split an 8-beat unlooped clip at 4 beats
-    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [4], clips, HOLDING_AREA);
 
-    // Should duplicate for the second segment
+    // Should duplicate for segments
     expectDuplicateCalled();
   });
 
@@ -203,12 +227,12 @@ describe("performSplitting", () => {
 
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, { looping: true });
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
+    const { mockClip, clips } = createPerformContext(clipId);
 
     // Override trackIndex to be null
     Object.defineProperty(mockClip, "trackIndex", { get: () => null });
 
-    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [4], clips, HOLDING_AREA);
 
     // Should emit warning about trackIndex
     expect(outlet).toHaveBeenCalledWith(
@@ -243,26 +267,32 @@ describe("performSplitting", () => {
       }
     });
 
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
+    const { mockClip, clips } = createPerformContext(clipId);
 
     // Split points: 4 (valid), 12 (beyond clip end)
-    performSplitting([mockClip], [4, 12], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [4, 12], clips, HOLDING_AREA);
 
-    // With the source-copy algorithm for looped clips:
-    // - Source copy at holding area: 1 duplicate
-    // - First segment (0-4): 2 duplicates (work copy + move)
-    // - Second segment (4-8): 2 duplicates (work copy + move)
-    // Total: 5 duplicates for 2 segments
+    // Unified algorithm for 2 segments:
+    // Phase 1: 2 duplicates to holding
+    // Phase 4: 2 moveClipFromHolding (each = 1 duplicate)
+    // Total: 4 duplicates
     // The point at 12 should be filtered out (would add 2 more if not)
-    expect(duplicateCount).toBe(5);
+    expect(duplicateCount).toBe(4);
   });
 
-  it("should split unlooped audio clips by revealing content", () => {
+  it("should split unlooped audio clips using unified algorithm", () => {
     const clipId = "clip_1";
 
-    setupUnloopedClipSplittingMocks(clipId, { isMidi: false });
+    setupClipSplittingMocks(clipId, {
+      isMidi: false,
+      looping: false,
+      endTime: 8.0,
+      loopEnd: 8.0,
+      endMarker: 8.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
 
-    // Audio splitting needs scene ID
+    // Audio splitting needs scene/slot mocking for createAndDeleteTempClip
     const originalGet = liveApiGet.getMockImplementation();
 
     liveApiGet.mockImplementation(function (
@@ -273,22 +303,27 @@ describe("performSplitting", () => {
         return ["id", "scene_1"];
       }
 
+      if (this._id === "scene_1" && prop === "is_empty") {
+        return [1]; // Scene is empty, no need to create new one
+      }
+
       return originalGet?.call(this, prop) ?? [0];
     });
 
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
-
     // Split an 8-beat unlooped audio clip at 4 beats
-    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
+    performSplitting([mockClip], [4], clips, {
+      holdingAreaStartBeats: 40000,
+      silenceWavPath: "/tmp/silence.wav",
+    });
 
-    // Should duplicate for audio content reveal
+    // Should duplicate for audio content
     expectDuplicateCalled();
   });
 
   it("should rescan split clips replacing stale references with fresh ones", () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSplittingMocks(clipId);
+    setupClipSplittingMocks(clipId);
 
     // Override liveApiGet to return child clip IDs for track's arrangement_clips
     const parentGet = liveApiGet.getMockImplementation();
@@ -316,9 +351,8 @@ describe("performSplitting", () => {
 
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
-    const warnings = new Set<string>();
 
-    performSplitting([mockClip], [4, 8], clips, warnings, {
+    performSplitting([mockClip], [4, 8], clips, {
       holdingAreaStartBeats: 40000,
     });
 
@@ -328,49 +362,5 @@ describe("performSplitting", () => {
     expect(clips.some((c) => c.id === "fresh_2")).toBe(true);
     // The original clip should have been replaced
     expect(clips.some((c) => c.id === clipId)).toBe(false);
-  });
-
-  it("should warn when MIDI duplication fails", () => {
-    const clipId = "clip_1";
-    let callCount = 0;
-
-    setupSplittingClipBaseMocks(clipId, {
-      generatedPrefixes: ["holding_", "moved_", "split_"],
-    });
-    setupSplittingClipGetMock(
-      clipId,
-      {
-        looping: false,
-        endTime: 8.0,
-        loopEnd: 8.0,
-        endMarker: 8.0,
-      },
-      ["holding_", "moved_", "split_"],
-    );
-
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
-      if (method === "duplicate_clip_to_arrangement") {
-        callCount++;
-
-        // Return "0" which makes exists() return false
-        return ["id", "0"];
-      }
-
-      if (method === "create_midi_clip") {
-        return ["id", "temp_1"];
-      }
-    });
-
-    const { mockClip, clips, warnings } = createPerformContext(clipId);
-
-    performSplitting([mockClip], [4], clips, warnings, HOLDING_AREA);
-
-    // Should have attempted duplication
-    expect(callCount).toBeGreaterThan(0);
-    // Should emit warning about failed duplication
-    expect(warnings.has("split-duplicate-failed")).toBe(true);
   });
 });

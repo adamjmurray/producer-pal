@@ -20,6 +20,7 @@ import {
 import { ARRANGEMENT_CLIP_TESTS_PATH } from "./arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
+  assertSpanPreserved,
   testSplitClip,
 } from "./arrangement-splitting-test-helpers.ts";
 import { setupMcpTestContext } from "../mcp-test-helpers.ts";
@@ -33,25 +34,33 @@ beforeAll(async () => {
 
 describe("MIDI Looped Clips Splitting (t0-t8)", () => {
   it.each(midiLoopedTestCases)("splits t$track: $name", async ({ track }) => {
-    const { resultClips, warnings } = await testSplitClip(ctx.client!, track);
+    const { initialClips, resultClips, warnings } = await testSplitClip(
+      ctx.client!,
+      track,
+    );
 
     expect(resultClips.length).toBe(2);
     expect(resultClips.every((c) => c.type === "midi")).toBe(true);
     expect(warnings).toHaveLength(0);
 
     assertContiguousClips(resultClips);
+    assertSpanPreserved(initialClips, resultClips);
   });
 });
 
 describe("MIDI Unlooped Clips Splitting (t9-t14)", () => {
   it.each(midiUnloopedTestCases)("splits t$track: $name", async ({ track }) => {
-    const { resultClips, warnings } = await testSplitClip(ctx.client!, track);
+    const { initialClips, resultClips, warnings } = await testSplitClip(
+      ctx.client!,
+      track,
+    );
 
     expect(resultClips.length).toBe(2);
     expect(resultClips.every((c) => c.type === "midi")).toBe(true);
     expect(warnings).toHaveLength(0);
 
     assertContiguousClips(resultClips);
+    assertSpanPreserved(initialClips, resultClips);
   });
 });
 
@@ -59,13 +68,17 @@ describe("Audio Looped Warped Clips Splitting (t15-t23)", () => {
   it.each(audioLoopedWarpedTestCases)(
     "splits t$track: $name",
     async ({ track }) => {
-      const { resultClips, warnings } = await testSplitClip(ctx.client!, track);
+      const { initialClips, resultClips, warnings } = await testSplitClip(
+        ctx.client!,
+        track,
+      );
 
       expect(resultClips.length).toBe(2);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
       expect(warnings).toHaveLength(0);
 
       assertContiguousClips(resultClips);
+      assertSpanPreserved(initialClips, resultClips);
     },
   );
 });
@@ -74,13 +87,17 @@ describe("Audio Unlooped Warped Clips Splitting (t24-t29)", () => {
   it.each(audioUnloopedWarpedTestCases)(
     "splits t$track: $name",
     async ({ track }) => {
-      const { resultClips, warnings } = await testSplitClip(ctx.client!, track);
+      const { initialClips, resultClips, warnings } = await testSplitClip(
+        ctx.client!,
+        track,
+      );
 
       expect(resultClips.length).toBe(2);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
       expect(warnings).toHaveLength(0);
 
       assertContiguousClips(resultClips);
+      assertSpanPreserved(initialClips, resultClips);
     },
   );
 });
@@ -89,14 +106,19 @@ describe("Audio Unwarped Clips Splitting (t30-t35)", () => {
   it.each(audioUnwarpedTestCases)(
     "splits t$track: $name",
     async ({ track }) => {
-      const { resultClips } = await testSplitClip(ctx.client!, track, {
-        sleepMs: 200,
-      });
+      const { initialClips, resultClips } = await testSplitClip(
+        ctx.client!,
+        track,
+        {
+          sleepMs: 200,
+        },
+      );
 
       expect(resultClips.length).toBe(2);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
       assertContiguousClips(resultClips);
+      assertSpanPreserved(initialClips, resultClips);
     },
   );
 });

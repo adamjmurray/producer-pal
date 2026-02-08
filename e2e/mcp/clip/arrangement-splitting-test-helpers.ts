@@ -75,6 +75,59 @@ export async function testSplitClip(
 }
 
 /**
+ * Assert that the combined span of result clips matches the original clip(s).
+ * Verifies the first result clip starts where the original started and
+ * the last result clip ends where the original ended.
+ */
+export function assertSpanPreserved(
+  initialClips: ReadClipResult[],
+  resultClips: ReadClipResult[],
+): void {
+  const initial = initialClips[0];
+
+  if (!initial?.arrangementStart || !initial.arrangementLength) {
+    throw new Error("Initial clip missing arrangement data");
+  }
+
+  const initialStart = parseBarBeat(initial.arrangementStart);
+  const initialEnd = initialStart + parseBarBeat(initial.arrangementLength);
+
+  const sorted = [...resultClips].sort((a, b) => {
+    const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
+    const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
+
+    return aStart - bStart;
+  });
+
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  if (
+    !first?.arrangementStart ||
+    !last?.arrangementStart ||
+    !last.arrangementLength
+  ) {
+    throw new Error("Result clips missing arrangement data");
+  }
+
+  const resultStart = parseBarBeat(first.arrangementStart);
+  const resultEnd =
+    parseBarBeat(last.arrangementStart) + parseBarBeat(last.arrangementLength);
+
+  if (Math.abs(resultStart - initialStart) > EPSILON) {
+    throw new Error(
+      `Span start mismatch: initial=${initialStart.toFixed(3)}, result=${resultStart.toFixed(3)}`,
+    );
+  }
+
+  if (Math.abs(resultEnd - initialEnd) > EPSILON) {
+    throw new Error(
+      `Span end mismatch: initial=${initialEnd.toFixed(3)}, result=${resultEnd.toFixed(3)}`,
+    );
+  }
+}
+
+/**
  * Assert that clips are contiguous (each starts where the previous ends).
  */
 export function assertContiguousClips(clips: ReadClipResult[]): void {

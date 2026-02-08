@@ -6,15 +6,10 @@ import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.t
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
-  createUnloopedAudioSegments,
-  createUnloopedMidiSegments,
-} from "#src/tools/shared/arrangement/arrangement-splitting-helpers.ts";
-import {
-  createShortenedClipInHolding,
+  createAndDeleteTempClip,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
 
 export interface SplittingContext {
   holdingAreaStartBeats: number;
@@ -143,26 +138,28 @@ interface SplitSingleClipArgs {
   clip: LiveAPI;
   splitPoints: number[];
   holdingAreaStart: number;
-  warnings: Set<string>;
   context: SplittingContext;
   splitClipRanges: Map<string, SplitClipRange>;
 }
 
 /**
  * Split a single clip at the specified points.
+ * Uses a unified algorithm for all clip types (looped/unlooped, MIDI/audio, warped/unwarped):
+ * 1. Duplicate full clip to holding area once per segment
+ * 2. Trim each copy from right and/or left using temp clip overlay
+ * 3. Delete original clip
+ * 4. Move trimmed segments to final arrangement positions
  * @param args - Arguments for splitting
  * @returns true if splitting succeeded, false if skipped
  */
 function splitSingleClip(args: SplitSingleClipArgs): boolean {
-  const { clip, splitPoints, holdingAreaStart, warnings, context } = args;
+  const { clip, splitPoints, holdingAreaStart, context } = args;
   const { splitClipRanges } = args;
 
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
-  const isLooping = (clip.getProperty("looping") as number) > 0;
   const clipArrangementStart = clip.getProperty("start_time") as number;
   const clipArrangementEnd = clip.getProperty("end_time") as number;
   const clipLength = clipArrangementEnd - clipArrangementStart;
-  const clipStartMarker = clip.getProperty("start_marker") as number;
 
   const trackIndex = clip.trackIndex;
 
@@ -192,101 +189,82 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   // Create boundaries: [0, ...splitPoints, clipLength]
   const boundaries = [0, ...validPoints, clipLength];
-  const firstSegmentLength = boundaries[1] as number;
+  const segmentCount = boundaries.length - 1;
+  const EPSILON = 0.001;
 
-  if (isLooping) {
-    // CRITICAL: For looped clips, we MUST:
-    // 1. Create a source copy in holding area (preserves full clip for all segments)
-    // 2. Create segment copies from source copy, each shortened appropriately
-    // 3. Delete the original clip
-    // 4. Move all segment copies to final arrangement positions
-    // 5. Delete the source copy
-    //
-    // Ableton crashes when duplicate_clip_to_arrangement targets a position
-    // where a clip already exists with the same start_time.
+  // Phase 1: Duplicate full clip once per segment to holding area
+  const holdingClipIds: string[] = [];
 
-    // Step 1: Create source copy at holding area (preserves full original)
-    const sourceResult = track.call(
+  for (let i = 0; i < segmentCount; i++) {
+    const holdingPos = holdingAreaStart + i * (clipLength + 4);
+    const result = track.call(
       "duplicate_clip_to_arrangement",
       `id ${originalClipId}`,
-      holdingAreaStart,
+      holdingPos,
     ) as [string, string | number];
-    const sourceCopy = LiveAPI.from(sourceResult);
-    const sourceCopyId = sourceCopy.id;
+    const holdingClip = LiveAPI.from(result);
 
-    // Step 2: Create each segment from source copy
-    const holdingClips: Array<{ id: string; position: number }> = [];
-    const loopStart = clip.getProperty("loop_start") as number;
-    const loopEnd = clip.getProperty("loop_end") as number;
-    const loopLength = loopEnd - loopStart;
-    // Working area starts just past the source copy
-    const workAreaStart = holdingAreaStart + clipLength + 4;
+    if (holdingClip.id === "0") {
+      console.warn(
+        `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
+      );
 
-    for (let i = 0; i < boundaries.length - 1; i++) {
-      const segmentStart = boundaries[i] as number;
-      const segmentEnd = boundaries[i + 1] as number;
-      const segmentLength = segmentEnd - segmentStart;
-      const segmentPosition = clipArrangementStart + segmentStart;
-      // Each segment working position is offset in the work area
-      const workPosition = workAreaStart + i * (clipLength + 4);
+      // Clean up any already-created holding clips
+      for (const id of holdingClipIds) {
+        track.call("delete_clip", `id ${id}`);
+      }
 
-      const { holdingClipId, holdingClip } = createShortenedClipInHolding(
-        sourceCopy,
+      return false;
+    }
+
+    holdingClipIds.push(holdingClip.id);
+  }
+
+  // Phase 2: Trim each copy to its segment boundaries
+  const segments: Array<{ id: string; position: number }> = [];
+
+  for (let i = 0; i < segmentCount; i++) {
+    const segStart = boundaries[i] as number; // loop bounds guarantee valid index
+    const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
+    const holdingPos = holdingAreaStart + i * (clipLength + 4);
+    const holdingClipId = holdingClipIds[i] as string; // loop bounds guarantee valid index
+
+    // Trim from right (skip for last segment — it already ends at clipLength)
+    const rightTrimLength = clipLength - segEnd;
+
+    if (rightTrimLength > EPSILON) {
+      createAndDeleteTempClip(
         track,
-        segmentLength,
-        workPosition,
+        holdingPos + segEnd,
+        rightTrimLength,
         isMidiClip,
         context as TilingContext,
       );
-
-      // Set start_marker to show correct portion of loop content
-      if (loopLength > 0 && i > 0) {
-        const preRoll = segmentStart % loopLength;
-
-        holdingClip.setProperty("start_marker", loopStart + preRoll);
-      }
-
-      holdingClips.push({ id: holdingClipId, position: segmentPosition });
     }
 
-    // Step 3: Delete original clip - BEFORE moving anything to arrangement
-    track.call("delete_clip", `id ${originalClipId}`);
-
-    // Step 4: Move all segments from holding to final positions
-    for (const { id, position } of holdingClips) {
-      moveClipFromHolding(id, track, position);
+    // Trim from left (skip for first segment — it already starts at 0)
+    if (segStart > EPSILON) {
+      createAndDeleteTempClip(
+        track,
+        holdingPos,
+        segStart,
+        isMidiClip,
+        context as TilingContext,
+      );
     }
 
-    // Step 5: Clean up source copy
-    track.call("delete_clip", `id ${sourceCopyId}`);
-  } else if (isMidiClip) {
-    // For unlooped MIDI clips, shorten original in place then create segments
-    setClipMarkersWithLoopingWorkaround(clip, {
-      startMarker: clipStartMarker,
-      endMarker: clipStartMarker + firstSegmentLength,
+    segments.push({
+      id: holdingClipId,
+      position: clipArrangementStart + segStart,
     });
-    createUnloopedMidiSegments(
-      clip,
-      track,
-      boundaries,
-      clipArrangementStart,
-      clipStartMarker,
-      warnings,
-    );
-  } else {
-    // For unlooped audio clips, shorten original in place then create segments
-    setClipMarkersWithLoopingWorkaround(clip, {
-      startMarker: clipStartMarker,
-      endMarker: clipStartMarker + firstSegmentLength,
-    });
-    createUnloopedAudioSegments(
-      clip,
-      track,
-      boundaries,
-      clipArrangementStart,
-      clipStartMarker,
-      context,
-    );
+  }
+
+  // Phase 3: Delete original clip BEFORE moving segments to avoid crash
+  track.call("delete_clip", `id ${originalClipId}`);
+
+  // Phase 4: Move each trimmed segment to its final arrangement position
+  for (const { id, position } of segments) {
+    moveClipFromHolding(id, track, position);
   }
 
   return true;
@@ -334,14 +312,12 @@ function rescanSplitClips(
  * @param arrangementClips - Array of arrangement clips to split
  * @param splitPoints - Array of beat offsets from clip start (relative to 1|1)
  * @param clips - Array to update with fresh clips after splitting
- * @param warnings - Set to track warnings already issued
  * @param _context - Internal context object
  */
 export function performSplitting(
   arrangementClips: LiveAPI[],
   splitPoints: number[],
   clips: LiveAPI[],
-  warnings: Set<string>,
   _context: SplittingContext,
 ): void {
   const holdingAreaStart = _context.holdingAreaStartBeats;
@@ -352,7 +328,6 @@ export function performSplitting(
       clip,
       splitPoints,
       holdingAreaStart,
-      warnings,
       context: _context,
       splitClipRanges,
     });

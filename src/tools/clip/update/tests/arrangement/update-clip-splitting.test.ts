@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
-import { setupLoopedClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
+import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - splitting smoke tests", () => {
@@ -20,7 +20,7 @@ describe("updateClip - splitting smoke tests", () => {
   it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSplittingMocks(clipId);
+    setupClipSplittingMocks(clipId);
 
     await updateClip(
       {
@@ -41,7 +41,7 @@ describe("updateClip - splitting smoke tests", () => {
   it("should apply other updates after splitting", async () => {
     const clipId = "clip_1";
 
-    setupLoopedClipSplittingMocks(clipId);
+    setupClipSplittingMocks(clipId);
 
     await updateClip(
       {
