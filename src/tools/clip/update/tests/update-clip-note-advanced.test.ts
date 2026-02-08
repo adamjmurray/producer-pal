@@ -16,6 +16,30 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
+function expectNoteUpdateCalls(clipId: string, expectedNotes: unknown[]): void {
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "get_notes_extended",
+    0,
+    128,
+    0,
+    1000000,
+  );
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "remove_notes_extended",
+    0,
+    128,
+    0,
+    1000000,
+  );
+  expect(liveApiCall).toHaveBeenCalledWithThis(
+    expect.objectContaining({ id: clipId }),
+    "add_new_notes",
+    { notes: expectedNotes },
+  );
+}
+
 describe("updateClip - Advanced note operations", () => {
   beforeEach(() => {
     setupMocks();
@@ -123,27 +147,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should still read existing notes and remove/add them back
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      { notes: [note(62, 1, { velocity: 80 })] }, // Original note preserved
-    );
+    expectNoteUpdateCalls("123", [note(62, 1, { velocity: 80 })]); // Original note preserved
   });
 
   it("should call get_notes_extended in merge mode to format existing notes", async () => {
@@ -168,27 +172,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should call get_notes_extended in merge mode
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      { notes: [note(60, 0)] },
-    );
+    expectNoteUpdateCalls("123", [note(60, 0)]);
   });
 
   it("should support bar copy with existing notes in merge mode", async () => {
