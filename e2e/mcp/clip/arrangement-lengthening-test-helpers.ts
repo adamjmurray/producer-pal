@@ -131,7 +131,7 @@ export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
  * Parse bar:beat or bar|beat notation to bars as decimal.
  * Examples: "1:2" = 1.5 bars, "1|1" = 0 bars (pipe is 1-indexed)
  */
-function parseBarBeat(barBeat: string): number {
+export function parseBarBeat(barBeat: string): number {
   // Handle both formats: "bar:beat" (0-indexed) and "bar|beat" (1-indexed)
   const separator = barBeat.includes("|") ? "|" : ":";
   const [bars, beats] = barBeat.split(separator).map(Number);
