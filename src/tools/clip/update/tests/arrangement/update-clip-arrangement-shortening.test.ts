@@ -5,7 +5,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
-  liveApiId,
   liveApiPath,
   mockLiveApiGet,
   type MockLiveAPIContext,
@@ -209,20 +208,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       return this._path;
     });
 
-    // Mock the id getter to return "id X" format (matching production behavior)
-    // Note: mockLiveApiGet uses this.id to look up overrides, so keys must match
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Return "id X" format for all IDs to match production behavior
-      if (this._id) {
-        return `id ${this._id}`;
-      }
-
-      return this._id;
-    });
-
     mockLiveApiGet({
-      // Keys must use "id X" format to match what liveApiId returns
-      "id 789": {
+      789: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 0.0,
@@ -231,7 +218,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         signature_denominator: 4,
         trackIndex,
       },
-      [`id ${movedClipId}`]: {
+      [movedClipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 32.0, // Moved to bar 9
@@ -276,7 +263,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       8.0, // tempClipLength = 48 - 40 = 8
     );
 
-    expect(result).toStrictEqual({ id: `id ${movedClipId}` });
+    expect(result).toStrictEqual({ id: movedClipId });
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {

@@ -34,7 +34,7 @@ describe("createShortenedClipInHolding", () => {
 
     // Mock holding clip properties
     mockLiveApiGet({
-      "id 200": {
+      200: {
         end_time: 1000 + 16, // holdingAreaStart (1000) + clip length (16)
       },
     });
@@ -81,7 +81,7 @@ describe("createShortenedClipInHolding", () => {
     liveApiCall.mockReturnValueOnce(["id", "200"]); // Holding clip
 
     mockLiveApiGet({
-      "id 200": {
+      200: {
         end_time: 2000 + 32, // Original clip is 32 beats
       },
     });
@@ -115,7 +115,7 @@ describe("createShortenedClipInHolding", () => {
 
     // Mock holding clip properties - last scene is EMPTY (simplified test)
     mockLiveApiGet({
-      "id 200": {
+      200: {
         end_time: 1000 + 16, // holdingAreaStart (1000) + clip length (16)
       },
       live_set: {
@@ -123,17 +123,17 @@ describe("createShortenedClipInHolding", () => {
         signature_numerator: 4,
         signature_denominator: 4,
       },
-      "id 1": {},
-      "id 2": {
+      1: {},
+      2: {
         is_empty: 1, // Empty - will use this scene
       },
-      "id 400": {
+      400: {
         // Session clip properties after creation
       },
       "live_set/tracks/0/clip_slots/1/clip": {
         // Session clip created via path (sceneIndex is 1 for last scene)
       },
-      "id 500": {
+      500: {
         // Temp clip properties
       },
     });
@@ -239,7 +239,7 @@ describe("adjustClipPreRoll", () => {
     const clip = MockLiveAPI.from("id 100");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         start_marker: 4,
         loop_start: 4,
       },
@@ -262,7 +262,7 @@ describe("adjustClipPreRoll", () => {
     const clip = MockLiveAPI.from("id 100");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         start_marker: 8,
         loop_start: 4,
       },
@@ -284,7 +284,7 @@ describe("adjustClipPreRoll", () => {
     const clip = MockLiveAPI.from("id 100");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         start_marker: 2,
         loop_start: 6,
         end_time: 100,
@@ -318,7 +318,7 @@ describe("adjustClipPreRoll", () => {
     const clip = MockLiveAPI.from("id 100");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         start_marker: 0,
         loop_start: 8,
         end_time: 200,
@@ -346,7 +346,7 @@ describe("adjustClipPreRoll", () => {
     const clip = MockLiveAPI.from("id 100");
 
     mockLiveApiGet({
-      "id 100": {
+      100: {
         start_marker: 2,
         loop_start: 6,
         end_time: 100,
@@ -354,7 +354,7 @@ describe("adjustClipPreRoll", () => {
       live_set: {
         scenes: ["id", "500"],
       },
-      "id 500": {
+      500: {
         is_empty: 1,
       },
       "live_set tracks 0 clip_slots 0": {},
