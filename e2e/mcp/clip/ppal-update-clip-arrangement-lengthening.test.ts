@@ -111,6 +111,7 @@ describe("Audio Unlooped Warped Clips - No Hidden Content (t24,t26,t28)", () => 
 
       // Original clip unchanged — no tiles created
       expect(resultClips).toHaveLength(1);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });
@@ -131,6 +132,7 @@ describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
 
       // Original clip + tile revealing hidden content
       expect(resultClips).toHaveLength(2);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });
