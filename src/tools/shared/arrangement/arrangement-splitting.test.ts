@@ -272,12 +272,12 @@ describe("performSplitting", () => {
     // Split points: 4 (valid), 12 (beyond clip end)
     performSplitting([mockClip], [4, 12], clips, HOLDING_AREA);
 
-    // Unified algorithm for 2 segments:
-    // Phase 1: 2 duplicates to holding
-    // Phase 4: 2 moveClipFromHolding (each = 1 duplicate)
-    // Total: 4 duplicates
-    // The point at 12 should be filtered out (would add 2 more if not)
-    expect(duplicateCount).toBe(4);
+    // Optimized algorithm for 2 segments:
+    // Step 1: 1 duplicate source to holding
+    // Step 4: 1 moveClipFromHolding for last segment (= 1 duplicate)
+    // Total: 2 duplicates (segment 0 stays in place via right-trim)
+    // The point at 12 should be filtered out (would add 1 more if not)
+    expect(duplicateCount).toBe(2);
   });
 
   it("should split unlooped audio clips using unified algorithm", () => {

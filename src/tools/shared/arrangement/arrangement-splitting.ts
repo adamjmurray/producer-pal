@@ -11,6 +11,8 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
+const EPSILON = 0.001;
+
 export interface SplittingContext {
   holdingAreaStartBeats: number;
   silenceWavPath?: string;
@@ -144,11 +146,14 @@ interface SplitSingleClipArgs {
 
 /**
  * Split a single clip at the specified points.
- * Uses a unified algorithm for all clip types (looped/unlooped, MIDI/audio, warped/unwarped):
- * 1. Duplicate full clip to holding area once per segment
- * 2. Trim each copy from right and/or left using temp clip overlay
- * 3. Delete original clip
- * 4. Move trimmed segments to final arrangement positions
+ * Uses an optimized algorithm for all clip types (looped/unlooped, MIDI/audio, warped/unwarped):
+ * 1. Duplicate full clip once to holding area (source for extracting segments)
+ * 2. Right-trim original in place to keep only segment 0
+ * 3. Extract middle segments 1..N-2 from source copies (left+right edge trims)
+ * 4. Left-trim source to isolate last segment, move to final position
+ *
+ * This uses 2(N-1) duplications instead of 2N by keeping segment 0 in place
+ * and reusing the source copy for the last segment.
  * @param args - Arguments for splitting
  * @returns true if splitting succeeded, false if skipped
  */
@@ -190,84 +195,131 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   // Create boundaries: [0, ...splitPoints, clipLength]
   const boundaries = [0, ...validPoints, clipLength];
   const segmentCount = boundaries.length - 1;
-  const EPSILON = 0.001;
+  const tilingCtx = context as TilingContext;
 
-  // Phase 1: Duplicate full clip once per segment to holding area
-  const holdingClipIds: string[] = [];
+  // Step 1: Duplicate original once to holding as source
+  const sourcePos = holdingAreaStart;
+  const result = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${originalClipId}`,
+    sourcePos,
+  ) as [string, string | number];
+  const sourceClip = LiveAPI.from(result);
 
-  for (let i = 0; i < segmentCount; i++) {
-    const holdingPos = holdingAreaStart + i * (clipLength + 4);
-    const result = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${originalClipId}`,
-      holdingPos,
-    ) as [string, string | number];
-    const holdingClip = LiveAPI.from(result);
+  if (sourceClip.id === "0") {
+    console.warn(
+      `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
+    );
 
-    if (holdingClip.id === "0") {
-      console.warn(
-        `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
-      );
-
-      // Clean up any already-created holding clips
-      for (const id of holdingClipIds) {
-        track.call("delete_clip", `id ${id}`);
-      }
-
-      return false;
-    }
-
-    holdingClipIds.push(holdingClip.id);
+    return false;
   }
 
-  // Phase 2: Trim each copy to its segment boundaries
-  const segments: Array<{ id: string; position: number }> = [];
+  const sourceClipId = sourceClip.id;
 
-  for (let i = 0; i < segmentCount; i++) {
-    const segStart = boundaries[i] as number; // loop bounds guarantee valid index
-    const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
-    const holdingPos = holdingAreaStart + i * (clipLength + 4);
-    const holdingClipId = holdingClipIds[i] as string; // loop bounds guarantee valid index
+  // Step 2: Right-trim original to keep only segment 0
+  const seg0End = boundaries[1] as number; // boundaries has >= 3 elements
+  const rightTrimLen = clipLength - seg0End;
 
-    // Trim from right (skip for last segment — it already ends at clipLength)
-    const rightTrimLength = clipLength - segEnd;
-
-    if (rightTrimLength > EPSILON) {
-      createAndDeleteTempClip(
-        track,
-        holdingPos + segEnd,
-        rightTrimLength,
-        isMidiClip,
-        context as TilingContext,
-      );
-    }
-
-    // Trim from left (skip for first segment — it already starts at 0)
-    if (segStart > EPSILON) {
-      createAndDeleteTempClip(
-        track,
-        holdingPos,
-        segStart,
-        isMidiClip,
-        context as TilingContext,
-      );
-    }
-
-    segments.push({
-      id: holdingClipId,
-      position: clipArrangementStart + segStart,
-    });
+  if (rightTrimLen > EPSILON) {
+    createAndDeleteTempClip(
+      track,
+      clipArrangementStart + seg0End,
+      rightTrimLen,
+      isMidiClip,
+      tilingCtx,
+    );
   }
 
-  // Phase 3: Delete original clip BEFORE moving segments to avoid crash
-  track.call("delete_clip", `id ${originalClipId}`);
+  // Step 3: Extract middle segments (1 to N-2) from source copies
+  extractMiddleSegments(
+    track,
+    sourceClipId,
+    boundaries,
+    segmentCount,
+    clipArrangementStart,
+    clipLength,
+    holdingAreaStart,
+    isMidiClip,
+    tilingCtx,
+  );
 
-  // Phase 4: Move each trimmed segment to its final arrangement position
-  for (const { id, position } of segments) {
-    moveClipFromHolding(id, track, position);
+  // Step 4: Left-trim source to isolate last segment, move to final position
+  const lastSegStart = boundaries[segmentCount - 1] as number; // loop bounds guarantee valid
+  const lastSegFinalPos = clipArrangementStart + lastSegStart;
+
+  if (lastSegStart > EPSILON) {
+    createAndDeleteTempClip(
+      track,
+      sourcePos,
+      lastSegStart,
+      isMidiClip,
+      tilingCtx,
+    );
   }
+
+  moveClipFromHolding(sourceClipId, track, lastSegFinalPos);
 
   return true;
+}
+
+/**
+ * Extract middle segments (indices 1 to N-2) by duplicating source, edge-trimming, and moving.
+ * @param track - LiveAPI track instance
+ * @param sourceClipId - ID of the source clip in holding area
+ * @param boundaries - Segment boundaries
+ * @param segmentCount - Number of segments
+ * @param clipArrangementStart - Arrangement start of original clip
+ * @param clipLength - Total clip length
+ * @param holdingAreaStart - Holding area start position
+ * @param isMidiClip - Whether the clip is MIDI
+ * @param context - Tiling context
+ */
+function extractMiddleSegments(
+  track: LiveAPI,
+  sourceClipId: string,
+  boundaries: number[],
+  segmentCount: number,
+  clipArrangementStart: number,
+  clipLength: number,
+  holdingAreaStart: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): void {
+  for (let i = 1; i < segmentCount - 1; i++) {
+    const segStart = boundaries[i] as number; // loop bounds guarantee valid index
+    const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
+
+    // Duplicate source to working position
+    const workPos =
+      holdingAreaStart + clipLength + 4 + (i - 1) * (clipLength + 4);
+    const workResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClipId}`,
+      workPos,
+    ) as [string, string | number];
+    const workClipId = LiveAPI.from(workResult).id;
+
+    // Left-trim to remove content before this segment
+    if (segStart > EPSILON) {
+      createAndDeleteTempClip(track, workPos, segStart, isMidiClip, context);
+    }
+
+    // Right-trim to remove content after this segment
+    const rightTrim = clipLength - segEnd;
+
+    if (rightTrim > EPSILON) {
+      createAndDeleteTempClip(
+        track,
+        workPos + segEnd,
+        rightTrim,
+        isMidiClip,
+        context,
+      );
+    }
+
+    // Move to final arrangement position
+    moveClipFromHolding(workClipId, track, clipArrangementStart + segStart);
+  }
 }
 
 /**
@@ -279,8 +331,6 @@ function rescanSplitClips(
   splitClipRanges: Map<string, SplitClipRange>,
   clips: LiveAPI[],
 ): void {
-  const EPSILON = 0.001;
-
   for (const [oldClipId, range] of splitClipRanges) {
     const track = LiveAPI.from(`live_set tracks ${range.trackIndex}`);
     const trackClipIds = track.getChildIds("arrangement_clips");
