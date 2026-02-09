@@ -16,6 +16,7 @@ import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-mark
  * @param newEndMarker - End marker for revealed content
  * @param targetPosition - Where to place revealed clip in arrangement
  * @param _context - Context object with paths (unused)
+ * @param expectedArrangementLength - Expected arrangement length in beats (for shortening)
  * @returns The revealed clip in arrangement
  */
 function revealUnwarpedAudioContent(
@@ -25,6 +26,7 @@ function revealUnwarpedAudioContent(
   newEndMarker: number,
   targetPosition: number,
   _context: Partial<ToolContext>,
+  expectedArrangementLength?: number,
 ): LiveAPI {
   const filePath = sourceClip.getProperty("file_path") as string;
 
@@ -58,9 +60,14 @@ function revealUnwarpedAudioContent(
   revealedClip.set("looping", 0);
 
   // Shorten the clip to only show the revealed portion (if needed)
+  // For unwarped clips, arrangement length differs from content length because
+  // audio plays at its native sample rate. Use expectedArrangementLength when
+  // provided (from tiling), otherwise fall back to content beats.
   const revealedClipEndTime = revealedClip.getProperty("end_time") as number;
-  const targetLengthBeats = newEndMarker - newStartMarker;
-  const expectedEndTime = targetPosition + targetLengthBeats;
+  const expectedEndTime =
+    expectedArrangementLength != null
+      ? targetPosition + expectedArrangementLength
+      : targetPosition + (newEndMarker - newStartMarker);
   const EPSILON = 0.001;
 
   // Only shorten if the revealed clip is longer than expected
@@ -69,14 +76,14 @@ function revealUnwarpedAudioContent(
     const { clip: tempShortenerClip, slot: tempShortenerSlot } =
       createAudioClipInSession(
         track,
-        targetLengthBeats,
+        newEndMarker - newStartMarker,
         sourceClip.getProperty("file_path") as string,
       );
 
     const tempShortenerResult = track.call(
       "duplicate_clip_to_arrangement",
       `id ${tempShortenerClip.id}`,
-      revealedClipEndTime,
+      expectedEndTime,
     ) as string;
 
     const tempShortener = LiveAPI.from(tempShortenerResult);
@@ -99,6 +106,7 @@ function revealUnwarpedAudioContent(
  * @param newEndMarker - End marker for revealed content
  * @param targetPosition - Where to place revealed clip in arrangement
  * @param _context - Context object
+ * @param expectedArrangementLength - Expected arrangement length in beats (for unwarped shortening)
  * @returns The revealed clip in arrangement
  */
 export function revealAudioContentAtPosition(
@@ -108,6 +116,7 @@ export function revealAudioContentAtPosition(
   newEndMarker: number,
   targetPosition: number,
   _context: Partial<ToolContext>,
+  expectedArrangementLength?: number,
 ): LiveAPI {
   const isWarped = sourceClip.getProperty("warping") === 1;
 
@@ -145,5 +154,6 @@ export function revealAudioContentAtPosition(
     newEndMarker,
     targetPosition,
     _context,
+    expectedArrangementLength,
   );
 }

@@ -7,12 +7,14 @@
  * Shared helpers for arrangement clip lengthening e2e tests
  */
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { expect } from "vitest";
 import {
   type CreateClipResult,
   getToolWarnings,
   parseToolResult,
   type ReadClipResult,
 } from "../mcp-test-helpers.ts";
+import type { ExpectedClip } from "./arrangement-lengthening-expected.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";
@@ -141,6 +143,24 @@ export function parseBarBeat(barBeat: string): number {
   const beatOffset = separator === "|" ? -1 : 0;
 
   return (bars as number) + barOffset + ((beats as number) + beatOffset) / 4;
+}
+
+/**
+ * Assert that result clips match expected arrangement positions and markers.
+ * Checks arrangementStart, arrangementLength, start, and end for each clip.
+ */
+export function assertClipDetails(
+  resultClips: ReadClipResult[],
+  expectedClips: ExpectedClip[],
+): void {
+  expect(resultClips).toHaveLength(expectedClips.length);
+
+  for (let i = 0; i < expectedClips.length; i++) {
+    // loop bounds guarantee valid index
+    const expected = expectedClips[i] as ExpectedClip;
+
+    expect(resultClips[i]).toMatchObject(expected);
+  }
 }
 
 /**

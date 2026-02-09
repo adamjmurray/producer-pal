@@ -96,6 +96,7 @@ function tileAudioContent({
       tileEndMarker,
       currentPosition,
       context,
+      tileArrangementNeeded,
     );
 
     updatedClips.push({ id: revealedClip.id });

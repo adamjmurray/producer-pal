@@ -16,8 +16,10 @@ import {
   midiLoopedTestCases,
   midiUnloopedTestCases,
 } from "./arrangement-clip-test-cases.ts";
+import { expectedLengtheningClips } from "./arrangement-lengthening-expected.ts";
 import {
   ARRANGEMENT_CLIP_TESTS_PATH,
+  assertClipDetails,
   calculateTotalLengthInBars,
   EPSILON,
   testLengthenClipTo4Bars,
@@ -38,13 +40,14 @@ describe("MIDI Looped Clips Lengthening (t0-t8)", () => {
         track,
       );
 
-      expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "midi")).toBe(true);
       expect(warnings).toHaveLength(0);
 
       const totalLength = calculateTotalLengthInBars(resultClips);
 
       expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });
@@ -58,13 +61,14 @@ describe("MIDI Unlooped Clips Lengthening (t9-t14)", () => {
         track,
       );
 
-      expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "midi")).toBe(true);
       expect(warnings).toHaveLength(0);
 
       const totalLength = calculateTotalLengthInBars(resultClips);
 
       expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });
@@ -78,13 +82,14 @@ describe("Audio Looped Warped Clips Lengthening (t15-t23)", () => {
         track,
       );
 
-      expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
       expect(warnings).toHaveLength(0);
 
       const totalLength = calculateTotalLengthInBars(resultClips);
 
       expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });
@@ -105,6 +110,7 @@ describe("Audio Unlooped Warped Clips Lengthening (t24-t29)", () => {
       const totalLength = calculateTotalLengthInBars(resultClips);
 
       expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
     },
   );
 });
@@ -131,6 +137,7 @@ describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
       const totalLength = calculateTotalLengthInBars(resultClips);
 
       expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
     },
   );
 });
