@@ -132,6 +132,8 @@ export interface McpTestContext {
 interface SetupOptions {
   /** Use beforeAll/afterAll instead of beforeEach/afterEach (reuses connection across tests) */
   once?: boolean;
+  /** Path to a Live Set to open instead of the default e2e-test-set */
+  liveSetPath?: string;
 }
 
 /**
@@ -150,7 +152,7 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
   const teardown = options?.once ? afterAll : afterEach;
 
   setup(async () => {
-    await openLiveSet(LIVE_SET_PATH);
+    await openLiveSet(options?.liveSetPath ?? LIVE_SET_PATH);
     ctx.connection = await connectMcp(MCP_URL);
     ctx.client = ctx.connection.client;
   });

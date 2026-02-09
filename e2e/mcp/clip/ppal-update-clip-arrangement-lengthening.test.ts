@@ -8,8 +8,7 @@
  * Uses: arrangement-clip-tests - comprehensive arrangement clip edge cases
  * See: e2e/live-sets/arrangement-clip-tests-spec.md
  */
-import { beforeAll, describe, expect, it } from "vitest";
-import { openLiveSet } from "#evals/eval/open-live-set.ts";
+import { describe, expect, it } from "vitest";
 import {
   audioLoopedWarpedTestCases,
   audioUnloopedWarpedTestCases,
@@ -25,11 +24,9 @@ import {
 } from "./arrangement-lengthening-test-helpers.ts";
 import { setupMcpTestContext } from "../mcp-test-helpers.ts";
 
-const ctx = setupMcpTestContext({ once: true });
-
-// Override openLiveSet to use arrangement-clip-tests
-beforeAll(async () => {
-  await openLiveSet(ARRANGEMENT_CLIP_TESTS_PATH);
+const ctx = setupMcpTestContext({
+  once: true,
+  liveSetPath: ARRANGEMENT_CLIP_TESTS_PATH,
 });
 
 describe("MIDI Looped Clips Lengthening (t0-t8)", () => {

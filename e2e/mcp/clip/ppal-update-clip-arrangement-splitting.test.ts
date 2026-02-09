@@ -9,7 +9,6 @@
  * See: e2e/live-sets/arrangement-clip-tests-spec.md
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { openLiveSet } from "#evals/eval/open-live-set.ts";
 import {
   type ArrangementClipTestCase,
   audioLoopedWarpedTestCases,
@@ -33,16 +32,15 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 
-const ctx = setupMcpTestContext({ once: true });
+const ctx = setupMcpTestContext({
+  once: true,
+  liveSetPath: ARRANGEMENT_CLIP_TESTS_PATH,
+});
 
 // Tracks reserved for multi-split and OOB tests (excluded from single-split)
 const MULTI_SPLIT_TRACKS = new Set([0, 9, 15, 24, 30]);
 const OOB_TRACK = 1;
 const RESERVED_TRACKS = new Set([...MULTI_SPLIT_TRACKS, OOB_TRACK]);
-
-beforeAll(async () => {
-  await openLiveSet(ARRANGEMENT_CLIP_TESTS_PATH);
-});
 
 // --- Single split point tests (1|2) ---
 
