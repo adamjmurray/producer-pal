@@ -73,10 +73,10 @@ max(a, b, ...); // maximum of 2+ values
   - Example: ramp(0, 127) in a 4-bar clip goes 0→127 over 4 bars
   - With speed: ramp(0, 127, 2) completes two full 0→127 cycles
 
-## Modulation Syntax
+## Transform Syntax
 
 - **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
-  line in `modulations` string)
+  line in `transforms` string)
 - **Parameters**:
   - MIDI clips: velocity, timing, duration, probability, deviation, pitch
   - Audio clips: gain, pitchShift
@@ -328,12 +328,12 @@ velocity += cos(1t, note.probability)
 ### Multi-Parameter
 
 ```javascript
-modulations: `velocity += 20 * cos(1:0t) + 10 * noise()
+transforms: `velocity += 20 * cos(1:0t) + 10 * noise()
 timing += 0.03 * noise()
 probability += 0.2 * cos(0:2t)`;
 
 // Using variables
-modulations: `velocity = note.pitch
+transforms: `velocity = note.pitch
 duration = note.duration * note.probability
 timing += note.start / 100`;
 ```
