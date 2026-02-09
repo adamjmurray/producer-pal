@@ -228,10 +228,21 @@ functions for clarity.
 E2E tests for MCP tools are in `e2e/mcp/`. These tests open Ableton Live and
 verify tools via the MCP protocol.
 
+**IMPORTANT:** Always ask the user before running e2e tests. E2e tests open a
+Live Set without saving the current one, which can destroy in-progress work in
+Ableton Live. Never run them without confirmation.
+
+**IMPORTANT:** Always run a single test file, not the full suite. The full suite
+takes several minutes. Use `--testPathPattern` to target the specific file:
+
+```bash
+npm run e2e:mcp -- --testPathPattern ppal-update-clip-arrangement-splitting
+```
+
 **Commands:**
 
-- `npm run e2e:mcp` - Run MCP e2e tests
-- `npm run e2e:mcp:watch` - Watch mode
+- `npm run e2e:mcp -- --testPathPattern <file>` - Run a single e2e test file
+- `npm run e2e:mcp` - Run all MCP e2e tests (avoid unless explicitly requested)
 
 **Adding tests:** See `e2e/mcp/README.md` for prerequisites and patterns.
 
