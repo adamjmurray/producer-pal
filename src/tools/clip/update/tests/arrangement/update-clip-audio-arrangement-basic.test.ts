@@ -16,13 +16,13 @@ import {
   setupDuplicateClipMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
-// Audio clip lengthening uses a tiling approach: the existing content range is
-// repeated to fill the target length. When the content offset reaches the end
-// of the original range, it wraps back to the start.
+// Audio clip lengthening uses progressive tiling: each tile shows the next
+// sequential portion of content (matching MIDI unlooped behavior). Content
+// beyond the audio file shows silence.
 
 describe("Unlooped audio clips - arrangementLength extension", () => {
   // Single-tile cases: sourceEndTime > remaining space (14-8=6), so one tile fills the gap
-  // Tile wraps to start of content (offset=sourceEndTime wraps to 0), length=remaining
+  // Content progresses from end of original (offset=8) forward
   const singleTileCases = [
     ["661", "662", 8.0, "Audio No Hidden start==firstStart"],
     ["683", "684", 8.0, "Audio No Hidden start<firstStart"],
@@ -34,7 +34,6 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       const cId = clipId as string;
       const rId = revealedClipId as string;
       const endTime = sourceEndTime as number;
-      const remaining = 14.0 - endTime; // 6.0
 
       setupAudioArrangementTest({
         trackIndex: 0,
@@ -53,15 +52,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       assertSourceClipEndMarker(cId, 14.0);
       // Tile duplicated at current end position
       assertDuplicateClipCalled(cId, endTime);
-      // Content wraps to start (0), tile length = remaining space
-      assertRevealedClipMarkers(rId, 0, remaining);
+      // Progressive: content from endTime (8) to targetLength (14)
+      assertRevealedClipMarkers(rId, endTime, 14.0);
       expect(result).toStrictEqual([{ id: cId }, { id: rId }]);
     },
   );
 
   // Multi-tile cases: sourceEndTime < remaining space (14-5=9), needs 2 tiles
-  // Tile 1: full tile (5 beats) wrapping to start, at position 5
-  // Tile 2: partial tile (4 beats) wrapping to start, at position 10
+  // Tile 1: full tile (5 beats) progressing from offset 5, at position 5
+  // Tile 2: partial tile (4 beats) continuing from offset 10, at position 10
   const multiTileCases = [
     ["672", "673", 5.0, "Audio Hidden start==firstStart"],
     ["694", "695", 5.0, "Audio Hidden start<firstStart"],
@@ -89,13 +88,12 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       );
 
       assertSourceClipEndMarker(cId, 14.0);
-      // Tile 1: full tile at current end position
+      // Tile 1: full tile at current end, content [5, 10]
       assertDuplicateClipCalled(cId, endTime);
-      assertRevealedClipMarkers(rId, 0, endTime);
-      // Tile 2: partial tile at position 10 (5+5)
+      assertRevealedClipMarkers(rId, endTime, endTime * 2);
+      // Tile 2: partial tile at position 10, content [10, 14]
       assertDuplicateClipCalled(cId, endTime * 2);
-      // Partial tile: 14 - 10 = 4 beats
-      assertRevealedClipMarkers(rId, 0, 14.0 - endTime * 2);
+      assertRevealedClipMarkers(rId, endTime * 2, 14.0);
       // Both tiles returned (mock returns same ID for all duplicates)
       expect(result).toStrictEqual([{ id: cId }, { id: rId }, { id: rId }]);
     },

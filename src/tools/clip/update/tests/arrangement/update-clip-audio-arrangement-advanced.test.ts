@@ -20,9 +20,9 @@ import {
   assertRevealedClipMarkers,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
-// Audio clip lengthening uses a tiling approach: the existing content range is
-// repeated to fill the target length. When the content offset reaches the end
-// of the original range, it wraps back to the start.
+// Audio clip lengthening uses progressive tiling: each tile shows the next
+// sequential portion of content (matching MIDI unlooped behavior). Content
+// beyond the audio file shows silence.
 
 describe("Unlooped audio clips - arrangementLength extension", () => {
   it("should tile single chunk with start_marker offset (start_marker > 0)", async () => {
@@ -47,9 +47,8 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     // targetEndMarker = startMarker + targetLength = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
     assertDuplicateClipCalled(clipId, 7.0);
-    // Content range [1,8] wraps to start (offset=8 resets to 1)
-    // Single tile: markers 1→8, remaining=7 fits in one tile
-    assertRevealedClipMarkers(revealedClipId, 1.0, 8.0);
+    // Progressive: content from end_marker (8) to targetEndMarker (15)
+    assertRevealedClipMarkers(revealedClipId, 8.0, 15.0);
     expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
@@ -74,15 +73,15 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     // targetEndMarker = 1 + 14 = 15
     assertSourceClipEndMarker(clipId, 15.0);
-    // Content range [1,5], tileSize=4, remaining=10 → 3 tiles:
-    // Tile 1: full (markers 1→5) at position 4
+    // Progressive: content [1,5] original, tileSize=4, remaining=10 → 3 tiles:
+    // Tile 1: content [5, 9] at position 4
     assertDuplicateClipCalled(clipId, 4.0);
-    assertRevealedClipMarkers(revealedClipId, 1.0, 5.0);
-    // Tile 2: full (markers 1→5) at position 8
+    assertRevealedClipMarkers(revealedClipId, 5.0, 9.0);
+    // Tile 2: content [9, 13] at position 8
     assertDuplicateClipCalled(clipId, 8.0);
-    // Tile 3: partial (markers 1→3, 2 beats) at position 12
+    // Tile 3: partial content [13, 15] (2 beats) at position 12
     assertDuplicateClipCalled(clipId, 12.0);
-    assertRevealedClipMarkers(revealedClipId, 1.0, 3.0);
+    assertRevealedClipMarkers(revealedClipId, 13.0, 15.0);
     // 1 source clip + 3 tiles (mock returns same ID for all duplicates)
     expect(result).toStrictEqual([
       { id: clipId },
@@ -127,7 +126,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     // Unwarped clip: markers at [0, 6] in audio-file beat grid
     // Arrangement shows 6 beats, extending to 12 beats = 6 more beats needed
-    // Content wraps to start, tile uses markers [0, 6]
+    // Unwarped wraps to start: tile uses markers [0, 6] (audio file is finite)
     mockLiveApiGet({
       [clipId]: {
         is_arrangement_clip: 1,
@@ -200,7 +199,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
 
     const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
 
-    // Session clip markers set to tile range [0, 6] (audio-file beats)
+    // Session clip markers set to wrapping tile range [0, 6] (audio file is finite)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: sessionClipPath }),
       "loop_end",
