@@ -231,7 +231,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   }
 
   // Step 3: Extract middle segments (1 to N-2) from source copies
-  extractMiddleSegments(
+  extractMiddleSegments({
     track,
     sourceClipId,
     boundaries,
@@ -240,8 +240,8 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     clipLength,
     holdingAreaStart,
     isMidiClip,
-    tilingCtx,
-  );
+    context: tilingCtx,
+  });
 
   // Step 4: Left-trim source to isolate last segment, move to final position
   const lastSegStart = boundaries[segmentCount - 1] as number; // loop bounds guarantee valid
@@ -262,42 +262,55 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   return true;
 }
 
+interface ExtractMiddleSegmentsArgs {
+  track: LiveAPI;
+  sourceClipId: string;
+  boundaries: number[];
+  segmentCount: number;
+  clipArrangementStart: number;
+  clipLength: number;
+  holdingAreaStart: number;
+  isMidiClip: boolean;
+  context: TilingContext;
+}
+
 /**
  * Extract middle segments (indices 1 to N-2) by duplicating source, edge-trimming, and moving.
- * @param track - LiveAPI track instance
- * @param sourceClipId - ID of the source clip in holding area
- * @param boundaries - Segment boundaries
- * @param segmentCount - Number of segments
- * @param clipArrangementStart - Arrangement start of original clip
- * @param clipLength - Total clip length
- * @param holdingAreaStart - Holding area start position
- * @param isMidiClip - Whether the clip is MIDI
- * @param context - Tiling context
+ * Skips segments whose duplication fails (partial-success model).
+ * @param args - Extraction arguments
  */
-function extractMiddleSegments(
-  track: LiveAPI,
-  sourceClipId: string,
-  boundaries: number[],
-  segmentCount: number,
-  clipArrangementStart: number,
-  clipLength: number,
-  holdingAreaStart: number,
-  isMidiClip: boolean,
-  context: TilingContext,
-): void {
+function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
+  const {
+    track,
+    sourceClipId,
+    boundaries,
+    segmentCount,
+    clipArrangementStart,
+    clipLength,
+    holdingAreaStart,
+    isMidiClip,
+    context,
+  } = args;
+
   for (let i = 1; i < segmentCount - 1; i++) {
     const segStart = boundaries[i] as number; // loop bounds guarantee valid index
     const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
 
     // Duplicate source to working position
-    const workPos =
-      holdingAreaStart + clipLength + 4 + (i - 1) * (clipLength + 4);
+    const workPos = holdingAreaStart + i * (clipLength + 4);
     const workResult = track.call(
       "duplicate_clip_to_arrangement",
       `id ${sourceClipId}`,
       workPos,
     ) as [string, string | number];
     const workClipId = LiveAPI.from(workResult).id;
+
+    if (workClipId === "0") {
+      console.warn(
+        `Failed to duplicate source for middle segment ${i}, skipping`,
+      );
+      continue;
+    }
 
     // Left-trim to remove content before this segment
     if (segStart > EPSILON) {

@@ -320,6 +320,71 @@ describe("performSplitting", () => {
     expectDuplicateCalled();
   });
 
+  it("should split into 3 segments exercising middle segment extraction", () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 12.0, // 12-beat clip
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split a 12-beat clip at 4 and 8 beats → 3 segments
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    // Optimized algorithm for 3 segments:
+    // Step 1: 1 duplicate source to holding
+    // Step 3: 1 dup middle segment + 1 moveClipFromHolding (middle)
+    // Step 4: 1 moveClipFromHolding (last segment)
+    // Total: 4 duplicates
+    expect(callState.duplicateCount).toBe(4);
+  });
+
+  it("should warn and skip when middle segment duplication fails", () => {
+    const clipId = "clip_1";
+    let duplicateCount = 0;
+
+    setupSplittingClipBaseMocks(clipId);
+    setupSplittingClipGetMock(clipId, {
+      looping: true,
+      endTime: 12.0, // 12-beat clip
+      loopEnd: 4.0,
+    });
+
+    liveApiCall.mockImplementation(function (
+      this: MockLiveAPIContext,
+      method: string,
+    ) {
+      if (method === "duplicate_clip_to_arrangement") {
+        duplicateCount++;
+
+        // First dup succeeds (source to holding), second fails (middle segment)
+        if (duplicateCount === 2) return ["id", "0"];
+
+        return ["id", `dup_${duplicateCount}`];
+      }
+
+      if (method === "create_midi_clip") {
+        return ["id", "temp_1"];
+      }
+    });
+
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at 4 and 8 → 3 segments, but middle dup fails
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    // Should warn about the failed middle segment
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Failed to duplicate source for middle segment"),
+    );
+
+    // Should still complete: source dup (1) + failed middle (1) + last move (1) = 3
+    expect(duplicateCount).toBe(3);
+  });
+
   it("should rescan split clips replacing stale references with fresh ones", () => {
     const clipId = "clip_1";
 
