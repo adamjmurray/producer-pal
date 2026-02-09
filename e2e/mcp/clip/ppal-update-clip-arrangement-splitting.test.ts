@@ -11,6 +11,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { openLiveSet } from "#evals/eval/open-live-set.ts";
 import {
+  type ArrangementClipTestCase,
   audioLoopedWarpedTestCases,
   audioUnloopedWarpedTestCases,
   audioUnwarpedTestCases,
@@ -21,104 +22,292 @@ import { ARRANGEMENT_CLIP_TESTS_PATH } from "./arrangement-lengthening-test-help
 import {
   assertContiguousClips,
   assertSpanPreserved,
+  splitClip,
   testSplitClip,
 } from "./arrangement-splitting-test-helpers.ts";
-import { setupMcpTestContext } from "../mcp-test-helpers.ts";
+import {
+  type CreateTrackResult,
+  parseToolResult,
+  type ReadClipResult,
+  setupMcpTestContext,
+  sleep,
+} from "../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
-// Override openLiveSet to use arrangement-clip-tests
+// Tracks reserved for multi-split and OOB tests (excluded from single-split)
+const MULTI_SPLIT_TRACKS = new Set([0, 9, 15, 24, 30]);
+const OOB_TRACK = 1;
+const RESERVED_TRACKS = new Set([...MULTI_SPLIT_TRACKS, OOB_TRACK]);
+
 beforeAll(async () => {
   await openLiveSet(ARRANGEMENT_CLIP_TESTS_PATH);
 });
 
-describe("MIDI Looped Clips Splitting (t0-t8)", () => {
-  it.each(midiLoopedTestCases)("splits t$track: $name", async ({ track }) => {
-    const { initialClips, resultClips, warnings } = await testSplitClip(
-      ctx.client!,
-      track,
-    );
+// --- Single split point tests (1|2) ---
 
-    expect(resultClips.length).toBe(2);
-    expect(resultClips.every((c) => c.type === "midi")).toBe(true);
-    expect(warnings).toHaveLength(0);
+interface SplitSuite {
+  suite: string;
+  cases: ArrangementClipTestCase[];
+  type: "midi" | "audio";
+  sleepMs?: number;
+}
 
-    assertContiguousClips(resultClips);
-    assertSpanPreserved(initialClips, resultClips);
-  });
-});
+const singleSplitSuites: SplitSuite[] = [
+  { suite: "MIDI Looped", cases: midiLoopedTestCases, type: "midi" },
+  { suite: "MIDI Unlooped", cases: midiUnloopedTestCases, type: "midi" },
+  {
+    suite: "Audio Looped Warped",
+    cases: audioLoopedWarpedTestCases,
+    type: "audio",
+  },
+  {
+    suite: "Audio Unlooped Warped",
+    cases: audioUnloopedWarpedTestCases,
+    type: "audio",
+  },
+  {
+    suite: "Audio Unwarped",
+    cases: audioUnwarpedTestCases,
+    type: "audio",
+    sleepMs: 200,
+  },
+];
 
-describe("MIDI Unlooped Clips Splitting (t9-t14)", () => {
-  it.each(midiUnloopedTestCases)("splits t$track: $name", async ({ track }) => {
-    const { initialClips, resultClips, warnings } = await testSplitClip(
-      ctx.client!,
-      track,
-    );
+describe.each(singleSplitSuites)(
+  "$suite (single split)",
+  ({ cases, type, sleepMs }) => {
+    const filtered = cases.filter((c) => !RESERVED_TRACKS.has(c.track));
 
-    expect(resultClips.length).toBe(2);
-    expect(resultClips.every((c) => c.type === "midi")).toBe(true);
-    expect(warnings).toHaveLength(0);
-
-    assertContiguousClips(resultClips);
-    assertSpanPreserved(initialClips, resultClips);
-  });
-});
-
-describe("Audio Looped Warped Clips Splitting (t15-t23)", () => {
-  it.each(audioLoopedWarpedTestCases)(
-    "splits t$track: $name",
-    async ({ track }) => {
+    it.each(filtered)("splits t$track: $name", async ({ track }) => {
       const { initialClips, resultClips, warnings } = await testSplitClip(
         ctx.client!,
         track,
+        { sleepMs },
       );
 
       expect(resultClips.length).toBe(2);
-      expect(resultClips.every((c) => c.type === "audio")).toBe(true);
+      expect(resultClips.every((c) => c.type === type)).toBe(true);
       expect(warnings).toHaveLength(0);
 
       assertContiguousClips(resultClips);
       assertSpanPreserved(initialClips, resultClips);
-    },
-  );
-});
+    });
+  },
+);
 
-describe("Audio Unlooped Warped Clips Splitting (t24-t29)", () => {
-  it.each(audioUnloopedWarpedTestCases)(
-    "splits t$track: $name",
-    async ({ track }) => {
-      const { initialClips, resultClips, warnings } = await testSplitClip(
-        ctx.client!,
-        track,
-      );
+// --- Multiple split points ---
 
-      expect(resultClips.length).toBe(2);
-      expect(resultClips.every((c) => c.type === "audio")).toBe(true);
-      expect(warnings).toHaveLength(0);
+describe("Multiple split points (1|2, 1|3)", () => {
+  const multiSplitCases = [
+    { track: 0, type: "midi" as const, name: "MIDI looped" },
+    { track: 9, type: "midi" as const, name: "MIDI unlooped" },
+    { track: 15, type: "audio" as const, name: "audio looped warped" },
+    { track: 24, type: "audio" as const, name: "audio unlooped warped" },
+    { track: 30, type: "audio" as const, name: "audio unwarped" },
+  ];
 
-      assertContiguousClips(resultClips);
-      assertSpanPreserved(initialClips, resultClips);
-    },
-  );
-});
-
-describe("Audio Unwarped Clips Splitting (t30-t35)", () => {
-  it.each(audioUnwarpedTestCases)(
-    "splits t$track: $name",
-    async ({ track }) => {
+  it.each(multiSplitCases)(
+    "splits t$track ($name) into 3 segments",
+    async ({ track, type }) => {
+      const sleepMs = type === "audio" ? 200 : 100;
       const { initialClips, resultClips } = await testSplitClip(
         ctx.client!,
         track,
-        {
-          sleepMs: 200,
-        },
+        { splitPoint: "1|2, 1|3", sleepMs },
       );
 
-      expect(resultClips.length).toBe(2);
-      expect(resultClips.every((c) => c.type === "audio")).toBe(true);
+      expect(resultClips.length).toBe(3);
+      expect(resultClips.every((c) => c.type === type)).toBe(true);
 
       assertContiguousClips(resultClips);
       assertSpanPreserved(initialClips, resultClips);
     },
   );
 });
+
+// --- Out-of-bounds split points ---
+
+describe("Out-of-bounds split points", () => {
+  it("ignores split points beyond clip length (t1)", async () => {
+    // t1 has 1:0 arrangement length (4 beats). 10|1 = 36 beats is way beyond.
+    const { initialClips, resultClips, warnings } = await testSplitClip(
+      ctx.client!,
+      OOB_TRACK,
+      { splitPoint: "1|2, 10|1" },
+    );
+
+    // 10|1 should be filtered out, leaving only 1|2 → 2 segments
+    expect(resultClips.length).toBe(2);
+    expect(resultClips.every((c) => c.type === "midi")).toBe(true);
+    expect(warnings).toHaveLength(0);
+
+    assertContiguousClips(resultClips);
+    assertSpanPreserved(initialClips, resultClips);
+  });
+});
+
+// --- Behavioral tests (dynamic clip creation) ---
+
+describe("Behavioral splitting tests", () => {
+  let dynamicTrackIndex: number;
+
+  beforeAll(async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi", name: "Split Behavioral Tests" },
+    });
+
+    dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
+  });
+
+  it("preserves total note count across splits", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "arrangement",
+        trackIndex: dynamicTrackIndex,
+        arrangementStart: "200|1",
+        notes: "1|1 C3\n2|1 D3\n3|1 E3\n4|1 F3",
+        length: "4:0.0",
+        looping: true,
+      },
+    });
+    const clipId = parseToolResult<{ id: string }>(createResult).id;
+
+    await sleep(200);
+    const splitResult = await splitClip(ctx.client!, clipId, "2|1, 3|1, 4|1");
+    const splitClips = parseSplitResult(splitResult);
+
+    expect(splitClips.length).toBe(4);
+
+    let totalNotes = 0;
+
+    for (const s of splitClips) {
+      await sleep(50);
+      const clip = await readClip(ctx.client!, s.id, ["clip-notes"]);
+
+      totalNotes += clip.noteCount ?? 0;
+    }
+
+    expect(totalNotes).toBeGreaterThanOrEqual(4);
+  });
+
+  it("applies other updates along with splitting", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "arrangement",
+        trackIndex: dynamicTrackIndex,
+        arrangementStart: "210|1",
+        notes: "C3 1|1",
+        length: "2:0.0",
+        looping: true,
+      },
+    });
+    const clipId = parseToolResult<{ id: string }>(createResult).id;
+
+    await sleep(200);
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clipId, split: "2|1", name: "Split Section" },
+    });
+    const splitClips = parseSplitResult(result);
+
+    expect(splitClips.length).toBe(2);
+
+    await sleep(100);
+    const clip = await readClip(ctx.client!, splitClips[0]!.id);
+
+    expect(clip.name).toBe("Split Section");
+  });
+
+  it("returns session clip unchanged with warning", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: dynamicTrackIndex,
+        sceneIndex: "0",
+        notes: "C3 1|1",
+        length: "2:0.0",
+      },
+    });
+    const clipId = parseToolResult<{ id: string }>(createResult).id;
+
+    await sleep(200);
+    const result = await splitClip(ctx.client!, clipId);
+    const splitClips = parseSplitResult(result);
+
+    expect(splitClips[0]?.id).toBe(clipId);
+  });
+
+  it("splits multiple clips in one call", async () => {
+    const clip1Result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "arrangement",
+        trackIndex: dynamicTrackIndex,
+        arrangementStart: "220|1",
+        notes: "C3 1|1",
+        length: "2:0.0",
+        looping: true,
+      },
+    });
+    const clip1Id = parseToolResult<{ id: string }>(clip1Result).id;
+
+    const clip2Result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "arrangement",
+        trackIndex: dynamicTrackIndex,
+        arrangementStart: "230|1",
+        notes: "E3 1|1",
+        length: "2:0.0",
+        looping: true,
+      },
+    });
+    const clip2Id = parseToolResult<{ id: string }>(clip2Result).id;
+
+    await sleep(200);
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: `${clip1Id},${clip2Id}`, split: "2|1" },
+    });
+    const splitClips = parseSplitResult(result);
+
+    expect(splitClips.length).toBe(4);
+  });
+});
+
+// --- Local helpers ---
+
+/** Normalize split results - update-clip returns object for 1 clip, array for many */
+function parseSplitResult(result: unknown): Array<{ id: string }> {
+  const toolResult = result as { content?: Array<{ text?: string }> };
+  const text = toolResult.content?.[0]?.text ?? "";
+
+  // Strip WARNING lines and parse the JSON
+  const jsonLine = text
+    .split("\n")
+    .find((line) => line.startsWith("[") || line.startsWith("{"));
+
+  if (!jsonLine) return [];
+
+  const parsed = JSON.parse(jsonLine) as { id: string } | Array<{ id: string }>;
+
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+async function readClip(
+  client: typeof ctx.client,
+  clipId: string,
+  include?: string[],
+): Promise<ReadClipResult> {
+  const result = await client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId, include },
+  });
+
+  return parseToolResult<ReadClipResult>(result);
+}

@@ -29,12 +29,13 @@ export const SPLIT_POINT = "1|2";
 export async function splitClip(
   client: Client,
   clipId: string,
+  splitPoint: string = SPLIT_POINT,
 ): Promise<unknown> {
   return await client.callTool({
     name: "ppal-update-clip",
     arguments: {
       ids: clipId,
-      split: SPLIT_POINT,
+      split: splitPoint,
     },
   });
 }
@@ -46,13 +47,14 @@ export async function splitClip(
 export async function testSplitClip(
   client: Client,
   trackIndex: number,
-  options: { sleepMs?: number } = {},
+  options: { sleepMs?: number; splitPoint?: string } = {},
 ): Promise<{
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];
   warnings: string[];
 }> {
   const sleepMs = options.sleepMs ?? 100;
+  const splitPoint = options.splitPoint ?? SPLIT_POINT;
 
   // Read initial clip
   const initialClips = await readClipsOnTrack(client, trackIndex);
@@ -62,8 +64,8 @@ export async function testSplitClip(
     throw new Error(`No clip found on track ${trackIndex}`);
   }
 
-  // Split at beat 2 (1 beat into the clip)
-  const result = await splitClip(client, clipId);
+  // Split at specified point (default: beat 2, 1 beat into the clip)
+  const result = await splitClip(client, clipId, splitPoint);
   const warnings = getToolWarnings(result);
 
   await sleep(sleepMs);
@@ -72,6 +74,16 @@ export async function testSplitClip(
   const resultClips = await readClipsOnTrack(client, trackIndex);
 
   return { initialClips, resultClips, warnings };
+}
+
+/** Sort clips by arrangement start position */
+function sortByArrangementStart(clips: ReadClipResult[]): ReadClipResult[] {
+  return [...clips].sort((a, b) => {
+    const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
+    const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
+
+    return aStart - bStart;
+  });
 }
 
 /**
@@ -92,13 +104,7 @@ export function assertSpanPreserved(
   const initialStart = parseBarBeat(initial.arrangementStart);
   const initialEnd = initialStart + parseBarBeat(initial.arrangementLength);
 
-  const sorted = [...resultClips].sort((a, b) => {
-    const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
-    const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
-
-    return aStart - bStart;
-  });
-
+  const sorted = sortByArrangementStart(resultClips);
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
 
@@ -133,12 +139,7 @@ export function assertSpanPreserved(
 export function assertContiguousClips(clips: ReadClipResult[]): void {
   if (clips.length <= 1) return;
 
-  const sorted = [...clips].sort((a, b) => {
-    const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
-    const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
-
-    return aStart - bStart;
-  });
+  const sorted = sortByArrangementStart(clips);
 
   for (let i = 0; i < sorted.length - 1; i++) {
     const clip = sorted[i] as ReadClipResult; // loop bounds guarantee valid index
