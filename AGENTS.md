@@ -301,6 +301,8 @@ Rules:
 ## Documentation
 
 - `dev-docs/Architecture.md` - System design and components
+- `dev-docs/Arrangement-Operations.md` - Live API constraints, arrangement
+  algorithms, and edge cases
 - `dev-docs/Chat-UI.md` - Web UI architecture and development
 - `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
 - `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
