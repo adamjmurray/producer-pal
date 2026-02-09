@@ -2,8 +2,10 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { revealAudioContentAtPosition } from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
 import {
+  createAudioClipInSession,
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
@@ -16,19 +18,29 @@ import type {
 
 const EPSILON = 0.001;
 
+interface WarpedTilingResult {
+  tiles: ClipIdResult[];
+  effectiveTarget: number;
+}
+
 /**
- * Tile warped audio content using progressive tiling.
- * Each tile shows the next sequential content portion (content offset advances).
- * Scale factor is 1.0 for warped clips (1 content beat = 1 arrangement beat).
+ * Tile warped audio content using session-based clip creation.
+ * Creates a single tile covering the remaining arrangement space. Uses the session
+ * holding area to control arrangement length, since arrangement clip end_time is
+ * immutable after creation (cannot be extended by setting end_marker).
+ *
+ * Returns null if the audio file has no additional content to reveal.
+ * When the file has content but not enough for the full target, caps to the
+ * available content and emits a warning.
  * @param params - Tiling parameters
- * @param params.clip - Source clip to tile from
- * @param params.track - Track to place tiles on
- * @param params.tileContentStart - Content offset where tiling begins (arrangement end in content space)
+ * @param params.clip - Source clip to get audio file from
+ * @param params.track - Track to place tile on
+ * @param params.tileContentStart - Content offset where tiling begins
  * @param params.currentEndTime - Current end time of arrangement
  * @param params.currentArrangementLength - Current arrangement length
  * @param params.arrangementLengthBeats - Target arrangement length
- * @param params.context - Arrangement context
- * @returns Array of revealed clip IDs
+ * @param params.clipStartMarker - Source clip's start_marker for boundary check
+ * @returns Tiles and effective target, or null to skip lengthening
  */
 function tileWarpedAudioContent({
   clip,
@@ -37,7 +49,7 @@ function tileWarpedAudioContent({
   currentEndTime,
   currentArrangementLength,
   arrangementLengthBeats,
-  context,
+  clipStartMarker,
 }: {
   clip: LiveAPI;
   track: LiveAPI;
@@ -45,34 +57,78 @@ function tileWarpedAudioContent({
   currentEndTime: number;
   currentArrangementLength: number;
   arrangementLengthBeats: number;
-  context: ArrangementContext;
-}): ClipIdResult[] {
-  const updatedClips: ClipIdResult[] = [];
-  let currentPosition = currentEndTime;
-  let currentContentOffset = tileContentStart;
-  const tileArrangementSize = currentArrangementLength;
-  const targetEnd =
-    currentEndTime + (arrangementLengthBeats - currentArrangementLength);
-
-  while (currentPosition < targetEnd - EPSILON) {
-    const remainingArrangement = targetEnd - currentPosition;
-    const tileSize = Math.min(tileArrangementSize, remainingArrangement);
-
-    const revealedClip = revealAudioContentAtPosition(
-      clip,
-      track,
-      currentContentOffset,
-      currentContentOffset + tileSize,
-      currentPosition,
-      context,
-    );
-
-    updatedClips.push({ id: revealedClip.id });
-    currentPosition += tileSize;
-    currentContentOffset += tileSize;
+  clipStartMarker: number;
+}): WarpedTilingResult | null {
+  if (arrangementLengthBeats - currentArrangementLength <= EPSILON) {
+    return { tiles: [], effectiveTarget: arrangementLengthBeats };
   }
 
-  return updatedClips;
+  const filePath = clip.getProperty("file_path") as string;
+
+  // Create session clip with minimal loop_end (1) to avoid extending end_marker
+  // beyond the file boundary. The actual loop markers are set after detection.
+  const { clip: sessionClip, slot } = createAudioClipInSession(
+    track,
+    1,
+    filePath,
+  );
+
+  // Read file content boundary from session clip's default end_marker
+  // (createAudioClipInSession sets loop_end but not end_marker, so end_marker
+  // remains at the file's natural content length in the warped beat grid)
+  const fileContentBoundary = sessionClip.getProperty("end_marker") as number;
+  const totalContentFromStart = fileContentBoundary - clipStartMarker;
+
+  // No additional content beyond what's already shown — skip entirely
+  if (totalContentFromStart <= currentArrangementLength + EPSILON) {
+    console.warn(
+      `Cannot lengthen unlooped audio clip — no additional file content ` +
+        `(${totalContentFromStart.toFixed(1)} beats available, ` +
+        `${currentArrangementLength} currently shown)`,
+    );
+    slot.call("delete_clip");
+
+    return null;
+  }
+
+  // Cap effective target to available file content
+  const effectiveTarget = Math.min(
+    arrangementLengthBeats,
+    totalContentFromStart,
+  );
+
+  if (effectiveTarget < arrangementLengthBeats - EPSILON) {
+    console.warn(
+      `Unlooped audio clip capped at file content boundary ` +
+        `(${totalContentFromStart.toFixed(1)} beats available, ` +
+        `${arrangementLengthBeats} requested)`,
+    );
+  }
+
+  const remainingLength = effectiveTarget - currentArrangementLength;
+  const tileContentEnd = tileContentStart + remainingLength;
+
+  // Set content markers to show the correct audio portion
+  sessionClip.set("loop_end", tileContentEnd);
+  sessionClip.set("loop_start", tileContentStart);
+  sessionClip.set("end_marker", tileContentEnd);
+  sessionClip.set("start_marker", tileContentStart);
+
+  // Duplicate to arrangement — inherits session clip's arrangement length
+  const result = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${sessionClip.id}`,
+    currentEndTime,
+  ) as string;
+  const tileClip = LiveAPI.from(result);
+
+  // Unloop the arrangement clip (source was unlooped, tile should match)
+  tileClip.set("looping", 0);
+
+  // Clean up session clip
+  slot.call("delete_clip");
+
+  return { tiles: [{ id: tileClip.id }], effectiveTarget };
 }
 
 /**
@@ -306,49 +362,52 @@ export function handleUnloopedLengthening({
     return updatedClips;
   }
 
-  // For warped clips, extend source clip's end_marker so it can show more content.
-  // targetEndMarker = start_marker + target: ensures content covers all progressive
-  // tiles starting from the arrangement boundary (start_marker + currentLength).
+  updatedClips.push({ id: clip.id });
+
   if (isWarped) {
-    const targetEndMarker = clipStartMarker + arrangementLengthBeats;
+    // Warped: content = arrangement, so tiling starts at start_marker + arrLength
+    const tileContentStart = clipStartMarker + currentArrangementLength;
+    const result = tileWarpedAudioContent({
+      clip,
+      track,
+      tileContentStart,
+      currentEndTime,
+      currentArrangementLength,
+      arrangementLengthBeats,
+      clipStartMarker,
+    });
+
+    // null means no additional file content to reveal — skip lengthening
+    if (result == null) {
+      return updatedClips;
+    }
+
+    // Extend source clip's end_marker so it can show more content.
+    // Uses effectiveTarget which may be capped to file content boundary.
+    const { tiles, effectiveTarget } = result;
+    const targetEndMarker = clipStartMarker + effectiveTarget;
 
     if (targetEndMarker > clipEndMarkerBeats) {
       clip.set("end_marker", targetEndMarker);
     }
+
+    updatedClips.push(...tiles);
+  } else {
+    // Unwarped: content ends at end_marker (file beats ≠ arrangement beats)
+    const tileContentStart = clipEndMarkerBeats;
+    const tiles = tileUnwarpedAudioContent({
+      clip,
+      track,
+      tileContentStart,
+      contentLength,
+      currentEndTime,
+      currentArrangementLength,
+      arrangementLengthBeats,
+      context,
+    });
+
+    updatedClips.push(...tiles);
   }
-
-  updatedClips.push({ id: clip.id });
-
-  // Tiling starts from where content ends in file beat space.
-  // Warped: content = arrangement, so start_marker + arrangementLength.
-  // Unwarped: content ends at end_marker (file beats ≠ arrangement beats).
-  const tileContentStart = isWarped
-    ? clipStartMarker + currentArrangementLength
-    : clipEndMarkerBeats;
-
-  // Create tiles for remaining space
-  const tiles = isWarped
-    ? tileWarpedAudioContent({
-        clip,
-        track,
-        tileContentStart,
-        currentEndTime,
-        currentArrangementLength,
-        arrangementLengthBeats,
-        context,
-      })
-    : tileUnwarpedAudioContent({
-        clip,
-        track,
-        tileContentStart,
-        contentLength,
-        currentEndTime,
-        currentArrangementLength,
-        arrangementLengthBeats,
-        context,
-      });
-
-  updatedClips.push(...tiles);
 
   return updatedClips;
 }

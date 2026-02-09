@@ -11,7 +11,8 @@
 import { describe, expect, it } from "vitest";
 import {
   audioLoopedWarpedTestCases,
-  audioUnloopedWarpedTestCases,
+  audioUnloopedWarpedHiddenCases,
+  audioUnloopedWarpedNoHiddenCases,
   audioUnwarpedTestCases,
   midiLoopedTestCases,
   midiUnloopedTestCases,
@@ -94,23 +95,42 @@ describe("Audio Looped Warped Clips Lengthening (t15-t23)", () => {
   );
 });
 
-describe("Audio Unlooped Warped Clips Lengthening (t24-t29)", () => {
-  it.each(audioUnloopedWarpedTestCases)(
-    "lengthens t$track: $name",
+describe("Audio Unlooped Warped Clips - No Hidden Content (t24,t26,t28)", () => {
+  it.each(audioUnloopedWarpedNoHiddenCases)(
+    "skips lengthening t$track: $name (no additional content)",
     async ({ track }) => {
       const { resultClips, warnings } = await testLengthenClipTo4Bars(
         ctx.client!,
         track,
       );
 
-      expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
-      expect(warnings).toHaveLength(0);
 
-      const totalLength = calculateTotalLengthInBars(resultClips);
+      // Lengthening skipped — no additional file content to reveal
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
-      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      // Original clip unchanged — no tiles created
+      expect(resultClips).toHaveLength(1);
+    },
+  );
+});
+
+describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
+  it.each(audioUnloopedWarpedHiddenCases)(
+    "caps lengthening t$track: $name (extends to file boundary)",
+    async ({ track }) => {
+      const { resultClips, warnings } = await testLengthenClipTo4Bars(
+        ctx.client!,
+        track,
+      );
+
+      expect(resultClips.every((c) => c.type === "audio")).toBe(true);
+
+      // Capped at file content boundary — can't reach 4-bar target
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
+
+      // Original clip + tile revealing hidden content
+      expect(resultClips).toHaveLength(2);
     },
   );
 });

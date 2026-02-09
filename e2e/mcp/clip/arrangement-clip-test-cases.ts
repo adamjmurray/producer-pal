@@ -104,6 +104,35 @@ export const audioUnloopedWarpedTestCases: ArrangementClipTestCase[] = [
   },
 ];
 
+/** Unlooped warped audio clips with no hidden content (all file content visible) */
+export const audioUnloopedWarpedNoHiddenCases: ArrangementClipTestCase[] = [
+  { track: 24, name: "1. Audio - Unlooped (2:0 clip, 2:0 arr)" },
+  {
+    track: 26,
+    name: "4. Audio - Unlooped (2:0 clip, 2:0 arr, content before start)",
+  },
+  {
+    track: 28,
+    name: "7. Audio - Unlooped (1:3 clip, 1:3 arr, start > firstStart)",
+  },
+];
+
+/** Unlooped warped audio clips with hidden content (file has more than shown) */
+export const audioUnloopedWarpedHiddenCases: ArrangementClipTestCase[] = [
+  {
+    track: 25,
+    name: "2. Audio - Unlooped (1:1 clip, 1:1 arr, hidden content)",
+  },
+  {
+    track: 27,
+    name: "5. Audio - Unlooped (1:1 clip, 1:1 arr, hidden + offset)",
+  },
+  {
+    track: 29,
+    name: "8. Audio - Unlooped (1:0 clip, 1:0 arr, hidden + start > firstStart)",
+  },
+];
+
 export const audioUnwarpedTestCases: ArrangementClipTestCase[] = [
   { track: 30, name: "1. Audio - Unwarped (2:0 clip, 2:1.6 arr)" },
   {

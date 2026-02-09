@@ -61,6 +61,10 @@ const audioLoopedWarped: Record<number, ExpectedClip[]> = {
   23: c([["1|1","1:1","1|2","3|1"],["2|2","1:1","1|2","3|1"],["3|3","1:1","1|2","3|1"],["4|4","0:1","1|2","3|1"]]),
 };
 
+// Tracks 24-29 (unlooped warped audio) skip lengthening entirely —
+// file content is insufficient for the 4-bar target. Assertions are
+// in the test file (warnings emitted, original clip unchanged).
+
 /** Expected clips after lengthening to 4:0, indexed by track number */
 export const expectedLengtheningClips: Record<number, ExpectedClip[]> = {
   ...midiLooped,
