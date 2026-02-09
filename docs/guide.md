@@ -1,6 +1,6 @@
 # Getting Started
 
-Welcome to Producer Pal! This guide will help you get started with using AI for
+Welcome to Producer Pal™! This guide will help you get started with using AI for
 music production in Ableton Live.
 
 ## What is Producer Pal?
