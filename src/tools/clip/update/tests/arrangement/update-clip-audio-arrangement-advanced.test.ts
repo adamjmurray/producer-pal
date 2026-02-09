@@ -3,21 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiPath,
-  liveApiSet,
   mockLiveApiGet,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
+import * as audioHelpers from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
-  mockContext,
-  setupAudioArrangementTest,
-  assertSourceClipEndMarker,
   assertDuplicateClipCalled,
   assertRevealedClipMarkers,
+  assertSourceClipEndMarker,
+  mockContext,
+  setupArrangementClipPath,
+  setupAudioArrangementTest,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Audio clip lengthening uses progressive tiling: each tile shows the next
@@ -91,42 +92,13 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     ]);
   });
 
-  it("should extend unwarped audio clip to target length using session holding area", async () => {
-    const trackIndex = 0;
-    const clipId = "800";
-    const tempSessionClipId = "801";
-    const revealedClipId = "802";
-    const sceneIndex = 0;
+  it("should pass remainingArrangement to limit last unwarped tile", async () => {
+    const clipId = "810";
+    const revealedClipId = "812";
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === clipId || this._id === revealedClipId) {
-        return `live_set tracks ${trackIndex} arrangement_clips 0`;
-      }
+    setupArrangementClipPath(0, [clipId, revealedClipId]);
 
-      if (this._id === tempSessionClipId) {
-        return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === `live_set tracks ${trackIndex}`) {
-        return `live_set tracks ${trackIndex}`;
-      }
-
-      if (
-        this._path === `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`
-      ) {
-        return `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`;
-      }
-
-      return this._path;
-    });
-
-    // Unwarped clip: markers at [0, 6] in audio-file beat grid
-    // Arrangement shows 6 beats, extending to 12 beats = 6 more beats needed
-    // Unwarped wraps to start: tile uses markers [0, 6] (audio file is finite)
+    // Unwarped clip: 6 content beats, arrangement 0-6, extending to 10 beats
     mockLiveApiGet({
       [clipId]: {
         is_arrangement_clip: 1,
@@ -140,118 +112,179 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         end_marker: 6.0,
         loop_start: 0.0,
         loop_end: 6.0,
-        name: "Unwarped Audio Hidden",
-        trackIndex,
-        file_path: "/path/to/audio.wav",
-        sample_length: 211680,
-        sample_rate: 44100,
+        name: "Unwarped Overshoot",
+        trackIndex: 0,
       },
-      live_set: { tempo: 120, scenes: ["id", "scene1"] },
-      scene1: { is_empty: 1 },
-      [tempSessionClipId]: {
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        warping: 1,
-        looping: 1,
-      },
-      "live_set/tracks/0/clip_slots/0/clip": {
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        warping: 1,
-        looping: 1,
-      },
-      [revealedClipId]: {
+    });
+
+    // Spy on revealAudioContentAtPosition — returns clip ending at target (10)
+    const mockReveal = vi
+      .spyOn(audioHelpers, "revealAudioContentAtPosition")
+      .mockReturnValue({
+        id: revealedClipId,
+        getProperty: (prop: string) => (prop === "end_time" ? 10.0 : 0),
+      } as unknown as LiveAPI);
+
+    // Target 10 beats ("2:2") — remainingArrangement = 4
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "2:2" },
+      mockContext,
+    );
+
+    // Content [6, 12] at position 6, with remainingArrangement=4
+    expect(mockReveal).toHaveBeenCalledWith(
+      expect.objectContaining({ id: clipId }),
+      expect.anything(),
+      6.0,
+      12.0,
+      6.0,
+      expect.anything(),
+      4.0,
+    );
+
+    expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+    mockReveal.mockRestore();
+  });
+
+  it("should fall back to wrapping when progressive content is exhausted", async () => {
+    const clipId = "820";
+    const emptyClipId = "821";
+    const wrappedClipId = "822";
+
+    setupArrangementClipPath(0, [clipId, emptyClipId, wrappedClipId]);
+
+    // Unwarped clip: 6 content beats, arrangement 0-6, extending to 12 beats
+    mockLiveApiGet({
+      [clipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
         looping: 0,
         warping: 0,
-        start_time: 6.0,
-        end_time: 12.0,
-        start_marker: 6.0,
-        end_marker: 12.0,
-        trackIndex,
+        start_time: 0.0,
+        end_time: 6.0,
+        start_marker: 0.0,
+        end_marker: 6.0,
+        loop_start: 0.0,
+        loop_end: 6.0,
+        name: "Unwarped Exhausted",
+        trackIndex: 0,
       },
     });
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
-      if (method === "create_audio_clip") return ["id", tempSessionClipId];
-      if (method === "duplicate_clip_to_arrangement")
-        return ["id", revealedClipId];
-      if (method === "delete_clip") return 1;
+    let callCount = 0;
+    const mockReveal = vi
+      .spyOn(audioHelpers, "revealAudioContentAtPosition")
+      .mockImplementation(() => {
+        callCount++;
 
-      return 1;
-    });
+        if (callCount === 1) {
+          // Progressive tile: content exhausted → zero arrangement length
+          return {
+            id: emptyClipId,
+            getProperty: (prop: string) => (prop === "end_time" ? 6.0 : 0),
+          } as unknown as LiveAPI;
+        }
 
-    // Target 12 beats ("3:0") produces a single tile for the unwarped path
+        // Wrapping tile: valid arrangement length
+        return {
+          id: wrappedClipId,
+          getProperty: (prop: string) => (prop === "end_time" ? 12.0 : 0),
+        } as unknown as LiveAPI;
+      });
+
     const result = await updateClip(
       { ids: clipId, arrangementLength: "3:0" },
       mockContext,
     );
 
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "create_audio_clip",
-      "/path/to/audio.wav",
-    );
+    expect(mockReveal).toHaveBeenCalledTimes(2);
 
-    const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
-
-    // Session clip markers set to wrapping tile range [0, 6] (audio file is finite)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: sessionClipPath }),
-      "loop_end",
-      6.0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: sessionClipPath }),
-      "loop_start",
-      0.0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: sessionClipPath }),
-      "end_marker",
-      6.0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: sessionClipPath }),
-      "start_marker",
-      0.0,
-    );
-
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      `id ${sessionClipPath}`,
-      6.0,
-    );
-
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: revealedClipId }),
-      "warping",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: revealedClipId }),
-      "looping",
-      0,
-    );
-
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
-      }),
-      "delete_clip",
-    );
-
-    // Should emit envelope loss warning for unwarped audio clip extension
-    expect(outlet).toHaveBeenCalledWith(
+    // Progressive call with content [6, 12] — exhausted
+    expect(mockReveal).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining("Envelopes will be lost in the revealed section"),
+      expect.objectContaining({ id: clipId }),
+      expect.anything(),
+      6.0,
+      12.0,
+      6.0,
+      expect.anything(),
+      6.0,
+    );
+
+    // Wrapping call with source content [0, 6]
+    expect(mockReveal).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: clipId }),
+      expect.anything(),
+      0.0,
+      6.0,
+      6.0,
+      expect.anything(),
+      6.0,
+    );
+
+    // Empty clip deleted, wrapping tile kept
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "delete_clip",
+      `id ${emptyClipId}`,
+    );
+    expect(result).toStrictEqual([{ id: clipId }, { id: wrappedClipId }]);
+    mockReveal.mockRestore();
+  });
+
+  it("should extend unwarped audio clip via revealAudioContentAtPosition", async () => {
+    const clipId = "800";
+    const revealedClipId = "802";
+
+    setupArrangementClipPath(0, [clipId, revealedClipId]);
+
+    // Unwarped clip: 6 content beats, arrangement 0-6, extending to 12 beats
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 0,
+        start_time: 0.0,
+        end_time: 6.0,
+        start_marker: 0.0,
+        end_marker: 6.0,
+        loop_start: 0.0,
+        loop_end: 6.0,
+        name: "Unwarped Audio",
+        trackIndex: 0,
+      },
+    });
+
+    // Spy on revealAudioContentAtPosition — returns clip ending at 12
+    const mockReveal = vi
+      .spyOn(audioHelpers, "revealAudioContentAtPosition")
+      .mockReturnValue({
+        id: revealedClipId,
+        getProperty: (prop: string) => (prop === "end_time" ? 12.0 : 0),
+      } as unknown as LiveAPI);
+
+    // Target 12 beats ("3:0") — single tile fills remaining space
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:0" },
+      mockContext,
+    );
+
+    // Content [6, 12] at position 6, with remainingArrangement=6
+    expect(mockReveal).toHaveBeenCalledWith(
+      expect.objectContaining({ id: clipId }),
+      expect.anything(),
+      6.0,
+      12.0,
+      6.0,
+      expect.anything(),
+      6.0,
     );
 
     expect(result).toStrictEqual([{ id: clipId }, { id: revealedClipId }]);
+    mockReveal.mockRestore();
   });
 });
 

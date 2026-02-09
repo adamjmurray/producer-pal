@@ -128,11 +128,7 @@ describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
       expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
-      // EXPECT WARNING for unwarped audio
-      expect(warnings.length).toBeGreaterThan(0);
-      expect(
-        warnings.some((w) => w.includes("Extending unwarped audio clip")),
-      ).toBe(true);
+      expect(warnings).toHaveLength(0);
 
       const totalLength = calculateTotalLengthInBars(resultClips);
 
