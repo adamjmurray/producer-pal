@@ -1,6 +1,6 @@
 # Installation Guide
 
-Choose your preferred AI platform to get started with Producer Pal:
+Choose your preferred AI platform to get started with Producer Pal™:
 
 ::: tip Prerequisites
 
