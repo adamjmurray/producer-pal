@@ -16,8 +16,8 @@ over-engineered, one of these is usually why.
 Arrangement clip `end_time` cannot be changed after creation by any means for
 warped **looped** clips. You cannot extend a warped looped clip's arrangement
 length by setting `end_time`, `end_marker`, `loop_end`, or any other property.
-The only way to get a warped looped clip with a specific arrangement length is to
-create it with that length (via session-based tiling or duplication).
+The only way to get a warped looped clip with a specific arrangement length is
+to create it with that length (via session-based tiling or duplication).
 
 This is _the_ fundamental constraint for warped looped clips. It's why
 session-based tiling exists for warped looped audio clips, why we
@@ -75,8 +75,8 @@ When looping is disabled on a warped arrangement clip that was looping,
 toggling looping off on warped clips.
 
 **Exception — unlooped clips**: For clips that are already unlooped, `loop_end`
-is writable and persists. This is the mechanism used for both warped and unwarped
-unlooped audio lengthening.
+is writable and persists. This is the mechanism used for both warped and
+unwarped unlooped audio lengthening.
 
 ### Warped vs Unwarped Beats
 
@@ -124,10 +124,15 @@ inconsistently (sometimes `as string`, sometimes `as [string, number]`).
 All complex arrangement operations use this pattern to isolate changes from
 adjacent clips:
 
-1. Duplicate clip to beats 1000+ (safe working space far from actual content)
-2. Perform trim/adjustment operations there
-3. Duplicate result to final arrangement position
-4. Clean up holding area copy
+1. Read `song_length` to find a holding area beyond all existing content
+2. Duplicate clip there (safe working space far from actual content)
+3. Perform trim/adjustment operations there
+4. Duplicate result to final arrangement position
+5. Clean up holding area copy
+
+The holding area position is always dynamic — never hardcoded. A fixed large
+position would permanently bloat the arrangement length, causing unwanted
+zoom-out range and scrolling.
 
 Files: `arrangement-tiling.ts` (`createShortenedClipInHolding`,
 `moveClipFromHolding`)
@@ -248,8 +253,8 @@ Algorithm:
 4. **Extend `end_marker`**: set to `clipStartMarker + effectiveTarget` (only if
    extending)
 
-No tiling, no holding area. Returns a single clip (preserves clip ID,
-envelopes, and automation).
+No tiling, no holding area. Returns a single clip (preserves clip ID, envelopes,
+and automation).
 
 ### Lengthening — Unlooped Unwarped Audio
 
