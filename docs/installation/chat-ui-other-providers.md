@@ -68,13 +68,13 @@ For other OpenAI-compatible providers:
 1. In the chat UI settings:
    - Provider: **Custom (OpenAI-compatible)**
    - API Key: Your provider's key
-   - Base URL: Your provider's API endpoint
+   - URL: Your provider's API endpoint
    - Model: The model name
 
 ### Example: Groq
 
 - Provider: Custom (OpenAI-compatible)
-- Base URL: `https://api.groq.com/openai/v1`
+- URL: `https://api.groq.com/openai/v1`
 - Model: `llama-3.3-70b-versatile`
 
 ## Privacy Note
@@ -96,7 +96,7 @@ with the built-in chat UI instead of [LM Studio's native UI](./lm-studio).
 4. Start the LM Studio server (should say "Status: Running")
 5. In the Producer Pal Chat UI settings:
    - Provider: **LM Studio (local)**
-   - Port: `1234` (default)
+   - URL: `http://localhost:1234/v1` (use the default in most cases)
    - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
      `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
 6. Save and click "Quick Connect"
