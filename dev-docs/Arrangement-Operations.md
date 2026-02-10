@@ -155,7 +155,7 @@ When you need an arrangement audio clip with a specific length:
 4. Clean up session clip via `slot.call("delete_clip")`
 
 Files: `arrangement-tiling.ts` (`createAudioClipInSession`),
-`arrangement-unlooped-helpers.ts` (`tileWarpedAudioContent`)
+`arrangement-unlooped-helpers.ts` (`lengthenWarpedUnloopedAudio`)
 
 ### File Content Boundary Detection
 
@@ -327,7 +327,6 @@ Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 | `arrangement-tiling.ts`              | Core techniques (holding area, temp clips, session clips, tiling) |
 | `arrangement-splitting.ts`           | Clip splitting algorithm                                          |
 | `update-clip-arrangement-helpers.ts` | Update-clip integration (move + lengthen orchestration)           |
-| `clip-marker-helpers.ts`             | Looping workaround for marker setting                             |
 
 All arrangement source files are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`
