@@ -104,7 +104,7 @@
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "@stylistic/eslint-plugin": "^5.7.1",
+    "@stylistic/eslint-plugin": "^5.8.0",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.6",
