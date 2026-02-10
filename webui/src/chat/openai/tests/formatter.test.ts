@@ -198,4 +198,209 @@ describe("formatOpenAIMessages", () => {
       content: "Tool returned success",
     });
   });
+
+  it("detects error indicators in tool results", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_err",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "tool" as const,
+        content: '{"error": "something went wrong"}',
+        tool_call_id: "call_err",
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart).toMatchObject({
+      type: "tool",
+      isError: true,
+    });
+  });
+
+  it("detects isError:true indicator in tool results", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_err2",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: '{"key":"val"}' },
+          },
+        ],
+      },
+      {
+        role: "tool" as const,
+        content: '{"isError":true, "message":"failed"}',
+        tool_call_id: "call_err2",
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart).toMatchObject({
+      type: "tool",
+      isError: true,
+    });
+  });
+
+  it("returns null result when no matching tool message is found", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_orphan",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: "{}" },
+          },
+        ],
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart).toMatchObject({
+      type: "tool",
+      result: null,
+      isError: undefined,
+    });
+  });
+
+  it("handles tool content that is not a string", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_arr",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "tool" as const,
+        content: [{ type: "text", text: "array content" }] as unknown as string,
+        tool_call_id: "call_arr",
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    const toolPart = result[0]!.parts[0]!;
+
+    // content is not a string, so falls back to ""
+    expect(toolPart).toMatchObject({
+      type: "tool",
+      result: "",
+    });
+  });
+
+  it("handles empty history", () => {
+    const result = formatOpenAIMessages([]);
+
+    expect(result).toStrictEqual([]);
+  });
+
+  it("handles assistant message with no content and no tool_calls", () => {
+    const testHistory = [{ role: "assistant" as const, content: "" }];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.role).toBe("model");
+    expect(result[0]!.parts).toStrictEqual([]);
+  });
+
+  it("skips empty reasoning details array", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: "Response",
+        reasoning_details: [],
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "text", content: "Response" },
+    ]);
+  });
+
+  it("skips reasoning details with only non-text types", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: "Response",
+        reasoning_details: [
+          { type: "reasoning.summary", summary: "Summary", index: 0 },
+        ],
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "text", content: "Response" },
+    ]);
+  });
+
+  it("handles tool result with no error indicators", () => {
+    const testHistory = [
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_ok",
+            type: "function" as const,
+            function: { name: "test_tool", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "tool" as const,
+        content: '{"result": "all good"}',
+        tool_call_id: "call_ok",
+      },
+    ];
+
+    const result = formatOpenAIMessages(testHistory);
+
+    expect(result).toHaveLength(1);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart).toMatchObject({
+      type: "tool",
+      isError: undefined,
+      result: '{"result": "all good"}',
+    });
+  });
 });
