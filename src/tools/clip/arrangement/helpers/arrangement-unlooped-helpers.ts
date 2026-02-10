@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { revealAudioContentAtPosition } from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
 import {
   createAudioClipInSession,
   createShortenedClipInHolding,
@@ -132,107 +131,47 @@ function tileWarpedAudioContent({
 }
 
 /**
- * Tile unwarped audio content using progressive tiling via revealAudioContentAtPosition.
- * Each tile shows the next sequential content portion. Arrangement lengths are determined
- * by Ableton when unwarping (native sample rate playback), so tiles may have different
- * arrangement lengths from the source clip. The last tile is shortened if needed.
- * @param params - Tiling parameters
- * @param params.clip - Source clip to tile from
- * @param params.track - Track to place tiles on
- * @param params.tileContentStart - Content offset where tiling begins (file beat grid)
- * @param params.contentLength - Content length per tile (file beats)
- * @param params.currentEndTime - Current end time of arrangement
- * @param params.currentArrangementLength - Current arrangement length
- * @param params.arrangementLengthBeats - Target arrangement length
- * @param params.context - Arrangement context
- * @returns Array of revealed clip IDs
+ * Lengthen an unwarped audio clip by setting loop_end (in seconds).
+ * Ableton auto-clamps to the file boundary if the target exceeds the sample length.
+ * @param clip - The unwarped audio clip
+ * @param arrangementLengthBeats - Target arrangement length in beats
+ * @param currentArrangementLength - Current arrangement length in beats
+ * @param currentEndTime - Current end time in beats
  */
-function tileUnwarpedAudioContent({
-  clip,
-  track,
-  tileContentStart,
-  contentLength,
-  currentEndTime,
-  currentArrangementLength,
-  arrangementLengthBeats,
-  context,
-}: {
-  clip: LiveAPI;
-  track: LiveAPI;
-  tileContentStart: number;
-  contentLength: number;
-  currentEndTime: number;
-  currentArrangementLength: number;
-  arrangementLengthBeats: number;
-  context: ArrangementContext;
-}): ClipIdResult[] {
-  const updatedClips: ClipIdResult[] = [];
-  let currentPosition = currentEndTime;
-  let currentContentOffset = tileContentStart;
-  const tileContentSize = contentLength;
-  const targetEnd =
-    currentEndTime + (arrangementLengthBeats - currentArrangementLength);
-  // Source content markers for wrapping fallback
-  const sourceContentStart = tileContentStart - contentLength;
+function lengthenUnwarpedAudio(
+  clip: LiveAPI,
+  arrangementLengthBeats: number,
+  currentArrangementLength: number,
+  currentEndTime: number,
+): void {
+  const loopStart = clip.getProperty("loop_start") as number;
+  const loopEnd = clip.getProperty("loop_end") as number;
+  const currentDurationSec = loopEnd - loopStart;
 
-  // Phase 1: Progressive tiling — reveal next sequential content portion.
-  // Each tile shows a different part of the audio file.
-  while (currentPosition < targetEnd - EPSILON) {
-    const remainingArrangement = targetEnd - currentPosition;
-    const revealedClip = revealAudioContentAtPosition(
-      clip,
-      track,
-      currentContentOffset,
-      currentContentOffset + tileContentSize,
-      currentPosition,
-      context,
-      remainingArrangement,
+  // Derive beats-per-second ratio from the clip's current values
+  const beatsPerSecond = currentArrangementLength / currentDurationSec;
+  const targetDurationSec = arrangementLengthBeats / beatsPerSecond;
+  const targetLoopEnd = loopStart + targetDurationSec;
+
+  clip.set("loop_end", targetLoopEnd);
+
+  // Read back end_time to check achieved arrangement length
+  const newEndTime = clip.getProperty("end_time") as number;
+  const clipStartTime = currentEndTime - currentArrangementLength;
+  const actualArrangementLength = newEndTime - clipStartTime;
+
+  if (actualArrangementLength <= currentArrangementLength + EPSILON) {
+    console.warn(
+      `Cannot lengthen unlooped audio clip — no additional file content ` +
+        `(${currentDurationSec.toFixed(1)}s shown, at file boundary)`,
     );
-
-    const revealedEnd = revealedClip.getProperty("end_time") as number;
-    const tileArrangementLength = revealedEnd - currentPosition;
-
-    // Zero-length tile means content is exhausted beyond the audio file.
-    // Delete the empty clip and fall through to wrapping.
-    if (tileArrangementLength <= EPSILON) {
-      track.call("delete_clip", `id ${revealedClip.id}`);
-      break;
-    }
-
-    updatedClips.push({ id: revealedClip.id });
-    currentPosition += tileArrangementLength;
-    currentContentOffset += tileContentSize;
-  }
-
-  // Phase 2: Wrapping — repeat source content for remaining space.
-  // Uses source markers [clipStartMarker, clipEndMarkerBeats] so Ableton
-  // produces the correct native-speed arrangement length (not trimmed).
-  while (currentPosition < targetEnd - EPSILON) {
-    const remainingArrangement = targetEnd - currentPosition;
-    const wrappedClip = revealAudioContentAtPosition(
-      clip,
-      track,
-      sourceContentStart,
-      sourceContentStart + tileContentSize,
-      currentPosition,
-      context,
-      remainingArrangement,
+  } else if (actualArrangementLength < arrangementLengthBeats - EPSILON) {
+    console.warn(
+      `Unlooped audio clip capped at file content boundary ` +
+        `(${actualArrangementLength.toFixed(1)} beats achieved, ` +
+        `${arrangementLengthBeats} requested)`,
     );
-
-    const wrappedEnd = wrappedClip.getProperty("end_time") as number;
-    const wrappedLength = wrappedEnd - currentPosition;
-
-    // Zero-length wrapping tile — content cannot be played. Clean up and stop.
-    if (wrappedLength <= EPSILON) {
-      track.call("delete_clip", `id ${wrappedClip.id}`);
-      break;
-    }
-
-    updatedClips.push({ id: wrappedClip.id });
-    currentPosition += wrappedLength;
   }
-
-  return updatedClips;
 }
 
 interface HandleUnloopedLengtheningArgs {
@@ -393,20 +332,12 @@ export function handleUnloopedLengthening({
 
     updatedClips.push(...tiles);
   } else {
-    // Unwarped: content ends at end_marker (file beats ≠ arrangement beats)
-    const tileContentStart = clipEndMarkerBeats;
-    const tiles = tileUnwarpedAudioContent({
+    lengthenUnwarpedAudio(
       clip,
-      track,
-      tileContentStart,
-      contentLength,
-      currentEndTime,
-      currentArrangementLength,
       arrangementLengthBeats,
-      context,
-    });
-
-    updatedClips.push(...tiles);
+      currentArrangementLength,
+      currentEndTime,
+    );
   }
 
   return updatedClips;

@@ -11,17 +11,22 @@ from scratch.
 These constraints drive every design decision. When something seems
 over-engineered, one of these is usually why.
 
-### `end_time` is Immutable
+### `end_time` is Immutable (Warped Clips)
 
-Arrangement clip `end_time` cannot be changed after creation by any means. You
-cannot extend a clip's arrangement length by setting `end_time`, `end_marker`,
-`loop_end`, or any other property. The only way to get a clip with a specific
-arrangement length is to create it with that length (via session-based tiling or
-duplication).
+Arrangement clip `end_time` cannot be changed after creation by any means for
+warped clips. You cannot extend a warped clip's arrangement length by setting
+`end_time`, `end_marker`, `loop_end`, or any other property. The only way to get
+a warped clip with a specific arrangement length is to create it with that
+length (via session-based tiling or duplication).
 
-This is _the_ fundamental constraint. It's why session-based tiling exists for
-audio clips, why we duplicate-and-delete instead of resizing, and why
-lengthening produces multiple clips instead of stretching one.
+This is _the_ fundamental constraint for warped clips. It's why session-based
+tiling exists for warped audio clips, why we duplicate-and-delete instead of
+resizing, and why lengthening produces multiple clips instead of stretching one.
+
+**Exception — unwarped clips**: For unlooped, unwarped audio clips, `loop_end`
+is writable and in **seconds**. Setting it to a larger value extends the clip's
+arrangement length. If set beyond the sample boundary, Ableton auto-clamps to
+the file's end. See "Lengthening — Unlooped Unwarped Audio" below.
 
 ### Mid-Clip Splitting Doesn't Work
 
@@ -57,10 +62,14 @@ See `setClipMarkersWithLoopingWorkaround()` in `clip-marker-helpers.ts`.
 the actual file content length. Use content boundary detection instead (see Core
 Techniques below).
 
-### `loop_end` Reverts on Unlooped Arrangement Clips
+### `loop_end` Reverts on Unlooped Warped Arrangement Clips
 
-When looping is disabled on an arrangement clip, `loop_end` reverts to its
-default. Don't rely on `loop_end` persisting for unlooped clips.
+When looping is disabled on a warped arrangement clip, `loop_end` reverts to its
+default. Don't rely on `loop_end` persisting for unlooped warped clips.
+
+**Exception — unwarped clips**: `loop_end` (in seconds) persists on unwarped
+clips regardless of looping state. This is the mechanism used for unwarped audio
+lengthening.
 
 ### Warped vs Unwarped Beats
 
@@ -229,34 +238,31 @@ This is the most complex case due to immutable `end_time` + boundary detection:
 
 ### Lengthening — Unlooped Unwarped Audio
 
-> **TODO**: This algorithm is still buggy. The progressive tiling and wrapping
-> phases don't reliably produce correct results for all edge cases.
-
 Entry: `handleUnloopedLengthening()` → `!isWarped` branch in
 `arrangement-unlooped-helpers.ts`
 
-Two-phase approach because unwarped clips have unpredictable arrangement
-lengths:
+This is the simplest audio lengthening case. For unwarped clips, `loop_start`
+and `loop_end` are in **seconds** and are directly writable. Setting `loop_end`
+to a larger value extends the clip's arrangement length. If the target exceeds
+the sample boundary, Ableton auto-clamps to the file's end.
 
-**Phase 1 — Progressive tiling**:
+Algorithm:
 
-- `revealAudioContentAtPosition()` for each tile, showing the next sequential
-  file content portion
-- Zero-length tile = file content exhausted, break to phase 2
+1. Read current `loop_start` and `loop_end` (in seconds)
+2. Derive `beatsPerSecond` from `currentArrangementLength / currentDurationSec`
+   (avoids needing project tempo)
+3. Calculate
+   `targetLoopEnd = loopStart + (arrangementLengthBeats / beatsPerSecond)`
+4. Set `loop_end` to `targetLoopEnd`
+5. Read back `end_time` to check actual achieved arrangement length
+6. Three-way result:
+   - **No change**: `actualArrangementLength <= currentArrangementLength` — at
+     file boundary already, warn
+   - **Capped**: `actualArrangementLength < arrangementLengthBeats` — extended
+     but capped at file boundary, warn
+   - **Full**: target achieved
 
-**Phase 2 — Wrapping**:
-
-- Repeat source content region for remaining space
-- Uses original source markers (`[clipStartMarker, clipEndMarkerBeats]`) so
-  Ableton produces the correct native-speed arrangement length
-- Zero-length wrapped tile = stop
-
-Unwarped tiles use the session holding area technique: create warped/looped in
-session → set markers → duplicate to arrangement → unwarp → trim via temp clip
-if needed.
-
-Files: `arrangement-audio-helpers.ts` (`revealAudioContentAtPosition`,
-`revealUnwarpedAudioContent`)
+No tiling, no session clips, no holding area. Returns a single clip.
 
 ### Shortening
 
@@ -308,7 +314,6 @@ Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 | `arrangement-operations-helpers.ts`  | Looped lengthening, shortening, temp clip truncation              |
 | `arrangement-unlooped-helpers.ts`    | Unlooped lengthening (MIDI, warped audio, unwarped audio)         |
 | `arrangement-tiling.ts`              | Core techniques (holding area, temp clips, session clips, tiling) |
-| `arrangement-audio-helpers.ts`       | Audio content revelation (warped and unwarped)                    |
 | `arrangement-splitting.ts`           | Clip splitting algorithm                                          |
 | `update-clip-arrangement-helpers.ts` | Update-clip integration (move + lengthen orchestration)           |
 | `clip-marker-helpers.ts`             | Looping workaround for marker setting                             |

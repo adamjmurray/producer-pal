@@ -74,10 +74,24 @@ const audioUnloopedWarped: Record<number, ExpectedClip[]> = {
   29: c([["1|1","1:0","1|2","3|1"],["2|1","0:3","2|2","3|1"]]),
 };
 
+// Tracks 30-35 (unwarped audio) use loop_end to extend. Ableton auto-clamps at
+// file boundary. No-hidden tracks stay unchanged; hidden-content tracks extend
+// to the file's natural sample length. All produce a single clip (no tiles).
+// prettier-ignore
+const audioUnwarped: Record<number, ExpectedClip[]> = {
+  30: c([["1|1","2:1.6","1|1","3|1"]]),
+  31: c([["1|1","2:1.6","1|1","2|2"]]),
+  32: c([["1|1","2:1.6","1|1","3|1"]]),
+  33: c([["1|1","2:1.6","1|1","2|2"]]),
+  34: c([["1|1","2:0.4","1|1.6","3|1"]]),
+  35: c([["1|1","2:0.4","1|1.6","2|2"]]),
+};
+
 /** Expected clips after lengthening to 4:0, indexed by track number */
 export const expectedLengtheningClips: Record<number, ExpectedClip[]> = {
   ...midiLooped,
   ...midiUnlooped,
   ...audioLoopedWarped,
   ...audioUnloopedWarped,
+  ...audioUnwarped,
 };

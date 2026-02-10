@@ -139,7 +139,7 @@ describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
 
 describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
   it.each(audioUnwarpedTestCases)(
-    "lengthens t$track: $name",
+    "lengthens t$track: $name (capped at file boundary via loop_end)",
     async ({ track }) => {
       const { resultClips, warnings } = await testLengthenClipTo4Bars(
         ctx.client!,
@@ -147,15 +147,15 @@ describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
         { sleepMs: 200 },
       );
 
-      expect(resultClips.length).toBeGreaterThanOrEqual(1);
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
-      expect(warnings).toHaveLength(0);
+      // All clips warn: no-hidden clips warn "no additional content",
+      // hidden-content clips warn "capped at file boundary"
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      const totalLength = calculateTotalLengthInBars(resultClips);
-
-      expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
-      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      // Single clip (extended in place via loop_end, no tiles)
+      expect(resultClips).toHaveLength(1);
+      assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
 });

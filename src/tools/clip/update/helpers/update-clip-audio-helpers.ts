@@ -16,9 +16,6 @@ import {
 } from "#src/tools/constants.ts";
 import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 
-// Re-export from shared location for backwards compatibility
-export { revealAudioContentAtPosition } from "#src/tools/shared/arrangement/arrangement-audio-helpers.ts";
-
 interface AudioParams {
   /** Audio clip gain in decibels (-70 to 24) */
   gainDb?: number;
