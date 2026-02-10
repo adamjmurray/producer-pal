@@ -57,16 +57,15 @@ describe("MIDI Unlooped Clips Lengthening (t9-t14)", () => {
   it.each(midiUnloopedTestCases)(
     "lengthens t$track: $name",
     async ({ track }) => {
-      const { resultClips, warnings } = await testLengthenClipTo4Bars(
-        ctx.client!,
-        track,
-      );
+      const { initialClips, resultClips, warnings } =
+        await testLengthenClipTo4Bars(ctx.client!, track);
 
       expect(resultClips.every((c) => c.type === "midi")).toBe(true);
       expect(warnings).toHaveLength(0);
 
-      // Single clip (extended in place via loop_end, no tiles)
+      // Single clip extended in place via loop_end (same ID, no tiles)
       expect(resultClips).toHaveLength(1);
+      expect(resultClips[0]!.id).toBe(initialClips[0]!.id);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
@@ -97,18 +96,17 @@ describe("Audio Unlooped Warped Clips - No Hidden Content (t24,t26,t28)", () => 
   it.each(audioUnloopedWarpedNoHiddenCases)(
     "skips lengthening t$track: $name (no additional content)",
     async ({ track }) => {
-      const { resultClips, warnings } = await testLengthenClipTo4Bars(
-        ctx.client!,
-        track,
-      );
+      const { initialClips, resultClips, warnings } =
+        await testLengthenClipTo4Bars(ctx.client!, track);
 
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
       // Lengthening skipped — no additional file content to reveal
       expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      // Original clip unchanged — no tiles created
+      // Original clip unchanged (same ID, no tiles)
       expect(resultClips).toHaveLength(1);
+      expect(resultClips[0]!.id).toBe(initialClips[0]!.id);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
@@ -118,18 +116,17 @@ describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
   it.each(audioUnloopedWarpedHiddenCases)(
     "caps lengthening t$track: $name (extends to file boundary)",
     async ({ track }) => {
-      const { resultClips, warnings } = await testLengthenClipTo4Bars(
-        ctx.client!,
-        track,
-      );
+      const { initialClips, resultClips, warnings } =
+        await testLengthenClipTo4Bars(ctx.client!, track);
 
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
       // Capped at file content boundary — can't reach 4-bar target
       expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      // Single clip (extended in place via loop_end, no tiles)
+      // Single clip extended in place via loop_end (same ID, no tiles)
       expect(resultClips).toHaveLength(1);
+      expect(resultClips[0]!.id).toBe(initialClips[0]!.id);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
@@ -139,11 +136,8 @@ describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
   it.each(audioUnwarpedTestCases)(
     "lengthens t$track: $name (capped at file boundary via loop_end)",
     async ({ track }) => {
-      const { resultClips, warnings } = await testLengthenClipTo4Bars(
-        ctx.client!,
-        track,
-        { sleepMs: 200 },
-      );
+      const { initialClips, resultClips, warnings } =
+        await testLengthenClipTo4Bars(ctx.client!, track, { sleepMs: 200 });
 
       expect(resultClips.every((c) => c.type === "audio")).toBe(true);
 
@@ -151,8 +145,9 @@ describe("Audio Unwarped Clips Lengthening (t30-t35)", () => {
       // hidden-content clips warn "capped at file boundary"
       expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      // Single clip (extended in place via loop_end, no tiles)
+      // Single clip extended in place via loop_end (same ID, no tiles)
       expect(resultClips).toHaveLength(1);
+      expect(resultClips[0]!.id).toBe(initialClips[0]!.id);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );
