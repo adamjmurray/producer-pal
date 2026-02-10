@@ -12,6 +12,16 @@ import {
 } from "#webui/lib/constants/models";
 import type { Provider } from "#webui/types/settings";
 
+const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
+  gemini: "e.g., gemini-2.0-flash",
+  openai: "e.g., gpt-5-nano",
+  mistral: "e.g., ministral-14b-latest",
+  openrouter: "e.g., bytedance-seed/seed-1.6",
+  ollama: "e.g., qwen3:30b",
+  lmstudio: "", // Not used (has dedicated input)
+  custom: "", // Not used (has dedicated input)
+};
+
 export interface ModelSelectorProps {
   provider: Provider;
   model: string;
@@ -90,8 +100,8 @@ export function ModelSelector({
   if (provider === "custom" || provider === "lmstudio") {
     const placeholder =
       provider === "lmstudio"
-        ? "e.g., llama-3.1-70b, qwen-2.5-72b"
-        : "e.g., gpt-4, llama-3.1-70b";
+        ? "e.g., qwen/qwen3-coder-30b"
+        : "e.g., openai/gpt-oss-120b";
 
     return (
       <div>
@@ -144,7 +154,7 @@ export function ModelSelector({
           type="text"
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
-          placeholder="e.g., gpt-4, claude-3-opus"
+          placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
           className="w-full px-3 py-2 mt-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         />
       )}

@@ -17,11 +17,10 @@ export const GEMINI_MODELS = [
 ];
 
 export const OPENAI_MODELS = [
-  { value: "gpt-5.2-2025-12-11", label: "GPT-5.2" },
+  { value: "gpt-5.2", label: "GPT-5.2" },
   { value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
-  { value: "gpt-5-2025-08-07", label: "GPT-5" },
-  { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini" },
-  { value: "gpt-4o-2024-08-06", label: "GPT-4o" },
+  { value: "gpt-5", label: "GPT-5" },
+  { value: "gpt-5-mini", label: "GPT-5 Mini" },
   { value: "OTHER", label: "Other..." },
 ];
 
@@ -30,8 +29,6 @@ export const MISTRAL_MODELS = [
   { value: "mistral-large-latest", label: "Mistral Large" },
   { value: "mistral-medium-latest", label: "Mistral Medium" },
   { value: "mistral-small-latest", label: "Mistral Small" },
-  { value: "magistral-medium-2509", label: "Magistral Medium" },
-  { value: "magistral-small-2509", label: "Magistral Small" },
   { value: "OTHER", label: "Other..." },
 ];
 

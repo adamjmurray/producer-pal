@@ -244,7 +244,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.2-2025-12-11",
+      model: "gpt-5.2",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
@@ -253,7 +253,7 @@ describe("useSettings", () => {
     // Configure OpenAI with different settings
     await act(() => {
       result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5-mini-2025-08-07");
+      result.current.setModel("gpt-5-mini");
       result.current.setThinking("Low");
       result.current.setTemperature(1.5);
       result.current.setShowThoughts(false);
@@ -279,7 +279,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
       showThoughts: false,
@@ -305,7 +305,7 @@ describe("useSettings", () => {
     });
     await act(() => {
       result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5-mini-2025-08-07");
+      result.current.setModel("gpt-5-mini");
       result.current.setThinking("Low");
       result.current.setTemperature(1.5);
     });
@@ -347,7 +347,7 @@ describe("useSettings", () => {
       JSON.parse(localStorage.getItem("producer_pal_provider_openai") ?? "{}"),
     ).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
     });
@@ -397,7 +397,7 @@ describe("useSettings", () => {
     });
     expect(result2.current).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
     });
