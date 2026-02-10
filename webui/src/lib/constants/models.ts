@@ -39,7 +39,10 @@ export const OPENROUTER_MODELS = [
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
-  { value: "mistralai/devstral-2512:free", label: "[Free] Mistral Devstral 2" },
+  {
+    value: "arcee-ai/trinity-large-preview:free",
+    label: "[Free] Arcee Trinity Large",
+  },
   {
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
     label: "[Free] Nvidia Nemotron 3 Nano",
@@ -58,8 +61,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Sonnet 4.5",
   },
   {
-    value: "anthropic/claude-opus-4.5",
-    label: "[Paid] Anthropic Claude Opus 4.5",
+    value: "anthropic/claude-opus-4.6",
+    label: "[Paid] Anthropic Claude Opus 4.6",
   },
   { value: "openai/gpt-5.2", label: "[Paid] OpenAI GPT-5.2" },
   {
@@ -70,6 +73,7 @@ export const OPENROUTER_MODELS = [
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max" },
   { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
+  { value: "moonshotai/kimi-k2.5", label: "[Paid] Kimi K2.5" },
   { value: "OTHER", label: "Other..." },
 ];
 
@@ -77,9 +81,10 @@ export const OLLAMA_MODELS = [
   { value: "devstral-small-2", label: "Devstral Small 2" },
   { value: "ministral-3", label: "Ministral 3" },
   { value: "mistral", label: "Mistral" },
-  { value: "gpt-oss", label: "GPT-OSS" },
+  { value: "glm-4.7-flash", label: "GLM-4.7-Flash" },
   { value: "qwen3", label: "Qwen3" },
   { value: "qwen3-coder", label: "Qwen3 Coder" },
+  { value: "gpt-oss", label: "GPT-OSS" },
   { value: "OTHER", label: "Other..." },
 ];
 

@@ -143,7 +143,7 @@ describe("ModelSelector", () => {
         model: "qwen/qwen3-coder:free",
       });
 
-      expectModelSelected("mistralai/devstral-2512:free", setModel);
+      expectModelSelected("z-ai/glm-4.5-air:free", setModel);
     });
   });
 
