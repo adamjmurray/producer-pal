@@ -95,13 +95,13 @@ export function ConnectionTab({
         </div>
       )}
 
-      {/* Base URL for local and custom providers */}
+      {/* URL for local and custom providers */}
       {(provider === "lmstudio" ||
         provider === "ollama" ||
         provider === "custom") &&
         setBaseUrl && (
           <div>
-            <label className="block text-sm mb-2">Base URL</label>
+            <label className="block text-sm mb-2">URL</label>
             <input
               type="text"
               value={baseUrl ?? ""}

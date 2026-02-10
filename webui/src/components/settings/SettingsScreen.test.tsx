@@ -83,13 +83,13 @@ vi.mock(import("./ConnectionTab"), () => {
           </div>
         )}
 
-        {/* Base URL for local and custom providers */}
+        {/* URL for local and custom providers */}
         {(provider === "lmstudio" ||
           provider === "ollama" ||
           provider === "custom") &&
           setBaseUrl && (
             <div>
-              <label>Base URL</label>
+              <label>URL</label>
               <input
                 type="text"
                 placeholder={

@@ -200,7 +200,7 @@ describe("ConnectionTab", () => {
           providerLabel="LM Studio"
         />,
       );
-      expect(screen.getByText("Base URL")).toBeDefined();
+      expect(screen.getByText("URL")).toBeDefined();
       expect(
         screen.getByPlaceholderText("http://localhost:1234/v1"),
       ).toBeDefined();
@@ -360,7 +360,7 @@ describe("ConnectionTab", () => {
       expect(
         screen.getByPlaceholderText("https://api.example.com/v1"),
       ).toBeDefined();
-      expect(screen.getByText("Base URL")).toBeDefined();
+      expect(screen.getByText("URL")).toBeDefined();
     });
 
     it("does not render base URL input for other providers", () => {
