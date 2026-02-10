@@ -82,21 +82,30 @@ For other OpenAI-compatible providers:
 Your API key is stored in browser local storage. Use a private browser session
 if that concerns you, or delete the key from settings after use.
 
-## LM Studio
+## LM Studio API
 
 For free locally running models, you can use [LM Studio](https://lmstudio.ai/)
 with the built-in chat UI instead of [LM Studio's native UI](./lm-studio).
 
 1. Install LM Studio and download a model that supports tools
 2. Go to the LM Studio developer tab
-3. Open Server Settings and **Enable CORS** (required for browser access):
+3. Open Server Settings and configure:
+   - **Server Port** - Should be `1234` (if different, adjust the URL in your
+     Producer Pal connection settings to match)
+   - **Enable CORS** - Required for browser access
+   - **Serve on Local Network** - Enable this if running LM Studio on a
+     different computer (allows other devices to connect)
 
    ![LM Studio server settings](/lm-studio-server-settings.png)
 
 4. Start the LM Studio server (should say "Status: Running")
 5. In the Producer Pal Chat UI settings:
    - Provider: **LM Studio (local)**
-   - URL: `http://localhost:1234/v1` (use the default in most cases)
+   - URL: Copy from LM Studio's "Reachable at:" field
+     - Default when everything runs on the same computer:
+       `http://localhost:1234`
+     - When "Serve on Local Network" is enabled, use the network address shown
+       (e.g., `http://192.168.7.172:1234`)
    - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
      `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
 6. Save and click "Quick Connect"
