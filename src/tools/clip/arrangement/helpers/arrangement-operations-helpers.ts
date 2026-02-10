@@ -119,7 +119,6 @@ export function handleArrangementLengthening({
       currentEndTime,
       clipStartMarker,
       track,
-      context,
     });
   }
 

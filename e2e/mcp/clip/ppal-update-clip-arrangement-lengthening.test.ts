@@ -65,10 +65,8 @@ describe("MIDI Unlooped Clips Lengthening (t9-t14)", () => {
       expect(resultClips.every((c) => c.type === "midi")).toBe(true);
       expect(warnings).toHaveLength(0);
 
-      const totalLength = calculateTotalLengthInBars(resultClips);
-
-      expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
-      expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+      // Single clip (extended in place via loop_end, no tiles)
+      expect(resultClips).toHaveLength(1);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );

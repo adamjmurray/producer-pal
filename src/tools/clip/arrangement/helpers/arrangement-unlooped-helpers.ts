@@ -3,17 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import {
-  createAudioClipInSession,
-  createShortenedClipInHolding,
-  moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import { setClipMarkersWithLoopingWorkaround } from "#src/tools/shared/clip-marker-helpers.ts";
-import type {
-  ArrangementContext,
-  ClipIdResult,
-} from "./arrangement-operations-helpers.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import type { ClipIdResult } from "./arrangement-operations-helpers.ts";
 
 const EPSILON = 0.001;
 
@@ -144,7 +135,6 @@ interface HandleUnloopedLengtheningArgs {
   currentEndTime: number;
   clipStartMarker: number;
   track: LiveAPI;
-  context: ArrangementContext;
 }
 
 /**
@@ -157,7 +147,6 @@ interface HandleUnloopedLengtheningArgs {
  * @param options.currentEndTime - Current end time in beats
  * @param options.clipStartMarker - Clip start marker position
  * @param options.track - The LiveAPI track object
- * @param options.context - Tool execution context
  * @returns Array of updated clip info
  */
 export function handleUnloopedLengthening({
@@ -168,83 +157,25 @@ export function handleUnloopedLengthening({
   currentEndTime,
   clipStartMarker,
   track,
-  context,
 }: HandleUnloopedLengtheningArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
-  // MIDI clip handling - tile with chunks matching the current arrangement length
-  // Each tile shows a different portion of the clip content
+  // MIDI clip handling — set loop_end to extend arrangement length directly
   if (!isAudioClip) {
-    const tileSize = currentArrangementLength;
     const currentEndMarker = clip.getProperty("end_marker") as number;
     const targetEndMarker = clipStartMarker + arrangementLengthBeats;
 
-    // Extend source clip's end_marker to target (only if extending, never shrink)
+    // Extend end_marker so notes are visible in the extended region
     if (targetEndMarker > currentEndMarker) {
       clip.set("end_marker", targetEndMarker);
     }
 
+    // Set loop_end to extend arrangement length
+    const loopStart = clip.getProperty("loop_start") as number;
+
+    clip.set("loop_end", loopStart + arrangementLengthBeats);
+
     updatedClips.push({ id: clip.id });
-
-    // Create tiles for remaining space
-    let currentPosition = currentEndTime;
-    let currentContentOffset = clipStartMarker + currentArrangementLength;
-    const holdingAreaStart = context.holdingAreaStartBeats;
-
-    while (
-      currentPosition <
-      currentEndTime +
-        (arrangementLengthBeats - currentArrangementLength) -
-        EPSILON
-    ) {
-      const remainingSpace =
-        currentEndTime +
-        (arrangementLengthBeats - currentArrangementLength) -
-        currentPosition;
-      const tileLengthNeeded = Math.min(tileSize, remainingSpace);
-      const isPartialTile = tileSize - tileLengthNeeded > EPSILON;
-
-      const tileStartMarker = currentContentOffset;
-      const tileEndMarker = tileStartMarker + tileLengthNeeded;
-
-      let tileClip: LiveAPI;
-
-      if (isPartialTile) {
-        // Partial tiles use holding area to avoid overwriting subsequent clips
-        const { holdingClipId } = createShortenedClipInHolding(
-          clip,
-          track,
-          tileLengthNeeded,
-          holdingAreaStart as number,
-          true, // isMidiClip
-          context as TilingContext,
-        );
-
-        tileClip = moveClipFromHolding(holdingClipId, track, currentPosition);
-      } else {
-        // Full tiles use direct duplication
-        const duplicateResult = track.call(
-          "duplicate_clip_to_arrangement",
-          `id ${clip.id}`,
-          currentPosition,
-        ) as string;
-
-        tileClip = LiveAPI.from(duplicateResult);
-      }
-
-      // Set markers using looping workaround
-      setClipMarkersWithLoopingWorkaround(tileClip, {
-        loopStart: tileStartMarker,
-        loopEnd: tileEndMarker,
-        startMarker: tileStartMarker,
-        endMarker: tileEndMarker,
-      });
-
-      updatedClips.push({ id: tileClip.id });
-
-      currentPosition += tileLengthNeeded;
-      currentContentOffset += tileLengthNeeded;
-    }
 
     return updatedClips;
   }

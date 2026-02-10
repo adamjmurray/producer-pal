@@ -24,15 +24,18 @@ session-based tiling exists for warped looped audio clips, why we
 duplicate-and-delete instead of resizing, and why lengthening produces multiple
 clips instead of stretching one.
 
-**Exception — unlooped clips**: For unlooped audio clips (both warped and
-unwarped), `loop_end` is writable and extends the clip's arrangement length.
+**Exception — unlooped clips**: For unlooped clips (MIDI, warped audio, and
+unwarped audio), `loop_end` is writable and extends the clip's arrangement
+length.
 
-- **Unwarped**: `loop_end` is in **seconds**. Ableton auto-clamps to the file
-  boundary. See "Lengthening — Unlooped Unwarped Audio" below.
-- **Warped**: `loop_end` is in **content beats** (1:1 with arrangement beats).
-  Ableton does **not** auto-clamp — the clip extends with silence past the file
-  boundary. Manual boundary detection and clamping is required. See "Lengthening
-  — Unlooped Warped Audio" below.
+- **MIDI**: `loop_end` is in **beats**. No boundary — MIDI content is notes, so
+  `loop_end` can be set to any value. See "Lengthening — Unlooped MIDI" below.
+- **Unwarped audio**: `loop_end` is in **seconds**. Ableton auto-clamps to the
+  file boundary. See "Lengthening — Unlooped Unwarped Audio" below.
+- **Warped audio**: `loop_end` is in **content beats** (1:1 with arrangement
+  beats). Ableton does **not** auto-clamp — the clip extends with silence past
+  the file boundary. Manual boundary detection and clamping is required. See
+  "Lengthening — Unlooped Warped Audio" below.
 
 ### Mid-Clip Splitting Doesn't Work
 
@@ -75,8 +78,8 @@ When looping is disabled on a warped arrangement clip that was looping,
 toggling looping off on warped clips.
 
 **Exception — unlooped clips**: For clips that are already unlooped, `loop_end`
-is writable and persists. This is the mechanism used for both warped and
-unwarped unlooped audio lengthening.
+is writable and persists. This is the mechanism used for all unlooped
+lengthening (MIDI, warped audio, and unwarped audio).
 
 ### Warped vs Unwarped Beats
 
@@ -222,12 +225,18 @@ loop region:
 Entry: `handleUnloopedLengthening()` → `!isAudioClip` branch in
 `arrangement-unlooped-helpers.ts`
 
-1. Extend source clip's `end_marker` to
-   `clipStartMarker + arrangementLengthBeats` (only if extending, never shrink)
-2. Tile remaining space — each tile shows the next sequential content portion
-3. Full tiles: direct `duplicate_clip_to_arrangement`
-4. Partial (last) tile: holding area approach to avoid overshooting
-5. Set markers on each tile via looping workaround
+Sets `loop_end` directly on the source clip to extend the arrangement length.
+Also extends `end_marker` so notes are visible in the extended region. No
+boundary detection needed (MIDI has no file boundary — content is just notes).
+
+Algorithm:
+
+1. **Extend `end_marker`**: set to `clipStartMarker + arrangementLengthBeats`
+   (only if extending, never shrink)
+2. **Set `loop_end`**: `loopStart + arrangementLengthBeats`
+
+No tiling, no holding area. Returns a single clip (preserves clip ID, envelopes,
+and automation).
 
 ### Lengthening — Unlooped Warped Audio
 
