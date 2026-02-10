@@ -89,7 +89,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
-    "openai": "^6.19.0",
+    "openai": "^6.20.0",
     "preact": "^10.28.3",
     "zod": "^4.3.6"
   },
