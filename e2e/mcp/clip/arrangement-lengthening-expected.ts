@@ -63,15 +63,15 @@ const audioLoopedWarped: Record<number, ExpectedClip[]> = {
 
 // Tracks 24-29 (unlooped warped audio) have insufficient file content for the
 // 4-bar target. No-hidden tracks (24,26,28) skip entirely; hidden-content
-// tracks (25,27,29) cap to file boundary and create one tile.
+// tracks (25,27,29) cap to file boundary via loop_end (single clip, no tiles).
 // prettier-ignore
 const audioUnloopedWarped: Record<number, ExpectedClip[]> = {
   24: c([["1|1","2:0","1|1","3|1"]]),
-  25: c([["1|1","1:1","1|1","3|1"],["2|2","0:3","2|2","3|1"]]),
+  25: c([["1|1","2:0","1|1","3|1"]]),
   26: c([["1|1","2:0","1|1","3|1"]]),
-  27: c([["1|1","1:1","1|1","3|1"],["2|2","0:3","2|2","3|1"]]),
+  27: c([["1|1","2:0","1|1","3|1"]]),
   28: c([["1|1","1:3","1|2","3|1"]]),
-  29: c([["1|1","1:0","1|2","3|1"],["2|1","0:3","2|2","3|1"]]),
+  29: c([["1|1","1:3","1|2","3|1"]]),
 };
 
 // Tracks 30-35 (unwarped audio) use loop_end to extend. Ableton auto-clamps at

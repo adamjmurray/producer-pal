@@ -130,8 +130,8 @@ describe("Audio Unlooped Warped Clips - Hidden Content (t25,t27,t29)", () => {
       // Capped at file content boundary — can't reach 4-bar target
       expect(warnings.length).toBeGreaterThanOrEqual(1);
 
-      // Original clip + tile revealing hidden content
-      expect(resultClips).toHaveLength(2);
+      // Single clip (extended in place via loop_end, no tiles)
+      expect(resultClips).toHaveLength(1);
       assertClipDetails(resultClips, expectedLengtheningClips[track]!);
     },
   );

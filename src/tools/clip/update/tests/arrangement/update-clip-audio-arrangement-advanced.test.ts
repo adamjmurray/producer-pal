@@ -20,12 +20,11 @@ import {
   setupArrangementClipPath,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
-// Warped audio clip lengthening uses session-based tiling: a single tile is
-// created via createAudioClipInSession with the exact remaining arrangement
-// length, because arrangement clip end_time is immutable after creation.
+// Warped unlooped audio clip lengthening uses loop_end to extend in place.
+// File content boundary is detected via a session clip (read end_marker).
 
 /**
- * Set up mocks for session-based warped audio tiling.
+ * Set up mocks for session-based file content boundary detection.
  * @param fileContentBoundary - File's actual content length (returned by getProperty("end_marker"))
  * @returns Mock objects for assertions
  */
@@ -52,12 +51,11 @@ function setupSessionTilingMock(fileContentBoundary = 20.0) {
   return { mockCreate, sessionClip, sessionSlot };
 }
 
-describe("Unlooped warped audio clips - arrangementLength extension", () => {
-  it("should create single tile via session (start_marker > 0)", async () => {
+describe("Unlooped warped audio clips - arrangementLength extension via loop_end", () => {
+  it("should extend warped clip via loop_end (start_marker > 0)", async () => {
     const clipId = "705";
-    const tileClipId = "706";
 
-    setupArrangementClipPath(0, [clipId, tileClipId]);
+    setupArrangementClipPath(0, [clipId]);
 
     // Source: warped, unlooped, arrangement 0-7, content [1, 8]
     mockLiveApiGet({
@@ -79,23 +77,12 @@ describe("Unlooped warped audio clips - arrangementLength extension", () => {
       },
     });
 
-    const { mockCreate, sessionClip, sessionSlot } = setupSessionTilingMock();
-
-    liveApiCall.mockImplementation(function (method: string) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return `id ${tileClipId}`;
-      }
-
-      return 1;
-    });
+    const { mockCreate, sessionSlot } = setupSessionTilingMock();
 
     const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" },
       mockContext,
     );
-
-    // Source end_marker extended: startMarker(1) + target(14) = 15
-    assertSourceClipEndMarker(clipId, 15.0);
 
     // Session clip created for boundary detection (loop_end=1)
     expect(mockCreate).toHaveBeenCalledWith(
@@ -104,38 +91,29 @@ describe("Unlooped warped audio clips - arrangementLength extension", () => {
       "/audio/test.wav",
     );
 
-    // Session markers set to content range [8, 15]
-    expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 15.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("loop_start", 8.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("end_marker", 15.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("start_marker", 8.0);
-
-    // Tile duplicated from session to arrangement at position 7
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id session-temp",
-      7.0,
-    );
-
-    // Tile clip unlooped
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _id: tileClipId }),
-      "looping",
-      0,
-    );
-
-    // Session slot cleaned up
+    // Session clip cleaned up immediately after boundary detection
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
-    expect(result).toStrictEqual([{ id: clipId }, { id: tileClipId }]);
+    // Source clip loop_end set: loopStart(1) + target(14) = 15.0
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ _id: clipId }),
+      "loop_end",
+      15.0,
+    );
+
+    // Source end_marker extended: startMarker(1) + target(14) = 15
+    assertSourceClipEndMarker(clipId, 15.0);
+
+    // Single clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
     mockCreate.mockRestore();
   });
 
-  it("should create single tile for hidden content (was multiple before fix)", async () => {
+  it("should extend warped clip via loop_end (hidden content)", async () => {
     const clipId = "716";
-    const tileClipId = "717";
 
-    setupArrangementClipPath(0, [clipId, tileClipId]);
+    setupArrangementClipPath(0, [clipId]);
 
     // Source: warped, unlooped, arrangement 0-4, content [1, 5] (hidden content)
     mockLiveApiGet({
@@ -157,23 +135,12 @@ describe("Unlooped warped audio clips - arrangementLength extension", () => {
       },
     });
 
-    const { mockCreate, sessionClip, sessionSlot } = setupSessionTilingMock();
-
-    liveApiCall.mockImplementation(function (method: string) {
-      if (method === "duplicate_clip_to_arrangement") {
-        return `id ${tileClipId}`;
-      }
-
-      return 1;
-    });
+    const { mockCreate, sessionSlot } = setupSessionTilingMock();
 
     const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" },
       mockContext,
     );
-
-    // Source end_marker extended: startMarker(1) + target(14) = 15
-    assertSourceClipEndMarker(clipId, 15.0);
 
     // Session clip created for boundary detection (loop_end=1)
     expect(mockCreate).toHaveBeenCalledWith(
@@ -182,24 +149,22 @@ describe("Unlooped warped audio clips - arrangementLength extension", () => {
       "/audio/test.wav",
     );
 
-    // Session markers set to content range [5, 15]
-    expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 15.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("loop_start", 5.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("end_marker", 15.0);
-    expect(sessionClip.set).toHaveBeenCalledWith("start_marker", 5.0);
-
-    // Single tile duplicated at position 4 (not 3 tiles like before)
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id session-temp",
-      4.0,
-    );
-
-    // Session slot cleaned up
+    // Session clip cleaned up immediately after boundary detection
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
-    // Now 2 clips instead of 4 (source + 1 session-based tile)
-    expect(result).toStrictEqual([{ id: clipId }, { id: tileClipId }]);
+    // Source clip loop_end set: loopStart(1) + target(14) = 15.0
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ _id: clipId }),
+      "loop_end",
+      15.0,
+    );
+
+    // Source end_marker extended: startMarker(1) + target(14) = 15
+    assertSourceClipEndMarker(clipId, 15.0);
+
+    // Single clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
     mockCreate.mockRestore();
   });
 });
@@ -323,10 +288,9 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     const trackIndex = 0;
     const clipId = "900";
     const movedClipId = "901";
-    const tileClipId = "902";
 
     liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id && [clipId, movedClipId, tileClipId].includes(this._id)) {
+      if (this._id && [clipId, movedClipId].includes(this._id)) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
 
@@ -376,19 +340,12 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     const { mockCreate, sessionSlot } = setupSessionTilingMock();
 
-    let duplicateCallCount = 0;
-
     liveApiCall.mockImplementation(function (
       this: MockLiveAPIContext,
       method: string,
     ) {
       if (method === "duplicate_clip_to_arrangement") {
-        duplicateCallCount++;
-
-        // First: move, second: tile from session
-        return duplicateCallCount === 1
-          ? `id ${movedClipId}`
-          : `id ${tileClipId}`;
+        return `id ${movedClipId}`;
       }
 
       if (method === "delete_clip") return 1;
@@ -421,17 +378,22 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       "/audio/test.wav",
     );
 
-    // Tile duplicated from session at NEW position (12.0)
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id session-temp",
-      12.0,
-    );
-
-    // Session slot cleaned up
+    // Session clip cleaned up immediately after boundary detection
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
-    expect(result).toStrictEqual([{ id: movedClipId }, { id: tileClipId }]);
+    // Moved clip loop_end set: loopStart(0) + target(8) = 8.0
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ _id: movedClipId }),
+      "loop_end",
+      8.0,
+    );
+
+    // Moved clip end_marker extended: startMarker(0) + target(8) = 8.0
+    assertSourceClipEndMarker(movedClipId, 8.0);
+
+    // Single moved clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: movedClipId });
     mockCreate.mockRestore();
   });
 });

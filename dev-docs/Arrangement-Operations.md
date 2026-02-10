@@ -14,19 +14,25 @@ over-engineered, one of these is usually why.
 ### `end_time` is Immutable (Warped Clips)
 
 Arrangement clip `end_time` cannot be changed after creation by any means for
-warped clips. You cannot extend a warped clip's arrangement length by setting
-`end_time`, `end_marker`, `loop_end`, or any other property. The only way to get
-a warped clip with a specific arrangement length is to create it with that
-length (via session-based tiling or duplication).
+warped **looped** clips. You cannot extend a warped looped clip's arrangement
+length by setting `end_time`, `end_marker`, `loop_end`, or any other property.
+The only way to get a warped looped clip with a specific arrangement length is to
+create it with that length (via session-based tiling or duplication).
 
-This is _the_ fundamental constraint for warped clips. It's why session-based
-tiling exists for warped audio clips, why we duplicate-and-delete instead of
-resizing, and why lengthening produces multiple clips instead of stretching one.
+This is _the_ fundamental constraint for warped looped clips. It's why
+session-based tiling exists for warped looped audio clips, why we
+duplicate-and-delete instead of resizing, and why lengthening produces multiple
+clips instead of stretching one.
 
-**Exception — unwarped clips**: For unlooped, unwarped audio clips, `loop_end`
-is writable and in **seconds**. Setting it to a larger value extends the clip's
-arrangement length. If set beyond the sample boundary, Ableton auto-clamps to
-the file's end. See "Lengthening — Unlooped Unwarped Audio" below.
+**Exception — unlooped clips**: For unlooped audio clips (both warped and
+unwarped), `loop_end` is writable and extends the clip's arrangement length.
+
+- **Unwarped**: `loop_end` is in **seconds**. Ableton auto-clamps to the file
+  boundary. See "Lengthening — Unlooped Unwarped Audio" below.
+- **Warped**: `loop_end` is in **content beats** (1:1 with arrangement beats).
+  Ableton does **not** auto-clamp — the clip extends with silence past the file
+  boundary. Manual boundary detection and clamping is required. See "Lengthening
+  — Unlooped Warped Audio" below.
 
 ### Mid-Clip Splitting Doesn't Work
 
@@ -62,14 +68,15 @@ See `setClipMarkersWithLoopingWorkaround()` in `clip-marker-helpers.ts`.
 the actual file content length. Use content boundary detection instead (see Core
 Techniques below).
 
-### `loop_end` Reverts on Unlooped Warped Arrangement Clips
+### `loop_end` Reverts on Looped Warped Arrangement Clips
 
-When looping is disabled on a warped arrangement clip, `loop_end` reverts to its
-default. Don't rely on `loop_end` persisting for unlooped warped clips.
+When looping is disabled on a warped arrangement clip that was looping,
+`loop_end` reverts to its default. Don't rely on `loop_end` persisting after
+toggling looping off on warped clips.
 
-**Exception — unwarped clips**: `loop_end` (in seconds) persists on unwarped
-clips regardless of looping state. This is the mechanism used for unwarped audio
-lengthening.
+**Exception — unlooped clips**: For clips that are already unlooped, `loop_end`
+is writable and persists. This is the mechanism used for both warped and unwarped
+unlooped audio lengthening.
 
 ### Warped vs Unwarped Beats
 
@@ -222,19 +229,27 @@ Entry: `handleUnloopedLengthening()` → `!isAudioClip` branch in
 Entry: `handleUnloopedLengthening()` → `isWarped` branch in
 `arrangement-unlooped-helpers.ts`
 
-This is the most complex case due to immutable `end_time` + boundary detection:
+Sets `loop_end` directly on the source clip. Unlike unwarped clips, Ableton does
+**not** auto-clamp at the file boundary for warped clips, so boundary detection
+and manual clamping is required.
 
-1. **Boundary detection**: create session clip, read file content boundary
+Algorithm:
+
+1. **Boundary detection**: create session clip with `loop_end=1`, read
+   `end_marker` for file content boundary, delete session clip
 2. **Three-way check**:
    - **Skip**: `totalContentFromStart <= currentArrangementLength` (no
      additional file content). Warn, return source clip unchanged.
    - **Cap**: file has content but less than target. Cap `effectiveTarget` to
      `totalContentFromStart`, warn.
    - **Proceed**: file has sufficient content for the full target.
-3. **Create session tile**: set markers to the correct content range, duplicate
-   to arrangement, unloop, clean up
-4. **Extend source end_marker**: set to `clipStartMarker + effectiveTarget`
-   (only if extending)
+3. **Set `loop_end`**: `loopStart + effectiveTarget` (in content beats, 1:1 with
+   arrangement beats)
+4. **Extend `end_marker`**: set to `clipStartMarker + effectiveTarget` (only if
+   extending)
+
+No tiling, no holding area. Returns a single clip (preserves clip ID,
+envelopes, and automation).
 
 ### Lengthening — Unlooped Unwarped Audio
 
