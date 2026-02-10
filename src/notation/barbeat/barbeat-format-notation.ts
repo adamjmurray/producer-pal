@@ -130,19 +130,29 @@ function handleVelocityChange(
 ): { velocity: number; velocityDeviation: number } {
   if (noteVelocityDeviation > 0) {
     const velocityMin = noteVelocity;
-    const velocityMax = noteVelocity + noteVelocityDeviation;
+    const velocityMax = Math.min(127, noteVelocity + noteVelocityDeviation);
     const currentVelocityMin = currentVelocity;
-    const currentVelocityMax = currentVelocity + currentVelocityDeviation;
+    const currentVelocityMax = Math.min(
+      127,
+      currentVelocity + currentVelocityDeviation,
+    );
 
     if (
       velocityMin !== currentVelocityMin ||
       velocityMax !== currentVelocityMax
     ) {
+      // If clamping reduced the range to a single value, output single velocity
+      if (velocityMax === velocityMin) {
+        elements.push(`v${velocityMin}`);
+
+        return { velocity: velocityMin, velocityDeviation: 0 };
+      }
+
       elements.push(`v${velocityMin}-${velocityMax}`);
 
       return {
         velocity: velocityMin,
-        velocityDeviation: noteVelocityDeviation,
+        velocityDeviation: velocityMax - velocityMin,
       };
     }
   } else if (noteVelocity !== currentVelocity || currentVelocityDeviation > 0) {
