@@ -318,4 +318,18 @@ describe("bar|beat formatNotation()", () => {
     // Both should output as v127 (no range possible at max)
     expect(result).toBe("v127 C3 D3 1|1");
   });
+
+  it("clamps invalid high velocity values defensively", () => {
+    // Test that formatNotation handles invalid data gracefully
+    // (e.g., from buggy transforms or Live API)
+    const notes = [
+      createNote({ velocity: 200, velocity_deviation: 20 }), // Invalid: would be v200-127
+      createNote({ pitch: 62, velocity: 150, velocity_deviation: 10 }), // Invalid: would be v150-127
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    // Should clamp velocityMin to 127, resulting in single velocity (not ranges)
+    expect(result).toBe("v127 C3 D3 1|1");
+  });
 });

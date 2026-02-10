@@ -129,12 +129,13 @@ function handleVelocityChange(
   elements: string[],
 ): { velocity: number; velocityDeviation: number } {
   if (noteVelocityDeviation > 0) {
-    const velocityMin = noteVelocity;
-    const velocityMax = Math.min(127, noteVelocity + noteVelocityDeviation);
-    const currentVelocityMin = currentVelocity;
+    // Clamp velocityMin defensively (protects against invalid data from transforms/Live API)
+    const velocityMin = Math.max(1, Math.min(127, noteVelocity));
+    const velocityMax = Math.min(127, velocityMin + noteVelocityDeviation);
+    const currentVelocityMin = Math.max(1, Math.min(127, currentVelocity));
     const currentVelocityMax = Math.min(
       127,
-      currentVelocity + currentVelocityDeviation,
+      currentVelocityMin + currentVelocityDeviation,
     );
 
     if (
