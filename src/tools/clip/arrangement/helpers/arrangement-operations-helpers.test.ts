@@ -67,14 +67,14 @@ describe("arrangement-operations-helpers", () => {
         context: { holdingAreaStartBeats: 40000, silenceWavPath: "/test.wav" },
       });
 
-      // Should call createLoopeClipTiles which handles the shortening-then-tiling branch
+      // Should call createLoopedClipTiles which handles the shortening-then-tiling branch
       expect(mockTileClipToRange).toHaveBeenCalled();
       expect(result).toContainEqual({ id: "789" });
 
       mockTileClipToRange.mockRestore();
     });
 
-    it("should handle audio clip shortening with createAudioClipInSession in createLoopeClipTiles", () => {
+    it("should handle audio clip shortening with createAudioClipInSession in createLoopedClipTiles", () => {
       const sessionClipId = "session-123";
       const arrangementClipId = "arr-456";
       const clipProps = { start_marker: 4 };
