@@ -23,8 +23,8 @@ const MODEL_DOCS_URLS: Record<string, string | undefined> = {
 };
 
 const DEFAULT_LOCAL_URLS: Record<string, string> = {
-  lmstudio: "http://localhost:1234/v1",
-  ollama: "http://localhost:11434/v1",
+  lmstudio: "http://localhost:1234",
+  ollama: "http://localhost:11434",
 };
 
 interface ConnectionTabProps {

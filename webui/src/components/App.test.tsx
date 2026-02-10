@@ -314,21 +314,21 @@ describe("App", () => {
     });
   });
 
+  // Helper to get the second useChat call (openai adapter) extraParams
+  const getOpenAIExtraParams = () => {
+    const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
+
+    return calls[1]![0].extraParams;
+  };
+
+  // Helper to get the second useChat call (openai adapter) apiKey
+  const getOpenAIApiKey = () => {
+    const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
+
+    return calls[1]![0].apiKey;
+  };
+
   describe("baseUrl determination", () => {
-    // Helper to get the second useChat call (openai adapter) extraParams
-    const getOpenAIExtraParams = () => {
-      const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
-
-      return calls[1]![0].extraParams;
-    };
-
-    // Helper to get the second useChat call (openai adapter) apiKey
-    const getOpenAIApiKey = () => {
-      const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
-
-      return calls[1]![0].apiKey;
-    };
-
     it("uses custom baseUrl for custom provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
@@ -437,6 +437,162 @@ describe("App", () => {
       });
       render(<App />);
       expect(getOpenAIExtraParams().baseUrl).toBeUndefined();
+    });
+  });
+
+  describe("URL normalization for local providers", () => {
+    describe("lmstudio normalization", () => {
+      it("appends /v1 to URL without suffix", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://localhost:1234",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      });
+
+      it("removes trailing slash and appends /v1", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://localhost:1234/",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      });
+
+      it("preserves URL already ending in /v1", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://localhost:1234/v1",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      });
+
+      it("removes trailing slash from URL ending in /v1/", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://localhost:1234/v1/",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      });
+
+      it("appends /v1 to remote host URL", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://192.168.1.100:1234",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://192.168.1.100:1234/v1",
+        );
+      });
+
+      it("appends /v1 to custom path", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "lmstudio",
+          baseUrl: "http://localhost:8080/api",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:8080/api/v1",
+        );
+      });
+    });
+
+    describe("ollama normalization", () => {
+      it("appends /v1 to URL without suffix", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://localhost:11434",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:11434/v1",
+        );
+      });
+
+      it("removes trailing slash and appends /v1", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://localhost:11434/",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:11434/v1",
+        );
+      });
+
+      it("preserves URL already ending in /v1", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://localhost:11434/v1",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:11434/v1",
+        );
+      });
+
+      it("removes trailing slash from URL ending in /v1/", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://localhost:11434/v1/",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:11434/v1",
+        );
+      });
+
+      it("appends /v1 to remote host URL", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://192.168.1.100:11434",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://192.168.1.100:11434/v1",
+        );
+      });
+
+      it("appends /v1 to custom path", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "ollama",
+          baseUrl: "http://localhost:8080/api",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:8080/api/v1",
+        );
+      });
+    });
+
+    describe("custom provider (no normalization)", () => {
+      it("does not normalize custom provider URL", () => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: "custom",
+          baseUrl: "http://localhost:8080/api",
+        });
+        render(<App />);
+        expect(getOpenAIExtraParams().baseUrl).toBe(
+          "http://localhost:8080/api",
+        );
+      });
     });
   });
 });

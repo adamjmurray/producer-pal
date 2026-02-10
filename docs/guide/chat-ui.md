@@ -78,8 +78,8 @@ Configure your AI provider:
 Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
 
-- **URL** - Server address (default: `http://localhost:11434/v1` for Ollama,
-  `http://localhost:1234/v1` for LM Studio)
+- **URL** - Server address (default: `http://localhost:11434` for Ollama,
+  `http://localhost:1234` for LM Studio)
 - **Model** - Select from installed models
 
 In most cases, you should use the default URL. This is an advanced configuration
@@ -92,7 +92,7 @@ You may need to change the URL if:
   network (or anywhere on the Internet). This allows another computer to handle
   the resource-intensive language model processing while your main computer
   focuses on running Ableton Live. Replace `localhost` with the other computer's
-  network address (e.g., `http://192.168.1.100:11434/v1`)
+  network address (e.g., `http://192.168.1.100:11434`)
 
 #### Other models
 

@@ -196,13 +196,13 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
       expect(screen.getByText("URL")).toBeDefined();
       expect(
-        screen.getByPlaceholderText("http://localhost:1234/v1"),
+        screen.getByPlaceholderText("http://localhost:1234"),
       ).toBeDefined();
     });
 
@@ -211,12 +211,12 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          baseUrl="http://localhost:11434/v1"
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
       expect(
-        screen.getByPlaceholderText("http://localhost:11434/v1"),
+        screen.getByPlaceholderText("http://localhost:11434"),
       ).toBeDefined();
     });
 
@@ -225,7 +225,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
@@ -237,7 +237,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          baseUrl="http://localhost:11434/v1"
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
@@ -251,19 +251,19 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           setBaseUrl={setBaseUrl}
           providerLabel="LM Studio"
         />,
       );
 
-      const input = screen.getByPlaceholderText("http://localhost:1234/v1");
+      const input = screen.getByPlaceholderText("http://localhost:1234");
 
       fireEvent.change(input, {
-        target: { value: "http://192.168.1.100:1234/v1" },
+        target: { value: "http://192.168.1.100:1234" },
       });
 
-      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:1234/v1");
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:1234");
     });
 
     it("calls setBaseUrl when URL input changes for Ollama", () => {
@@ -273,19 +273,19 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          baseUrl="http://localhost:11434/v1"
+          baseUrl="http://localhost:11434"
           setBaseUrl={setBaseUrl}
           providerLabel="Ollama"
         />,
       );
 
-      const input = screen.getByPlaceholderText("http://localhost:11434/v1");
+      const input = screen.getByPlaceholderText("http://localhost:11434");
 
       fireEvent.change(input, {
-        target: { value: "http://192.168.1.100:11434/v1" },
+        target: { value: "http://192.168.1.100:11434" },
       });
 
-      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:11434/v1");
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:11434");
     });
 
     it("displays default URL hint for LM Studio", () => {
@@ -293,13 +293,11 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
-      expect(
-        screen.getByText("Default: http://localhost:1234/v1"),
-      ).toBeDefined();
+      expect(screen.getByText("Default: http://localhost:1234")).toBeDefined();
     });
 
     it("displays default URL hint for Ollama", () => {
@@ -307,13 +305,11 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          baseUrl="http://localhost:11434/v1"
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
-      expect(
-        screen.getByText("Default: http://localhost:11434/v1"),
-      ).toBeDefined();
+      expect(screen.getByText("Default: http://localhost:11434")).toBeDefined();
     });
 
     it("displays custom URL value in input", () => {
@@ -321,15 +317,15 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://192.168.1.50:1234/v1"
+          baseUrl="http://192.168.1.50:1234"
           providerLabel="LM Studio"
         />,
       );
       const input = screen.getByPlaceholderText(
-        "http://localhost:1234/v1",
+        "http://localhost:1234",
       ) as HTMLInputElement;
 
-      expect(input.value).toBe("http://192.168.1.50:1234/v1");
+      expect(input.value).toBe("http://192.168.1.50:1234");
     });
 
     it("does not render base URL input when setBaseUrl is not provided", () => {
@@ -337,14 +333,12 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           setBaseUrl={undefined}
           providerLabel="LM Studio"
         />,
       );
-      expect(
-        screen.queryByPlaceholderText("http://localhost:1234/v1"),
-      ).toBeNull();
+      expect(screen.queryByPlaceholderText("http://localhost:1234")).toBeNull();
     });
   });
 
@@ -502,7 +496,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
@@ -516,7 +510,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          baseUrl="http://localhost:11434/v1"
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );

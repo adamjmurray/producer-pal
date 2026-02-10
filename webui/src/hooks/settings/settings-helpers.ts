@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
-    baseUrl: "http://localhost:1234/v1",
+    baseUrl: "http://localhost:1234",
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
@@ -56,7 +56,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   ollama: {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
-    baseUrl: "http://localhost:11434/v1",
+    baseUrl: "http://localhost:11434",
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
