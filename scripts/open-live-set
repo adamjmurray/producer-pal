@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Open Live Set - delegates to TypeScript implementation in evals/eval/
+# Usage: ./scripts/open-live-set path/to/project.als
+
+exec npx tsx evals/eval/open-live-set.ts "$@"

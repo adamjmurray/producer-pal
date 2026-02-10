@@ -204,6 +204,13 @@ functions for clarity.
   node scripts/ppal-client.ts tools/list
   node scripts/ppal-client.ts tools/call tool-name '{"arg": "value"}'
   ```
+- **Diagnosing with test Live Sets**: When debugging tool behavior with
+  `scripts/ppal-client`, use the test Live Sets from `e2e/live-sets/` and
+  `evals/live-sets/` as reproducible test scenarios. Open one with
+  `scripts/open-live-set path/to/set.als`. Add `console.warn()` calls to trace
+  execution (these appear as WARNING in CLI output). After any writes modify the
+  Live Set state, reopen it with `scripts/open-live-set` to reset back to the
+  original state.
 - **LLM-based e2e testing**: Use `scripts/chat` to test tools via an LLM
   (verifies the AI can use tools correctly, not just that tools work):
   - Run `scripts/chat --help` to see available options
