@@ -32,6 +32,9 @@ reach out directly.
 - Code execution feature for the AI to generate custom algorithms for transforms
   and MIDI note generation
 
+Also planned: Optimizations for better (local) small language model support, and
+longer conversations in general.
+
 ## Changelog
 
 ### 1.4 - MIDI Transforms
