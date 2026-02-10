@@ -89,7 +89,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
-    "openai": "^6.19.0",
+    "openai": "^6.20.0",
     "preact": "^10.28.3",
     "zod": "^4.3.6"
   },
@@ -108,7 +108,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.2.2",
+    "@types/node": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "@vitest/coverage-v8": "^4.0.18",
