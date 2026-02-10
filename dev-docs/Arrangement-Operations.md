@@ -53,17 +53,6 @@ Only edge trims work reliably:
 This is why the splitting algorithm uses a holding-area approach with individual
 segment extraction rather than splitting in place.
 
-### Marker Setting on Unlooped Clips
-
-Setting `start_marker` or `end_marker` on unlooped arrangement clips is
-unreliable. The workaround:
-
-1. Enable looping (`clip.set("looping", 1)`)
-2. Set all markers (`loop_start`, `loop_end`, `start_marker`, `end_marker`)
-3. Disable looping (`clip.set("looping", 0)`)
-
-See `setClipMarkersWithLoopingWorkaround()` in `clip-marker-helpers.ts`.
-
 ### `end_marker` Accepts Any Value
 
 `end_marker` is **not clamped** to the audio file boundary. You can set it to
