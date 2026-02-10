@@ -11,13 +11,13 @@ from scratch.
 These constraints drive every design decision. When something seems
 over-engineered, one of these is usually why.
 
-### `end_time` is Immutable (Warped Clips)
+### Arrangement length is Immutable for Looped Clips
 
-Arrangement clip `end_time` cannot be changed after creation by any means for
-warped **looped** clips. You cannot extend a warped looped clip's arrangement
-length by setting `end_time`, `end_marker`, `loop_end`, or any other property.
-The only way to get a warped looped clip with a specific arrangement length is
-to create it with that length (via session-based tiling or duplication).
+Arrangement clip length cannot be changed after creation by any means for warped
+**looped** clips. You cannot extend a warped looped clip's arrangement length by
+setting `end_time`, `end_marker`, `loop_end`, or any other property. The only
+way to get a warped looped clip with a specific arrangement length is to create
+it with that length (via session-based tiling or duplication).
 
 This is _the_ fundamental constraint for warped looped clips. It's why
 session-based tiling exists for warped looped audio clips, why we
@@ -176,13 +176,6 @@ This enables three-way logic for unlooped warped audio lengthening:
 - **Proceed**: sufficient content for the full target
 
 Files: `arrangement-unlooped-helpers.ts` (`tileWarpedAudioContent`)
-
-### Looping Workaround for Marker Setting
-
-Enable looping → set all four markers → disable looping. Required for unlooped
-clips that reject direct marker changes.
-
-Files: `clip-marker-helpers.ts` (`setClipMarkersWithLoopingWorkaround`)
 
 ---
 
