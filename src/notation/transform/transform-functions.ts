@@ -12,6 +12,8 @@ import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import {
   evaluateChoose,
   evaluateCurve,
+  evaluateMinMax,
+  evaluatePow,
   evaluateRand,
 } from "./transform-functions-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
@@ -73,8 +75,13 @@ export function evaluateFunction(
     );
   }
 
-  // Math functions - single argument (round, floor, abs)
-  if (name === "round" || name === "floor" || name === "abs") {
+  // Math functions - single argument (round, floor, ceil, abs)
+  if (
+    name === "round" ||
+    name === "floor" ||
+    name === "ceil" ||
+    name === "abs"
+  ) {
     return evaluateMathFunction(
       name,
       args,
@@ -91,6 +98,19 @@ export function evaluateFunction(
   if (name === "min" || name === "max") {
     return evaluateMinMax(
       name,
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
+  // Math function - binary (pow)
+  if (name === "pow") {
+    return evaluatePow(
       args,
       position,
       timeSigNumerator,
@@ -357,7 +377,7 @@ function parsePeriod(
 }
 
 /**
- * Evaluate single-argument math function (round, floor, abs)
+ * Evaluate single-argument math function (round, floor, ceil, abs)
  * @param name - Function name
  * @param args - Function arguments
  * @param position - Note position in beats
@@ -396,49 +416,11 @@ function evaluateMathFunction(
       return Math.round(value);
     case "floor":
       return Math.floor(value);
+    case "ceil":
+      return Math.ceil(value);
     case "abs":
       return Math.abs(value);
     default:
       throw new Error(`Unknown math function: ${name}()`);
   }
-}
-
-/**
- * Evaluate min/max function (variadic - accepts 2+ arguments)
- * @param name - Function name ("min" or "max")
- * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
- * @returns Min or max of all arguments
- */
-function evaluateMinMax(
-  name: string,
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length < 2) {
-    throw new Error(`Function ${name}() requires at least 2 arguments`);
-  }
-
-  const values = args.map((arg) =>
-    evaluateExpression(
-      arg,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    ),
-  );
-
-  return name === "min" ? Math.min(...values) : Math.max(...values);
 }

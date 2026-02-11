@@ -181,3 +181,98 @@ export function evaluateCurve(
 
   return waveforms.curve(phase, start, end, exponent);
 }
+
+/**
+ * Evaluate pow function (exactly 2 arguments: base, exponent)
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns base raised to the power of exponent
+ */
+export function evaluatePow(
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length !== 2) {
+    throw new Error(
+      `Function pow() requires exactly 2 arguments: pow(base, exponent)`,
+    );
+  }
+
+  const base = evaluateExpression(
+    args[0] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
+
+  const exponent = evaluateExpression(
+    args[1] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
+
+  const result = Math.pow(base, exponent);
+
+  if (!Number.isFinite(result)) {
+    throw new Error(
+      `Function pow(${base}, ${exponent}) produced a non-finite result`,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Evaluate min/max function (variadic - accepts 2+ arguments)
+ * @param name - Function name ("min" or "max")
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Min or max of all arguments
+ */
+export function evaluateMinMax(
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length < 2) {
+    throw new Error(`Function ${name}() requires at least 2 arguments`);
+  }
+
+  const values = args.map((arg) =>
+    evaluateExpression(
+      arg,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+    ),
+  );
+
+  return name === "min" ? Math.min(...values) : Math.max(...values);
+}

@@ -167,7 +167,9 @@ functionCall
 functionName
   = "round" { return "round"; }
   / "floor" { return "floor"; }
+  / "ceil" { return "ceil"; }
   / "abs" { return "abs"; }
+  / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
   / "cos" { return "cos"; }

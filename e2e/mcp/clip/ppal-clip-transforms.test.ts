@@ -476,8 +476,20 @@ describe("ppal-clip-transforms (math functions)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v50");
 
+    // ceil(): round up to steps
+    clipId = await createMidiClip(12, "v63 C3 1|1");
+    await applyTransform(clipId, "velocity = ceil(note.velocity / 10) * 10");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v70"); // ceil(6.3) * 10 = 70
+
+    // pow(): exponential scaling
+    clipId = await createMidiClip(25, "v100 C3 1|1");
+    await applyTransform(clipId, "velocity = pow(3, 2)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v9"); // 3^2 = 9
+
     // Nested: max(60, min(100, value))
-    clipId = await createMidiClip(12, "v50 C3 1|1");
+    clipId = await createMidiClip(26, "v50 C3 1|1");
     await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v60"); // max(60, 50) = 60

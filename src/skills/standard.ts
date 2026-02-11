@@ -146,7 +146,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), abs(x), min(a,b,...), max(a,b,...)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), min(a,b,...), max(a,b,...), pow(base,exp)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves

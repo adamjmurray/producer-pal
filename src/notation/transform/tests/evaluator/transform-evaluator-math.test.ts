@@ -86,6 +86,40 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("ceil", () => {
+    it.each([
+      ["10.1", 11, "positive decimal"],
+      ["-2.7", -2, "negative (toward +infinity)"],
+      ["5", 5, "integer unchanged"],
+    ])("ceil(%s) = %d (%s)", (input, expected) => {
+      const result = evaluateTransform(`velocity = ceil(${input})`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+  });
+
+  describe("pow", () => {
+    it.each([
+      ["pow(2, 3)", 8, "basic power"],
+      ["pow(9, 0.5)", 3, "square root"],
+      ["pow(2, 0)", 1, "zero exponent"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("works with expressions", () => {
+      const result = evaluateTransform(
+        "velocity = pow(note.velocity, 2)",
+        CTX,
+        { velocity: 3 },
+      );
+
+      expect(result.velocity!.value).toBe(9);
+    });
+  });
+
   describe("nested functions", () => {
     it("round(12 * rand()) returns integer in range", () => {
       for (let i = 0; i < 10; i++) {

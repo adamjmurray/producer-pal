@@ -16,9 +16,11 @@ curve(start, end, exponent); // exponential ramp over clip/time range
 // Math functions
 round(value); // round to nearest integer
 floor(value); // round down to integer
+ceil(value); // round up to integer
 abs(value); // absolute value
 min(a, b, ...); // minimum of 2+ values
 max(a, b, ...); // maximum of 2+ values
+pow(base, exponent); // base raised to exponent
 ```
 
 ## Parameters
@@ -330,6 +332,12 @@ velocity = min(max(note.velocity, 40), 100);
 
 // Alternating pattern (every other beat)
 velocity = 60 + 40 * (floor(note.start) % 2);
+
+// Round velocity up to next multiple of 10
+velocity = ceil(note.velocity / 10) * 10;
+
+// Exponential scaling
+velocity = pow(note.velocity / 127, 2) * 127;
 ```
 
 ### Pitch Filtering

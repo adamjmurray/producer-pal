@@ -242,6 +242,10 @@ describe("Transform Evaluator Error Handling", () => {
       ["round()", "round with no arguments"],
       ["floor()", "floor with no arguments"],
       ["abs()", "abs with no arguments"],
+      ["ceil()", "ceil with no arguments"],
+      ["pow(2)", "pow with only one argument"],
+      ["pow(0, -1)", "pow producing Infinity"],
+      ["pow(-1, 0.5)", "pow producing NaN"],
       ["min(60)", "min with only one argument"],
       ["max(60)", "max with only one argument"],
     ])("handles %s error", (expr) => {
