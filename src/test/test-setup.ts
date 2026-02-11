@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, vi } from "vitest";
@@ -13,6 +14,7 @@ import {
   liveApiType,
   mockLiveApiGet,
 } from "./mocks/mock-live-api.ts";
+import { clearMockRegistry } from "./mocks/mock-registry.ts";
 import { Task } from "./mocks/mock-task.ts";
 
 const g = globalThis as Record<string, unknown>;
@@ -92,6 +94,9 @@ beforeEach(() => {
 
   // Clear mock folder structure
   clearMockFolderStructure();
+
+  // Clear registered mock objects before setting up defaults
+  clearMockRegistry();
 
   // default mocking behaviors:
   mockLiveApiGet();

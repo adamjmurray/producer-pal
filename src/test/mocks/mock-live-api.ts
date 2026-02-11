@@ -1,15 +1,19 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
 import {
+  MockSequence,
   children,
+  detectTypeFromPath,
   getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
+import { type MockObjectHandle, lookupMockObject } from "./mock-registry.ts";
 
-export { children };
+export { MockSequence, children };
 
 /** Context available in mockImplementation callbacks for LiveAPI mocks */
 export interface MockLiveAPIContext {
@@ -19,8 +23,6 @@ export interface MockLiveAPIContext {
   id?: string;
   type?: string;
 }
-
-export class MockSequence extends Array<unknown> {}
 
 export const liveApiId = vi.fn();
 export const liveApiPath = vi.fn();
@@ -32,18 +34,28 @@ export const liveApiCall = vi.fn();
 export class LiveAPI {
   _path?: string;
   _id?: string;
+  _registered?: MockObjectHandle;
   get: typeof liveApiGet;
   set: typeof liveApiSet;
   call: typeof liveApiCall;
 
   constructor(path?: string) {
     this._path = path;
-    this.get = liveApiGet;
-    this.set = liveApiSet;
-    this.call = liveApiCall;
     this._id = path?.startsWith("id ")
       ? path.slice(3)
       : path?.replaceAll(/\s+/g, "/");
+
+    this._registered = lookupMockObject(this._id, this._path);
+
+    if (this._registered) {
+      this.get = this._registered.get;
+      this.set = this._registered.set;
+      this.call = this._registered.call;
+    } else {
+      this.get = liveApiGet;
+      this.set = liveApiSet;
+      this.call = liveApiCall;
+    }
   }
 
   /**
@@ -60,10 +72,14 @@ export class LiveAPI {
   }
 
   get id(): string {
+    if (this._registered) return this._registered.id;
+
     return (liveApiId.apply(this) as string | undefined) ?? this._id ?? "";
   }
 
   get path(): string {
+    if (this._registered) return this._registered.path;
+
     return (liveApiPath.apply(this) as string | undefined) ?? this._path ?? "";
   }
 
@@ -115,54 +131,15 @@ export class LiveAPI {
   }
 
   get type(): string {
+    if (this._registered) return this._registered.type;
+
     const mockedType = liveApiType.apply(this) as string | undefined;
 
     if (mockedType !== undefined) {
       return mockedType;
     }
 
-    if (this.path === "live_set") {
-      return "LiveSet"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
-    }
-
-    if (this.path === "live_set view") {
-      return "SongView";
-    }
-
-    if (this.path === "live_app") {
-      return "Application";
-    }
-
-    if (this.path === "live_app view") {
-      return "AppView";
-    }
-
-    if (/^live_set tracks \d+$/.test(this.path)) {
-      return "Track";
-    }
-
-    if (/^live_set scenes \d+$/.test(this.path)) {
-      return "Scene";
-    }
-
-    if (/^live_set tracks \d+ clip_slots \d+$/.test(this.path)) {
-      return "ClipSlot";
-    }
-
-    if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(this.path)) {
-      return "Clip";
-    }
-
-    if (/^live_set tracks \d+ arrangement_clips \d+$/.test(this.path)) {
-      return "Clip";
-    }
-
-    // Default chain type for paths like "id chain1" or paths containing "chains"
-    if (this.path.includes("chain") || this._id?.includes("chain")) {
-      return "Chain";
-    }
-
-    return `TODO: Unknown type for path: "${this.path}"`;
+    return detectTypeFromPath(this.path, this._id);
   }
 
   // Extension properties/methods added by live-api-extensions.js at runtime

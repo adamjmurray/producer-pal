@@ -1,6 +1,30 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+export class MockSequence extends Array<unknown> {}
+
+/**
+ * Detect Live API type from path using standard Live API path patterns.
+ * @param path - Live API object path
+ * @param id - Optional bare ID for chain detection
+ * @returns Detected type string
+ */
+export function detectTypeFromPath(path: string, id?: string): string {
+  if (path === "live_set") return "LiveSet";
+  if (path === "live_set view") return "SongView";
+  if (path === "live_app") return "Application";
+  if (path === "live_app view") return "AppView";
+  if (/^live_set tracks \d+$/.test(path)) return "Track";
+  if (/^live_set scenes \d+$/.test(path)) return "Scene";
+  if (/^live_set tracks \d+ clip_slots \d+$/.test(path)) return "ClipSlot";
+  if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(path)) return "Clip";
+  if (/^live_set tracks \d+ arrangement_clips \d+$/.test(path)) return "Clip";
+  if (path.includes("chain") || id?.includes("chain")) return "Chain";
+
+  return `TODO: Unknown type for path: "${path}"`;
+}
 
 /**
  * Create Live API children array format from child IDs
