@@ -1,87 +1,63 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { Mock } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
   children,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-  setupScenePath,
-  setupSessionClipPath,
-  setupTrackPath,
+  type MockObjectHandle,
+  registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
-    setupTrackPath("track2", 1); // Second "Synth" track (sourceTrackIndex)
-
-    // Mock track properties including proper getChildIds for live_set
-    mockLiveApiGet({
-      LiveSet: {
-        tracks: children("track0", "track2", "track3"), // Returns track IDs in creation order
-      },
-      track0: {
-        name: "Synth", // First track with duplicate name (ID: 100)
-      },
-      track2: {
-        name: "Synth", // Second track with duplicate name (ID: 200, our source)
+    registerMockObject("track2", {
+      path: "live_set tracks 1",
+      properties: {
+        name: "Synth",
         current_monitoring_state: 0,
         input_routing_type: { display_name: "All Ins" },
         arm: 0,
         available_input_routing_types: [
           { display_name: "No Input", identifier: "no_input_id" },
           { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      track3: {
-        name: "Bass",
-      },
-      "live_set tracks 1": {
-        name: "Synth", // Source track properties
-        current_monitoring_state: 0,
-        input_routing_type: { display_name: "All Ins" },
-        arm: 0,
-        available_input_routing_types: [
-          { display_name: "No Input", identifier: "no_input_id" },
-          { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      "live_set tracks 2": {
-        // The new duplicated track
-        available_output_routing_types: [
-          { display_name: "Master", identifier: "master_id" },
-          { display_name: "Synth", identifier: "synth_1_id" }, // First Synth track
-          { display_name: "Synth", identifier: "synth_2_id" }, // Second Synth track
-          { display_name: "Bass", identifier: "bass_id" },
         ],
       },
     });
 
-    // Mock IDs for creation order - track2 has higher ID than track0
-    (liveApiId as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string {
-      if (this._path === "live_set tracks 0" || this._id === "id track0") {
-        return "100";
-      }
+    registerMockObject("live_set", {
+      path: "live_set",
+      properties: { tracks: children("track0", "track2", "track3") },
+    });
 
-      if (this._path === "live_set tracks 1" || this._id === "id track2") {
-        return "200";
-      } // Our source track
+    registerMockObject("track0", {
+      path: "live_set tracks 0",
+      properties: { name: "Synth" },
+    });
 
-      if (this._path === "live_set tracks 2" || this._id === "id track3") {
-        return "300";
-      }
+    registerMockObject("track3", {
+      path: "live_set tracks 2",
+      properties: { name: "Bass" },
+    });
 
-      return this._id ?? "";
+    // The new duplicated track at index 2
+    registerMockObject("live_set/tracks/2", {
+      path: "live_set tracks 2",
+      properties: {
+        devices: [],
+        clip_slots: [],
+        arrangement_clips: [],
+        available_output_routing_types: [
+          { display_name: "Master", identifier: "master_id" },
+          { display_name: "Synth", identifier: "synth_1_id" },
+          { display_name: "Synth", identifier: "synth_2_id" },
+          { display_name: "Bass", identifier: "bass_id" },
+        ],
+      },
     });
 
     // Test that the function doesn't crash with duplicate names
@@ -100,30 +76,28 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should handle unique track names without crashing (backward compatibility)", () => {
-    setupTrackPath("track1");
+    registerMockObject("track1", {
+      path: "live_set tracks 0",
+      properties: {
+        name: "UniqueTrack",
+        current_monitoring_state: 0,
+        input_routing_type: { display_name: "All Ins" },
+        arm: 0,
+        available_input_routing_types: [
+          { display_name: "No Input", identifier: "no_input_id" },
+          { display_name: "All Ins", identifier: "all_ins_id" },
+        ],
+      },
+    });
 
-    mockLiveApiGet({
-      track1: {
-        name: "UniqueTrack",
-        current_monitoring_state: 0,
-        input_routing_type: { display_name: "All Ins" },
-        arm: 0,
-        available_input_routing_types: [
-          { display_name: "No Input", identifier: "no_input_id" },
-          { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      "live_set tracks 0": {
-        name: "UniqueTrack",
-        current_monitoring_state: 0,
-        input_routing_type: { display_name: "All Ins" },
-        arm: 0,
-        available_input_routing_types: [
-          { display_name: "No Input", identifier: "no_input_id" },
-          { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      "live_set tracks 1": {
+    registerMockObject("live_set", { path: "live_set" });
+
+    registerMockObject("live_set/tracks/1", {
+      path: "live_set tracks 1",
+      properties: {
+        devices: [],
+        clip_slots: [],
+        arrangement_clips: [],
         available_output_routing_types: [
           { display_name: "Master", identifier: "master_id" },
           { display_name: "UniqueTrack", identifier: "unique_track_id" },
@@ -147,30 +121,28 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 
   it("should warn when track is not found in routing options", () => {
-    setupTrackPath("track1");
+    registerMockObject("track1", {
+      path: "live_set tracks 0",
+      properties: {
+        name: "NonExistentTrack",
+        current_monitoring_state: 0,
+        input_routing_type: { display_name: "All Ins" },
+        arm: 0,
+        available_input_routing_types: [
+          { display_name: "No Input", identifier: "no_input_id" },
+          { display_name: "All Ins", identifier: "all_ins_id" },
+        ],
+      },
+    });
 
-    mockLiveApiGet({
-      track1: {
-        name: "NonExistentTrack",
-        current_monitoring_state: 0,
-        input_routing_type: { display_name: "All Ins" },
-        arm: 0,
-        available_input_routing_types: [
-          { display_name: "No Input", identifier: "no_input_id" },
-          { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      "live_set tracks 0": {
-        name: "NonExistentTrack",
-        current_monitoring_state: 0,
-        input_routing_type: { display_name: "All Ins" },
-        arm: 0,
-        available_input_routing_types: [
-          { display_name: "No Input", identifier: "no_input_id" },
-          { display_name: "All Ins", identifier: "all_ins_id" },
-        ],
-      },
-      "live_set tracks 1": {
+    registerMockObject("live_set", { path: "live_set" });
+
+    const newTrack = registerMockObject("live_set/tracks/1", {
+      path: "live_set tracks 1",
+      properties: {
+        devices: [],
+        clip_slots: [],
+        arrangement_clips: [],
         available_output_routing_types: [
           { display_name: "Master", identifier: "master_id" },
           { display_name: "OtherTrack", identifier: "other_track_id" },
@@ -191,7 +163,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     );
 
     // Should not set output routing with NonExistentTrack identifier
-    expect(liveApiSet).not.toHaveBeenCalledWith(
+    expect(newTrack.set).not.toHaveBeenCalledWith(
       "output_routing_type",
       expect.objectContaining({
         identifier: expect.stringContaining("NonExistent"),
@@ -202,46 +174,24 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
 describe("duplicate - switchView functionality", () => {
   it("should switch to arrangement view when duplicating to arrangement destination", () => {
-    (liveApiPath as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string | undefined {
-      if (this._id === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
+    registerMockObject("clip1", {
+      path: "live_set tracks 0 clip_slots 0 clip",
+      properties: { length: 4 },
     });
 
-    (liveApiCall as Mock).mockImplementation(function (
-      method: string,
-    ): string[] | null {
-      if (method === "duplicate_clip_to_arrangement") {
-        return ["id", "live_set tracks 0 arrangement_clips 0"];
-      }
-
-      return null;
-    });
-
-    const originalPath = (liveApiPath as Mock).getMockImplementation() as
-      | ((this: MockLiveAPIContext) => string | undefined)
-      | undefined;
-
-    (liveApiPath as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string | undefined {
-      if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
-
-      return originalPath ? originalPath.call(this) : this._path;
-    });
-
-    mockLiveApiGet({
-      clip1: { exists: () => true, length: 4 },
-      "live_set tracks 0 arrangement_clips 0": {
-        is_arrangement_clip: 1,
-        start_time: 0,
+    registerMockObject("live_set/tracks/0", {
+      path: "live_set tracks 0",
+      methods: {
+        duplicate_clip_to_arrangement: () => [
+          "id",
+          "live_set tracks 0 arrangement_clips 0",
+        ],
       },
+    });
+
+    registerMockObject("live_set tracks 0 arrangement_clips 0", {
+      path: "live_set tracks 0 arrangement_clips 0",
+      properties: { is_arrangement_clip: 1, start_time: 0 },
     });
 
     duplicate({
@@ -256,17 +206,23 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating to session destination", () => {
-    setupSessionClipPath("clip1");
-
-    (liveApiCall as Mock).mockImplementation(function (): null {
-      return null;
+    registerMockObject("clip1", {
+      path: "live_set tracks 0 clip_slots 0 clip",
     });
 
-    mockLiveApiGet({
-      clip1: { exists: () => true },
-      "live_set tracks 0 clip_slots 1 clip": {
-        is_arrangement_clip: 0,
-      },
+    registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: "live_set tracks 0 clip_slots 0",
+      properties: { has_clip: 1 },
+    });
+
+    registerMockObject("live_set/tracks/0/clip_slots/1", {
+      path: "live_set tracks 0 clip_slots 1",
+      properties: { has_clip: 0 },
+    });
+
+    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+      path: "live_set tracks 0 clip_slots 1 clip",
+      properties: { is_arrangement_clip: 0 },
     });
 
     duplicate({
@@ -282,7 +238,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating tracks", () => {
-    setupTrackPath("track1");
+    setupTrackForSwitchView();
 
     duplicate({
       type: "track",
@@ -294,7 +250,16 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating scenes", () => {
-    setupScenePath("scene1");
+    registerMockObject("scene1", { path: "live_set scenes 0" });
+    registerMockObject("live_set", {
+      path: "live_set",
+      properties: { tracks: children("track0") },
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/1", {
+      path: "live_set tracks 0 clip_slots 1",
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("live_set/scenes/1", { path: "live_set scenes 1" });
 
     duplicate({
       type: "scene",
@@ -306,7 +271,7 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should not switch views when switchView=false", () => {
-    setupTrackPath("track1");
+    setupTrackForSwitchView();
 
     duplicate({
       type: "track",
@@ -321,7 +286,12 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should work with multiple duplicates when switchView=true", () => {
-    setupTrackPath("track1");
+    setupTrackForSwitchView();
+    // Register second new track for count=2
+    registerMockObject("live_set/tracks/2", {
+      path: "live_set tracks 2",
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
 
     const result = duplicate({
       type: "track",
@@ -334,3 +304,17 @@ describe("duplicate - switchView functionality", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+/**
+ * Helper to set up common mocks for track switchView tests
+ * @returns The new track mock object handle
+ */
+function setupTrackForSwitchView(): MockObjectHandle {
+  registerMockObject("track1", { path: "live_set tracks 0" });
+  registerMockObject("live_set", { path: "live_set" });
+
+  return registerMockObject("live_set/tracks/1", {
+    path: "live_set tracks 1",
+    properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+  });
+}

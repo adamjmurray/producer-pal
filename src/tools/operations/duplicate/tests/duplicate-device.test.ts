@@ -1,17 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import {
-  liveApiCall,
-  liveApiId,
-  liveApiSet,
-  type MockLiveAPIContext,
-  setupDeviceDuplicationMocks,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
-import type { Mock } from "vitest";
+import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 // Mock moveDeviceToPath to track calls
 vi.mock(import("#src/tools/device/update/update-device-helpers.ts"), () => ({
@@ -35,7 +30,16 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device to position after original (no toPath)", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 2");
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 2",
+      type: "PluginDevice",
+    });
+
+    const liveSet = registerMockObject("live_set", { path: "live_set" });
+
+    registerMockObject("live_set/tracks/1/devices/2", {
+      path: "live_set tracks 1 devices 2",
+    });
 
     const result = duplicate({ type: "device", id: "device1" });
 
@@ -44,11 +48,7 @@ describe("duplicate - device duplication", () => {
     });
 
     // Should duplicate track 0
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "duplicate_track",
-      0,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
 
     // Should move device to t0/d3 (position after original at d2)
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
@@ -59,15 +59,18 @@ describe("duplicate - device duplication", () => {
     );
 
     // Should delete the temp track
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "delete_track",
-      1,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
   it("should duplicate a device with toPath to different track", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 1");
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 1",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set/tracks/1/devices/1", {
+      path: "live_set tracks 1 devices 1",
+    });
 
     const result = duplicate({
       type: "device",
@@ -89,10 +92,16 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device in a rack chain", () => {
-    setupDeviceDuplicationMocks(
-      "rack_device1",
-      "live_set tracks 1 devices 0 chains 0 devices 1",
-    );
+    registerMockObject("rack_device1", {
+      path: "live_set tracks 1 devices 0 chains 0 devices 1",
+      type: "PluginDevice",
+    });
+
+    const liveSet = registerMockObject("live_set", { path: "live_set" });
+
+    registerMockObject("live_set/tracks/2/devices/0/chains/0/devices/1", {
+      path: "live_set tracks 2 devices 0 chains 0 devices 1",
+    });
 
     const result = duplicate({ type: "device", id: "rack_device1" });
 
@@ -101,11 +110,7 @@ describe("duplicate - device duplication", () => {
     });
 
     // Should duplicate track 1
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "duplicate_track",
-      1,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 1);
 
     // Should move device (from temp track at index 2)
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
@@ -116,15 +121,18 @@ describe("duplicate - device duplication", () => {
     );
 
     // Should delete the temp track at index 2
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "delete_track",
-      2,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 2);
   });
 
   it("should emit warning when count > 1", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 0",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set/tracks/1/devices/0", {
+      path: "live_set tracks 1 devices 0",
+    });
 
     duplicate({ type: "device", id: "device1", count: 3 });
 
@@ -134,10 +142,10 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw error for device on return track", () => {
-    setupDeviceDuplicationMocks(
-      "return_device1",
-      "live_set return_tracks 0 devices 0",
-    );
+    registerMockObject("return_device1", {
+      path: "live_set return_tracks 0 devices 0",
+      type: "PluginDevice",
+    });
 
     expect(() => duplicate({ type: "device", id: "return_device1" })).toThrow(
       "cannot duplicate devices on return/master tracks",
@@ -145,10 +153,10 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw error for device on master track", () => {
-    setupDeviceDuplicationMocks(
-      "master_device1",
-      "live_set master_track devices 0",
-    );
+    registerMockObject("master_device1", {
+      path: "live_set master_track devices 0",
+      type: "PluginDevice",
+    });
 
     expect(() => duplicate({ type: "device", id: "master_device1" })).toThrow(
       "cannot duplicate devices on return/master tracks",
@@ -156,20 +164,30 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should set custom name on duplicated device", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 0",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    const tempDevice = registerMockObject("live_set/tracks/1/devices/0", {
+      path: "live_set tracks 1 devices 0",
+    });
 
     duplicate({ type: "device", id: "device1", name: "My Effect" });
 
     // Check that set was called with name
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 1 devices 0" }),
-      "name",
-      "My Effect",
-    );
+    expect(tempDevice.set).toHaveBeenCalledWith("name", "My Effect");
   });
 
   it("should not adjust destination for tracks before source", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 5 devices 0");
+    registerMockObject("device1", {
+      path: "live_set tracks 5 devices 0",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set/tracks/6/devices/0", {
+      path: "live_set tracks 6 devices 0",
+    });
 
     duplicate({ type: "device", id: "device1", toPath: "t2/d0" });
 
@@ -181,33 +199,33 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should throw and cleanup if device not found in duplicated track", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
-
-    // Mock id to return "0" for the temp device path (makes exists() return false)
-    (liveApiId as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string {
-      if (this._path === "live_set tracks 1 devices 0") {
-        return "0"; // Makes exists() return false
-      }
-
-      return this._id ?? "";
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 0",
+      type: "PluginDevice",
     });
+
+    const liveSet = registerMockObject("live_set", { path: "live_set" });
+
+    // Do NOT register "live_set tracks 1 devices 0" — this makes it non-existent
+    mockNonExistentObjects();
 
     expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
       "device not found in duplicated track",
     );
 
     // Should still delete the temp track after error
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "delete_track",
-      1,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
   it("should not adjust non-track destination path (return/master)", () => {
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0 devices 0");
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 0",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set/tracks/1/devices/0", {
+      path: "live_set tracks 1 devices 0",
+    });
 
     // Using a path that doesn't start with "t" should not be adjusted
     duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
@@ -221,7 +239,10 @@ describe("duplicate - device duplication", () => {
 
   it("should throw error for invalid device path without device segment", () => {
     // Path with track but no device segment - triggers extractDevicePathWithinTrack error
-    setupDeviceDuplicationMocks("device1", "live_set tracks 0");
+    registerMockObject("device1", {
+      path: "live_set tracks 0",
+      type: "PluginDevice",
+    });
 
     expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
       "cannot extract device path",
@@ -232,10 +253,14 @@ describe("duplicate - device duplication", () => {
     // When extractDevicePath returns a path that ends with a chain (not device),
     // it should use the fallback of returning the simplified path as-is
     // This tests the "return simplifiedPath" fallback in calculateDefaultDestination
-    setupDeviceDuplicationMocks(
-      "device1",
-      "live_set tracks 0 devices 0 chains 0",
-    );
+    registerMockObject("device1", {
+      path: "live_set tracks 0 devices 0 chains 0",
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set/tracks/1/devices/0/chains/0", {
+      path: "live_set tracks 1 devices 0 chains 0",
+    });
 
     const result = duplicate({ type: "device", id: "device1" });
 

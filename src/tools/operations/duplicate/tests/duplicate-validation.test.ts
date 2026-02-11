@@ -1,19 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import {
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  type MockLiveAPIContext,
-  setupSessionClipPath,
-  setupTrackPath,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
-import type { Mock } from "vitest";
+import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", () => {
@@ -41,14 +35,14 @@ describe("duplicate - input validation", () => {
   });
 
   it("should throw an error when the object doesn't exist", () => {
-    (liveApiId as Mock).mockReturnValue("id 0");
+    mockNonExistentObjects();
     expect(() => duplicate({ type: "track", id: "nonexistent" })).toThrow(
       'duplicate failed: id "nonexistent" does not exist',
     );
   });
 
   it("should throw an error when type is 'track' and destination is 'arrangement'", () => {
-    (liveApiPath as Mock).mockReturnValue("live_set tracks 0");
+    registerMockObject("track1", { path: "live_set tracks 0" });
     expect(() =>
       duplicate({
         type: "track",
@@ -62,21 +56,23 @@ describe("duplicate - input validation", () => {
   });
 
   it("should allow type 'track' with destination 'session'", () => {
-    (liveApiPath as Mock).mockReturnValue("live_set tracks 0");
+    registerMockObject("track1", { path: "live_set tracks 0" });
     expect(() =>
       duplicate({ type: "track", id: "track1", destination: "session" }),
     ).not.toThrow();
   });
 
   it("should allow type 'track' without destination parameter", () => {
-    (liveApiPath as Mock).mockReturnValue("live_set tracks 0");
+    registerMockObject("track1", { path: "live_set tracks 0" });
     expect(() => duplicate({ type: "track", id: "track1" })).not.toThrow();
   });
 });
 
 describe("duplicate - clip session validation", () => {
   it("should throw an error when toTrackIndex is missing for session destination", () => {
-    setupSessionClipPath("clip1");
+    registerMockObject("clip1", {
+      path: "live_set tracks 0 clip_slots 0 clip",
+    });
 
     expect(() =>
       duplicate({
@@ -89,7 +85,9 @@ describe("duplicate - clip session validation", () => {
   });
 
   it("should throw an error when toSceneIndex is missing for session destination", () => {
-    setupSessionClipPath("clip1");
+    registerMockObject("clip1", {
+      path: "live_set tracks 0 clip_slots 0 clip",
+    });
 
     expect(() =>
       duplicate({
@@ -102,7 +100,9 @@ describe("duplicate - clip session validation", () => {
   });
 
   it("should throw an error when toSceneIndex is empty for session destination", () => {
-    setupSessionClipPath("clip1");
+    registerMockObject("clip1", {
+      path: "live_set tracks 0 clip_slots 0 clip",
+    });
 
     expect(() =>
       duplicate({
@@ -118,7 +118,7 @@ describe("duplicate - clip session validation", () => {
 
 describe("duplicate - return format", () => {
   it("should return single object format when count=1", () => {
-    setupTrackPath("track1");
+    registerMockObject("track1", { path: "live_set tracks 0" });
 
     const result = duplicate({ type: "track", id: "track1", count: 1 });
 
@@ -130,7 +130,7 @@ describe("duplicate - return format", () => {
   });
 
   it("should return objects array format when count>1", () => {
-    setupTrackPath("track1");
+    registerMockObject("track1", { path: "live_set tracks 0" });
 
     const result = duplicate({ type: "track", id: "track1", count: 2 });
 
@@ -143,24 +143,9 @@ describe("duplicate - return format", () => {
 
 describe("duplicate - track/scene index validation", () => {
   it("should throw when track index cannot be determined", () => {
-    // Set up a path that doesn't match "tracks N" pattern but returns Track type
-    (liveApiPath as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string | undefined {
-      if (this._id === "track1") {
-        return "live_set some_other_path";
-      }
-
-      return this._path;
-    });
-
-    // Mock the type to return Track to pass type validation
-    (liveApiType as Mock).mockImplementation(function (
-      this: MockLiveAPIContext,
-    ): string | undefined {
-      if (this._id === "track1") {
-        return "Track";
-      }
+    registerMockObject("track1", {
+      path: "live_set some_other_path",
+      type: "Track",
     });
 
     expect(() => duplicate({ type: "track", id: "track1" })).toThrow(
@@ -170,24 +155,9 @@ describe("duplicate - track/scene index validation", () => {
 
   describe("scene index validation", () => {
     beforeEach(() => {
-      // Set up a path that doesn't match "scenes N" pattern but returns Scene type
-      (liveApiPath as Mock).mockImplementation(function (
-        this: MockLiveAPIContext,
-      ): string | undefined {
-        if (this._id === "scene1") {
-          return "live_set some_other_path";
-        }
-
-        return this._path;
-      });
-
-      // Mock the type to return Scene to pass type validation
-      (liveApiType as Mock).mockImplementation(function (
-        this: MockLiveAPIContext,
-      ): string | undefined {
-        if (this._id === "scene1") {
-          return "Scene";
-        }
+      registerMockObject("scene1", {
+        path: "live_set some_other_path",
+        type: "Scene",
       });
     });
 

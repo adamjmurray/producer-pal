@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -8,18 +9,15 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
   createStandardMidiClipMock,
-  liveApiCall,
-  mockLiveApiGet,
-  setupArrangementClipMocks,
-  setupArrangementDuplicationMock,
-  setupScenePath,
-  setupSessionClipPath,
+  type MockObjectHandle,
+  registerClipSlot,
+  registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
     it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
       expect(() =>
         duplicate({
@@ -33,7 +31,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
       expect(() =>
         duplicate({
@@ -49,7 +47,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
       expect(() =>
         duplicate({
@@ -65,7 +63,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
       expect(() =>
         duplicate({
@@ -83,23 +81,35 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("scene duplication with locator", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
       // Mock scene with one clip
-      // Note: cue point keys use the id ("cue0", "cue1") from children() helper
-      mockLiveApiGet({
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1"),
         },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock(),
-        cue0: { time: 0, name: "Intro" },
-        cue1: { time: 16, name: "Verse" },
+      });
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+      registerMockObject("cue0", { properties: { time: 0, name: "Intro" } });
+      registerMockObject("cue1", { properties: { time: 16, name: "Verse" } });
+
+      const track0 = registerMockObject("live_set/tracks/0", {
+        path: "live_set tracks 0",
+        methods: {
+          duplicate_clip_to_arrangement: () => [
+            "id",
+            "live_set tracks 0 arrangement_clips 0",
+          ],
+          get_notes_extended: () => JSON.stringify({ notes: [] }),
+        },
       });
 
-      setupArrangementDuplicationMock();
-      setupArrangementClipMocks();
+      registerMockObject("live_set tracks 0 arrangement_clips 0", {
+        path: "live_set tracks 0 arrangement_clips 0",
+        properties: { is_arrangement_clip: 1, start_time: 16 },
+      });
 
       const result = duplicate({
         type: "scene",
@@ -109,8 +119,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       });
 
       // Should duplicate at locator-1's position (16 beats = 5|1)
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id live_set/tracks/0/clip_slots/0/clip",
         16,
@@ -121,22 +130,35 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
-      setupScenePath("scene1");
+      registerMockObject("scene1", { path: "live_set scenes 0" });
 
-      mockLiveApiGet({
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1", "cue2"),
         },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock(),
-        cue0: { time: 0, name: "Intro" },
-        cue1: { time: 16, name: "Verse" },
-        cue2: { time: 32, name: "Chorus" },
+      });
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+      registerMockObject("cue0", { properties: { time: 0, name: "Intro" } });
+      registerMockObject("cue1", { properties: { time: 16, name: "Verse" } });
+      registerMockObject("cue2", { properties: { time: 32, name: "Chorus" } });
+
+      const track0 = registerMockObject("live_set/tracks/0", {
+        path: "live_set tracks 0",
+        methods: {
+          duplicate_clip_to_arrangement: () => [
+            "id",
+            "live_set tracks 0 arrangement_clips 0",
+          ],
+          get_notes_extended: () => JSON.stringify({ notes: [] }),
+        },
       });
 
-      setupArrangementDuplicationMock();
-      setupArrangementClipMocks({ getStartTime: () => 32 });
+      registerMockObject("live_set tracks 0 arrangement_clips 0", {
+        path: "live_set tracks 0 arrangement_clips 0",
+        properties: { is_arrangement_clip: 1, start_time: 32 },
+      });
 
       const result = duplicate({
         type: "scene",
@@ -146,8 +168,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       });
 
       // Should duplicate at Chorus position (32 beats = 9|1)
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id live_set/tracks/0/clip_slots/0/clip",
         32,
@@ -158,29 +179,53 @@ describe("duplicate - locator-based arrangement positioning", () => {
   });
 
   describe("clip duplication with locator", () => {
-    /** Helper to set up mocks for locator-based clip duplication tests */
-    function setupLocatorDuplicationMocks(): void {
-      setupSessionClipPath("clip1");
+    /**
+     * Helper to set up mocks for locator-based clip duplication tests
+     * @returns Mock handle for track 0
+     */
+    function setupLocatorDuplicationMocks(): MockObjectHandle {
+      registerMockObject("clip1", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+      });
 
-      mockLiveApiGet({
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1"),
         },
-        "live_set tracks 0 clip_slots 0 clip": createStandardMidiClipMock({
+      });
+      registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+        properties: createStandardMidiClipMock({
           length: 4,
           name: "Test Clip",
         }),
-        cue0: { time: 0, name: "Start" },
-        cue1: { time: 8, name: "Drop" },
+      });
+      registerMockObject("cue0", { properties: { time: 0, name: "Start" } });
+      registerMockObject("cue1", { properties: { time: 8, name: "Drop" } });
+
+      const track0 = registerMockObject("live_set/tracks/0", {
+        path: "live_set tracks 0",
+        methods: {
+          duplicate_clip_to_arrangement: () => [
+            "id",
+            "live_set tracks 0 arrangement_clips 0",
+          ],
+          get_notes_extended: () => JSON.stringify({ notes: [] }),
+        },
       });
 
-      setupArrangementDuplicationMock();
-      setupArrangementClipMocks({ getStartTime: () => 8 });
+      registerMockObject("live_set tracks 0 arrangement_clips 0", {
+        path: "live_set tracks 0 arrangement_clips 0",
+        properties: { is_arrangement_clip: 1, start_time: 8 },
+      });
+
+      return track0;
     }
 
     it("should duplicate a clip to arrangement at locator ID position", () => {
-      setupLocatorDuplicationMocks();
+      const track0 = setupLocatorDuplicationMocks();
 
       const result = duplicate({
         type: "clip",
@@ -190,8 +235,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       });
 
       // Should duplicate at locator-1's position (8 beats = 3|1)
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id clip1",
         8,
@@ -201,7 +245,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a clip to arrangement at locator name position", () => {
-      setupLocatorDuplicationMocks();
+      const track0 = setupLocatorDuplicationMocks();
 
       const result = duplicate({
         type: "clip",
@@ -211,8 +255,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       });
 
       // Should duplicate at Drop position (8 beats = 3|1)
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id clip1",
         8,
@@ -225,20 +268,20 @@ describe("duplicate - locator-based arrangement positioning", () => {
   describe("error handling", () => {
     /** Helper to set up common mocks for error handling tests */
     function setupErrorHandlingMocks(): void {
-      setupScenePath("scene1");
-      mockLiveApiGet({
-        LiveSet: {
+      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: {
           tracks: children("track0"),
           cue_points: children("cue0"),
         },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
-          signature_numerator: 4,
-          signature_denominator: 4,
-        },
-        cue0: { time: 0, name: "Intro" },
       });
+      registerClipSlot(0, 0, true, {
+        length: 8,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+      registerMockObject("cue0", { properties: { time: 0, name: "Intro" } });
     }
 
     it("should throw error for non-existent locator ID", () => {
