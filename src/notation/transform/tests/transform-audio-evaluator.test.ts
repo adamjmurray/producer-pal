@@ -224,10 +224,10 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(-6);
     });
 
-    it("evaluates noise function (returns value in range)", () => {
-      const result = applyAudioTransform(0, 0, "gain = 6 * noise()");
+    it("evaluates rand function (returns value in range)", () => {
+      const result = applyAudioTransform(0, 0, "gain = 6 * rand()");
 
-      // noise returns [-1, 1], so result is [-6, 6]
+      // rand() returns [-1, 1], so result is [-6, 6]
       expect(result.gain).toBeGreaterThanOrEqual(-6);
       expect(result.gain).toBeLessThanOrEqual(6);
     });

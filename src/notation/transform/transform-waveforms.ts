@@ -68,15 +68,6 @@ export function square(phase: number, pulseWidth = 0.5): number {
 }
 
 /**
- * Random noise generator (non-deterministic)
- * @returns Random value in range [-1.0, 1.0]
- */
-export function noise(): number {
-  // Generate random value between -1.0 and 1.0
-  return Math.random() * 2.0 - 1.0;
-}
-
-/**
  * Ramp generator - linearly interpolates from start to end
  * @param phase - Phase in cycles (0.0-1.0)
  * @param start - Starting value
@@ -95,4 +86,46 @@ export function ramp(
 
   // Linear interpolation from start to end
   return start + (end - start) * scaledPhase;
+}
+
+/**
+ * Random value generator
+ * @param min - Minimum value (inclusive)
+ * @param max - Maximum value (inclusive)
+ * @returns Random value in range [min, max]
+ */
+export function rand(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+/**
+ * Random selection from options
+ * @param options - Array of values to choose from (at least 1 element, enforced by caller)
+ * @returns One randomly selected value
+ */
+export function choose(options: number[]): number {
+  const index = Math.floor(Math.random() * options.length);
+  // Index always valid: options has >= 1 element (enforced by caller)
+
+  return options[index] as number;
+}
+
+/**
+ * Curve generator - exponentially interpolates from start to end
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @param start - Starting value
+ * @param end - Ending value
+ * @param exponent - Curve exponent (must be > 0; >1: slow start, <1: fast start, 1: linear)
+ * @returns Interpolated value between start and end
+ */
+export function curve(
+  phase: number,
+  start: number,
+  end: number,
+  exponent: number,
+): number {
+  const scaledPhase = phase % 1.0;
+  const curvedPhase = Math.pow(scaledPhase, exponent);
+
+  return start + (end - start) * curvedPhase;
 }

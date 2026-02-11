@@ -150,15 +150,17 @@ Add \`transforms\` parameter to create-clip or update-clip.
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
-- \`noise()\` - random value per note
+- \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
+- \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
+- \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 
 **Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
 
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
-timing += 0.05 * noise()       // humanize timing
+timing += 0.05 * rand()        // humanize timing
 velocity += ramp(0, 60)        // fade in over clip
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2

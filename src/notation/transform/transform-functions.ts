@@ -8,6 +8,11 @@ import type {
   NoteProperties,
 } from "./transform-evaluator-helpers.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
+import {
+  evaluateChoose,
+  evaluateCurve,
+  evaluateRand,
+} from "./transform-functions-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
@@ -41,9 +46,30 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // noise() has no arguments
-  if (name === "noise") {
-    return waveforms.noise();
+  // rand() - random value with 0/1/2 arguments
+  if (name === "rand") {
+    return evaluateRand(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
+  // choose() - random selection from arguments
+  if (name === "choose") {
+    return evaluateChoose(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
   }
 
   // Math functions - single argument (round, floor, abs)
@@ -77,6 +103,19 @@ export function evaluateFunction(
   // ramp() is special - it uses timeRange instead of period
   if (name === "ramp") {
     return evaluateRamp(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
+  // curve() - exponential ramp using timeRange
+  if (name === "curve") {
+    return evaluateCurve(
       args,
       position,
       timeSigNumerator,

@@ -87,9 +87,9 @@ describe("Transform Evaluator - Math Functions", () => {
   });
 
   describe("nested functions", () => {
-    it("round(12 * noise()) returns integer in range", () => {
+    it("round(12 * rand()) returns integer in range", () => {
       for (let i = 0; i < 10; i++) {
-        const result = evaluateTransform("pitch += round(12 * noise())", {
+        const result = evaluateTransform("pitch += round(12 * rand())", {
           position: i,
           timeSig: { numerator: 4, denominator: 4 },
         });

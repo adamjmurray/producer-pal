@@ -278,10 +278,10 @@ describe("Transform Evaluator", () => {
     });
   });
 
-  describe("noise waveform", () => {
-    it("evaluates noise within range", () => {
+  describe("rand function", () => {
+    it("evaluates rand() with no args within [-1, 1]", () => {
       for (let i = 0; i < 10; i++) {
-        const result = evaluateTransform("velocity += noise()", {
+        const result = evaluateTransform("velocity += rand()", {
           position: i,
           timeSig: { numerator: 4, denominator: 4 },
         });
@@ -291,14 +291,116 @@ describe("Transform Evaluator", () => {
       }
     });
 
-    it("evaluates scaled noise", () => {
-      const result = evaluateTransform("velocity += 10 * noise()", {
+    it("evaluates rand(10) within [0, 10]", () => {
+      for (let i = 0; i < 10; i++) {
+        const result = evaluateTransform("velocity += rand(10)", {
+          position: i,
+          timeSig: { numerator: 4, denominator: 4 },
+        });
+
+        expect(result.velocity!.value).toBeGreaterThanOrEqual(0);
+        expect(result.velocity!.value).toBeLessThanOrEqual(10);
+      }
+    });
+
+    it("evaluates rand(-5, 5) within [-5, 5]", () => {
+      for (let i = 0; i < 10; i++) {
+        const result = evaluateTransform("velocity += rand(-5, 5)", {
+          position: i,
+          timeSig: { numerator: 4, denominator: 4 },
+        });
+
+        expect(result.velocity!.value).toBeGreaterThanOrEqual(-5);
+        expect(result.velocity!.value).toBeLessThanOrEqual(5);
+      }
+    });
+
+    it("evaluates scaled rand", () => {
+      const result = evaluateTransform("velocity += 10 * rand()", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBeGreaterThanOrEqual(-10.0);
       expect(result.velocity!.value).toBeLessThanOrEqual(10.0);
+    });
+  });
+
+  describe("choose function", () => {
+    it("evaluates choose with single value", () => {
+      const result = evaluateTransform("velocity += choose(42)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result.velocity!.value).toBe(42);
+    });
+
+    it("evaluates choose returning one of provided values", () => {
+      const options = [60, 80, 100];
+
+      for (let i = 0; i < 20; i++) {
+        const result = evaluateTransform("velocity = choose(60, 80, 100)", {
+          position: i,
+          timeSig: { numerator: 4, denominator: 4 },
+        });
+
+        expect(options).toContain(result.velocity!.value);
+      }
+    });
+  });
+
+  describe("curve function", () => {
+    it("evaluates curve at start of range (returns start)", () => {
+      const result = evaluateTransform("velocity += curve(0, 1, 2)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+        clipTimeRange: { start: 0, end: 4 },
+      });
+
+      expect(result.velocity!.value).toBe(0);
+    });
+
+    it("evaluates curve with exponent=1 (linear, like ramp)", () => {
+      const result = evaluateTransform("velocity += curve(0, 1, 1)", {
+        position: 2,
+        timeSig: { numerator: 4, denominator: 4 },
+        clipTimeRange: { start: 0, end: 4 },
+      });
+
+      expect(result.velocity!.value).toBeCloseTo(0.5, 10);
+    });
+
+    it("evaluates curve with exponent=2 (slow start)", () => {
+      const result = evaluateTransform("velocity += curve(0, 1, 2)", {
+        position: 2,
+        timeSig: { numerator: 4, denominator: 4 },
+        clipTimeRange: { start: 0, end: 4 },
+      });
+
+      // phase 0.5^2 = 0.25
+      expect(result.velocity!.value).toBeCloseTo(0.25, 10);
+    });
+
+    it("evaluates curve with exponent=0.5 (fast start)", () => {
+      const result = evaluateTransform("velocity += curve(0, 1, 0.5)", {
+        position: 2,
+        timeSig: { numerator: 4, denominator: 4 },
+        clipTimeRange: { start: 0, end: 4 },
+      });
+
+      // phase 0.5^0.5 = sqrt(0.5) ≈ 0.707
+      expect(result.velocity!.value).toBeCloseTo(Math.sqrt(0.5), 10);
+    });
+
+    it("skips curve with missing arguments", () => {
+      const result = evaluateTransform("velocity += curve(0, 1)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+        clipTimeRange: { start: 0, end: 4 },
+      });
+
+      expect(result).toStrictEqual({});
     });
   });
 
@@ -479,7 +581,7 @@ describe("Transform Evaluator", () => {
   describe("multi-parameter transform", () => {
     it("evaluates multiple parameters independently", () => {
       const modString = `velocity += 20 * cos(1:0t)
-timing += 0.05 * noise()
+timing += 0.05 * rand()
 probability += 0.2 * cos(0:2t)`;
 
       const result = evaluateTransform(modString, {
@@ -569,16 +671,16 @@ timing += 0.05`;
       expect(result.velocity!.value).toBe(20.0);
     });
 
-    it("combined functions: velocity += 20 * cos(4:0t) + 10 * noise()", () => {
+    it("combined functions: velocity += 20 * cos(4:0t) + 10 * rand()", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(4:0t) + 10 * noise()",
+        "velocity += 20 * cos(4:0t) + 10 * rand()",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },
         },
       );
 
-      // cos(0) = 1, so 20 * 1 + 10 * noise() should be between 10 and 30
+      // cos(0) = 1, so 20 * 1 + 10 * rand() should be between 10 and 30
       expect(result.velocity!.value).toBeGreaterThanOrEqual(10.0);
       expect(result.velocity!.value).toBeLessThanOrEqual(30.0);
     });

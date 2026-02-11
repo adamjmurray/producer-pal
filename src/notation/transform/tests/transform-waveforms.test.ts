@@ -4,12 +4,14 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  choose,
   cos,
-  tri,
+  curve,
+  rand,
+  ramp,
   saw,
   square,
-  noise,
-  ramp,
+  tri,
 } from "#src/notation/transform/transform-waveforms.ts";
 
 describe("Transform Waveforms", () => {
@@ -196,13 +198,31 @@ describe("Transform Waveforms", () => {
     });
   });
 
-  describe("noise()", () => {
-    it("returns a value in range [-1.0, 1.0]", () => {
+  describe("rand()", () => {
+    it("returns a value in range [-1.0, 1.0] with default range", () => {
       for (let i = 0; i < 100; i++) {
-        const value = noise();
+        const value = rand(-1, 1);
 
         expect(value).toBeGreaterThanOrEqual(-1.0);
         expect(value).toBeLessThanOrEqual(1.0);
+      }
+    });
+
+    it("returns a value in range [0, max]", () => {
+      for (let i = 0; i < 100; i++) {
+        const value = rand(0, 12);
+
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(12);
+      }
+    });
+
+    it("returns a value in range [min, max]", () => {
+      for (let i = 0; i < 100; i++) {
+        const value = rand(-12, 12);
+
+        expect(value).toBeGreaterThanOrEqual(-12);
+        expect(value).toBeLessThanOrEqual(12);
       }
     });
 
@@ -210,10 +230,9 @@ describe("Transform Waveforms", () => {
       const values = new Set();
 
       for (let i = 0; i < 100; i++) {
-        values.add(noise());
+        values.add(rand(-1, 1));
       }
 
-      // Should have many unique values (high probability)
       expect(values.size).toBeGreaterThan(90);
     });
 
@@ -222,7 +241,7 @@ describe("Transform Waveforms", () => {
       let hasNegative = false;
 
       for (let i = 0; i < 100; i++) {
-        const value = noise();
+        const value = rand(-1, 1);
 
         if (value > 0) {
           hasPositive = true;
@@ -235,6 +254,84 @@ describe("Transform Waveforms", () => {
 
       expect(hasPositive).toBe(true);
       expect(hasNegative).toBe(true);
+    });
+  });
+
+  describe("choose()", () => {
+    it("returns the only value from single-element array", () => {
+      expect(choose([42])).toBe(42);
+    });
+
+    it("returns only values from the provided options", () => {
+      const options = [60, 80, 100];
+
+      for (let i = 0; i < 100; i++) {
+        expect(options).toContain(choose(options));
+      }
+    });
+
+    it("selects diverse values from options", () => {
+      const options = [1, 2, 3, 4, 5];
+      const seen = new Set<number>();
+
+      for (let i = 0; i < 200; i++) {
+        seen.add(choose(options));
+      }
+
+      // Should see all options with high probability
+      expect(seen.size).toBe(5);
+    });
+  });
+
+  describe("curve()", () => {
+    it("returns start value at phase 0", () => {
+      expect(curve(0, 0, 1, 2)).toBe(0);
+      expect(curve(0, -1, 1, 0.5)).toBe(-1);
+      expect(curve(0, 10, 20, 3)).toBe(10);
+    });
+
+    it("wraps to start at phase 1 (like ramp)", () => {
+      expect(curve(1, 0, 1, 2)).toBe(0);
+    });
+
+    it("approaches end value near phase 1", () => {
+      expect(curve(0.999, 0, 1, 1)).toBeCloseTo(0.999, 2);
+      expect(curve(0.999, 0, 1, 2)).toBeCloseTo(0.998, 2);
+    });
+
+    it("with exponent=1 matches linear (same as ramp)", () => {
+      expect(curve(0.25, 0, 1, 1)).toBeCloseTo(0.25, 10);
+      expect(curve(0.5, 0, 1, 1)).toBeCloseTo(0.5, 10);
+      expect(curve(0.75, 0, 1, 1)).toBeCloseTo(0.75, 10);
+    });
+
+    it("with exponent=2 has slow start, fast end", () => {
+      // phase^2: at 0.5 → 0.25 of range
+      expect(curve(0.5, 0, 1, 2)).toBeCloseTo(0.25, 10);
+      // Below linear at midpoint
+      expect(curve(0.5, 0, 1, 2)).toBeLessThan(0.5);
+    });
+
+    it("with exponent=0.5 has fast start, slow end", () => {
+      // phase^0.5: at 0.5 → sqrt(0.5) ≈ 0.707
+      expect(curve(0.5, 0, 1, 0.5)).toBeCloseTo(Math.sqrt(0.5), 10);
+      // Above linear at midpoint
+      expect(curve(0.5, 0, 1, 0.5)).toBeGreaterThan(0.5);
+    });
+
+    it("supports reverse curve (descending)", () => {
+      expect(curve(0, 1, 0, 2)).toBe(1);
+      expect(curve(0.5, 1, 0, 2)).toBeCloseTo(0.75, 10);
+    });
+
+    it("handles phase > 1.0 (wraps around)", () => {
+      expect(curve(1.5, 0, 1, 2)).toBeCloseTo(curve(0.5, 0, 1, 2), 10);
+    });
+
+    it("supports arbitrary value ranges", () => {
+      // curve from 10 to 20 with exponent 2
+      expect(curve(0, 10, 20, 2)).toBe(10);
+      expect(curve(0.5, 10, 20, 2)).toBeCloseTo(12.5, 10); // 10 + 10 * 0.25
     });
   });
 

@@ -210,8 +210,8 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     expect(await readClipGain(clip1.id)).toBeCloseTo(-6, 0);
     expect(await readClipPitchShift(clip1.id)).toBeCloseTo(5, 1);
 
-    // noise() function: result should be in range [-10, 0]
-    await applyTransform(clip1.id, "gain = -5 + 5 * noise()");
+    // rand() function: result should be in range [-10, 0]
+    await applyTransform(clip1.id, "gain = -5 + 5 * rand()");
     const gain = await readClipGain(clip1.id);
 
     expect(gain).toBeGreaterThanOrEqual(-10);
@@ -694,5 +694,102 @@ describe("ppal-clip-transforms (create-clip)", () => {
     expect(notes).toContain("v64"); // First note has transformed velocity
     // Second note at 1|3 should have default velocity (no v prefix shown)
     expect(notes).toMatch(/C3 1\|3/); // Second note unchanged
+  });
+});
+
+// =============================================================================
+// Randomization and Curve Function Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (rand, choose, curve)", () => {
+  it("rand() randomizes velocity within default range [-1, 1]", async () => {
+    const clipId = await createMidiClip(20, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity += 10 * rand()");
+    const notes = await readClipNotes(clipId);
+
+    // Each note should have velocity in [90, 110] (100 ± 10)
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    for (const v of velocities) {
+      expect(v).toBeGreaterThanOrEqual(90);
+      expect(v).toBeLessThanOrEqual(110);
+    }
+  });
+
+  it("rand(min, max) randomizes within specified range", async () => {
+    const clipId = await createMidiClip(21, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = rand(60, 120)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    for (const v of velocities) {
+      expect(v).toBeGreaterThanOrEqual(60);
+      expect(v).toBeLessThanOrEqual(120);
+    }
+  });
+
+  it("choose() selects from provided values", async () => {
+    const clipId = await createMidiClip(22, "v99 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = choose(60, 80, 100, 120)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+    const validChoices = [60, 80, 100, 120];
+
+    for (const v of velocities) {
+      expect(validChoices).toContain(v);
+    }
+  });
+
+  it("curve() applies exponential shape over clip duration", async () => {
+    const clipId = await createMidiClip(
+      23,
+      "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4 C3 2|1 C3 2|2 C3 2|3 C3 2|4",
+    );
+
+    // Exponent 2: slow start, fast end
+    await applyTransform(clipId, "velocity = curve(40, 120, 2)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    // First note should be at/near start value
+    expect(velocities[0]).toBe(40);
+    // Middle notes should be below linear midpoint (80)
+    expect(velocities[3]!).toBeLessThan(80);
+    // Later notes should be accelerating toward end
+    expect(velocities[6]!).toBeGreaterThan(80);
+    // Velocities should be monotonically increasing
+
+    for (let i = 1; i < velocities.length; i++) {
+      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
+    }
+  });
+
+  it("curve() with exponent < 1 applies logarithmic shape", async () => {
+    const clipId = await createMidiClip(
+      24,
+      "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4 C3 2|1 C3 2|2 C3 2|3 C3 2|4",
+    );
+
+    // Exponent 0.5: fast start, slow end
+    await applyTransform(clipId, "velocity = curve(40, 120, 0.5)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    // First note should be at start value
+    expect(velocities[0]).toBe(40);
+    // Middle notes should be above linear midpoint (80) — fast start
+    expect(velocities[3]!).toBeGreaterThan(80);
+    // Velocities should be monotonically increasing
+
+    for (let i = 1; i < velocities.length; i++) {
+      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
+    }
   });
 });

@@ -159,8 +159,10 @@ functionName
   / "tri" { return "tri"; }
   / "saw" { return "saw"; }
   / "square" { return "square"; }
-  / "noise" { return "noise"; }
+  / "rand" { return "rand"; }
+  / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
+  / "curve" { return "curve"; }
 
 argumentList
   = head:argument tail:(_ "," _ argument)* {

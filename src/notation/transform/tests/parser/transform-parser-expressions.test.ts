@@ -78,13 +78,53 @@ describe("Transform Parser - Expressions", () => {
       });
     });
 
-    it("parses noise with no arguments", () => {
-      const result = parser.parse("velocity += noise()");
+    it("parses rand with no arguments", () => {
+      const result = parser.parse("velocity += rand()");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
-        name: "noise",
+        name: "rand",
         args: [],
+      });
+    });
+
+    it("parses rand with one argument", () => {
+      const result = parser.parse("velocity += rand(10)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "rand",
+        args: [10],
+      });
+    });
+
+    it("parses rand with two arguments", () => {
+      const result = parser.parse("velocity += rand(-5, 5)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "rand",
+        args: [-5, 5],
+      });
+    });
+
+    it("parses choose with multiple arguments", () => {
+      const result = parser.parse("velocity += choose(60, 80, 100)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "choose",
+        args: [60, 80, 100],
+      });
+    });
+
+    it("parses curve with three arguments", () => {
+      const result = parser.parse("velocity += curve(0, 127, 2)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "curve",
+        args: [0, 127, 2],
       });
     });
   });
@@ -345,7 +385,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses multiple functions combined", () => {
-      const result = parser.parse("velocity += 20 * cos(4:0t) + 10 * noise()");
+      const result = parser.parse("velocity += 20 * cos(4:0t) + 10 * rand()");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -363,7 +403,7 @@ describe("Transform Parser - Expressions", () => {
           left: 10,
           right: {
             type: "function",
-            name: "noise",
+            name: "rand",
             args: [],
           },
         },

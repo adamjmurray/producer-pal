@@ -453,7 +453,7 @@ describe("Transform Parser", () => {
 
     it("parses multi-parameter transform", () => {
       const result = parser.parse(
-        "velocity += 20 * cos(1:0t) + 10 * noise()\ntiming += 0.03 * noise()\nprobability += 0.2 * cos(0:2t)",
+        "velocity += 20 * cos(1:0t) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(0:2t)",
       );
 
       expect(result).toHaveLength(3);
