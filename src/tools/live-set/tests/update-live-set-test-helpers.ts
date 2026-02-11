@@ -1,16 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
   children,
-  liveApiCall,
-  liveApiGet,
   liveApiId,
   mockLiveApiGet,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface LocatorLiveSetConfig {
   numerator?: number;
@@ -25,28 +27,57 @@ interface SetupLocatorMocksOptions {
 }
 
 /**
- * Setup mocks for locator operation tests
+ * Setup mocks for locator operation tests using the mock registry.
+ * Configures the live_set handle's get mock and registers cue point objects.
+ * @param liveSetHandle - The live_set mock object handle
  * @param options - Configuration options
  * @param options.cuePoints - Cue point definitions
  * @param options.liveSet - Live set properties
+ * @returns Map of cue point ID to mock object handle
  */
-export function setupLocatorMocks({
-  cuePoints = [],
-  liveSet = {},
-}: SetupLocatorMocksOptions = {}): void {
+export function setupLocatorMocks(
+  liveSetHandle: MockObjectHandle,
+  { cuePoints = [], liveSet = {} }: SetupLocatorMocksOptions = {},
+): Map<string, MockObjectHandle> {
   const { numerator = 4, denominator = 4, isPlaying = 0, songLength } = liveSet;
+
+  const cueIds = cuePoints.map((c) => c.id);
 
   const liveSetProps: Record<string, unknown> = {
     signature_numerator: numerator,
     signature_denominator: denominator,
     is_playing: isPlaying,
+    cue_points: children(...cueIds),
   };
 
   if (songLength !== undefined) {
     liveSetProps.song_length = songLength;
   }
 
-  setupCuePointMocksBase({ cuePoints, liveSetProps });
+  liveSetHandle.get.mockImplementation((prop: string) => {
+    if (prop in liveSetProps) {
+      const value = liveSetProps[prop];
+
+      return Array.isArray(value) ? value : [value];
+    }
+
+    return [0];
+  });
+
+  const handles = new Map<string, MockObjectHandle>();
+
+  for (const cp of cuePoints) {
+    const props: Record<string, unknown> = { time: cp.time };
+
+    if (cp.name != null) props.name = cp.name;
+
+    handles.set(
+      cp.id,
+      registerMockObject(cp.id, { path: `id ${cp.id}`, properties: props }),
+    );
+  }
+
+  return handles;
 }
 
 interface LocatorCreationConfig {
@@ -57,20 +88,30 @@ interface LocatorCreationConfig {
 
 /**
  * Setup mocks for locator creation tests with tracking.
- * Returns a tracker object to check if locator was created.
+ * Returns a tracker and the new cue point handle.
+ * @param liveSetHandle - The live_set mock object handle
  * @param config - Configuration options
  * @param config.time - Cue point time in beats
  * @param config.isPlaying - Playing state (0 or 1)
  * @param config.songLength - Song length in beats
- * @returns Tracker object
+ * @returns Tracker object and new cue handle
  */
-export function setupLocatorCreationMocks(config: LocatorCreationConfig = {}): {
+export function setupLocatorCreationMocks(
+  liveSetHandle: MockObjectHandle,
+  config: LocatorCreationConfig = {},
+): {
   getCreated: () => boolean;
+  newCue: MockObjectHandle;
 } {
   const { time = 0, isPlaying = 0, songLength = 1000 } = config;
   let locatorCreated = false;
 
-  liveApiGet.mockImplementation(function (prop) {
+  const newCue = registerMockObject("new_cue", {
+    path: "id new_cue",
+    properties: { time },
+  });
+
+  liveSetHandle.get.mockImplementation((prop: string) => {
     if (prop === "signature_numerator") return [4];
     if (prop === "signature_denominator") return [4];
     if (prop === "is_playing") return [isPlaying];
@@ -80,18 +121,16 @@ export function setupLocatorCreationMocks(config: LocatorCreationConfig = {}): {
       return locatorCreated ? children("new_cue") : children();
     }
 
-    if (prop === "time") return [time];
-
     return [0];
   });
 
-  liveApiCall.mockImplementation(function (method) {
+  liveSetHandle.call.mockImplementation((method: string) => {
     if (method === "set_or_delete_cue") {
       locatorCreated = true;
     }
   });
 
-  return { getCreated: () => locatorCreated };
+  return { getCreated: () => locatorCreated, newCue };
 }
 
 interface SetupRoutingTestOptions {
