@@ -14,6 +14,7 @@ import { createDevice } from "./create-device.ts";
 
 describe("createDevice", () => {
   let track0: MockObjectHandle;
+  let chain0: MockObjectHandle;
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {
@@ -31,7 +32,7 @@ describe("createDevice", () => {
       properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
     });
 
-    registerMockObject("chain-0-handle", {
+    chain0 = registerMockObject("chain-0-handle", {
       path: "live_set tracks 0 devices 0 chains 0",
       methods: { insert_device: () => ["id", "device123"] },
     });
@@ -207,6 +208,7 @@ describe("createDevice", () => {
       createDevice({});
 
       expect(track0.call).not.toHaveBeenCalled();
+      expect(chain0.call).not.toHaveBeenCalled();
     });
   });
 
@@ -300,10 +302,11 @@ describe("createDevice", () => {
       });
 
       it("should create device on master track via path", () => {
-        registerMockObject("mt-0", {
+        const masterTrack = registerMockObject("mt-0", {
           path: "live_set master_track",
           methods: { insert_device: () => ["id", "device123"] },
         });
+
         registerMockObject("device123", {
           path: "live_set master_track devices 0",
         });
@@ -313,6 +316,11 @@ describe("createDevice", () => {
           deviceName: "Limiter",
         });
 
+        expect(masterTrack.call).toHaveBeenCalledWith(
+          "insert_device",
+          "Limiter",
+        );
+        expect(track0.call).not.toHaveBeenCalled();
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,
@@ -327,6 +335,7 @@ describe("createDevice", () => {
           deviceName: "Compressor",
         });
 
+        expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
         expect(result).toMatchObject({ id: "device123" });
       });
 
