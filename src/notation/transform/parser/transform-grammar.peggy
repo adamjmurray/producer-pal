@@ -128,6 +128,12 @@ variable
   = "audio." name:audioPropertyName {
     return { type: "variable", namespace: "audio", name };
   }
+  / "bar." name:barPropertyName {
+    return { type: "variable", namespace: "bar", name };
+  }
+  / "clip." name:clipPropertyName {
+    return { type: "variable", namespace: "clip", name };
+  }
   / "note." name:notePropertyName {
     return { type: "variable", namespace: "note", name };
   }
@@ -137,12 +143,21 @@ notePropertyName
   / "velocity" { return "velocity"; }
   / "probability" { return "probability"; }
   / "duration" { return "duration"; }
+  / "index" { return "index"; }
   / "pitch" { return "pitch"; }
   / "start" { return "start"; }
 
 audioPropertyName
   = "gain" { return "gain"; }
   / "pitchShift" { return "pitchShift"; }
+
+clipPropertyName
+  = "arrangementStart" { return "arrangementStart"; }
+  / "duration" { return "duration"; }
+  / "index" { return "index"; }
+
+barPropertyName
+  = "duration" { return "duration"; }
 
 functionCall
   = name:functionName "(" _ args:argumentList? _ ")" {

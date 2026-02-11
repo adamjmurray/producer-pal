@@ -33,6 +33,13 @@ export interface NoteContext {
 
 export type NoteProperties = Record<string, number | undefined>;
 
+export interface ClipContext {
+  clipDuration: number; // musical beats
+  clipIndex: number; // 0-based in multi-clip operation
+  arrangementStart?: number; // musical beats; undefined for session clips
+  barDuration: number; // musical beats per bar (timeSigNumerator)
+}
+
 export interface TransformResult {
   operator: "add" | "set";
   value: number;
@@ -314,13 +321,17 @@ export function evaluateExpression(
       );
     }
 
-    if (noteProperties[node.name] == null) {
+    // Determine lookup key: note.* uses bare name, clip.*/bar.* use prefixed keys
+    const lookupKey =
+      node.namespace === "note" ? node.name : `${node.namespace}:${node.name}`;
+
+    if (noteProperties[lookupKey] == null) {
       throw new Error(
-        `Variable "note.${node.name}" is not available in this context`,
+        `Variable "${node.namespace}.${node.name}" is not available in this context`,
       );
     }
 
-    return noteProperties[node.name] as number;
+    return noteProperties[lookupKey];
   }
 
   // Arithmetic operators

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type { ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import type { NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -32,6 +33,7 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
  * @param transformString - Transform expressions to apply
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Clip-level context for transform variables
  * @returns Final note count
  */
 export function applyTransformsToExistingNotes(
@@ -39,6 +41,7 @@ export function applyTransformsToExistingNotes(
   transformString: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  clipContext?: ClipContext,
 ): number {
   const existingNotesResult = JSON.parse(
     clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
@@ -57,7 +60,13 @@ export function applyTransformsToExistingNotes(
   // Convert raw notes to NoteEvent format (strips extra Live API properties)
   const notes: NoteEvent[] = rawNotes.map(toNoteEvent);
 
-  applyTransforms(notes, transformString, timeSigNumerator, timeSigDenominator);
+  applyTransforms(
+    notes,
+    transformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
 
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   clip.call("add_new_notes", { notes });
@@ -68,4 +77,32 @@ export function applyTransformsToExistingNotes(
   );
 
   return actualNotesResult?.notes?.length ?? 0;
+}
+
+/**
+ * Build clip context for transform variables (clip.*, bar.*)
+ * @param clip - The clip LiveAPI object
+ * @param clipIndex - 0-based index in multi-clip operation
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns ClipContext with clip-level and bar-level metadata
+ */
+export function buildClipContext(
+  clip: LiveAPI,
+  clipIndex: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): ClipContext {
+  const lengthBeats = clip.getProperty("length") as number;
+  const isArrangementClip =
+    (clip.getProperty("is_arrangement_clip") as number) > 0;
+
+  return {
+    clipDuration: lengthBeats * (timeSigDenominator / 4),
+    clipIndex,
+    arrangementStart: isArrangementClip
+      ? (clip.getProperty("start_time") as number) * (timeSigDenominator / 4)
+      : undefined,
+    barDuration: timeSigNumerator,
+  };
 }

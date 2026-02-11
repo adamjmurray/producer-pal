@@ -173,6 +173,9 @@ Apply complex changes to clips using math expressions:
 - **Transform audio clips**: gain, pitch shift
 - **Shapes**: LFO-like waveforms (sine, tri, saw), linear and exponential ramps
   for fades, randomization (rand, choose) for humanization
+- **Context variables**: Access note order (`note.index`), clip metadata
+  (`clip.duration`, `clip.index`, `clip.arrangementStart`), and time signature
+  info (`bar.duration`) in expressions
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)

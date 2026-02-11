@@ -311,4 +311,96 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
     });
   });
+
+  describe("clip and bar context variables", () => {
+    it("resolves clip.duration with clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration", {
+        clipDuration: 16,
+        clipIndex: 0,
+        barDuration: 4,
+      });
+
+      expect(result.gain).toBe(16);
+    });
+
+    it("resolves clip.index with clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.index * -3", {
+        clipDuration: 8,
+        clipIndex: 2,
+        barDuration: 4,
+      });
+
+      expect(result.gain).toBe(-6);
+    });
+
+    it("resolves clip.arrangementStart for arrangement clips", () => {
+      const result = applyAudioTransform(
+        0,
+        0,
+        "gain = clip.arrangementStart / 4",
+        {
+          clipDuration: 16,
+          clipIndex: 0,
+          arrangementStart: 32,
+          barDuration: 4,
+        },
+      );
+
+      expect(result.gain).toBe(8);
+    });
+
+    it("skips assignment when clip.arrangementStart is absent (session clip)", () => {
+      const result = applyAudioTransform(
+        -6,
+        0,
+        "gain = clip.arrangementStart",
+        {
+          clipDuration: 16,
+          clipIndex: 0,
+          barDuration: 4,
+        },
+      );
+
+      // Evaluation fails, gain unchanged
+      expect(result.gain).toBeNull();
+    });
+
+    it("resolves bar.duration with clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = bar.duration", {
+        clipDuration: 24,
+        clipIndex: 0,
+        barDuration: 6,
+      });
+
+      expect(result.gain).toBe(6);
+    });
+
+    it("errors when clip variable used without clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration");
+
+      expect(result.gain).toBeNull();
+    });
+
+    it("errors when bar variable used without clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = bar.duration");
+
+      expect(result.gain).toBeNull();
+    });
+
+    it("uses clip context in binary expressions", () => {
+      const result = applyAudioTransform(
+        -24,
+        0,
+        "gain = audio.gain + clip.index * 6",
+        {
+          clipDuration: 8,
+          clipIndex: 3,
+          barDuration: 4,
+        },
+      );
+
+      // -24 + 3 * 6 = -6
+      expect(result.gain).toBe(-6);
+    });
+  });
 });

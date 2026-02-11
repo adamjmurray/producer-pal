@@ -10,6 +10,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import type { NoteEvent } from "../types.ts";
 import * as parser from "./parser/transform-parser.ts";
 import {
+  type ClipContext,
   evaluateTransformAST,
   type NoteContext,
   type NoteProperties,
@@ -25,12 +26,14 @@ const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
  * @param transformString - Transform expression string
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Optional clip-level context for clip/bar variables
  */
 export function applyTransforms(
   notes: NoteEvent[],
   transformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  clipContext?: ClipContext,
 ): void {
   if (!transformString || notes.length === 0) {
     return;
@@ -70,7 +73,8 @@ export function applyTransforms(
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
-  for (const note of notes) {
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i] as NoteEvent;
     const noteContext = buildNoteContext(
       note,
       timeSigNumerator,
@@ -79,7 +83,12 @@ export function applyTransforms(
       clipEndTime,
     );
 
-    const noteProperties = buildNoteProperties(note, timeSigDenominator);
+    const noteProperties = buildNoteProperties(
+      note,
+      i,
+      timeSigDenominator,
+      clipContext,
+    );
 
     // Evaluate transforms for this note using the pre-parsed AST
     const transforms = evaluateTransformAST(ast, noteContext, noteProperties);
@@ -144,23 +153,41 @@ function buildNoteContext(
 }
 
 /**
- * Build note properties object
+ * Build note properties object including note, clip, and bar context
  * @param note - Note event
+ * @param noteIndex - 0-based note order in clip
  * @param timeSigDenominator - Time signature denominator
- * @returns Note properties for variable access
+ * @param clipContext - Optional clip-level context
+ * @returns Properties for variable access (note.*, clip.*, bar.*)
  */
 function buildNoteProperties(
   note: NoteEvent,
+  noteIndex: number,
   timeSigDenominator: number,
+  clipContext?: ClipContext,
 ): NoteProperties {
-  return {
+  const props: NoteProperties = {
     pitch: note.pitch,
     start: note.start_time * (timeSigDenominator / 4), // Convert to musical beats
     velocity: note.velocity,
     deviation: note.velocity_deviation ?? 0,
     duration: note.duration * (timeSigDenominator / 4), // Convert to musical beats
     probability: note.probability,
+    index: noteIndex,
   };
+
+  if (clipContext) {
+    props["clip:duration"] = clipContext.clipDuration;
+    props["clip:index"] = clipContext.clipIndex;
+
+    if (clipContext.arrangementStart != null) {
+      props["clip:arrangementStart"] = clipContext.arrangementStart;
+    }
+
+    props["bar:duration"] = clipContext.barDuration;
+  }
+
+  return props;
 }
 
 /**

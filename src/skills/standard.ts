@@ -156,7 +156,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 
-**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
+**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\`, \`clip.arrangementStart\` (arrangement only), \`bar.duration\` (all clips)
 
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
@@ -164,8 +164,8 @@ timing += 0.05 * rand()        // humanize timing
 velocity += ramp(0, 60)        // fade in over clip
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
-velocity = note.velocity / 2   // halve existing velocity
-velocity = max(60, note.velocity) // ensure minimum velocity
+velocity = 60 + note.index * 5 // sequential crescendo
+pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
 \`\`\`
 

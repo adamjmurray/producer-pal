@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
+import type { ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
@@ -79,11 +80,13 @@ export function setAudioParameters(
  * Apply transforms to audio clip gain and pitchShift
  * @param clip - The audio clip
  * @param transformString - Transform expressions
+ * @param clipContext - Clip-level context for transform variables
  * @returns Whether any audio property was modified
  */
 export function applyAudioTransforms(
   clip: LiveAPI,
   transformString: string | undefined,
+  clipContext?: ClipContext,
 ): boolean {
   if (!transformString) {
     return false;
@@ -102,6 +105,7 @@ export function applyAudioTransforms(
     currentGainDb,
     currentPitchShift,
     transformString,
+    clipContext,
   );
 
   let modified = false;

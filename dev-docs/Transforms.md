@@ -185,6 +185,18 @@ Access audio clip properties in expressions using the `audio.` prefix:
 - `audio.gain` - Current gain in dB (-70 to 24)
 - `audio.pitchShift` - Current pitch shift in semitones (-48 to 48)
 
+### Context Variables (MIDI and audio clips)
+
+Access clip and bar context in expressions:
+
+- `note.index` - 0-based order of note in clip (MIDI only)
+- `clip.duration` - Clip length in musical beats
+- `clip.index` - 0-based clip order in multi-clip operations
+- `clip.arrangementStart` - Arrangement position in musical beats (arrangement
+  clips only; session clips skip the assignment with a warning)
+- `bar.duration` - Beats per bar from time signature (e.g., 4 in 4/4, 3 in 3/4,
+  6 in 6/8)
+
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
 
@@ -412,6 +424,22 @@ pitch += floor(note.velocity / 32) * 12;
 
 // Quantize to pentatonic-ish (every 2 semitones)
 pitch = floor(note.pitch / 2) * 2;
+```
+
+### Context Variables
+
+```javascript
+// Sequential crescendo using note index
+velocity = 60 + note.index * 5;
+
+// Stacked fifths across clips in multi-clip operation
+pitch += clip.index * 7;
+
+// Scale gain by arrangement position
+gain = ramp(-24, 0) * (clip.arrangementStart / 32);
+
+// Use bar duration for rhythmic patterns
+velocity += (20 * (note.start % bar.duration)) / bar.duration;
 ```
 
 ### Audio Clip Transforms

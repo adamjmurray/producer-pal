@@ -163,7 +163,9 @@ export async function updateClip(
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
-  for (const clip of mutableClips) {
+  for (let i = 0; i < mutableClips.length; i++) {
+    const clip = mutableClips[i] as LiveAPI;
+
     if (isDeadlineExceeded(deadline)) {
       console.warn(
         `Deadline exceeded after updating ${updatedClips.length} of ${mutableClips.length} clips`,
@@ -175,6 +177,7 @@ export async function updateClip(
 
     processSingleClipUpdate({
       clip,
+      clipIndex: i,
       notationString,
       transformString,
       noteUpdateMode,

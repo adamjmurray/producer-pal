@@ -9,6 +9,7 @@ import type {
   TransformAssignment,
 } from "./parser/transform-parser.ts";
 import * as parser from "./parser/transform-parser.ts";
+import type { ClipContext } from "./transform-evaluator-helpers.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
 // Constants for gain clamping
@@ -44,12 +45,14 @@ export interface AudioTransformResult {
  * @param currentGainDb - Current gain in dB
  * @param currentPitchShift - Current pitch shift in semitones
  * @param transformString - Transform expression string
+ * @param clipContext - Optional clip-level context for clip/bar variables
  * @returns Object with new gain and pitchShift values, or null for unchanged
  */
 export function applyAudioTransform(
   currentGainDb: number,
   currentPitchShift: number,
   transformString: string | undefined,
+  clipContext?: ClipContext,
 ): AudioTransformResult {
   if (!transformString) {
     return { gain: null, pitchShift: null };
@@ -99,6 +102,7 @@ export function applyAudioTransform(
       const value = evaluateAudioExpression(
         assignment.expression,
         audioProperties,
+        clipContext,
       );
 
       if (assignment.parameter === "gain") {
@@ -147,11 +151,13 @@ type BinaryOpNode = {
  * Evaluate an expression in audio context
  * @param node - Expression node to evaluate
  * @param audioProperties - Audio properties for variable access
+ * @param clipContext - Optional clip-level context for clip/bar variables
  * @returns Evaluated numeric result
  */
 function evaluateAudioExpression(
   node: ExpressionNode,
   audioProperties: AudioProperties,
+  clipContext?: ClipContext,
 ): number {
   // Base case: number literal
   if (typeof node === "number") {
@@ -160,15 +166,7 @@ function evaluateAudioExpression(
 
   // Variable lookup
   if (node.type === "variable") {
-    // Note variables cannot be used in audio context
-    if (node.namespace === "note") {
-      throw new Error(
-        `Cannot use note.${node.name} variable in audio clip context`,
-      );
-    }
-
-    // Grammar ensures only valid audio properties (currently just 'gain') are parsed
-    return audioProperties[node.name as keyof AudioProperties];
+    return resolveAudioVariable(node, audioProperties, clipContext);
   }
 
   // Arithmetic operators
@@ -179,7 +177,7 @@ function evaluateAudioExpression(
     node.type === "divide" ||
     node.type === "modulo"
   ) {
-    return evaluateBinaryOp(node, audioProperties);
+    return evaluateBinaryOp(node, audioProperties, clipContext);
   }
 
   // Function calls - node is a FunctionNode at this point (all other types handled above)
@@ -203,6 +201,7 @@ function evaluateAudioExpression(
       evaluateAudioExpressionWithContext(
         expr,
         audioProperties,
+        clipContext,
         pos,
         num,
         denom,
@@ -212,17 +211,83 @@ function evaluateAudioExpression(
 }
 
 /**
+ * Resolve a variable reference in audio context
+ * @param node - Variable node with namespace and name
+ * @param node.namespace - Variable namespace (note, audio, clip, bar)
+ * @param node.name - Variable name within namespace
+ * @param audioProperties - Audio properties for audio.* variables
+ * @param clipContext - Optional clip context for clip/bar variables
+ * @returns Resolved variable value
+ */
+function resolveAudioVariable(
+  node: { namespace: string; name: string },
+  audioProperties: AudioProperties,
+  clipContext?: ClipContext,
+): number {
+  if (node.namespace === "note") {
+    throw new Error(
+      `Cannot use note.${node.name} variable in audio clip context`,
+    );
+  }
+
+  if (node.namespace === "audio") {
+    return audioProperties[node.name as keyof AudioProperties];
+  }
+
+  if (node.namespace === "clip") {
+    if (clipContext == null) {
+      throw new Error(
+        `Variable "clip.${node.name}" is not available in this context`,
+      );
+    }
+
+    if (node.name === "duration") return clipContext.clipDuration;
+    if (node.name === "index") return clipContext.clipIndex;
+
+    if (node.name === "arrangementStart") {
+      if (clipContext.arrangementStart == null) {
+        throw new Error(
+          `clip.arrangementStart is not available for session clips`,
+        );
+      }
+
+      return clipContext.arrangementStart;
+    }
+  }
+
+  if (node.namespace === "bar") {
+    if (clipContext == null) {
+      throw new Error(
+        `Variable "bar.${node.name}" is not available in this context`,
+      );
+    }
+
+    if (node.name === "duration") return clipContext.barDuration;
+  }
+
+  throw new Error(
+    `Variable "${node.namespace}.${node.name}" is not available in this context`,
+  );
+}
+
+/**
  * Evaluate binary operation in audio context
  * @param node - Binary operation node
  * @param audioProperties - Audio properties for variable access
+ * @param clipContext - Optional clip-level context
  * @returns Evaluated numeric result
  */
 function evaluateBinaryOp(
   node: BinaryOpNode,
   audioProperties: AudioProperties,
+  clipContext?: ClipContext,
 ): number {
-  const left = evaluateAudioExpression(node.left, audioProperties);
-  const right = evaluateAudioExpression(node.right, audioProperties);
+  const left = evaluateAudioExpression(node.left, audioProperties, clipContext);
+  const right = evaluateAudioExpression(
+    node.right,
+    audioProperties,
+    clipContext,
+  );
 
   switch (node.type) {
     case "add":
@@ -244,6 +309,7 @@ function evaluateBinaryOp(
  * Evaluate expression with context (for function callbacks)
  * @param node - Expression node to evaluate
  * @param audioProperties - Audio properties for variable access
+ * @param clipContext - Optional clip-level context
  * @param _position - Position in beats (unused in audio context)
  * @param _timeSigNumerator - Time signature numerator (unused)
  * @param _timeSigDenominator - Time signature denominator (unused)
@@ -255,10 +321,11 @@ function evaluateBinaryOp(
 function evaluateAudioExpressionWithContext(
   node: ExpressionNode,
   audioProperties: AudioProperties,
+  clipContext: ClipContext | undefined,
   _position: number,
   _timeSigNumerator: number,
   _timeSigDenominator: number,
   _timeRange: { start: number; end: number },
 ): number {
-  return evaluateAudioExpression(node, audioProperties);
+  return evaluateAudioExpression(node, audioProperties, clipContext);
 }
