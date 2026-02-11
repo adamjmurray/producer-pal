@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "./create-clip.ts";
 
 // Mock the code execution protocol module
@@ -18,33 +22,83 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 // Import the mocked module to configure per-test behavior
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 
+interface SessionCodeExecMocks {
+  clipsByScene: Map<number, MockObjectHandle>;
+}
+
+function setupSessionCodeExecMocks(
+  sceneIndices: number[],
+): SessionCodeExecMocks {
+  const sceneIds = sceneIndices.map((sceneIndex) => `scene${sceneIndex}`);
+
+  registerMockObject("live-set", {
+    path: "live_set",
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      scenes: children(...sceneIds),
+    },
+  });
+  registerMockObject("track-0", {
+    path: "live_set tracks 0",
+  });
+
+  const clipsByScene = new Map<number, MockObjectHandle>();
+
+  for (const sceneIndex of sceneIndices) {
+    registerMockObject(`clip-slot-0-${sceneIndex}`, {
+      path: `live_set tracks 0 clip_slots ${sceneIndex}`,
+      properties: { has_clip: 0 },
+    });
+
+    const clipHandle = registerMockObject(
+      `live_set/tracks/0/clip_slots/${sceneIndex}/clip`,
+      {
+        path: `live_set tracks 0 clip_slots ${sceneIndex} clip`,
+        properties: { length: 4 },
+      },
+    );
+
+    clipsByScene.set(sceneIndex, clipHandle);
+  }
+
+  return { clipsByScene };
+}
+
 /**
- * Track added notes per clip for mock get_notes_extended.
- * Key is the clip context (stringified _id or _path).
+ * Track added notes per clip handle for get_notes_extended responses.
+ * @param clipHandles - Clip handles to track
  */
-function setupNoteTrackingMock(): void {
+function setupNoteTrackingMock(clipHandles: MockObjectHandle[]): void {
   const addedNotes = new Map<string, unknown[]>();
 
-  liveApiCall.mockImplementation(function (
-    this: { _id?: string; _path?: string; id?: string },
-    method: string,
-    ...args: unknown[]
-  ) {
-    const key = this._id ?? this._path ?? this.id ?? "";
+  for (const handle of clipHandles) {
+    addedNotes.set(handle.id, []);
 
-    if (method === "add_new_notes") {
-      const firstArg = args[0] as { notes?: unknown[] } | undefined;
-      const existing = addedNotes.get(key) ?? [];
+    handle.call.mockImplementation((method: string, ...args: unknown[]) => {
+      const existing = addedNotes.get(handle.id) ?? [];
 
-      addedNotes.set(key, [...existing, ...(firstArg?.notes ?? [])]);
-    } else if (method === "get_notes_extended") {
-      const notes = addedNotes.get(key) ?? [];
+      if (method === "remove_notes_extended") {
+        addedNotes.set(handle.id, []);
 
-      return JSON.stringify({ notes });
-    }
+        return null;
+      }
 
-    return null;
-  });
+      if (method === "add_new_notes") {
+        const firstArg = args[0] as { notes?: unknown[] } | undefined;
+
+        addedNotes.set(handle.id, [...existing, ...(firstArg?.notes ?? [])]);
+
+        return null;
+      }
+
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: addedNotes.get(handle.id) ?? [] });
+      }
+
+      return null;
+    });
+  }
 }
 
 describe("createClip - code execution", () => {
@@ -53,12 +107,16 @@ describe("createClip - code execution", () => {
   });
 
   it("should apply code to a created session clip", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      Clip: { length: 4 },
-    });
-    setupNoteTrackingMock();
+    const { clipsByScene } = setupSessionCodeExecMocks([0]);
+    const clipHandle = clipsByScene.get(0);
+
+    expect(clipHandle).toBeDefined();
+
+    if (clipHandle == null) {
+      throw new Error("Expected clip handle for scene 0");
+    }
+
+    setupNoteTrackingMock([clipHandle]);
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -95,19 +153,19 @@ describe("createClip - code execution", () => {
       }),
       "return [{ pitch: 60, start: 0, duration: 1, velocity: 100 }]",
       "session",
-      undefined,
+      0,
       undefined,
     );
 
     // applyNotesToClip should have been called (remove + add)
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(clipHandle.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,
       128,
       0,
       1000000,
     );
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(clipHandle.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         {
           pitch: 60,
@@ -135,11 +193,7 @@ describe("createClip - code execution", () => {
   });
 
   it("should warn when code execution fails for a created clip", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      Clip: { length: 4 },
-    });
+    setupSessionCodeExecMocks([0]);
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: false,
@@ -166,12 +220,18 @@ describe("createClip - code execution", () => {
   });
 
   it("should apply code to multiple created clips", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      Clip: { length: 4 },
-    });
-    setupNoteTrackingMock();
+    const { clipsByScene } = setupSessionCodeExecMocks([0, 1]);
+    const firstClip = clipsByScene.get(0);
+    const secondClip = clipsByScene.get(1);
+
+    expect(firstClip).toBeDefined();
+    expect(secondClip).toBeDefined();
+
+    if (firstClip == null || secondClip == null) {
+      throw new Error("Expected clip handles for scenes 0 and 1");
+    }
+
+    setupNoteTrackingMock([firstClip, secondClip]);
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -204,10 +264,7 @@ describe("createClip - code execution", () => {
   });
 
   it("should not call executeNoteCode when code is not provided", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-    });
+    setupSessionCodeExecMocks([0]);
 
     await createClip({
       view: "session",

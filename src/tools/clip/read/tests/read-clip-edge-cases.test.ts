@@ -3,11 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import {
-  children,
-  liveApiCall,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   expectGetNotesExtendedCall,
@@ -18,10 +15,56 @@ import {
 describe("readClip", () => {
   // E2E test with real bar|beat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
-    mockLiveApiGet({
-      Track: { devices: children("drumRack") },
-      drumRack: { can_have_drum_pads: 1 },
-      Clip: {
+    registerMockObject("track-0", {
+      path: "live_set tracks 0",
+      properties: { devices: children("drumRack") },
+    });
+    registerMockObject("drumRack", {
+      type: "Device",
+      properties: { can_have_drum_pads: 1 },
+    });
+    const clip = setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: [
+        {
+          note_id: 1,
+          pitch: 36,
+          start_time: 0,
+          duration: 0.25,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          note_id: 2,
+          pitch: 38,
+          start_time: 1,
+          duration: 0.25,
+          velocity: 90,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          note_id: 3,
+          pitch: 36,
+          start_time: 2,
+          duration: 0.25,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          note_id: 4,
+          pitch: 38,
+          start_time: 3,
+          duration: 0.25,
+          velocity: 90,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ],
+      clipProps: {
         is_midi_clip: 1,
         is_triggered: 1,
         signature_numerator: 4,
@@ -34,56 +77,9 @@ describe("readClip", () => {
       },
     });
 
-    liveApiCall.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              note_id: 1,
-              pitch: 36,
-              start_time: 0,
-              duration: 0.25,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 2,
-              pitch: 38,
-              start_time: 1,
-              duration: 0.25,
-              velocity: 90,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 3,
-              pitch: 36,
-              start_time: 2,
-              duration: 0.25,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              note_id: 4,
-              pitch: 38,
-              start_time: 3,
-              duration: 0.25,
-              velocity: 90,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-          ],
-        });
-      }
-
-      return null;
-    });
-
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
+    expectGetNotesExtendedCall(clip);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -104,8 +100,11 @@ describe("readClip", () => {
   });
 
   it("omits name when empty string", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: [],
+      clipProps: {
         is_midi_clip: 1,
         name: "",
         signature_numerator: 4,
@@ -138,8 +137,10 @@ describe("readClip", () => {
   });
 
   it("omits firstStart when it equals start", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
@@ -159,8 +160,10 @@ describe("readClip", () => {
   });
 
   it("includes firstStart when it differs from start", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
@@ -180,8 +183,10 @@ describe("readClip", () => {
   });
 
   it("includes recording, overdubbing, and muted when true", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         is_recording: 1,
         is_overdubbing: 1,
@@ -202,8 +207,10 @@ describe("readClip", () => {
   });
 
   it("omits recording, overdubbing, and muted when false", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         is_recording: 0,
         is_overdubbing: 0,
@@ -224,8 +231,28 @@ describe("readClip", () => {
   });
 
   it("includes all available options when '*' is used", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 1,
+          velocity: 80,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ],
+      clipProps: {
         is_midi_clip: 1,
         name: "Wildcard Test Clip",
         looping: 1,
@@ -238,33 +265,6 @@ describe("readClip", () => {
         loop_start: 1,
         loop_end: 5,
       },
-    });
-
-    liveApiCall.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-            {
-              pitch: 64,
-              start_time: 2,
-              duration: 1,
-              velocity: 80,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-          ],
-        });
-      }
-
-      return null;
     });
 
     // Test with '*' - should include everything
@@ -300,27 +300,21 @@ describe("readClip", () => {
   });
 
   it("reads G8 (MIDI note 127) correctly by calling Live API with pitch range 0-128", () => {
-    liveApiCall.mockImplementation(function (method: string) {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            {
-              note_id: 1,
-              pitch: 127, // G8 - highest MIDI note
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1.0,
-              velocity_deviation: 0,
-            },
-          ],
-        });
-      }
-
-      return null;
-    });
-    mockLiveApiGet({
-      "live_set/tracks/0/clip_slots/0/clip": {
+    const clip = setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: [
+        {
+          note_id: 1,
+          pitch: 127, // G8 - highest MIDI note
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ],
+      clipProps: {
         signature_numerator: 4,
         signature_denominator: 4,
         length: 4,
@@ -334,7 +328,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     // Verify get_notes_extended is called with upper bound of 128 (exclusive), not 127
-    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
+    expectGetNotesExtendedCall(clip);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",

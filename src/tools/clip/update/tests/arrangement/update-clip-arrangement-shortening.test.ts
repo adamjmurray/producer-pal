@@ -3,39 +3,68 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
+  setupMidiClipMock,
+  type UpdateClipMockHandles,
   setupArrangementClipPath,
   setupMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
+function setupClipProperties(
+  handle: MockObjectHandle,
+  props: Record<string, unknown>,
+): void {
+  const fallbackGet = handle.get.getMockImplementation();
+
+  handle.get.mockImplementation((prop: string) => {
+    const value = props[prop];
+
+    if (value !== undefined) {
+      return [value];
+    }
+
+    if (fallbackGet != null) {
+      return fallbackGet.call(handle, prop);
+    }
+
+    return [0];
+  });
+}
+
 describe("updateClip - arrangementLength (shortening only)", () => {
+  let defaultHandles: UpdateClipMockHandles;
+
   beforeEach(() => {
-    setupMocks();
+    defaultHandles = setupMocks();
   });
 
   it("should shorten arrangement clip to 50% of original length", async () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, ["789"]);
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clipHandles.get("789");
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0, // 4 bars starting at beat 0
-        end_time: 16.0, // 4 bars ending at beat 16
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
+    expect(sourceClip).toBeDefined();
+
+    if (sourceClip == null) {
+      throw new Error("Expected source clip handle for 789");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0, // 4 bars starting at beat 0
+      end_time: 16.0, // 4 bars ending at beat 16
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
     });
 
     const result = await updateClip({
@@ -59,18 +88,23 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   it("should shorten arrangement clip to single beat", async () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, ["789"]);
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clipHandles.get("789");
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0,
-        end_time: 16.0, // 4 bars
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
+    expect(sourceClip).toBeDefined();
+
+    if (sourceClip == null) {
+      throw new Error("Expected source clip handle for 789");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0,
+      end_time: 16.0, // 4 bars
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
     });
 
     const result = await updateClip({
@@ -89,13 +123,11 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should emit warning and ignore for session clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0, // Session clip
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    setupMidiClipMock(defaultHandles.clip123, {
+      is_arrangement_clip: 0, // Session clip
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
     });
 
     const result = await updateClip({
@@ -119,15 +151,13 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should handle zero length with clear error", async () => {
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0,
-        end_time: 16.0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    setupClipProperties(defaultHandles.clip789, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0,
+      end_time: 16.0,
+      signature_numerator: 4,
+      signature_denominator: 4,
     });
 
     await expect(
@@ -140,29 +170,23 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should handle same length as no-op", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clipHandles.get("789");
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
+    expect(sourceClip).toBeDefined();
 
-      if (this._path === "live_set") {
-        return "live_set";
-      }
+    if (sourceClip == null) {
+      throw new Error("Expected source clip handle for 789");
+    }
 
-      return this._path;
-    });
-
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0,
-        end_time: 16.0, // 4 bars
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0,
+      end_time: 16.0, // 4 bars
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
     });
 
     liveApiCall.mockClear(); // Clear previous calls
@@ -187,53 +211,41 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     // This ensures lengthening operations use the new position for tile placement
     const trackIndex = 0;
     const movedClipId = "999";
+    const clipHandles = setupArrangementClipPath(trackIndex, [
+      "789",
+      movedClipId,
+    ]);
+    const sourceClip = clipHandles.get("789");
+    const movedClip = clipHandles.get(movedClipId);
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
+    expect(sourceClip).toBeDefined();
+    expect(movedClip).toBeDefined();
 
-      if (this._id === movedClipId) {
-        return "live_set tracks 0 arrangement_clips 1";
-      }
+    if (sourceClip == null || movedClip == null) {
+      throw new Error("Expected source and moved clip handles");
+    }
 
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "live_set tracks 0";
-      }
-
-      return this._path;
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0,
+      end_time: 16.0, // 4 bars at original position
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
     });
-
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0,
-        end_time: 16.0, // 4 bars at original position
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
-      [movedClipId]: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 32.0, // Moved to bar 9
-        end_time: 48.0, // Still 4 bars long (16 beats)
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
+    setupClipProperties(movedClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 32.0, // Moved to bar 9
+      end_time: 48.0, // Still 4 bars long (16 beats)
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
     });
 
     // Mock duplicate_clip_to_arrangement to return moved clip
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    liveApiCall.mockImplementation(function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${movedClipId}`;
       }
@@ -272,59 +284,46 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const tempClipId = "temp-session-clip";
     const tempArrangementClipId = "temp-arrangement-clip";
 
-    setupArrangementClipPath(trackIndex, ["789", tempArrangementClipId]);
+    const clipHandles = setupArrangementClipPath(trackIndex, [
+      "789",
+      tempArrangementClipId,
+    ]);
+    const sourceClip = clipHandles.get("789");
+    const tempArrangementClip = clipHandles.get(tempArrangementClipId);
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "789") {
-        return "live_set tracks 0 arrangement_clips 0";
-      }
+    expect(sourceClip).toBeDefined();
+    expect(tempArrangementClip).toBeDefined();
 
-      if (this._id === tempClipId) {
-        return `live_set tracks ${trackIndex} clip_slots 0 clip`;
-      }
+    if (sourceClip == null || tempArrangementClip == null) {
+      throw new Error("Expected arrangement clip handles");
+    }
 
-      if (this._id === tempArrangementClipId) {
-        return `live_set tracks ${trackIndex} arrangement_clips 1`;
-      }
-
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      if (this._path === `live_set tracks ${trackIndex}`) {
-        return `live_set tracks ${trackIndex}`;
-      }
-
-      return this._path;
+    registerMockObject(tempClipId, {
+      path: `live_set tracks ${trackIndex} clip_slots 0 clip`,
+      properties: {
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+      },
     });
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0, // Audio clip
-        is_audio_clip: 1,
-        start_time: 0.0,
-        end_time: 16.0, // 4 bars
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
-      [tempClipId]: {
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-      },
-      [tempArrangementClipId]: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-      },
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 0, // Audio clip
+      is_audio_clip: 1,
+      start_time: 0.0,
+      end_time: 16.0, // 4 bars
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
+    });
+    setupClipProperties(tempArrangementClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
     });
 
     // Mock liveApiCall for duplicate_clip_to_arrangement
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    liveApiCall.mockImplementation(function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tempArrangementClipId}`;
       }

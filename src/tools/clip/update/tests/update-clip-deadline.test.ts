@@ -4,8 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
-import { setupMocks } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
+import {
+  setupMidiClipMock,
+  setupMocks,
+  type UpdateClipMockHandles,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -21,32 +25,32 @@ const { isDeadlineExceeded } =
 
 /**
  * Setup two MIDI clip mocks for deadline tests.
+ * @param handles - Registered clip handles
  */
-function setupTwoMidiClips(): void {
-  mockLiveApiGet({
-    123: {
-      is_arrangement_clip: 0,
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-    },
-    456: {
-      is_arrangement_clip: 0,
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-    },
+function setupTwoMidiClips(handles: UpdateClipMockHandles): void {
+  setupSessionMidiClip(handles.clip123);
+  setupSessionMidiClip(handles.clip456);
+}
+
+function setupSessionMidiClip(handle: MockObjectHandle): void {
+  setupMidiClipMock(handle, {
+    is_arrangement_clip: 0,
+    is_midi_clip: 1,
+    signature_numerator: 4,
+    signature_denominator: 4,
   });
 }
 
 describe("updateClip - deadline exceeded", () => {
+  let handles: UpdateClipMockHandles;
+
   beforeEach(() => {
-    setupMocks();
+    handles = setupMocks();
     vi.mocked(isDeadlineExceeded).mockReturnValue(false);
   });
 
   it("should stop updating clips when deadline is exceeded", async () => {
-    setupTwoMidiClips();
+    setupTwoMidiClips(handles);
 
     // Deadline exceeded immediately - should not process any clips
     vi.mocked(isDeadlineExceeded).mockReturnValue(true);
@@ -65,7 +69,7 @@ describe("updateClip - deadline exceeded", () => {
   });
 
   it("should process some clips before deadline is exceeded", async () => {
-    setupTwoMidiClips();
+    setupTwoMidiClips(handles);
 
     // Allow first clip, then exceed deadline
     vi.mocked(isDeadlineExceeded)

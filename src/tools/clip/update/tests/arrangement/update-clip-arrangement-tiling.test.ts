@@ -3,19 +3,50 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiId,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  lookupMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   mockContext,
   setupArrangementClipPath,
   setupMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+
+function setupClipProperties(
+  handle: MockObjectHandle,
+  props: Record<string, unknown>,
+): void {
+  const fallbackGet = handle.get.getMockImplementation();
+
+  handle.get.mockImplementation((prop: string) => {
+    const value = props[prop];
+
+    if (value !== undefined) {
+      return [value];
+    }
+
+    if (fallbackGet != null) {
+      return fallbackGet.call(handle, prop);
+    }
+
+    return [0];
+  });
+}
+
+function requireHandle(path: string): MockObjectHandle {
+  const handle = lookupMockObject(undefined, path);
+
+  expect(handle).toBeDefined();
+
+  if (handle == null) {
+    throw new Error(`Expected handle at path "${path}"`);
+  }
+
+  return handle;
+}
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
@@ -24,36 +55,46 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should tile clip with exact multiples (no remainder) - extends existing", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    const sourceClip = clipHandles.get("789");
+    const duplicatedClip = clipHandles.get("1000");
 
-    setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    expect(sourceClip).toBeDefined();
+    expect(duplicatedClip).toBeDefined();
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        is_audio_clip: 0,
-        start_time: 0.0,
-        end_time: 4.0, // 1 bar currently visible
-        loop_start: 0.0,
-        loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
-        start_marker: 0.0,
-        end_marker: 12.0,
-        name: "Test",
-        color: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 1,
-        trackIndex,
-      },
-      1000: { end_time: 12.0, start_marker: 0.0, loop_start: 0.0 },
-      LiveSet: {
-        tracks: ["id", 0],
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      "live_set tracks 0": {
-        arrangement_clips: ["id", 789],
-      },
+    if (sourceClip == null || duplicatedClip == null) {
+      throw new Error("Expected arrangement clip handles for 789 and 1000");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      is_audio_clip: 0,
+      start_time: 0.0,
+      end_time: 4.0, // 1 bar currently visible
+      loop_start: 0.0,
+      loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
+      start_marker: 0.0,
+      end_marker: 12.0,
+      name: "Test",
+      color: 0,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      looping: 1,
+      trackIndex,
+    });
+    setupClipProperties(duplicatedClip, {
+      end_time: 12.0,
+      start_marker: 0.0,
+      loop_start: 0.0,
+    });
+    setupClipProperties(requireHandle("live_set"), {
+      tracks: ["id", 0],
+      signature_numerator: 4,
+      signature_denominator: 4,
+    });
+    setupClipProperties(requireHandle("live_set tracks 0"), {
+      arrangement_clips: ["id", 789],
     });
 
     // Mock tiling flow (non-destructive duplication)
@@ -91,30 +132,34 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should handle insufficient content by tiling what exists", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    const sourceClip = clipHandles.get("789");
 
-    setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    expect(sourceClip).toBeDefined();
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        looping: 1, // This is a looped clip
-        start_time: 0.0,
-        end_time: 4.0,
-        loop_start: 0.0,
-        loop_end: 4.0, // clip.length = 4 beats
-        start_marker: 0.0,
-        end_marker: 4.0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
-      LiveSet: {
-        tracks: ["id", 0],
-      },
-      "live_set tracks 0": {
-        arrangement_clips: ["id", 789],
-      },
+    if (sourceClip == null) {
+      throw new Error("Expected arrangement clip handle for 789");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      looping: 1, // This is a looped clip
+      start_time: 0.0,
+      end_time: 4.0,
+      loop_start: 0.0,
+      loop_end: 4.0, // clip.length = 4 beats
+      start_marker: 0.0,
+      end_marker: 4.0,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
+    });
+    setupClipProperties(requireHandle("live_set"), {
+      tracks: ["id", 0],
+    });
+    setupClipProperties(requireHandle("live_set tracks 0"), {
+      arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement
@@ -123,12 +168,13 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
+        const duplicatedClip = clipHandles.get(String(id));
 
-        mockLiveApiGet({
-          [id]: {
+        if (duplicatedClip != null) {
+          setupClipProperties(duplicatedClip, {
             end_time: (Number(args[1]) || 0) + 4.0,
-          },
-        });
+          });
+        }
 
         return `id ${id}`;
       }
@@ -151,28 +197,32 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should work with no remainder (single tile)", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clipHandles.get("789");
 
-    setupArrangementClipPath(trackIndex, ["789"]);
+    expect(sourceClip).toBeDefined();
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 0.0,
-        end_time: 4.0,
-        loop_start: 0.0,
-        loop_end: 4.0,
-        start_marker: 0.0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
-      LiveSet: {
-        tracks: ["id", 0],
-      },
-      "live_set tracks 0": {
-        arrangement_clips: ["id", 789],
-      },
+    if (sourceClip == null) {
+      throw new Error("Expected arrangement clip handle for 789");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: 0.0,
+      end_time: 4.0,
+      loop_start: 0.0,
+      loop_end: 4.0,
+      start_marker: 0.0,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
+    });
+    setupClipProperties(requireHandle("live_set"), {
+      tracks: ["id", 0],
+    });
+    setupClipProperties(requireHandle("live_set tracks 0"), {
+      arrangement_clips: ["id", 789],
     });
 
     const result = await updateClip({
@@ -192,32 +242,41 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, [
+      "789",
+      "1000",
+      "1001",
+      "1002",
+    ]);
+    const sourceClip = clipHandles.get("789");
 
-    setupArrangementClipPath(trackIndex, ["789", "1000", "1001", "1002"]);
+    expect(sourceClip).toBeDefined();
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        looping: 1,
-        start_time: 0.0,
-        end_time: 3.0, // 3 beats currently visible
-        loop_start: 1.0, // start at beat 2 (1|2)
-        loop_end: 4.0, // 3 beats of loop content
-        start_marker: 0.0, // firstStart at beat 1 (1|1) - creates 1 beat pre-roll
-        end_marker: 4.0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        trackIndex,
-      },
-      LiveSet: {
-        tracks: ["id", 0],
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      "live_set tracks 0": {
-        arrangement_clips: ["id", 789],
-      },
+    if (sourceClip == null) {
+      throw new Error("Expected arrangement clip handle for 789");
+    }
+
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      looping: 1,
+      start_time: 0.0,
+      end_time: 3.0, // 3 beats currently visible
+      loop_start: 1.0, // start at beat 2 (1|2)
+      loop_end: 4.0, // 3 beats of loop content
+      start_marker: 0.0, // firstStart at beat 1 (1|1) - creates 1 beat pre-roll
+      end_marker: 4.0,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      trackIndex,
+    });
+    setupClipProperties(requireHandle("live_set"), {
+      tracks: ["id", 0],
+      signature_numerator: 4,
+      signature_denominator: 4,
+    });
+    setupClipProperties(requireHandle("live_set tracks 0"), {
+      arrangement_clips: ["id", 789],
     });
 
     // Track created clips and their start_marker values
@@ -235,7 +294,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const setCallsByClip: Record<string, Record<string, unknown>> = {};
 
     liveApiSet.mockImplementation(function (
-      this: MockLiveAPIContext,
+      this: { _id?: string },
       prop: string,
       value: unknown,
     ) {
@@ -290,47 +349,54 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should preserve envelopes when tiling clip with hidden content", async () => {
     const trackIndex = 0;
+    const clipHandles = setupArrangementClipPath(trackIndex, [
+      "789",
+      "1000",
+      "1001",
+    ]);
+    const sourceClip = clipHandles.get("789");
+    const tile1 = clipHandles.get("1000");
+    const tile2 = clipHandles.get("1001");
 
-    // Override liveApiId for this test to handle new clip IDs
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "id 1000" || this._id === "1000") {
-        return "1000";
-      }
+    expect(sourceClip).toBeDefined();
+    expect(tile1).toBeDefined();
+    expect(tile2).toBeDefined();
 
-      if (this._path === "id 1001" || this._id === "1001") {
-        return "1001";
-      }
+    if (sourceClip == null || tile1 == null || tile2 == null) {
+      throw new Error("Expected arrangement clip handles for 789/1000/1001");
+    }
 
-      return this._id;
+    setupClipProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      is_audio_clip: 0,
+      looping: 1, // This is a looped clip
+      start_time: 0.0,
+      end_time: 4.0, // Currently showing 4 beats
+      loop_start: 0.0,
+      loop_end: 8.0, // clip.length = 8 beats (has hidden content)
+      start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
+      end_marker: 8.0,
+      name: "Test Clip",
+      trackIndex,
     });
-
-    setupArrangementClipPath(trackIndex, ["789", "1000", "1001"]);
-
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        is_audio_clip: 0,
-        looping: 1, // This is a looped clip
-        start_time: 0.0,
-        end_time: 4.0, // Currently showing 4 beats
-        loop_start: 0.0,
-        loop_end: 8.0, // clip.length = 8 beats (has hidden content)
-        start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
-        end_marker: 8.0,
-        name: "Test Clip",
-        trackIndex,
-      },
-      1000: { end_time: 8.0, start_marker: 2.0, loop_start: 0.0 }, // First full tile (4 beats)
-      1001: { end_time: 12.0, start_marker: 2.0, loop_start: 0.0 }, // Second full tile (4 beats)
-      LiveSet: {
-        tracks: ["id", 0],
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      "live_set tracks 0": {
-        arrangement_clips: ["id", 789],
-      },
+    setupClipProperties(tile1, {
+      end_time: 8.0,
+      start_marker: 2.0,
+      loop_start: 0.0,
+    });
+    setupClipProperties(tile2, {
+      end_time: 12.0,
+      start_marker: 2.0,
+      loop_start: 0.0,
+    });
+    setupClipProperties(requireHandle("live_set"), {
+      tracks: ["id", 0],
+      signature_numerator: 4,
+      signature_denominator: 4,
+    });
+    setupClipProperties(requireHandle("live_set tracks 0"), {
+      arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement calls for tiling

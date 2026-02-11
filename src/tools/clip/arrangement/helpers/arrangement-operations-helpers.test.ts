@@ -3,12 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
@@ -27,9 +22,6 @@ describe("arrangement-operations-helpers", () => {
 
   describe("handleArrangementLengthening", () => {
     it("should throw error when trackIndex is null", () => {
-      // Mock clip that returns null for trackIndex (path doesn't have tracks pattern)
-      liveApiPath.mockReturnValue("live_set");
-      mockLiveApiGet({ 123: {} });
       const mockClip = createMockClip({ id: "123", trackIndex: null });
 
       expect(() =>
@@ -206,8 +198,6 @@ describe("arrangement-operations-helpers", () => {
 
   describe("handleArrangementShortening", () => {
     it("should throw error when trackIndex is null", () => {
-      liveApiPath.mockReturnValue("live_set");
-
       expect(() =>
         handleArrangementShortening({
           clip: { id: "456", trackIndex: null } as unknown as LiveAPI,

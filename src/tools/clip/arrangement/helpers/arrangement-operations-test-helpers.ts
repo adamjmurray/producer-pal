@@ -7,7 +7,8 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
-import { liveApiPath, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface ClipProps {
   looping?: number;
@@ -18,8 +19,36 @@ interface ClipProps {
   [key: string]: number | undefined;
 }
 
+interface RegisterWithFallbackOptions {
+  path?: string;
+  properties?: Record<string, unknown>;
+}
+
+function registerWithFallback(
+  id: string,
+  options: RegisterWithFallbackOptions = {},
+): void {
+  const handle = registerMockObject(id, options);
+
+  handle.call.mockImplementation(function (
+    this: unknown,
+    method: string,
+    ...args: unknown[]
+  ) {
+    return liveApiCall.apply(this, [method, ...args]);
+  });
+
+  handle.set.mockImplementation(function (
+    this: unknown,
+    property: string,
+    value: unknown,
+  ) {
+    return liveApiSet.apply(this, [property, value]);
+  });
+}
+
 /**
- * Setup liveApiPath mock for arrangement clip tests with a given clip ID.
+ * Register arrangement clip and track handles for a given clip ID.
  * @param clipId - The clip ID to match (e.g., "789")
  * @param trackIndex - Track index for the returned path
  */
@@ -27,15 +56,11 @@ export function setupArrangementClipPath(
   clipId: string,
   trackIndex: number = 0,
 ): void {
-  liveApiPath.mockImplementation(function (this: {
-    _id: string;
-    _path: string;
-  }) {
-    if (this._id === clipId) {
-      return `live_set tracks ${trackIndex} arrangement_clips 0`;
-    }
-
-    return this._path;
+  registerWithFallback(`track-${trackIndex}`, {
+    path: `live_set tracks ${trackIndex}`,
+  });
+  registerWithFallback(clipId, {
+    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
   });
 }
 
@@ -113,8 +138,12 @@ export function setupArrangementMocks(
   } = options;
 
   setupArrangementClipPath(clipId, trackIndex);
-  mockLiveApiGet({
-    [clipId]: createClipProps(clipProps),
-    ...extraMocks,
+  registerWithFallback(clipId, {
+    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    properties: createClipProps(clipProps),
   });
+
+  for (const [id, properties] of Object.entries(extraMocks)) {
+    registerWithFallback(id, { properties });
+  }
 }
