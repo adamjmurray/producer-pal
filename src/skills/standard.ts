@@ -231,11 +231,9 @@ export function buildInstructions(context?: Partial<ToolContext>): string {
       "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
       ...(memory?.content
         ? [
-            `* Summarize the project notes, ${
-              memory.writable
-                ? "mention you can update the project notes, "
-                : ""
-            }and verify you will follow instructions in project notes (if any).`,
+            `* Summarize the project memory, ${
+              memory.writable ? "mention you can update the memory, " : ""
+            }and verify you will follow instructions in memory (if any).`,
           ]
         : []),
       "* Say the messagesForUser, ask what's next, wait for input",

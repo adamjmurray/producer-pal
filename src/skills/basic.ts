@@ -67,10 +67,8 @@ export function buildInstructions(context?: Partial<ToolContext>): string {
       "* Summarize the Live Set",
       ...(memory?.content
         ? [
-            `* Summarize the project notes${
-              memory.writable
-                ? ", and mention you can update the project notes"
-                : ""
+            `* Summarize the project memory${
+              memory.writable ? ", and mention you can update the memory" : ""
             }`,
           ]
         : []),
