@@ -17,15 +17,13 @@ import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
-import { toolDefReadSamples } from "#src/tools/samples/read-samples.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { toolDefConnect } from "#src/tools/workflow/connect.def.ts";
-import { toolDefMemory } from "#src/tools/workflow/memory.def.ts";
+import { toolDefSession } from "#src/tools/workflow/session.def.ts";
 
 export type CallLiveApiFunction = (
   tool: string,
@@ -63,7 +61,7 @@ export function createMcpServer(
   const addTool = (toolDef: ToolDefFunction): void =>
     toolDef(server, callLiveApi, { smallModelMode });
 
-  addTool(toolDefConnect);
+  addTool(toolDefSession);
 
   addTool(toolDefReadLiveSet);
   addTool(toolDefUpdateLiveSet);
@@ -88,8 +86,6 @@ export function createMcpServer(
   addTool(toolDefSelect);
   addTool(toolDefDelete);
   addTool(toolDefDuplicate);
-  addTool(toolDefMemory);
-  addTool(toolDefReadSamples);
 
   if (process.env.ENABLE_RAW_LIVE_API === "true" && !smallModelMode) {
     addTool(toolDefRawLiveApi);

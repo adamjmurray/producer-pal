@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-read-samples tool
+ * E2E tests for ppal-session tool (search-samples action)
  * Uses once mode to reuse MCP connection across tests (faster).
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/samples/ppal-read-samples.test.ts
@@ -23,23 +23,25 @@ const ctx = setupMcpTestContext({ once: true });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE_FOLDER = resolve(__dirname, "../../../evals/live-sets/samples");
 
-/** Helper to call ppal-read-samples */
+/** Helper to call ppal-session with search-samples action */
 async function callReadSamples(search?: string): Promise<string> {
-  const args: { search?: string } = {};
+  const args: { action: string; search?: string } = {
+    action: "search-samples",
+  };
 
   if (search !== undefined) {
     args.search = search;
   }
 
   const result = await ctx.client!.callTool({
-    name: "ppal-read-samples",
+    name: "ppal-session",
     arguments: args,
   });
 
   return extractToolResultText(result);
 }
 
-describe("ppal-read-samples", () => {
+describe("ppal-session (search-samples action)", () => {
   it("returns error when no sample folder is configured", async () => {
     // resetConfig() sets sampleFolder to "" which should trigger an error
     const result = await callReadSamples();

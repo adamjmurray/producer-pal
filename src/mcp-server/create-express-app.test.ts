@@ -123,7 +123,7 @@ describe("MCP Express App", () => {
       const toolNames = result.tools.map((tool) => tool.name);
 
       expect(toolNames).toStrictEqual([
-        "ppal-connect",
+        "ppal-session",
         "ppal-read-live-set",
         "ppal-update-live-set",
         "ppal-create-track",
@@ -142,8 +142,6 @@ describe("MCP Express App", () => {
         "ppal-select",
         "ppal-delete",
         "ppal-duplicate",
-        "ppal-memory",
-        "ppal-read-samples",
         "ppal-raw-live-api",
       ]);
     });
