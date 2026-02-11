@@ -59,16 +59,16 @@ D1 2|2,4              # snare on beats 2 and 4 in bar 2
  * @returns Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context?: Partial<ToolContext>): string {
-  const projectNotes = context?.projectNotes;
+  const memory = context?.memory;
 
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
       "* Summarize the Live Set",
-      ...(projectNotes?.content
+      ...(memory?.content
         ? [
             `* Summarize the project notes${
-              projectNotes.writable
+              memory.writable
                 ? ", and mention you can update the project notes"
                 : ""
             }`,

@@ -56,16 +56,16 @@ export function handleConnect(
 export function handleReadMemory(
   context: Partial<ToolContext> = {},
 ): MemoryResult {
-  const projectNotes = context.projectNotes;
+  const memory = context.memory;
 
-  if (!projectNotes?.enabled) {
+  if (!memory?.enabled) {
     return { enabled: false };
   }
 
   return {
     enabled: true,
-    writable: projectNotes.writable,
-    content: projectNotes.content,
+    writable: memory.writable,
+    content: memory.content,
   };
 }
 
@@ -79,13 +79,13 @@ export function handleWriteMemory(
   content: string | undefined,
   context: Partial<ToolContext> = {},
 ): MemoryResult {
-  const projectNotes = context.projectNotes;
+  const memory = context.memory;
 
-  if (!projectNotes?.enabled) {
+  if (!memory?.enabled) {
     throw new Error("Project context is disabled");
   }
 
-  if (!projectNotes.writable) {
+  if (!memory.writable) {
     throw new Error(
       "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
     );
@@ -95,15 +95,15 @@ export function handleWriteMemory(
     throw new Error("Content required for write action");
   }
 
-  projectNotes.content = content;
+  memory.content = content;
 
   // Send update to Max patch via outlet
   outlet(0, "updatenotes", content);
 
   return {
     enabled: true,
-    writable: projectNotes.writable,
-    content: projectNotes.content,
+    writable: memory.writable,
+    content: memory.content,
   };
 }
 

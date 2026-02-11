@@ -17,9 +17,9 @@ export const projectNotesWorkflow: EvalScenario = {
 
   // Enable project notes feature for this scenario
   config: {
-    useProjectNotes: true,
-    projectNotes: "",
-    projectNotesWritable: true,
+    memoryEnabled: true,
+    memoryContent: "",
+    memoryWritable: true,
   },
 
   messages: [

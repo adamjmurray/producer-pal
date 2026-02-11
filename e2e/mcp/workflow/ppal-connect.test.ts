@@ -107,7 +107,7 @@ describe("ppal-session (connect action)", () => {
     const TEST_NOTES = "Test project notes content for e2e testing";
 
     it("excludes projectNotes when disabled (default)", async () => {
-      await setConfig({ useProjectNotes: false, projectNotes: "" });
+      await setConfig({ memoryEnabled: false, memoryContent: "" });
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBeUndefined();
@@ -116,9 +116,9 @@ describe("ppal-session (connect action)", () => {
 
     it("includes projectNotes when enabled with content (read-only)", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: TEST_NOTES,
-        projectNotesWritable: false,
+        memoryEnabled: true,
+        memoryContent: TEST_NOTES,
+        memoryWritable: false,
       });
       const parsed = await callConnect();
 
@@ -127,11 +127,11 @@ describe("ppal-session (connect action)", () => {
       expect(parsed.$instructions).not.toContain("update the project notes");
     });
 
-    it("includes writable instruction when projectNotesWritable is true", async () => {
+    it("includes writable instruction when memoryWritable is true", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: TEST_NOTES,
-        projectNotesWritable: true,
+        memoryEnabled: true,
+        memoryContent: TEST_NOTES,
+        memoryWritable: true,
       });
       const parsed = await callConnect();
 
@@ -142,9 +142,9 @@ describe("ppal-session (connect action)", () => {
 
     it("excludes projectNotes when enabled but content is empty", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: "",
-        projectNotesWritable: false,
+        memoryEnabled: true,
+        memoryContent: "",
+        memoryWritable: false,
       });
       const parsed = await callConnect();
 

@@ -11,7 +11,7 @@ describe("session - memory actions", () => {
 
   beforeEach(() => {
     context = {
-      projectNotes: {
+      memory: {
         enabled: false,
         writable: false,
         content: "",
@@ -21,14 +21,14 @@ describe("session - memory actions", () => {
 
   describe("read-memory action", () => {
     it("returns enabled: false when project context is disabled", () => {
-      context.projectNotes!.enabled = false;
+      context.memory!.enabled = false;
       const result = session({ action: "read-memory" }, context);
 
       expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns enabled: false when projectNotes is missing", () => {
+    it("returns enabled: false when memory is missing", () => {
       const result = session({ action: "read-memory" }, {});
 
       expect(result).toStrictEqual({ enabled: false });
@@ -36,9 +36,9 @@ describe("session - memory actions", () => {
     });
 
     it("returns full context when project context is enabled", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
-      context.projectNotes!.content = "test content";
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
+      context.memory!.content = "test content";
 
       const result = session({ action: "read-memory" }, context);
 
@@ -51,9 +51,9 @@ describe("session - memory actions", () => {
     });
 
     it("returns full context with writable false when not writable", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = false;
-      context.projectNotes!.content = "test content";
+      context.memory!.enabled = true;
+      context.memory!.writable = false;
+      context.memory!.content = "test content";
 
       const result = session({ action: "read-memory" }, context);
 
@@ -68,14 +68,14 @@ describe("session - memory actions", () => {
 
   describe("write-memory action", () => {
     it("throws error when project context is disabled", () => {
-      context.projectNotes!.enabled = false;
+      context.memory!.enabled = false;
       expect(() =>
         session({ action: "write-memory", content: "test" }, context),
       ).toThrow("Project context is disabled");
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when projectNotes is missing", () => {
+    it("throws error when memory is missing", () => {
       expect(() =>
         session({ action: "write-memory", content: "test" }, {}),
       ).toThrow("Project context is disabled");
@@ -83,8 +83,8 @@ describe("session - memory actions", () => {
     });
 
     it("throws error when project context is not writable", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = false;
+      context.memory!.enabled = true;
+      context.memory!.writable = false;
       expect(() =>
         session({ action: "write-memory", content: "test" }, context),
       ).toThrow(
@@ -94,8 +94,8 @@ describe("session - memory actions", () => {
     });
 
     it("throws error when content is missing", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
       expect(() => session({ action: "write-memory" }, context)).toThrow(
         "Content required for write action",
       );
@@ -103,8 +103,8 @@ describe("session - memory actions", () => {
     });
 
     it("throws error when content is empty string", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
       expect(() =>
         session({ action: "write-memory", content: "" }, context),
       ).toThrow("Content required for write action");
@@ -115,16 +115,16 @@ describe("session - memory actions", () => {
       ["updates content when all conditions are met", ""],
       ["overwrites existing content", "old content"],
     ])("%s", (_, initialContent) => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
-      if (initialContent) context.projectNotes!.content = initialContent;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
+      if (initialContent) context.memory!.content = initialContent;
 
       const result = session(
         { action: "write-memory", content: "new content" },
         context,
       );
 
-      expect(context.projectNotes!.content).toBe("new content");
+      expect(context.memory!.content).toBe("new content");
       expect(result).toStrictEqual({
         enabled: true,
         writable: true,

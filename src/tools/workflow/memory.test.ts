@@ -10,7 +10,7 @@ describe("memory", () => {
 
   beforeEach(() => {
     context = {
-      projectNotes: {
+      memory: {
         enabled: false,
         writable: false,
         content: "",
@@ -44,7 +44,7 @@ describe("memory", () => {
 
   describe("read action", () => {
     it("should return only enabled: false when project context is disabled", () => {
-      context.projectNotes!.enabled = false;
+      context.memory!.enabled = false;
       const result = memory({ action: "read" }, context);
 
       expect(result).toStrictEqual({ enabled: false });
@@ -52,9 +52,9 @@ describe("memory", () => {
     });
 
     it("should return full context when project context is enabled", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
-      context.projectNotes!.content = "test content";
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
+      context.memory!.content = "test content";
 
       const result = memory({ action: "read" }, context);
 
@@ -67,9 +67,9 @@ describe("memory", () => {
     });
 
     it("should return full context with writable false when not writable", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = false;
-      context.projectNotes!.content = "test content";
+      context.memory!.enabled = true;
+      context.memory!.writable = false;
+      context.memory!.content = "test content";
 
       const result = memory({ action: "read" }, context);
 
@@ -84,7 +84,7 @@ describe("memory", () => {
 
   describe("write action", () => {
     it("should throw error when project context is disabled", () => {
-      context.projectNotes!.enabled = false;
+      context.memory!.enabled = false;
       expect(() =>
         memory({ action: "write", content: "test" }, context),
       ).toThrow("Project context is disabled");
@@ -92,8 +92,8 @@ describe("memory", () => {
     });
 
     it("should throw error when project context is not writable", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = false;
+      context.memory!.enabled = true;
+      context.memory!.writable = false;
       expect(() =>
         memory({ action: "write", content: "test" }, context),
       ).toThrow(
@@ -103,8 +103,8 @@ describe("memory", () => {
     });
 
     it("should throw error when content is missing", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
       expect(() => memory({ action: "write" }, context)).toThrow(
         "Content required for write action",
       );
@@ -112,8 +112,8 @@ describe("memory", () => {
     });
 
     it("should throw error when content is empty string", () => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
       expect(() => memory({ action: "write", content: "" }, context)).toThrow(
         "Content required for write action",
       );
@@ -124,16 +124,16 @@ describe("memory", () => {
       ["updates content when all conditions are met", ""],
       ["overwrites existing content", "old content"],
     ])("%s", (_, initialContent) => {
-      context.projectNotes!.enabled = true;
-      context.projectNotes!.writable = true;
-      if (initialContent) context.projectNotes!.content = initialContent;
+      context.memory!.enabled = true;
+      context.memory!.writable = true;
+      if (initialContent) context.memory!.content = initialContent;
 
       const result = memory(
         { action: "write", content: "new content" },
         context,
       );
 
-      expect(context.projectNotes!.content).toBe("new content");
+      expect(context.memory!.content).toBe("new content");
       expect(result).toStrictEqual({
         enabled: true,
         writable: true,

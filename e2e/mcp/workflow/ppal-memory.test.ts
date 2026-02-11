@@ -35,7 +35,7 @@ async function callMemoryTool(
 describe("ppal-session (memory actions)", () => {
   describe("disabled state", () => {
     it("returns enabled: false when project notes are disabled", async () => {
-      await setConfig({ useProjectNotes: false, projectNotes: "" });
+      await setConfig({ memoryEnabled: false, memoryContent: "" });
       const result = await callMemoryTool("read-memory");
       const parsed = parseToolResult<MemoryResult>(result);
 
@@ -48,9 +48,9 @@ describe("ppal-session (memory actions)", () => {
       const TEST_CONTENT = "Read-only project notes for e2e testing";
 
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: TEST_CONTENT,
-        projectNotesWritable: false,
+        memoryEnabled: true,
+        memoryContent: TEST_CONTENT,
+        memoryWritable: false,
       });
 
       // Read should work
@@ -78,9 +78,9 @@ describe("ppal-session (memory actions)", () => {
       const UPDATED_CONTENT = "Updated content from e2e test";
 
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: INITIAL_CONTENT,
-        projectNotesWritable: true,
+        memoryEnabled: true,
+        memoryContent: INITIAL_CONTENT,
+        memoryWritable: true,
       });
 
       // Read initial content
@@ -111,9 +111,9 @@ describe("ppal-session (memory actions)", () => {
 
     it("requires content for write action", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: "Some content",
-        projectNotesWritable: true,
+        memoryEnabled: true,
+        memoryContent: "Some content",
+        memoryWritable: true,
       });
 
       // Write without content should fail

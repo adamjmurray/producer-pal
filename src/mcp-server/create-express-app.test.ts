@@ -533,9 +533,9 @@ describe("MCP Express App", () => {
       const config = await response.json();
 
       expect(config).toMatchObject({
-        useProjectNotes: expect.any(Boolean),
-        projectNotes: expect.any(String),
-        projectNotesWritable: expect.any(Boolean),
+        memoryEnabled: expect.any(Boolean),
+        memoryContent: expect.any(String),
+        memoryWritable: expect.any(Boolean),
         smallModelMode: expect.any(Boolean),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
@@ -579,17 +579,17 @@ describe("MCP Express App", () => {
       const getResponse = await fetch(configUrl);
       const before = await getResponse.json();
 
-      // Only update useProjectNotes
+      // Only update memoryEnabled
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ useProjectNotes: true }),
+        body: JSON.stringify({ memoryEnabled: true }),
       });
 
       expect(response.status).toBe(200);
       const after = await response.json();
 
-      expect(after.useProjectNotes).toBe(true);
+      expect(after.memoryEnabled).toBe(true);
       // Other values should remain unchanged
       expect(after.smallModelMode).toBe(before.smallModelMode);
       expect(after.jsonOutput).toBe(before.jsonOutput);
@@ -598,49 +598,49 @@ describe("MCP Express App", () => {
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ useProjectNotes: false }),
+        body: JSON.stringify({ memoryEnabled: false }),
       });
     });
 
-    it("should update projectNotes string", async () => {
+    it("should update memoryContent string", async () => {
       const testNotes = "Test project notes content";
 
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotes: testNotes }),
+        body: JSON.stringify({ memoryContent: testNotes }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.projectNotes).toBe(testNotes);
+      expect(config.memoryContent).toBe(testNotes);
 
       // Clear notes
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotes: "" }),
+        body: JSON.stringify({ memoryContent: "" }),
       });
     });
 
-    it("should update projectNotesWritable", async () => {
+    it("should update memoryWritable", async () => {
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotesWritable: true }),
+        body: JSON.stringify({ memoryWritable: true }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.projectNotesWritable).toBe(true);
+      expect(config.memoryWritable).toBe(true);
 
       // Restore
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotesWritable: false }),
+        body: JSON.stringify({ memoryWritable: false }),
       });
     });
 
@@ -723,7 +723,7 @@ describe("MCP Express App", () => {
       handler(0);
     });
 
-    it("should set projectNotes with string input", () => {
+    it("should set memoryContent with string input", () => {
       const handler = mockMax.handlers.get("projectNotes") as (
         input: unknown,
       ) => void;
@@ -733,7 +733,7 @@ describe("MCP Express App", () => {
       handler("");
     });
 
-    it("should set projectNotesWritable with various inputs", () => {
+    it("should set memoryWritable with various inputs", () => {
       const handler = mockMax.handlers.get("projectNotesWritable") as (
         input: unknown,
       ) => void;

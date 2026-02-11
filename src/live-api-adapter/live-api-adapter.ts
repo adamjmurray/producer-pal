@@ -47,7 +47,7 @@ setoutletassist(0, "tool call results");
 setoutletassist(1, "tool call warnings");
 
 const context: ToolContext = {
-  projectNotes: {
+  memory: {
     enabled: false,
     writable: false,
     content: "",
@@ -158,7 +158,7 @@ export function smallModelMode(enabled: unknown): void {
  */
 export function projectNotesEnabled(enabled: unknown): void {
   // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
-  context.projectNotes.enabled = Boolean(enabled);
+  context.memory.enabled = Boolean(enabled);
 }
 
 /**
@@ -168,7 +168,7 @@ export function projectNotesEnabled(enabled: unknown): void {
  */
 export function projectNotesWritable(writable: unknown): void {
   // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
-  context.projectNotes.writable = Boolean(writable);
+  context.memory.writable = Boolean(writable);
 }
 
 /**
@@ -181,7 +181,7 @@ export function projectNotes(content: unknown): void {
   const value = content === "bang" ? "" : String(content ?? "");
 
   // console.log(`[v8] Setting projectNotes "${value}"`);
-  context.projectNotes.content = value;
+  context.memory.content = value;
 }
 
 /**

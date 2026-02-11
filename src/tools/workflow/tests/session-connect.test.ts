@@ -46,7 +46,7 @@ describe("session - connect action", () => {
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      projectNotes: {
+      memory: {
         enabled: true,
         writable: false,
         content: "Working on a house track",
@@ -63,7 +63,7 @@ describe("session - connect action", () => {
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      projectNotes: {
+      memory: {
         enabled: false,
         writable: false,
         content: "Should not be included",

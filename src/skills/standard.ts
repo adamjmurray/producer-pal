@@ -222,17 +222,17 @@ Process in reverse \`arrangementStart\` order to prevent overwrites:
  * @returns Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context?: Partial<ToolContext>): string {
-  const projectNotes = context?.projectNotes;
+  const memory = context?.memory;
 
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
       "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
       "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(projectNotes?.content
+      ...(memory?.content
         ? [
             `* Summarize the project notes, ${
-              projectNotes.writable
+              memory.writable
                 ? "mention you can update the project notes, "
                 : ""
             }and verify you will follow instructions in project notes (if any).`,
