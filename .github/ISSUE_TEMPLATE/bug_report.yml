@@ -1,4 +1,3 @@
-# .github/ISSUE_TEMPLATE/bug_report.yml
 name: Bug Report
 description: Report something that isn't working correctly
 labels: ["bug"]
@@ -9,15 +8,21 @@ body:
       value: |
         Thanks for taking the time to report a bug. Please fill out the details below.
 
-  - type: dropdown
-    id: severity
+  - type: textarea
+    id: description
     attributes:
-      label: Severity
-      options:
-        - Crashing
-        - Broken feature
-        - Partially working feature
-        - Annoyance
+      label: Bug description
+      description:
+        Describe what happened, how to reproduce it, and what you expected
+      placeholder: |
+        Steps to reproduce:
+        1.
+        2.
+        3.
+
+        What happened:
+
+        What I expected:
     validations:
       required: true
 
@@ -31,37 +36,22 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: description
+  - type: input
+    id: ai-provider-model
     attributes:
-      label: What happened?
-      description: Describe the problem and what you expected instead
-      placeholder: |
-        What I did:
-        What happened:
-        What I expected:
-    validations:
-      required: true
-
-  - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
+      label: AI provider and model
       description:
-        For consistent issues, list exact steps. For random issues, describe any
-        patterns you've noticed.
-      placeholder: |
-        1. 
-        2. 
-        3.
+        Optional — Which AI are you using? Are you using local models (e.g.
+        Ollama or LM Studio)?
+      placeholder: "e.g., OpenAI GPT 5.2, Ollama Qwen3 8B, N/A"
     validations:
-      required: true
+      required: false
 
   - type: input
     id: ppal-version
     attributes:
       label: Producer Pal version
-      placeholder: "e.g., 1.3.6"
+      placeholder: "e.g., 1.4.0"
     validations:
       required: true
 
@@ -69,35 +59,17 @@ body:
     id: ableton-version
     attributes:
       label: Ableton Live version
-      placeholder: "e.g., 12.3.5"
+      placeholder: "e.g., 12.4.0"
     validations:
       required: true
 
   - type: input
-    id: os
+    id: system
     attributes:
-      label: Operating system and version
-      placeholder: "e.g., macOS 15.2, Windows 11 24H2"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: processor
-    attributes:
-      label: Processor type
-      options:
-        - Apple Silicon (M1/M2/M3/M4)
-        - Intel (Mac)
-        - Intel/AMD (Windows)
-        - Other
-    validations:
-      required: true
-
-  - type: input
-    id: ram
-    attributes:
-      label: RAM
-      placeholder: "e.g., 16 GB"
+      label: System information
+      description: Operating system and processor type
+      placeholder:
+        "e.g., macOS 15.2 (Apple Silicon M3), Windows 11 24H2 (Intel)"
     validations:
       required: true
 
@@ -105,7 +77,6 @@ body:
     id: additional
     attributes:
       label: Additional context
-      description:
-        Optional — logs, screenshots, Max console output, anything else relevant
+      description: Optional — Logs, screenshots, or other relevant details
     validations:
       required: false
