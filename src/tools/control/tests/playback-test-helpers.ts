@@ -1,17 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
 import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
+import { liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface LiveSetConfig {
   numerator?: number;
@@ -38,51 +36,47 @@ interface ClipPathMapping {
   path: string;
 }
 
+interface MultiClipMockResult {
+  liveSet: MockObjectHandle;
+  clipSlots: MockObjectHandle[];
+}
+
 /**
  * Setup default time signature mock (4/4) for playback tests.
- * Use in beforeEach to initialize standard test state.
+ * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.
+ * @returns MockObjectHandle for the live_set object
  */
-export function setupDefaultTimeSignature(): void {
-  mockLiveApiGet({
-    LiveSet: {
+export function setupDefaultTimeSignature(): MockObjectHandle {
+  const liveSet = registerMockObject("live_set", {
+    path: "live_set",
+    properties: {
       signature_numerator: 4,
       signature_denominator: 4,
     },
   });
+
+  // Register default tracks (fallback getLiveSetProperty returns children("track1", "track2"))
+  registerMockObject("track1", { path: "id track1", type: "Track" });
+  registerMockObject("track2", { path: "id track2", type: "Track" });
+
+  return liveSet;
 }
 
 /**
  * Setup mock for a clip that exists but has no track/scene info in its path
  * @param clipId - The clip ID to mock
+ * @returns MockObjectHandle for the clip
  */
-export function setupClipWithNoTrackPath(clipId: string): void {
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return "some_invalid_path"; // No track info in path
-    }
-
-    return this._path;
-  });
-
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return `id ${clipId}`;
-    }
-
-    return "id 1";
-  });
-
-  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return "Clip";
-    }
-
-    return "LiveSet";
+export function setupClipWithNoTrackPath(clipId: string): MockObjectHandle {
+  return registerMockObject(clipId, {
+    path: "some_invalid_path",
+    type: "Clip",
   });
 }
 
 /**
- * Setup mocks for playback tests with cue points
+ * Setup mocks for playback tests with cue points.
+ * Uses global liveApiGet mock for backward compatibility with locator tests.
  * @param options - Configuration options
  * @param options.cuePoints - Cue point definitions
  * @param options.liveSet - Live set properties
@@ -114,22 +108,35 @@ export function setupCuePointMocks({
 }
 
 /**
- * Assert that a Live set property was set via liveApiSet.
- * @param property - Property name
- * @param value - Expected value
+ * Assert that a Live set property was set.
+ * When called with (property, value): uses shared liveApiSet mock (backward compat).
+ * When called with (handle, property, value): uses instance-level handle.set mock.
+ * @param handleOrProperty - MockObjectHandle or property name
+ * @param propertyOrValue - Property name or expected value
+ * @param value - Expected value (only when handle is provided)
  */
-export function expectLiveSetProperty(property: string, value: unknown): void {
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ path: "live_set" }),
-    property,
-    value,
-  );
+export function expectLiveSetProperty(
+  handleOrProperty: MockObjectHandle | string,
+  propertyOrValue: unknown,
+  value?: unknown,
+): void {
+  if (typeof handleOrProperty === "string") {
+    // Old signature for backward compatibility (locator tests)
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      handleOrProperty,
+      propertyOrValue,
+    );
+  } else {
+    expect(handleOrProperty.set).toHaveBeenCalledWith(propertyOrValue, value);
+  }
 }
 
 /**
  * Setup mocks for multiple clip path resolutions in playback tests.
- * Configures both the LiveSet state and clip path mappings.
+ * Registers live_set, clips, and clip slots via mock registry.
  * @param clipMappings - Array of clip ID to path mappings (defaults to 3 clips)
+ * @returns Handles for live_set and clip slots
  */
 export function setupMultiClipMocks(
   clipMappings: ClipPathMapping[] = [
@@ -137,10 +144,10 @@ export function setupMultiClipMocks(
     { clipId: "clip2", path: "live_set tracks 1 clip_slots 1 clip" },
     { clipId: "clip3", path: "live_set tracks 2 clip_slots 2 clip" },
   ],
-): void {
-  mockLiveApiGet({
-    ClipSlot: { has_clip: 1 },
-    LiveSet: {
+): MultiClipMockResult {
+  const liveSet = registerMockObject("live_set", {
+    path: "live_set",
+    properties: {
       signature_numerator: 4,
       signature_denominator: 4,
       current_song_time: 5,
@@ -150,13 +157,19 @@ export function setupMultiClipMocks(
     },
   });
 
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    for (const mapping of clipMappings) {
-      if (this._path === mapping.clipId) {
-        return mapping.path;
-      }
-    }
+  // Register default tracks
+  registerMockObject("track1", { path: "id track1", type: "Track" });
+  registerMockObject("track2", { path: "id track2", type: "Track" });
 
-    return this._path;
-  });
+  const clipSlots: MockObjectHandle[] = [];
+
+  for (const mapping of clipMappings) {
+    registerMockObject(mapping.clipId, { path: mapping.path });
+
+    const clipSlotPath = mapping.path.replace(/ clip$/, "");
+
+    clipSlots.push(registerMockObject(clipSlotPath, { path: clipSlotPath }));
+  }
+
+  return { liveSet, clipSlots };
 }
