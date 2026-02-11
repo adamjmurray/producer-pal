@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type { ExpressionNode } from "./parser/transform-parser.ts";
@@ -159,10 +160,9 @@ function evaluateRamp(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // ramp() requires start and end arguments
-  if (args.length < 2) {
+  if (args.length < 2 || args.length > 3) {
     throw new Error(
-      `Function ramp() requires start and end arguments: ramp(start, end, speed?)`,
+      `Function ramp() requires 2-3 arguments: ramp(start, end, speed?)`,
     );
   }
 

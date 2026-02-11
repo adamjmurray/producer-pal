@@ -31,6 +31,12 @@ export function evaluateRand(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
+  if (args.length > 2) {
+    throw new Error(
+      `Function rand() accepts 0-2 arguments: rand(), rand(max), or rand(min, max)`,
+    );
+  }
+
   // No args: random -1 to 1
   if (args.length === 0) {
     return waveforms.rand(-1, 1);

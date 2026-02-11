@@ -97,6 +97,18 @@ describe("Transform Evaluator Error Handling", () => {
       expect(result).toStrictEqual({});
     });
 
+    it("handles rand with too many arguments", () => {
+      expectTransformError("velocity = rand(0, 100, 50)");
+    });
+
+    it("handles ramp with too few arguments", () => {
+      expectTransformError("velocity = ramp(100)");
+    });
+
+    it("handles ramp with too many arguments", () => {
+      expectTransformError("velocity = ramp(0, 100, 1, 2)");
+    });
+
     it("handles waveform with zero period gracefully", () => {
       expectTransformError("velocity += cos(0)");
     });
