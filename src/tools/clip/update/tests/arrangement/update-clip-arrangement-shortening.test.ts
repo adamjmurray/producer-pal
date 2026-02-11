@@ -272,6 +272,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const tempClipId = "temp-session-clip";
     const tempArrangementClipId = "temp-arrangement-clip";
 
+    setupArrangementClipPath(trackIndex, ["789", tempArrangementClipId]);
+
     liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";

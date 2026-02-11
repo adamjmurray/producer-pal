@@ -1,12 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Test helper functions for read-clip tests
  */
 import { expect } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type MockObjectHandle,
+  lookupMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface TestNote {
   note_id?: number;
@@ -99,37 +105,39 @@ export function createTestNote(opts: CreateTestNoteOptions): TestNote {
 }
 
 /**
- * Helper to set up mocks for a MIDI clip with notes
+ * Helper to set up mocks for a MIDI clip with notes.
+ * Registers a clip at "live_set tracks 1 clip_slots 1 clip".
  * @param opts - Options
  * @param opts.notes - Notes array (defaults to defaultTestNotes)
  * @param opts.clipProps - Clip properties to mock
+ * @returns Handle for the registered clip
  */
 export function setupMidiClipMock({
   notes = defaultTestNotes,
   clipProps,
-}: SetupMidiClipMockOptions): void {
-  liveApiCall.mockImplementation(function (method: string) {
-    if (method === "get_notes_extended") {
-      return JSON.stringify({ notes });
-    }
-
-    return null;
-  });
-  mockLiveApiGet({
-    "live_set/tracks/1/clip_slots/1/clip": clipProps,
+}: SetupMidiClipMockOptions): MockObjectHandle {
+  return registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
+    path: "live_set tracks 1 clip_slots 1 clip",
+    properties: clipProps,
+    methods: {
+      get_notes_extended: () => JSON.stringify({ notes }),
+    },
   });
 }
 
 /**
- * Helper to set up mocks for an audio clip (no notes)
+ * Helper to set up mocks for an audio clip (no notes).
+ * Registers a clip at "live_set tracks 1 clip_slots 1 clip".
  * @param opts - Options
  * @param opts.clipProps - Clip properties to mock
+ * @returns Handle for the registered clip
  */
 export function setupAudioClipMock({
   clipProps,
-}: SetupAudioClipMockOptions): void {
-  mockLiveApiGet({
-    "live_set/tracks/1/clip_slots/1/clip": {
+}: SetupAudioClipMockOptions): MockObjectHandle {
+  return registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
+    path: "live_set tracks 1 clip_slots 1 clip",
+    properties: {
       is_midi_clip: 0,
       ...clipProps,
     },
@@ -137,13 +145,34 @@ export function setupAudioClipMock({
 }
 
 /**
- * Helper to set up liveApiCall mock for get_notes_extended
- * @param notes - Notes array to return
+ * Override call mocking to return notes for get_notes_extended.
+ * Supports both new handle-based form and legacy global form.
+ * @param handleOrNotes - Mock handle (new form) OR notes array (legacy form)
+ * @param notes - Notes array (new form)
  */
-export function setupNotesMock(notes: TestNote[]): void {
-  liveApiCall.mockImplementation((method: string) => {
+export function setupNotesMock(
+  handleOrNotes: MockObjectHandle | TestNote[],
+  notes?: TestNote[],
+): void {
+  const mockNotes = Array.isArray(handleOrNotes)
+    ? handleOrNotes
+    : (notes ?? []);
+
+  if (Array.isArray(handleOrNotes)) {
+    liveApiCall.mockImplementation((method: string) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: mockNotes });
+      }
+
+      return null;
+    });
+
+    return;
+  }
+
+  handleOrNotes.call.mockImplementation((method: string) => {
     if (method === "get_notes_extended") {
-      return JSON.stringify({ notes });
+      return JSON.stringify({ notes: mockNotes });
     }
 
     return null;
@@ -192,19 +221,29 @@ export function createClipProps68(
 
 /**
  * Expect get_notes_extended was called with standard parameters.
- * @param clipPath - The clip path (e.g., "live_set tracks 1 clip_slots 1 clip")
+ * Supports handle-based assertions (new) and global assertions by path (legacy).
+ * @param handleOrPath - Mock handle (new) or clip path (legacy)
  * @param clipLength - The clip length in Ableton beats (default 4)
  */
 export function expectGetNotesExtendedCall(
-  clipPath: string,
+  handleOrPath: MockObjectHandle | string,
   clipLength = 4,
 ): void {
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({ path: clipPath }),
-    "get_notes_extended",
-    0,
-    128,
-    0,
-    clipLength,
-  );
+  const expectedArgs: unknown[] = ["get_notes_extended", 0, 128, 0, clipLength];
+
+  if (typeof handleOrPath === "string") {
+    const registered = lookupMockObject(undefined, handleOrPath);
+
+    if (registered != null) {
+      expect(registered.call).toHaveBeenCalledWith(...expectedArgs);
+
+      return;
+    }
+
+    expect(liveApiCall).toHaveBeenCalledWith(...expectedArgs);
+
+    return;
+  }
+
+  expect(handleOrPath.call).toHaveBeenCalledWith(...expectedArgs);
 }

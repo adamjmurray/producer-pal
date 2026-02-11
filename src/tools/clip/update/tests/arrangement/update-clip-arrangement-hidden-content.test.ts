@@ -11,10 +11,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", async () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(
-      trackIndex,
-      (id) => id === "789" || id === "1000" || id === "2000" || id === "3000",
-    );
+    setupArrangementClipPath(trackIndex, ["789", "1000", "2000", "3000"]);
 
     mockLiveApiGet({
       789: {

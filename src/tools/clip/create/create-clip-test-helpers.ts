@@ -1,41 +1,43 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
 import {
-  liveApiCall,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+
+export interface ArrangementClipMockHandles {
+  liveSet: MockObjectHandle;
+  track: MockObjectHandle;
+  clip: MockObjectHandle;
+}
 
 /**
  * Setup mocks for arrangement clip creation tests.
- * Configures LiveSet time signature and clip ID resolution.
+ * Registers LiveSet (time signature), Track (create_midi_clip), and arrangement clip.
+ * @returns Handles for registered mock objects
  */
-export function setupArrangementClipMocks(): void {
-  mockLiveApiGet({
-    Track: { exists: () => true },
-    LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-    arrangement_clip: { length: 4 }, // 1 bar in 4/4 = 4 beats
+export function setupArrangementClipMocks(): ArrangementClipMockHandles {
+  const liveSet = registerMockObject("live-set", {
+    path: "live_set",
+    properties: { signature_numerator: 4, signature_denominator: 4 },
   });
 
-  liveApiCall.mockImplementation((method, ..._args) => {
-    if (method === "create_midi_clip") {
-      return ["id", "arrangement_clip"];
-    }
-
-    return null;
+  const track = registerMockObject("track-0", {
+    path: "live_set tracks 0",
+    methods: {
+      create_midi_clip: () => ["id", "arrangement_clip"],
+    },
   });
 
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "id arrangement_clip") {
-      return "arrangement_clip";
-    }
-
-    return this._id;
+  const clip = registerMockObject("arrangement_clip", {
+    properties: { length: 4 }, // 1 bar in 4/4 = 4 beats
   });
+
+  return { liveSet, track, clip };
 }
 
 /**
@@ -67,43 +69,30 @@ export function note(
 }
 
 /**
- * Assert that create_clip was called with the expected length.
- * @param trackIndex - Track index
- * @param sceneIndex - Scene index
+ * Assert that create_clip was called on the given clip slot handle.
+ * @param clipSlotHandle - Mock handle for the clip slot
  * @param expectedLength - Expected clip length in beats
  */
 export function expectClipCreated(
-  trackIndex: number,
-  sceneIndex: number,
+  clipSlotHandle: MockObjectHandle,
   expectedLength: number,
 ): void {
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({
-      path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
-    }),
+  expect(clipSlotHandle.call).toHaveBeenCalledWith(
     "create_clip",
     expectedLength,
   );
 }
 
 /**
- * Assert that add_new_notes was called with the expected notes.
- * @param trackIndex - Track index
- * @param sceneIndex - Scene index
+ * Assert that add_new_notes was called on the given clip handle.
+ * @param clipHandle - Mock handle for the clip
  * @param notes - Expected notes array
  */
 export function expectNotesAdded(
-  trackIndex: number,
-  sceneIndex: number,
+  clipHandle: MockObjectHandle,
   notes: Array<Record<string, number>>,
 ): void {
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({
-      path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-    }),
-    "add_new_notes",
-    { notes },
-  );
+  expect(clipHandle.call).toHaveBeenCalledWith("add_new_notes", { notes });
 }
 
 interface SetupAudioArrangementMocksOptions {
@@ -112,34 +101,31 @@ interface SetupAudioArrangementMocksOptions {
 
 /**
  * Setup mocks for audio arrangement clip creation tests.
- * Configures LiveSet time signature, audio clip creation, and clip ID resolution.
+ * Registers LiveSet (time signature), Track (create_audio_clip), and audio clip.
  * @param options - Configuration options
  * @param options.clipLength - Length of the clip in beats (default: 8)
+ * @returns Handles for registered mock objects
  */
 export function setupAudioArrangementClipMocks(
   options: SetupAudioArrangementMocksOptions = {},
-): void {
+): ArrangementClipMockHandles {
   const { clipLength = 8 } = options;
 
-  liveApiCall.mockImplementation((method, ..._args) => {
-    if (method === "create_audio_clip") {
-      return ["id", "arrangement_audio_clip"];
-    }
-
-    return null;
+  const liveSet = registerMockObject("live-set", {
+    path: "live_set",
+    properties: { signature_numerator: 4, signature_denominator: 4 },
   });
 
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "id arrangement_audio_clip") {
-      return "arrangement_audio_clip";
-    }
-
-    return this._id;
+  const track = registerMockObject("track-0", {
+    path: "live_set tracks 0",
+    methods: {
+      create_audio_clip: () => ["id", "arrangement_audio_clip"],
+    },
   });
 
-  mockLiveApiGet({
-    Track: { exists: () => true },
-    LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-    "id arrangement_audio_clip": { length: clipLength },
+  const clip = registerMockObject("arrangement_audio_clip", {
+    properties: { length: clipLength },
   });
+
+  return { liveSet, track, clip };
 }

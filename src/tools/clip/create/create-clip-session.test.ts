@@ -1,37 +1,129 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-  MockSequence,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "./create-clip.ts";
 
+interface SessionClipSetupOptions {
+  hasClip?: number;
+  clipId?: string;
+  clipProperties?: Record<string, unknown>;
+}
+
+function extractSceneIds(rawScenes: unknown): string[] {
+  if (!Array.isArray(rawScenes)) {
+    return [];
+  }
+
+  const ids: string[] = [];
+
+  for (let i = 0; i < rawScenes.length; i += 2) {
+    if (rawScenes[i] === "id" && rawScenes[i + 1] != null) {
+      ids.push(String(rawScenes[i + 1]));
+    }
+  }
+
+  return ids;
+}
+
+function buildScenesChildren(sceneIds: string[]): string[] {
+  const result: string[] = [];
+
+  for (const id of sceneIds) {
+    result.push("id", id);
+  }
+
+  return result;
+}
+
+function setupLiveSet(
+  properties: Record<string, unknown> = {},
+): MockObjectHandle {
+  const mergedProps: Record<string, unknown> = {
+    signature_numerator: 4,
+    signature_denominator: 4,
+    scenes: children("scene0"),
+    ...properties,
+  };
+  let sceneIds = extractSceneIds(mergedProps.scenes);
+  const liveSet = registerMockObject("live-set", {
+    path: "live_set",
+    properties: mergedProps,
+  });
+
+  liveSet.get.mockImplementation((prop: string) => {
+    if (prop === "scenes") {
+      return buildScenesChildren(sceneIds);
+    }
+
+    const value = mergedProps[prop];
+
+    if (value !== undefined) {
+      return Array.isArray(value) ? value : [value];
+    }
+
+    return [0];
+  });
+
+  liveSet.call.mockImplementation((method: string) => {
+    if (method === "create_scene") {
+      sceneIds = [...sceneIds, `scene${sceneIds.length}`];
+    }
+
+    return null;
+  });
+
+  return liveSet;
+}
+
+function setupTrack(trackIndex: number): MockObjectHandle {
+  return registerMockObject(`track-${trackIndex}`, {
+    path: `live_set tracks ${trackIndex}`,
+  });
+}
+
+function setupSessionClip(
+  trackIndex: number,
+  sceneIndex: number,
+  opts: SessionClipSetupOptions = {},
+): { clipSlot: MockObjectHandle; clip: MockObjectHandle } {
+  const clipPath = `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
+  const clipSlot = registerMockObject(`clip-slot-${trackIndex}-${sceneIndex}`, {
+    path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    properties: { has_clip: opts.hasClip ?? 0 },
+  });
+  const clip = registerMockObject(
+    opts.clipId ??
+      `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}/clip`,
+    {
+      path: clipPath,
+      properties: opts.clipProperties,
+    },
+  );
+
+  return { clipSlot, clip };
+}
+
 describe("createClip - session view", () => {
   it("should create a single clip with notes", async () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set tracks 0 clip_slots 0 clip":
-          return "clip_0_0";
-        default:
-          return this._id;
-      }
-    });
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4 },
-      Clip: {
+    setupLiveSet();
+    setupTrack(0);
+    const { clipSlot, clip } = setupSessionClip(0, 0, {
+      clipId: "clip_0_0",
+      clipProperties: {
         signature_numerator: 4,
         signature_denominator: 4,
+        length: 4,
       },
     });
 
@@ -46,49 +138,18 @@ describe("createClip - session view", () => {
       auto: "play-clip",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4,
-    ); // Length based on notes (1 bar in 4/4)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 0 clip",
-      }),
-      "name",
-      "New Clip",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 0 clip",
-      }),
-      "color",
-      16711680,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 0 clip",
-      }),
-      "looping",
-      1, // Live API uses 1 for true
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 0 clip",
-      }),
-      "add_new_notes",
-      {
-        notes: [
-          createNote(),
-          createNote({ pitch: 62 }),
-          createNote({ pitch: 64 }),
-        ],
-      },
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "fire",
-    );
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(clip.set).toHaveBeenCalledWith("name", "New Clip");
+    expect(clip.set).toHaveBeenCalledWith("color", 16711680);
+    expect(clip.set).toHaveBeenCalledWith("looping", 1);
+    expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        createNote(),
+        createNote({ pitch: 62 }),
+        createNote({ pitch: 64 }),
+      ],
+    });
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
 
     expect(result).toStrictEqual({
       id: "clip_0_0",
@@ -100,16 +161,13 @@ describe("createClip - session view", () => {
   });
 
   it("should fire the scene when auto=play-scene", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      Clip: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, {
+      clipProperties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    const scene0 = registerMockObject("scene0-handle", {
+      path: "live_set scenes 0",
     });
 
     const result = await createClip({
@@ -120,10 +178,7 @@ describe("createClip - session view", () => {
       auto: "play-scene",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set scenes 0" }),
-      "fire",
-    );
+    expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
@@ -134,28 +189,11 @@ describe("createClip - session view", () => {
   });
 
   it("should throw error when scene does not exist for auto=play-scene", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      Clip: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
-
-    // Mock scene to not exist
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing mock LiveAPI on global
-    const liveAPIGlobal = global as any;
-    const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
-
-    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
-      this: MockLiveAPIContext,
-    ) {
-      // Scene does not exist
-      return !this._path?.startsWith("live_set scenes");
+    mockNonExistentObjects();
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, {
+      clipProperties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     await expect(
@@ -169,21 +207,13 @@ describe("createClip - session view", () => {
     ).rejects.toThrow(
       'createClip auto="play-scene" failed: scene at sceneIndex=0 does not exist',
     );
-
-    liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
   });
 
   it("should throw error for invalid auto value", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      Clip: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, {
+      clipProperties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     await expect(
@@ -197,24 +227,19 @@ describe("createClip - session view", () => {
   });
 
   it("should create multiple clips at specified scene indices", async () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set tracks 0 clip_slots 1 clip":
-          return "clip_0_1";
-        case "live_set tracks 0 clip_slots 2 clip":
-          return "clip_0_2";
-        case "live_set tracks 0 clip_slots 3 clip":
-          return "clip_0_3";
-        default:
-          return this._id;
-      }
+    const liveSet = setupLiveSet({
+      scenes: children("scene0"), // Only 1 existing scene, so create scenes 1, 2, 3
     });
-    mockLiveApiGet({
-      LiveSet: {
-        scenes: children("scene0"), // Only 1 existing scene, so we need to create scenes 1, 2, 3
-        signature_numerator: 4,
-      },
-      ClipSlot: { has_clip: 0 },
+
+    setupTrack(0);
+    const { clipSlot: slot1, clip: clip1 } = setupSessionClip(0, 1, {
+      clipId: "clip_0_1",
+    });
+    const { clipSlot: slot2, clip: clip2 } = setupSessionClip(0, 2, {
+      clipId: "clip_0_2",
+    });
+    const { clipSlot: slot3, clip: clip3 } = setupSessionClip(0, 3, {
+      clipId: "clip_0_3",
     });
 
     const result = await createClip({
@@ -225,59 +250,17 @@ describe("createClip - session view", () => {
       color: "#00FF00",
     });
 
-    // Should create 3 scenes first (for slots 1, 2, 3), then 3 clips
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // scene for slot 1
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // scene for slot 2
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // scene for slot 3
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 1" }),
-      "create_clip",
-      4,
-    ); // clip in slot 1 (1 bar in 4/4)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 2" }),
-      "create_clip",
-      4,
-    ); // clip in slot 2 (1 bar in 4/4)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 3" }),
-      "create_clip",
-      4,
-    ); // clip in slot 3 (1 bar in 4/4)
+    const createSceneCalls = liveSet.call.mock.calls.filter(
+      (call: unknown[]) => call[0] === "create_scene",
+    );
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 1 clip",
-      }),
-      "name",
-      "Loop",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 2 clip",
-      }),
-      "name",
-      "Loop 2",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({
-        path: "live_set tracks 0 clip_slots 3 clip",
-      }),
-      "name",
-      "Loop 3",
-    );
+    expect(createSceneCalls).toHaveLength(3);
+    expect(slot1.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(slot2.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(slot3.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(clip1.set).toHaveBeenCalledWith("name", "Loop");
+    expect(clip2.set).toHaveBeenCalledWith("name", "Loop 2");
+    expect(clip3.set).toHaveBeenCalledWith("name", "Loop 3");
 
     expect(result).toStrictEqual([
       { id: "clip_0_1", trackIndex: 0, sceneIndex: 1 },
@@ -287,13 +270,12 @@ describe("createClip - session view", () => {
   });
 
   it("should auto-create scenes when sceneIndex exceeds existing scenes", async () => {
-    mockLiveApiGet({
-      LiveSet: {
-        scenes: children("scene1", "scene2"), // 2 existing scenes
-        signature_numerator: 4,
-      },
-      ClipSlot: { has_clip: new MockSequence(0, 1) },
+    const liveSet = setupLiveSet({
+      scenes: children("scene1", "scene2"), // 2 existing scenes
     });
+
+    setupTrack(0);
+    const { clipSlot } = setupSessionClip(0, 4);
 
     await createClip({
       view: "session",
@@ -302,37 +284,19 @@ describe("createClip - session view", () => {
       name: "Future Clip",
     });
 
-    // Should create 3 padding scenes (indices 2,3,4)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 1
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 2
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 3
+    const createSceneCalls = liveSet.call.mock.calls.filter(
+      (call: unknown[]) => call[0] === "create_scene",
+    );
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 4" }),
-      "create_clip",
-      4,
-    ); // 1 bar in 4/4
+    expect(createSceneCalls).toHaveLength(3);
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
   it("should emit warning and return empty array if clip already exists", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      LiveSet: { signature_numerator: 4 },
-    });
+    setupLiveSet();
+    setupTrack(0);
+    const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
 
-    // Runtime errors during clip creation are now warnings, not fatal errors
     const result = await createClip({
       view: "session",
       trackIndex: 0,
@@ -340,16 +304,17 @@ describe("createClip - session view", () => {
       name: "This Should Fail",
     });
 
-    // Should return empty array (no clips created)
+    expect(clipSlot.call).not.toHaveBeenCalledWith(
+      "create_clip",
+      expect.anything(),
+    );
     expect(result).toStrictEqual([]);
   });
 
   it("should emit warning and return empty array if sceneIndex exceeds maximum", async () => {
-    mockLiveApiGet({
-      LiveSet: { signature_numerator: 4 },
-    });
+    setupLiveSet();
+    setupTrack(0);
 
-    // Runtime errors during clip creation are now warnings, not fatal errors
     const result = await createClip({
       view: "session",
       trackIndex: 0,
@@ -357,7 +322,6 @@ describe("createClip - session view", () => {
       name: "This Should Fail",
     });
 
-    // Should return empty array (no clips created)
     expect(result).toStrictEqual([]);
   });
 });

@@ -9,7 +9,7 @@ import {
   detectTypeFromPath,
   getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
-import { liveApiId } from "./mock-live-api.ts";
+import { liveApiGet, liveApiId } from "./mock-live-api.ts";
 
 export interface MockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
@@ -51,12 +51,14 @@ function normalizeId(idOrPath: string): string {
 
 /**
  * Create a get() mock with property-based dispatch
+ * @param id - Object ID for fallback global mock context
  * @param properties - Property overrides
  * @param type - Object type for fallback defaults
  * @param path - Object path for fallback defaults
  * @returns Configured vi.fn() mock
  */
 function createGetMock(
+  id: string,
   properties: Record<string, unknown>,
   type: string,
   path: string,
@@ -76,6 +78,14 @@ function createGetMock(
       }
 
       return Array.isArray(override) ? override : [override];
+    }
+
+    const globalResult = liveApiGet.apply({ id, path, type }, [prop]) as
+      | unknown[]
+      | undefined;
+
+    if (globalResult != null) {
+      return globalResult;
     }
 
     return getPropertyByType(type, prop, path) ?? [0];
@@ -123,7 +133,7 @@ export function registerMockObject(
   const methods = options.methods ?? {};
 
   const handle: MockObjectHandle = {
-    get: createGetMock(properties, type, path),
+    get: createGetMock(id, properties, type, path),
     set: vi.fn() as Mock,
     call: createCallMock(methods),
     id,

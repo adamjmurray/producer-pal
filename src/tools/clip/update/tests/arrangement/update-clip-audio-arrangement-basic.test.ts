@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
 import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -46,6 +46,21 @@ function setupSessionTilingMock(fileContentBoundary = 8.0) {
   return { mockCreate, sessionClip, sessionSlot };
 }
 
+function setupArrangementClipMock(
+  handle: MockObjectHandle,
+  props: Record<string, unknown>,
+): void {
+  handle.get.mockImplementation((prop: string) => {
+    const value = props[prop];
+
+    if (value !== undefined) {
+      return [value];
+    }
+
+    return [0];
+  });
+}
+
 describe("Unlooped warped audio clips - skip when no additional content", () => {
   // These clips show all file content (end_marker = file boundary = 8)
   // No hidden content → nothing to reveal → skip
@@ -60,25 +75,26 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       const cId = clipId as string;
       const endTime = sourceEndTime as number;
 
-      setupArrangementClipPath(0, [cId]);
+      const clipHandles = setupArrangementClipPath(0, [cId]);
+      const clipHandle = clipHandles.get(cId);
 
-      mockLiveApiGet({
-        [cId]: {
-          is_arrangement_clip: 1,
-          is_midi_clip: 0,
-          is_audio_clip: 1,
-          looping: 0,
-          warping: 1,
-          start_time: 0.0,
-          end_time: endTime,
-          start_marker: 0.0,
-          end_marker: endTime,
-          loop_start: 0.0,
-          loop_end: endTime,
-          name: name as string,
-          trackIndex: 0,
-          file_path: "/audio/test.wav",
-        },
+      expect(clipHandle).toBeDefined();
+
+      setupArrangementClipMock(clipHandle!, {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 0.0,
+        end_time: endTime,
+        start_marker: 0.0,
+        end_marker: endTime,
+        loop_start: 0.0,
+        loop_end: endTime,
+        name: name as string,
+        trackIndex: 0,
+        file_path: "/audio/test.wav",
       });
 
       // File boundary = 8, target = 14 → insufficient
@@ -100,8 +116,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
       // Source clip NOT modified (no end_marker extension)
-      expect(liveApiSet).not.toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: cId }),
+      expect(clipHandle!.set).not.toHaveBeenCalledWith(
         "end_marker",
         expect.anything(),
       );
@@ -127,25 +142,26 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       const cId = clipId as string;
       const endTime = sourceEndTime as number;
 
-      setupArrangementClipPath(0, [cId]);
+      const clipHandles = setupArrangementClipPath(0, [cId]);
+      const clipHandle = clipHandles.get(cId);
 
-      mockLiveApiGet({
-        [cId]: {
-          is_arrangement_clip: 1,
-          is_midi_clip: 0,
-          is_audio_clip: 1,
-          looping: 0,
-          warping: 1,
-          start_time: 0.0,
-          end_time: endTime,
-          start_marker: 0.0,
-          end_marker: endTime,
-          loop_start: 0.0,
-          loop_end: endTime,
-          name: name as string,
-          trackIndex: 0,
-          file_path: "/audio/test.wav",
-        },
+      expect(clipHandle).toBeDefined();
+
+      setupArrangementClipMock(clipHandle!, {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 0.0,
+        end_time: endTime,
+        start_marker: 0.0,
+        end_marker: endTime,
+        loop_start: 0.0,
+        loop_end: endTime,
+        name: name as string,
+        trackIndex: 0,
+        file_path: "/audio/test.wav",
       });
 
       // File boundary = 8, target = 14 → cap to 8 (partial extension)
@@ -167,14 +183,10 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
       // Source clip loop_end set: loopStart(0) + effectiveTarget(8) = 8.0
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _id: cId }),
-        "loop_end",
-        8.0,
-      );
+      expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 8.0);
 
       // Source clip end_marker extended: startMarker(0) + effectiveTarget(8) = 8.0
-      assertSourceClipEndMarker(cId, 8.0);
+      assertSourceClipEndMarker(clipHandle!, 8.0);
 
       // Single clip returned (extended in place via loop_end, no tiles)
       // unwrapSingleResult returns single object for single-element arrays
@@ -188,25 +200,26 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
   it("should extend via loop_end when file content exceeds target", async () => {
     const clipId = "661";
 
-    setupArrangementClipPath(0, [clipId]);
+    const clipHandles = setupArrangementClipPath(0, [clipId]);
+    const clipHandle = clipHandles.get(clipId);
 
-    mockLiveApiGet({
-      [clipId]: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        looping: 0,
-        warping: 1,
-        start_time: 0.0,
-        end_time: 8.0,
-        start_marker: 0.0,
-        end_marker: 8.0,
-        loop_start: 0.0,
-        loop_end: 8.0,
-        name: "Audio Sufficient Content",
-        trackIndex: 0,
-        file_path: "/audio/test.wav",
-      },
+    expect(clipHandle).toBeDefined();
+
+    setupArrangementClipMock(clipHandle!, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      looping: 0,
+      warping: 1,
+      start_time: 0.0,
+      end_time: 8.0,
+      start_marker: 0.0,
+      end_marker: 8.0,
+      loop_start: 0.0,
+      loop_end: 8.0,
+      name: "Audio Sufficient Content",
+      trackIndex: 0,
+      file_path: "/audio/test.wav",
     });
 
     // File boundary = 20, target = 14 → sufficient (20 > 14)
@@ -228,14 +241,10 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
     // Source clip loop_end set: loopStart(0) + target(14) = 14.0
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _id: clipId }),
-      "loop_end",
-      14.0,
-    );
+    expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Source end_marker extended to target: 0 + 14 = 14
-    assertSourceClipEndMarker(clipId, 14.0);
+    assertSourceClipEndMarker(clipHandle!, 14.0);
 
     // Single clip returned (extended in place via loop_end, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -249,25 +258,26 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const clipId = "700";
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, [clipId]);
+    const clipHandles = setupArrangementClipPath(trackIndex, [clipId]);
+    const clipHandle = clipHandles.get(clipId);
 
-    mockLiveApiGet({
-      [clipId]: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        looping: 0,
-        warping: 1,
-        start_time: 0.0,
-        end_time: 8.0,
-        start_marker: 0.0,
-        end_marker: 40.0, // Content far exceeds target of 14 beats
-        loop_start: 0.0,
-        loop_end: 40.0,
-        name: "Wide Audio Clip",
-        trackIndex,
-        file_path: "/audio/test.wav",
-      },
+    expect(clipHandle).toBeDefined();
+
+    setupArrangementClipMock(clipHandle!, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      looping: 0,
+      warping: 1,
+      start_time: 0.0,
+      end_time: 8.0,
+      start_marker: 0.0,
+      end_marker: 40.0, // Content far exceeds target of 14 beats
+      loop_start: 0.0,
+      loop_end: 40.0,
+      name: "Wide Audio Clip",
+      trackIndex,
+      file_path: "/audio/test.wav",
     });
 
     // File boundary = 40, target = 14 → sufficient
@@ -279,18 +289,13 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     );
 
     // end_marker should NOT be shrunk from 40 to 14
-    expect(liveApiSet).not.toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: clipId }),
+    expect(clipHandle!.set).not.toHaveBeenCalledWith(
       "end_marker",
       expect.anything(),
     );
 
     // loop_end set to target: loopStart(0) + 14 = 14.0
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _id: clipId }),
-      "loop_end",
-      14.0,
-    );
+    expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -302,24 +307,25 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const clipId = "710";
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, [clipId]);
+    const clipHandles = setupArrangementClipPath(trackIndex, [clipId]);
+    const clipHandle = clipHandles.get(clipId);
 
-    mockLiveApiGet({
-      [clipId]: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
-        looping: 0,
-        warping: 1,
-        start_time: 0.0,
-        end_time: 4.0,
-        start_marker: 0.0,
-        end_marker: 0.0, // Zero-length content
-        loop_start: 0.0,
-        loop_end: 0.0,
-        name: "Zero Content Clip",
-        trackIndex,
-      },
+    expect(clipHandle).toBeDefined();
+
+    setupArrangementClipMock(clipHandle!, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      looping: 0,
+      warping: 1,
+      start_time: 0.0,
+      end_time: 4.0,
+      start_marker: 0.0,
+      end_marker: 0.0, // Zero-length content
+      loop_start: 0.0,
+      loop_end: 0.0,
+      name: "Zero Content Clip",
+      trackIndex,
     });
 
     const result = await updateClip(

@@ -1,20 +1,19 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
 import {
-  liveApiCall,
-  liveApiId,
-  liveApiSet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "./create-clip.ts";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", async () => {
-    setupArrangementClipMocks();
+    const { track, clip } = setupArrangementClipMocks();
 
     const result = await createClip({
       view: "arrangement",
@@ -24,17 +23,8 @@ describe("createClip - arrangement view", () => {
       name: "Arrangement Clip",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "create_midi_clip",
-      8,
-      4,
-    ); // Length based on notes (1 bar in 4/4)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "arrangement_clip" }),
-      "name",
-      "Arrangement Clip",
-    );
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4); // Length based on notes (1 bar in 4/4)
+    expect(clip.set).toHaveBeenCalledWith("name", "Arrangement Clip");
 
     expect(result).toStrictEqual({
       id: "arrangement_clip",
@@ -46,7 +36,7 @@ describe("createClip - arrangement view", () => {
   });
 
   it("should create arrangement clips at specified positions", async () => {
-    setupArrangementClipMocks();
+    const { track } = setupArrangementClipMocks();
 
     const result = await createClip({
       view: "arrangement",
@@ -57,24 +47,9 @@ describe("createClip - arrangement view", () => {
     });
 
     // Clips should be created with exact length (4 beats = 1 bar in 4/4) at specified positions
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "create_midi_clip",
-      8,
-      4,
-    ); // 3|1 = 8 beats
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "create_midi_clip",
-      12,
-      4,
-    ); // 4|1 = 12 beats
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "create_midi_clip",
-      16,
-      4,
-    ); // 5|1 = 16 beats
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4); // 3|1 = 8 beats
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 12, 4); // 4|1 = 12 beats
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 16, 4); // 5|1 = 16 beats
 
     expect(result).toStrictEqual([
       {
@@ -102,7 +77,7 @@ describe("createClip - arrangement view", () => {
   });
 
   it("should throw error when track doesn't exist", async () => {
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     await expect(
       createClip({
@@ -114,19 +89,13 @@ describe("createClip - arrangement view", () => {
   });
 
   it("should emit warning and return empty array when arrangement clip creation fails", async () => {
-    liveApiId.mockReturnValue("id 1");
-    liveApiCall.mockReturnValue("id 999");
+    mockNonExistentObjects();
 
-    // Mock the clip to not exist after creation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing mock LiveAPI on global
-    const liveAPIGlobal = global as any;
-    const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
-
-    liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
-      this: MockLiveAPIContext,
-    ) {
-      // Track exists, but clip doesn't
-      return this._path === "live_set tracks 0";
+    registerMockObject("track-0", {
+      path: "live_set tracks 0",
+      methods: {
+        create_midi_clip: vi.fn(() => ["id", "missing-arrangement-clip"]),
+      },
     });
 
     // Runtime errors during clip creation are now warnings, not fatal errors
@@ -139,7 +108,5 @@ describe("createClip - arrangement view", () => {
 
     // Should return empty array (no clips created)
     expect(result).toStrictEqual([]);
-
-    liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
   });
 });

@@ -1,27 +1,48 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import {
-  liveApiCall,
-  liveApiId,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "./create-clip.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
   note,
+  setupArrangementClipMocks,
 } from "./create-clip-test-helpers.ts";
+
+function setupSessionMocks(
+  opts: {
+    liveSet?: Record<string, unknown>;
+    clipSlot?: Record<string, unknown>;
+    clip?: Record<string, unknown>;
+  } = {},
+): { clipSlot: MockObjectHandle; clip: MockObjectHandle } {
+  registerMockObject("live-set", {
+    path: "live_set",
+    properties: opts.liveSet,
+  });
+  const clipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: "live_set tracks 0 clip_slots 0",
+    properties: { has_clip: 0, ...opts.clipSlot },
+  });
+  const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
+    path: "live_set tracks 0 clip_slots 0 clip",
+    properties: opts.clip,
+  });
+
+  return { clipSlot, clip };
+}
 
 describe("createClip - advanced features", () => {
   it("should set time signature when provided", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: {
+    const { clip } = setupSessionMocks({
+      liveSet: {
         signature_numerator: 4,
         signature_denominator: 4,
       },
@@ -34,16 +55,8 @@ describe("createClip - advanced features", () => {
       timeSignature: "6/8",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "signature_numerator",
-      6,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "signature_denominator",
-      8,
-    );
+    expect(clip.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(clip.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       trackIndex: 0,
@@ -52,9 +65,8 @@ describe("createClip - advanced features", () => {
   });
 
   it("should calculate correct clip length based on note start position", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     await createClip({
@@ -64,13 +76,26 @@ describe("createClip - advanced features", () => {
       notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
-    expectClipCreated(0, 0, 4);
+    expectClipCreated(clipSlot, 4);
   });
 
   it("should return single object for single position and array for multiple positions", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4 },
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4 },
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/1", {
+      path: "live_set tracks 0 clip_slots 1",
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+      path: "live_set tracks 0 clip_slots 1 clip",
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/2", {
+      path: "live_set tracks 0 clip_slots 2",
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
+      path: "live_set tracks 0 clip_slots 2 clip",
     });
 
     const singleResult = await createClip({
@@ -109,9 +134,8 @@ describe("createClip - advanced features", () => {
   });
 
   it("should filter out v0 notes when creating clips", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    const { clip } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     const result = await createClip({
@@ -121,7 +145,7 @@ describe("createClip - advanced features", () => {
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
     });
 
-    expectNotesAdded(0, 0, [note(60, 0, 1), note(64, 0, 1, 80)]);
+    expectNotesAdded(clip, [note(60, 0, 1), note(64, 0, 1, 80)]);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -133,9 +157,8 @@ describe("createClip - advanced features", () => {
   });
 
   it("should handle clips with all v0 notes filtered out", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    const { clip } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     await createClip({
@@ -145,16 +168,15 @@ describe("createClip - advanced features", () => {
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(clip.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
     );
   });
 
   it("should set start and firstStart when provided", async () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    const { clip } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     await createClip({
@@ -168,23 +190,17 @@ describe("createClip - advanced features", () => {
     });
 
     // start "1|3" converts to 2 beats (bar 1, beat 3)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "start_marker",
-      2,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "loop_start",
-      2,
-    );
+    expect(clip.set).toHaveBeenCalledWith("start_marker", 2);
+    expect(clip.set).toHaveBeenCalledWith("loop_start", 2);
   });
 
   describe("switchView functionality", () => {
     it("should switch to session view when creating session clips with switchView=true", async () => {
-      mockLiveApiGet({
-        ClipSlot: { has_clip: 0 },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      const appView = registerMockObject("app-view", {
+        path: "live_app view",
       });
 
       const result = await createClip({
@@ -194,7 +210,7 @@ describe("createClip - advanced features", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/0/clip",
         trackIndex: 0,
@@ -203,25 +219,9 @@ describe("createClip - advanced features", () => {
     });
 
     it("should switch to arrangement view when creating arrangement clips with switchView=true", async () => {
-      mockLiveApiGet({
-        Track: { exists: () => true },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      });
-
-      liveApiCall.mockImplementation((method) => {
-        if (method === "create_midi_clip") {
-          return ["id", "arrangement_clip"];
-        }
-
-        return null;
-      });
-
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id arrangement_clip") {
-          return "arrangement_clip";
-        }
-
-        return this._id;
+      setupArrangementClipMocks();
+      const appView = registerMockObject("app-view", {
+        path: "live_app view",
       });
 
       const result = await createClip({
@@ -231,7 +231,7 @@ describe("createClip - advanced features", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
       expect(result).toStrictEqual({
         id: "arrangement_clip",
         trackIndex: 0,
@@ -240,9 +240,11 @@ describe("createClip - advanced features", () => {
     });
 
     it("should not switch views when switchView=false", async () => {
-      mockLiveApiGet({
-        ClipSlot: { has_clip: 0 },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      const appView = registerMockObject("app-view", {
+        path: "live_app view",
       });
 
       await createClip({
@@ -252,16 +254,25 @@ describe("createClip - advanced features", () => {
         switchView: false,
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith(
+      expect(appView.call).not.toHaveBeenCalledWith(
         "show_view",
         expect.anything(),
       );
     });
 
     it("should work with multiple clips when switchView=true", async () => {
-      mockLiveApiGet({
-        ClipSlot: { has_clip: 0 },
-        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      registerMockObject("live_set/tracks/0/clip_slots/1", {
+        path: "live_set tracks 0 clip_slots 1",
+        properties: { has_clip: 0 },
+      });
+      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+        path: "live_set tracks 0 clip_slots 1 clip",
+      });
+      const appView = registerMockObject("app-view", {
+        path: "live_app view",
       });
 
       const result = await createClip({
@@ -271,7 +282,7 @@ describe("createClip - advanced features", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
     });

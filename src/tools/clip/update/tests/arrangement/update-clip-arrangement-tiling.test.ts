@@ -25,7 +25,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should tile clip with exact multiples (no remainder) - extends existing", async () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
+    setupArrangementClipPath(trackIndex, ["789", "1000"]);
 
     mockLiveApiGet({
       789: {
@@ -92,7 +92,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
   it("should handle insufficient content by tiling what exists", async () => {
     const trackIndex = 0;
 
-    setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
+    setupArrangementClipPath(trackIndex, ["789", "1000"]);
 
     mockLiveApiGet({
       789: {
@@ -304,15 +304,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       return this._id;
     });
 
-    setupArrangementClipPath(
-      trackIndex,
-      (id) =>
-        id === "789" ||
-        id === "1000" ||
-        id === "1000" ||
-        id === "1001" ||
-        id === "1001",
-    );
+    setupArrangementClipPath(trackIndex, ["789", "1000", "1001"]);
 
     mockLiveApiGet({
       789: {

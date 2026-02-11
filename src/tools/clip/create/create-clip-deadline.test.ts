@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
 // Mock the loop-deadline module to control deadline behavior
@@ -47,15 +46,20 @@ describe("createClip - deadline exceeded", () => {
   });
 
   it("should create partial clips before deadline exceeded", async () => {
-    setupArrangementClipMocks();
-    mockLiveApiGet({
-      Track: { exists: () => true },
-      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-      arrangement_clip: {
-        length: 4,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    const { clip } = setupArrangementClipMocks();
+
+    // Add additional properties the production code reads from the clip
+    clip.get.mockImplementation((prop: string) => {
+      switch (prop) {
+        case "length":
+          return [4];
+        case "signature_numerator":
+          return [4];
+        case "signature_denominator":
+          return [4];
+        default:
+          return [0];
+      }
     });
 
     // Allow first clip, exceed on second

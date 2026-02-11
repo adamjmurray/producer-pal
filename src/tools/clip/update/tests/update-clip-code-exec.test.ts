@@ -4,10 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
   setupMocks,
   setupMidiClipMock,
+  type UpdateClipMockHandles,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
@@ -23,12 +23,14 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 
 describe("updateClip - code execution", () => {
+  let handles: UpdateClipMockHandles;
+
   beforeEach(() => {
-    setupMocks();
+    handles = setupMocks();
   });
 
   it("should execute code on a single session clip and apply resulting notes", async () => {
-    setupMidiClipMock("123", { length: 4 });
+    setupMidiClipMock(handles.clip123, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -66,59 +68,40 @@ describe("updateClip - code execution", () => {
     );
 
     // applyNotesToClip should have been called (removes + adds notes)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(handles.clip123.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,
       128,
       0,
       1000000,
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            velocity_deviation: 0,
-            probability: 1,
-          },
-          {
-            pitch: 64,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            velocity_deviation: 0,
-            probability: 1,
-          },
-        ],
-      },
-    );
+    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 64,
+          start_time: 1,
+          duration: 1,
+          velocity: 80,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ],
+    });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
   it("should execute code on multiple clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-      456: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    setupMidiClipMock(handles.clip123, { length: 4 });
+    setupMidiClipMock(handles.clip456, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -147,7 +130,7 @@ describe("updateClip - code execution", () => {
   });
 
   it("should warn and continue when code execution fails for a clip", async () => {
-    setupMidiClipMock("123", { length: 4 });
+    setupMidiClipMock(handles.clip123, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: false,
@@ -160,7 +143,7 @@ describe("updateClip - code execution", () => {
     });
 
     // Should NOT call add_new_notes since execution failed
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(handles.clip123.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
     );
@@ -176,22 +159,8 @@ describe("updateClip - code execution", () => {
   });
 
   it("should handle mixed success/failure across multiple clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-      456: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    setupMidiClipMock(handles.clip123, { length: 4 });
+    setupMidiClipMock(handles.clip456, { length: 4 });
 
     vi.mocked(executeNoteCode)
       .mockResolvedValueOnce({
@@ -230,15 +199,10 @@ describe("updateClip - code execution", () => {
   });
 
   it("should pass arrangement clip location info to executeNoteCode", async () => {
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        start_time: 16.0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+    setupMidiClipMock(handles.clip789, {
+      is_arrangement_clip: 1,
+      start_time: 16.0,
+      length: 4,
     });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
