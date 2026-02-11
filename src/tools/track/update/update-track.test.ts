@@ -1,37 +1,27 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  setupStandardIdMock,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { updateTrack } from "./update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateTrack", () => {
-  beforeEach(() => {
-    setupStandardIdMock();
+  let track123: MockObjectHandle;
+  let track456: MockObjectHandle;
+  let track789: MockObjectHandle;
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._id) {
-        case "123":
-          return "live_set tracks 0";
-        case "456":
-          return "live_set tracks 1";
-        case "789":
-          return "live_set tracks 2";
-        default:
-          return this._path;
-      }
-    });
+  beforeEach(() => {
+    track123 = registerMockObject("123", { path: "live_set tracks 0" });
+    track456 = registerMockObject("456", { path: "live_set tracks 1" });
+    track789 = registerMockObject("789", { path: "live_set tracks 2" });
   });
 
   it("should update a single track by ID", () => {
@@ -44,31 +34,11 @@ describe("updateTrack", () => {
       arm: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Updated Track",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "color",
-      16711680,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "mute",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "solo",
-      false,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "arm",
-      true,
-    );
+    expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
+    expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(track123.set).toHaveBeenCalledWith("mute", true);
+    expect(track123.set).toHaveBeenCalledWith("solo", false);
+    expect(track123.set).toHaveBeenCalledWith("arm", true);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -79,17 +49,10 @@ describe("updateTrack", () => {
       mute: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "color",
-      65280,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "mute",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per track
+    expect(track123.set).toHaveBeenCalledWith("color", 65280);
+    expect(track123.set).toHaveBeenCalledWith("mute", true);
+    expect(track123.set).toHaveBeenCalledTimes(2);
+    expect(track456.set).toHaveBeenCalledTimes(2);
 
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
@@ -100,11 +63,7 @@ describe("updateTrack", () => {
       name: "Prefixed ID Track",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Prefixed ID Track",
-    );
+    expect(track123.set).toHaveBeenCalledWith("name", "Prefixed ID Track");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -114,12 +73,8 @@ describe("updateTrack", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Only Name Update",
-    );
-    expect(liveApiSet).toHaveBeenCalledTimes(1);
+    expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
+    expect(track123.set).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -131,21 +86,9 @@ describe("updateTrack", () => {
       arm: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "mute",
-      false,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "solo",
-      false,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "arm",
-      false,
-    );
+    expect(track123.set).toHaveBeenCalledWith("mute", false);
+    expect(track123.set).toHaveBeenCalledWith("solo", false);
+    expect(track123.set).toHaveBeenCalledWith("arm", false);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -161,11 +104,12 @@ describe("updateTrack", () => {
   });
 
   it("should log warning when track ID doesn't exist", () => {
-    liveApiId.mockReturnValue("id 0"); // non-existent
+    // "nonexistent" is not registered, so falls through to shared mock
+    liveApiId.mockReturnValue("id 0");
 
     const result = updateTrack({ ids: "nonexistent" });
 
-    expect(result).toStrictEqual([]); // Empty array, no valid tracks
+    expect(result).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateTrack: id "nonexistent" does not exist',
@@ -173,26 +117,17 @@ describe("updateTrack", () => {
   });
 
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id nonexistent":
-          return "id 0"; // non-existent
-        default:
-          return "id 0";
-      }
-    });
-    liveApiType.mockReturnValue("Track");
+    // "123" is registered (handled by registry), "nonexistent" is not
+    liveApiId.mockReturnValue("id 0");
 
     const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123" }); // Only valid track updated
+    expect(result).toStrictEqual({ id: "123" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateTrack: id "nonexistent" does not exist',
     );
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
+    expect(track123.set).toHaveBeenCalledWith("name", "Test");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
@@ -218,7 +153,9 @@ describe("updateTrack", () => {
       name: "Filtered",
     });
 
-    expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
+    expect(track123.set).toHaveBeenCalledTimes(1);
+    expect(track456.set).toHaveBeenCalledTimes(1);
+    expect(track789.set).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
@@ -232,24 +169,19 @@ describe("updateTrack", () => {
         outputRoutingChannelId: "26",
       });
 
-      // Verify setProperty calls with proper JSON format
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith(
         "input_routing_type",
         '{"input_routing_type":{"identifier":17}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith(
         "input_routing_channel",
         '{"input_routing_channel":{"identifier":1}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith(
         "output_routing_type",
         '{"output_routing_type":{"identifier":25}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith(
         "output_routing_channel",
         '{"output_routing_channel":{"identifier":26}}',
       );
@@ -263,11 +195,7 @@ describe("updateTrack", () => {
         monitoringState: MONITORING_STATE.AUTO,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "current_monitoring_state",
-        1, // LIVE_API_MONITORING_STATE_AUTO
-      );
+      expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -278,22 +206,14 @@ describe("updateTrack", () => {
         ids: "123",
         monitoringState: MONITORING_STATE.IN,
       });
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "current_monitoring_state",
-        0, // LIVE_API_MONITORING_STATE_IN
-      );
+      expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
 
       // Test OFF state
       updateTrack({
         ids: "456",
         monitoringState: MONITORING_STATE.OFF,
       });
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "456" }),
-        "current_monitoring_state",
-        2, // LIVE_API_MONITORING_STATE_OFF
-      );
+      expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
     });
 
     it("should warn and skip for invalid monitoring state", () => {
@@ -316,34 +236,14 @@ describe("updateTrack", () => {
         monitoringState: MONITORING_STATE.IN,
       });
 
-      // Verify basic properties
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "name",
-        "Test Track",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "color",
-        16711680,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "mute",
-        true,
-      );
-
-      // Verify routing properties
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
+      expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+      expect(track123.set).toHaveBeenCalledWith("mute", true);
+      expect(track123.set).toHaveBeenCalledWith(
         "input_routing_type",
         '{"input_routing_type":{"identifier":17}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "current_monitoring_state",
-        0,
-      );
+      expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -355,27 +255,16 @@ describe("updateTrack", () => {
         monitoringState: MONITORING_STATE.AUTO,
       });
 
-      // Verify both tracks get updated
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
+      expect(track123.set).toHaveBeenCalledWith(
         "output_routing_type",
         '{"output_routing_type":{"identifier":25}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "456" }),
+      expect(track456.set).toHaveBeenCalledWith(
         "output_routing_type",
         '{"output_routing_type":{"identifier":25}}',
       );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "current_monitoring_state",
-        1,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "456" }),
-        "current_monitoring_state",
-        1,
-      );
+      expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
+      expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
       expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
     });
@@ -387,12 +276,8 @@ describe("updateTrack", () => {
       });
 
       // Should only have the name call, no routing calls
-      expect(liveApiSet).toHaveBeenCalledTimes(1);
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "name",
-        "Only Name Update",
-      );
+      expect(track123.set).toHaveBeenCalledTimes(1);
+      expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -405,11 +290,7 @@ describe("updateTrack", () => {
         arrangementFollower: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "back_to_arranger",
-        0, // 0 = following arrangement
-      );
+      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -420,11 +301,7 @@ describe("updateTrack", () => {
         arrangementFollower: false,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "back_to_arranger",
-        1, // 1 = not following arrangement
-      );
+      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 1);
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -435,16 +312,8 @@ describe("updateTrack", () => {
         arrangementFollower: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "back_to_arranger",
-        0,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "456" }),
-        "back_to_arranger",
-        0,
-      );
+      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 0);
+      expect(track456.set).toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
     });
@@ -457,21 +326,9 @@ describe("updateTrack", () => {
         arrangementFollower: false,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "name",
-        "Updated Track",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "mute",
-        true,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "back_to_arranger",
-        1,
-      );
+      expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
+      expect(track123.set).toHaveBeenCalledWith("mute", true);
+      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 1);
 
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -482,13 +339,13 @@ describe("updateTrack", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      // Mock getProperty to return quantized color (different from input)
-      liveApiGet.mockImplementation(function (prop: string) {
+      // Override get to return quantized color (different from input)
+      track123.get.mockImplementation((prop: string) => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
 
-        return [];
+        return null;
       });
 
       updateTrack({
@@ -507,13 +364,13 @@ describe("updateTrack", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      // Mock getProperty to return exact color (same as input)
-      liveApiGet.mockImplementation(function (prop: string) {
+      // Override get to return exact color (same as input)
+      track123.get.mockImplementation((prop: string) => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
 
-        return [];
+        return null;
       });
 
       updateTrack({
@@ -530,14 +387,16 @@ describe("updateTrack", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      // Mock getProperty to return quantized color
-      liveApiGet.mockImplementation(function (prop: string) {
+      const colorMock = (prop: string) => {
         if (prop === "color") {
           return [1768495]; // #1AFC2F (quantized from #00FF00)
         }
 
-        return [];
-      });
+        return null;
+      };
+
+      track123.get.mockImplementation(colorMock);
+      track456.get.mockImplementation(colorMock);
 
       updateTrack({
         ids: "123,456",
