@@ -16,7 +16,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     ids: z.coerce.string().describe("comma-separated scene ID(s) to update"),
     name: z.string().optional().describe("name"),
     color: z.string().optional().describe("#RRGGBB"),
-    tempo: z.number().optional().describe("BPM (-1 disables)"),
+    tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
   },
 });

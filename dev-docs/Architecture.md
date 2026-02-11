@@ -207,16 +207,16 @@ See `dev-docs/Chat-UI.md` for detailed architecture and development workflow.
 
 Communication between Node.js and V8:
 
-```javascript
-// Request from Node to V8
-["mcp_request", JSON.stringify({ requestId, tool, args })][
-  // Response from V8 to Node
-  ("mcp_response", JSON.stringify({ requestId, result }))
-][
-  // Error from V8 to Node
-  ("mcp_response", JSON.stringify({ requestId, error }))
-];
-```
+    ```js
+    // Request from Node to V8
+    ["mcp_request", JSON.stringify({ requestId, tool, args })]
+
+    // Response from V8 to Node
+    ["mcp_response", JSON.stringify({ requestId, result })]
+
+    // Error from V8 to Node
+    ["mcp_response", JSON.stringify({ requestId, error })]
+    ```
 
 ## Live API Interface
 

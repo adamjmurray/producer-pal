@@ -55,7 +55,11 @@ UI opens in a browser:
 In the chat UI settings:
 
 - Provider: **Ollama (local)**
-- Port: `11434` (default)
+- URL: `http://localhost:11434`
+  - Use this default URL when everything runs on the same computer. Change
+    `localhost` to run Ollama on a different computer. Consult
+    [the user guide](/guide/chat-ui#local-ai-settings-ollama-lm-studio) for more
+    info.
 - Model: Your model name (e.g., `qwen3` or `qwen3:8b`)
 
 Click "Save".

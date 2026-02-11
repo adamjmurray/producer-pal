@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Producer Pal
+  name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
     AI-powered assistant for music production. Works with Claude, Gemini,

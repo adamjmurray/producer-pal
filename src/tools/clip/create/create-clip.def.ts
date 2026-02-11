@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -19,7 +20,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   inputSchema: {
     view: z.enum(["session", "arrangement"]).describe("location of the clip"),
 
-    trackIndex: z
+    trackIndex: z.coerce
       .number()
       .int()
       .min(0)
@@ -79,10 +80,22 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
 
-    // modulations: z
-    //   .string()
-    //   .optional()
-    //   .describe("modulation expressions (parameter: expression per line)"),
+    transforms: z
+      .string()
+      .optional()
+      .describe("transform expressions (parameter: expression per line)"),
+
+    ...(process.env.ENABLE_CODE_EXEC === "true"
+      ? {
+          code: z
+            .string()
+            .max(MAX_CODE_LENGTH)
+            .optional()
+            .describe(
+              "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
+            ),
+        }
+      : {}),
 
     sampleFile: z
       .string()
@@ -99,5 +112,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: ["transforms", "code"],
   },
 });

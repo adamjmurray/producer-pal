@@ -50,6 +50,12 @@ function createItemsArray(): KbItem[] {
     // Tool definitions (all .def.ts files in src/tools)
     { src: "src/tools", isDir: true, filter: /\.def\.ts$/ },
 
+    // Skills
+    { src: "src/skills", isDir: true, filter: /(?<!\.test)\.ts$/ },
+
+    // Peggy grammars (parser definitions)
+    { src: "src", isDir: true, filter: /\.peggy$/ },
+
     // E2E test documentation
     { src: "e2e/mcp/README.md" },
     { src: "e2e/webui/README.md" },

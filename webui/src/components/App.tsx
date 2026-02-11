@@ -37,21 +37,42 @@ function getEnabledToolsCount(enabledTools: Record<string, boolean>): number {
 }
 
 /**
+ * Normalize URL for local providers by ensuring /v1 suffix
+ * @param {string} url - URL to normalize
+ * @returns {string} - Normalized URL with /v1 suffix
+ */
+function normalizeLocalProviderUrl(url: string): string {
+  // Remove trailing slashes
+  const trimmed = url.replace(/\/+$/, "");
+
+  // Check if already ends with /v1
+  if (trimmed.endsWith("/v1")) {
+    return trimmed;
+  }
+
+  return `${trimmed}/v1`;
+}
+
+/**
  * Get API base URL for the current provider
  * @param {string} provider - Provider identifier
- * @param {string | undefined} baseUrl - Custom base URL for custom provider
- * @param {number | undefined} port - Port for local providers
+ * @param {string | undefined} baseUrl - Base URL for custom/local providers
  * @returns {string | undefined} - Base URL or undefined for Gemini
  */
 function getBaseUrl(
   provider: string,
   baseUrl: string | undefined,
-  port: number | undefined,
 ): string | undefined {
   if (provider === "custom") return baseUrl;
   if (provider === "gemini") return undefined;
-  if (provider === "lmstudio") return `http://localhost:${port ?? 1234}/v1`;
-  if (provider === "ollama") return `http://localhost:${port ?? 11434}/v1`;
+
+  if (provider === "lmstudio") {
+    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:1234");
+  }
+
+  if (provider === "ollama") {
+    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:11434");
+  }
 
   return PROVIDER_BASE_URLS[provider as keyof typeof PROVIDER_BASE_URLS];
 }
@@ -64,11 +85,7 @@ export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
   const { mcpStatus, mcpError, checkMcpConnection } = useMcpConnection();
-  const baseUrl = getBaseUrl(
-    settings.provider,
-    settings.baseUrl,
-    settings.port,
-  );
+  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   // Use Gemini chat for Gemini provider
   const geminiChat = useChat({
@@ -168,8 +185,6 @@ export function App() {
         setApiKey={settings.setApiKey}
         baseUrl={settings.baseUrl}
         setBaseUrl={settings.setBaseUrl}
-        port={settings.port}
-        setPort={settings.setPort}
         model={settings.model}
         setModel={settings.setModel}
         thinking={settings.thinking}

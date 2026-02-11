@@ -29,7 +29,6 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { transformClips } from "#src/tools/operations/transform-clips/transform-clips.ts";
 import { readSamples } from "#src/tools/samples/read-samples.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
@@ -39,6 +38,7 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { memory } from "#src/tools/workflow/memory.ts";
+import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -89,11 +89,6 @@ const tools: Record<string, (args: unknown) => unknown> = {
     initHoldingArea();
 
     return updateClip(args as any, context);
-  },
-  "ppal-transform-clips": (args) => {
-    initHoldingArea();
-
-    return transformClips(args as any, context);
   },
   "ppal-create-device": (args) => createDevice(args as any, context),
   "ppal-read-device": (args) => readDevice(args as any, context),
@@ -240,6 +235,16 @@ function sendResponse(requestId: string, result: object): void {
   outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
 }
 
+/**
+ * Handle code_exec_result message from Node after sandboxed code execution
+ *
+ * @param requestId - Request identifier
+ * @param resultJson - JSON string of SandboxResult
+ */
+export function code_exec_result(requestId: string, resultJson: string): void {
+  handleCodeExecResult(requestId, resultJson);
+}
+
 // Handle messages from Node for Max
 /**
  * Handle MCP request from Node for Max
@@ -258,7 +263,7 @@ export async function mcp_request(
   let result;
 
   try {
-    const args = JSON.parse(argsJSON);
+    const args = JSON.parse(argsJSON) as Record<string, unknown>;
 
     // Merge incoming context (if provided) into existing context
     if (contextJSON != null) {

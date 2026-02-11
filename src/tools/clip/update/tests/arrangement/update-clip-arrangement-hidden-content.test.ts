@@ -8,7 +8,7 @@ import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
-  it("should preserve envelopes by tiling when exposing hidden content", () => {
+  it("should preserve envelopes by tiling when exposing hidden content", async () => {
     const trackIndex = 0;
 
     setupArrangementClipPath(
@@ -36,7 +36,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
 
     liveApiCall.mockImplementation(() => {});
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       arrangementLength: "1:2.5", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });

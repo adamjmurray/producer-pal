@@ -2,16 +2,45 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const skills = `# Producer Pal Skills
+const codeTransformsSkills = `
 
-You can now compose music in Ableton Live using Producer Pal tools and the bar|beat notation system.
+### Code Transforms
+
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. The \`code\` value is the function body only. It runs as:
+\`(function(notes, context) { <code> })(notes, context)\`
+
+Example \`code\` value:
+\`\`\`javascript
+return notes.filter(n => n.pitch >= 60).map(n => ({
+  ...n,
+  velocity: Math.min(127, n.velocity + 20)
+}));
+\`\`\`
+
+**Note properties (required: pitch, start):**
+- \`pitch\`: 0-127 (60 = C3)
+- \`start\`: beats from clip start
+- \`duration\`: beats (default: 1)
+- \`velocity\`: 1-127 (default: 100)
+- \`velocityDeviation\`: 0-127 (default: 0)
+- \`probability\`: 0-1 (default: 1)
+
+**Context properties:**
+- \`track\`: { index, name, type, color }
+- \`clip\`: { id, name, length, timeSignature, looping }
+- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`liveSet\`: { tempo, scale?, timeSignature }
+- \`beatsPerBar\`: number
+
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
+
+export const skills = `# Producer Pal Skills
 
 ## Time in Ableton Live
 
-- Positions: bar|beat where both bar and beat must be 1 or higher (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|2+1/3 = bar 1 beat 2 and a third)
-- Durations: beats (2.5, 3/4, /4 = 1/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
-- Fractional beats: decimals (2.5), fractions (5/2), or mixed numbers (2+1/3) for both positions and durations
-- Fraction shortcut: numerator defaults to 1 when omitted (/4 = 1/4, /3 = 1/3)
+- Positions: bar|beat (1-indexed). Examples: 1|1, 2|3.5, 1|2+1/3
+- Durations: beats (2.5, 3/4, /4) or bar:beat (1:2, 4:0)
+- Fractional beats: decimals (2.5), fractions (5/2), mixed (2+1/3). Numerator defaults to 1 (/4 = 1/4)
 
 ## MIDI Syntax
 
@@ -23,41 +52,23 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list or repeat pattern
-  - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, uses duration)
-    - \`1|1x4@1\` → beats 1,2,3,4 (explicit step)
-    - \`t0.5 1|1x4\` → beats 1, 1.5, 2, 2.5 (step = duration)
-    - \`1|1x3@1/3\` or \`1|1x3@/3\` → triplets at 1, 4/3, 5/3 (explicit step)
-    - \`t1/3 1|1x3\` or \`t/3 1|1x3\` → triplets at 1, 4/3, 5/3 (step = duration)
-    - \`1|1x16@1/4\` or \`1|1x16@/4\` → full bar of 16ths (explicit step)
-    - \`t1/4 1|1x16\` or \`t/4 1|1x16\` → full bar of 16ths (step = duration)
-- v<velocity>: Note intensity from 0-127 (default: v100)
-  - Single value: v100 (all notes at velocity 100)
-  - Random range: v80-120 (each note gets random velocity between 80-120)
-  - Use ranges for humanization, natural dynamics, and groove feel
+  - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, defaults to duration)
+    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step = duration)
+    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → full bar of 16ths
+- v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- t<duration>: Note length (default: 1.0)
-  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats), t/4 (0.25 beats), t2+3/4 (2 and three-quarter beats)
-  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:/4 (1 bar + 0.25 beats), t1:2+1/3 (1 bar + 2 and a third beats)
+- t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
-- copying bars:
-  - **Bar copying MERGES** - target bars keep existing notes; use v0 to remove unwanted notes
-  - @N= copies previous bar to N; @N=M copies bar M; @N-M=P copies bar P to range N-M
-  - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
-  - @N-M=P-Q tiles bars P-Q across range N-M (repeating multi-bar patterns)
-  - @clear clears the copy buffer for advanced layering use cases
-  - Bar copying copies note events with their frozen parameters, not current state
-  - After \`@2=1\`, your current v/t/p settings remain unchanged
+- copying bars (**MERGES** - use v0 to clear unwanted notes):
+  - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
+  - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
+  - Copies frozen note parameters, not current v/t/p state
 
 ## Audio Clips
-Audio clip properties are always included in \`ppal-read-clip\` results: \`sampleFile\`,
-\`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`.
-
-**Understanding audio parameters:**
-- \`gainDb\`: Decibels (0 dB = unity, -6 dB = half volume, +12 dB = 4x volume)
-- \`pitchShift\`: Semitones (e.g., -2.5 = down 2.5 semitones)
-- These parameters are ignored when updating MIDI clips (no error)
+\`ppal-read-clip\` includes: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones), \`sampleLength\`, \`sampleRate\`.
+Audio params ignored when updating MIDI clips.
 
 ## Examples
 
@@ -65,19 +76,12 @@ Audio clip properties are always included in \`ppal-read-clip\` results: \`sampl
 C3 E3 G3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1x4@1 // kick on every beat (explicit step)
-t1 C1 1|1x4 // same as above (step = duration)
-C1 1|1,2,3,4 // same as above (comma-separated beats)
-C1 1|1 |2 |3 |4 // same as above (pitch persistence)
-v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
+v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
-t/3 C3 1|1x3 // same as above (numerator defaults to 1)
-t1/3 C3 1|1,4/3,5/3 // same as above (fractional notation)
-t1/4 Gb1 1|1x16 // full bar of 16th note hi-hats (step = duration)
-t/4 Gb1 1|1x16 // same as above (numerator defaults to 1)
-t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers for natural musician notation
+t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
+t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
-C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 C1 1|1,3 D1 |2,4 // humanized drum pattern
 v60-80 Gb1 1|1.5,2.5,3.5,4.5 // natural hi-hat feel
@@ -87,19 +91,7 @@ p1.0 D1 1|2,4 // back to 100% - snare always plays
 
 ## Techniques
 
-### Repeating Patterns
-
-Use repeat syntax (\`x{times}[@{step}]\`), copy features, and pitch persistence:
-- **Repeat syntax**: Best for regular subdivisions (16ths, triplets, every beat)
-  - \`t1 C1 1|1x4\` for kicks on every beat (step = duration)
-  - \`t0.5 Gb1 1|1x8\` for eighth notes (step = duration)
-  - \`t1/3 C3 1|1x3\` or \`t/3 C3 1|1x3\` for triplets (step = duration)
-  - Step is optional - omit @step to use current duration
-  - Explicit step still works: \`C1 1|1x4@1\`, \`Gb1 1|1x8@0.5\`, \`C3 1|1x3@1/3\` or \`C3 1|1x3@/3\`
-- **Bar copy**: Best for multi-bar patterns and complex rhythms
-- Within each bar, group by instrument to leverage pitch persistence for multiple time positions
-- Use shorthand beat lists for irregular patterns
-- Think it through: Complete the full bar first, then copy
+Group by instrument per bar (pitch persistence). Complete bars before copying. Use beat lists for irregular patterns.
 
 \`\`\`
 C1 1|1,3 D1 |2,4 // bar 1
@@ -122,8 +114,6 @@ C1 |3.5                        // add extra kick to bar 9
 v0 C1 13|3 v100 D1 |3          // replace kick with snare in bar 13
 \`\`\`
 
-**Common mistake:** Copying to bars 2-8, then writing \`C1 9|3.5\` expecting bar 9 to have the foundation. Bar 9 is empty - you get one lonely kick, not a variation.
-
 ### Multi-bar phrases
 
 Use cross-bar beat lists then tile the range:
@@ -137,47 +127,69 @@ D1 1|4,6           // snare accents across bars 1-2
 
 ### v0 Deletion State Machine
 
-v0 enters deletion mode - removes notes at that pitch until you set a non-zero velocity:
+v0 enters deletion mode - removes notes at same pitch until non-zero velocity:
 
 \`\`\`
-v100 C3 1|1 v0 C3 1|1        // deletes the C3 at 1|1
-v100 C3 2|1 v0 C3 1|1 C3 2|1 // deletes BOTH C3s (still in deletion mode)
-v100 C3 3|1 v0 C3 1|1 v80    // exit deletion mode with v80
-C3 4|1                       // this C3 is NOT deleted (v80 still active)
+v100 C3 1|1 C3 2|1 v0 C3 1|1 C3 2|1 // deletes BOTH (still in deletion mode)
+v80 C3 3|1                           // v80 exits deletion, this C3 kept
 \`\`\`
 
+### Transforms
+
+Add \`transforms\` parameter to create-clip or update-clip.
+
+**Syntax:** \`[selector:] parameter operator expression\` (one per line)
+- **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
+- **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
+- **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
+- **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
+- **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
+- **Operators:** \`+=\` (add to value), \`=\` (set value)
+- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
+- **Math functions:** round(x), floor(x), abs(x), min(a,b,...), max(a,b,...)
+
+**Waveforms** (-1.0 to 1.0, per note position; once for audio):
+- \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
+- \`noise()\` - random value per note
+- \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
+- Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+
+**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
+
+\`\`\`
+velocity += 20 * cos(2t)       // cycle every 2 beats
+timing += 0.05 * noise()       // humanize timing
+velocity += ramp(0, 60)        // fade in over clip
+C1-C2: velocity += 30          // accent bass notes
+1|1-2|4: velocity = 100        // forte in bars 1-2
+velocity = note.velocity / 2   // halve existing velocity
+velocity = max(60, note.velocity) // ensure minimum velocity
+gain = audio.gain - 6          // reduce audio clip by 6 dB
+\`\`\`
+
+\`+=\` compounds on repeated calls; \`=\` is idempotent. Use update-clip with only transforms to modify existing notes.
+Cross-type params ignored.
+${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Working with Ableton Live
 
 **Views and Playback:**
 - Session View: Jam, try ideas, build scenes
-  - Use auto:"play-scene" when generating scenes one clip at a time
-    - Warn the user about seemingly random clip restarts as you finish each clip when auto-playing scenes
+  - Use auto:"play-scene" when generating clips; warn user about clip restarts
 - Arrangement View: Structure songs on a timeline
-  - Session clips override Arrangement playback
-  - Tracks auto-follow Arrangement when you play with "play-arrangement"
+  - Session clips override Arrangement; use "play-arrangement" for arrangement playback
 
 **Creating Music:**
 - Check for instruments before creating MIDI clips
-- Place notes with musical timing - not just on the beat
 - Clip length sets playback region; noteCount shows notes within that region
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
 - Keep fills rhythmic with space - accent key hits, avoid machine-gun density
 - Keep scenes' harmonic rhythm in sync across tracks
-- Beat numbers beyond the time signature wrap to the next bar (e.g., in 4/4, 1|5 wraps to 2|1)
-  - In comma-separated beat lists like \`1|1,5\`, the 5 wraps to 2|1 (not obvious!)
-  - Be explicit when crossing bars: use \`C1 1|1 2|1\` instead of \`C1 1|1,5\`
-  - Careful with bar copying - wrapping can cause unintended overlaps
+- Beats beyond time signature wrap to next bar (in 4/4: 1|5 = 2|1). Be explicit crossing bars: \`C1 1|1 2|1\` not \`C1 1|1,5\`
 - Bass needs monophonic lines, one note at a time
 
-**Layering Multiple MIDI Tracks on One Instrument:**
-- When user says "layer another track/pattern onto [track/instrument name]", duplicate the track with routeToSource=true
-- Other patterns to recognize: "add a layer to [track]", "add a polyrhythm to [track]", "route another track to [instrument]"
-- Use cases: polyrhythms with different clip lengths, complex drums from simple parts, evolving phasing patterns
-- After duplicating, the new track controls the same instrument as the original
+**Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
 
-**Staying in Sync:**
-- Set clip lengths explicitly to keep clips in sync
-- After user rearranges anything in Live, call ppal-read-live-set to resync
+**Staying in Sync:** Set clip lengths explicitly. After user rearranges in Live, call ppal-read-live-set.
 
 ### Device Paths
 
@@ -192,30 +204,16 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 ### Arrangement Clips
 
-\`arrangementStart\` moves clips in the timeline. \`arrangementLength\` expands or reduces visible playback region.
-
-Note: Any operation that moves a clip causes the clip ID to change.
-Most operations return the new IDs.
-Re-read the Set or Track to see the new IDs.
+\`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
 
 #### Lengthening Clips
 
-Producer Pal duplicates and tiles the clip to fill the requested length
-(creates multiple clips in arrangement). This differs from Live's native behavior but achieves
-the same playback result.
+Clips are duplicated/tiled to fill requested length (multiple clips, same playback result).
 
-#### Moving Multiple Clips in Arrangement
+#### Moving Multiple Clips
 
-When moving multiple clips to new arrangement positions (e.g., "move all clips forward by 1 bar"):
-
-1. **Process clips in reverse order** - start with the clip that has the latest \`arrangementStart\` time and work backwards
-2. This prevents earlier clips from overwriting later clips during sequential \`ppal-update-clip\` calls
-3. Sort clips by \`arrangementStart\` descending before updating
-
-Example sequence (move three clips forward one bar):
-- Clip at bar 5 → move to bar 6 (call update-clip)
-- Clip at bar 4 → move to bar 5 (call update-clip)
-- Clip at bar 3 → move to bar 4 (call update-clip)
+Process in reverse \`arrangementStart\` order to prevent overwrites:
+- bar 5 → 6, bar 4 → 5, bar 3 → 4
 `;
 
 /**

@@ -119,7 +119,6 @@ export function handleArrangementLengthening({
       currentEndTime,
       clipStartMarker,
       track,
-      context,
     });
   }
 
@@ -147,7 +146,7 @@ export function handleArrangementLengthening({
     // Lengthening via tiling
     const currentOffset = clipStartMarker - clipLoopStart;
     const totalContentLength = clipLoopEnd - clipStartMarker;
-    const tiledClips = createLoopeClipTiles({
+    const tiledClips = createLoopedClipTiles({
       clip,
       isAudioClip,
       arrangementLengthBeats,
@@ -195,7 +194,7 @@ interface CreateLoopedClipTilesArgs {
  * @param options.context - Tool execution context
  * @returns Array of tiled clip info
  */
-function createLoopeClipTiles({
+function createLoopedClipTiles({
   clip,
   isAudioClip,
   arrangementLengthBeats,

@@ -1,251 +1,149 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
-import { mockContext } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+  assertSourceClipEndMarker,
+  mockContext,
+  setupArrangementClipPath,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-interface SetupMocksOptions {
-  clipId: string;
-  tileIds: string[];
-  trackIndex?: number;
-  clipProps: Record<string, unknown>;
-  tileProps: Record<string, unknown>;
-}
+// Unlooped MIDI clip lengthening uses loop_end to extend arrangement length
+// directly. end_marker is extended so notes are visible in the extended region.
+// No tiling, no holding area — returns a single clip.
 
-function setupUnloopedTilingMocks({
-  clipId,
-  tileIds,
-  trackIndex = 0,
-  clipProps,
-  tileProps,
-}: SetupMocksOptions) {
-  const counter = { count: 0 };
-
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId || tileIds.includes(this._id ?? "")) {
-      return `live_set tracks ${trackIndex} arrangement_clips 0`;
-    }
-
-    if (this._path === "live_set") return "live_set";
-
-    if (this._path === `live_set tracks ${trackIndex}`) {
-      return `live_set tracks ${trackIndex}`;
-    }
-
-    return this._path;
-  });
-
-  mockLiveApiGet({
-    [clipId]: {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
-      looping: 0,
-      trackIndex,
-      ...clipProps,
-    },
-    ...Object.fromEntries(tileIds.map((id) => [id, tileProps])),
-    LiveSet: {
-      tracks: ["id", trackIndex],
-      signature_numerator: 4,
-      signature_denominator: 4,
-    },
-    [`live_set tracks ${trackIndex}`]: { arrangement_clips: ["id", clipId] },
-  });
-
-  liveApiCall.mockImplementation(function (
-    this: MockLiveAPIContext,
-    method: string,
-  ) {
-    if (method === "duplicate_clip_to_arrangement") {
-      return `id ${tileIds[counter.count++]}`;
-    }
-  });
-
-  return { counter };
-}
-
-describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => {
-  it("should tile unlooped clip with chunks matching current arrangement length", () => {
+describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () => {
+  it("should extend via loop_end and end_marker", async () => {
     const clipId = "800";
-    const tileIds = ["801", "802", "803", "804", "805"];
 
-    const { counter } = setupUnloopedTilingMocks({
-      clipId,
-      tileIds,
-      clipProps: {
+    setupArrangementClipPath(0, [clipId]);
+
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 1,
+        is_audio_clip: 0,
+        looping: 0,
         start_time: 0.0,
-        end_time: 3.0, // 3 beats visible
+        end_time: 3.0,
         start_marker: 0.0,
         end_marker: 3.0,
         loop_start: 0.0,
         loop_end: 4.0,
         name: "Test Clip",
-      },
-      tileProps: {
-        start_time: 3.0,
-        end_time: 6.0,
-        start_marker: 0.0,
-        end_marker: 3.0,
+        trackIndex: 0,
       },
     });
 
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" }, // 14 beats (3.5 bars)
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );
 
-    // Original clip should have end_marker extended to target
+    // end_marker extended: startMarker(0) + target(14) = 14.0
+    assertSourceClipEndMarker(clipId, 14.0);
+
+    // loop_end set: loopStart(0) + target(14) = 14.0
     expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: clipId }),
-      "end_marker",
+      expect.objectContaining({ _id: clipId }),
+      "loop_end",
       14.0,
     );
 
-    // First tile should have markers 3-6 (tileSize = 3)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "801" }),
-      "start_marker",
-      3.0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "801" }),
-      "end_marker",
-      6.0,
-    );
-
-    // Should create 4 tiles: 3-6, 6-9, 9-12, 12-14
-    // 5 duplicate_clip_to_arrangement calls: 3 direct + 2 for partial (holding + move)
-    expect(counter.count).toBe(5);
-
-    // Should return original + all tiles
-    // Note: 804 is consumed by holding area, 805 is the final partial tile
-    expect(result).toStrictEqual([
-      { id: clipId },
-      { id: "801" },
-      { id: "802" },
-      { id: "803" },
-      { id: "805" },
-    ]);
+    // Single clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
   });
 
-  it("should tile from shorter visible region with appropriate chunk size", () => {
-    const clipId = "810";
-    const tileIds = ["811", "812", "813", "814", "815", "816"];
-
-    const { counter } = setupUnloopedTilingMocks({
-      clipId,
-      tileIds,
-      clipProps: {
-        start_time: 0.0,
-        end_time: 2.0, // 2 beats visible
-        start_marker: 0.0,
-        end_marker: 2.0,
-        loop_start: 0.0,
-        loop_end: 4.0,
-        name: "Test Clip",
-      },
-      tileProps: {
-        start_time: 2.0,
-        end_time: 4.0,
-        start_marker: 0.0,
-        end_marker: 2.0,
-      },
-    });
-
-    const result = updateClip(
-      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
-      mockContext,
-    );
-
-    // First tile should have markers 2-4 (tileSize = 2)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "811" }),
-      "start_marker",
-      2.0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "811" }),
-      "end_marker",
-      4.0,
-    );
-
-    // Should create 6 tiles: 2-4, 4-6, 6-8, 8-10, 10-12, 12-14
-    expect(counter.count).toBe(6);
-
-    // Should return original + all tiles
-    expect(result).toHaveLength(7);
-    expect((result as { id: string }[])[0]).toStrictEqual({ id: clipId });
-  });
-
-  it("should handle start_marker offset correctly when tiling", () => {
+  it("should handle start_marker offset correctly", async () => {
     const clipId = "820";
-    // 5 IDs needed: 3 full tiles (direct) + 1 partial tile (holding + move = 2 calls)
-    const tileIds = ["821", "822", "823", "824", "825"];
 
-    const { counter } = setupUnloopedTilingMocks({
-      clipId,
-      tileIds,
-      clipProps: {
+    setupArrangementClipPath(0, [clipId]);
+
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 1,
+        is_audio_clip: 0,
+        looping: 0,
         start_time: 0.0,
-        end_time: 3.0, // 3 beats visible
-        start_marker: 1.0, // Content starts at beat 1
-        end_marker: 4.0,
-        loop_start: 0.0,
-        loop_end: 4.0,
-        name: "Test Clip with offset",
-      },
-      tileProps: {
-        start_time: 3.0,
-        end_time: 6.0,
+        end_time: 3.0,
         start_marker: 1.0,
         end_marker: 4.0,
+        loop_start: 1.0,
+        loop_end: 4.0,
+        name: "Test Clip with offset",
+        trackIndex: 0,
       },
     });
 
-    const result = updateClip(
+    const result = await updateClip(
       { ids: clipId, arrangementLength: "3:2" }, // 14 beats
       mockContext,
     );
 
-    // Target end marker = 1.0 + 14 = 15.0
+    // end_marker extended: startMarker(1) + target(14) = 15.0
+    assertSourceClipEndMarker(clipId, 15.0);
+
+    // loop_end set: loopStart(1) + target(14) = 15.0
     expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: clipId }),
-      "end_marker",
+      expect.objectContaining({ _id: clipId }),
+      "loop_end",
       15.0,
     );
 
-    // First tile should start at 4.0 (clipStartMarker 1 + currentArrangementLength 3)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "821" }),
-      "start_marker",
-      4.0,
+    // Single clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
+  });
+
+  it("should not shrink end_marker when clip has more content than target", async () => {
+    const clipId = "830";
+
+    setupArrangementClipPath(0, [clipId]);
+
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 1,
+        is_audio_clip: 0,
+        looping: 0,
+        start_time: 0.0,
+        end_time: 3.0,
+        start_marker: 0.0,
+        end_marker: 20.0,
+        loop_start: 0.0,
+        loop_end: 20.0,
+        name: "Wide Content Clip",
+        trackIndex: 0,
+      },
+    });
+
+    const result = await updateClip(
+      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
+      mockContext,
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "821" }),
+
+    // end_marker should NOT be shrunk from 20 to 14
+    expect(liveApiSet).not.toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: clipId }),
       "end_marker",
-      7.0, // 4.0 + tileSize (3)
+      expect.anything(),
     );
 
-    // Should create 4 tiles: 4-7, 7-10, 10-13, 13-15
-    // 5 duplicate_clip_to_arrangement calls: 3 direct + 2 for partial (holding + move)
-    expect(counter.count).toBe(5);
+    // loop_end set: loopStart(0) + target(14) = 14.0
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ _id: clipId }),
+      "loop_end",
+      14.0,
+    );
 
-    // Should return original + all tiles
-    // Note: 824 is consumed by holding area, 825 is the final partial tile
-    const resultArray = result as { id: string }[];
-
-    expect(resultArray).toHaveLength(5);
-    expect(resultArray[0]).toStrictEqual({ id: clipId });
-    expect(resultArray[4]).toStrictEqual({ id: "825" });
+    // Single clip returned (extended in place, no tiles)
+    // unwrapSingleResult returns single object for single-element arrays
+    expect(result).toStrictEqual({ id: clipId });
   });
 });

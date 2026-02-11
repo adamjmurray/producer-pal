@@ -30,8 +30,6 @@ describe("ConnectionTab", () => {
     setApiKey: vi.fn(),
     baseUrl: null as string | null,
     setBaseUrl: vi.fn(),
-    port: null as number | null,
-    setPort: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
     providerLabel: "Gemini",
@@ -192,30 +190,34 @@ describe("ConnectionTab", () => {
     });
   });
 
-  describe("local providers - port input", () => {
-    it("renders port input for LM Studio", () => {
+  describe("local providers - base URL input", () => {
+    it("renders base URL input for LM Studio", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
-      expect(screen.getByPlaceholderText("1234")).toBeDefined();
-      expect(screen.getByText("Port")).toBeDefined();
+      expect(screen.getByText("URL")).toBeDefined();
+      expect(
+        screen.getByPlaceholderText("http://localhost:1234"),
+      ).toBeDefined();
     });
 
-    it("renders port input for Ollama", () => {
+    it("renders base URL input for Ollama", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          port={11434}
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
-      expect(screen.getByPlaceholderText("11434")).toBeDefined();
+      expect(
+        screen.getByPlaceholderText("http://localhost:11434"),
+      ).toBeDefined();
     });
 
     it("does not render API key input for LM Studio", () => {
@@ -223,7 +225,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
@@ -235,140 +237,108 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          port={11434}
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
       expect(screen.queryByPlaceholderText(/API key/)).toBeNull();
     });
 
-    it("calls setPort when port input changes for LM Studio", () => {
-      const setPort = vi.fn();
+    it("calls setBaseUrl when URL input changes for LM Studio", () => {
+      const setBaseUrl = vi.fn();
 
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={setPort}
+          baseUrl="http://localhost:1234"
+          setBaseUrl={setBaseUrl}
           providerLabel="LM Studio"
         />,
       );
 
-      const input = screen.getByPlaceholderText("1234");
+      const input = screen.getByPlaceholderText("http://localhost:1234");
 
-      fireEvent.change(input, { target: { value: "5678" } });
+      fireEvent.change(input, {
+        target: { value: "http://192.168.1.100:1234" },
+      });
 
-      expect(setPort).toHaveBeenCalledWith(5678);
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:1234");
     });
 
-    it("calls setPort when port input changes for Ollama", () => {
-      const setPort = vi.fn();
+    it("calls setBaseUrl when URL input changes for Ollama", () => {
+      const setBaseUrl = vi.fn();
 
       render(
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          port={11434}
-          setPort={setPort}
+          baseUrl="http://localhost:11434"
+          setBaseUrl={setBaseUrl}
           providerLabel="Ollama"
         />,
       );
 
-      const input = screen.getByPlaceholderText("11434");
+      const input = screen.getByPlaceholderText("http://localhost:11434");
 
-      fireEvent.change(input, { target: { value: "8080" } });
+      fireEvent.change(input, {
+        target: { value: "http://192.168.1.100:11434" },
+      });
 
-      expect(setPort).toHaveBeenCalledWith(8080);
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:11434");
     });
 
-    it("does not call setPort for non-numeric input", () => {
-      const setPort = vi.fn();
-
+    it("displays default URL hint for LM Studio", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={setPort}
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
-
-      const input = screen.getByPlaceholderText("1234");
-
-      fireEvent.change(input, { target: { value: "abc" } });
-
-      expect(setPort).not.toHaveBeenCalled();
+      expect(screen.getByText("Default: http://localhost:1234")).toBeDefined();
     });
 
-    it("displays base URL with port for LM Studio", () => {
-      render(
-        <ConnectionTab
-          {...defaultProps}
-          provider="lmstudio"
-          port={5555}
-          providerLabel="LM Studio"
-        />,
-      );
-      expect(
-        screen.getByText(/Base URL: http:\/\/localhost:5555\/v1/),
-      ).toBeDefined();
-    });
-
-    it("displays base URL with default port when port is null for LM Studio", () => {
-      render(
-        <ConnectionTab
-          {...defaultProps}
-          provider="lmstudio"
-          port={null}
-          providerLabel="LM Studio"
-        />,
-      );
-      expect(
-        screen.getByText(/Base URL: http:\/\/localhost:1234\/v1/),
-      ).toBeDefined();
-    });
-
-    it("displays base URL with default port when port is null for Ollama", () => {
+    it("displays default URL hint for Ollama", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          port={null}
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );
-      expect(
-        screen.getByText(/Base URL: http:\/\/localhost:11434\/v1/),
-      ).toBeDefined();
+      expect(screen.getByText("Default: http://localhost:11434")).toBeDefined();
     });
 
-    it("displays port value in input", () => {
+    it("displays custom URL value in input", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={9999}
+          baseUrl="http://192.168.1.50:1234"
           providerLabel="LM Studio"
         />,
       );
-      const input = screen.getByPlaceholderText("1234") as HTMLInputElement;
+      const input = screen.getByPlaceholderText(
+        "http://localhost:1234",
+      ) as HTMLInputElement;
 
-      expect(input.value).toBe("9999");
+      expect(input.value).toBe("http://192.168.1.50:1234");
     });
 
-    it("does not render port input when setPort is not provided", () => {
+    it("does not render base URL input when setBaseUrl is not provided", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={undefined}
+          baseUrl="http://localhost:1234"
+          setBaseUrl={undefined}
           providerLabel="LM Studio"
         />,
       );
-      expect(screen.queryByPlaceholderText("1234")).toBeNull();
+      expect(screen.queryByPlaceholderText("http://localhost:1234")).toBeNull();
     });
   });
 
@@ -384,7 +354,7 @@ describe("ConnectionTab", () => {
       expect(
         screen.getByPlaceholderText("https://api.example.com/v1"),
       ).toBeDefined();
-      expect(screen.getByText("Base URL")).toBeDefined();
+      expect(screen.getByText("URL")).toBeDefined();
     });
 
     it("does not render base URL input for other providers", () => {
@@ -526,7 +496,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
+          baseUrl="http://localhost:1234"
           providerLabel="LM Studio"
         />,
       );
@@ -540,7 +510,7 @@ describe("ConnectionTab", () => {
         <ConnectionTab
           {...defaultProps}
           provider="ollama"
-          port={11434}
+          baseUrl="http://localhost:11434"
           providerLabel="Ollama"
         />,
       );

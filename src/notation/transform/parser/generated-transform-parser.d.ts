@@ -1,0 +1,74 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * Type declarations for peggy-generated transform parser.
+ * The actual parser is generated from transform-grammar.peggy.
+ */
+
+export {
+  ParseOptions,
+  Location,
+  SyntaxError,
+  StartRules,
+} from "../../peggy-parser-types.ts";
+
+import type { ParseOptions } from "../../peggy-parser-types.ts";
+
+/** Variable reference node */
+export interface VariableNode {
+  type: "variable";
+  namespace: "note" | "audio";
+  name: string;
+}
+
+/** Binary operation node */
+export interface BinaryOpNode {
+  type: "add" | "subtract" | "multiply" | "divide" | "modulo";
+  left: ExpressionNode;
+  right: ExpressionNode;
+}
+
+/** Function call node */
+export interface FunctionNode {
+  type: "function";
+  name: string;
+  args: ExpressionNode[];
+}
+
+/** Expression AST node */
+export type ExpressionNode =
+  | number
+  | VariableNode
+  | BinaryOpNode
+  | FunctionNode;
+
+/** Pitch range filter */
+export interface PitchRange {
+  startPitch: number;
+  endPitch: number;
+}
+
+/** Time range filter */
+export interface TimeRange {
+  startBar: number;
+  startBeat: number;
+  endBar: number;
+  endBeat: number;
+}
+
+/** Transform assignment produced by the parser */
+export interface TransformAssignment {
+  parameter: string;
+  operator: "add" | "set";
+  expression: ExpressionNode;
+  pitchRange?: PitchRange;
+  timeRange?: TimeRange;
+}
+
+/** Parse a transform expression string into an AST */
+export function parse(
+  input: string,
+  options?: ParseOptions,
+): TransformAssignment[];

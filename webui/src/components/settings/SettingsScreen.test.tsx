@@ -27,14 +27,17 @@ vi.mock(import("./ConnectionTab"), () => {
     ollama: "https://ollama.com/search",
   };
 
+  const DEFAULT_LOCAL_URLS: Record<string, string> = {
+    lmstudio: "http://localhost:1234/v1",
+    ollama: "http://localhost:11434/v1",
+  };
+
   return {
     ConnectionTab: ({
       provider,
       apiKey,
       setApiKey,
       model,
-      port,
-      setPort,
       baseUrl,
       setBaseUrl,
       providerLabel,
@@ -43,8 +46,6 @@ vi.mock(import("./ConnectionTab"), () => {
       apiKey: string;
       setApiKey: (key: string) => void;
       model: string;
-      port?: number | null;
-      setPort?: (port: number) => void;
       baseUrl?: string | null;
       setBaseUrl?: (url: string) => void;
       providerLabel: string;
@@ -82,38 +83,25 @@ vi.mock(import("./ConnectionTab"), () => {
           </div>
         )}
 
-        {/* Port for local providers */}
-        {(provider === "lmstudio" || provider === "ollama") && setPort && (
-          <div>
-            <label>Port</label>
-            <input
-              type="text"
-              placeholder={provider === "lmstudio" ? "1234" : "11434"}
-              value={port?.toString() ?? ""}
-              onChange={(e) => {
-                const value = (e.target as HTMLInputElement).value;
-                const numValue = Number.parseInt(value);
-
-                if (!Number.isNaN(numValue)) {
-                  setPort(numValue);
+        {/* URL for local and custom providers */}
+        {(provider === "lmstudio" ||
+          provider === "ollama" ||
+          provider === "custom") &&
+          setBaseUrl && (
+            <div>
+              <label>URL</label>
+              <input
+                type="text"
+                placeholder={
+                  DEFAULT_LOCAL_URLS[provider] ?? "https://api.example.com/v1"
                 }
-              }}
-            />
-          </div>
-        )}
-
-        {/* Base URL for custom provider */}
-        {provider === "custom" && setBaseUrl && (
-          <div>
-            <label>Base URL</label>
-            <input
-              type="text"
-              placeholder="https://api.example.com/v1"
-              value={baseUrl ?? ""}
-              onChange={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
-            />
-          </div>
-        )}
+                value={baseUrl ?? ""}
+                onChange={(e) =>
+                  setBaseUrl((e.target as HTMLInputElement).value)
+                }
+              />
+            </div>
+          )}
 
         {/* Model selector mock */}
         <div data-testid="model-selector">{model}</div>
@@ -498,8 +486,8 @@ describe("SettingsScreen", () => {
         <SettingsScreen
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={vi.fn()}
+          baseUrl="http://localhost:1234/v1"
+          setBaseUrl={vi.fn()}
         />,
       );
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
@@ -510,8 +498,8 @@ describe("SettingsScreen", () => {
         <SettingsScreen
           {...defaultProps}
           provider="ollama"
-          port={11434}
-          setPort={vi.fn()}
+          baseUrl="http://localhost:11434/v1"
+          setBaseUrl={vi.fn()}
         />,
       );
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
@@ -541,38 +529,42 @@ describe("SettingsScreen", () => {
       expect(setApiKey).toHaveBeenCalledWith("new-api-key");
     });
 
-    it("calls setPort when port input changes for lmstudio", () => {
-      const setPort = vi.fn();
+    it("calls setBaseUrl when URL input changes for lmstudio", () => {
+      const setBaseUrl = vi.fn();
 
       render(
         <SettingsScreen
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={setPort}
+          baseUrl="http://localhost:1234/v1"
+          setBaseUrl={setBaseUrl}
         />,
       );
-      const input = screen.getByPlaceholderText("1234");
+      const input = screen.getByPlaceholderText("http://localhost:1234/v1");
 
-      fireEvent.change(input, { target: { value: "5678" } });
-      expect(setPort).toHaveBeenCalledWith(5678);
+      fireEvent.change(input, {
+        target: { value: "http://192.168.1.100:1234/v1" },
+      });
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:1234/v1");
     });
 
-    it("calls setPort when port input changes for ollama", () => {
-      const setPort = vi.fn();
+    it("calls setBaseUrl when URL input changes for ollama", () => {
+      const setBaseUrl = vi.fn();
 
       render(
         <SettingsScreen
           {...defaultProps}
           provider="ollama"
-          port={11434}
-          setPort={setPort}
+          baseUrl="http://localhost:11434/v1"
+          setBaseUrl={setBaseUrl}
         />,
       );
-      const input = screen.getByPlaceholderText("11434");
+      const input = screen.getByPlaceholderText("http://localhost:11434/v1");
 
-      fireEvent.change(input, { target: { value: "8080" } });
-      expect(setPort).toHaveBeenCalledWith(8080);
+      fireEvent.change(input, {
+        target: { value: "http://192.168.1.100:11434/v1" },
+      });
+      expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:11434/v1");
     });
 
     it("calls setBaseUrl when base URL input changes for custom provider", () => {
@@ -663,8 +655,8 @@ describe("SettingsScreen", () => {
         <SettingsScreen
           {...defaultProps}
           provider="lmstudio"
-          port={1234}
-          setPort={vi.fn()}
+          baseUrl="http://localhost:1234/v1"
+          setBaseUrl={vi.fn()}
         />,
       );
       const link = screen.getByText("LM Studio models");
@@ -680,8 +672,8 @@ describe("SettingsScreen", () => {
         <SettingsScreen
           {...defaultProps}
           provider="ollama"
-          port={11434}
-          setPort={vi.fn()}
+          baseUrl="http://localhost:11434/v1"
+          setBaseUrl={vi.fn()}
         />,
       );
       const link = screen.getByText("Ollama models");

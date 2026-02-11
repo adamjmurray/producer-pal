@@ -69,16 +69,14 @@
 
 ---
 
-### Scenario 5: Duplication & Transformation
+### Scenario 5: Duplication
 
-**Exercises:** `ppal-duplicate`, `ppal-transform-clips`
+**Exercises:** `ppal-duplicate`
 
-| Turn | Prompt                                               | Features Tested             |
-| ---- | ---------------------------------------------------- | --------------------------- |
-| 1    | "Connect to Ableton"                                 | Setup                       |
-| 2    | "Duplicate the Drums track"                          | Track duplication           |
-| 3    | "Duplicate the first clip 4 times"                   | Clip duplication with count |
-| 4    | "Slice those clips into 8 segments and shuffle them" | Transform: slice + shuffle  |
+| Turn | Prompt                      | Features Tested   |
+| ---- | --------------------------- | ----------------- |
+| 1    | "Connect to Ableton"        | Setup             |
+| 2    | "Duplicate the Drums track" | Track duplication |
 
 ---
 
@@ -143,7 +141,6 @@
 | `ppal-update-scene`    | 4         |
 | `ppal-delete`          | 8         |
 | `ppal-duplicate`       | 5         |
-| `ppal-transform-clips` | 5         |
 | `ppal-playback`        | 4         |
 | `ppal-select`          | 7         |
 | `ppal-memory`          | 8         |

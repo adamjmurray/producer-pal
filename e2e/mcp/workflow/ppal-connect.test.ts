@@ -49,10 +49,10 @@ describe("ppal-connect", () => {
         /^\d+\/\d+$/.test(parsed.liveSet.timeSignature),
     ).toBe(true);
 
-    // Skills documentation - standard mode has full skills (~10K chars)
+    // Skills documentation - standard mode has full skills (~7.6K chars)
     expect(parsed.$skills).toBeDefined();
     expect(parsed.$skills).toContain("Producer Pal Skills");
-    expect(parsed.$skills!.length).toBeGreaterThan(8000);
+    expect(parsed.$skills!.length).toBeGreaterThan(5000);
 
     // Standard mode includes advanced features
     expect(parsed.$skills).toContain("x{times}"); // Repeat patterns

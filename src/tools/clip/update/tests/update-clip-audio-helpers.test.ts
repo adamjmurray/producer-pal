@@ -3,22 +3,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiSet,
-} from "#src/test/mocks/mock-live-api.ts";
-import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import {
+  applyAudioTransforms,
   handleWarpMarkerOperation,
-  revealAudioContentAtPosition,
   setAudioParameters,
 } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
-type MockTrack = any;
 
 describe("setAudioParameters", () => {
   let mockClip: MockClip;
@@ -27,7 +20,6 @@ describe("setAudioParameters", () => {
     vi.clearAllMocks();
     mockClip = {
       set: liveApiSet,
-      get: liveApiGet,
     };
   });
 
@@ -153,6 +145,114 @@ describe("setAudioParameters", () => {
   });
 });
 
+describe("applyAudioTransforms", () => {
+  let mockClip: MockClip;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClip = {
+      getProperty: vi.fn(),
+      set: liveApiSet,
+    };
+  });
+
+  it("should return false when no transform string provided", () => {
+    const result = applyAudioTransforms(mockClip, undefined);
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should return false when transform string is empty", () => {
+    const result = applyAudioTransforms(mockClip, "");
+
+    expect(result).toBe(false);
+    expect(mockClip.getProperty).not.toHaveBeenCalled();
+  });
+
+  it("should apply gain transform and return true", () => {
+    // Live gain 0.4 ≈ 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = -6");
+
+    expect(result).toBe(true);
+    expect(mockClip.getProperty).toHaveBeenCalledWith("gain");
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+  });
+
+  it("should return false when gain is unchanged", () => {
+    // Live gain ~0.4 ≈ 0 dB, transform sets to 0 dB
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "gain = audio.gain");
+
+    expect(result).toBe(false);
+  });
+
+  it("should return false when only MIDI parameters present", () => {
+    mockClip.getProperty.mockReturnValue(0.4);
+
+    const result = applyAudioTransforms(mockClip, "velocity += 10");
+
+    expect(result).toBe(false);
+    // Note: getProperty is still called to read current gain before checking transforms
+    expect(liveApiSet).not.toHaveBeenCalled();
+  });
+
+  it("should apply pitchShift transform and return true", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "pitchShift = 5.5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 50);
+  });
+
+  it("should return false when pitchShift is unchanged", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 5;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    // Current pitchShift is 5.0, set to same value
+    const result = applyAudioTransforms(
+      mockClip,
+      "pitchShift = audio.pitchShift",
+    );
+
+    expect(result).toBe(false);
+    expect(liveApiSet).not.toHaveBeenCalled();
+  });
+
+  it("should apply both gain and pitchShift transforms", () => {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 0;
+      if (prop === "pitch_fine") return 0;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "gain = -6\npitchShift = 5");
+
+    expect(result).toBe(true);
+    expect(liveApiSet).toHaveBeenCalledWith("gain", expect.any(Number));
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", 5);
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_fine", 0);
+  });
+});
+
 describe("handleWarpMarkerOperation", () => {
   let mockClip: MockClip;
 
@@ -242,186 +342,5 @@ describe("handleWarpMarkerOperation", () => {
 
       expect(liveApiCall).toHaveBeenCalledWith("remove_warp_marker", 4.0);
     });
-  });
-});
-
-describe("revealAudioContentAtPosition", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should handle warped clips with looping workaround", () => {
-    // Mock ID uses "id X" format to match production LiveAPI.id behavior
-    const sourceClip: MockClip = {
-      id: "id source-123",
-      getProperty: vi.fn((prop) => {
-        if (prop === "warping") return 1;
-
-        return null;
-      }),
-    };
-
-    const mockTrack: MockTrack = {
-      call: liveApiCall,
-    };
-
-    const revealedClipId = "revealed-456";
-
-    liveApiCall.mockReturnValue(`id ${revealedClipId}`);
-
-    const result = revealAudioContentAtPosition(
-      sourceClip,
-      mockTrack,
-      4, // newStartMarker
-      12, // newEndMarker
-      16, // targetPosition
-      {},
-    );
-
-    // Should duplicate to arrangement (clip.id already has "id " prefix)
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id source-123",
-      16,
-    );
-
-    // Should set looping markers
-    expect(liveApiSet).toHaveBeenCalledWith("looping", 1);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 12);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 4);
-    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 12);
-    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 4);
-    expect(liveApiSet).toHaveBeenCalledWith("looping", 0);
-
-    expect(result).toBeDefined();
-  });
-
-  it("should handle unwarped clips with session holding area", () => {
-    const sourceClip: MockClip = {
-      id: "source-123",
-      getProperty: vi.fn((prop) => {
-        if (prop === "warping") return 0; // Unwarped
-        if (prop === "file_path") return "/audio/test.wav";
-
-        return null;
-      }),
-    };
-
-    const mockTrack: MockTrack = {
-      call: liveApiCall,
-    };
-
-    const sessionClipId = "session-789";
-    const revealedClipId = "revealed-456";
-
-    // Mock createAudioClipInSession - clip needs a set method
-    const mockCreateAudioClip = vi
-      .spyOn(arrangementTiling, "createAudioClipInSession")
-      .mockReturnValue({
-        clip: { id: sessionClipId, set: vi.fn() } as unknown as LiveAPI,
-        slot: { call: vi.fn() } as unknown as LiveAPI,
-      });
-
-    liveApiCall.mockReturnValue(`id ${revealedClipId}`);
-    liveApiGet.mockImplementation(function (prop: string) {
-      if (prop === "end_time") return [24]; // Within expected bounds
-
-      return null;
-    });
-
-    const result = revealAudioContentAtPosition(
-      sourceClip,
-      mockTrack,
-      4, // newStartMarker
-      12, // newEndMarker
-      16, // targetPosition
-      {},
-    );
-
-    // Should create audio clip in session
-    expect(mockCreateAudioClip).toHaveBeenCalledWith(
-      mockTrack,
-      12, // newEndMarker
-      "/audio/test.wav",
-    );
-
-    expect(result).toBeDefined();
-
-    mockCreateAudioClip.mockRestore();
-  });
-
-  it("should shorten revealed clip when it is longer than expected", () => {
-    const sourceClip: MockClip = {
-      id: "source-123",
-      getProperty: vi.fn((prop) => {
-        if (prop === "warping") return 0; // Unwarped
-        if (prop === "file_path") return "/audio/test.wav";
-
-        return null;
-      }),
-    };
-
-    const mockTrack: MockTrack = {
-      call: liveApiCall,
-    };
-
-    const sessionClipId = "session-789";
-    const revealedClipId = "revealed-456";
-    const shortenerId = "shortener-111";
-
-    // Mock createAudioClipInSession - clip needs a set method
-    const mockCreateAudioClip = vi
-      .spyOn(arrangementTiling, "createAudioClipInSession")
-      .mockReturnValue({
-        clip: { id: sessionClipId, set: vi.fn() } as unknown as LiveAPI,
-        slot: { call: vi.fn() } as unknown as LiveAPI,
-      });
-
-    let callCount = 0;
-
-    liveApiCall.mockImplementation((method) => {
-      if (method === "duplicate_clip_to_arrangement") {
-        callCount++;
-
-        if (callCount === 1) return `id ${revealedClipId}`;
-
-        return `id ${shortenerId}`;
-      }
-
-      return null;
-    });
-
-    // Make the revealed clip longer than expected to trigger shortening
-    // targetPosition (16) + targetLengthBeats (8) = 24
-    // revealedClipEndTime = 30 > expectedEndTime (24) + EPSILON
-    liveApiGet.mockImplementation(function (prop: string) {
-      // getProperty calls get()?.[0], so return array
-      if (prop === "end_time") return [30]; // Longer than expected (24)
-
-      return null;
-    });
-
-    const result = revealAudioContentAtPosition(
-      sourceClip,
-      mockTrack,
-      4, // newStartMarker
-      12, // newEndMarker (targetLengthBeats = 12 - 4 = 8)
-      16, // targetPosition
-      {},
-    );
-
-    // Should create temp shortener clip
-    // Called twice: once for temp clip and once for shortener
-    expect(mockCreateAudioClip).toHaveBeenCalledTimes(2);
-
-    // Should delete the shortener clip
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "delete_clip",
-      `id ${shortenerId}`,
-    );
-
-    expect(result).toBeDefined();
-
-    mockCreateAudioClip.mockRestore();
   });
 });

@@ -55,8 +55,9 @@ describe("MCP Express App", () => {
   let serverUrl: string;
 
   beforeAll(async () => {
-    // Enable ppal-raw-live-api tool for testing
+    // Enable feature-gated tools/params for testing
     process.env.ENABLE_RAW_LIVE_API = "true";
+    process.env.ENABLE_CODE_EXEC = "true";
 
     // Import and start the server first
     const { createExpressApp } = await import("./create-express-app.ts");
@@ -134,7 +135,6 @@ describe("MCP Express App", () => {
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",
-        "ppal-transform-clips",
         "ppal-create-device",
         "ppal-read-device",
         "ppal-update-device",

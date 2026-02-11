@@ -11,19 +11,11 @@ same track will crash Live. This is a bug in the Live API's
 **Workaround:** Avoid moving clips on top of existing clips. Delete the
 conflicting clip first, or use slightly offset positions.
 
-## Slicing Unwarped Audio Clips
+## Lengthening Looped Arrangement Clips
 
-Slicing unwarped audio clips produces incorrect results. The first slice may be
-correct, but subsequent slices have offset audio content.
-
-**Workaround:** Enable warping on the audio clip before slicing.
-
-## Lengthening Arrangement Clips
-
-Arrangement clips cannot be directly lengthened. Instead, looped clips are
-duplicated and tiled, creating additional clips.
-
-No workaround needed, but it can create a lot of clips.
+Looped arrangement clips cannot be directly lengthened. Instead, they are
+duplicated and tiled, which can create a lot of clips. Unlooped clips (MIDI and
+audio) are extended in place without creating additional clips.
 
 ## Claude Desktop Caches Tool Definitions
 

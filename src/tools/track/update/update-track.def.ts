@@ -19,8 +19,13 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     ids: z.coerce.string().describe("comma-separated track ID(s) to update"),
     name: z.string().optional().describe("name, ideally unique"),
     color: z.string().optional().describe("#RRGGBB"),
-    gainDb: z.number().min(-70).max(6).optional().describe("track gain in dB"),
-    pan: z
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(6)
+      .optional()
+      .describe("track gain in dB"),
+    pan: z.coerce
       .number()
       .min(-1)
       .max(1)
@@ -30,13 +35,13 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .enum(["stereo", "split"])
       .optional()
       .describe("panning mode: stereo or split"),
-    leftPan: z
+    leftPan: z.coerce
       .number()
       .min(-1)
       .max(1)
       .optional()
       .describe("left channel pan in split mode (-1 to 1)"),
-    rightPan: z
+    rightPan: z.coerce
       .number()
       .min(-1)
       .max(1)
@@ -70,7 +75,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .boolean()
       .optional()
       .describe("track follows the arrangement?"),
-    sendGainDb: z
+    sendGainDb: z.coerce
       .number()
       .min(-70)
       .max(0)

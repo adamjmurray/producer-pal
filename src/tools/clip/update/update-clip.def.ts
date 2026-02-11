@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -55,15 +56,21 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
       ),
+    split: z
+      .string()
+      .optional()
+      .describe(
+        `comma-separated bar|beat positions to split clip (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only`,
+      ),
 
     // Audio clip parameters
-    gainDb: z
+    gainDb: z.coerce
       .number()
       .min(-70)
       .max(24)
       .optional()
       .describe("audio clip gain in decibels (ignored for MIDI)"),
-    pitchShift: z
+    pitchShift: z.coerce
       .number()
       .min(-48)
       .max(48)
@@ -87,10 +94,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
       ),
-    // modulations: z
-    //   .string()
-    //   .optional()
-    //   .describe("modulation expressions (parameter: expression per line)"),
+    transforms: z
+      .string()
+      .optional()
+      .describe("transform expressions (parameter: expression per line)"),
     noteUpdateMode: z
       .enum(["replace", "merge"])
       .optional()
@@ -98,9 +105,20 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),
+    ...(process.env.ENABLE_CODE_EXEC === "true"
+      ? {
+          code: z
+            .string()
+            .max(MAX_CODE_LENGTH)
+            .optional()
+            .describe(
+              "JS function body: receives (notes, context), returns notes array (see Skills for properties)",
+            ),
+        }
+      : {}),
 
     // Quantization parameters
-    quantize: z
+    quantize: z.coerce
       .number()
       .min(0)
       .max(1)
@@ -119,7 +137,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ])
       .optional()
       .describe("note grid (required with quantize)"),
-    quantizeSwing: z
+    quantizeSwing: z.coerce
       .number()
       .min(0)
       .max(1)
@@ -137,19 +155,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
       ),
-    warpBeatTime: z
+    warpBeatTime: z.coerce
       .number()
       .optional()
       .describe(
         "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
       ),
-    warpSampleTime: z
+    warpSampleTime: z.coerce
       .number()
       .optional()
       .describe(
         "sample time in seconds (optional for add - omit to preserve timing)",
       ),
-    warpDistance: z
+    warpDistance: z.coerce
       .number()
       .optional()
       .describe("beats to shift (+forward, -backward) for move operation"),
@@ -165,6 +183,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "quantizeSwing",
       "quantizePitch",
       "firstStart",
+      "transforms",
+      "split",
+      "code",
     ],
     descriptionOverrides: {
       arrangementLength:

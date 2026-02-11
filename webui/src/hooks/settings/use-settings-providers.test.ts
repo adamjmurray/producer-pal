@@ -53,7 +53,7 @@ describe("useSettings - provider-specific settings", () => {
     });
   });
   describe("setBaseUrl", () => {
-    it("setBaseUrl is undefined for non-custom providers", async () => {
+    it("setBaseUrl is undefined for non-baseUrl providers", async () => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => {
@@ -62,28 +62,20 @@ describe("useSettings - provider-specific settings", () => {
       expect(result.current.setBaseUrl).toBeUndefined();
     });
   });
-  describe("setPort", () => {
+  describe("setBaseUrl for local providers", () => {
     it.each([
-      ["lmstudio", 5678],
-      ["ollama", 9999],
-    ] as const)("sets port for %s provider", async (provider, port) => {
+      ["lmstudio", "http://192.168.1.100:1234/v1"],
+      ["ollama", "http://192.168.1.100:11434/v1"],
+    ] as const)("sets baseUrl for %s provider", async (provider, url) => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => {
         result.current.setProvider(provider);
       });
       await act(() => {
-        result.current.setPort!(port);
+        result.current.setBaseUrl!(url);
       });
-      expect(result.current.port).toBe(port);
-    });
-    it("setPort is undefined for non-port-based providers", async () => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider("openai");
-      });
-      expect(result.current.setPort).toBeUndefined();
+      expect(result.current.baseUrl).toBe(url);
     });
   });
   describe("setApiKey and setModel for additional providers", () => {

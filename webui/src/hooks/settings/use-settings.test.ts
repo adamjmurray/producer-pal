@@ -244,7 +244,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.2-2025-12-11",
+      model: "gpt-5.2",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
@@ -253,7 +253,7 @@ describe("useSettings", () => {
     // Configure OpenAI with different settings
     await act(() => {
       result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5-mini-2025-08-07");
+      result.current.setModel("gpt-5-mini");
       result.current.setThinking("Low");
       result.current.setTemperature(1.5);
       result.current.setShowThoughts(false);
@@ -279,7 +279,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
       showThoughts: false,
@@ -305,7 +305,7 @@ describe("useSettings", () => {
     });
     await act(() => {
       result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5-mini-2025-08-07");
+      result.current.setModel("gpt-5-mini");
       result.current.setThinking("Low");
       result.current.setTemperature(1.5);
     });
@@ -347,7 +347,7 @@ describe("useSettings", () => {
       JSON.parse(localStorage.getItem("producer_pal_provider_openai") ?? "{}"),
     ).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
     });
@@ -397,7 +397,7 @@ describe("useSettings", () => {
     });
     expect(result2.current).toMatchObject({
       apiKey: "openai-key",
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-5-mini",
       thinking: "Low",
       temperature: 1.5,
     });
@@ -615,25 +615,25 @@ describe("useSettings", () => {
   });
 
   it.each([
-    ["ollama", 11434],
-    ["lmstudio", 1234],
+    ["ollama", "http://192.168.1.100:11434/v1"],
+    ["lmstudio", "http://192.168.1.100:1234/v1"],
   ] as const)(
-    "setPort updates port for %s provider",
-    async (provider, port) => {
+    "setBaseUrl updates baseUrl for %s provider",
+    async (provider, url) => {
       const { result } = renderHook(() => useSettings());
 
       await act(() => result.current.setProvider(provider));
-      await act(() => result.current.setPort!(port));
-      expect(result.current.port).toBe(port);
+      await act(() => result.current.setBaseUrl!(url));
+      expect(result.current.baseUrl).toBe(url);
     },
   );
 
-  it("setPort is undefined for non-ollama/lmstudio providers", () => {
+  it("setBaseUrl is undefined for non-baseUrl providers", () => {
     const { result } = renderHook(() => useSettings());
 
-    // gemini is the default provider - setPort should be undefined
-    expect(result.current.setPort).toBeUndefined();
-    expect(result.current.port).toBeUndefined();
+    // gemini is the default provider - setBaseUrl should be undefined
+    expect(result.current.setBaseUrl).toBeUndefined();
+    expect(result.current.baseUrl).toBeUndefined();
   });
 
   it("handles invalid JSON in enabled tools localStorage gracefully", () => {

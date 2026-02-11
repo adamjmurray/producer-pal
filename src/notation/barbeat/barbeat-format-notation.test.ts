@@ -265,4 +265,71 @@ describe("bar|beat formatNotation()", () => {
       formatNotation([createNote({ pitch: -1 })] as NoteEvent[]),
     ).toThrow("Invalid MIDI pitch: -1");
   });
+
+  it("clamps velocity ranges to MIDI maximum 127", () => {
+    const notes = [
+      createNote({ velocity: 108, velocity_deviation: 20 }), // Would be v108-128 without fix
+      createNote({ pitch: 62, velocity: 120, velocity_deviation: 15 }), // Would be v120-135
+      createNote({ pitch: 64, velocity: 127, velocity_deviation: 10 }), // Would be v127-137
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    // All ranges should be clamped to max 127
+    expect(result).toBe("v108-127 C3 v120-127 D3 v127 E3 1|1");
+  });
+
+  it("creates roundtrip compatibility with high velocity ranges", () => {
+    // Create notes with velocity near upper bound
+    const notes = [
+      createNote({ velocity: 110, velocity_deviation: 20 }),
+    ] as NoteEvent[];
+
+    const formatted = formatNotation(notes);
+
+    // Should clamp to v110-127 (not v110-130)
+    expect(formatted).toContain("v110-127");
+
+    // Parse it back - should not throw
+    const reparsed = interpretNotation(formatted);
+
+    expect(reparsed[0]?.velocity).toBe(110);
+    expect(reparsed[0]?.velocity_deviation).toBe(17); // 127-110, not 20
+  });
+
+  it("handles edge case: velocity at 126 with deviation 1", () => {
+    const notes = [
+      createNote({ velocity: 126, velocity_deviation: 1 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    expect(result).toBe("v126-127 C3 1|1");
+  });
+
+  it("handles edge case: velocity at 127 outputs single velocity", () => {
+    const notes = [
+      createNote({ velocity: 127, velocity_deviation: 5 }),
+      createNote({ pitch: 62, velocity: 127, velocity_deviation: 0 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    // Both should output as v127 (no range possible at max)
+    expect(result).toBe("v127 C3 D3 1|1");
+  });
+
+  it("clamps invalid high velocity values defensively", () => {
+    // Test that formatNotation handles invalid data gracefully
+    // (e.g., from buggy transforms or Live API)
+    const notes = [
+      createNote({ velocity: 200, velocity_deviation: 20 }), // Invalid: would be v200-127
+      createNote({ pitch: 62, velocity: 150, velocity_deviation: 10 }), // Invalid: would be v150-127
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    // Should clamp velocityMin to 127, resulting in single velocity (not ranges)
+    expect(result).toBe("v127 C3 D3 1|1");
+  });
 });

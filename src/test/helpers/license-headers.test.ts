@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..", "..");
+const rootDir = join(__dirname, "..", "..", "..");
 
 const SOURCE_DIRS = ["src", "webui/src", "evals", "e2e", "scripts", "config"];
 

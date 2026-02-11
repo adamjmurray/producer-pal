@@ -22,7 +22,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupMocks();
   });
 
-  it("should tile clip with exact multiples (no remainder) - extends existing", () => {
+  it("should tile clip with exact multiples (no remainder) - extends existing", async () => {
     const trackIndex = 0;
 
     setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
@@ -63,7 +63,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       }
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       arrangementLength: "3:0", // 3 bars = 12 beats, matches clip.length exactly
     });
@@ -89,7 +89,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     ]); // Original + tiled clips
   });
 
-  it("should handle insufficient content by tiling what exists", () => {
+  it("should handle insufficient content by tiling what exists", async () => {
     const trackIndex = 0;
 
     setupArrangementClipPath(trackIndex, (id) => id === "789" || id === "1000");
@@ -134,7 +134,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       }
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       arrangementLength: "2:0", // 8 beats > 4 beats (clip.length), tiles existing content twice
     });
@@ -149,7 +149,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     expect(result).toStrictEqual([{ id: "789" }, { id: "1000" }]);
   });
 
-  it("should work with no remainder (single tile)", () => {
+  it("should work with no remainder (single tile)", async () => {
     const trackIndex = 0;
 
     setupArrangementClipPath(trackIndex, ["789"]);
@@ -175,7 +175,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       arrangementLength: "1:0", // Same as clip.length (no tiling needed)
     });
@@ -190,7 +190,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     expect(result).toStrictEqual({ id: "789" });
   });
 
-  it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", () => {
+  it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", async () => {
     const trackIndex = 0;
 
     setupArrangementClipPath(trackIndex, ["789", "1000", "1001", "1002"]);
@@ -246,7 +246,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       setCallsByClip[clipId][prop] = value;
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "789",
       arrangementLength: "3:0", // 12 beats total - needs 3 tiles after original
     });
@@ -288,7 +288,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     ]);
   });
 
-  it("should preserve envelopes when tiling clip with hidden content", () => {
+  it("should preserve envelopes when tiling clip with hidden content", async () => {
     const trackIndex = 0;
 
     // Override liveApiId for this test to handle new clip IDs
@@ -358,7 +358,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     vi.mocked(outlet).mockClear();
 
-    const result = updateClip(
+    const result = await updateClip(
       {
         ids: "789",
         arrangementLength: "3:0", // 12 beats

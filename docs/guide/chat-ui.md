@@ -76,15 +76,23 @@ Configure your AI provider:
 <img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
 Local models, such as those you can run with Ollama, do not require any API
-keys. Instead, they have a configurable port.
+keys. Instead, they have a configurable URL.
 
-- **Port** - Local port (default: 11434 for Ollama, 1234 for LM Studio)
+- **URL** - Server address (default: `http://localhost:11434` for Ollama,
+  `http://localhost:1234` for LM Studio)
 - **Model** - Select from installed models
 
-With Ollama, you almost never need to change this from the default Ollama port
-(11434) unless you've modified advanced settings for your Ollama installation.
-Similarly with LM Studio, if you change the port in LM Studio from its default,
-Producer Pal's chat UI must use the same port.
+In most cases, you should use the default URL. This is an advanced configuration
+option.
+
+You may need to change the URL if:
+
+- You've modified the port in your Ollama or LM Studio installation
+- You're running Ollama or LM Studio on a different computer on your local
+  network (or anywhere on the Internet). This allows another computer to handle
+  the resource-intensive language model processing while your main computer
+  focuses on running Ableton Live. Replace `localhost` with the other computer's
+  network address (e.g., `http://192.168.1.100:11434`)
 
 #### Other models
 
@@ -99,8 +107,8 @@ model id. Consult your AI provider for the models that are currently available.
 
 Producer Pal can work with any AI provider that has an API compatible with
 OpenAI's chat API. Most providers support this. When setting up a custom
-provider, you also need to enter the **base URL** for the provider's API.
-Consult the provider's documentation to determine the correct setting.
+provider, you also need to enter the **URL** for the provider's API. Consult the
+provider's documentation to determine the correct setting.
 
 For example, one could use [groq.com](https://groq.com/) as follows:
 

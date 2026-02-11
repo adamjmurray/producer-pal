@@ -37,7 +37,6 @@ export const TOOLS: Tool[] = [
   // Row 8
   { id: "ppal-delete", name: "Delete Objects" },
   { id: "ppal-duplicate", name: "Duplicate Objects" },
-  { id: "ppal-transform-clips", name: "Transform Clips" },
   // Row 9
   { id: "ppal-read-samples", name: "Read Samples" },
   // Row 10 (conditional)

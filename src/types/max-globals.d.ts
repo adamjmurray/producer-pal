@@ -21,6 +21,7 @@ interface ToolContext {
   sampleFolder: string | null;
   holdingAreaStartBeats?: number;
   silenceWavPath?: string;
+  timeoutMs?: number;
 }
 
 /**

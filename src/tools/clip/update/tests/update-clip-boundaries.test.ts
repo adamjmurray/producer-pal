@@ -16,7 +16,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     setupMocks();
   });
 
-  it("should set length without explicit start using current loop_start", () => {
+  it("should set length without explicit start using current loop_start", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -28,7 +28,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       length: "2:0", // 8 beats = 2 bars
     });
@@ -42,7 +42,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should set firstStart for looping clips", () => {
+  it("should set firstStart for looping clips", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -54,7 +54,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       start: "1|1",
       length: "4:0",
@@ -81,7 +81,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should warn when firstStart provided for non-looping clips", () => {
+  it("should warn when firstStart provided for non-looping clips", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -92,7 +92,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       start: "1|1",
       length: "4:0",
@@ -108,7 +108,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should set end_marker for non-looping clips", () => {
+  it("should set end_marker for non-looping clips", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -120,7 +120,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       start: "1|1",
       length: "4:0",
@@ -141,7 +141,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should set loop_start and loop_end for looping clips", () => {
+  it("should set loop_start and loop_end for looping clips", async () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -153,7 +153,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       },
     });
 
-    const result = updateClip({
+    const result = await updateClip({
       ids: "123",
       start: "2|1",
       length: "2:0",
@@ -187,7 +187,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
     setupMocks();
   });
 
-  it("emits warning for non-looping MIDI clip with mismatched derived start", () => {
+  it("emits warning for non-looping MIDI clip with mismatched derived start", async () => {
     setupMidiClipMock("123", {
       looping: 0,
       start_marker: 0,
@@ -195,7 +195,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
       length: 5, // derived start = 4 - 5 = -1 !== 0
     });
 
-    updateClip({ ids: "123", length: "4:0" });
+    await updateClip({ ids: "123", length: "4:0" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -203,7 +203,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
     );
   });
 
-  it("does NOT emit warning for non-looping audio clip with mismatched derived start", () => {
+  it("does NOT emit warning for non-looping audio clip with mismatched derived start", async () => {
     vi.mocked(outlet).mockClear();
 
     setupAudioClipMock("123", {
@@ -213,7 +213,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
       length: 0.262, // derived start = 0.131 - 0.262 = -0.131 !== 0
     });
 
-    updateClip({ ids: "123", length: "1:0" });
+    await updateClip({ ids: "123", length: "1:0" });
 
     expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
   });

@@ -9,7 +9,7 @@
 import {
   connectToAbleton,
   createAndEditClip,
-  duplicateAndTransform,
+  duplicate,
   projectNotesWorkflow,
   trackAndDeviceWorkflow,
 } from "./scenario-defs/index.ts";
@@ -23,7 +23,7 @@ const allScenarios: EvalScenario[] = [
   createAndEditClip,
   trackAndDeviceWorkflow,
   projectNotesWorkflow,
-  duplicateAndTransform,
+  duplicate,
 ];
 
 export interface LoadScenariosOptions {

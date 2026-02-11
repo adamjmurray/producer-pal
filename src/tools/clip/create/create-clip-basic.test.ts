@@ -3,58 +3,63 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  liveApiCall,
-  liveApiSet,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { createClip } from "./create-clip.ts";
+import {
+  expectClipCreated,
+  expectNotesAdded,
+  note,
+} from "./create-clip-test-helpers.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when required parameters are missing", () => {
-    expect(() => createClip({} as Parameters<typeof createClip>[0])).toThrow(
-      "createClip failed: view parameter is required",
-    );
+  it("should throw error when required parameters are missing", async () => {
+    await expect(
+      createClip({} as Parameters<typeof createClip>[0]),
+    ).rejects.toThrow("createClip failed: view parameter is required");
     // Note: trackIndex validation is handled by TypeScript at compile time
-    expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
+    await expect(
+      createClip({ view: "session", trackIndex: 0 }),
+    ).rejects.toThrow(
       "createClip failed: sceneIndex is required when view is 'session'",
     );
-    expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
+    await expect(
+      createClip({ view: "arrangement", trackIndex: 0 }),
+    ).rejects.toThrow(
       "createClip failed: arrangementStart is required when view is 'arrangement'",
     );
   });
 
-  it("should throw error for invalid sceneIndex format", () => {
-    expect(() =>
+  it("should throw error for invalid sceneIndex format", async () => {
+    await expect(
       createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "invalid",
       }),
-    ).toThrow(
+    ).rejects.toThrow(
       'createClip failed: Invalid index "invalid" - must be a valid integer',
     );
   });
 
-  it("should validate time signature early when provided", () => {
-    expect(() =>
+  it("should validate time signature early when provided", async () => {
+    await expect(
       createClip({
         view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         timeSignature: "invalid",
       }),
-    ).toThrow("Time signature must be in format");
+    ).rejects.toThrow("Time signature must be in format");
   });
 
-  it("should read time signature from song when not provided", () => {
+  it("should read time signature from song when not provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 3, signature_denominator: 4 },
       Clip: { length: 6 }, // 2 bars in 3/4 time = 6 beats
     });
 
-    const result = createClip({
+    const result = await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -70,38 +75,18 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     // Verify the parsed notes were correctly added to the clip
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 3,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          }, // 3 beats per bar in 3/4
-        ],
-      },
-    );
+    expectNotesAdded(0, 0, [
+      note(60, 0, 1), // C3
+      note(62, 3, 1), // D3 at 3 beats per bar in 3/4
+    ]);
   });
 
-  it("should parse notes using provided time signature", () => {
+  it("should parse notes using provided time signature", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -109,38 +94,15 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 3,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectNotesAdded(0, 0, [note(60, 0, 1), note(62, 3, 1)]);
   });
 
-  it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", () => {
+  it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -149,39 +111,16 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     // In 6/8, beat 2|1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 3,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectNotesAdded(0, 0, [note(60, 0, 0.5), note(62, 3, 0.5)]);
   });
 
-  it("should create clip with specified length", () => {
+  it("should create clip with specified length", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -189,20 +128,16 @@ describe("createClip - basic validation and time signatures", () => {
       looping: false,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      7,
-    );
+    expectClipCreated(0, 0, 7);
   });
 
-  it("should create clip with specified length for looping clips", () => {
+  it("should create clip with specified length for looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -210,142 +145,96 @@ describe("createClip - basic validation and time signatures", () => {
       looping: true,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      8,
-    );
+    expectClipCreated(0, 0, 8);
   });
 
-  it("should calculate clip length from notes when markers not provided", () => {
+  it("should calculate clip length from notes when markers not provided", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4,
-    );
+    expectClipCreated(0, 0, 4);
   });
 
-  it("should handle time signatures with denominators other than 4", () => {
+  it("should handle time signatures with denominators other than 4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      3,
-    ); // 1 bar in 6/8 = 3 Ableton beats
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            duration: 1, // LiveAPI durations are in quarter notes, so this should be half the value from the notation string
-            pitch: 60,
-            probability: 1,
-            start_time: 0,
-            velocity: 100,
-            velocity_deviation: 0,
-          },
-          {
-            duration: 0.75, // LiveAPI durations are in quarter notes, so this should be half the value from the notation string
-            pitch: 62,
-            probability: 1,
-            start_time: 0.5,
-            velocity: 100,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
+    expectClipCreated(0, 0, 3); // 1 bar in 6/8 = 3 Ableton beats
+    // LiveAPI durations are in quarter notes, so halved from the notation string
+    expectNotesAdded(0, 0, [note(60, 0, 1), note(62, 0.5, 0.75)]);
   });
 
-  it("should create 1-bar clip when empty in 4/4 time", () => {
+  it("should create 1-bar clip when empty in 4/4 time", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4, // 1 bar in 4/4 = 4 Ableton beats
-    );
+    expectClipCreated(0, 0, 4); // 1 bar in 4/4 = 4 Ableton beats
   });
 
-  it("should create 1-bar clip when empty in 6/8 time", () => {
+  it("should create 1-bar clip when empty in 6/8 time", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      3, // 1 bar in 6/8 = 3 Ableton beats (6 eighth notes = 3 quarter notes)
-    );
+    expectClipCreated(0, 0, 3); // 1 bar in 6/8 = 3 Ableton beats
   });
 
-  it("should use 1-bar clip length when notes are empty in 4/4", () => {
+  it("should use 1-bar clip length when notes are empty in 4/4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4, // 1 bar in 4/4 = 4 Ableton beats
-    );
+    expectClipCreated(0, 0, 4); // 1 bar in 4/4 = 4 Ableton beats
   });
 
-  it("should set loop_end to clip length for empty clips (not 0)", () => {
+  it("should set loop_end to clip length for empty clips (not 0)", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -357,74 +246,62 @@ describe("createClip - basic validation and time signatures", () => {
     expect(liveApiSet).toHaveBeenCalledWith("end_marker", 4);
   });
 
-  it("should round up to next bar based on latest note start in 4/4", () => {
+  it("should round up to next bar based on latest note start in 4/4", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|4.5", // Note starts at beat 3.5 (0-based), which is in bar 1, rounds up to 1 bar
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      4, // Rounds up to 1 bar = 4 Ableton beats
-    );
+    expectClipCreated(0, 0, 4); // Rounds up to 1 bar = 4 Ableton beats
   });
 
-  it("should round up to next bar based on latest note start in 6/8", () => {
+  it("should round up to next bar based on latest note start in 6/8", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|5.5", // Note starts at beat 4.5 in musical beats (2.25 Ableton beats), rounds up to 1 bar
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      3, // Rounds up to 1 bar in 6/8 = 3 Ableton beats
-    );
+    expectClipCreated(0, 0, 3); // Rounds up to 1 bar in 6/8 = 3 Ableton beats
   });
 
-  it("should round up to next bar when note start is in next bar", () => {
+  it("should round up to next bar when note start is in next bar", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 2|1", // Note starts at bar 2, beat 1 (beat 4 in 0-based), rounds up to 2 bars
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "create_clip",
-      8, // Rounds up to 2 bars = 8 Ableton beats
-    );
+    expectClipCreated(0, 0, 8); // Rounds up to 2 bars = 8 Ableton beats
   });
 
-  it("warns when firstStart is used with non-looping clips", () => {
+  it("warns when firstStart is used with non-looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       Clip: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",
@@ -441,14 +318,14 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("sets playing_position when firstStart is used with looping clips", () => {
+  it("sets playing_position when firstStart is used with looping clips", async () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       Clip: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    createClip({
+    await createClip({
       view: "session",
       trackIndex: 0,
       sceneIndex: "0",

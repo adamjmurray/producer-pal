@@ -81,7 +81,7 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5-2025-08-07" });
+      renderModelSelector({ provider: "openai", model: "gpt-5" });
       expect(screen.getByRole("option", { name: /^GPT-5\.2$/ })).toBeDefined();
       expect(screen.getByRole("option", { name: /^GPT-5$/ })).toBeDefined();
       expect(
@@ -92,10 +92,10 @@ describe("ModelSelector", () => {
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5-2025-08-07",
+        model: "gpt-5",
       });
 
-      expectModelSelected("gpt-5-mini-2025-08-07", setModel);
+      expectModelSelected("gpt-5-mini", setModel);
     });
   });
 
@@ -143,14 +143,14 @@ describe("ModelSelector", () => {
         model: "qwen/qwen3-coder:free",
       });
 
-      expectModelSelected("mistralai/devstral-2512:free", setModel);
+      expectModelSelected("z-ai/glm-4.5-air:free", setModel);
     });
   });
 
   describe("custom provider", () => {
     it("renders text input for custom provider", () => {
       renderModelSelector({ provider: "custom", model: "gpt-4" });
-      const input = screen.getByPlaceholderText(/e.g., gpt-4/);
+      const input = screen.getByPlaceholderText(/e.g., openai\/gpt-oss/);
 
       expect(input).toBeDefined();
       expect((input as HTMLInputElement).type).toBe("text");
@@ -162,7 +162,7 @@ describe("ModelSelector", () => {
         model: "gpt-4",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gpt-4/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., openai\/gpt-oss/), {
         target: { value: "claude-3-opus" },
       });
       expect(setModel).toHaveBeenCalledWith("claude-3-opus");
@@ -172,7 +172,9 @@ describe("ModelSelector", () => {
   describe("lmstudio provider", () => {
     it("renders text input for lmstudio provider", () => {
       renderModelSelector({ provider: "lmstudio", model: "llama-3.1-70b" });
-      expect(screen.getByPlaceholderText(/e.g., llama-3.1-70b/)).toBeDefined();
+      expect(
+        screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/),
+      ).toBeDefined();
     });
 
     it("calls setModel when lmstudio input changes", () => {
@@ -181,7 +183,7 @@ describe("ModelSelector", () => {
         model: "llama-3.1-70b",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., llama-3.1-70b/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/), {
         target: { value: "qwen-2.5-72b" },
       });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
@@ -211,7 +213,9 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      expect(screen.getByPlaceholderText(/e.g., gpt-4, claude/)).toBeDefined();
+      expect(
+        screen.getByPlaceholderText(/e.g., gemini-2.0-flash/),
+      ).toBeDefined();
     });
 
     it("allows editing custom model in text input", () => {
@@ -220,7 +224,7 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gpt-4, claude/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-2.0-flash/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
@@ -228,10 +232,39 @@ describe("ModelSelector", () => {
 
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
-      expect(screen.getByPlaceholderText(/e.g., gpt-4, claude/)).toBeDefined();
+      expect(
+        screen.getByPlaceholderText(/e.g., gemini-2.0-flash/),
+      ).toBeDefined();
       expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
         "OTHER",
       );
+    });
+
+    it("shows provider-specific placeholders for OpenAI", () => {
+      renderModelSelector({ provider: "openai", model: "my-custom-openai" });
+      expect(screen.getByPlaceholderText(/e.g., gpt-5-nano/)).toBeDefined();
+    });
+
+    it("shows provider-specific placeholders for Mistral", () => {
+      renderModelSelector({ provider: "mistral", model: "my-custom-mistral" });
+      expect(
+        screen.getByPlaceholderText(/e.g., ministral-14b-latest/),
+      ).toBeDefined();
+    });
+
+    it("shows provider-specific placeholders for OpenRouter", () => {
+      renderModelSelector({
+        provider: "openrouter",
+        model: "my-custom-openrouter",
+      });
+      expect(
+        screen.getByPlaceholderText(/e.g., bytedance-seed\/seed-1.6/),
+      ).toBeDefined();
+    });
+
+    it("shows provider-specific placeholders for Ollama", () => {
+      renderModelSelector({ provider: "ollama", model: "my-custom-ollama" });
+      expect(screen.getByPlaceholderText(/e.g., qwen3:30b/)).toBeDefined();
     });
   });
 });

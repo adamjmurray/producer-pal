@@ -1,4 +1,4 @@
-<h1 align="center"><a href="https://producer-pal.org"><sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal</a></h1>
+<h1 align="center"><a href="https://producer-pal.org"><sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal™</a></h1>
 
 **Control Ableton Live with words**
 

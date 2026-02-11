@@ -101,6 +101,50 @@ export function createAudioClipInSession(
 }
 
 /**
+ * Creates and immediately deletes a temp clip at a position.
+ * Used to trim adjacent clips via Ableton's overlap behavior.
+ * For MIDI: creates directly in arrangement. For audio: creates in session then duplicates.
+ * @param track - LiveAPI track instance
+ * @param position - Position to create temp clip at
+ * @param length - Length of temp clip in beats
+ * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
+ * @param context - Context object with silenceWavPath for audio clips
+ */
+export function createAndDeleteTempClip(
+  track: LiveAPI,
+  position: number,
+  length: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): void {
+  if (isMidiClip) {
+    const tempResult = track.call("create_midi_clip", position, length) as [
+      string,
+      string | number,
+    ];
+    const tempClip = LiveAPI.from(tempResult);
+
+    track.call("delete_clip", `id ${tempClip.id}`);
+  } else {
+    const { clip: sessionClip, slot } = createAudioClipInSession(
+      track,
+      length,
+      context.silenceWavPath,
+    );
+
+    const tempResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sessionClip.id}`,
+      position,
+    ) as [string, string | number];
+    const tempClip = LiveAPI.from(tempResult);
+
+    slot.call("delete_clip");
+    track.call("delete_clip", `id ${tempClip.id}`);
+  }
+}
+
+/**
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
  *
@@ -142,37 +186,13 @@ export function createShortenedClipInHolding(
   const EPSILON = 0.001;
 
   if (tempLength > EPSILON) {
-    // For audio clips, create in session then duplicate to arrangement
-    // For MIDI clips, create directly in arrangement
-    if (isMidiClip) {
-      const tempResult = track.call(
-        "create_midi_clip",
-        newHoldingEnd,
-        tempLength,
-      ) as [string, string | number];
-      const tempClip = LiveAPI.from(tempResult);
-
-      track.call("delete_clip", `id ${tempClip.id}`);
-    } else {
-      // Create audio clip in session with exact length
-      const { clip: sessionClip, slot } = createAudioClipInSession(
-        track,
-        tempLength,
-        context.silenceWavPath,
-      );
-
-      // Duplicate to arrangement at the truncation position
-      const tempResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        newHoldingEnd,
-      ) as [string, string | number];
-      const tempClip = LiveAPI.from(tempResult);
-
-      // Delete both session and arrangement clips
-      slot.call("delete_clip");
-      track.call("delete_clip", `id ${tempClip.id}`);
-    }
+    createAndDeleteTempClip(
+      track,
+      newHoldingEnd,
+      tempLength,
+      isMidiClip,
+      context,
+    );
   }
 
   return {
@@ -238,37 +258,13 @@ export function adjustClipPreRoll(
     const newClipEnd = clipEnd - preRollLength;
     const tempClipLength = clipEnd - newClipEnd;
 
-    // For audio clips, create in session then duplicate to arrangement
-    // For MIDI clips, create directly in arrangement
-    if (isMidiClip) {
-      const tempClipPath = track.call(
-        "create_midi_clip",
-        newClipEnd,
-        tempClipLength,
-      ) as [string, string | number];
-      const tempClip = LiveAPI.from(tempClipPath);
-
-      track.call("delete_clip", `id ${tempClip.id}`);
-    } else {
-      // Create audio clip in session with exact length
-      const { clip: sessionClip, slot } = createAudioClipInSession(
-        track,
-        tempClipLength,
-        context.silenceWavPath,
-      );
-
-      // Duplicate to arrangement at the truncation position
-      const tempResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sessionClip.id}`,
-        newClipEnd,
-      ) as [string, string | number];
-      const tempClip = LiveAPI.from(tempResult);
-
-      // Delete both session and arrangement clips
-      slot.call("delete_clip");
-      track.call("delete_clip", `id ${tempClip.id}`);
-    }
+    createAndDeleteTempClip(
+      track,
+      newClipEnd,
+      tempClipLength,
+      isMidiClip,
+      context,
+    );
   }
 }
 
