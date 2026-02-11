@@ -1,26 +1,36 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { children, liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "./create-scene.ts";
 
 describe("createScene", () => {
+  let liveSet: MockObjectHandle;
+  let scene0: MockObjectHandle;
+  let scene1: MockObjectHandle;
+  let scene2: MockObjectHandle;
+
   beforeEach(() => {
-    liveApiId.mockReturnValue("scene1");
-    mockLiveApiGet({
-      LiveSet: { scenes: children("existing1", "existing2") },
+    liveSet = registerMockObject("live_set", {
+      path: "live_set",
+      properties: { scenes: children("existing1", "existing2") },
     });
+    scene0 = registerMockObject("scene1", { path: "live_set scenes 0" });
+    scene1 = registerMockObject("scene1", { path: "live_set scenes 1" });
+    scene2 = registerMockObject("scene1", { path: "live_set scenes 2" });
+
+    // Register additional scenes for tests that need higher indices (e.g., padding)
+    for (let i = 3; i <= 5; i++) {
+      registerMockObject("scene1", { path: `live_set scenes ${i}` });
+    }
   });
 
   it("should create a single scene at the specified index", () => {
@@ -32,46 +42,14 @@ describe("createScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      1,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "name",
-      "New Scene",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "color",
-      16711680,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "tempo",
-      120,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "tempo_enabled",
-      true,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "time_signature_numerator",
-      3,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "time_signature_denominator",
-      4,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "time_signature_enabled",
-      true,
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 1);
+    expect(scene1.set).toHaveBeenCalledWith("name", "New Scene");
+    expect(scene1.set).toHaveBeenCalledWith("color", 16711680);
+    expect(scene1.set).toHaveBeenCalledWith("tempo", 120);
+    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
+    expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
+    expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
+    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
     expect(result).toStrictEqual({ id: "scene1", sceneIndex: 1 });
   });
 
@@ -83,40 +61,13 @@ describe("createScene", () => {
       color: "#00FF00",
     });
 
-    expect(liveApiCall).toHaveBeenNthCalledWithThis(
-      1,
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      0,
-    );
-    expect(liveApiCall).toHaveBeenNthCalledWithThis(
-      2,
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      1,
-    );
-    expect(liveApiCall).toHaveBeenNthCalledWithThis(
-      3,
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      2,
-    );
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 1);
+    expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_scene", 2);
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "name",
-      "Verse",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "name",
-      "Verse 2",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "name",
-      "Verse 3",
-    );
+    expect(scene0.set).toHaveBeenCalledWith("name", "Verse");
+    expect(scene1.set).toHaveBeenCalledWith("name", "Verse 2");
+    expect(scene2.set).toHaveBeenCalledWith("name", "Verse 3");
 
     expect(result).toStrictEqual([
       { id: "scene1", sceneIndex: 0 },
@@ -128,48 +79,21 @@ describe("createScene", () => {
   it("should create scenes without setting properties when not provided", () => {
     const result = createScene({ sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      0,
-    );
-    expect(liveApiSet).not.toHaveBeenCalled();
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 0);
+    expect(scene0.set).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   it("should pad with empty scenes when sceneIndex exceeds current count", () => {
-    mockLiveApiGet({
-      LiveSet: { scenes: children("scene1", "scene2") }, // 2 existing scenes
-    });
-
     createScene({
       sceneIndex: 5, // Want to insert at index 5, but only have 2 scenes (indices 0,1)
       name: "Future Scene",
     });
 
     // Should create 3 padding scenes (indices 2,3,4) then the actual scene at index 5
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 1
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 2
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      -1,
-    ); // padding scene 3
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      5,
-    ); // actual scene
-
-    expect(liveApiCall).toHaveBeenCalledTimes(4);
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", -1);
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 5);
+    expect(liveSet.call).toHaveBeenCalledTimes(4);
   });
 
   it("should disable tempo when -1 is passed", () => {
@@ -178,12 +102,8 @@ describe("createScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "tempo_enabled",
-      false,
-    );
-    expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+    expect(scene0.set).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(scene0.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
   });
 
   it("should disable time signature when 'disabled' is passed", () => {
@@ -192,16 +112,12 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "time_signature_enabled",
-      false,
-    );
-    expect(liveApiSet).not.toHaveBeenCalledWith(
+    expect(scene0.set).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(scene0.set).not.toHaveBeenCalledWith(
       "time_signature_numerator",
       expect.any(Number),
     );
-    expect(liveApiSet).not.toHaveBeenCalledWith(
+    expect(scene0.set).not.toHaveBeenCalledWith(
       "time_signature_denominator",
       expect.any(Number),
     );
@@ -275,11 +191,7 @@ describe("createScene", () => {
       name: "Solo Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "scene1" }),
-      "name",
-      "Solo Scene",
-    );
+    expect(scene0.set).toHaveBeenCalledWith("name", "Solo Scene");
     expect(result).toStrictEqual({ id: "scene1", sceneIndex: 0 });
   });
 
@@ -294,31 +206,30 @@ describe("createScene", () => {
   });
 
   describe("capture mode", () => {
-    beforeEach(() => {
-      // Reset liveApiId to use default path-based ID generation for capture tests
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
-      });
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set view selected_scene") {
-          return "live_set scenes 1";
-        }
+    let capturedScene: MockObjectHandle;
+    let appView: MockObjectHandle;
 
-        return this._path;
+    beforeEach(() => {
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: { tracks: [] },
       });
-      mockLiveApiGet({
-        "live_set scenes 2": { name: "Captured Scene" },
-        LiveSet: { tracks: [] }, // No tracks means no clips
+      appView = registerMockObject("live_set/view", {
+        path: "live_set view",
+      });
+      registerMockObject("live_set/scenes/1", {
+        path: "live_set scenes 1",
+      });
+      registerMockObject("live_set/view/selected_scene", {
+        path: "live_set scenes 1",
+      });
+      capturedScene = registerMockObject("live_set/scenes/2", {
+        path: "live_set scenes 2",
       });
     });
 
     it("should delegate to captureScene when capture=true", () => {
       const result = createScene({ capture: true });
-
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "capture_and_insert_scene",
-      );
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
@@ -334,17 +245,12 @@ describe("createScene", () => {
         name: "Custom Capture",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set view" }),
+      expect(appView.set).toHaveBeenCalledWith(
         "selected_scene",
         "id live_set/scenes/1",
       );
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set scenes 2" }),
-        "name",
-        "Custom Capture",
-      );
+      expect(capturedScene.set).toHaveBeenCalledWith("name", "Custom Capture");
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
@@ -362,21 +268,9 @@ describe("createScene", () => {
         timeSignature: "3/4",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "live_set/scenes/2" }),
-        "color",
-        16711680,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "live_set/scenes/2" }),
-        "tempo",
-        140,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "live_set/scenes/2" }),
-        "tempo_enabled",
-        true,
-      );
+      expect(capturedScene.set).toHaveBeenCalledWith("color", 16711680);
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo", 140);
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo_enabled", true);
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
@@ -392,13 +286,8 @@ describe("createScene", () => {
         timeSignature: "disabled",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "live_set/scenes/2" }),
-        "tempo_enabled",
-        false,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "live_set/scenes/2" }),
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo_enabled", false);
+      expect(capturedScene.set).toHaveBeenCalledWith(
         "time_signature_enabled",
         false,
       );
@@ -411,19 +300,13 @@ describe("createScene", () => {
     });
 
     it("should return clips when capturing with existing clips", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
-        if (this._path === "live_set tracks 1 clip_slots 2 clip") {
-          return "0";
-        }
-
-        return this._id;
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
       });
-      mockLiveApiGet({
-        "live_set scenes 2": { name: "Captured Scene" },
-        LiveSet: {
-          tracks: ["id", "1", "id", "2", "id", "3"],
-        },
+      // Mark track 1's clip as non-existent (id "0" makes exists() return false)
+      registerMockObject("0", {
+        path: "live_set tracks 1 clip_slots 2 clip",
       });
 
       const result = createScene({
@@ -457,17 +340,12 @@ describe("createScene", () => {
     });
 
     it("should switch to session view when capturing scenes with switchView=true", () => {
-      // Mock the selected scene path for capture functionality
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set view selected_scene") {
-          return "live_set scenes 1";
-        }
-
-        return this._path;
+      registerMockObject("live_set", {
+        path: "live_set",
+        properties: { tracks: [] },
       });
-      mockLiveApiGet({
-        "live_set scenes 2": { name: "Captured Scene" },
-        LiveSet: { tracks: [] }, // No tracks means no clips
+      registerMockObject("live_set/view/selected_scene", {
+        path: "live_set scenes 1",
       });
 
       const result = createScene({
