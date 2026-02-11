@@ -89,7 +89,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
-    "openai": "^6.20.0",
+    "openai": "^6.21.0",
     "preact": "^10.28.3",
     "zod": "^4.3.6"
   },
@@ -124,7 +124,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-sonarjs": "^3.0.6",
     "eslint-plugin-unicorn": "^63.0.0",
-    "happy-dom": "^20.6.0",
+    "happy-dom": "^20.6.1",
     "jscpd": "^4.0.8",
     "peggy": "^5.0.6",
     "prettier": "^3.8.1",
