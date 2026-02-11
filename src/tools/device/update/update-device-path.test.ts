@@ -1,23 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  liveApiGet,
-  liveApiId,
-  liveApiSet,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { updateDevice } from "./update-device.ts";
 
 describe("updateDevice with path parameter", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should throw error when neither ids nor path is provided", () => {
     expect(() => updateDevice({})).toThrow(
       "Either ids or path must be provided",
@@ -31,51 +26,53 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("device paths", () => {
-    beforeEach(() => {
-      liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 1 devices 0") return "device-456";
-        if (this._path === "live_set tracks 1 devices 0 view")
-          return "view-456";
-        if (this._path === "live_set return_tracks 0 devices 0")
-          return "return-device-123";
-        if (this._path === "live_set return_tracks 0 devices 0 view")
-          return "view-return-123";
-        if (this._path === "live_set master_track devices 0")
-          return "master-device-789";
-        if (this._path === "live_set master_track devices 0 view")
-          return "view-master-789";
+    let device456: MockObjectHandle;
+    let view456: MockObjectHandle;
+    let returnDevice: MockObjectHandle;
+    let masterDevice: MockObjectHandle;
 
-        return "0";
+    beforeEach(() => {
+      device456 = registerMockObject("device-456", {
+        path: "live_set tracks 1 devices 0",
+        type: "Device",
+      });
+      view456 = registerMockObject("view-456", {
+        path: "live_set tracks 1 devices 0 view",
+      });
+      returnDevice = registerMockObject("return-device-123", {
+        path: "live_set return_tracks 0 devices 0",
+        type: "Device",
+      });
+      registerMockObject("view-return-123", {
+        path: "live_set return_tracks 0 devices 0 view",
+      });
+      masterDevice = registerMockObject("master-device-789", {
+        path: "live_set master_track devices 0",
+        type: "Device",
+      });
+      registerMockObject("view-master-789", {
+        path: "live_set master_track devices 0 view",
       });
     });
 
     it("should update device by path on regular track", () => {
       const result = updateDevice({ path: "t1/d0", name: "My Device" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-456" }),
-        "name",
-        "My Device",
-      );
+      expect(device456.set).toHaveBeenCalledWith("name", "My Device");
       expect(result).toStrictEqual({ id: "device-456" });
     });
 
     it("should update device collapsed state by path", () => {
       const result = updateDevice({ path: "t1/d0", collapsed: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "view-456" }),
-        "is_collapsed",
-        1,
-      );
+      expect(view456.set).toHaveBeenCalledWith("is_collapsed", 1);
       expect(result).toStrictEqual({ id: "device-456" });
     });
 
     it("should return empty array for non-existent device by path", () => {
-      liveApiId.mockReturnValue("0");
+      mockNonExistentObjects();
 
-      const result = updateDevice({ path: "t1/d0", name: "Test" });
+      const result = updateDevice({ path: "t5/d0", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
@@ -83,95 +80,65 @@ describe("updateDevice with path parameter", () => {
     it("should update device by path on return track", () => {
       const result = updateDevice({ path: "rt0/d0", name: "Return Device" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "return-device-123" }),
-        "name",
-        "Return Device",
-      );
+      expect(returnDevice.set).toHaveBeenCalledWith("name", "Return Device");
       expect(result).toStrictEqual({ id: "return-device-123" });
     });
 
     it("should update device by path on master track", () => {
       const result = updateDevice({ path: "mt/d0", name: "Master Device" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "master-device-789" }),
-        "name",
-        "Master Device",
-      );
+      expect(masterDevice.set).toHaveBeenCalledWith("name", "Master Device");
       expect(result).toStrictEqual({ id: "master-device-789" });
     });
   });
 
   describe("chain paths", () => {
+    let chain123: MockObjectHandle;
+    let returnChain456: MockObjectHandle;
+
     beforeEach(() => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 1 devices 0 chains 0")
-          return "chain-123";
-        if (this._path === "live_set tracks 1 devices 0 return_chains 0")
-          return "return-chain-456";
-
-        return "0";
+      chain123 = registerMockObject("chain-123", {
+        path: "live_set tracks 1 devices 0 chains 0",
+        type: "Chain",
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 1 devices 0 chains 0")
-          return "Chain";
-        if (this._path === "live_set tracks 1 devices 0 return_chains 0")
-          return "Chain";
-
-        return "Device";
+      returnChain456 = registerMockObject("return-chain-456", {
+        path: "live_set tracks 1 devices 0 return_chains 0",
+        type: "Chain",
       });
     });
 
     it("should update chain by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", name: "My Chain" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-123" }),
-        "name",
-        "My Chain",
-      );
+      expect(chain123.set).toHaveBeenCalledWith("name", "My Chain");
       expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain mute state by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", mute: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-123" }),
-        "mute",
-        1,
-      );
+      expect(chain123.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain solo state by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", solo: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-123" }),
-        "solo",
-        1,
-      );
+      expect(chain123.set).toHaveBeenCalledWith("solo", 1);
       expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should update chain color by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", color: "#FF0000" });
 
-      // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-123" }),
-        "color",
-        16711680,
-      );
+      expect(chain123.set).toHaveBeenCalledWith("color", 16711680);
       expect(result).toStrictEqual({ id: "chain-123" });
     });
 
     it("should return empty array for non-existent chain by path", () => {
-      liveApiId.mockReturnValue("0");
+      mockNonExistentObjects();
 
-      const result = updateDevice({ path: "t1/d0/c0", name: "Test" });
+      const result = updateDevice({ path: "t5/d0/c0", name: "Test" });
 
       expect(result).toStrictEqual([]);
     });
@@ -179,11 +146,7 @@ describe("updateDevice with path parameter", () => {
     it("should update return chain by path", () => {
       const result = updateDevice({ path: "t1/d0/rc0", name: "Return Chain" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "return-chain-456" }),
-        "name",
-        "Return Chain",
-      );
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "Return Chain");
       expect(result).toStrictEqual({ id: "return-chain-456" });
     });
   });
@@ -206,38 +169,14 @@ describe("updateDevice with path parameter", () => {
       chainProperties?: Record<string, ChainProps>;
       deviceProperties?: Record<string, DeviceProps>;
     }
+    interface DrumPadMockResult {
+      chains: Map<string, MockObjectHandle>;
+      devices: Map<string, MockObjectHandle>;
+    }
 
-    // Helper functions for drum chain mock property lookups
-    const getChainProperty = (
-      id: string,
-      prop: string,
-      chainProperties: Record<string, ChainProps>,
-    ) => {
-      const chainProps = chainProperties[id] ?? {};
-      const propMap: Record<string, unknown[]> = {
-        in_note: [chainProps.inNote ?? 36],
-        name: [chainProps.name ?? "Chain"],
-        mute: [chainProps.mute ?? 0],
-        solo: [chainProps.solo ?? 0],
-        devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
-      };
-
-      return propMap[prop] ?? [];
-    };
-
-    const getDeviceProperty = (
-      id: string,
-      prop: string,
-      deviceProperties: Record<string, DeviceProps>,
-    ) => {
-      const devProps = deviceProperties[id] ?? {};
-
-      if (prop === "name") return [devProps.name ?? "Device"];
-
-      return [];
-    };
-
-    const setupDrumPadMocks = (config: DrumPadMockConfig) => {
+    const setupDrumPadMocks = (
+      config: DrumPadMockConfig,
+    ): DrumPadMockResult => {
       const {
         deviceId = "drum-rack-1",
         chainIds = ["chain-36"],
@@ -245,75 +184,78 @@ describe("updateDevice with path parameter", () => {
         deviceProperties = {},
       } = config;
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 1 devices 0") return deviceId;
-
-        return this._id ?? "0";
+      registerMockObject(deviceId, {
+        path: "live_set tracks 1 devices 0",
+        type: "RackDevice",
+        properties: {
+          can_have_drum_pads: 1,
+          chains: chainIds.flatMap((c) => ["id", c]),
+        },
       });
 
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        const id = this._id ?? this.id;
+      const chains = new Map<string, MockObjectHandle>();
 
-        if (id?.startsWith("chain-"))
-          return chainProperties[id]?.type ?? "DrumChain";
-        if (id?.startsWith("device-")) return "Device";
+      for (const chainId of chainIds) {
+        const chainProps = chainProperties[chainId] ?? {};
 
-        return "RackDevice";
-      });
+        chains.set(
+          chainId,
+          registerMockObject(chainId, {
+            type: chainProps.type ?? "DrumChain",
+            properties: {
+              in_note: chainProps.inNote ?? 36,
+              name: chainProps.name ?? "Chain",
+              mute: chainProps.mute ?? 0,
+              solo: chainProps.solo ?? 0,
+              devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
+            },
+          }),
+        );
+      }
 
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        const id = this._id ?? this.id;
+      const devices = new Map<string, MockObjectHandle>();
 
-        if (id === deviceId || this._path?.includes("devices 0")) {
-          if (prop === "can_have_drum_pads") return [1];
-          if (prop === "chains") return chainIds.flatMap((c) => ["id", c]);
-        }
+      for (const [devId, devProps] of Object.entries(deviceProperties)) {
+        devices.set(
+          devId,
+          registerMockObject(devId, {
+            type: "Device",
+            properties: { name: devProps.name ?? "Device" },
+          }),
+        );
+      }
 
-        if (id?.startsWith("chain-"))
-          return getChainProperty(id, prop, chainProperties);
-        if (id?.startsWith("device-"))
-          return getDeviceProperty(id, prop, deviceProperties);
-
-        return [];
-      });
+      return { chains, devices };
     };
 
     it("should update drum chain mute state by path (pNOTE)", () => {
-      setupDrumPadMocks({
+      const { chains } = setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "t1/d0/pC1", mute: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-36" }),
-        "mute",
-        1,
-      );
+      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "chain-36" });
     });
 
     it("should update drum chain solo state by path (pNOTE)", () => {
-      setupDrumPadMocks({
+      const { chains } = setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "t1/d0/pC1", solo: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-36" }),
-        "solo",
-        1,
-      );
+      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("solo", 1);
       expect(result).toStrictEqual({ id: "chain-36" });
     });
 
     it("should return empty array for non-existent drum chain by path", () => {
       setupDrumPadMocks({
         chainIds: ["chain-36"],
-        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } }, // C1, not C3
+        chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "t1/d0/pC3", mute: true });
@@ -322,15 +264,14 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update drum chain by path (pNOTE/index)", () => {
-      setupDrumPadMocks({
+      const { chains } = setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "t1/d0/pC1/c0", name: "New Layer" });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-36" }),
+      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith(
         "name",
         "New Layer",
       );
@@ -338,18 +279,14 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update drum chain mute state by path (pNOTE/index)", () => {
-      setupDrumPadMocks({
+      const { chains } = setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
       const result = updateDevice({ path: "t1/d0/pC1/c0", mute: true });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-36" }),
-        "mute",
-        1,
-      );
+      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "chain-36" });
     });
 
@@ -365,7 +302,7 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update device inside drum chain by path", () => {
-      setupDrumPadMocks({
+      const { devices } = setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: {
           "chain-36": { inNote: 36, name: "Kick", deviceIds: ["device-1"] },
@@ -378,8 +315,7 @@ describe("updateDevice with path parameter", () => {
         name: "New Simpler",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-1" }),
+      expect(devices.get("device-1")?.set).toHaveBeenCalledWith(
         "name",
         "New Simpler",
       );
@@ -415,16 +351,25 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("multiple comma-separated paths", () => {
-    beforeEach(() => {
-      liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 devices 0") return "device-100";
-        if (this._path === "live_set tracks 0 devices 1") return "device-101";
-        if (this._path === "live_set tracks 1 devices 0") return "device-200";
-        if (this._path === "live_set tracks 1 devices 1") return "0"; // non-existent
+    let device100: MockObjectHandle;
+    let device101: MockObjectHandle;
+    let device200: MockObjectHandle;
 
-        return "0";
+    beforeEach(() => {
+      device100 = registerMockObject("device-100", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
       });
+      device101 = registerMockObject("device-101", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+      });
+      device200 = registerMockObject("device-200", {
+        path: "live_set tracks 1 devices 0",
+        type: "Device",
+      });
+      // t1/d1 is non-existent — not registered
+      mockNonExistentObjects();
     });
 
     it("should update multiple devices by comma-separated paths", () => {
@@ -433,22 +378,9 @@ describe("updateDevice with path parameter", () => {
         name: "Updated",
       });
 
-      expect(liveApiSet).toHaveBeenCalledTimes(3);
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-100" }),
-        "name",
-        "Updated",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-101" }),
-        "name",
-        "Updated",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-200" }),
-        "name",
-        "Updated",
-      );
+      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
+      expect(device101.set).toHaveBeenCalledWith("name", "Updated");
+      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-101" },
@@ -462,8 +394,8 @@ describe("updateDevice with path parameter", () => {
         name: "Updated",
       });
 
-      // t1/d1 doesn't exist, but t0/d0 and t1/d0 should be updated
-      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
+      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-200" },
@@ -471,11 +403,8 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should return empty array when all paths are invalid", () => {
-      liveApiId.mockReturnValue("0"); // All paths non-existent
+      const result = updateDevice({ path: "t5/d0, t6/d0", name: "Updated" });
 
-      const result = updateDevice({ path: "t0/d0, t1/d0", name: "Updated" });
-
-      expect(liveApiSet).not.toHaveBeenCalled();
       expect(result).toStrictEqual([]);
     });
 
@@ -486,14 +415,8 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should return single object when only one path valid out of many", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 devices 0") return "device-100";
-
-        return "0";
-      });
-
       const result = updateDevice({
-        path: "t0/d0, t1/d0, t2/d0",
+        path: "t0/d0, t5/d0, t6/d0",
         name: "Updated",
       });
 
@@ -506,7 +429,8 @@ describe("updateDevice with path parameter", () => {
         name: "Trimmed",
       });
 
-      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(device100.set).toHaveBeenCalledWith("name", "Trimmed");
+      expect(device200.set).toHaveBeenCalledWith("name", "Trimmed");
       expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-200" },
@@ -514,14 +438,14 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should skip invalid path formats gracefully", () => {
-      // Track-only path is invalid, but device paths should work
       const result = updateDevice({
         path: "t0, t0/d0, t1/d0",
         name: "Updated",
       });
 
       // "t0" is invalid (no device index), but "t0/d0" and "t1/d0" should work
-      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
+      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-200" },
@@ -531,75 +455,54 @@ describe("updateDevice with path parameter", () => {
 
   describe("multiple paths with mixed types", () => {
     it("should update mixed device and chain types", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 devices 0") return "device-100";
-        if (this._path === "live_set tracks 1 devices 0 chains 0")
-          return "chain-200";
-
-        return "0";
+      const device100 = registerMockObject("device-100", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 1 devices 0 chains 0")
-          return "Chain";
-
-        return "Device";
+      const chain200 = registerMockObject("chain-200", {
+        path: "live_set tracks 1 devices 0 chains 0",
+        type: "Chain",
       });
 
       const result = updateDevice({ path: "t0/d0, t1/d0/c0", name: "Mixed" });
 
-      expect(liveApiSet).toHaveBeenCalledTimes(2);
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "device-100" }),
-        "name",
-        "Mixed",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "chain-200" }),
-        "name",
-        "Mixed",
-      );
+      expect(device100.set).toHaveBeenCalledWith("name", "Mixed");
+      expect(chain200.set).toHaveBeenCalledWith("name", "Mixed");
       expect(result).toStrictEqual([{ id: "device-100" }, { id: "chain-200" }]);
     });
   });
 
   describe("multiple paths with params", () => {
+    let param100: MockObjectHandle;
+    let param200: MockObjectHandle;
+
     beforeEach(() => {
-      liveApiType.mockReturnValue("Device");
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0 devices 0") return "device-100";
-        if (this._path === "live_set tracks 0 devices 0 parameters 5")
-          return "param-100-5";
-        if (this._path === "live_set tracks 1 devices 0") return "device-200";
-        if (this._path === "live_set tracks 1 devices 0 parameters 5")
-          return "param-200-5";
-
-        return "0";
+      registerMockObject("device-100", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
       });
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (prop === "is_quantized") return [0];
-
-        return [0];
+      param100 = registerMockObject("param-100-5", {
+        path: "live_set tracks 0 devices 0 parameters 5",
+        properties: { is_quantized: 0 },
+      });
+      registerMockObject("device-200", {
+        path: "live_set tracks 1 devices 0",
+        type: "Device",
+      });
+      param200 = registerMockObject("param-200-5", {
+        path: "live_set tracks 1 devices 0 parameters 5",
+        properties: { is_quantized: 0 },
       });
     });
 
     it("should update params on multiple devices using path-based param IDs", () => {
-      // Using a path that ends with "parameters N" should resolve relative to each device
       const result = updateDevice({
         path: "t0/d0, t1/d0",
         params: '{"live_set tracks 0 devices 0 parameters 5": 1000}',
       });
 
-      // Both devices should have their parameter 5 updated
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "param-100-5" }),
-        "display_value",
-        1000,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "param-200-5" }),
-        "display_value",
-        1000,
-      );
+      expect(param100.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(param200.set).toHaveBeenCalledWith("display_value", 1000);
       expect(result).toStrictEqual([
         { id: "device-100" },
         { id: "device-200" },

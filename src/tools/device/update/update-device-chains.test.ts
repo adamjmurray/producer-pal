@@ -1,36 +1,27 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  liveApiSet,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  let chain: MockObjectHandle;
+  let drumChain: MockObjectHandle;
+  let drumPad: MockObjectHandle;
 
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "RackDevice";
-        case "id 456":
-          return "Chain";
-        case "id 789":
-          return "DrumChain";
-        case "id 790":
-          return "DrumPad";
-        case "id 791":
-          return "Track"; // Invalid type
-        default:
-          return "Device";
-      }
-    });
+  beforeEach(() => {
+    registerMockObject("123", { type: "RackDevice" });
+    chain = registerMockObject("456", { type: "Chain" });
+    drumChain = registerMockObject("789", { type: "DrumChain" });
+    drumPad = registerMockObject("790", { type: "DrumPad" });
+    registerMockObject("791", { type: "Track" });
   });
 
   describe("mute and solo", () => {
@@ -40,11 +31,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 456" }),
-        "mute",
-        1,
-      );
+      expect(chain.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -54,11 +41,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         solo: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 456" }),
-        "solo",
-        1,
-      );
+      expect(chain.set).toHaveBeenCalledWith("solo", 1);
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -68,11 +51,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "mute",
-        1,
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -82,11 +61,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 790" }),
-        "mute",
-        1,
-      );
+      expect(drumPad.set).toHaveBeenCalledWith("mute", 1);
       expect(result).toStrictEqual({ id: "790" });
     });
 
@@ -96,11 +71,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: false,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 456" }),
-        "mute",
-        0,
-      );
+      expect(chain.set).toHaveBeenCalledWith("mute", 0);
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -126,11 +97,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       // setColor converts #3B82F6 to (0x3B << 16) | (0x82 << 8) | 0xF6 = 3900150
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 456" }),
-        "color",
-        3900150,
-      );
+      expect(chain.set).toHaveBeenCalledWith("color", 3900150);
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -141,11 +108,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "color",
-        16711680,
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("color", 16711680);
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -183,11 +146,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         chokeGroup: 1,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "choke_group",
-        1,
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("choke_group", 1);
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -225,11 +184,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mappedPitch: "C3",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "out_note",
-        60, // C3 = MIDI 60
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("out_note", 60);
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -239,11 +194,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mappedPitch: "F#2",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "out_note",
-        54, // F#2 = MIDI 54
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("out_note", 54);
     });
 
     it("should warn for invalid note name in mappedPitch", () => {
@@ -256,8 +207,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         1,
         'updateDevice: invalid note name "InvalidNote"',
       );
-      expect(liveApiSet).not.toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
+      expect(drumChain.set).not.toHaveBeenCalledWith(
         "out_note",
         expect.anything(),
       );
@@ -325,11 +275,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         name: "My Chain",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 456" }),
-        "name",
-        "My Chain",
-      );
+      expect(chain.set).toHaveBeenCalledWith("name", "My Chain");
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -339,11 +285,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         name: "Kick",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "name",
-        "Kick",
-      );
+      expect(drumChain.set).toHaveBeenCalledWith("name", "Kick");
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -357,11 +299,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         1,
         "updateDevice: 'name' is read-only for DrumPad",
       );
-      expect(liveApiSet).not.toHaveBeenCalledWith(
-        expect.objectContaining({ _path: "id 790" }),
-        "name",
-        expect.anything(),
-      );
+      expect(drumPad.set).not.toHaveBeenCalledWith("name", expect.anything());
       expect(result).toStrictEqual({ id: "790" });
     });
   });

@@ -1,82 +1,50 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice", () => {
+  let device123: MockObjectHandle;
+  let device456: MockObjectHandle;
+  let view123: MockObjectHandle;
+
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Default: all objects are Device type (valid for update)
-    liveApiType.mockImplementation(() => "Device");
-
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id 456":
-          return "456";
-        case "id 789":
-          return "789";
-        case "id 790":
-          return "790";
-        case "id 791":
-          return "791";
-        case "id 792":
-          return "792";
-        case "live_set tracks 0 devices 0 view":
-          return "view-123";
-        case "live_set tracks 0 devices 1 view":
-          return "view-456";
-        default:
-          return "0";
-      }
+    device123 = registerMockObject("123", {
+      path: "live_set tracks 0 devices 0",
+      type: "Device",
     });
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "live_set tracks 0 devices 0";
-        case "id 456":
-          return "live_set tracks 0 devices 1";
-        default:
-          return this._path;
-      }
+    device456 = registerMockObject("456", {
+      path: "live_set tracks 0 devices 1",
+      type: "Device",
     });
 
-    // Default mocks for param types
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      if (prop === "is_quantized") return [0];
-      if (prop === "value") return [0.5];
-      if (prop === "min") return [0];
-      if (prop === "max") return [1];
-
-      return [0];
+    // Views for collapsed state
+    view123 = registerMockObject("view-123", {
+      path: "live_set tracks 0 devices 0 view",
+    });
+    registerMockObject("view-456", {
+      path: "live_set tracks 0 devices 1 view",
     });
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method,
-      value,
-    ) {
-      if (method === "str_for_value") {
-        // Default to numeric label
-        return String(value);
-      }
-
-      return null;
+    // Default param objects
+    registerMockObject("789", {
+      properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+      methods: { str_for_value: (_value: unknown) => String(_value) },
+    });
+    registerMockObject("790", {
+      properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+      methods: { str_for_value: (_value: unknown) => String(_value) },
     });
   });
 
@@ -86,11 +54,7 @@ describe("updateDevice", () => {
       name: "My Device",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "My Device",
-    );
+    expect(device123.set).toHaveBeenCalledWith("name", "My Device");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -100,11 +64,7 @@ describe("updateDevice", () => {
       collapsed: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "view-123" }),
-      "is_collapsed",
-      1,
-    );
+    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 1);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -114,11 +74,7 @@ describe("updateDevice", () => {
       collapsed: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "view-123" }),
-      "is_collapsed",
-      0,
-    );
+    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 0);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -129,16 +85,8 @@ describe("updateDevice", () => {
       collapsed: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Collapsed Device",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "view-123" }),
-      "is_collapsed",
-      1,
-    );
+    expect(device123.set).toHaveBeenCalledWith("name", "Collapsed Device");
+    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 1);
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -148,20 +96,14 @@ describe("updateDevice", () => {
       name: "Same Name",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Same Name",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "456" }),
-      "name",
-      "Same Name",
-    );
+    expect(device123.set).toHaveBeenCalledWith("name", "Same Name");
+    expect(device456.set).toHaveBeenCalledWith("name", "Same Name");
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should skip non-existent devices with warning", () => {
+    mockNonExistentObjects();
+
     const result = updateDevice({
       ids: "123, 999, 456",
       name: "Test",
@@ -175,6 +117,8 @@ describe("updateDevice", () => {
   });
 
   it("should return empty array when all devices are invalid", () => {
+    mockNonExistentObjects();
+
     const result = updateDevice({
       ids: "998, 999",
       name: "Test",
@@ -189,11 +133,7 @@ describe("updateDevice", () => {
       name: "Prefixed ID",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Prefixed ID",
-    );
+    expect(device123.set).toHaveBeenCalledWith("name", "Prefixed ID");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -202,22 +142,32 @@ describe("updateDevice", () => {
       ids: "123",
     });
 
-    expect(liveApiSet).not.toHaveBeenCalled();
+    expect(device123.set).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
   });
 
   describe("params - numeric values", () => {
+    let param789: MockObjectHandle;
+    let param790: MockObjectHandle;
+
+    beforeEach(() => {
+      param789 = registerMockObject("789", {
+        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        methods: { str_for_value: (_value: unknown) => String(_value) },
+      });
+      param790 = registerMockObject("790", {
+        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        methods: { str_for_value: (_value: unknown) => String(_value) },
+      });
+    });
+
     it("should set display_value for numeric params", () => {
       const result = updateDevice({
         ids: "123",
         params: '{"789": 1000}',
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "display_value",
-        1000,
-      );
+      expect(param789.set).toHaveBeenCalledWith("display_value", 1000);
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -227,20 +177,14 @@ describe("updateDevice", () => {
         params: '{"789": 500, "790": 1000}',
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "display_value",
-        500,
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 790" }),
-        "display_value",
-        1000,
-      );
+      expect(param789.set).toHaveBeenCalledWith("display_value", 500);
+      expect(param790.set).toHaveBeenCalledWith("display_value", 1000);
       expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should log error for invalid param ID but continue", () => {
+      mockNonExistentObjects();
+
       const result = updateDevice({
         ids: "123",
         params: '{"999": 0.5}',
@@ -264,16 +208,14 @@ describe("updateDevice", () => {
   });
 
   describe("params - enum values", () => {
+    let param791: MockObjectHandle;
+
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (this._path === "id 791") {
-          if (prop === "is_quantized") return [1];
-          if (prop === "value_items") return ["Repitch", "Fade", "Jump"];
-        }
-
-        if (prop === "is_quantized") return [0];
-
-        return [0];
+      param791 = registerMockObject("791", {
+        properties: {
+          is_quantized: 1,
+          value_items: ["Repitch", "Fade", "Jump"],
+        },
       });
     });
 
@@ -283,11 +225,7 @@ describe("updateDevice", () => {
         params: '{"791": "Fade"}',
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 791" }),
-        "value",
-        1,
-      );
+      expect(param791.set).toHaveBeenCalledWith("value", 1);
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -301,27 +239,28 @@ describe("updateDevice", () => {
         1,
         'updateDevice: "InvalidValue" is not valid. Options: Repitch, Fade, Jump',
       );
-      expect(liveApiSet).not.toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 791" }),
-        "value",
-        expect.anything(),
-      );
+      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
       expect(result).toStrictEqual({ id: "123" });
     });
   });
 
   describe("params - note values", () => {
+    let param789: MockObjectHandle;
+
+    beforeEach(() => {
+      param789 = registerMockObject("789", {
+        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        methods: { str_for_value: (_value: unknown) => String(_value) },
+      });
+    });
+
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
       const result = updateDevice({
         ids: "123",
         params: '{"789": "C3"}',
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "value",
-        60,
-      );
+      expect(param789.set).toHaveBeenCalledWith("value", 60);
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -331,38 +270,17 @@ describe("updateDevice", () => {
         params: '{"789": "F#-1"}',
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 789" }),
-        "value",
-        18,
-      );
+      expect(param789.set).toHaveBeenCalledWith("value", 18);
     });
   });
 
   describe("params - pan values", () => {
+    let param792: MockObjectHandle;
+
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (this._path === "id 792") {
-          if (prop === "is_quantized") return [0];
-          if (prop === "value") return [0.5];
-          if (prop === "min") return [0];
-          if (prop === "max") return [1];
-        }
-
-        if (prop === "is_quantized") return [0];
-
-        return [0];
-      });
-
-      liveApiCall.mockImplementation(function (
-        this: MockLiveAPIContext,
-        method,
-      ) {
-        if (method === "str_for_value" && this._path === "id 792") {
-          return "C"; // Pan label indicating center
-        }
-
-        return "0";
+      param792 = registerMockObject("792", {
+        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        methods: { str_for_value: () => "C" },
       });
     });
 
@@ -373,11 +291,7 @@ describe("updateDevice", () => {
       });
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 792" }),
-        "value",
-        0.25,
-      );
+      expect(param792.set).toHaveBeenCalledWith("value", 0.25);
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -388,11 +302,7 @@ describe("updateDevice", () => {
       });
 
       // -1 → internal: 0
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 792" }),
-        "value",
-        0,
-      );
+      expect(param792.set).toHaveBeenCalledWith("value", 0);
     });
 
     it("should handle full right pan", () => {
@@ -402,11 +312,7 @@ describe("updateDevice", () => {
       });
 
       // 1 → internal: 1
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 792" }),
-        "value",
-        1,
-      );
+      expect(param792.set).toHaveBeenCalledWith("value", 1);
     });
   });
 
@@ -417,19 +323,16 @@ describe("updateDevice", () => {
   describe("macroCount", () => {
     beforeEach(() => {
       // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._path === "id 123" ? "RackDevice" : "Device";
+      device123 = registerMockObject("123", {
+        path: "live_set tracks 0 devices 0",
+        type: "RackDevice",
+        properties: { can_have_chains: 1, visible_macro_count: 4 },
       });
 
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (this._path === "id 123") {
-          if (prop === "can_have_chains") return [1];
-          if (prop === "visible_macro_count") return [4];
-        }
-
-        if (this._path === "id 456" && prop === "can_have_chains") return [0];
-
-        return [0];
+      device456 = registerMockObject("456", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+        properties: { can_have_chains: 0 },
       });
     });
 
@@ -443,7 +346,7 @@ describe("updateDevice", () => {
         1,
         "updateDevice: 'macroCount' not applicable to Device",
       );
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(device456.call).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -453,11 +356,8 @@ describe("updateDevice", () => {
         macroCount: 8, // 4 -> 8 = diff of 4 = 2 pairs
       });
 
-      expect(liveApiCall).toHaveBeenCalledTimes(2);
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
-        "add_macro",
-      );
+      expect(device123.call).toHaveBeenCalledTimes(2);
+      expect(device123.call).toHaveBeenCalledWith("add_macro");
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -467,11 +367,8 @@ describe("updateDevice", () => {
         macroCount: 0, // 4 -> 0 = diff of 4 = 2 pairs
       });
 
-      expect(liveApiCall).toHaveBeenCalledTimes(2);
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
-        "remove_macro",
-      );
+      expect(device123.call).toHaveBeenCalledTimes(2);
+      expect(device123.call).toHaveBeenCalledWith("remove_macro");
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -481,7 +378,7 @@ describe("updateDevice", () => {
         macroCount: 4, // 4 -> 4 = no change
       });
 
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(device123.call).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -495,25 +392,24 @@ describe("updateDevice", () => {
         1,
         "updateDevice: macro count rounded from 7 to 8 (macros come in pairs)",
       );
-      expect(liveApiCall).toHaveBeenCalledTimes(2);
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
-        "add_macro",
-      );
+      expect(device123.call).toHaveBeenCalledTimes(2);
+      expect(device123.call).toHaveBeenCalledWith("add_macro");
       expect(result).toStrictEqual({ id: "123" });
     });
   });
 
   describe("abCompare", () => {
     beforeEach(() => {
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        // Device with AB Compare support (id 123)
-        if (this._path === "id 123" && prop === "can_compare_ab") return [1];
+      device123 = registerMockObject("123", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: { can_compare_ab: 1 },
+      });
 
-        // Device without AB Compare support (id 456)
-        if (this._path === "id 456" && prop === "can_compare_ab") return [0];
-
-        return [0];
+      device456 = registerMockObject("456", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+        properties: { can_compare_ab: 0 },
       });
     });
 
@@ -527,8 +423,8 @@ describe("updateDevice", () => {
         1,
         "updateDevice: A/B Compare not available on this device",
       );
-      expect(liveApiSet).not.toHaveBeenCalled();
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(device456.set).not.toHaveBeenCalled();
+      expect(device456.call).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -538,8 +434,7 @@ describe("updateDevice", () => {
         abCompare: "a",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
+      expect(device123.set).toHaveBeenCalledWith(
         "is_using_compare_preset_b",
         0,
       );
@@ -552,8 +447,7 @@ describe("updateDevice", () => {
         abCompare: "b",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
+      expect(device123.set).toHaveBeenCalledWith(
         "is_using_compare_preset_b",
         1,
       );
@@ -566,8 +460,7 @@ describe("updateDevice", () => {
         abCompare: "save",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "id 123" }),
+      expect(device123.call).toHaveBeenCalledWith(
         "save_preset_to_compare_ab_slot",
       );
       expect(result).toStrictEqual({ id: "123" });
@@ -575,28 +468,22 @@ describe("updateDevice", () => {
   });
 
   describe("toPath - device moving", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      // Mock to make containers exist
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        // Source device
-        if (this._path === "id 123") return "123";
-        // Target containers - return valid IDs
-        if (this._path === "live_set tracks 1") return "track1";
-        if (this._path === "live_set tracks 0") return "track0";
-        if (this._path === "live_set tracks 0 devices 0") return "device0";
-        if (this._path === "live_set tracks 0 devices 0 chains 1")
-          return "chain1";
-        // Non-existent target
-        if (this._path === "live_set tracks 99") return "0";
+      liveSet = registerMockObject("live-set", { path: "live_set" });
 
-        return "valid-id";
+      registerMockObject("track1", { path: "live_set tracks 1" });
+      registerMockObject("track0", { path: "live_set tracks 0" });
+      registerMockObject("device0", {
+        path: "live_set tracks 0 devices 0",
+        properties: {
+          chains: children("chain-0", "chain-1"),
+          can_have_drum_pads: 0,
+        },
       });
-
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
-        if (prop === "can_have_drum_pads") return [0];
-
-        return [0];
+      registerMockObject("chain1", {
+        path: "live_set tracks 0 devices 0 chains 1",
       });
     });
 
@@ -607,8 +494,7 @@ describe("updateDevice", () => {
       });
 
       // move_device takes "id X" format for live object parameters
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id track1",
@@ -623,8 +509,7 @@ describe("updateDevice", () => {
         toPath: "t1/d2",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id track1",
@@ -639,8 +524,7 @@ describe("updateDevice", () => {
         toPath: "t0/d0/c1",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id chain1",
@@ -650,7 +534,7 @@ describe("updateDevice", () => {
     });
 
     it("should warn and skip when trying to move a Chain", () => {
-      liveApiType.mockReturnValue("Chain");
+      registerMockObject("123", { type: "Chain" });
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
@@ -662,7 +546,7 @@ describe("updateDevice", () => {
     });
 
     it("should warn and skip when trying to move a DrumPad", () => {
-      liveApiType.mockReturnValue("DrumPad");
+      registerMockObject("123", { type: "DrumPad" });
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
@@ -674,6 +558,8 @@ describe("updateDevice", () => {
     });
 
     it("should warn and skip when target path does not exist", () => {
+      mockNonExistentObjects();
+
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
         ids: "123",
@@ -691,8 +577,7 @@ describe("updateDevice", () => {
       });
 
       // Should call move_device with "id X" format
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id track1",
@@ -700,11 +585,7 @@ describe("updateDevice", () => {
       );
 
       // Should also set name
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: "123" }),
-        "name",
-        "Moved Device",
-      );
+      expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
       expect(result).toStrictEqual({ id: "123" });
     });
