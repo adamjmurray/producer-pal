@@ -103,14 +103,14 @@ describe("ppal-session (connect action)", () => {
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
   });
 
-  describe("project notes", () => {
+  describe("memory contents", () => {
     const TEST_NOTES = "Test project notes content for e2e testing";
 
     it("excludes projectNotes when disabled (default)", async () => {
       await setConfig({ useProjectNotes: false, projectNotes: "" });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.memoryContent).toBeUndefined();
       expect(parsed.$instructions).not.toContain("project notes");
     });
 
@@ -122,7 +122,7 @@ describe("ppal-session (connect action)", () => {
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBe(TEST_NOTES);
+      expect(parsed.memoryContent).toBe(TEST_NOTES);
       expect(parsed.$instructions).toContain("Summarize the project notes");
       expect(parsed.$instructions).not.toContain("update the project notes");
     });
@@ -135,7 +135,7 @@ describe("ppal-session (connect action)", () => {
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBe(TEST_NOTES);
+      expect(parsed.memoryContent).toBe(TEST_NOTES);
       expect(parsed.$instructions).toContain("Summarize the project notes");
       expect(parsed.$instructions).toContain("update the project notes");
     });
@@ -148,7 +148,7 @@ describe("ppal-session (connect action)", () => {
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.memoryContent).toBeUndefined();
       expect(parsed.$instructions).not.toContain("project notes");
     });
   });
@@ -172,5 +172,5 @@ interface ConnectResult {
   $skills?: string;
   $instructions?: string;
   messagesForUser?: string;
-  projectNotes?: string;
+  memoryContent?: string;
 }

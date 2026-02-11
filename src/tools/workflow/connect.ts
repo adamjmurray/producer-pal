@@ -28,7 +28,7 @@ interface ConnectResult {
   $skills?: string;
   $instructions?: string;
   messagesForUser?: string;
-  projectNotes?: string;
+  memoryContent?: string;
 }
 
 /**
@@ -127,7 +127,7 @@ Ask me to add an instrument, or add one yourself and I can compose MIDI patterns
 
   // Include project notes if enabled
   if (context.projectNotes?.enabled && context.projectNotes.content) {
-    result.projectNotes = context.projectNotes.content;
+    result.memoryContent = context.projectNotes.content;
   }
 
   return result;

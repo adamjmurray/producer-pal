@@ -55,7 +55,7 @@ describe("session - connect action", () => {
 
     const result = session({ action: "connect" }, context);
 
-    expect(result).toHaveProperty("projectNotes", "Working on a house track");
+    expect(result).toHaveProperty("memoryContent", "Working on a house track");
   });
 
   it("excludes project notes when disabled via connect", () => {
@@ -72,7 +72,7 @@ describe("session - connect action", () => {
 
     const result = session({ action: "connect" }, context);
 
-    expect(result).not.toHaveProperty("projectNotes");
+    expect(result).not.toHaveProperty("memoryContent");
   });
 
   it("includes skills and instructions in connect result", () => {

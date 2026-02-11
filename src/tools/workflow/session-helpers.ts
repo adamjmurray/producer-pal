@@ -23,10 +23,10 @@ export interface ConnectResult {
   $skills?: string;
   $instructions?: string;
   messagesForUser?: string;
-  projectNotes?: string;
+  memoryContent?: string;
 }
 
-export interface NotesResult {
+export interface MemoryResult {
   enabled: boolean;
   writable?: boolean;
   content?: string;
@@ -49,13 +49,13 @@ export function handleConnect(
 }
 
 /**
- * Handle read-notes action
+ * Handle read-memory action
  * @param context - The context object
- * @returns Notes result with enabled status and content
+ * @returns Memory result with enabled status and content
  */
-export function handleReadNotes(
+export function handleReadMemory(
   context: Partial<ToolContext> = {},
-): NotesResult {
+): MemoryResult {
   const projectNotes = context.projectNotes;
 
   if (!projectNotes?.enabled) {
@@ -70,15 +70,15 @@ export function handleReadNotes(
 }
 
 /**
- * Handle write-notes action
- * @param content - Notes content to write
+ * Handle write-memory action
+ * @param content - Memory content to write
  * @param context - The context object
- * @returns Notes result with updated content
+ * @returns Memory result with updated content
  */
-export function handleWriteNotes(
+export function handleWriteMemory(
   content: string | undefined,
   context: Partial<ToolContext> = {},
-): NotesResult {
+): MemoryResult {
   const projectNotes = context.projectNotes;
 
   if (!projectNotes?.enabled) {

@@ -5,14 +5,14 @@
 
 import type {
   ConnectResult,
-  NotesResult,
+  MemoryResult,
   SamplesResult,
 } from "./session-helpers.ts";
 import {
   handleConnect,
-  handleReadNotes,
+  handleReadMemory,
   handleSearchSamples,
-  handleWriteNotes,
+  handleWriteMemory,
 } from "./session-helpers.ts";
 
 interface SessionArgs {
@@ -21,13 +21,13 @@ interface SessionArgs {
   search?: string;
 }
 
-type SessionResult = ConnectResult | NotesResult | SamplesResult;
+type SessionResult = ConnectResult | MemoryResult | SamplesResult;
 
 /**
  * Unified session management tool for Producer Pal
  * @param args - The parameters
  * @param args.action - Action to perform (defaults to "connect")
- * @param args.content - Notes content (required for write-memory)
+ * @param args.content - Memory content (required for write-memory)
  * @param args.search - Search filter (for search-samples)
  * @param context - The context object
  * @returns Result varies by action
@@ -40,9 +40,9 @@ export function session(
     case "connect":
       return handleConnect(context);
     case "read-memory":
-      return handleReadNotes(context);
+      return handleReadMemory(context);
     case "write-memory":
-      return handleWriteNotes(content, context);
+      return handleWriteMemory(content, context);
     case "search-samples":
       return handleSearchSamples(search, context);
     default:

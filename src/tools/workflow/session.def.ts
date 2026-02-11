@@ -28,7 +28,7 @@ export const toolDefSession = defineTool("ppal-session", {
       .string()
       .max(10_000)
       .optional()
-      .describe("notes content (required for write-memory)"),
+      .describe("memory content (required for write-memory)"),
 
     search: z
       .string()

@@ -30,7 +30,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toStrictEqual(
+    expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
@@ -56,7 +56,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toStrictEqual(
+    expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
@@ -82,7 +82,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toBeUndefined();
+    expect(result.memoryContent).toBeUndefined();
   });
 
   it("handles missing context gracefully", () => {
@@ -91,7 +91,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.projectNotes).toBeUndefined();
+    expect(result.memoryContent).toBeUndefined();
   });
 
   it("returns standard skills and instructions by default", () => {
