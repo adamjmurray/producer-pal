@@ -193,7 +193,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should configure routing when routeToSource is true", () => {
-      registerMockObject("live_set/tracks/0", {
+      const sourceTrack = registerMockObject("live_set/tracks/0", {
         path: "live_set tracks 0",
         properties: {
           name: "Source Track",
@@ -204,7 +204,8 @@ describe("duplicate-track-scene-helpers", () => {
           ],
         },
       });
-      const newTrack = registerMockObject("live_set/tracks/1", {
+
+      registerMockObject("live_set/tracks/1", {
         path: "live_set tracks 1",
         properties: {
           devices: [],
@@ -219,7 +220,7 @@ describe("duplicate-track-scene-helpers", () => {
       duplicateTrack(0, undefined, false, false, true, 0);
 
       // Should arm source track
-      expect(newTrack.set).not.toHaveBeenCalledWith("arm", 1);
+      expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
     });
 
     interface SourceConfig {

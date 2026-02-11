@@ -454,7 +454,7 @@ describe("duplicate - scene duplication", () => {
         path: "live_set tracks 0",
       });
 
-      registerMockObject("live_set/tracks/1", {
+      const track1 = registerMockObject("live_set/tracks/1", {
         path: "live_set tracks 1",
       });
       const track2 = registerMockObject("live_set/tracks/2", {
@@ -469,8 +469,13 @@ describe("duplicate - scene duplication", () => {
         withoutClips: true,
       }) as DuplicateSceneResult;
 
-      // Verify that duplicate_clip_to_arrangement was NOT called
+      // Verify that duplicate_clip_to_arrangement was NOT called on any track
       expect(track0.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.any(String),
+        expect.any(Number),
+      );
+      expect(track1.call).not.toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         expect.any(String),
         expect.any(Number),
