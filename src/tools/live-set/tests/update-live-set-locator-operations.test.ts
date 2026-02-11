@@ -1,16 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiSet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type MockObjectHandle,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import {
   setupLocatorCreationMocks,
@@ -18,26 +16,23 @@ import {
 } from "./update-live-set-test-helpers.ts";
 
 describe("updateLiveSet - locator operations", () => {
+  let liveSet: MockObjectHandle;
+
   beforeEach(() => {
-    liveApiId.mockReturnValue("live_set_id");
-    vi.clearAllMocks();
+    liveSet = registerMockObject("live_set_id", { path: "live_set" });
   });
 
   describe("create locator", () => {
     it("should create locator at specified position", async () => {
-      setupLocatorCreationMocks({ time: 0 }); // 1|1 = 0 beats
+      setupLocatorCreationMocks(liveSet, { time: 0 }); // 1|1 = 0 beats
 
       const result = await updateLiveSet({
         locatorOperation: "create",
         locatorTime: "1|1",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "current_song_time",
-        0,
-      );
-      expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 0);
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "created",
         time: "1|1",
@@ -46,15 +41,7 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should create locator with name", async () => {
-      let locatorNameSet = null;
-
-      setupLocatorCreationMocks({ time: 16 }); // 5|1 = 16 beats
-
-      liveApiSet.mockImplementation(function (prop, value) {
-        if (prop === "name") {
-          locatorNameSet = value;
-        }
-      });
+      const { newCue } = setupLocatorCreationMocks(liveSet, { time: 16 }); // 5|1 = 16 beats
 
       const result = await updateLiveSet({
         locatorOperation: "create",
@@ -62,13 +49,9 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "Verse",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "current_song_time",
-        16,
-      );
-      expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(locatorNameSet).toBe("Verse");
+      expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(newCue.set).toHaveBeenCalledWith("name", "Verse");
       expect(result.locator).toStrictEqual({
         operation: "created",
         time: "5|1",
@@ -78,26 +61,29 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should stop playback before creating locator", async () => {
-      setupLocatorCreationMocks({ isPlaying: 1 });
+      setupLocatorCreationMocks(liveSet, { isPlaying: 1 });
 
       await updateLiveSet({
         locatorOperation: "create",
         locatorTime: "1|1",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("stop_playing");
+      expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
     });
 
     it("should skip creation if locator already exists at position", async () => {
-      liveApiGet.mockImplementation(function (prop) {
+      liveSet.get.mockImplementation((prop: string) => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("existing_cue");
-        if (prop === "time") return [16]; // 5|1 = 16 beats
-        if (prop === "name") return ["Existing"];
 
         return [0];
+      });
+
+      registerMockObject("existing_cue", {
+        path: "id existing_cue",
+        properties: { time: 16, name: "Existing" },
       });
 
       const result = await updateLiveSet({
@@ -107,7 +93,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       // Should NOT call set_or_delete_cue (would delete existing locator)
-      expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_exists",
@@ -130,7 +116,7 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("delete locator", () => {
     beforeEach(() => {
-      setupLocatorMocks({
+      setupLocatorMocks(liveSet, {
         cuePoints: [
           { id: "cue1", time: 0, name: "Intro" },
           { id: "cue2", time: 16, name: "Verse" },
@@ -144,12 +130,8 @@ describe("updateLiveSet - locator operations", () => {
         locatorId: "locator-0",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "current_song_time",
-        0,
-      );
-      expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 0);
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "deleted",
         id: "locator-0",
@@ -162,12 +144,8 @@ describe("updateLiveSet - locator operations", () => {
         locatorTime: "5|1",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "current_song_time",
-        16,
-      );
-      expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "deleted",
         time: "5|1",
@@ -175,28 +153,26 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should delete all locators by name", async () => {
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
+      liveSet.get.mockImplementation((prop: string) => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") return children("cue1", "cue2", "cue3");
 
-        if (this._path === "id cue1") {
-          if (prop === "time") return [0];
-          if (prop === "name") return ["Verse"];
-        }
-
-        if (this._path === "id cue2") {
-          if (prop === "time") return [16];
-          if (prop === "name") return ["Chorus"];
-        }
-
-        if (this._path === "id cue3") {
-          if (prop === "time") return [32];
-          if (prop === "name") return ["Verse"];
-        }
-
         return [0];
+      });
+
+      registerMockObject("cue1", {
+        path: "id cue1",
+        properties: { time: 0, name: "Verse" },
+      });
+      registerMockObject("cue2", {
+        path: "id cue2",
+        properties: { time: 16, name: "Chorus" },
+      });
+      registerMockObject("cue3", {
+        path: "id cue3",
+        properties: { time: 32, name: "Verse" },
       });
 
       const result = await updateLiveSet({
@@ -204,7 +180,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "Verse",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "deleted",
         count: 2,
@@ -229,7 +205,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorId: "locator-99",
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_not_found",
@@ -243,7 +219,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorTime: "100|1",
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "locator_not_found",
@@ -257,7 +233,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "NonExistent",
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         reason: "no_locators_found",
@@ -267,8 +243,10 @@ describe("updateLiveSet - locator operations", () => {
   });
 
   describe("rename locator", () => {
+    let cues: Map<string, MockObjectHandle>;
+
     beforeEach(() => {
-      setupLocatorMocks({
+      cues = setupLocatorMocks(liveSet, {
         cuePoints: [
           { id: "cue1", time: 0 },
           { id: "cue2", time: 16 },
@@ -283,7 +261,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "New Intro",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWith("name", "New Intro");
+      expect(cues.get("cue1")?.set).toHaveBeenCalledWith("name", "New Intro");
       expect(result.locator).toStrictEqual({
         operation: "renamed",
         id: "locator-0",
@@ -298,7 +276,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "New Verse",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWith("name", "New Verse");
+      expect(cues.get("cue2")?.set).toHaveBeenCalledWith("name", "New Verse");
       expect(result.locator).toStrictEqual({
         operation: "renamed",
         id: "locator-1",
@@ -347,7 +325,7 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("combined with other operations", () => {
     it("should allow locator operation with tempo change", async () => {
-      setupLocatorCreationMocks({ time: 0 });
+      setupLocatorCreationMocks(liveSet, { time: 0 });
 
       const result = await updateLiveSet({
         tempo: 140,
