@@ -41,11 +41,11 @@ body:
     attributes:
       label: AI provider and model
       description:
-        Optional — Which AI are you using? Are you using local models (e.g.
-        Ollama or LM Studio)?
-      placeholder: "e.g., OpenAI GPT 5.2, Ollama Qwen3 8B, N/A"
+        Which AI are you using? Are you using local models (e.g. Ollama or LM
+        Studio)? Enter N/A if not applicable.
+      placeholder: "e.g., OpenAI GPT 5.2, Ollama Qwen3 8B, or N/A"
     validations:
-      required: false
+      required: true
 
   - type: input
     id: ppal-version
