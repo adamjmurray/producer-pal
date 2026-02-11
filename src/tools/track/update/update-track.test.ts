@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
@@ -104,8 +104,7 @@ describe("updateTrack", () => {
   });
 
   it("should log warning when track ID doesn't exist", () => {
-    // "nonexistent" is not registered, so falls through to shared mock
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = updateTrack({ ids: "nonexistent" });
 
@@ -117,8 +116,7 @@ describe("updateTrack", () => {
   });
 
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
-    // "123" is registered (handled by registry), "nonexistent" is not
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
 
@@ -345,7 +343,7 @@ describe("updateTrack", () => {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
 
-        return null;
+        return [0];
       });
 
       updateTrack({
@@ -370,7 +368,7 @@ describe("updateTrack", () => {
           return [16711680]; // #FF0000 (exact match)
         }
 
-        return null;
+        return [0];
       });
 
       updateTrack({
@@ -392,7 +390,7 @@ describe("updateTrack", () => {
           return [1768495]; // #1AFC2F (quantized from #00FF00)
         }
 
-        return null;
+        return [0];
       };
 
       track123.get.mockImplementation(colorMock);

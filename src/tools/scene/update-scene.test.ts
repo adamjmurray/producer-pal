@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateScene } from "./update-scene.ts";
@@ -134,8 +134,7 @@ describe("updateScene", () => {
   });
 
   it("should log warning when scene ID doesn't exist", () => {
-    // "nonexistent" is not registered, so falls through to shared mock
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = updateScene({ ids: "nonexistent" });
 
@@ -147,8 +146,7 @@ describe("updateScene", () => {
   });
 
   it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
-    // "123" is registered (handled by registry), "nonexistent" is not
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = updateScene({ ids: "123, nonexistent", name: "Test" });
 
@@ -207,7 +205,7 @@ describe("updateScene", () => {
             return [16725558]; // #FF3636 (quantized from #FF0000)
           }
 
-          return null;
+          return [0];
         });
 
         updateScene({ ids: "123", color: "#FF0000" });
@@ -226,7 +224,7 @@ describe("updateScene", () => {
             return [16711680]; // #FF0000 (exact match)
           }
 
-          return null;
+          return [0];
         });
 
         updateScene({ ids: "123", color: "#FF0000" });
