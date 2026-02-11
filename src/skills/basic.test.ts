@@ -13,10 +13,10 @@ describe("buildInstructions", () => {
     expect(result).toContain("Summarize the Live Set");
     expect(result).toContain("Say the messagesForUser");
     expect(result).toContain("Ask what they'd like to create");
-    expect(result).not.toContain("project notes");
+    expect(result).not.toContain("project memory");
   });
 
-  it("includes project notes summary when notes exist", () => {
+  it("includes memory summary when content exists", () => {
     const context = {
       memory: {
         enabled: true,
@@ -27,11 +27,11 @@ describe("buildInstructions", () => {
     const result = buildInstructions(context);
 
     expect(result).toContain("Summarize the Live Set");
-    expect(result).toContain("Summarize the project notes");
-    expect(result).not.toContain("update the project notes");
+    expect(result).toContain("Summarize the project memory");
+    expect(result).not.toContain("update the memory");
   });
 
-  it("mentions project notes are writable when applicable", () => {
+  it("mentions memory is writable when applicable", () => {
     const context = {
       memory: {
         enabled: true,
@@ -41,11 +41,11 @@ describe("buildInstructions", () => {
     };
     const result = buildInstructions(context);
 
-    expect(result).toContain("Summarize the project notes");
-    expect(result).toContain("update the project notes");
+    expect(result).toContain("Summarize the project memory");
+    expect(result).toContain("update the memory");
   });
 
-  it("excludes project notes section when content is empty", () => {
+  it("excludes memory section when content is empty", () => {
     const context = {
       memory: {
         enabled: true,
@@ -55,10 +55,10 @@ describe("buildInstructions", () => {
     };
     const result = buildInstructions(context);
 
-    expect(result).not.toContain("project notes");
+    expect(result).not.toContain("project memory");
   });
 
-  it("excludes project notes section when content is null", () => {
+  it("excludes memory section when content is null", () => {
     // Test null content handling (runtime value may be null despite type)
     const context = {
       memory: {
@@ -69,7 +69,7 @@ describe("buildInstructions", () => {
     };
     const result = buildInstructions(context);
 
-    expect(result).not.toContain("project notes");
+    expect(result).not.toContain("project memory");
   });
 
   it("formats output with bullet points", () => {

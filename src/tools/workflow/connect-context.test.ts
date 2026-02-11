@@ -33,12 +33,10 @@ describe("connect", () => {
     expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
-    expect(result.$instructions).toContain("Summarize the project notes");
-    expect(result.$instructions).toContain(
-      "follow instructions in project notes",
-    );
+    expect(result.$instructions).toContain("Summarize the project memory");
+    expect(result.$instructions).toContain("follow instructions in memory");
     expect(result.$instructions).not.toContain(
-      "mention you can update the project notes",
+      "mention you can update the memory",
     );
   });
 
@@ -59,13 +57,9 @@ describe("connect", () => {
     expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
-    expect(result.$instructions).toContain("Summarize the project notes");
-    expect(result.$instructions).toContain(
-      "follow instructions in project notes",
-    );
-    expect(result.$instructions).toContain(
-      "mention you can update the project notes",
-    );
+    expect(result.$instructions).toContain("Summarize the project memory");
+    expect(result.$instructions).toContain("follow instructions in memory");
+    expect(result.$instructions).toContain("mention you can update the memory");
   });
 
   it("excludes project notes when context is disabled", () => {

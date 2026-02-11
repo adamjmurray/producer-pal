@@ -123,8 +123,8 @@ describe("ppal-session (connect action)", () => {
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project notes");
-      expect(parsed.$instructions).not.toContain("update the project notes");
+      expect(parsed.$instructions).toContain("Summarize the project memory");
+      expect(parsed.$instructions).not.toContain("update the memory");
     });
 
     it("includes writable instruction when memoryWritable is true", async () => {
@@ -136,8 +136,8 @@ describe("ppal-session (connect action)", () => {
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project notes");
-      expect(parsed.$instructions).toContain("update the project notes");
+      expect(parsed.$instructions).toContain("Summarize the project memory");
+      expect(parsed.$instructions).toContain("update the memory");
     });
 
     it("excludes projectNotes when enabled but content is empty", async () => {
