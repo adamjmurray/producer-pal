@@ -105,8 +105,61 @@ Requires macOS.
 Test the pre-release thoroughly on both macOS and Windows. Download directly
 from the GitHub pre-release page to ensure the files work correctly.
 
-See the [Release Testing Checklist](#release-testing-checklist) for detailed
-test steps. If issues are found, see
+**Setup:**
+
+- Uninstall the previous Claude Desktop extension and reinstall the downloaded
+  `Producer_Pal.mcpb`
+- Fresh Live Set with downloaded `Producer_Pal.amxd`
+- Leave `producer-pal-portal.js` in Downloads folder
+
+### 3A. Claude Desktop Testing
+
+Test the Claude Desktop extension (`Producer_Pal.mcpb`):
+
+- [ ] Connect and read Live Set
+- [ ] Create MIDI clip
+- [ ] Edit MIDI clip (add/modify notes)
+- [ ] Read samples
+- [ ] Create audio clip from sample
+- [ ] Start/stop playback
+
+### 3B. Built-in Chat UI Testing
+
+**Automated E2E tests** (requires Ableton Live running with device active):
+
+```sh
+npm run ui:test
+```
+
+This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
+models. See `e2e/webui/README.md` for details. These tests can be flakey, so
+manually check on anything that fails. Note: Requires `.env` file with API keys.
+
+**Manual checks:**
+
+- [ ] **Manual sanity check** - Pick one provider and do a Quick Connect and
+      then some task like generating a clip
+- [ ] **OpenRouter free model** - Test a free model (e.g., Devstral 2) with
+      Quick Connect (free models are excluded from E2E tests due to rate limits)
+- [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
+      and a simple task (not automated due to slow response times)
+
+### 3C. Portal Script Testing
+
+Test the downloaded portal script with LM Studio or another MCP client:
+
+```json
+"producer-pal": {
+  "command": "node",
+  "args": ["/Users/{username}/Downloads/producer-pal-portal.js"]
+}
+```
+
+- [ ] Connect and confirm `ppal-read-live-set` called
+
+---
+
+If issues are found, see
 [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).
 
 ## Step 4: Publish to npm / test npx
@@ -147,63 +200,6 @@ After testing succeeds:
    - Click "Edit"
    - Uncheck "Set as a pre-release"
    - Update release (no need to re-upload files)
-
-## Release Testing Checklist
-
-### Setup
-
-1. Create GitHub pre-release with downloaded files:
-   - `Producer_Pal.amxd`
-   - `Producer_Pal.mcpb`
-   - `producer-pal-portal.js`
-2. Clean slate:
-   - Uninstall previous Claude Desktop extension
-   - Fresh Live Set with downloaded `Producer_Pal.amxd`
-   - Leave `producer-pal-portal.js` in Downloads folder
-
-### Claude Desktop - Sanity Check
-
-- [ ] Connect and read Live Set
-- [ ] Create MIDI clip
-- [ ] Edit MIDI clip (add/modify notes)
-- [ ] Read samples
-- [ ] Create audio clip from sample
-- [ ] Start/stop playback
-
-### Built-in Chat UI - E2E Tests
-
-Run the automated Playwright tests (requires Ableton Live running with the
-device active):
-
-```sh
-npm run ui:test
-```
-
-This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
-models. See `e2e/webui/README.md` for details. These tests can be flakey, so
-manually check on anything that fails.
-
-Note: These tests require an `.env` file with API keys.
-
-### Built-in Chat UI - Manual Checks
-
-- [ ] **Manual sanity check** - Pick one provider and do a Quick Connect and
-      then some task like generating a clip
-- [ ] **OpenRouter free model** - Test a free model (e.g., Devstral 2) with
-      Quick Connect (free models are excluded from E2E tests due to rate limits)
-- [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
-      and a simple task (not automated due to slow response times)
-
-### LM Studio - Downloaded Portal
-
-```json
-"producer-pal": {
-  "command": "node",
-  "args": ["/Users/{username}/Downloads/producer-pal-portal.js"]
-}
-```
-
-- [ ] Connect and confirm `ppal-read-live-set` called
 
 ## Fixing Issues During Pre-Release
 
