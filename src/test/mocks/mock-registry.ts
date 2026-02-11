@@ -9,6 +9,7 @@ import {
   detectTypeFromPath,
   getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
+import { liveApiId } from "./mock-live-api.ts";
 
 export interface MockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
@@ -160,6 +161,15 @@ export function lookupMockObject(
   }
 
   return undefined;
+}
+
+/**
+ * Make unregistered LiveAPI objects non-existent (exists() returns false).
+ * Registered objects are unaffected since they use instance-level mocks.
+ * Use in tests that need to verify behavior for invalid/unknown IDs.
+ */
+export function mockNonExistentObjects(): void {
+  liveApiId.mockReturnValue("id 0");
 }
 
 /**
