@@ -6,13 +6,15 @@ create.
 
 ## Connection & Setup
 
-### Connect (`ppal-connect`)
+### Session Management (`ppal-session`)
 
-- Establish the connection with Ableton Live
+- Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
-- Provides project notes (see `ppal-memory`)
 - Provides the AI with a Producer Pal skill set that adapts to different AI
   model capabilities
+- Read and write project memory — persistent notes that help the AI understand
+  your goals across conversations
+- Search configured sample folder for audio files by filename or path
 
 ### Built-in Chat UI
 
@@ -175,14 +177,6 @@ Apply complex changes to clips using math expressions:
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
 
-## Sample Browser
-
-### Read Samples (`ppal-read-samples`)
-
-- List audio files from configured sample folder (in the Producer Pal device
-  Setup tab), so the AI knows what's available for creating audio clips
-- Search by filename or path substring
-
 ## Object Management
 
 ### Duplicate (`ppal-duplicate`)
@@ -216,11 +210,3 @@ limitation).
   - Switch between Session and Arrangement views
   - Show/hide browser and detail views
   - Focus on devices or clip details
-
-## Project Notes
-
-### Memory (`ppal-memory`)
-
-- Store project notes to help Producer Pal understand your goals
-- AI can read and update notes (when enabled)
-- Notes persist with your Live project across AI conversations

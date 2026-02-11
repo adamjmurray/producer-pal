@@ -19,7 +19,7 @@
 
 ### Scenario 1: Connection & Project Overview
 
-**Exercises:** `ppal-connect`, `ppal-read-live-set`, `ppal-update-live-set`
+**Exercises:** `ppal-session`, `ppal-read-live-set`, `ppal-update-live-set`
 
 | Turn | Prompt                                                   | Features Tested                           |
 | ---- | -------------------------------------------------------- | ----------------------------------------- |
@@ -82,8 +82,8 @@
 
 ### Scenario 6: Audio Sample Workflow
 
-**Exercises:** `ppal-read-samples`, `ppal-create-clip` (audio),
-`ppal-update-clip` (audio)
+**Exercises:** `ppal-session`, `ppal-create-clip` (audio), `ppal-update-clip`
+(audio)
 
 | Turn | Prompt                                      | Features Tested               |
 | ---- | ------------------------------------------- | ----------------------------- |
@@ -109,7 +109,7 @@
 
 ### Scenario 8: Memory & Cleanup
 
-**Exercises:** `ppal-memory`, `ppal-delete`
+**Exercises:** `ppal-session`, `ppal-delete`
 
 | Turn | Prompt                                                           | Features Tested     |
 | ---- | ---------------------------------------------------------------- | ------------------- |
@@ -124,7 +124,7 @@
 
 | Tool                   | Scenarios |
 | ---------------------- | --------- |
-| `ppal-connect`         | 1-8 (all) |
+| `ppal-session`         | 1-8 (all) |
 | `ppal-read-live-set`   | 1         |
 | `ppal-update-live-set` | 1         |
 | `ppal-create-track`    | 2         |
@@ -143,5 +143,3 @@
 | `ppal-duplicate`       | 5         |
 | `ppal-playback`        | 4         |
 | `ppal-select`          | 7         |
-| `ppal-memory`          | 8         |
-| `ppal-read-samples`    | 6         |
