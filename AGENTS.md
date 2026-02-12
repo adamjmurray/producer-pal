@@ -61,7 +61,9 @@ web UI architecture.
 
   List all authors who contributed to the file. New files should include the
   current year and the contributor's name. When AI tools modify a file, add the
-  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`).
+  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`). If an AI
+  assistance line already exists, append additional tools as a comma-separated
+  list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
