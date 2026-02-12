@@ -4,8 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
-import { liveApiSet } from "#src/test/mocks/mock-live-api.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
   type MockObjectHandle,
   registerMockObject,
@@ -75,16 +74,16 @@ export function setupClipWithNoTrackPath(clipId: string): MockObjectHandle {
 }
 
 /**
- * Setup mocks for playback tests with cue points.
- * Uses global liveApiGet mock for backward compatibility with locator tests.
+ * Setup registry-based mocks for playback tests with cue points.
  * @param options - Configuration options
  * @param options.cuePoints - Cue point definitions
  * @param options.liveSet - Live set properties
+ * @returns MockObjectHandle for the live_set object
  */
 export function setupCuePointMocks({
   cuePoints,
   liveSet = {},
-}: SetupCuePointMocksOptions): void {
+}: SetupCuePointMocksOptions): MockObjectHandle {
   const {
     numerator = 4,
     denominator = 4,
@@ -94,7 +93,7 @@ export function setupCuePointMocks({
     tracks = [],
   } = liveSet;
 
-  setupCuePointMocksBase({
+  const { liveSet: liveSetHandle } = setupCuePointMocksRegistry({
     cuePoints,
     liveSetProps: {
       signature_numerator: numerator,
@@ -105,31 +104,22 @@ export function setupCuePointMocks({
       tracks,
     },
   });
+
+  return liveSetHandle;
 }
 
 /**
- * Assert that a Live set property was set.
- * When called with (property, value): uses shared liveApiSet mock (backward compat).
- * When called with (handle, property, value): uses instance-level handle.set mock.
- * @param handleOrProperty - MockObjectHandle or property name
- * @param propertyOrValue - Property name or expected value
- * @param value - Expected value (only when handle is provided)
+ * Assert that a Live set property was set via a handle's instance mock.
+ * @param handle - MockObjectHandle for the live_set object
+ * @param property - Property name
+ * @param value - Expected value
  */
 export function expectLiveSetProperty(
-  handleOrProperty: MockObjectHandle | string,
-  propertyOrValue: unknown,
-  value?: unknown,
+  handle: MockObjectHandle,
+  property: string,
+  value: unknown,
 ): void {
-  if (typeof handleOrProperty === "string") {
-    // Old signature for backward compatibility (locator tests)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      handleOrProperty,
-      propertyOrValue,
-    );
-  } else {
-    expect(handleOrProperty.set).toHaveBeenCalledWith(propertyOrValue, value);
-  }
+  expect(handle.set).toHaveBeenCalledWith(property, value);
 }
 
 /**

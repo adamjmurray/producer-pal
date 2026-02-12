@@ -3,11 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  liveApiCall,
-  liveApiId,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import type { MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
 import {
@@ -16,20 +12,11 @@ import {
 } from "./playback-test-helpers.ts";
 
 describe("playback - locator support", () => {
-  beforeEach(() => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "id cue1") return "cue1";
-      if (this._path === "id cue2") return "cue2";
-      if (this._path === "id cue3") return "cue3";
-
-      return this._id;
-    });
-  });
-
   describe("startLocatorId", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      setupCuePointMocks({
+      liveSet = setupCuePointMocks({
         cuePoints: [
           { id: "cue1", time: 16, name: "Verse" }, // Beat 16 = 5|1 in 4/4
           { id: "cue2", time: 32, name: "Chorus" }, // Beat 32 = 9|1 in 4/4
@@ -43,8 +30,8 @@ describe("playback - locator support", () => {
         startLocatorId: "locator-0",
       });
 
-      expectLiveSetProperty("start_time", 16);
-      expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+      expectLiveSetProperty(liveSet, "start_time", 16);
+      expect(liveSet.call).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,
         currentTime: "5|1",
@@ -75,8 +62,10 @@ describe("playback - locator support", () => {
   });
 
   describe("startLocatorName", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      setupCuePointMocks({
+      liveSet = setupCuePointMocks({
         cuePoints: [
           { id: "cue1", time: 16, name: "Verse" },
           { id: "cue2", time: 32, name: "Chorus" },
@@ -90,8 +79,8 @@ describe("playback - locator support", () => {
         startLocatorName: "Chorus",
       });
 
-      expectLiveSetProperty("start_time", 32);
-      expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+      expectLiveSetProperty(liveSet, "start_time", 32);
+      expect(liveSet.call).toHaveBeenCalledWith("start_playing");
       expect(result.currentTime).toBe("9|1");
     });
 
@@ -120,8 +109,10 @@ describe("playback - locator support", () => {
   });
 
   describe("loopStartLocatorId and loopEndLocatorId", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      setupCuePointMocks({
+      liveSet = setupCuePointMocks({
         cuePoints: [
           { id: "cue1", time: 16, name: "Verse" },
           { id: "cue2", time: 32, name: "Chorus" },
@@ -138,8 +129,8 @@ describe("playback - locator support", () => {
         loopEndLocatorId: "locator-1",
       });
 
-      expectLiveSetProperty("loop_start", 16);
-      expectLiveSetProperty("loop_length", 16); // 32 - 16 = 16 beats
+      expectLiveSetProperty(liveSet, "loop_start", 16);
+      expectLiveSetProperty(liveSet, "loop_length", 16); // 32 - 16 = 16 beats
       expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
@@ -170,8 +161,10 @@ describe("playback - locator support", () => {
   });
 
   describe("loopStartLocatorName and loopEndLocatorName", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      setupCuePointMocks({
+      liveSet = setupCuePointMocks({
         cuePoints: [
           { id: "cue1", time: 16, name: "Verse" },
           { id: "cue2", time: 32, name: "Chorus" },
@@ -188,8 +181,8 @@ describe("playback - locator support", () => {
         loopEndLocatorName: "Chorus",
       });
 
-      expectLiveSetProperty("loop_start", 16);
-      expectLiveSetProperty("loop_length", 16);
+      expectLiveSetProperty(liveSet, "loop_start", 16);
+      expectLiveSetProperty(liveSet, "loop_length", 16);
       expect(result.arrangementLoop).toStrictEqual({
         start: "5|1",
         end: "9|1",
@@ -234,8 +227,10 @@ describe("playback - locator support", () => {
   });
 
   describe("combined locator start and loop", () => {
+    let liveSet: MockObjectHandle;
+
     beforeEach(() => {
-      setupCuePointMocks({
+      liveSet = setupCuePointMocks({
         cuePoints: [
           { id: "cue1", time: 0, name: "Intro" },
           { id: "cue2", time: 16, name: "Verse" },
@@ -254,10 +249,10 @@ describe("playback - locator support", () => {
         loopEndLocatorId: "locator-2",
       });
 
-      expectLiveSetProperty("start_time", 16);
-      expectLiveSetProperty("loop_start", 16);
-      expectLiveSetProperty("loop_length", 16);
-      expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+      expectLiveSetProperty(liveSet, "start_time", 16);
+      expectLiveSetProperty(liveSet, "loop_start", 16);
+      expectLiveSetProperty(liveSet, "loop_length", 16);
+      expect(liveSet.call).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,
         currentTime: "5|1",
