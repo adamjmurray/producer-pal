@@ -4,10 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+
+const TRACK_0_PATH = "live_set tracks 0";
 
 export interface ArrangementClipMockHandles {
   liveSet: MockObjectHandle;
@@ -27,7 +30,7 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
   });
 
   const track = registerMockObject("track-0", {
-    path: "live_set tracks 0",
+    path: TRACK_0_PATH,
     methods: {
       create_midi_clip: () => ["id", "arrangement_clip"],
     },
@@ -95,6 +98,56 @@ export function expectNotesAdded(
   expect(clipHandle.call).toHaveBeenCalledWith("add_new_notes", { notes });
 }
 
+export interface SessionAudioClipMockHandles {
+  liveSet: MockObjectHandle;
+  clipSlot: MockObjectHandle;
+  clip: MockObjectHandle;
+}
+
+interface SetupSessionAudioMocksOptions {
+  sceneIds?: string[];
+  clipLength?: number;
+  hasClip?: number;
+}
+
+/**
+ * Setup mocks for session audio clip creation tests.
+ * Registers LiveSet (time signature + scenes), Track, ClipSlot, and audio clip.
+ * @param options - Configuration options
+ * @param options.sceneIds - Scene IDs for the live set (default: ["scene_0"])
+ * @param options.clipLength - Length of the clip in beats (default: 8)
+ * @param options.hasClip - Whether the clip slot already has a clip (default: 0)
+ * @returns Handles for registered mock objects
+ */
+export function setupSessionAudioClipMocks(
+  options: SetupSessionAudioMocksOptions = {},
+): SessionAudioClipMockHandles {
+  const { sceneIds = ["scene_0"], clipLength = 8, hasClip = 0 } = options;
+
+  const liveSet = registerMockObject("live-set", {
+    path: "live_set",
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      scenes: children(...sceneIds),
+    },
+  });
+
+  registerMockObject("track-0", { path: "live_set tracks 0" });
+
+  const clipSlot = registerMockObject("clip-slot-0-0", {
+    path: "live_set tracks 0 clip_slots 0",
+    properties: { has_clip: hasClip },
+  });
+
+  const clip = registerMockObject("audio_clip_0_0", {
+    path: "live_set tracks 0 clip_slots 0 clip",
+    properties: { length: clipLength },
+  });
+
+  return { liveSet, clipSlot, clip };
+}
+
 interface SetupAudioArrangementMocksOptions {
   clipLength?: number;
 }
@@ -117,7 +170,7 @@ export function setupAudioArrangementClipMocks(
   });
 
   const track = registerMockObject("track-0", {
-    path: "live_set tracks 0",
+    path: TRACK_0_PATH,
     methods: {
       create_audio_clip: () => ["id", "arrangement_audio_clip"],
     },

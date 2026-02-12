@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  normalizeIdLike,
+  resolveMappedObjectProperties,
+} from "#src/test/helpers/path-mapped-mock-helpers.ts";
+import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -119,10 +123,6 @@ function createDefaultLiveSetProperties(): Record<string, unknown> {
   };
 }
 
-function normalizeIdLike(value: string): string {
-  return value.startsWith("id ") ? value.slice(3) : value;
-}
-
 function isLiveApiPathKey(key: string): boolean {
   return (
     key.startsWith("live_set ") ||
@@ -134,20 +134,4 @@ function isLiveApiPathKey(key: string): boolean {
 
 function defaultIdFromPath(path: string, pathIds: Map<string, string>): string {
   return pathIds.get(path) ?? path.replaceAll(/\s+/g, "/");
-}
-
-function resolveMappedObjectProperties(
-  objects: Record<string, Record<string, unknown>>,
-  id: string,
-  path: string,
-): Record<string, unknown> {
-  const normalizedId = normalizeIdLike(id);
-  const pathProperties = objects[path] ?? {};
-  const idProperties =
-    objects[normalizedId] ?? objects[`id ${normalizedId}`] ?? {};
-
-  return {
-    ...pathProperties,
-    ...idProperties,
-  };
 }
