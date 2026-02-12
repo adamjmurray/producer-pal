@@ -18,12 +18,12 @@ beforeEach(() => {
 
 describe("createPartialTile", () => {
   it("creates partial tile by combining helper functions", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 2,
       loop_end: 10,
       start_marker: 2,
     });
-    const { trackApi } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "400"],
@@ -46,7 +46,7 @@ describe("createPartialTile", () => {
 
     const result = createPartialTile(
       sourceClip,
-      trackApi,
+      track,
       500,
       6,
       1000,
@@ -58,12 +58,12 @@ describe("createPartialTile", () => {
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 1,
       loop_end: 11,
       start_marker: 1,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "400"],
@@ -80,7 +80,7 @@ describe("createPartialTile", () => {
 
     createPartialTile(
       sourceClip,
-      trackApi,
+      track,
       500,
       8,
       1000,
@@ -95,14 +95,14 @@ describe("createPartialTile", () => {
 
 describe("tileClipToRange", () => {
   it("creates correct number of full tiles without remainder", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 4,
       start_marker: 0,
       end_marker: 4,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "201"],
@@ -131,7 +131,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       12,
       1000,
@@ -162,14 +162,14 @@ describe("tileClipToRange", () => {
   });
 
   it("creates appropriate combination of full and partial tiles", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 4,
       start_marker: 0,
       end_marker: 4,
     });
-    const { trackApi } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "201"],
@@ -206,7 +206,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       10,
       1000,
@@ -217,14 +217,14 @@ describe("tileClipToRange", () => {
   });
 
   it("does not create partial tile when remainder is negligible", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 4,
       start_marker: 0,
       end_marker: 4,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
     });
 
@@ -237,7 +237,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       4.0005,
       1000,
@@ -249,14 +249,14 @@ describe("tileClipToRange", () => {
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 4,
       loop_end: 8,
       start_marker: 2,
       end_marker: 8,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
     });
 
@@ -267,7 +267,7 @@ describe("tileClipToRange", () => {
       },
     });
 
-    tileClipToRange(sourceClip, trackApi, 100, 4, 1000, mockContext, {
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext, {
       adjustPreRoll: false,
     });
 
@@ -275,18 +275,18 @@ describe("tileClipToRange", () => {
   });
 
   it("handles zero-length range gracefully", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 4,
       start_marker: 0,
       end_marker: 4,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {});
+    const track = setupTrackWithQueuedMethods(0, {});
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       0,
       1000,
@@ -298,14 +298,14 @@ describe("tileClipToRange", () => {
   });
 
   it("handles only partial tile when total length less than clip length", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 8,
       start_marker: 0,
       end_marker: 8,
     });
-    const { trackApi } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "300"],
         ["id", "301"],
@@ -328,7 +328,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       3,
       1000,
@@ -339,14 +339,14 @@ describe("tileClipToRange", () => {
   });
 
   it("sets start_marker correctly when using startOffset parameter", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 2,
       loop_end: 10,
       start_marker: 2,
       end_marker: 10,
     });
-    const { trackApi } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "201"],
@@ -375,7 +375,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       24,
       1000,
@@ -392,14 +392,14 @@ describe("tileClipToRange", () => {
   });
 
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,
       loop_start: 0,
       loop_end: 4,
       start_marker: 0,
       end_marker: 4,
     });
-    const { trackApi } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "201"],
@@ -428,7 +428,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(
       sourceClip,
-      trackApi,
+      track,
       100,
       12,
       1000,

@@ -41,6 +41,10 @@ export class LiveAPI {
   set: typeof liveApiSet;
   call: typeof liveApiCall;
 
+  get mock(): RegisteredMockObject | undefined {
+    return this._registered;
+  }
+
   constructor(path?: string) {
     this._path = path;
     this._id = path?.startsWith("id ")

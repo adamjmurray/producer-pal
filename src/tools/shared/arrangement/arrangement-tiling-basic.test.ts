@@ -25,11 +25,11 @@ beforeEach(() => {
 
 describe("createShortenedClipInHolding", () => {
   it("duplicates clip to holding area and shortens to target length", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 0,
       loop_end: 16,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
       create_midi_clip: [["id", "300"]],
       delete_clip: [null],
@@ -43,7 +43,7 @@ describe("createShortenedClipInHolding", () => {
 
     const result = createShortenedClipInHolding(
       sourceClip,
-      trackApi,
+      track,
       8,
       1000,
       true,
@@ -66,11 +66,11 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("calculates temp clip length correctly for different target lengths", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 0,
       loop_end: 32,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
       create_midi_clip: [["id", "300"]],
       delete_clip: [null],
@@ -84,7 +84,7 @@ describe("createShortenedClipInHolding", () => {
 
     createShortenedClipInHolding(
       sourceClip,
-      trackApi,
+      track,
       12,
       2000,
       true,
@@ -95,11 +95,11 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("creates audio clip in session for audio clip shortening", () => {
-    const { clipApi: sourceClip } = setupArrangementClip("100", 0, {
+    const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 0,
       loop_end: 16,
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
         ["id", "500"],
@@ -144,7 +144,7 @@ describe("createShortenedClipInHolding", () => {
 
     const result = createShortenedClipInHolding(
       sourceClip,
-      trackApi,
+      track,
       8,
       1000,
       false,
@@ -185,12 +185,12 @@ describe("createShortenedClipInHolding", () => {
 
 describe("moveClipFromHolding", () => {
   it("duplicates holding clip to target position and cleans up", () => {
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "400"]],
       delete_clip: [null],
     });
 
-    const result = moveClipFromHolding("200", trackApi, 500);
+    const result = moveClipFromHolding("200", track, 500);
 
     expect(track.call).toHaveBeenNthCalledWith(
       1,
@@ -204,12 +204,12 @@ describe("moveClipFromHolding", () => {
   });
 
   it("works with different holding clip IDs and positions", () => {
-    const { trackApi, track } = setupTrackWithQueuedMethods(2, {
+    const track = setupTrackWithQueuedMethods(2, {
       duplicate_clip_to_arrangement: [["id", "999"]],
       delete_clip: [null],
     });
 
-    moveClipFromHolding("777", trackApi, 1234);
+    moveClipFromHolding("777", track, 1234);
 
     expect(track.call).toHaveBeenNthCalledWith(
       1,
@@ -229,10 +229,10 @@ describe("adjustClipPreRoll", () => {
         loop_start: 4,
       },
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {});
+    const track = setupTrackWithQueuedMethods(0, {});
     const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, trackApi, true, mockContext);
+    adjustClipPreRoll(clip, track, true, mockContext);
 
     expect(track.call).not.toHaveBeenCalled();
     expect(clip.set).not.toHaveBeenCalled();
@@ -245,10 +245,10 @@ describe("adjustClipPreRoll", () => {
         loop_start: 4,
       },
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {});
+    const track = setupTrackWithQueuedMethods(0, {});
     const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, trackApi, true, mockContext);
+    adjustClipPreRoll(clip, track, true, mockContext);
 
     expect(track.call).not.toHaveBeenCalled();
     expect(clip.set).not.toHaveBeenCalled();
@@ -262,13 +262,13 @@ describe("adjustClipPreRoll", () => {
         end_time: 100,
       },
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       create_midi_clip: [["id", "300"]],
       delete_clip: [null],
     });
     const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, trackApi, true, mockContext);
+    adjustClipPreRoll(clip, track, true, mockContext);
 
     expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
     expect(track.call).toHaveBeenNthCalledWith(1, "create_midi_clip", 96, 4);
@@ -283,13 +283,13 @@ describe("adjustClipPreRoll", () => {
         end_time: 200,
       },
     });
-    const { trackApi, track } = setupTrackWithQueuedMethods(1, {
+    const track = setupTrackWithQueuedMethods(1, {
       create_midi_clip: [["id", "400"]],
       delete_clip: [null],
     });
     const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, trackApi, true, mockContext);
+    adjustClipPreRoll(clip, track, true, mockContext);
 
     expect(clip.set).toHaveBeenCalledWith("start_marker", 8);
     expect(track.call).toHaveBeenNthCalledWith(1, "create_midi_clip", 192, 8);
@@ -325,14 +325,14 @@ describe("adjustClipPreRoll", () => {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
 
-    const { trackApi, track } = setupTrackWithQueuedMethods(0, {
+    const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "800"]],
       delete_clip: [null],
     });
 
     const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, trackApi, false, mockContext);
+    adjustClipPreRoll(clip, track, false, mockContext);
 
     expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
     expect(slot.call).toHaveBeenCalledWith(

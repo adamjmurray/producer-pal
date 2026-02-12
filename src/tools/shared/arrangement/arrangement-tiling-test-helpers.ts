@@ -154,18 +154,15 @@ export function createQueuedMethod(
 }
 
 /**
- * Register a track with queued method responses and return both mock and LiveAPI.
+ * Register a track with queued method responses.
  * @param trackIndex - Track index
  * @param queues - Per-method queued return values
- * @returns Track LiveAPI object and registered mock
+ * @returns Track LiveAPI object (shares .get/.set/.call mocks with registered mock)
  */
 export function setupTrackWithQueuedMethods(
   trackIndex: number,
   queues: MethodQueues,
-): {
-  trackApi: LiveAPI;
-  track: RegisteredMockObject;
-} {
+): LiveAPI {
   const methods = Object.fromEntries(
     Object.entries(queues).map(([method, values]) => [
       method,
@@ -173,38 +170,29 @@ export function setupTrackWithQueuedMethods(
     ]),
   ) as Record<string, (...args: unknown[]) => unknown>;
 
-  const track = setupTrack(trackIndex, { methods });
+  setupTrack(trackIndex, { methods });
 
-  return {
-    trackApi: LiveAPI.from(`live_set tracks ${String(trackIndex)}`),
-    track,
-  };
+  return LiveAPI.from(`live_set tracks ${String(trackIndex)}`);
 }
 
 /**
- * Register an arrangement clip and return both mock and LiveAPI object.
+ * Register an arrangement clip.
  * @param clipId - Clip ID
  * @param trackIndex - Track index
  * @param properties - Clip property overrides
  * @param arrangementClipIndex - Arrangement clip index
- * @returns Clip LiveAPI object and registered mock
+ * @returns Clip LiveAPI object (shares .get/.set/.call mocks with registered mock)
  */
 export function setupArrangementClip(
   clipId: string,
   trackIndex: number,
   properties: Record<string, unknown>,
   arrangementClipIndex: number = 0,
-): {
-  clipApi: LiveAPI;
-  clip: RegisteredMockObject;
-} {
-  const clip = setupClip(clipId, {
+): LiveAPI {
+  setupClip(clipId, {
     path: `live_set tracks ${String(trackIndex)} arrangement_clips ${String(arrangementClipIndex)}`,
     properties,
   });
 
-  return {
-    clipApi: LiveAPI.from(`id ${clipId}`),
-    clip,
-  };
+  return LiveAPI.from(`id ${clipId}`);
 }
