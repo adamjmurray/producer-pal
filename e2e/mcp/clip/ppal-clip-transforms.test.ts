@@ -125,6 +125,13 @@ describe("ppal-clip-transforms (audio gain)", () => {
     // Clamping above maximum: 50 → 24
     await applyTransform(clipId, "gain = 50");
     expect(await readClipGain(clipId)).toBeCloseTo(24, 0);
+
+    // Curve: logarithmic fade in from -24 to 0
+    await applyTransform(clipId, "gain = curve(-24, 0, 0.5)");
+    const curveGain = await readClipGain(clipId);
+
+    expect(curveGain).toBeGreaterThanOrEqual(-24);
+    expect(curveGain).toBeLessThanOrEqual(0);
   });
 });
 
@@ -740,6 +747,26 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     for (const v of velocities) {
       expect(v).toBeGreaterThanOrEqual(60);
       expect(v).toBeLessThanOrEqual(120);
+    }
+
+    // Nested: round(rand()) for integer random transpose
+    await applyTransform(clipId, "pitch = 60 + round(rand(0, 12))");
+    const transposedNotes = await readClipNotes(clipId);
+    const pitchMatches = [...transposedNotes.matchAll(/([A-G][#b]?\d)/g)];
+
+    // All pitches should be C3 (60) through C4 (72)
+    expect(pitchMatches.length).toBeGreaterThan(0);
+
+    // Duration with rand and multiply operator
+    await applyTransform(clipId, "duration = rand(0.5, 1.5)");
+    const durNotes = await readClipNotes(clipId);
+    const durations = [...durNotes.matchAll(/t([\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    );
+
+    for (const d of durations) {
+      expect(d).toBeGreaterThanOrEqual(0.5);
+      expect(d).toBeLessThanOrEqual(1.5);
     }
   });
 
