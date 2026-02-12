@@ -3,14 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -20,28 +17,22 @@ import {
   mockTrackProperties,
   setupDrumRackMocks,
 } from "./helpers/read-track-test-helpers.ts";
+import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
+import {
+  createChainMockProperties,
+  createDeviceMockProperties,
+  createRackDeviceMockProperties,
+} from "./helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
   describe("trackId parameter", () => {
     it("reads track by trackId", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 123") {
-          return "123";
-        }
-
-        return this._id!;
-      });
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 123") {
-          return "live_set tracks 2";
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        "live_set tracks 2": mockTrackProperties({
+      registerMockObject("123", {
+        path: "live_set tracks 2",
+        type: "Track",
+        properties: mockTrackProperties({
           name: "Track by ID",
           color: 16711680, // Red
           arm: 1,
@@ -64,24 +55,10 @@ describe("readTrack", () => {
     });
 
     it("reads return track by trackId", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 456") {
-          return "456";
-        }
-
-        return this._id!;
-      });
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 456") {
-          return "live_set return_tracks 1";
-        }
-
-        return this._path;
-      });
-      liveApiType.mockReturnValue("Track");
-
-      mockLiveApiGet({
-        "live_set return_tracks 1": mockTrackProperties({
+      registerMockObject("456", {
+        path: "live_set return_tracks 1",
+        type: "Track",
+        properties: mockTrackProperties({
           name: "Return by ID",
           has_midi_input: 0,
           color: 65280, // Green
@@ -104,24 +81,10 @@ describe("readTrack", () => {
     });
 
     it("reads master track by trackId", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 789") {
-          return "789";
-        }
-
-        return this._id!;
-      });
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 789") {
-          return "live_set master_track";
-        }
-
-        return this._path;
-      });
-      liveApiType.mockReturnValue("Track");
-
-      mockLiveApiGet({
-        "live_set master_track": mockTrackProperties({
+      registerMockObject("789", {
+        path: "live_set master_track",
+        type: "Track",
+        properties: mockTrackProperties({
           name: "Master by ID",
           has_midi_input: 0,
           color: 16777215, // White
@@ -143,7 +106,7 @@ describe("readTrack", () => {
     });
 
     it("throws error when trackId does not exist", () => {
-      liveApiId.mockReturnValue("id 0");
+      mockNonExistentObjects();
 
       expect(() => {
         readTrack({ trackId: "nonexistent" });
@@ -157,23 +120,10 @@ describe("readTrack", () => {
     });
 
     it("ignores category when trackId is provided", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 999") {
-          return "999";
-        }
-
-        return this._id!;
-      });
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id 999") {
-          return "live_set tracks 0";
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        "live_set tracks 0": mockTrackProperties({
+      registerMockObject("999", {
+        path: "live_set tracks 0",
+        type: "Track",
+        properties: mockTrackProperties({
           name: "Track ignores type",
         }),
       });
@@ -202,7 +152,7 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but NO chains
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "drumrack1",
         name: "Test Drum Rack",
         type: "drum-rack",
@@ -234,7 +184,7 @@ describe("readTrack", () => {
       });
 
       // Should have instrument WITHOUT chains (drum racks don't expose main chains)
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "drumrack1",
         name: "Test Drum Rack",
         type: "drum-rack",
@@ -253,89 +203,75 @@ describe("readTrack", () => {
     });
 
     it("strips chains from all device types when using drum-maps", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "midi_effect_rack";
-          case "live_set tracks 0 devices 1":
-            return "instrument_rack";
-          case "live_set tracks 0 devices 2":
-            return "audio_effect_rack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "midi_chain";
-          case "live_set tracks 0 devices 1 chains 0":
-            return "inst_chain";
-          case "live_set tracks 0 devices 2 chains 0":
-            return "audio_chain";
-          default:
-            return this._id!;
-        }
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: mockTrackProperties({
           devices: children(
             "midi_effect_rack",
             "instrument_rack",
             "audio_effect_rack",
           ),
         }),
-        midi_effect_rack: {
+      });
+      registerMockObject("midi_effect_rack", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "MIDI Effect Rack",
-          class_name: "MidiEffectGroupDevice",
-          class_display_name: "MIDI Effect Rack",
+          className: "MidiEffectGroupDevice",
+          classDisplayName: "MIDI Effect Rack",
           type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("midi_chain"),
-          return_chains: [],
-        },
-        instrument_rack: {
+          chainIds: ["midi_chain"],
+        }),
+      });
+      registerMockObject("instrument_rack", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "Instrument Rack",
-          class_name: "InstrumentGroupDevice",
-          class_display_name: "Instrument Rack",
+          className: "InstrumentGroupDevice",
+          classDisplayName: "Instrument Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("inst_chain"),
-          return_chains: [],
-        },
-        audio_effect_rack: {
+          chainIds: ["inst_chain"],
+        }),
+      });
+      registerMockObject("audio_effect_rack", {
+        path: "live_set tracks 0 devices 2",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "Audio Effect Rack",
-          class_name: "AudioEffectGroupDevice",
-          class_display_name: "Audio Effect Rack",
+          className: "AudioEffectGroupDevice",
+          classDisplayName: "Audio Effect Rack",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("audio_chain"),
-          return_chains: [],
-        },
-        midi_chain: {
+          chainIds: ["audio_chain"],
+        }),
+      });
+      registerMockObject("midi_chain", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "MIDI Chain",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
-        inst_chain: {
+          color: 0,
+          deviceIds: [],
+        }),
+      });
+      registerMockObject("inst_chain", {
+        path: "live_set tracks 0 devices 1 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Inst Chain",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
-        audio_chain: {
+          color: 0,
+          deviceIds: [],
+        }),
+      });
+      registerMockObject("audio_chain", {
+        path: "live_set tracks 0 devices 2 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Audio Chain",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
+          color: 0,
+          deviceIds: [],
+        }),
       });
 
       const result = readTrack({
@@ -346,13 +282,13 @@ describe("readTrack", () => {
       // All devices should have chains stripped
       const midiEffects = result.midiEffects as Record<string, unknown>[];
 
-      expect(midiEffects[0]).toStrictEqual({
+      expect(stripPathProperties(midiEffects[0])).toStrictEqual({
         id: "midi_effect_rack",
         type: "midi-effect-rack",
       });
       expect(midiEffects[0]!.chains).toBeUndefined();
 
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "instrument_rack",
         type: "instrument-rack",
       });
@@ -362,7 +298,7 @@ describe("readTrack", () => {
 
       const audioEffects = result.audioEffects as Record<string, unknown>[];
 
-      expect(audioEffects[0]).toStrictEqual({
+      expect(stripPathProperties(audioEffects[0])).toStrictEqual({
         id: "audio_effect_rack",
         type: "audio-effect-rack",
       });
@@ -370,48 +306,38 @@ describe("readTrack", () => {
     });
 
     it("uses drum-maps by default (not chains)", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 devices 0":
-            return "instrument_rack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          default:
-            return this._id!;
-        }
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: mockTrackProperties({
           devices: children("instrument_rack"),
         }),
-        instrument_rack: {
+      });
+      registerMockObject("instrument_rack", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "Instrument Rack",
-          class_name: "InstrumentGroupDevice",
-          class_display_name: "Instrument Rack",
+          className: "InstrumentGroupDevice",
+          classDisplayName: "Instrument Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("chain1"),
-          return_chains: [],
-        },
-        chain1: {
+          chainIds: ["chain1"],
+        }),
+      });
+      registerMockObject("chain1", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Chain 1",
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: [],
-        },
+          color: 0,
+          deviceIds: [],
+        }),
       });
 
       // Call with NO include param - should use defaults
       const result = readTrack({ trackIndex: 0 });
 
       // Should have instrument but NO chains (proving drum-maps is default, not chains)
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "instrument_rack",
         type: "instrument-rack",
       });
@@ -421,19 +347,21 @@ describe("readTrack", () => {
     });
 
     it("handles drum-maps with no drum racks gracefully", () => {
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: mockTrackProperties({
           devices: children("wavetable"),
         }),
-        wavetable: {
+      });
+      registerMockObject("wavetable", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Wavetable",
-          class_name: "InstrumentVector",
-          class_display_name: "Wavetable",
+          className: "InstrumentVector",
+          classDisplayName: "Wavetable",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }),
       });
 
       const result = readTrack({
@@ -442,7 +370,7 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but no drumMap
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "wavetable",
         type: "instrument: Wavetable",
       });

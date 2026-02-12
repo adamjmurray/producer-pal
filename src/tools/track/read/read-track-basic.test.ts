@@ -7,17 +7,78 @@ import { VERSION } from "#src/shared/version.ts";
 import {
   children,
   expectedClip,
-  liveApiId,
   liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
+
+function createSoloedMidiTrackProperties(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    has_midi_input: 1,
+    name: "Track 1",
+    color: 16711680, // Red
+    mute: 0,
+    solo: 1,
+    arm: 1,
+    can_be_armed: 1,
+    playing_slot_index: 2,
+    fired_slot_index: 3,
+    clip_slots: [],
+    devices: [],
+    ...overrides,
+  };
+}
+
+function mockThisDeviceOnTrack1(): void {
+  liveApiPath.mockImplementation(function (this: { _path?: string }) {
+    if (this._path === "this_device") {
+      return "live_set tracks 1 devices 0";
+    }
+
+    return this._path;
+  });
+}
+
+function registerTrackWithSessionSlots(name: string): void {
+  registerMockObject("track3", {
+    path: "live_set tracks 2",
+    type: "Track",
+    properties: {
+      has_midi_input: 1,
+      name,
+      color: 255, // Blue
+      mute: 0,
+      solo: 0,
+      arm: 0,
+      playing_slot_index: 0,
+      fired_slot_index: -1,
+      back_to_arranger: 1,
+      clip_slots: children("slot1", "slot2", "slot3"),
+      devices: [],
+    },
+  });
+}
+
+function registerSessionClipMocksForTrack2(): void {
+  registerMockObject("clip1", {
+    path: "live_set tracks 2 clip_slots 0 clip",
+  });
+  registerMockObject("0", {
+    path: "live_set tracks 2 clip_slots 1 clip",
+    type: "Clip",
+  });
+  registerMockObject("clip2", {
+    path: "live_set tracks 2 clip_slots 2 clip",
+  });
+}
 
 describe("readTrack", () => {
   it("throws when the track does not exist", () => {
-    liveApiId.mockReturnValue("id 0");
+    registerMockObject("0", { path: "live_set tracks 99", type: "Track" });
 
     expect(() => readTrack({ trackIndex: 99 })).toThrow(
       "readTrack: trackIndex 99 does not exist",
@@ -25,32 +86,10 @@ describe("readTrack", () => {
   });
 
   it("returns track information for MIDI tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set scenes 1":
-          return "scene2";
-        default:
-          // make default mocks appear to not exist:
-          return "id 0";
-      }
-    });
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Track 1",
-        color: 16711680, // Red
-        mute: 0,
-        solo: 1,
-        arm: 1,
-        can_be_armed: 1,
-        playing_slot_index: 2,
-        fired_slot_index: 3,
-        clip_slots: children("slot1", "slot2"),
-        devices: [],
+    setupTrackPathMappedMocks({
+      trackId: "track1",
+      objects: {
+        Track: createSoloedMidiTrackProperties(),
       },
     });
 
@@ -73,19 +112,22 @@ describe("readTrack", () => {
   });
 
   it("returns track information for audio tracks", () => {
-    liveApiId.mockReturnValue("track2");
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 0,
-        name: "Audio Track",
-        color: 65280, // Green
-        mute: 1,
-        solo: 0,
-        arm: 0,
-        playing_slot_index: -1,
-        fired_slot_index: -1,
-        clip_slots: [],
-        devices: [],
+    setupTrackPathMappedMocks({
+      trackPath: "live_set tracks 1",
+      trackId: "track2",
+      objects: {
+        Track: {
+          has_midi_input: 0,
+          name: "Audio Track",
+          color: 65280, // Green
+          mute: 1,
+          solo: 0,
+          arm: 0,
+          playing_slot_index: -1,
+          fired_slot_index: -1,
+          clip_slots: [],
+          devices: [],
+        },
       },
     });
 
@@ -105,35 +147,15 @@ describe("readTrack", () => {
   });
 
   it("returns track group information", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set scenes 1":
-          return "scene2";
-        default:
-          // make default mocks appear to not exist:
-          return "id 0";
-      }
-    });
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Track 1",
-        color: 16711680, // Red
-        mute: 0,
-        solo: 1,
-        arm: 1,
-        can_be_armed: 0, // Group tracks can't be armed
-        is_foldable: 1,
-        is_grouped: 1,
-        group_track: ["id", 456],
-        playing_slot_index: 2,
-        fired_slot_index: 3,
-        clip_slots: children("slot1", "slot2"),
-        devices: [],
+    setupTrackPathMappedMocks({
+      trackId: "track1",
+      objects: {
+        Track: createSoloedMidiTrackProperties({
+          can_be_armed: 0, // Group tracks can't be armed
+          is_foldable: 1,
+          is_grouped: 1,
+          group_track: ["id", 456],
+        }),
       },
     });
 
@@ -158,17 +180,17 @@ describe("readTrack", () => {
   });
 
   it("should detect Producer Pal host track", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "this_device") {
-        return "live_set tracks 1 devices 0";
-      }
+    mockThisDeviceOnTrack1();
 
-      return this._path;
+    registerMockObject("track1", {
+      path: "live_set tracks 1",
+      type: "Track",
+      properties: mockTrackProperties(),
     });
-
-    liveApiId.mockReturnValue("track1");
-    mockLiveApiGet({
-      Track: mockTrackProperties(),
+    registerMockObject("track0", {
+      path: "live_set tracks 0",
+      type: "Track",
+      properties: mockTrackProperties(),
     });
 
     const result = readTrack({ trackIndex: 1 });
@@ -183,18 +205,20 @@ describe("readTrack", () => {
   });
 
   it("should omit instrument property when null for Producer Pal host track", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "this_device") {
-        return "live_set tracks 1 devices 0";
-      }
+    mockThisDeviceOnTrack1();
 
-      return this._path;
-    });
-
-    liveApiId.mockReturnValue("track1");
-    mockLiveApiGet({
-      Track: mockTrackProperties({
+    registerMockObject("track1", {
+      path: "live_set tracks 1",
+      type: "Track",
+      properties: mockTrackProperties({
         devices: [], // No devices means instrument will be null
+      }),
+    });
+    registerMockObject("track0", {
+      path: "live_set tracks 0",
+      type: "Track",
+      properties: mockTrackProperties({
+        devices: [],
       }),
     });
 
@@ -213,41 +237,8 @@ describe("readTrack", () => {
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set tracks 2":
-          return "track3";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set scenes 1":
-          return "scene2";
-        case "live_set scenes 2":
-          return "scene3";
-        case "live_set tracks 2 clip_slots 0 clip":
-          return "clip1";
-        case "live_set tracks 2 clip_slots 2 clip":
-          return "clip2";
-        default:
-          // make default mocks appear to not exist:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Track with Clips",
-        color: 255, // Blue
-        mute: 0,
-        solo: 0,
-        arm: 0,
-        playing_slot_index: 0,
-        fired_slot_index: -1,
-        back_to_arranger: 1,
-        clip_slots: children("slot1", "slot2", "slot3"),
-        devices: [],
-      },
-    });
+    registerTrackWithSessionSlots("Track with Clips");
+    registerSessionClipMocksForTrack2();
 
     const result = readTrack({ trackIndex: 2 });
 
@@ -274,38 +265,10 @@ describe("readTrack", () => {
   });
 
   it("returns arrangementClips when the track has clips in Arrangement view", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set tracks 2":
-          return "track3";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set scenes 1":
-          return "scene2";
-        case "live_set scenes 2":
-          return "scene3";
-        case "id arr_clip1":
-        case "id arr_clip2":
-          return this._path.substring(3);
-        default:
-          // make default mocks appear to not exist:
-          return "id 0";
-      }
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._id) {
-        case "arr_clip1":
-          return "live_set tracks 2 arrangement_clips 0";
-        case "arr_clip2":
-          return "live_set tracks 2 arrangement_clips 1";
-        default:
-          return this._path;
-      }
-    });
-
-    mockLiveApiGet({
-      Track: {
+    registerMockObject("track3", {
+      path: "live_set tracks 2",
+      type: "Track",
+      properties: {
         has_midi_input: 1,
         name: "Track with Arrangement Clips",
         color: 255,
@@ -313,10 +276,18 @@ describe("readTrack", () => {
         arrangement_clips: children("arr_clip1", "arr_clip2"),
         devices: [],
       },
-      arr_clip1: {
+    });
+    registerMockObject("arr_clip1", {
+      path: "live_set tracks 2 arrangement_clips 0",
+      type: "Clip",
+      properties: {
         is_arrangement_clip: 1,
       },
-      arr_clip2: {
+    });
+    registerMockObject("arr_clip2", {
+      path: "live_set tracks 2 arrangement_clips 1",
+      type: "Clip",
+      properties: {
         is_arrangement_clip: 1,
       },
     });
@@ -331,57 +302,8 @@ describe("readTrack", () => {
   });
 
   it("returns session clip count when includeSessionClips is false", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set tracks 2":
-          return "track3";
-        case "live_set tracks 2 clip_slots 0 clip": // Path-based access for slot 0
-          return "clip1";
-        case "live_set tracks 2 clip_slots 1 clip": // Path-based access for slot 1 (empty)
-          return "id 0";
-        case "live_set tracks 2 clip_slots 2 clip": // Path-based access for slot 2
-          return "clip2";
-        case "id slot1 clip": // Direct access to slot1's clip
-          return "clip1";
-        case "id slot3 clip": // Direct access to slot3's clip
-          return "clip2";
-        case "clip1":
-          return "clip1";
-        case "clip2":
-          return "clip2";
-        case "id clip1":
-          return "clip1";
-        case "id clip2":
-          return "clip2";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      Track: {
-        has_midi_input: 1,
-        name: "Track with Clips",
-        color: 255,
-        mute: 0,
-        solo: 0,
-        arm: 0,
-        playing_slot_index: 0,
-        fired_slot_index: -1,
-        back_to_arranger: 1,
-        clip_slots: children("slot1", "slot2", "slot3"),
-        devices: [],
-      },
-      "id slot1": {
-        clip: ["id", "clip1"],
-      },
-      "id slot2": {
-        clip: ["id", 0],
-      },
-      "id slot3": {
-        clip: ["id", "clip2"],
-      },
-    });
+    registerTrackWithSessionSlots("Track with Clips");
+    registerSessionClipMocksForTrack2();
 
     const result = readTrack({
       trackIndex: 2,
@@ -393,17 +315,10 @@ describe("readTrack", () => {
   });
 
   it("returns arrangement clip count when includeArrangementClips is false", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set tracks 2":
-          return "track3";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      Track: {
+    registerMockObject("track3", {
+      path: "live_set tracks 2",
+      type: "Track",
+      properties: {
         has_midi_input: 1,
         name: "Track with Arrangement Clips",
         color: 255,
@@ -422,17 +337,10 @@ describe("readTrack", () => {
   });
 
   it("returns arrangement clip count when includeArrangementClips is false (additional test)", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set tracks 1":
-          return "track2";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      Track: {
+    registerMockObject("track2", {
+      path: "live_set tracks 1",
+      type: "Track",
+      properties: {
         has_midi_input: 1,
         name: "Arrangement ID Test Track",
         color: 255,

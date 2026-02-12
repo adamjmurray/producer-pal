@@ -3,30 +3,33 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
+import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
 import {
-  mockTrackProperties,
-  setupDevicePathIdMock,
-} from "./helpers/read-track-test-helpers.ts";
+  ALL_DEVICE_INCLUDE_OPTIONS,
+  createChainMockProperties,
+  createDeviceMockProperties,
+  createRackDeviceMockProperties,
+  createSinglePianoChainRackExpectation,
+  setupInstrumentRackOnTrack0,
+} from "./helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
 
 describe("readTrack", () => {
   describe("devices", () => {
     it("returns null instrument when track has no devices", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: [],
-        }),
+        },
       });
 
       const result = readTrack({ trackIndex: 0 });
@@ -37,38 +40,42 @@ describe("readTrack", () => {
     });
 
     it("categorizes devices correctly", () => {
-      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: children("device1", "device2", "device3"),
-        }),
-        device1: {
+        },
+      });
+      registerMockObject("device1", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Custom Analog",
-          class_name: "InstrumentVector",
-          class_display_name: "Analog",
+          className: "InstrumentVector",
+          classDisplayName: "Analog",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        device2: {
+        }),
+      });
+      registerMockObject("device2", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Custom Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
+          className: "Reverb",
+          classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        device3: {
+        }),
+      });
+      registerMockObject("device3", {
+        path: "live_set tracks 0 devices 2",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Custom Note Length",
-          class_name: "MidiNoteLength",
-          class_display_name: "Note Length",
+          className: "MidiNoteLength",
+          classDisplayName: "Note Length",
           type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-          is_active: 0,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+          isActive: 0,
+        }),
       });
 
       const result = readTrack({
@@ -84,13 +91,13 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "device1",
         type: "instrument: Analog",
         name: "Custom Analog",
       });
 
-      expect(result.audioEffects).toStrictEqual([
+      expect(stripPathProperties(result.audioEffects)).toStrictEqual([
         {
           id: "device2",
           type: "audio-effect: Reverb",
@@ -98,7 +105,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      expect(result.midiEffects).toStrictEqual([
+      expect(stripPathProperties(result.midiEffects)).toStrictEqual([
         {
           id: "device3",
           type: "midi-effect: Note Length",
@@ -109,27 +116,30 @@ describe("readTrack", () => {
     });
 
     it("correctly identifies drum rack devices", () => {
-      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: children("device1"),
-        }),
-        device1: {
-          name: "My Drums",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          drum_pads: [],
-          return_chains: [],
         },
+      });
+      registerMockObject("device1", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
+          name: "My Drums",
+          className: "DrumGroupDevice",
+          classDisplayName: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          canHaveDrumPads: 1,
+          extraProperties: {
+            drum_pads: [],
+          },
+        }),
       });
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "device1",
         name: "My Drums",
         type: "drum-rack",
@@ -138,46 +148,40 @@ describe("readTrack", () => {
     });
 
     it("includes all device categories when explicitly requested", () => {
-      setupDevicePathIdMock({ "live_set tracks 0": "track1" });
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: children("device1", "device2"),
-        }),
-        device1: {
+        },
+      });
+      registerMockObject("device1", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "My Drums",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
+          className: "DrumGroupDevice",
+          classDisplayName: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: [],
-          return_chains: [],
-        },
-        device2: {
+          canHaveDrumPads: 1,
+        }),
+      });
+      registerMockObject("device2", {
+        path: "live_set tracks 0 devices 1",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
+          className: "Reverb",
+          classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }),
       });
 
       const result = readTrack({
         trackIndex: 0,
-        include: [
-          "clip-notes",
-          "chains",
-          "instruments",
-          "session-clips",
-          "arrangement-clips",
-          "audio-effects",
-        ],
+        include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "device1",
         type: "drum-rack",
         name: "My Drums",
@@ -189,52 +193,32 @@ describe("readTrack", () => {
       >;
 
       expect(audioEffects).toHaveLength(1);
-      expect(audioEffects[0]).toStrictEqual({
+      expect(stripPathProperties(audioEffects[0])).toStrictEqual({
         id: "device2",
         type: "audio-effect: Reverb",
       });
     });
 
     it("includes nested devices from instrument rack chains", () => {
-      setupDevicePathIdMock({
-        "live_set tracks 0": "track1",
-        "live_set tracks 0 devices 0": "rack1",
-        "live_set tracks 0 devices 0 chains 0": "chain1",
-        "live_set tracks 0 devices 0 chains 0 devices 0": "nested_device1",
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          devices: children("rack1"),
-        }),
-        rack1: {
-          name: "My Custom Rack",
-          class_name: "InstrumentGroupDevice",
-          class_display_name: "Instrument Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("chain1"),
-          return_chains: [],
-        },
-        chain1: {
+      setupInstrumentRackOnTrack0(["chain1"]);
+      registerMockObject("chain1", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Piano",
           color: 16711680, // Red
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("nested_device1"),
-        },
-        nested_device1: {
+          deviceIds: ["nested_device1"],
+        }),
+      });
+      registerMockObject("nested_device1", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Lead Synth",
-          class_name: "Operator",
-          class_display_name: "Operator",
+          className: "Operator",
+          classDisplayName: "Operator",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }),
       });
 
       const result = readTrack({
@@ -242,80 +226,52 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toStrictEqual({
-        id: "rack1",
-        type: "instrument-rack",
-        name: "My Custom Rack",
-        chains: [
-          {
-            id: "chain1",
-            type: "Chain",
-            name: "Piano",
-            color: "#FF0000",
-            devices: [
-              {
-                id: "nested_device1",
-                type: "instrument: Operator",
-                name: "Lead Synth",
-              },
-            ],
-          },
-        ],
-      });
+      expect(stripPathProperties(result.instrument)).toStrictEqual(
+        createSinglePianoChainRackExpectation("nested_device1"),
+      );
     });
 
     it("includes nested devices from audio effect rack chains", () => {
-      setupDevicePathIdMock({
-        "live_set tracks 0": "track1",
-        "live_set tracks 0 devices 0": "fx_rack1",
-        "live_set tracks 0 devices 0 chains 0": "chain1",
-        "live_set tracks 0 devices 0 chains 0 devices 0": "nested_effect1",
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: children("fx_rack1"),
-        }),
-        fx_rack1: {
-          name: "Master FX",
-          class_name: "AudioEffectGroupDevice",
-          class_display_name: "Audio Effect Rack",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("chain1"),
-          return_chains: [],
         },
-        chain1: {
+      });
+      registerMockObject("fx_rack1", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
+          name: "Master FX",
+          className: "AudioEffectGroupDevice",
+          classDisplayName: "Audio Effect Rack",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          chainIds: ["chain1"],
+        }),
+      });
+      registerMockObject("chain1", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Filter Chain",
           color: 255, // Blue
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("nested_effect1"),
-        },
-        nested_effect1: {
+          deviceIds: ["nested_effect1"],
+        }),
+      });
+      registerMockObject("nested_effect1", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Sweep Filter",
-          class_name: "AutoFilter2",
-          class_display_name: "Auto Filter",
+          className: "AutoFilter2",
+          classDisplayName: "Auto Filter",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }),
       });
 
       const result = readTrack({
         trackIndex: 0,
-        include: [
-          "clip-notes",
-          "chains",
-          "instruments",
-          "session-clips",
-          "arrangement-clips",
-          "audio-effects",
-        ],
+        include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
       const audioEffects2 = result.audioEffects as Array<
@@ -323,7 +279,7 @@ describe("readTrack", () => {
       >;
 
       expect(audioEffects2).toHaveLength(1);
-      expect(audioEffects2[0]).toStrictEqual({
+      expect(stripPathProperties(audioEffects2[0])).toStrictEqual({
         id: "fx_rack1",
         type: "audio-effect-rack",
         name: "Master FX",
@@ -346,68 +302,62 @@ describe("readTrack", () => {
     });
 
     it("handles deeply nested racks", () => {
-      setupDevicePathIdMock({
-        "live_set tracks 0": "track1",
-        "live_set tracks 0 devices 0": "outer_rack",
-        "live_set tracks 0 devices 0 chains 0": "outer_chain",
-        "live_set tracks 0 devices 0 chains 0 devices 0": "inner_rack",
-        "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
-          "inner_chain",
-        "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0":
-          "deep_device",
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           devices: children("outer_rack"),
-        }),
-        outer_rack: {
-          name: "Master FX",
-          class_name: "InstrumentGroupDevice",
-          class_display_name: "Instrument Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("outer_chain"),
-          return_chains: [],
         },
-        outer_chain: {
+      });
+      registerMockObject("outer_rack", {
+        path: "live_set tracks 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
+          name: "Master FX",
+          className: "InstrumentGroupDevice",
+          classDisplayName: "Instrument Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          chainIds: ["outer_chain"],
+        }),
+      });
+      registerMockObject("outer_chain", {
+        path: "live_set tracks 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Wet",
           color: 255, // Blue
-          mute: 0,
-          muted_via_solo: 0,
-          solo: 0,
-          devices: children("inner_rack"),
-        },
-        inner_rack: {
+          deviceIds: ["inner_rack"],
+        }),
+      });
+      registerMockObject("inner_rack", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        type: "Device",
+        properties: createRackDeviceMockProperties({
           name: "Reverb Chain",
-          class_name: "AudioEffectGroupDevice",
-          class_display_name: "Audio Effect Rack",
+          className: "AudioEffectGroupDevice",
+          classDisplayName: "Audio Effect Rack",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 0,
-          chains: children("inner_chain"),
-          return_chains: [],
-        },
-        inner_chain: {
+          chainIds: ["inner_chain"],
+        }),
+      });
+      registerMockObject("inner_chain", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0",
+        type: "Chain",
+        properties: createChainMockProperties({
           name: "Hall",
           color: 65280, // Green
-          mute: 0,
-          muted_via_solo: 0,
           solo: 1,
-          devices: children("deep_device"),
-        },
-        deep_device: {
+          deviceIds: ["deep_device"],
+        }),
+      });
+      registerMockObject("deep_device", {
+        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0",
+        type: "Device",
+        properties: createDeviceMockProperties({
           name: "Big Hall",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
+          className: "Reverb",
+          classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        }),
       });
 
       const result = readTrack({
@@ -415,7 +365,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(result.instrument).toStrictEqual({
+      expect(stripPathProperties(result.instrument)).toStrictEqual({
         id: "outer_rack",
         type: "instrument-rack",
         name: "Master FX",

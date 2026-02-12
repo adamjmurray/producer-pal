@@ -5,12 +5,8 @@
 /**
  * Test helper functions for read-track tests
  */
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   createDrumChainMock,
@@ -29,10 +25,6 @@ export {
 // Constants to avoid duplicate string errors
 const HAS_MIDI_INPUT = "has_midi_input";
 const TEST_TRACK_NAME = "Test Track";
-
-interface PathIdMap {
-  [path: string]: string;
-}
 
 interface MockTrackOverrides {
   name?: string;
@@ -56,47 +48,6 @@ interface MockTrackOverrides {
   [key: string]: unknown;
 }
 
-interface MixerPathIdMapOptions {
-  trackPath?: string;
-  trackId?: string;
-  mixerId?: string;
-  volumeId?: string;
-  panningId?: string;
-  leftSplitId?: string;
-  rightSplitId?: string;
-}
-
-interface SplitPanningMockOptions {
-  gainDb?: number;
-  leftPan?: number;
-  rightPan?: number;
-}
-
-interface SplitPanningMockData {
-  Track: {
-    has_midi_input: number;
-    name: string;
-    clip_slots: unknown[];
-    devices: unknown[];
-    mixer_device: unknown;
-  };
-  mixer_1: {
-    volume: unknown;
-    panning_mode: number;
-    left_split_stereo: unknown;
-    right_split_stereo: unknown;
-  };
-  volume_param_1: {
-    display_value: number;
-  };
-  left_split_param_1: {
-    value: number;
-  };
-  right_split_param_1: {
-    value: number;
-  };
-}
-
 interface RoutingMockOverrides {
   available_input_routing_channels?: string[];
   available_input_routing_types?: string[];
@@ -107,30 +58,6 @@ interface RoutingMockOverrides {
   output_routing_channel?: string[];
   output_routing_type?: string[];
   [key: string]: unknown;
-}
-
-interface MixerWithSendsMockOptions {
-  sendIds?: string[];
-  sendValues?: number[];
-  gainDb?: number;
-  pan?: number;
-}
-
-/**
- * Setup liveApiId mock for device tests with a path-to-ID mapping.
- * Falls back to this._id for unmatched paths.
- * @param pathIdMap - Mapping of paths to IDs
- */
-export function setupDevicePathIdMock(pathIdMap: PathIdMap): void {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
-    const pathLookup = this._path ? pathIdMap[this._path] : undefined;
-
-    if (pathLookup) {
-      return pathLookup;
-    }
-
-    return this._id ?? "";
-  });
 }
 
 /**
@@ -161,97 +88,6 @@ export const mockTrackProperties = (
   mixer_device: children("mixer_1"),
   ...overrides,
 });
-
-/**
- * Setup liveApiId mock with a path-to-ID mapping
- * @param pathIdMap - Mapping of paths to IDs
- * @param defaultId - Default ID for unmatched paths
- */
-export function setupMixerIdMock(
-  pathIdMap: PathIdMap,
-  defaultId = "id 0",
-): void {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
-    // Handle ID-based paths (from getChildren)
-    if (this.path?.startsWith("id ")) {
-      return this.path.slice(3);
-    }
-
-    return pathIdMap[this.path ?? ""] ?? defaultId;
-  });
-}
-
-/**
- * Create standard mixer path-to-ID mapping for a track
- * @param opts - Options for the mapping
- * @returns Path-to-ID mapping
- */
-export function createMixerPathIdMap(
-  opts: MixerPathIdMapOptions = {},
-): PathIdMap {
-  const {
-    trackPath = "live_set tracks 0",
-    trackId = "track1",
-    mixerId = "mixer_1",
-    volumeId = "volume_param_1",
-    panningId = "panning_param_1",
-    leftSplitId,
-    rightSplitId,
-  } = opts;
-
-  const map: PathIdMap = {
-    [trackPath]: trackId,
-    [`${trackPath} mixer_device`]: mixerId,
-    [`${trackPath} mixer_device volume`]: volumeId,
-    [`${trackPath} mixer_device panning`]: panningId,
-  };
-
-  if (leftSplitId) {
-    map[`${trackPath} mixer_device left_split_stereo`] = leftSplitId;
-  }
-
-  if (rightSplitId) {
-    map[`${trackPath} mixer_device right_split_stereo`] = rightSplitId;
-  }
-
-  return map;
-}
-
-/**
- * Create mock data for split panning mode test
- * @param opts - Options for the mock
- * @returns Mock data object for mockLiveApiGet
- */
-export function createSplitPanningMock(
-  opts: SplitPanningMockOptions = {},
-): SplitPanningMockData {
-  const { gainDb = 0, leftPan = -1, rightPan = 1 } = opts;
-
-  return {
-    Track: {
-      [HAS_MIDI_INPUT]: 1,
-      name: TEST_TRACK_NAME,
-      clip_slots: [],
-      devices: [],
-      mixer_device: children("mixer_1"),
-    },
-    mixer_1: {
-      volume: children("volume_param_1"),
-      panning_mode: 1, // Split mode
-      left_split_stereo: children("left_split_param_1"),
-      right_split_stereo: children("right_split_param_1"),
-    },
-    volume_param_1: {
-      display_value: gainDb,
-    },
-    left_split_param_1: {
-      value: leftPan,
-    },
-    right_split_param_1: {
-      value: rightPan,
-    },
-  };
-}
 
 /**
  * Creates standard routing mock properties for track routing tests.
@@ -290,55 +126,13 @@ export function createRoutingMockProperties(
   };
 }
 
-/**
- * Creates mock data for mixer with sends test
- * @param opts - Options for the mock
- * @returns Mock data object for mockLiveApiGet
- */
-export function createMixerWithSendsMock(
-  opts: MixerWithSendsMockOptions = {},
-): Record<string, unknown> {
-  const { sendIds = [], sendValues = [], gainDb = 0, pan = 0 } = opts;
-
-  const result: Record<string, unknown> = {
-    Track: {
-      [HAS_MIDI_INPUT]: 1,
-      name: TEST_TRACK_NAME,
-      clip_slots: [],
-      devices: [],
-      mixer_device: children("mixer_1"),
-    },
-    mixer_1: {
-      volume: children("volume_param_1"),
-      panning: children("panning_param_1"),
-      sends: sendIds.length > 0 ? children(...sendIds) : [],
-      panning_mode: 0,
-    },
-    volume_param_1: {
-      display_value: gainDb,
-    },
-    panning_param_1: {
-      value: pan,
-    },
-  };
-
-  // Add send parameter values
-  for (const [index, sendId] of sendIds.entries()) {
-    result[sendId] = {
-      display_value: sendValues[index] ?? 0,
-    };
-  }
-
-  return result;
-}
-
 interface SetupDrumRackMockOptions {
   kickDeviceId?: string;
 }
 
 /**
  * Setup complete drum rack mocks with track, chain, and kick instrument.
- * Configures both liveApiId and mockLiveApiGet for drum rack testing.
+ * Configures registry-based track/device mocks for drum rack testing.
  * @param options - Configuration options
  * @param options.kickDeviceId - ID for the kick device (default: "kick_device")
  */
@@ -347,27 +141,17 @@ export function setupDrumRackMocks(
 ): void {
   const { kickDeviceId = "kick_device" } = options;
 
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
-    switch (this._path) {
-      case "live_set tracks 0":
-        return "track1";
-      case "live_set tracks 0 devices 0":
-        return "drumrack1";
-      case "live_set tracks 0 devices 0 chains 0":
-        return "chain1";
-      case "live_set tracks 0 devices 0 chains 0 devices 0":
-        return kickDeviceId;
-      default:
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Test setup guarantees _id is set
-        return this._id!;
-    }
-  });
-
-  mockLiveApiGet({
-    Track: mockTrackProperties({
+  registerMockObject("track1", {
+    path: "live_set tracks 0",
+    type: "Track",
+    properties: mockTrackProperties({
       devices: children("drumrack1"),
     }),
-    drumrack1: {
+  });
+  registerMockObject("drumrack1", {
+    path: "live_set tracks 0 devices 0",
+    type: "Device",
+    properties: {
       name: "Test Drum Rack",
       class_name: "DrumGroupDevice",
       class_display_name: "Drum Rack",
@@ -378,7 +162,11 @@ export function setupDrumRackMocks(
       chains: children("chain1"),
       return_chains: [],
     },
-    chain1: {
+  });
+  registerMockObject("chain1", {
+    path: "live_set tracks 0 devices 0 chains 0",
+    type: "Chain",
+    properties: {
       in_note: 60, // C3
       name: "Test Kick",
       mute: 0,
@@ -386,7 +174,11 @@ export function setupDrumRackMocks(
       solo: 0,
       devices: children(kickDeviceId),
     },
-    [kickDeviceId]: {
+  });
+  registerMockObject(kickDeviceId, {
+    path: "live_set tracks 0 devices 0 chains 0 devices 0",
+    type: "Device",
+    properties: {
       name: "Kick Instrument",
       class_name: "Simpler",
       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,

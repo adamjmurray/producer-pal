@@ -3,19 +3,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { liveApiId, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
-import {
-  createRoutingMockProperties,
-  mockTrackProperties,
-} from "./helpers/read-track-test-helpers.ts";
+import { createRoutingMockProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
+
+function expectStandardOutputRouting(result: Record<string, unknown>): void {
+  expect(result.availableOutputRoutingChannels).toStrictEqual([
+    { name: "Master", outputId: "26" },
+    { name: "A", outputId: "27" },
+  ]);
+  expect(result.availableOutputRoutingTypes).toStrictEqual([
+    { name: "Track Out", outputId: "25" },
+    { name: "Send Only", outputId: "28" },
+  ]);
+}
 
 describe("readTrack", () => {
   describe("includeRoutings", () => {
     it("excludes routing properties by default", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties(createRoutingMockProperties()),
+      setupTrackMock({
+        trackId: "track1",
+        properties: createRoutingMockProperties(),
       });
 
       const result = readTrack({ trackIndex: 0 });
@@ -31,11 +39,11 @@ describe("readTrack", () => {
     });
 
     it("includes routing properties when includeRoutings is true", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties(
-          createRoutingMockProperties({ current_monitoring_state: [1] }),
-        ),
+      setupTrackMock({
+        trackId: "track1",
+        properties: createRoutingMockProperties({
+          current_monitoring_state: [1],
+        }),
       });
 
       const result = readTrack({
@@ -51,14 +59,7 @@ describe("readTrack", () => {
         { name: "Ext. In", inputId: "17" },
         { name: "Resampling", inputId: "18" },
       ]);
-      expect(result.availableOutputRoutingChannels).toStrictEqual([
-        { name: "Master", outputId: "26" },
-        { name: "A", outputId: "27" },
-      ]);
-      expect(result.availableOutputRoutingTypes).toStrictEqual([
-        { name: "Track Out", outputId: "25" },
-        { name: "Send Only", outputId: "28" },
-      ]);
+      expectStandardOutputRouting(result);
       expect(result.inputRoutingChannel).toStrictEqual({
         name: "In 1",
         inputId: "1",
@@ -79,9 +80,9 @@ describe("readTrack", () => {
     });
 
     it("handles null routing properties gracefully", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           available_input_routing_channels: null,
           available_input_routing_types: null,
           available_output_routing_channels: null,
@@ -91,7 +92,7 @@ describe("readTrack", () => {
           output_routing_channel: null,
           output_routing_type: null,
           current_monitoring_state: [999],
-        }),
+        },
       });
 
       const result = readTrack({
@@ -111,9 +112,9 @@ describe("readTrack", () => {
     });
 
     it("excludes input routing properties for group tracks when includeRoutings is true", () => {
-      liveApiId.mockReturnValue("group1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "group1",
+        properties: {
           is_foldable: 1, // This makes it a group track
           can_be_armed: 0, // Group tracks can't be armed
           available_output_routing_channels: [
@@ -129,7 +130,7 @@ describe("readTrack", () => {
             '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
           ],
           current_monitoring_state: [1],
-        }),
+        },
       });
 
       const result = readTrack({
@@ -144,14 +145,7 @@ describe("readTrack", () => {
       expect(result.inputRoutingType).toBeUndefined();
 
       // But should still have output routing properties
-      expect(result.availableOutputRoutingChannels).toStrictEqual([
-        { name: "Master", outputId: "26" },
-        { name: "A", outputId: "27" },
-      ]);
-      expect(result.availableOutputRoutingTypes).toStrictEqual([
-        { name: "Track Out", outputId: "25" },
-        { name: "Send Only", outputId: "28" },
-      ]);
+      expectStandardOutputRouting(result);
       expect(result.outputRoutingChannel).toStrictEqual({
         name: "Master",
         outputId: "26",
@@ -168,11 +162,11 @@ describe("readTrack", () => {
     });
 
     it("returns unknown monitoring state for unsupported values", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           current_monitoring_state: [999], // Invalid monitoring state value
-        }),
+        },
       });
 
       const result = readTrack({
@@ -191,12 +185,12 @@ describe("readTrack", () => {
     });
 
     it("omits monitoring state for tracks that cannot be armed", () => {
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
           can_be_armed: 0, // Track cannot be armed (group/master/return tracks)
           current_monitoring_state: 1, // This should not be accessed
-        }),
+        },
       });
 
       const result = readTrack({
