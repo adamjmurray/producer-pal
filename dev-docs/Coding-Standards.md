@@ -106,9 +106,16 @@ Return optimistic results for playback operations.
 
 ## Testing
 
-Mock `_id`/`_path` with `function()` (not arrow functions for `this` context).
+Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:
 
-Use `expect.objectContaining()` for assertions.
+- `registerMockObject(id, { path, type, properties, methods })` — register a
+  mock object and get back a `MockObjectHandle` with instance-level
+  `get`/`set`/`call` mocks
+- Assert directly on the handle: `expect(handle.set).toHaveBeenCalledWith(...)`
+- `mockNonExistentObjects()` — make unregistered IDs non-existent (for
+  invalid-ID tests)
+- Domain-specific helpers (e.g., `setupTrackMock()`) wrap `registerMockObject()`
+  for common object graphs
 
 ## Builds
 
