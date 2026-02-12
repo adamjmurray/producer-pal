@@ -333,33 +333,23 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(-6);
     });
 
-    it("resolves clip.arrangementStart for arrangement clips", () => {
-      const result = applyAudioTransform(
-        0,
-        0,
-        "gain = clip.arrangementStart / 4",
-        {
-          clipDuration: 16,
-          clipIndex: 0,
-          arrangementStart: 32,
-          barDuration: 4,
-        },
-      );
+    it("resolves clip.position for arrangement clips", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.position / 4", {
+        clipDuration: 16,
+        clipIndex: 0,
+        arrangementStart: 32,
+        barDuration: 4,
+      });
 
       expect(result.gain).toBe(8);
     });
 
-    it("skips assignment when clip.arrangementStart is absent (session clip)", () => {
-      const result = applyAudioTransform(
-        -6,
-        0,
-        "gain = clip.arrangementStart",
-        {
-          clipDuration: 16,
-          clipIndex: 0,
-          barDuration: 4,
-        },
-      );
+    it("skips assignment when clip.position is absent (session clip)", () => {
+      const result = applyAudioTransform(-6, 0, "gain = clip.position", {
+        clipDuration: 16,
+        clipIndex: 0,
+        barDuration: 4,
+      });
 
       // Evaluation fails, gain unchanged
       expect(result.gain).toBeNull();

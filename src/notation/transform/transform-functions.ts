@@ -282,11 +282,11 @@ function evaluateWaveform(
   let effectivePosition = position;
 
   if (sync) {
-    const arrangementStart = noteProperties["clip:arrangementStart"];
+    const arrangementStart = noteProperties["clip:position"];
 
     if (arrangementStart == null) {
       throw new Error(
-        "sync requires an arrangement clip (no arrangementStart available)",
+        "sync requires an arrangement clip (no clip.position available)",
       );
     }
 

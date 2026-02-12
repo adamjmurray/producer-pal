@@ -181,7 +181,7 @@ describe("ppal-clip-transforms-sync", () => {
   it("sync with phase offset combines both offsets", async () => {
     // Clip at 1|1 = beat 0 (arrangement start is 0)
     // Transform: velocity += 50 * cos(4t, 0.25, sync)
-    // With arrangementStart=0, sync has no effect on phase, but offset adds 0.25
+    // With clip.position=0, sync has no effect on phase, but offset adds 0.25
     //   Note at 1|1: base=(0+0)/4=0, +0.25=0.25, cos(0.25)=0 → v64
     //   Note at 1|2: base=(1+0)/4=0.25, +0.25=0.5, cos(0.5)=-1 → v14
     //   Note at 1|3: base=(2+0)/4=0.5, +0.25=0.75, cos(0.75)=0 → v64

@@ -181,7 +181,7 @@ function buildNoteProperties(
     props["clip:index"] = clipContext.clipIndex;
 
     if (clipContext.arrangementStart != null) {
-      props["clip:arrangementStart"] = clipContext.arrangementStart;
+      props["clip:position"] = clipContext.arrangementStart;
     }
 
     props["bar:duration"] = clipContext.barDuration;

@@ -70,7 +70,7 @@ across clips on the global timeline.
 - **Syntax**: `sync` is an optional trailing keyword (not an expression) on
   cyclical waveform functions: `cos`, `tri`, `saw`, `square`
 - **Evaluation**: When `sync` is present,
-  `effectivePosition = note.start + clip.arrangementStart` is used instead of
+  `effectivePosition = note.start + clip.position` is used instead of
   `note.start` for phase computation
 - **Session clips**: Using `sync` on a session clip skips the assignment with a
   warning (no arrangement position available)
@@ -226,8 +226,8 @@ Access clip and bar context in expressions:
 - `note.index` - 0-based order of note in clip (MIDI only)
 - `clip.duration` - Clip length in musical beats
 - `clip.index` - 0-based clip order in multi-clip operations
-- `clip.arrangementStart` - Arrangement position in musical beats (arrangement
-  clips only; session clips skip the assignment with a warning)
+- `clip.position` - Arrangement position in musical beats (arrangement clips
+  only; session clips skip the assignment with a warning)
 - `bar.duration` - Beats per bar from time signature (e.g., 4 in 4/4, 3 in 3/4,
   6 in 6/8)
 
@@ -479,7 +479,7 @@ velocity = 60 + note.index * 5;
 pitch += clip.index * 7;
 
 // Scale gain by arrangement position
-gain = ramp(-24, 0) * (clip.arrangementStart / 32);
+gain = ramp(-24, 0) * (clip.position / 32);
 
 // Use bar duration for rhythmic patterns
 velocity += (20 * (note.start % bar.duration)) / bar.duration;

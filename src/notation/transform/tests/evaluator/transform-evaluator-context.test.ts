@@ -131,22 +131,22 @@ describe("Context Variables", () => {
     });
   });
 
-  describe("clip.arrangementStart", () => {
-    it("resolves clip.arrangementStart when present", () => {
+  describe("clip.position", () => {
+    it("resolves clip.position when present", () => {
       const result = evaluateTransform(
-        "velocity = clip.arrangementStart",
+        "velocity = clip.position",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 32 },
+        { "clip:position": 32 },
       );
 
       expect(result.velocity).toStrictEqual({ operator: "set", value: 32 });
     });
 
-    it("skips assignment when clip.arrangementStart is absent (session clip)", () => {
-      // When clip.arrangementStart is not in noteProperties,
+    it("skips assignment when clip.position is absent (session clip)", () => {
+      // When clip.position is not in noteProperties,
       // the evaluator throws and processAssignment skips with a warning
       const result = evaluateTransform(
-        "velocity = clip.arrangementStart",
+        "velocity = clip.position",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
         {},
       );
@@ -154,9 +154,9 @@ describe("Context Variables", () => {
       expect(result).toStrictEqual({});
     });
 
-    it("does not affect other assignments when arrangementStart is absent", () => {
+    it("does not affect other assignments when clip.position is absent", () => {
       const result = evaluateTransform(
-        "velocity = clip.arrangementStart\npitch += 7",
+        "velocity = clip.position\npitch += 7",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
         {},
       );
@@ -229,7 +229,7 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, sync)",
         { position: 2, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 6 },
+        { "clip:position": 6 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(100, 10);
@@ -241,7 +241,7 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, 0.25, sync)",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 4 },
+        { "clip:position": 4 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(0, 10);
@@ -270,26 +270,26 @@ describe("Context Variables", () => {
 
     it("without sync, phase is clip-relative", () => {
       // Position 2, period 4 → phase = (2/4) % 1 = 0.5, cos(0.5) = -1
-      // arrangementStart is ignored when sync is not used
+      // clip.position is ignored when sync is not used
       const result = evaluateTransform(
         "velocity += 100 * cos(4t)",
         { position: 2, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 8 },
+        { "clip:position": 8 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(-100, 10);
     });
 
-    it("sync at position 0 with arrangementStart 0 matches default", () => {
+    it("sync at position 0 with clip.position 0 matches default", () => {
       const synced = evaluateTransform(
         "velocity += 100 * cos(4t, sync)",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 0 },
+        { "clip:position": 0 },
       );
       const unsynced = evaluateTransform(
         "velocity += 100 * cos(4t)",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 0 },
+        { "clip:position": 0 },
       );
 
       expect(synced.velocity!.value).toBeCloseTo(unsynced.velocity!.value, 10);
@@ -301,7 +301,7 @@ describe("Context Variables", () => {
       const result = evaluateTransform(
         "velocity += 100 * tri(4t, sync)",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
-        { "clip:arrangementStart": 2 },
+        { "clip:position": 2 },
       );
 
       expect(result.velocity!.value).toBeCloseTo(0, 10);

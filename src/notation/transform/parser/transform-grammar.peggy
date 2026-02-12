@@ -152,7 +152,7 @@ audioPropertyName
   / "pitchShift" { return "pitchShift"; }
 
 clipPropertyName
-  = "arrangementStart" { return "arrangementStart"; }
+  = "position" { return "position"; }
   / "duration" { return "duration"; }
   / "index" { return "index"; }
 

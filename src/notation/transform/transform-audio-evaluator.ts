@@ -246,11 +246,9 @@ function resolveAudioVariable(
     if (node.name === "duration") return clipContext.clipDuration;
     if (node.name === "index") return clipContext.clipIndex;
 
-    if (node.name === "arrangementStart") {
+    if (node.name === "position") {
       if (clipContext.arrangementStart == null) {
-        throw new Error(
-          `clip.arrangementStart is not available for session clips`,
-        );
+        throw new Error(`clip.position is not available for session clips`);
       }
 
       return clipContext.arrangementStart;

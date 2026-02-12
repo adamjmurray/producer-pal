@@ -903,13 +903,10 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(notes2).toContain("G3");
   });
 
-  it("clip.arrangementStart warns on session clips", async () => {
+  it("clip.position warns on session clips", async () => {
     const clipId = await createMidiClip(32, "v100 C3 1|1");
 
-    const result = await applyTransform(
-      clipId,
-      "velocity = clip.arrangementStart",
-    );
+    const result = await applyTransform(clipId, "velocity = clip.position");
     const warnings = getToolWarnings(result);
 
     expect(warnings.length).toBeGreaterThan(0);

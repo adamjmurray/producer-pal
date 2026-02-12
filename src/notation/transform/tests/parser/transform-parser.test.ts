@@ -559,7 +559,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses all clip properties with namespace", () => {
-      const properties = ["duration", "index", "arrangementStart"];
+      const properties = ["duration", "index", "position"];
 
       for (const prop of properties) {
         const result = parser.parse(`velocity = clip.${prop}`);
