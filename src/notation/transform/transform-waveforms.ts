@@ -5,7 +5,8 @@
 
 /**
  * Waveform generator functions for transform system.
- * All waveforms at phase 0 start at peak (1.0) and descend.
+ * cos, square: start at peak (1.0) at phase 0.
+ * sin, tri, saw: start at zero (0.0) at phase 0, rising to peak.
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */
 
@@ -23,6 +24,19 @@ export function cos(phase: number): number {
 }
 
 /**
+ * Sine wave generator
+ * @param phase - Phase in cycles (0.0-1.0)
+ * @returns Value in range [-1.0, 1.0]
+ */
+export function sin(phase: number): number {
+  // Normalize phase to 0-1 range
+  const normalizedPhase = phase % 1.0;
+
+  // sin(0) = 0, rising to 1.0 at 0.25, back to 0 at 0.5, -1.0 at 0.75
+  return Math.sin(normalizedPhase * 2 * Math.PI);
+}
+
+/**
  * Triangle wave generator
  * @param phase - Phase in cycles (0.0-1.0)
  * @returns Value in range [-1.0, 1.0]
@@ -31,14 +45,19 @@ export function tri(phase: number): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
-  // Starts at 1.0, descends linearly to -1.0 at phase 0.5, returns to 1.0 at phase 1.0
-  if (normalizedPhase <= 0.5) {
-    // Descending: 1.0 -> -1.0 over first half
-    return 1.0 - 4.0 * normalizedPhase;
+  // Starts at 0.0, rises to 1.0 at 0.25, descends to -1.0 at 0.75, returns to 0.0 at 1.0
+  if (normalizedPhase <= 0.25) {
+    // Rising: 0.0 -> 1.0
+    return 4.0 * normalizedPhase;
   }
 
-  // Ascending: -1.0 -> 1.0 over second half
-  return -3.0 + 4.0 * normalizedPhase;
+  if (normalizedPhase <= 0.75) {
+    // Descending: 1.0 -> -1.0
+    return 2.0 - 4.0 * normalizedPhase;
+  }
+
+  // Rising: -1.0 -> 0.0
+  return -4.0 + 4.0 * normalizedPhase;
 }
 
 /**
@@ -50,8 +69,12 @@ export function saw(phase: number): number {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
 
-  // Starts at 1.0, descends linearly to -1.0, then jumps back to 1.0
-  return 1.0 - 2.0 * normalizedPhase;
+  // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0
+  if (normalizedPhase < 0.5) {
+    return 2.0 * normalizedPhase;
+  }
+
+  return -2.0 + 2.0 * normalizedPhase;
 }
 
 /**

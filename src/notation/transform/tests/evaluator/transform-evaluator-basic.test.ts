@@ -172,23 +172,62 @@ describe("Transform Evaluator", () => {
     });
   });
 
+  describe("sine waveform", () => {
+    it("evaluates sin at position 0 (starts at zero)", () => {
+      const result = evaluateTransform("velocity += sin(1t)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
+    });
+
+    it("evaluates sin at position 0.25 (quarter period = peak)", () => {
+      const result = evaluateTransform("velocity += sin(1t)", {
+        position: 0.25,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result.velocity!.value).toBeCloseTo(1.0, 10);
+    });
+
+    it("evaluates sin at position 0.5 (half period)", () => {
+      const result = evaluateTransform("velocity += sin(1t)", {
+        position: 0.5,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
+    });
+
+    it("evaluates sin with phase offset", () => {
+      const result = evaluateTransform("velocity += sin(1t, 0.25)", {
+        position: 0,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      // Phase 0 + offset 0.25 = phase 0.25 → sin(0.25) = 1.0
+      expect(result.velocity!.value).toBeCloseTo(1.0, 10);
+    });
+  });
+
   describe("triangle waveform", () => {
-    it("evaluates tri at position 0 (starts at peak)", () => {
+    it("evaluates tri at position 0 (starts at zero)", () => {
       const result = evaluateTransform("velocity += tri(1t)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBe(1.0);
+      expect(result.velocity!.value).toBe(0.0);
     });
 
-    it("evaluates tri at position 0.25 (quarter period)", () => {
+    it("evaluates tri at position 0.25 (quarter period = peak)", () => {
       const result = evaluateTransform("velocity += tri(1t)", {
         position: 0.25,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBe(1.0);
     });
 
     it("evaluates tri at position 0.5 (half period)", () => {
@@ -197,7 +236,7 @@ describe("Transform Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBe(-1.0);
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
 
     it("evaluates tri with phase offset", () => {
@@ -206,27 +245,37 @@ describe("Transform Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBe(-1.0);
+      // Phase 0 + offset 0.5 = phase 0.5 → tri(0.5) = 0.0
+      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
   });
 
   describe("sawtooth waveform", () => {
-    it("evaluates saw at position 0 (starts at peak)", () => {
+    it("evaluates saw at position 0 (starts at zero)", () => {
       const result = evaluateTransform("velocity += saw(1t)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBe(1.0);
+      expect(result.velocity!.value).toBe(0.0);
     });
 
-    it("evaluates saw at position 0.5 (half period)", () => {
+    it("evaluates saw at position 0.25 (quarter period)", () => {
+      const result = evaluateTransform("velocity += saw(1t)", {
+        position: 0.25,
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+
+      expect(result.velocity!.value).toBeCloseTo(0.5, 10);
+    });
+
+    it("evaluates saw at position 0.5 (half period = discontinuity)", () => {
       const result = evaluateTransform("velocity += saw(1t)", {
         position: 0.5,
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
+      expect(result.velocity!.value).toBe(-1.0);
     });
 
     it("evaluates saw with phase offset", () => {
@@ -235,7 +284,8 @@ describe("Transform Evaluator", () => {
         timeSig: { numerator: 4, denominator: 4 },
       });
 
-      expect(result.velocity!.value).toBeCloseTo(0.0, 10);
+      // Phase 0 + offset 0.5 = phase 0.5 → saw(0.5) = -1.0
+      expect(result.velocity!.value).toBe(-1.0);
     });
   });
 

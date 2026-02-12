@@ -170,6 +170,7 @@ functionCall
 cyclicalFunctionName
   = "cos" { return "cos"; }
   / "saw" { return "saw"; }
+  / "sin" { return "sin"; }
   / "square" { return "square"; }
   / "tri" { return "tri"; }
 

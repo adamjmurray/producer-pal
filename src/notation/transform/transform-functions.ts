@@ -238,7 +238,7 @@ function evaluateRamp(
 }
 
 /**
- * Evaluate waveform function (cos, tri, saw, square)
+ * Evaluate waveform function (cos, sin, tri, saw, square)
  * @param name - Waveform function name
  * @param args - Function arguments
  * @param sync - Whether to sync phase to arrangement timeline
@@ -316,6 +316,9 @@ function evaluateWaveform(
   switch (name) {
     case "cos":
       return waveforms.cos(phase);
+
+    case "sin":
+      return waveforms.sin(phase);
 
     case "tri":
       return waveforms.tri(phase);

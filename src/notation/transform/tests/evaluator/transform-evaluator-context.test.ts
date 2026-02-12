@@ -297,14 +297,14 @@ describe("Context Variables", () => {
 
     it("works with tri waveform", () => {
       // Effective position = 0 + 2 = 2, period = 4, phase = 0.5
-      // tri(0.5) = -1.0
+      // tri(0.5) = 0.0
       const result = evaluateTransform(
         "velocity += 100 * tri(4t, sync)",
         { position: 0, timeSig: { numerator: 4, denominator: 4 } },
         { "clip:arrangementStart": 2 },
       );
 
-      expect(result.velocity!.value).toBeCloseTo(-100, 10);
+      expect(result.velocity!.value).toBeCloseTo(0, 10);
     });
 
     it("works with applyTransforms and clipContext", () => {

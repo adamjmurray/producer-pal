@@ -149,7 +149,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), min(a,b,...), max(a,b,...), pow(base,exp)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
-- \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
+- \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
