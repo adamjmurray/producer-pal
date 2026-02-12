@@ -13,7 +13,7 @@ import {
   getToolWarnings,
   parseToolResult,
   type ReadClipResult,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import type { ExpectedClip } from "./arrangement-lengthening-expected.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =

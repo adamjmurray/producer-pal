@@ -16,14 +16,14 @@ import {
   audioUnwarpedTestCases,
   midiLoopedTestCases,
   midiUnloopedTestCases,
-} from "./arrangement-clip-test-cases.ts";
-import { ARRANGEMENT_CLIP_TESTS_PATH } from "./arrangement-lengthening-test-helpers.ts";
+} from "./helpers/arrangement-clip-test-cases.ts";
+import { ARRANGEMENT_CLIP_TESTS_PATH } from "./helpers/arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
   assertSpanPreserved,
   splitClip,
   testSplitClip,
-} from "./arrangement-splitting-test-helpers.ts";
+} from "./helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
   parseToolResult,

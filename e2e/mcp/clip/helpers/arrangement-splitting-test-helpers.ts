@@ -12,7 +12,7 @@ import {
   getToolWarnings,
   type ReadClipResult,
   sleep,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   EPSILON,
   parseBarBeat,
