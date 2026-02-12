@@ -4,9 +4,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type MockObjectHandle,
-  lookupMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+  composeCallOverride,
+  requireMockHandle,
+  requireTrackHandle,
+  useCallFallback,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
+import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
 import {
   mockContext,
   setupArrangementClipPath,
@@ -33,22 +36,6 @@ function setupClipProperties(
 
     return [0];
   });
-}
-
-function requireHandle(path: string): MockObjectHandle {
-  const handle = lookupMockObject(undefined, path);
-
-  expect(handle).toBeDefined();
-
-  if (handle == null) {
-    throw new Error(`Expected handle at path "${path}"`);
-  }
-
-  return handle;
-}
-
-function requireTrackHandle(trackIndex: number): MockObjectHandle {
-  return requireHandle(`live_set tracks ${trackIndex}`);
 }
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
@@ -92,22 +79,22 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       start_marker: 0.0,
       loop_start: 0.0,
     });
-    setupClipProperties(requireHandle("live_set"), {
+    setupClipProperties(requireMockHandle("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockHandle("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock tiling flow (non-destructive duplication)
-    trackHandle.call.mockImplementation(function (method, ..._args) {
+    composeCallOverride(trackHandle, function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id 1000`;
       }
 
-      return null;
+      return useCallFallback;
     });
 
     const result = await updateClip({
@@ -162,17 +149,17 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireHandle("live_set"), {
+    setupClipProperties(requireMockHandle("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockHandle("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement
     let nextId = 1000;
 
-    trackHandle.call.mockImplementation(function (method, ...args) {
+    composeCallOverride(trackHandle, function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
         const duplicatedClip = clipHandles.get(String(id));
@@ -186,7 +173,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
         return `id ${id}`;
       }
 
-      return null;
+      return useCallFallback;
     });
 
     const result = await updateClip({
@@ -228,10 +215,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireHandle("live_set"), {
+    setupClipProperties(requireMockHandle("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockHandle("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
@@ -286,26 +273,26 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireHandle("live_set"), {
+    setupClipProperties(requireMockHandle("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockHandle("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Track created clips and their start_marker values
     let nextId = 1000;
 
-    trackHandle.call.mockImplementation(function (method) {
+    composeCallOverride(trackHandle, function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
 
         return `id ${id}`;
       }
 
-      return null;
+      return useCallFallback;
     });
 
     const result = await updateClip({
@@ -394,19 +381,19 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       start_marker: 2.0,
       loop_start: 0.0,
     });
-    setupClipProperties(requireHandle("live_set"), {
+    setupClipProperties(requireMockHandle("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockHandle("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement calls for tiling
     let callCount = 0;
 
-    trackHandle.call.mockImplementation(function (method) {
+    composeCallOverride(trackHandle, function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
 
@@ -417,7 +404,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
         }
       }
 
-      return null;
+      return useCallFallback;
     });
 
     vi.mocked(outlet).mockClear();

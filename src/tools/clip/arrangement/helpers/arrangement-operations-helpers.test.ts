@@ -4,9 +4,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  lookupMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+  composeCallOverride,
+  requireMockHandle,
+  useCallFallback,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
@@ -17,18 +19,6 @@ import {
   handleArrangementLengthening,
   handleArrangementShortening,
 } from "./arrangement-operations-helpers.ts";
-
-function requireHandle(path: string) {
-  const handle = lookupMockObject(undefined, path);
-
-  expect(handle).toBeDefined();
-
-  if (handle == null) {
-    throw new Error(`Expected handle at path "${path}"`);
-  }
-
-  return handle;
-}
 
 describe("arrangement-operations-helpers", () => {
   beforeEach(() => {
@@ -90,7 +80,7 @@ describe("arrangement-operations-helpers", () => {
         clipProps,
         extraMocks: { [sessionClipId]: {}, [arrangementClipId]: {} },
       });
-      const trackHandle = requireHandle("live_set tracks 0");
+      const trackHandle = requireMockHandle("live_set tracks 0");
 
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
@@ -102,16 +92,12 @@ describe("arrangement-operations-helpers", () => {
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
 
-      trackHandle.call.mockImplementation((method: string) => {
+      composeCallOverride(trackHandle, (method: string) => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
 
-        if (method === "delete_clip") {
-          return null;
-        }
-
-        return null;
+        return useCallFallback;
       });
 
       const mockClip = createMockClip({ props: clipProps });
@@ -237,7 +223,7 @@ describe("arrangement-operations-helpers", () => {
       const arrangementClipId = "arr-456";
 
       setupArrangementClipPath("789");
-      const trackHandle = requireHandle("live_set tracks 0");
+      const trackHandle = requireMockHandle("live_set tracks 0");
       const arrangementClipHandle = registerMockObject(arrangementClipId, {
         path: "live_set tracks 0 arrangement_clips 1",
         type: "Clip",
@@ -251,16 +237,12 @@ describe("arrangement-operations-helpers", () => {
           slot: { call: mockSlotCall } as unknown as LiveAPI,
         });
 
-      trackHandle.call.mockImplementation((method: string) => {
+      composeCallOverride(trackHandle, (method: string) => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
 
-        if (method === "delete_clip") {
-          return null;
-        }
-
-        return null;
+        return useCallFallback;
       });
 
       handleArrangementShortening({
@@ -290,18 +272,14 @@ describe("arrangement-operations-helpers", () => {
 
     it("should shorten midi clip using create_midi_clip", () => {
       setupArrangementClipPath("789");
-      const trackHandle = requireHandle("live_set tracks 0");
+      const trackHandle = requireMockHandle("live_set tracks 0");
 
-      trackHandle.call.mockImplementation((method: string) => {
+      composeCallOverride(trackHandle, (method: string) => {
         if (method === "create_midi_clip") {
           return "id temp-midi";
         }
 
-        if (method === "delete_clip") {
-          return null;
-        }
-
-        return null;
+        return useCallFallback;
       });
 
       handleArrangementShortening({
