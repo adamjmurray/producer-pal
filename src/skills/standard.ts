@@ -162,6 +162,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
 velocity += 20 * cos(4:0t, sync) // continuous across clips
+velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5) // dynamic PWM
 timing += 0.05 * rand()        // humanize timing
 velocity += ramp(0, 60)        // fade in over clip
 C1-C2: velocity += 30          // accent bass notes

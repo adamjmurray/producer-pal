@@ -768,6 +768,15 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
       expect(d).toBeGreaterThanOrEqual(0.5);
       expect(d).toBeLessThanOrEqual(1.5);
     }
+
+    // square() with custom pulse width: high for 75% of cycle, low for 25%
+    // Phases 0, 0.25, 0.5 → high (v114), phase 0.75 → low (v14)
+    await applyTransform(clipId, "velocity = 64 + 50 * square(4t, 0, 0.75)");
+    const sqNotes = await readClipNotes(clipId);
+
+    // Note format uses state changes: v114 at start, v14 only at beat 1|4
+    expect(sqNotes).toMatch(/^v114\b/); // first 3 notes are high
+    expect(sqNotes).toMatch(/v14\b.*1\|4/); // last note is low
   });
 
   it("choose() selects from provided values", async () => {

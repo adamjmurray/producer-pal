@@ -265,6 +265,9 @@ velocity += 20 * cos(1:0t, 0.5)
 // Pulse width modulation
 velocity += 20 * square(2t, 0, 0.25)
 
+// Dynamic PWM (pulse width modulated by another waveform)
+velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5)
+
 // Combined functions
 velocity += 20 * cos(4:0t) + 10 * rand()
 
