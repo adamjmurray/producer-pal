@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
+  lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
@@ -38,6 +38,18 @@ function setupClipProperties(
   });
 }
 
+function requireHandle(path: string): MockObjectHandle {
+  const handle = lookupMockObject(undefined, path);
+
+  expect(handle).toBeDefined();
+
+  if (handle == null) {
+    throw new Error(`Expected handle at path "${path}"`);
+  }
+
+  return handle;
+}
+
 describe("updateClip - arrangementLength (shortening only)", () => {
   let defaultHandles: UpdateClipMockHandles;
 
@@ -50,6 +62,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
     const sourceClip = clipHandles.get("789");
+    const trackHandle = requireHandle(`live_set tracks ${trackIndex}`);
 
     expect(sourceClip).toBeDefined();
 
@@ -73,14 +86,17 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should create temp clip at beat 8 with length 8
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "create_midi_clip",
       8.0, // newEndTime
       8.0, // tempClipLength
     );
 
     // Should delete the temp clip
-    expect(liveApiCall).toHaveBeenCalledWith("delete_clip", expect.any(String));
+    expect(trackHandle.call).toHaveBeenCalledWith(
+      "delete_clip",
+      expect.any(String),
+    );
 
     expect(result).toStrictEqual({ id: "789" });
   });
@@ -90,6 +106,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
     const sourceClip = clipHandles.get("789");
+    const trackHandle = requireHandle(`live_set tracks ${trackIndex}`);
 
     expect(sourceClip).toBeDefined();
 
@@ -113,7 +130,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should create temp clip at beat 1 with length 15
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "create_midi_clip",
       1.0, // newEndTime
       15.0, // tempClipLength
@@ -123,6 +140,11 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should emit warning and ignore for session clips", async () => {
+    const trackHandle = registerMockObject("track-0-session-noop", {
+      path: "live_set tracks 0",
+      type: "Track",
+    });
+
     setupMidiClipMock(defaultHandles.clip123, {
       is_arrangement_clip: 0, // Session clip
       is_midi_clip: 1,
@@ -140,10 +162,13 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       "arrangementLength parameter ignored for session clip (id 123)",
     );
 
-    // Should not call create_midi_clip or delete_clip
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(trackHandle.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
       expect.anything(),
+      expect.anything(),
+    );
+    expect(trackHandle.call).not.toHaveBeenCalledWith(
+      "delete_clip",
       expect.anything(),
     );
 
@@ -172,6 +197,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const trackIndex = 0;
     const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
     const sourceClip = clipHandles.get("789");
+    const trackHandle = requireHandle(`live_set tracks ${trackIndex}`);
 
     expect(sourceClip).toBeDefined();
 
@@ -189,7 +215,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       trackIndex,
     });
 
-    liveApiCall.mockClear(); // Clear previous calls
+    trackHandle.call.mockClear();
 
     const result = await updateClip({
       ids: "789",
@@ -197,7 +223,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should not create temp clip (no-op)
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(trackHandle.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
       expect.anything(),
       expect.anything(),
@@ -215,6 +241,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       "789",
       movedClipId,
     ]);
+    const trackHandle = requireHandle(`live_set tracks ${trackIndex}`);
     const sourceClip = clipHandles.get("789");
     const movedClip = clipHandles.get(movedClipId);
 
@@ -245,10 +272,16 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Mock duplicate_clip_to_arrangement to return moved clip
-    liveApiCall.mockImplementation(function (method: string) {
+    trackHandle.call.mockImplementation(function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${movedClipId}`;
       }
+
+      if (method === "create_midi_clip") {
+        return "id temp-midi";
+      }
+
+      return null;
     });
 
     const result = await updateClip({
@@ -258,18 +291,18 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should FIRST duplicate to new position (move operation)
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       32.0, // bar 9 in 4/4 = 32 beats
     );
 
     // Should delete original after move
-    expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+    expect(trackHandle.call).toHaveBeenCalledWith("delete_clip", "id 789");
 
     // Should THEN create temp clip to shorten (at moved position)
     // Shortening from 32-48 to 32-40 means temp clip at position 40
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "create_midi_clip",
       40.0, // newEndTime = 32 + 8 (2 bars)
       8.0, // tempClipLength = 48 - 40 = 8
@@ -288,6 +321,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       "789",
       tempArrangementClipId,
     ]);
+    const trackHandle = requireHandle(`live_set tracks ${trackIndex}`);
     const sourceClip = clipHandles.get("789");
     const tempArrangementClip = clipHandles.get(tempArrangementClipId);
 
@@ -323,10 +357,12 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Mock liveApiCall for duplicate_clip_to_arrangement
-    liveApiCall.mockImplementation(function (method: string) {
+    trackHandle.call.mockImplementation(function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tempArrangementClipId}`;
       }
+
+      return null;
     });
 
     // Mock createAudioClipInSession to verify it's called with correct arguments

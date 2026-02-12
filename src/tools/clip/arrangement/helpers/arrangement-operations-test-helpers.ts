@@ -7,7 +7,6 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface ClipProps {
@@ -19,32 +18,17 @@ interface ClipProps {
   [key: string]: number | undefined;
 }
 
-interface RegisterWithFallbackOptions {
+interface RegisterOptions {
   path?: string;
+  type?: string;
   properties?: Record<string, unknown>;
 }
 
-function registerWithFallback(
+function registerArrangementMock(
   id: string,
-  options: RegisterWithFallbackOptions = {},
+  options: RegisterOptions = {},
 ): void {
-  const handle = registerMockObject(id, options);
-
-  handle.call.mockImplementation(function (
-    this: unknown,
-    method: string,
-    ...args: unknown[]
-  ) {
-    return liveApiCall.apply(this, [method, ...args]);
-  });
-
-  handle.set.mockImplementation(function (
-    this: unknown,
-    property: string,
-    value: unknown,
-  ) {
-    return liveApiSet.apply(this, [property, value]);
-  });
+  registerMockObject(id, options);
 }
 
 /**
@@ -56,11 +40,13 @@ export function setupArrangementClipPath(
   clipId: string,
   trackIndex: number = 0,
 ): void {
-  registerWithFallback(`track-${trackIndex}`, {
+  registerArrangementMock(`track-${trackIndex}`, {
     path: `live_set tracks ${trackIndex}`,
+    type: "Track",
   });
-  registerWithFallback(clipId, {
+  registerArrangementMock(clipId, {
     path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    type: "Clip",
   });
 }
 
@@ -138,12 +124,13 @@ export function setupArrangementMocks(
   } = options;
 
   setupArrangementClipPath(clipId, trackIndex);
-  registerWithFallback(clipId, {
+  registerArrangementMock(clipId, {
     path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    type: "Clip",
     properties: createClipProps(clipProps),
   });
 
   for (const [id, properties] of Object.entries(extraMocks)) {
-    registerWithFallback(id, { properties });
+    registerArrangementMock(id, { properties });
   }
 }

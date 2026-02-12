@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
   registerMockObject,
@@ -121,69 +120,70 @@ export function setupMocks(): UpdateClipMockHandles {
  * Register arrangement clip path for tests. Also registers LiveSet and Track objects
  * for production code lookups. Re-registers each clipId with the arrangement path.
  * @param trackIndex - Track index
- * @param clipIds - Array of clip IDs to register as arrangement clips
+ * @param clipIds - Arrangement clip IDs. First entry is source clip; remaining
+ * entries are the duplicate clip IDs expected in call order.
  * @returns Map of clip ID to new handle (re-registered clips have fresh handles)
  */
 export function setupArrangementClipPath(
   trackIndex: number,
   clipIds: string[],
 ): Map<string, MockObjectHandle> {
-  const liveSet = registerMockObject("live-set", { path: "live_set" });
-  const track = registerMockObject(`track-${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
+  registerMockObject("live-set", {
+    path: "live_set",
+    type: "LiveSet",
   });
-
-  liveSet.call.mockImplementation(function (
-    this: MockObjectHandle,
-    method: string,
-    ...args: unknown[]
-  ) {
-    return liveApiCall.apply(this, [method, ...args]);
-  });
-
-  track.call.mockImplementation(function (
-    this: MockObjectHandle,
-    method: string,
-    ...args: unknown[]
-  ) {
-    return liveApiCall.apply(this, [method, ...args]);
-  });
-
   const handles = new Map<string, MockObjectHandle>();
+  const duplicateIds = clipIds.slice(1);
+  let duplicateIndex = 0;
+  let tempMidiCounter = 0;
 
   for (const id of clipIds) {
-    const noteMethods = createNoteTrackingMethods();
-    const handle = registerMockObject(id, {
-      path: `live_set tracks ${trackIndex} arrangement_clips 0`,
-      methods: noteMethods,
-    });
-
-    handle.call.mockImplementation(function (
-      this: MockObjectHandle,
-      method: string,
-      ...args: unknown[]
-    ) {
-      const handler = noteMethods[method];
-
-      if (handler != null) {
-        return handler(...args);
-      }
-
-      return liveApiCall.apply(this, [method, ...args]);
-    });
-
-    handle.set.mockImplementation(function (
-      this: MockObjectHandle,
-      property: string,
-      value: unknown,
-    ) {
-      return liveApiSet.apply(this, [property, value]);
-    });
+    const handle = registerArrangementClipHandle(trackIndex, id);
 
     handles.set(id, handle);
   }
 
+  registerMockObject(`track-${trackIndex}`, {
+    path: `live_set tracks ${trackIndex}`,
+    type: "Track",
+    properties: {
+      track_index: trackIndex,
+    },
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        const id = duplicateIds[duplicateIndex];
+
+        if (id == null) {
+          throw new Error(
+            `Test setup error: missing duplicate clip ID for call ${String(duplicateIndex + 1)} on track ${String(trackIndex)}`,
+          );
+        }
+
+        duplicateIndex += 1;
+
+        return `id ${id}`;
+      },
+      create_midi_clip: () => {
+        tempMidiCounter += 1;
+
+        return `id temp_midi_${String(tempMidiCounter)}`;
+      },
+      delete_clip: () => null,
+    },
+  });
+
   return handles;
+}
+
+function registerArrangementClipHandle(
+  trackIndex: number,
+  id: string,
+): MockObjectHandle {
+  return registerMockObject(id, {
+    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    type: "Clip",
+    methods: createNoteTrackingMethods(),
+  });
 }
 
 /**

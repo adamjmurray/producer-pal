@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiSet } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
   lookupMockObject,
@@ -48,6 +47,10 @@ function requireHandle(path: string): MockObjectHandle {
   return handle;
 }
 
+function requireTrackHandle(trackIndex: number): MockObjectHandle {
+  return requireHandle(`live_set tracks ${trackIndex}`);
+}
+
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
     setupMocks();
@@ -58,6 +61,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
     const sourceClip = clipHandles.get("789");
     const duplicatedClip = clipHandles.get("1000");
+    const trackHandle = requireTrackHandle(trackIndex);
 
     expect(sourceClip).toBeDefined();
     expect(duplicatedClip).toBeDefined();
@@ -98,10 +102,12 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Mock tiling flow (non-destructive duplication)
-    liveApiCall.mockImplementation(function (method, ..._args) {
+    trackHandle.call.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id 1000`;
       }
+
+      return null;
     });
 
     const result = await updateClip({
@@ -112,12 +118,12 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Should tile using non-destructive duplication (preserves envelopes)
     // currentArrangementLength (4) < clipLength (12) triggers tiling
     // Keeps original clip and tiles after it at positions 4 and 8
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
     );
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       8.0,
@@ -134,6 +140,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const trackIndex = 0;
     const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
     const sourceClip = clipHandles.get("789");
+    const trackHandle = requireTrackHandle(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
@@ -165,7 +172,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Mock duplicate_clip_to_arrangement
     let nextId = 1000;
 
-    liveApiCall.mockImplementation(function (method, ...args) {
+    trackHandle.call.mockImplementation(function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
         const duplicatedClip = clipHandles.get(String(id));
@@ -178,6 +185,8 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
         return `id ${id}`;
       }
+
+      return null;
     });
 
     const result = await updateClip({
@@ -186,7 +195,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should duplicate once (2 tiles total: existing clip + 1 duplicate)
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
@@ -199,6 +208,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const trackIndex = 0;
     const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
     const sourceClip = clipHandles.get("789");
+    const trackHandle = requireTrackHandle(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
@@ -231,7 +241,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should not call duplicate_clip_to_arrangement
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(trackHandle.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.anything(),
       expect.anything(),
@@ -249,11 +259,17 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       "1002",
     ]);
     const sourceClip = clipHandles.get("789");
+    const tile0 = clipHandles.get("1000");
+    const tile1 = clipHandles.get("1001");
+    const tile2 = clipHandles.get("1002");
+    const trackHandle = requireTrackHandle(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
-    if (sourceClip == null) {
-      throw new Error("Expected arrangement clip handle for 789");
+    if (sourceClip == null || tile0 == null || tile1 == null || tile2 == null) {
+      throw new Error(
+        "Expected arrangement clip handles for 789/1000/1001/1002",
+      );
     }
 
     setupClipProperties(sourceClip, {
@@ -282,27 +298,14 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Track created clips and their start_marker values
     let nextId = 1000;
 
-    liveApiCall.mockImplementation(function (method) {
+    trackHandle.call.mockImplementation(function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
 
         return `id ${id}`;
       }
-    });
 
-    // Track set() calls on created clips
-    const setCallsByClip: Record<string, Record<string, unknown>> = {};
-
-    liveApiSet.mockImplementation(function (
-      this: { _id?: string },
-      prop: string,
-      value: unknown,
-    ) {
-      const clipId = this._id ?? "";
-
-      setCallsByClip[clipId] ??= {};
-
-      setCallsByClip[clipId][prop] = value;
+      return null;
     });
 
     const result = await updateClip({
@@ -311,17 +314,17 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should create 3 tiles
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       3.0, // First tile at beat 3
     );
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       6.0, // Second tile at beat 6
     );
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       9.0, // Third tile at beat 9
@@ -335,9 +338,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     //         tileStartMarker = loop_start + (5 % clipLength) = 1 + (5 % 3) = 1 + 2 = 3
     // Tile 2: startOffset = 5 + 3 = 8
     //         tileStartMarker = loop_start + (8 % clipLength) = 1 + (8 % 3) = 1 + 2 = 3
-    expect(setCallsByClip["1000"]!.start_marker).toBe(3.0);
-    expect(setCallsByClip["1001"]!.start_marker).toBe(3.0);
-    expect(setCallsByClip["1002"]!.start_marker).toBe(3.0);
+    expect(tile0.set).toHaveBeenCalledWith("start_marker", 3.0);
+    expect(tile1.set).toHaveBeenCalledWith("start_marker", 3.0);
+    expect(tile2.set).toHaveBeenCalledWith("start_marker", 3.0);
 
     expect(result).toStrictEqual([
       { id: "789" },
@@ -357,6 +360,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const sourceClip = clipHandles.get("789");
     const tile1 = clipHandles.get("1000");
     const tile2 = clipHandles.get("1001");
+    const trackHandle = requireTrackHandle(trackIndex);
 
     expect(sourceClip).toBeDefined();
     expect(tile1).toBeDefined();
@@ -402,7 +406,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Mock duplicate_clip_to_arrangement calls for tiling
     let callCount = 0;
 
-    liveApiCall.mockImplementation(function (method) {
+    trackHandle.call.mockImplementation(function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
 
@@ -412,6 +416,8 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
           return `id 1001`; // Second full tile (4 beats)
         }
       }
+
+      return null;
     });
 
     vi.mocked(outlet).mockClear();
@@ -427,12 +433,12 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Should tile using arrangement length (4 beats) for spacing
     // Keeps original clip and tiles after it
     // Creates 2 full tiles at positions 4 and 8 (8 beats total, tiled at 4-beat intervals)
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
     );
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(trackHandle.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       8.0,
