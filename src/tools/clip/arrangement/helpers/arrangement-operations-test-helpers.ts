@@ -106,12 +106,12 @@ interface SetupArrangementMocksOptions {
 
 /**
  * Setup common mocks for arrangement clip tests.
- * Combines path mock and mockLiveApiGet in one call.
+ * Combines path setup and property registration in one call.
  * @param options - Options
  * @param options.clipId - Clip ID
  * @param options.trackIndex - Track index
  * @param options.clipProps - Clip properties (passed to createClipProps)
- * @param options.extraMocks - Additional mocks for mockLiveApiGet
+ * @param options.extraMocks - Additional registered mock properties
  */
 export function setupArrangementMocks(
   options: SetupArrangementMocksOptions = {},

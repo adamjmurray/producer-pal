@@ -9,7 +9,6 @@ import {
   MockSequence,
   children,
   detectTypeFromPath,
-  getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
 import { type MockObjectHandle, lookupMockObject } from "./mock-registry.ts";
 
@@ -157,66 +156,6 @@ export class LiveAPI {
   declare setAll: (properties: Record<string, unknown>) => void;
 }
 
-interface MockOverrides {
-  [key: string]: Record<string, unknown> & {
-    __callCount__?: Record<string, number>;
-  };
-}
-
-/**
- * Normalize "id X" format keys to bare numeric IDs.
- * Leaves paths (e.g., "live_set tracks 0") and types (e.g., "Track") untouched.
- * @param key - Override key to normalize
- * @returns Bare ID or unchanged key
- */
-function normalizeIdKey(key: string): string {
-  return /^id \d+$/.test(key) ? key.slice(3) : key;
-}
-
-/**
- * Mock the LiveAPI.get() method with optional custom overrides
- * @param overrides - Property overrides by object id/path/type (bare IDs preferred)
- */
-export function mockLiveApiGet(overrides: MockOverrides = {}): void {
-  const normalized: MockOverrides = {};
-
-  for (const [key, value] of Object.entries(overrides)) {
-    normalized[normalizeIdKey(key)] = value;
-  }
-
-  liveApiGet.mockImplementation(function (
-    this: { id: string; path: string; type: string },
-    prop: string,
-  ) {
-    const overridesByProp =
-      normalized[this.id] ?? normalized[this.path] ?? normalized[this.type];
-
-    if (overridesByProp != null) {
-      const override = overridesByProp[prop];
-
-      if (override !== undefined) {
-        // optionally support mocking a sequence of return values:
-        if (override instanceof MockSequence) {
-          const callCounts = (overridesByProp.__callCount__ ??= {});
-          const callIndex = (callCounts[prop] ??= 0);
-          const value = override[callIndex];
-
-          callCounts[prop]++;
-
-          return [value];
-        }
-
-        // or non-arrays always return the constant value for multiple calls to LiveAPI.get():
-        return Array.isArray(override) ? override : [override];
-      }
-    }
-
-    const result = getPropertyByType(this.type, prop, this.path);
-
-    return result ?? [0];
-  });
-}
-
 interface TrackOverrides {
   id?: string;
   type?: string;
@@ -293,7 +232,7 @@ interface ClipOverrides {
   [key: string]: unknown;
 }
 
-// For use with the default behavior in mockLiveApiGet() above
+// For use with the default liveApiGet behavior configured in test-setup.ts
 export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",

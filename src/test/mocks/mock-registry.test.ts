@@ -7,12 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   LiveAPI,
   liveApiGet,
-  liveApiPath,
   liveApiSet,
-  mockLiveApiGet,
   MockSequence,
-  setupStandardIdMock,
-  type MockLiveAPIContext,
 } from "./mock-live-api.ts";
 import {
   clearMockRegistry,
@@ -281,35 +277,6 @@ describe("mock-registry", () => {
 
       expect(api.get).toBe(liveApiGet);
       expect(api.set).toBe(liveApiSet);
-    });
-
-    it("should coexist with shared mock system in the same test", () => {
-      // Register one object with registry
-      const registeredHandle = registerMockObject("123", {
-        path: "live_set scenes 0",
-        properties: { name: "Registered Scene" },
-      });
-
-      // Configure a different object with the old shared mock system
-      setupStandardIdMock();
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === "456") return "live_set scenes 1";
-
-        return this._path;
-      });
-      mockLiveApiGet({ "456": { name: "Shared Scene" } });
-
-      // Registered object uses instance mocks
-      const api1 = LiveAPI.from("123");
-
-      expect(api1.get("name")).toStrictEqual(["Registered Scene"]);
-      expect(api1.get).toBe(registeredHandle.get);
-
-      // Non-registered object uses shared mocks
-      const api2 = LiveAPI.from("456");
-
-      expect(api2.get("name")).toStrictEqual(["Shared Scene"]);
-      expect(api2.get).toBe(liveApiGet);
     });
 
     it("should support set assertions without toHaveBeenCalledWithThis", () => {
