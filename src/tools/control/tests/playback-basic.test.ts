@@ -12,9 +12,11 @@ import {
 import { playback } from "#src/tools/control/playback.ts";
 import {
   expectLiveSetProperty,
+  registerFollowerTrack,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
+  setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
@@ -35,27 +37,11 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2"),
-      },
+    liveSet = setupPlaybackLiveSet({
+      tracks: children("track1", "track2"),
     });
-    registerMockObject("track1", {
-      path: "id track1",
-      type: "Track",
-      properties: { back_to_arranger: 0 },
-    });
-    registerMockObject("track2", {
-      path: "id track2",
-      type: "Track",
-      properties: { back_to_arranger: 1 },
-    });
+    registerFollowerTrack("track1", true);
+    registerFollowerTrack("track2", false);
 
     const result = playback({
       action: "play-arrangement",
@@ -72,34 +58,14 @@ describe("transport", () => {
   });
 
   it("should handle update-arrangement action with loop settings", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 10,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2", "track3"),
-      },
+    liveSet = setupPlaybackLiveSet({
+      is_playing: 1,
+      current_song_time: 10,
+      tracks: children("track1", "track2", "track3"),
     });
-    registerMockObject("track1", {
-      path: "id track1",
-      type: "Track",
-      properties: { back_to_arranger: 0 },
-    });
-    registerMockObject("track2", {
-      path: "id track2",
-      type: "Track",
-      properties: { back_to_arranger: 1 },
-    });
-    registerMockObject("track3", {
-      path: "id track3",
-      type: "Track",
-      properties: { back_to_arranger: 0 },
-    });
+    registerFollowerTrack("track1", true);
+    registerFollowerTrack("track2", false);
+    registerFollowerTrack("track3", true);
 
     const result = playback({
       action: "update-arrangement",
@@ -126,15 +92,10 @@ describe("transport", () => {
   });
 
   it("should handle different time signatures", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 3,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 3,
-      },
+    liveSet = setupPlaybackLiveSet({
+      signature_numerator: 3,
+      signature_denominator: 4,
+      loop_length: 3,
     });
 
     const result = playback({
@@ -149,17 +110,7 @@ describe("transport", () => {
   });
 
   it("should handle play-session-clips action with single clip", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
     registerMockObject("clip1", {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
@@ -264,32 +215,17 @@ describe("transport", () => {
   });
 
   it("should handle play-scene action", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2"),
-      },
+    liveSet = setupPlaybackLiveSet({
+      current_song_time: 5,
+      tracks: children("track1", "track2"),
     });
+
     const scene0 = registerMockObject("live_set scenes 0", {
       path: "live_set scenes 0",
     });
 
-    registerMockObject("track1", {
-      path: "id track1",
-      type: "Track",
-      properties: { back_to_arranger: 0 },
-    });
-    registerMockObject("track2", {
-      path: "id track2",
-      type: "Track",
-      properties: { back_to_arranger: 0 },
-    });
+    registerFollowerTrack("track1", true);
+    registerFollowerTrack("track2", true);
 
     const result = playback({
       action: "play-scene",
@@ -324,18 +260,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips action with single clip", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
     registerMockObject("clip1", {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
@@ -357,18 +282,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips action with multiple clips", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
     registerMockObject("clip1", {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
@@ -463,18 +377,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-all-clips action", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
 
     const result = playback({ action: "stop-all-session-clips" });
 
@@ -487,16 +390,7 @@ describe("transport", () => {
   });
 
   it("should handle stop action", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({ action: "stop" });
 
@@ -510,16 +404,7 @@ describe("transport", () => {
   });
 
   it("should handle loop end calculation correctly", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 8,
-        loop_length: 16,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
 
     const result = playback({
       action: "update-arrangement",
@@ -533,15 +418,10 @@ describe("transport", () => {
   });
 
   it("should handle 6/8 time signature conversions", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 6,
-        signature_denominator: 8,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 3,
-      },
+    liveSet = setupPlaybackLiveSet({
+      signature_numerator: 6,
+      signature_denominator: 8,
+      loop_length: 3,
     });
 
     const result = playback({
@@ -562,16 +442,7 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action without startTime (defaults to 0)", () => {
-    liveSet = registerMockObject("live_set", {
-      path: "live_set",
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({
       action: "play-arrangement",
