@@ -11,7 +11,7 @@ import {
 } from "./mock-live-api-property-helpers.ts";
 import { liveApiId } from "./mock-live-api.ts";
 
-export interface MockObjectOptions {
+export interface RegisteredMockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
   path?: string;
   /** Type override (e.g., "Track", "Clip"). Auto-detected from path if omitted. */
@@ -22,7 +22,7 @@ export interface MockObjectOptions {
   methods?: Record<string, (...args: unknown[]) => unknown>;
 }
 
-export interface MockObjectHandle {
+export interface RegisteredMockObject {
   /** Instance-level vi.fn() for get() — use in assertions */
   get: Mock;
   /** Instance-level vi.fn() for set() — use in assertions */
@@ -37,8 +37,8 @@ export interface MockObjectHandle {
   type: string;
 }
 
-const registryById = new Map<string, MockObjectHandle>();
-const registryByPath = new Map<string, MockObjectHandle>();
+const registryById = new Map<string, RegisteredMockObject>();
+const registryByPath = new Map<string, RegisteredMockObject>();
 
 /**
  * Normalize "id X" format to bare numeric ID.
@@ -92,9 +92,9 @@ function createCallMock(
   methods: Record<string, (...args: unknown[]) => unknown>,
 ): Mock {
   return vi.fn().mockImplementation((method: string, ...args: unknown[]) => {
-    const handler = methods[method];
+    const methodImpl = methods[method];
 
-    if (handler) return handler(...args);
+    if (methodImpl) return methodImpl(...args);
 
     switch (method) {
       case "get_version_string":
@@ -111,19 +111,19 @@ function createCallMock(
  * Register a mock Live API object with instance-level mocks.
  * @param idOrPath - Object ID (bare or "id X" format) or path
  * @param options - Mock configuration
- * @returns Handle with instance-level get/set/call mocks
+ * @returns Registered mock object with instance-level get/set/call mocks
  */
 export function registerMockObject(
   idOrPath: string,
-  options: MockObjectOptions = {},
-): MockObjectHandle {
+  options: RegisteredMockObjectOptions = {},
+): RegisteredMockObject {
   const id = normalizeId(idOrPath);
   const path = options.path ?? "";
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
   const properties = options.properties ?? {};
   const methods = options.methods ?? {};
 
-  const handle: MockObjectHandle = {
+  const mock: RegisteredMockObject = {
     get: createGetMock(properties, type, path),
     set: vi.fn() as Mock,
     call: createCallMock(methods),
@@ -132,25 +132,25 @@ export function registerMockObject(
     type,
   };
 
-  registryById.set(id, handle);
+  registryById.set(id, mock);
 
   if (path) {
-    registryByPath.set(path, handle);
+    registryByPath.set(path, mock);
   }
 
-  return handle;
+  return mock;
 }
 
 /**
  * Look up a registered mock object by ID or path.
  * @param id - Bare ID (e.g., "123")
  * @param path - Object path (e.g., "live_set tracks 0")
- * @returns Mock object handle, or undefined if not registered
+ * @returns Registered mock object, or undefined if not registered
  */
 export function lookupMockObject(
   id?: string,
   path?: string,
-): MockObjectHandle | undefined {
+): RegisteredMockObject | undefined {
   if (id != null) {
     const byId = registryById.get(id);
 

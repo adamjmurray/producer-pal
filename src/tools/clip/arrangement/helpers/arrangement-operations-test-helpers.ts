@@ -24,10 +24,7 @@ interface RegisterOptions {
   properties?: Record<string, unknown>;
 }
 
-function registerArrangementMock(
-  id: string,
-  options: RegisterOptions = {},
-): void {
+function setupArrangementMock(id: string, options: RegisterOptions = {}): void {
   registerMockObject(id, options);
 }
 
@@ -40,11 +37,11 @@ export function setupArrangementClipPath(
   clipId: string,
   trackIndex: number = 0,
 ): void {
-  registerArrangementMock(`track-${trackIndex}`, {
+  setupArrangementMock(`track-${trackIndex}`, {
     path: `live_set tracks ${trackIndex}`,
     type: "Track",
   });
-  registerArrangementMock(clipId, {
+  setupArrangementMock(clipId, {
     path: `live_set tracks ${trackIndex} arrangement_clips 0`,
     type: "Clip",
   });
@@ -124,13 +121,13 @@ export function setupArrangementMocks(
   } = options;
 
   setupArrangementClipPath(clipId, trackIndex);
-  registerArrangementMock(clipId, {
+  setupArrangementMock(clipId, {
     path: `live_set tracks ${trackIndex} arrangement_clips 0`,
     type: "Clip",
     properties: createClipProps(clipProps),
   });
 
   for (const [id, properties] of Object.entries(extraMocks)) {
-    registerArrangementMock(id, { properties });
+    setupArrangementMock(id, { properties });
   }
 }

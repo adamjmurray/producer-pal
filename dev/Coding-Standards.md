@@ -109,9 +109,9 @@ Return optimistic results for playback operations.
 Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:
 
 - `registerMockObject(id, { path, type, properties, methods })` — register a
-  mock object and get back a `MockObjectHandle` with instance-level
+  mock object and get back a `RegisteredMockObject` with instance-level
   `get`/`set`/`call` mocks
-- Assert directly on the handle: `expect(handle.set).toHaveBeenCalledWith(...)`
+- Assert directly on the mock: `expect(track.set).toHaveBeenCalledWith(...)`
 - `mockNonExistentObjects()` — make unregistered IDs non-existent (for
   invalid-ID tests)
 - Domain-specific helpers (e.g., `setupTrackMock()`) wrap `registerMockObject()`

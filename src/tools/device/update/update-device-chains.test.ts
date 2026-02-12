@@ -5,16 +5,16 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
-  let chain: MockObjectHandle;
-  let drumChain: MockObjectHandle;
-  let drumPad: MockObjectHandle;
+  let chain: RegisteredMockObject;
+  let drumChain: RegisteredMockObject;
+  let drumPad: RegisteredMockObject;
 
   beforeEach(() => {
     registerMockObject("123", { type: "RackDevice" });

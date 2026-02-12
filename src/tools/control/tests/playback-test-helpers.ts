@@ -6,7 +6,7 @@
 import { expect } from "vitest";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -36,19 +36,19 @@ interface ClipPathMapping {
 }
 
 interface MultiClipMockResult {
-  liveSet: MockObjectHandle;
-  clipSlots: MockObjectHandle[];
+  liveSet: RegisteredMockObject;
+  clipSlots: RegisteredMockObject[];
 }
 
 /**
  * Setup a live_set mock with standard transport properties (4/4, loop off).
  * Override any property via the overrides parameter.
  * @param overrides - Properties to override on the live_set mock
- * @returns MockObjectHandle for the live_set object
+ * @returns RegisteredMockObject for the live_set object
  */
 export function setupPlaybackLiveSet(
   overrides: Record<string, unknown> = {},
-): MockObjectHandle {
+): RegisteredMockObject {
   return registerMockObject("live_set", {
     path: "live_set",
     properties: {
@@ -66,12 +66,12 @@ export function setupPlaybackLiveSet(
  * Register a track mock with arrangement follower state.
  * @param trackId - The track ID to register
  * @param following - Whether the track is following the arrangement (back_to_arranger=0)
- * @returns MockObjectHandle for the track
+ * @returns RegisteredMockObject for the track
  */
-export function registerFollowerTrack(
+export function setupFollowerTrack(
   trackId: string,
   following: boolean,
-): MockObjectHandle {
+): RegisteredMockObject {
   return registerMockObject(trackId, {
     path: `id ${trackId}`,
     type: "Track",
@@ -82,9 +82,9 @@ export function registerFollowerTrack(
 /**
  * Setup default time signature mock (4/4) for playback tests.
  * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.
- * @returns MockObjectHandle for the live_set object
+ * @returns RegisteredMockObject for the live_set object
  */
-export function setupDefaultTimeSignature(): MockObjectHandle {
+export function setupDefaultTimeSignature(): RegisteredMockObject {
   const liveSet = registerMockObject("live_set", {
     path: "live_set",
     properties: {
@@ -103,9 +103,9 @@ export function setupDefaultTimeSignature(): MockObjectHandle {
 /**
  * Setup mock for a clip that exists but has no track/scene info in its path
  * @param clipId - The clip ID to mock
- * @returns MockObjectHandle for the clip
+ * @returns RegisteredMockObject for the clip
  */
-export function setupClipWithNoTrackPath(clipId: string): MockObjectHandle {
+export function setupClipWithNoTrackPath(clipId: string): RegisteredMockObject {
   return registerMockObject(clipId, {
     path: "some_invalid_path",
     type: "Clip",
@@ -117,12 +117,12 @@ export function setupClipWithNoTrackPath(clipId: string): MockObjectHandle {
  * @param options - Configuration options
  * @param options.cuePoints - Cue point definitions
  * @param options.liveSet - Live set properties
- * @returns MockObjectHandle for the live_set object
+ * @returns RegisteredMockObject for the live_set object
  */
 export function setupCuePointMocks({
   cuePoints,
   liveSet = {},
-}: SetupCuePointMocksOptions): MockObjectHandle {
+}: SetupCuePointMocksOptions): RegisteredMockObject {
   const {
     numerator = 4,
     denominator = 4,
@@ -149,12 +149,12 @@ export function setupCuePointMocks({
 
 /**
  * Assert that a Live set property was set via a handle's instance mock.
- * @param handle - MockObjectHandle for the live_set object
+ * @param handle - RegisteredMockObject for the live_set object
  * @param property - Property name
  * @param value - Expected value
  */
 export function expectLiveSetProperty(
-  handle: MockObjectHandle,
+  handle: RegisteredMockObject,
   property: string,
   value: unknown,
 ): void {
@@ -190,7 +190,7 @@ export function setupMultiClipMocks(
   registerMockObject("track1", { path: "id track1", type: "Track" });
   registerMockObject("track2", { path: "id track2", type: "Track" });
 
-  const clipSlots: MockObjectHandle[] = [];
+  const clipSlots: RegisteredMockObject[] = [];
 
   for (const mapping of clipMappings) {
     registerMockObject(mapping.clipId, { path: mapping.path });

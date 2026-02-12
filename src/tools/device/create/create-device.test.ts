@@ -6,15 +6,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "./create-device.ts";
 
 describe("createDevice", () => {
-  let track0: MockObjectHandle;
-  let chain0: MockObjectHandle;
+  let track0: RegisteredMockObject;
+  let chain0: RegisteredMockObject;
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {
@@ -348,7 +348,7 @@ describe("createDevice", () => {
             devices: ["id", "existing-device"],
           },
         });
-        const chainHandle = registerMockObject("chain-0-handle", {
+        const chain = registerMockObject("chain-0-handle", {
           path: "live_set tracks 0 devices 0 chains 0",
           properties: { devices: ["id", "existing-device"] },
           methods: { insert_device: () => ["id", "device123"] },
@@ -363,11 +363,7 @@ describe("createDevice", () => {
           deviceName: "EQ Eight",
         });
 
-        expect(chainHandle.call).toHaveBeenCalledWith(
-          "insert_device",
-          "EQ Eight",
-          0,
-        );
+        expect(chain.call).toHaveBeenCalledWith("insert_device", "EQ Eight", 0);
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,

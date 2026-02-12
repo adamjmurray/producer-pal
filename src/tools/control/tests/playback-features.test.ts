@@ -6,18 +6,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import {
-  registerFollowerTrack,
+  setupFollowerTrack,
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = setupDefaultTimeSignature();
@@ -28,9 +28,9 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2", "track3"),
       });
-      registerFollowerTrack("track1", true);
-      registerFollowerTrack("track2", false);
-      registerFollowerTrack("track3", true);
+      setupFollowerTrack("track1", true);
+      setupFollowerTrack("track2", false);
+      setupFollowerTrack("track3", true);
 
       const result = playback({
         action: "play-arrangement",
@@ -51,8 +51,8 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2"),
       });
-      registerFollowerTrack("track1", false);
-      registerFollowerTrack("track2", false);
+      setupFollowerTrack("track1", false);
+      setupFollowerTrack("track2", false);
 
       const result = playback({
         action: "play-arrangement",
@@ -72,8 +72,8 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2"),
       });
-      registerFollowerTrack("track1", false);
-      registerFollowerTrack("track2", true);
+      setupFollowerTrack("track1", false);
+      setupFollowerTrack("track2", true);
 
       const result = playback({
         action: "play-arrangement",
@@ -95,9 +95,9 @@ describe("transport", () => {
         loop_length: 0,
         tracks: children("track1", "track2", "track3"),
       });
-      registerFollowerTrack("track1", true);
-      registerFollowerTrack("track2", false);
-      registerFollowerTrack("track3", true);
+      setupFollowerTrack("track1", true);
+      setupFollowerTrack("track2", false);
+      setupFollowerTrack("track3", true);
 
       const result = playback({
         action: "stop",
@@ -112,7 +112,7 @@ describe("transport", () => {
   });
 
   describe("switchView functionality", () => {
-    let appView: MockObjectHandle;
+    let appView: RegisteredMockObject;
 
     beforeEach(() => {
       // Register objects needed by select() for view switching
@@ -141,8 +141,8 @@ describe("transport", () => {
       registerMockObject("live_set scenes 0", {
         path: "live_set scenes 0",
       });
-      registerFollowerTrack("track1", true);
-      registerFollowerTrack("track2", true);
+      setupFollowerTrack("track1", true);
+      setupFollowerTrack("track2", true);
 
       playback({
         action: "play-scene",

@@ -11,7 +11,7 @@ import {
   createTrackResult,
   createTrackResultArray,
   expectDeleteDeviceCalls,
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
   setupRouteToSourceMock,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
@@ -178,8 +178,8 @@ describe("duplicate - track duplication", () => {
    * @returns Handles for liveSet and newTrack mocks
    */
   function setupProducerPalDeviceMocks(): {
-    liveSet: MockObjectHandle;
-    newTrack: MockObjectHandle;
+    liveSet: RegisteredMockObject;
+    newTrack: RegisteredMockObject;
   } {
     registerMockObject("track1", { path: "live_set tracks 0" });
     registerMockObject("this_device", {
@@ -252,7 +252,7 @@ describe("duplicate - track duplication", () => {
      */
     function setupRoutingMocks(
       opts: Parameters<typeof setupRouteToSourceMock>[0] = {},
-    ): { sourceTrack: MockObjectHandle; newTrack: MockObjectHandle } {
+    ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
       registerMockObject("track1", { path: "live_set tracks 0" });
       registerMockObject("live_set", { path: "live_set" });
 

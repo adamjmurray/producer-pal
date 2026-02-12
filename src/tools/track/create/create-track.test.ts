@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -19,7 +19,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 }));
 
 describe("createTrack", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
   let returnTrackCounter = 0;
 
   beforeEach(() => {
@@ -83,9 +83,9 @@ describe("createTrack", () => {
   });
 
   it("should create multiple tracks with auto-incrementing names", () => {
-    const t2 = registerMockObject("midi_track_2", {});
-    const t3 = registerMockObject("midi_track_3", {});
-    const t4 = registerMockObject("midi_track_4", {});
+    const track2 = registerMockObject("midi_track_2", {});
+    const track3 = registerMockObject("midi_track_3", {});
+    const track4 = registerMockObject("midi_track_4", {});
 
     const result = createTrack({
       trackIndex: 2,
@@ -98,9 +98,9 @@ describe("createTrack", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_midi_track", 3);
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_midi_track", 4);
 
-    expect(t2.set).toHaveBeenCalledWith("name", "Drum");
-    expect(t3.set).toHaveBeenCalledWith("name", "Drum 2");
-    expect(t4.set).toHaveBeenCalledWith("name", "Drum 3");
+    expect(track2.set).toHaveBeenCalledWith("name", "Drum");
+    expect(track3.set).toHaveBeenCalledWith("name", "Drum 2");
+    expect(track4.set).toHaveBeenCalledWith("name", "Drum 3");
 
     expect(result).toStrictEqual([
       {
@@ -330,9 +330,9 @@ describe("createTrack", () => {
 
   describe("comma-separated names", () => {
     it("should use comma-separated names for each track when count matches", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
 
       const result = createTrack({
         trackIndex: 0,
@@ -340,17 +340,17 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("name", "kick");
-      expect(t1.set).toHaveBeenCalledWith("name", "snare");
-      expect(t2.set).toHaveBeenCalledWith("name", "hat");
+      expect(track0.set).toHaveBeenCalledWith("name", "kick");
+      expect(track1.set).toHaveBeenCalledWith("name", "snare");
+      expect(track2.set).toHaveBeenCalledWith("name", "hat");
       expect(result).toHaveLength(3);
     });
 
     it("should fall back to numbered naming when count exceeds names", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
-      const t3 = registerMockObject("midi_track_3", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
+      const track3 = registerMockObject("midi_track_3", {});
 
       const result = createTrack({
         trackIndex: 0,
@@ -358,16 +358,16 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("name", "kick");
-      expect(t1.set).toHaveBeenCalledWith("name", "snare");
-      expect(t2.set).toHaveBeenCalledWith("name", "hat");
-      expect(t3.set).toHaveBeenCalledWith("name", "hat 2");
+      expect(track0.set).toHaveBeenCalledWith("name", "kick");
+      expect(track1.set).toHaveBeenCalledWith("name", "snare");
+      expect(track2.set).toHaveBeenCalledWith("name", "hat");
+      expect(track3.set).toHaveBeenCalledWith("name", "hat 2");
       expect(result).toHaveLength(4);
     });
 
     it("should ignore extra names when count is less than names", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
 
       const result = createTrack({
         trackIndex: 0,
@@ -375,8 +375,8 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("name", "kick");
-      expect(t1.set).toHaveBeenCalledWith("name", "snare");
+      expect(track0.set).toHaveBeenCalledWith("name", "kick");
+      expect(track1.set).toHaveBeenCalledWith("name", "snare");
       expect(result).toHaveLength(2);
     });
 
@@ -397,9 +397,9 @@ describe("createTrack", () => {
     });
 
     it("should trim whitespace around comma-separated names", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
 
       createTrack({
         trackIndex: 0,
@@ -407,17 +407,17 @@ describe("createTrack", () => {
         name: " kick , snare , hat ",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("name", "kick");
-      expect(t1.set).toHaveBeenCalledWith("name", "snare");
-      expect(t2.set).toHaveBeenCalledWith("name", "hat");
+      expect(track0.set).toHaveBeenCalledWith("name", "kick");
+      expect(track1.set).toHaveBeenCalledWith("name", "snare");
+      expect(track2.set).toHaveBeenCalledWith("name", "hat");
     });
 
     it("should continue numbering from 2 when falling back", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
-      const t3 = registerMockObject("midi_track_3", {});
-      const t4 = registerMockObject("midi_track_4", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
+      const track3 = registerMockObject("midi_track_3", {});
+      const track4 = registerMockObject("midi_track_4", {});
 
       createTrack({
         trackIndex: 0,
@@ -426,21 +426,21 @@ describe("createTrack", () => {
       });
 
       // First 3 tracks use the provided names
-      expect(t0.set).toHaveBeenCalledWith("name", "kick");
-      expect(t1.set).toHaveBeenCalledWith("name", "snare");
-      expect(t2.set).toHaveBeenCalledWith("name", "hat");
+      expect(track0.set).toHaveBeenCalledWith("name", "kick");
+      expect(track1.set).toHaveBeenCalledWith("name", "snare");
+      expect(track2.set).toHaveBeenCalledWith("name", "hat");
       // Subsequent tracks use "hat 2", "hat 3" (starting from 2)
-      expect(t3.set).toHaveBeenCalledWith("name", "hat 2");
-      expect(t4.set).toHaveBeenCalledWith("name", "hat 3");
+      expect(track3.set).toHaveBeenCalledWith("name", "hat 2");
+      expect(track4.set).toHaveBeenCalledWith("name", "hat 3");
     });
   });
 
   describe("comma-separated colors", () => {
     it("should cycle through colors with modular arithmetic", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
-      const t3 = registerMockObject("midi_track_3", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
+      const track3 = registerMockObject("midi_track_3", {});
 
       createTrack({
         trackIndex: 0,
@@ -450,16 +450,16 @@ describe("createTrack", () => {
       });
 
       // Colors cycle: red, green, red, green
-      expect(t0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(t1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      expect(t2.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(t3.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expect(track2.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+      expect(track3.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     });
 
     it("should use colors in order when count matches", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
-      const t2 = registerMockObject("midi_track_2", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
+      const track2 = registerMockObject("midi_track_2", {});
 
       createTrack({
         trackIndex: 0,
@@ -468,14 +468,14 @@ describe("createTrack", () => {
         color: "#FF0000,#00FF00,#0000FF",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(t1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      expect(t2.set).toHaveBeenCalledWith("color", 255); // #0000FF
+      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expect(track2.set).toHaveBeenCalledWith("color", 255); // #0000FF
     });
 
     it("should ignore extra colors when count is less than colors", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
 
       createTrack({
         trackIndex: 0,
@@ -484,8 +484,8 @@ describe("createTrack", () => {
         color: "#FF0000,#00FF00,#0000FF",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(t1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
       // #0000FF is not used
     });
 
@@ -502,8 +502,8 @@ describe("createTrack", () => {
     });
 
     it("should trim whitespace around comma-separated colors", () => {
-      const t0 = registerMockObject("midi_track_0", {});
-      const t1 = registerMockObject("midi_track_1", {});
+      const track0 = registerMockObject("midi_track_0", {});
+      const track1 = registerMockObject("midi_track_1", {});
 
       createTrack({
         trackIndex: 0,
@@ -512,8 +512,8 @@ describe("createTrack", () => {
         color: " #FF0000 , #00FF00 ",
       });
 
-      expect(t0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(t1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     });
   });
 });

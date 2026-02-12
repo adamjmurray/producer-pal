@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "./update-track.ts";
@@ -13,12 +13,12 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 describe("updateTrack - mixer properties", () => {
-  let track123: MockObjectHandle;
-  let mixer1: MockObjectHandle;
-  let volumeParam1: MockObjectHandle;
-  let volumeParam2: MockObjectHandle;
-  let panningParam1: MockObjectHandle;
-  let panningParam2: MockObjectHandle;
+  let track123: RegisteredMockObject;
+  let mixer1: RegisteredMockObject;
+  let volumeParam1: RegisteredMockObject;
+  let volumeParam2: RegisteredMockObject;
+  let panningParam1: RegisteredMockObject;
+  let panningParam2: RegisteredMockObject;
 
   beforeEach(() => {
     track123 = registerMockObject("123", { path: "live_set tracks 0" });

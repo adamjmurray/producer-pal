@@ -18,25 +18,25 @@ import {
 
 describe("mock-registry", () => {
   describe("registerMockObject", () => {
-    it("should return a handle with instance-level mocks", () => {
-      const handle = registerMockObject("123", {
+    it("should return a mock with instance-level mocks", () => {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0",
       });
 
-      expect(handle.get).toBeTypeOf("function");
-      expect(handle.set).toBeTypeOf("function");
-      expect(handle.call).toBeTypeOf("function");
-      expect(handle.id).toBe("123");
-      expect(handle.path).toBe("live_set tracks 0");
-      expect(handle.type).toBe("Track");
+      expect(mock.get).toBeTypeOf("function");
+      expect(mock.set).toBeTypeOf("function");
+      expect(mock.call).toBeTypeOf("function");
+      expect(mock.id).toBe("123");
+      expect(mock.path).toBe("live_set tracks 0");
+      expect(mock.type).toBe("Track");
     });
 
     it("should normalize 'id X' prefix to bare ID", () => {
-      const handle = registerMockObject("id 456", {
+      const mock = registerMockObject("id 456", {
         path: "live_set scenes 0",
       });
 
-      expect(handle.id).toBe("456");
+      expect(mock.id).toBe("456");
     });
 
     it("should auto-detect type from path", () => {
@@ -62,134 +62,134 @@ describe("mock-registry", () => {
     });
 
     it("should use explicit type override when provided", () => {
-      const handle = registerMockObject("1", {
+      const mock = registerMockObject("1", {
         path: "live_set tracks 0",
         type: "ReturnTrack",
       });
 
-      expect(handle.type).toBe("ReturnTrack");
+      expect(mock.type).toBe("ReturnTrack");
     });
 
     it("should return 'Unknown' type when no path or type is provided", () => {
-      const handle = registerMockObject("1");
+      const mock = registerMockObject("1");
 
-      expect(handle.type).toBe("Unknown");
+      expect(mock.type).toBe("Unknown");
     });
   });
 
   describe("get mock", () => {
     it("should return configured properties", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0 clip_slots 0 clip",
         properties: { is_midi_clip: 1, name: "Test Clip" },
       });
 
-      expect(handle.get("is_midi_clip")).toStrictEqual([1]);
-      expect(handle.get("name")).toStrictEqual(["Test Clip"]);
+      expect(mock.get("is_midi_clip")).toStrictEqual([1]);
+      expect(mock.get("name")).toStrictEqual(["Test Clip"]);
     });
 
     it("should fall back to type-based defaults for unspecified properties", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0 clip_slots 0 clip",
         properties: { name: "Custom" },
       });
 
       // is_midi_clip is not in properties, should fall back to Clip default (1)
-      expect(handle.get("is_midi_clip")).toStrictEqual([1]);
+      expect(mock.get("is_midi_clip")).toStrictEqual([1]);
     });
 
     it("should return [0] for unknown properties with no type default", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0",
       });
 
-      expect(handle.get("nonexistent_property")).toStrictEqual([0]);
+      expect(mock.get("nonexistent_property")).toStrictEqual([0]);
     });
 
     it("should support MockSequence for sequential values", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0 clip_slots 0",
         properties: { has_clip: new MockSequence(0, 1) },
       });
 
-      expect(handle.get("has_clip")).toStrictEqual([0]);
-      expect(handle.get("has_clip")).toStrictEqual([1]);
+      expect(mock.get("has_clip")).toStrictEqual([0]);
+      expect(mock.get("has_clip")).toStrictEqual([1]);
     });
 
     it("should pass through array values unchanged", () => {
       const ids = ["id", "child1", "id", "child2"];
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set",
         properties: { tracks: ids },
       });
 
-      expect(handle.get("tracks")).toStrictEqual(ids);
+      expect(mock.get("tracks")).toStrictEqual(ids);
     });
 
     it("should track calls for assertions", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0",
         properties: { name: "Track 1" },
       });
 
-      handle.get("name");
-      handle.get("color");
+      mock.get("name");
+      mock.get("color");
 
-      expect(handle.get).toHaveBeenCalledTimes(2);
-      expect(handle.get).toHaveBeenCalledWith("name");
-      expect(handle.get).toHaveBeenCalledWith("color");
+      expect(mock.get).toHaveBeenCalledTimes(2);
+      expect(mock.get).toHaveBeenCalledWith("name");
+      expect(mock.get).toHaveBeenCalledWith("color");
     });
   });
 
   describe("set mock", () => {
     it("should track set calls for assertions", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set scenes 0",
       });
 
-      handle.set("name", "New Scene");
-      handle.set("color", 16711680);
+      mock.set("name", "New Scene");
+      mock.set("color", 16711680);
 
-      expect(handle.set).toHaveBeenCalledTimes(2);
-      expect(handle.set).toHaveBeenCalledWith("name", "New Scene");
-      expect(handle.set).toHaveBeenCalledWith("color", 16711680);
+      expect(mock.set).toHaveBeenCalledTimes(2);
+      expect(mock.set).toHaveBeenCalledWith("name", "New Scene");
+      expect(mock.set).toHaveBeenCalledWith("color", 16711680);
     });
   });
 
   describe("call mock", () => {
     it("should dispatch to configured methods", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0 clip_slots 0 clip",
         methods: {
           get_notes_extended: () => JSON.stringify({ notes: [{ pitch: 60 }] }),
         },
       });
 
-      const result = handle.call("get_notes_extended", 0, 128, 0, 127);
+      const result = mock.call("get_notes_extended", 0, 128, 0, 127);
 
       expect(result).toBe(JSON.stringify({ notes: [{ pitch: 60 }] }));
     });
 
     it("should fall back to defaults for unconfigured methods", () => {
-      const handle = registerMockObject("123");
+      const mock = registerMockObject("123");
 
-      expect(handle.call("get_version_string")).toBe("12.3");
-      expect(handle.call("get_notes_extended")).toBe(
+      expect(mock.call("get_version_string")).toBe("12.3");
+      expect(mock.call("get_notes_extended")).toBe(
         JSON.stringify({ notes: [] }),
       );
-      expect(handle.call("unknown_method")).toBeNull();
+      expect(mock.call("unknown_method")).toBeNull();
     });
 
     it("should track calls for assertions", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         methods: {
           duplicate_clip_to_arrangement: () => ["id", "dup_1"],
         },
       });
 
-      handle.call("duplicate_clip_to_arrangement", 4.0);
+      mock.call("duplicate_clip_to_arrangement", 4.0);
 
-      expect(handle.call).toHaveBeenCalledWith(
+      expect(mock.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         4.0,
       );
@@ -198,23 +198,23 @@ describe("mock-registry", () => {
 
   describe("lookupMockObject", () => {
     it("should find by ID", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0",
       });
 
-      expect(lookupMockObject("123")).toBe(handle);
+      expect(lookupMockObject("123")).toBe(mock);
     });
 
     it("should find by path", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set tracks 0",
       });
 
-      expect(lookupMockObject(undefined, "live_set tracks 0")).toBe(handle);
+      expect(lookupMockObject(undefined, "live_set tracks 0")).toBe(mock);
     });
 
     it("should prefer ID over path", () => {
-      const handle1 = registerMockObject("123", {
+      const track0 = registerMockObject("123", {
         path: "live_set tracks 0",
       });
 
@@ -222,8 +222,8 @@ describe("mock-registry", () => {
         path: "live_set tracks 1",
       });
 
-      // Lookup with ID "123" should find handle1 even if path is for handle2
-      expect(lookupMockObject("123", "live_set tracks 1")).toBe(handle1);
+      // Lookup with ID "123" should find track0 even if path is for tracks 1
+      expect(lookupMockObject("123", "live_set tracks 1")).toBe(track0);
     });
 
     it("should return undefined for unregistered objects", () => {
@@ -246,7 +246,7 @@ describe("mock-registry", () => {
 
   describe("LiveAPI integration", () => {
     it("should use registered mocks on LiveAPI instances", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set scenes 0",
         properties: { name: "Scene 1" },
       });
@@ -254,9 +254,9 @@ describe("mock-registry", () => {
       const api = LiveAPI.from("123");
 
       expect(api.get("name")).toStrictEqual(["Scene 1"]);
-      expect(api.get).toBe(handle.get);
-      expect(api.set).toBe(handle.set);
-      expect(api.call).toBe(handle.call);
+      expect(api.get).toBe(mock.get);
+      expect(api.set).toBe(mock.set);
+      expect(api.call).toBe(mock.call);
     });
 
     it("should return registered id/path/type from LiveAPI getters", () => {
@@ -280,7 +280,7 @@ describe("mock-registry", () => {
     });
 
     it("should support set assertions without toHaveBeenCalledWithThis", () => {
-      const handle = registerMockObject("123", {
+      const mock = registerMockObject("123", {
         path: "live_set scenes 0",
       });
 
@@ -289,7 +289,7 @@ describe("mock-registry", () => {
       api.set("name", "Updated");
 
       // Direct assertion on instance mock — no context matching needed
-      expect(handle.set).toHaveBeenCalledWith("name", "Updated");
+      expect(mock.set).toHaveBeenCalledWith("name", "Updated");
     });
 
     it("should make extension properties work via path", () => {
@@ -303,7 +303,7 @@ describe("mock-registry", () => {
     });
 
     it("should work with LiveAPI.from using path strings", () => {
-      const handle = registerMockObject("t0", {
+      const mock = registerMockObject("t0", {
         path: "live_set tracks 0",
         properties: { name: "Track 0" },
       });
@@ -312,7 +312,7 @@ describe("mock-registry", () => {
       const api = LiveAPI.from("live_set tracks 0");
 
       expect(api.get("name")).toStrictEqual(["Track 0"]);
-      expect(api.get).toBe(handle.get);
+      expect(api.get).toBe(mock.get);
     });
 
     it("should be cleared between tests by beforeEach", () => {

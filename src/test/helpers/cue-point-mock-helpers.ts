@@ -5,7 +5,7 @@
 
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -46,7 +46,7 @@ interface SetupCuePointMocksOptions {
 }
 
 interface SetupCuePointRegistryResult extends CuePointMaps {
-  liveSet: MockObjectHandle;
+  liveSet: RegisteredMockObject;
 }
 
 /**

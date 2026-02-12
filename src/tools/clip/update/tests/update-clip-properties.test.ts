@@ -7,53 +7,47 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   setupMidiClipMock,
-  setupMocks,
-  type UpdateClipMockHandles,
+  setupUpdateClipMocks,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateClip - Properties and ID handling", () => {
-  let handles: UpdateClipMockHandles;
+  let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    handles = setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should handle 'id ' prefixed clip IDs", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "id 123",
       name: "Prefixed ID Clip",
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith(
-      "name",
-      "Prefixed ID Clip",
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Prefixed ID Clip");
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       name: "Only Name Update",
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledTimes(1);
-    expect(handles.clip123.set).toHaveBeenCalledWith(
-      "name",
-      "Only Name Update",
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledTimes(1);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Only Name Update");
 
-    expect(handles.clip123.call).not.toHaveBeenCalledWith(
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
       "remove_notes_extended",
       expect.anything(),
     );
-    expect(handles.clip123.call).not.toHaveBeenCalledWith(
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
     );
@@ -62,20 +56,20 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   it("should handle boolean false values correctly", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       looping: false,
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith("looping", false);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", async () => {
     mockNonExistentObjects();
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       signature_numerator: 4,
       signature_denominator: 4,
     });
@@ -91,12 +85,12 @@ describe("updateClip - Properties and ID handling", () => {
       1,
       'updateClip: id "nonexistent" does not exist',
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith("name", "Test");
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Test");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", async () => {
-    setupMidiClipMock(handles.clip123);
-    setupMidiClipMock(handles.clip456);
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
 
     const singleResult = await updateClip({ ids: "123", name: "Single" });
     const arrayResult = await updateClip({ ids: "123, 456", name: "Multiple" });
@@ -106,9 +100,9 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   it("should handle whitespace in comma-separated IDs", async () => {
-    setupMidiClipMock(handles.clip123);
-    setupMidiClipMock(handles.clip456);
-    setupMidiClipMock(handles.clip789, {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+    setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
       start_time: 8.0,
     });
@@ -122,8 +116,8 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   it("should filter out empty IDs from comma-separated list", async () => {
-    setupMidiClipMock(handles.clip123);
-    setupMidiClipMock(handles.clip456);
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
 
     const result = await updateClip({
       ids: "123,,456,  ,",
@@ -131,8 +125,8 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     // set the names of the two clips:
-    expect(handles.clip123.set).toHaveBeenCalledWith("name", "Filtered");
-    expect(handles.clip456.set).toHaveBeenCalledWith("name", "Filtered");
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Filtered");
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Filtered");
 
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
@@ -142,10 +136,10 @@ describe("updateClip - Properties and ID handling", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      setupMidiClipMock(handles.clip123);
+      setupMidiClipMock(mocks.clip123);
 
       // Mock getProperty to return quantized color (different from input)
-      handles.clip123.get.mockImplementation((prop: string) => {
+      mocks.clip123.get.mockImplementation((prop: string) => {
         if (prop === "color") {
           return [16725558]; // #FF3636 (quantized from #FF0000)
         }
@@ -173,10 +167,10 @@ describe("updateClip - Properties and ID handling", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      setupMidiClipMock(handles.clip123);
+      setupMidiClipMock(mocks.clip123);
 
       // Mock getProperty to return exact color (same as input)
-      handles.clip123.get.mockImplementation((prop: string) => {
+      mocks.clip123.get.mockImplementation((prop: string) => {
         if (prop === "color") {
           return [16711680]; // #FF0000 (exact match)
         }
@@ -202,7 +196,7 @@ describe("updateClip - Properties and ID handling", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      setupMidiClipMock(handles.clip123);
+      setupMidiClipMock(mocks.clip123);
 
       await updateClip({
         ids: "123",

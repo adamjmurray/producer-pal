@@ -6,17 +6,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "./update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateTrack - send properties", () => {
-  let track123: MockObjectHandle;
-  let send1: MockObjectHandle;
-  let send2: MockObjectHandle;
-  let send3: MockObjectHandle;
+  let track123: RegisteredMockObject;
+  let send1: RegisteredMockObject;
+  let send2: RegisteredMockObject;
+  let send3: RegisteredMockObject;
 
   beforeEach(() => {
     track123 = registerMockObject("123", { path: "live_set tracks 0" });

@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
@@ -51,7 +51,7 @@ function setupArrangementClip(
   clipId: string,
   trackIndex: number,
   properties: Record<string, unknown>,
-): MockObjectHandle {
+): RegisteredMockObject {
   registerMockObject("live-set", { path: "live_set" });
   registerMockObject(`track-${trackIndex}`, {
     path: `live_set tracks ${trackIndex}`,
@@ -68,7 +68,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
     const clipId = "705";
 
     // Source: warped, unlooped, arrangement 0-7, content [1, 8]
-    const clipHandle = setupArrangementClip(clipId, 0, {
+    const clip = setupArrangementClip(clipId, 0, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -103,10 +103,10 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
     // Source clip loop_end set: loopStart(1) + target(14) = 15.0
-    expect(clipHandle.set).toHaveBeenCalledWith("loop_end", 15.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
     // Source end_marker extended: startMarker(1) + target(14) = 15
-    assertSourceClipEndMarker(clipHandle, 15.0);
+    assertSourceClipEndMarker(clip, 15.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -118,7 +118,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
     const clipId = "716";
 
     // Source: warped, unlooped, arrangement 0-4, content [1, 5] (hidden content)
-    const clipHandle = setupArrangementClip(clipId, 0, {
+    const clip = setupArrangementClip(clipId, 0, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -153,10 +153,10 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
     // Source clip loop_end set: loopStart(1) + target(14) = 15.0
-    expect(clipHandle.set).toHaveBeenCalledWith("loop_end", 15.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
     // Source end_marker extended: startMarker(1) + target(14) = 15
-    assertSourceClipEndMarker(clipHandle, 15.0);
+    assertSourceClipEndMarker(clip, 15.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -171,7 +171,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
 
     // Unwarped clip: loop 0-3s, arrangement 0-6 beats, extending to 12 beats
     // After setting loop_end, end_time changes from 6.0 to 12.0
-    const clipHandle = setupArrangementClip(clipId, 0, {
+    const clip = setupArrangementClip(clipId, 0, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -193,7 +193,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     );
 
     // loop_end set to target: 0 + 12 / (6/3) = 6.0 seconds
-    expect(clipHandle.set).toHaveBeenCalledWith("loop_end", 6.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 6.0);
 
     // Single clip returned (no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -269,7 +269,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     const clipId = "900";
     const movedClipId = "901";
 
-    const sourceClipHandle = setupArrangementClip(clipId, trackIndex, {
+    const sourceClip = setupArrangementClip(clipId, trackIndex, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -286,7 +286,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       file_path: "/audio/test.wav",
     });
 
-    const movedClipHandle = setupArrangementClip(movedClipId, trackIndex, {
+    const movedClip = setupArrangementClip(movedClipId, trackIndex, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -303,7 +303,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       file_path: "/audio/test.wav",
     });
 
-    const trackHandle = registerMockObject(`track-${trackIndex}`, {
+    const track = registerMockObject(`track-${trackIndex}`, {
       path: `live_set tracks ${trackIndex}`,
       methods: {
         duplicate_clip_to_arrangement: () => ["id", movedClipId],
@@ -323,16 +323,13 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     );
 
     // Move happened first
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
       8.0,
     );
 
-    expect(trackHandle.call).toHaveBeenCalledWith(
-      "delete_clip",
-      `id ${clipId}`,
-    );
+    expect(track.call).toHaveBeenCalledWith("delete_clip", `id ${clipId}`);
 
     // Session clip created for boundary detection (loop_end=1)
     expect(mockCreate).toHaveBeenCalledWith(
@@ -345,13 +342,13 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
     // Moved clip loop_end set: loopStart(0) + target(8) = 8.0
-    expect(movedClipHandle.set).toHaveBeenCalledWith("loop_end", 8.0);
+    expect(movedClip.set).toHaveBeenCalledWith("loop_end", 8.0);
 
     // Moved clip end_marker extended: startMarker(0) + target(8) = 8.0
-    assertSourceClipEndMarker(movedClipHandle, 8.0);
+    assertSourceClipEndMarker(movedClip, 8.0);
 
     // Ensure source clip wasn't extended after move; only moved clip should be changed
-    expect(sourceClipHandle.set).not.toHaveBeenCalledWith("loop_end", 8.0);
+    expect(sourceClip.set).not.toHaveBeenCalledWith("loop_end", 8.0);
 
     // Single moved clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays

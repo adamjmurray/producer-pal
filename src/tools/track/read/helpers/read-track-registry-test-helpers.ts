@@ -5,7 +5,7 @@
 
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./read-track-test-helpers.ts";
@@ -65,13 +65,13 @@ interface ResolvedTrackMixerMocksOptions {
 }
 
 interface TrackMixerMockHandles {
-  track: MockObjectHandle;
-  mixer?: MockObjectHandle;
-  volume?: MockObjectHandle;
-  panning?: MockObjectHandle;
-  leftSplit?: MockObjectHandle;
-  rightSplit?: MockObjectHandle;
-  sends: MockObjectHandle[];
+  track: RegisteredMockObject;
+  mixer?: RegisteredMockObject;
+  volume?: RegisteredMockObject;
+  panning?: RegisteredMockObject;
+  leftSplit?: RegisteredMockObject;
+  rightSplit?: RegisteredMockObject;
+  sends: RegisteredMockObject[];
 }
 
 const DEFAULT_TRACK_PATH = "live_set tracks 0";
@@ -110,7 +110,7 @@ const DEFAULT_TRACK_MIXER_OPTIONS: ResolvedTrackMixerMocksOptions = {
  */
 export function setupTrackMock(
   options: SetupTrackMockOptions = {},
-): MockObjectHandle {
+): RegisteredMockObject {
   const {
     trackPath = DEFAULT_TRACK_PATH,
     trackId = "track1",
@@ -173,7 +173,7 @@ export function setupTrackMixerMocks(
     },
   });
 
-  const sends: MockObjectHandle[] = [];
+  const sends: RegisteredMockObject[] = [];
 
   if (!resolved.mixerExists) {
     registerMockObject("0", { path: mixerPath, type: "MixerDevice" });
@@ -191,7 +191,7 @@ export function setupTrackMixerMocks(
     },
   });
 
-  const volume = registerOptionalDeviceParameter({
+  const volume = setupDeviceParameter({
     exists: resolved.volumeExists,
     id: resolved.volumeId,
     path: volumePath,
@@ -199,7 +199,7 @@ export function setupTrackMixerMocks(
     properties: resolved.volumeProperties,
   });
 
-  const panning = registerOptionalDeviceParameter({
+  const panning = setupDeviceParameter({
     exists: resolved.panningExists,
     id: resolved.panningId,
     path: panningPath,
@@ -207,7 +207,7 @@ export function setupTrackMixerMocks(
     properties: resolved.panningProperties,
   });
 
-  const { leftSplit, rightSplit } = registerSplitParameters({
+  const { leftSplit, rightSplit } = setupSplitParameters({
     panningMode: resolved.panningMode,
     leftSplitExists: resolved.leftSplitExists,
     leftSplitId: resolved.leftSplitId,
@@ -220,7 +220,7 @@ export function setupTrackMixerMocks(
   });
 
   sends.push(
-    ...registerSendParameters(mixerPath, resolved.sendIds, resolved.sendValues),
+    ...setupSendParameters(mixerPath, resolved.sendIds, resolved.sendValues),
   );
 
   return {
@@ -286,17 +286,17 @@ interface SplitParameterRegistrationOptions {
 }
 
 interface SplitParameters {
-  leftSplit?: MockObjectHandle;
-  rightSplit?: MockObjectHandle;
+  leftSplit?: RegisteredMockObject;
+  rightSplit?: RegisteredMockObject;
 }
 
-function registerOptionalDeviceParameter({
+function setupDeviceParameter({
   exists,
   id,
   path,
   defaultProperties,
   properties,
-}: DeviceParameterRegistrationOptions): MockObjectHandle | undefined {
+}: DeviceParameterRegistrationOptions): RegisteredMockObject | undefined {
   if (!exists) {
     registerMockObject("0", {
       path,
@@ -316,7 +316,7 @@ function registerOptionalDeviceParameter({
   });
 }
 
-function registerSplitParameters({
+function setupSplitParameters({
   panningMode,
   leftSplitExists,
   leftSplitId,
@@ -331,14 +331,14 @@ function registerSplitParameters({
     return {};
   }
 
-  const leftSplit = registerOptionalDeviceParameter({
+  const leftSplit = setupDeviceParameter({
     exists: leftSplitExists,
     id: leftSplitId,
     path: leftSplitPath,
     defaultProperties: { value: -1 },
     properties: leftSplitProperties,
   });
-  const rightSplit = registerOptionalDeviceParameter({
+  const rightSplit = setupDeviceParameter({
     exists: rightSplitExists,
     id: rightSplitId,
     path: rightSplitPath,
@@ -349,11 +349,11 @@ function registerSplitParameters({
   return { leftSplit, rightSplit };
 }
 
-function registerSendParameters(
+function setupSendParameters(
   mixerPath: string,
   sendIds: string[],
   sendValues: number[],
-): MockObjectHandle[] {
+): RegisteredMockObject[] {
   return sendIds.map((sendId, index) =>
     registerMockObject(sendId, {
       path: `${mixerPath} sends ${index}`,

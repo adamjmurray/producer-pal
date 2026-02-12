@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
+import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function setupArrangementClipMock(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   props: Record<string, unknown>,
 ): void {
-  const fallbackGet = handle.get.getMockImplementation();
+  const fallbackGet = clip.get.getMockImplementation();
 
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = props[prop];
 
     if (value !== undefined) {
@@ -21,7 +21,7 @@ function setupArrangementClipMock(
     }
 
     if (fallbackGet != null) {
-      return fallbackGet.call(handle, prop);
+      return fallbackGet.call(clip, prop);
     }
 
     return [0];
@@ -42,7 +42,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected source clip handle for 789");
+      throw new Error("Expected source clip mock for 789");
     }
 
     setupArrangementClipMock(sourceClip, {

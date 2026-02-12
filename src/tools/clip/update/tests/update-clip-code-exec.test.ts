@@ -5,9 +5,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  setupMocks,
+  setupUpdateClipMocks,
   setupMidiClipMock,
-  type UpdateClipMockHandles,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
@@ -23,14 +23,14 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 
 describe("updateClip - code execution", () => {
-  let handles: UpdateClipMockHandles;
+  let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    handles = setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should execute code on a single session clip and apply resulting notes", async () => {
-    setupMidiClipMock(handles.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip123, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -68,14 +68,14 @@ describe("updateClip - code execution", () => {
     );
 
     // applyNotesToClip should have been called (removes + adds notes)
-    expect(handles.clip123.call).toHaveBeenCalledWith(
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,
       128,
       0,
       1000000,
     );
-    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         {
           pitch: 60,
@@ -100,8 +100,8 @@ describe("updateClip - code execution", () => {
   });
 
   it("should execute code on multiple clips", async () => {
-    setupMidiClipMock(handles.clip123, { length: 4 });
-    setupMidiClipMock(handles.clip456, { length: 4 });
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: true,
@@ -130,7 +130,7 @@ describe("updateClip - code execution", () => {
   });
 
   it("should warn and continue when code execution fails for a clip", async () => {
-    setupMidiClipMock(handles.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip123, { length: 4 });
 
     vi.mocked(executeNoteCode).mockResolvedValue({
       success: false,
@@ -143,7 +143,7 @@ describe("updateClip - code execution", () => {
     });
 
     // Should NOT call add_new_notes since execution failed
-    expect(handles.clip123.call).not.toHaveBeenCalledWith(
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
       "add_new_notes",
       expect.anything(),
     );
@@ -159,8 +159,8 @@ describe("updateClip - code execution", () => {
   });
 
   it("should handle mixed success/failure across multiple clips", async () => {
-    setupMidiClipMock(handles.clip123, { length: 4 });
-    setupMidiClipMock(handles.clip456, { length: 4 });
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
 
     vi.mocked(executeNoteCode)
       .mockResolvedValueOnce({
@@ -199,7 +199,7 @@ describe("updateClip - code execution", () => {
   });
 
   it("should pass arrangement clip location info to executeNoteCode", async () => {
-    setupMidiClipMock(handles.clip789, {
+    setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
       start_time: 16.0,
       length: 4,

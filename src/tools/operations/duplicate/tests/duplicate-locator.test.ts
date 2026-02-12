@@ -9,7 +9,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
   createStandardMidiClipMock,
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerClipSlot,
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
@@ -183,7 +183,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
      * Helper to set up mocks for locator-based clip duplication tests
      * @returns Mock handle for track 0
      */
-    function setupLocatorDuplicationMocks(): MockObjectHandle {
+    function setupLocatorDuplicationMocks(): RegisteredMockObject {
       registerMockObject("clip1", {
         path: "live_set tracks 0 clip_slots 0 clip",
       });

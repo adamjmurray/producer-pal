@@ -5,14 +5,14 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - division params", () => {
-  let param: MockObjectHandle;
+  let param: RegisteredMockObject;
 
   const divisionMap: Record<string, string> = {
     "-6": "1/64",

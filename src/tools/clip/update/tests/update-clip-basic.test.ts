@@ -9,16 +9,16 @@ import { createNote } from "#src/test/test-data-builders.ts";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
-  setupMocks,
-  type UpdateClipMockHandles,
+  setupUpdateClipMocks,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - Basic operations", () => {
-  let handles: UpdateClipMockHandles;
+  let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    handles = setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should throw error when ids is missing", async () => {
@@ -31,7 +31,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should default to merge mode when noteUpdateMode not provided", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       length: 4,
     });
 
@@ -39,7 +39,7 @@ describe("updateClip - Basic operations", () => {
     let addedNotes: unknown[] = [];
     const existingNotes = [createNote()];
 
-    handles.clip123.call.mockImplementation(
+    mocks.clip123.call.mockImplementation(
       (method: string, ...args: unknown[]) => {
         if (method === "add_new_notes") {
           const arg = args[0] as { notes?: unknown[] } | undefined;
@@ -65,7 +65,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Should call get_notes_extended (merge mode behavior)
-    expect(handles.clip123.call).toHaveBeenCalledWith(
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
       128,
@@ -93,7 +93,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should update a single session clip by ID", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
@@ -102,15 +102,15 @@ describe("updateClip - Basic operations", () => {
       looping: true,
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith("name", "Updated Clip");
-    expect(handles.clip123.set).toHaveBeenCalledWith("color", 16711680);
-    expect(handles.clip123.set).toHaveBeenCalledWith("looping", true);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Updated Clip");
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("looping", true);
 
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should update a single arrangement clip by ID", async () => {
-    setupMidiClipMock(handles.clip789, {
+    setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
       start_time: 16.0,
     });
@@ -122,19 +122,16 @@ describe("updateClip - Basic operations", () => {
       length: "1:0", // 4 beats = 1 bar
     });
 
-    expect(handles.clip789.set).toHaveBeenCalledWith(
-      "name",
-      "Arrangement Clip",
-    );
-    expect(handles.clip789.set).toHaveBeenCalledWith("loop_start", 2); // 1|3 in 4/4 = 2 Ableton beats
-    expect(handles.clip789.set).toHaveBeenCalledWith("loop_end", 6); // start (2) + length (4) = 6 Ableton beats
-    expect(handles.clip789.set).toHaveBeenCalledWith("end_marker", 6); // start (2) + length (4) = 6 Ableton beats
+    expect(mocks.clip789.set).toHaveBeenCalledWith("name", "Arrangement Clip");
+    expect(mocks.clip789.set).toHaveBeenCalledWith("loop_start", 2); // 1|3 in 4/4 = 2 Ableton beats
+    expect(mocks.clip789.set).toHaveBeenCalledWith("loop_end", 6); // start (2) + length (4) = 6 Ableton beats
+    expect(mocks.clip789.set).toHaveBeenCalledWith("end_marker", 6); // start (2) + length (4) = 6 Ableton beats
 
     expect(result).toStrictEqual({ id: "789" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", async () => {
-    setupMidiClipMock(handles.clip999, {
+    setupMidiClipMock(mocks.clip999, {
       is_arrangement_clip: 1,
       start_time: 32.0,
     });
@@ -149,8 +146,8 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should update multiple clips by comma-separated IDs", async () => {
-    setupMidiClipMock(handles.clip123);
-    setupAudioClipMock(handles.clip456);
+    setupMidiClipMock(mocks.clip123);
+    setupAudioClipMock(mocks.clip456);
 
     const result = await updateClip({
       ids: "123, 456",
@@ -158,35 +155,32 @@ describe("updateClip - Basic operations", () => {
       looping: false,
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith("color", 65280);
-    expect(handles.clip123.set).toHaveBeenCalledWith("looping", false);
-    expect(handles.clip123.set).toHaveBeenCalledTimes(2);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 65280);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);
+    expect(mocks.clip123.set).toHaveBeenCalledTimes(2);
 
-    expect(handles.clip456.set).toHaveBeenCalledWith("color", 65280);
-    expect(handles.clip456.set).toHaveBeenCalledWith("looping", false);
-    expect(handles.clip456.set).toHaveBeenCalledTimes(2);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 65280);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("looping", false);
+    expect(mocks.clip456.set).toHaveBeenCalledTimes(2);
 
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should update time signature when provided", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       timeSignature: "6/8",
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(handles.clip123.set).toHaveBeenCalledWith(
-      "signature_denominator",
-      8,
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should replace existing notes with real bar|beat parsing in 4/4 time", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
@@ -194,14 +188,14 @@ describe("updateClip - Basic operations", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(handles.clip123.call).toHaveBeenCalledWith(
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,
       128,
       0,
       1000000,
     );
-    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         createNote({ pitch: 72, velocity: 80, duration: 2 }),
         createNote({ pitch: 74, velocity: 120, start_time: 2 }),
@@ -212,7 +206,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
@@ -222,23 +216,20 @@ describe("updateClip - Basic operations", () => {
     });
 
     // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
-    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         createNote({ duration: 0.5 }),
         createNote({ pitch: 62, start_time: 3, duration: 0.5 }),
       ],
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(handles.clip123.set).toHaveBeenCalledWith(
-      "signature_denominator",
-      8,
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       signature_numerator: 3,
       signature_denominator: 4,
     }); // 3/4 time
@@ -249,7 +240,7 @@ describe("updateClip - Basic operations", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         createNote(),
         createNote({ pitch: 62, start_time: 3 }), // Beat 3 in 3/4 time
@@ -260,7 +251,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
@@ -269,7 +260,7 @@ describe("updateClip - Basic operations", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(handles.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         createNote({ pitch: 36, duration: 0.25 }),
         createNote({
@@ -306,7 +297,7 @@ describe("updateClip - Basic operations", () => {
   });
 
   it("should throw error for invalid time signature format", async () => {
-    setupMidiClipMock(handles.clip123);
+    setupMidiClipMock(mocks.clip123);
 
     await expect(
       updateClip({

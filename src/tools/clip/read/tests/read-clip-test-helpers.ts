@@ -8,7 +8,7 @@
  */
 import { expect } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -151,7 +151,7 @@ export function setupMidiClipMock({
   sceneIndex,
   clipId,
   path,
-}: SetupMidiClipMockOptions): MockObjectHandle {
+}: SetupMidiClipMockOptions): RegisteredMockObject {
   const clipPath = resolveClipPath({ trackIndex, sceneIndex, path });
 
   return registerMockObject(clipId ?? defaultClipId(clipPath), {
@@ -183,7 +183,7 @@ export function setupAudioClipMock({
   sceneIndex,
   clipId,
   path,
-}: SetupAudioClipMockOptions): MockObjectHandle {
+}: SetupAudioClipMockOptions): RegisteredMockObject {
   const clipPath = resolveClipPath({ trackIndex, sceneIndex, path });
 
   return registerMockObject(clipId ?? defaultClipId(clipPath), {
@@ -201,7 +201,7 @@ export function setupAudioClipMock({
  * @param notes - Notes array
  */
 export function setupNotesMock(
-  handle: MockObjectHandle,
+  handle: RegisteredMockObject,
   notes: TestNote[],
 ): void {
   handle.call.mockImplementation((method: string) => {
@@ -259,7 +259,7 @@ export function createClipProps68(
  * @param clipLength - The clip length in Ableton beats (default 4)
  */
 export function expectGetNotesExtendedCall(
-  handle: MockObjectHandle,
+  handle: RegisteredMockObject,
   clipLength = 4,
 ): void {
   const expectedArgs: unknown[] = ["get_notes_extended", 0, 128, 0, clipLength];

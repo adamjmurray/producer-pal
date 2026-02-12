@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import type { MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
+import type { RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
 import {
@@ -13,7 +13,7 @@ import {
 
 describe("playback - locator support", () => {
   describe("startLocatorId", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
@@ -62,7 +62,7 @@ describe("playback - locator support", () => {
   });
 
   describe("startLocatorName", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
@@ -109,7 +109,7 @@ describe("playback - locator support", () => {
   });
 
   describe("loopStartLocatorId and loopEndLocatorId", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
@@ -161,7 +161,7 @@ describe("playback - locator support", () => {
   });
 
   describe("loopStartLocatorName and loopEndLocatorName", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
@@ -227,7 +227,7 @@ describe("playback - locator support", () => {
   });
 
   describe("combined locator start and loop", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({

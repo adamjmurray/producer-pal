@@ -10,7 +10,10 @@ import {
   children,
   detectTypeFromPath,
 } from "./mock-live-api-property-helpers.ts";
-import { type MockObjectHandle, lookupMockObject } from "./mock-registry.ts";
+import {
+  type RegisteredMockObject,
+  lookupMockObject,
+} from "./mock-registry.ts";
 
 export { MockSequence, children };
 
@@ -33,7 +36,7 @@ export const liveApiCall = vi.fn();
 export class LiveAPI {
   _path?: string;
   _id?: string;
-  _registered?: MockObjectHandle;
+  _registered?: RegisteredMockObject;
   get: typeof liveApiGet;
   set: typeof liveApiSet;
   call: typeof liveApiCall;

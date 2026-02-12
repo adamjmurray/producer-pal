@@ -6,13 +6,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { children, liveApiId, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import {
   expectLiveSetProperty,
-  registerFollowerTrack,
+  setupFollowerTrack,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
@@ -20,7 +20,7 @@ import {
 } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = setupDefaultTimeSignature();
@@ -40,8 +40,8 @@ describe("transport", () => {
     liveSet = setupPlaybackLiveSet({
       tracks: children("track1", "track2"),
     });
-    registerFollowerTrack("track1", true);
-    registerFollowerTrack("track2", false);
+    setupFollowerTrack("track1", true);
+    setupFollowerTrack("track2", false);
 
     const result = playback({
       action: "play-arrangement",
@@ -63,9 +63,9 @@ describe("transport", () => {
       current_song_time: 10,
       tracks: children("track1", "track2", "track3"),
     });
-    registerFollowerTrack("track1", true);
-    registerFollowerTrack("track2", false);
-    registerFollowerTrack("track3", true);
+    setupFollowerTrack("track1", true);
+    setupFollowerTrack("track2", false);
+    setupFollowerTrack("track3", true);
 
     const result = playback({
       action: "update-arrangement",
@@ -224,8 +224,8 @@ describe("transport", () => {
       path: "live_set scenes 0",
     });
 
-    registerFollowerTrack("track1", true);
-    registerFollowerTrack("track2", true);
+    setupFollowerTrack("track1", true);
+    setupFollowerTrack("track2", true);
 
     const result = playback({
       action: "play-scene",

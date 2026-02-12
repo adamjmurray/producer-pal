@@ -4,26 +4,26 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  composeCallOverride,
-  requireMockHandle,
-  requireTrackHandle,
-  useCallFallback,
+  overrideCall,
+  requireMockObject,
+  requireMockTrack,
+  USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
+import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   mockContext,
   setupArrangementClipPath,
-  setupMocks,
+  setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function setupClipProperties(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   props: Record<string, unknown>,
 ): void {
-  const fallbackGet = handle.get.getMockImplementation();
+  const fallbackGet = clip.get.getMockImplementation();
 
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = props[prop];
 
     if (value !== undefined) {
@@ -31,7 +31,7 @@ function setupClipProperties(
     }
 
     if (fallbackGet != null) {
-      return fallbackGet.call(handle, prop);
+      return fallbackGet.call(clip, prop);
     }
 
     return [0];
@@ -40,21 +40,21 @@ function setupClipProperties(
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
-    setupMocks();
+    setupUpdateClipMocks();
   });
 
   it("should tile clip with exact multiples (no remainder) - extends existing", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
-    const sourceClip = clipHandles.get("789");
-    const duplicatedClip = clipHandles.get("1000");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    const sourceClip = clips.get("789");
+    const duplicatedClip = clips.get("1000");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
     expect(duplicatedClip).toBeDefined();
 
     if (sourceClip == null || duplicatedClip == null) {
-      throw new Error("Expected arrangement clip handles for 789 and 1000");
+      throw new Error("Expected arrangement clip mocks for 789 and 1000");
     }
 
     setupClipProperties(sourceClip, {
@@ -79,22 +79,22 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       start_marker: 0.0,
       loop_start: 0.0,
     });
-    setupClipProperties(requireMockHandle("live_set"), {
+    setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockObject("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock tiling flow (non-destructive duplication)
-    composeCallOverride(trackHandle, function (method, ..._args) {
+    overrideCall(track, function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id 1000`;
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     const result = await updateClip({
@@ -105,12 +105,12 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Should tile using non-destructive duplication (preserves envelopes)
     // currentArrangementLength (4) < clipLength (12) triggers tiling
     // Keeps original clip and tiles after it at positions 4 and 8
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
     );
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       8.0,
@@ -125,14 +125,14 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should handle insufficient content by tiling what exists", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789", "1000"]);
-    const sourceClip = clipHandles.get("789");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789", "1000"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected arrangement clip handle for 789");
+      throw new Error("Expected arrangement clip mock for 789");
     }
 
     setupClipProperties(sourceClip, {
@@ -149,20 +149,20 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireMockHandle("live_set"), {
+    setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockObject("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement
     let nextId = 1000;
 
-    composeCallOverride(trackHandle, function (method, ...args) {
+    overrideCall(track, function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
-        const duplicatedClip = clipHandles.get(String(id));
+        const duplicatedClip = clips.get(String(id));
 
         if (duplicatedClip != null) {
           setupClipProperties(duplicatedClip, {
@@ -173,7 +173,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
         return `id ${id}`;
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     const result = await updateClip({
@@ -182,7 +182,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should duplicate once (2 tiles total: existing clip + 1 duplicate)
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
@@ -193,14 +193,14 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should work with no remainder (single tile)", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clipHandles.get("789");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected arrangement clip handle for 789");
+      throw new Error("Expected arrangement clip mock for 789");
     }
 
     setupClipProperties(sourceClip, {
@@ -215,10 +215,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireMockHandle("live_set"), {
+    setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockObject("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
@@ -228,7 +228,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should not call duplicate_clip_to_arrangement
-    expect(trackHandle.call).not.toHaveBeenCalledWith(
+    expect(track.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.anything(),
       expect.anything(),
@@ -239,24 +239,22 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, [
+    const clips = setupArrangementClipPath(trackIndex, [
       "789",
       "1000",
       "1001",
       "1002",
     ]);
-    const sourceClip = clipHandles.get("789");
-    const tile0 = clipHandles.get("1000");
-    const tile1 = clipHandles.get("1001");
-    const tile2 = clipHandles.get("1002");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const sourceClip = clips.get("789");
+    const tile0 = clips.get("1000");
+    const tile1 = clips.get("1001");
+    const tile2 = clips.get("1002");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null || tile0 == null || tile1 == null || tile2 == null) {
-      throw new Error(
-        "Expected arrangement clip handles for 789/1000/1001/1002",
-      );
+      throw new Error("Expected arrangement clip mocks for 789/1000/1001/1002");
     }
 
     setupClipProperties(sourceClip, {
@@ -273,26 +271,26 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(requireMockHandle("live_set"), {
+    setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockObject("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Track created clips and their start_marker values
     let nextId = 1000;
 
-    composeCallOverride(trackHandle, function (method) {
+    overrideCall(track, function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         const id = nextId++;
 
         return `id ${id}`;
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     const result = await updateClip({
@@ -301,17 +299,17 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     // Should create 3 tiles
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       3.0, // First tile at beat 3
     );
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       6.0, // Second tile at beat 6
     );
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       9.0, // Third tile at beat 9
@@ -339,22 +337,18 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should preserve envelopes when tiling clip with hidden content", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, [
-      "789",
-      "1000",
-      "1001",
-    ]);
-    const sourceClip = clipHandles.get("789");
-    const tile1 = clipHandles.get("1000");
-    const tile2 = clipHandles.get("1001");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789", "1000", "1001"]);
+    const sourceClip = clips.get("789");
+    const tile1 = clips.get("1000");
+    const tile2 = clips.get("1001");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
     expect(tile1).toBeDefined();
     expect(tile2).toBeDefined();
 
     if (sourceClip == null || tile1 == null || tile2 == null) {
-      throw new Error("Expected arrangement clip handles for 789/1000/1001");
+      throw new Error("Expected arrangement clip mocks for 789/1000/1001");
     }
 
     setupClipProperties(sourceClip, {
@@ -381,19 +375,19 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       start_marker: 2.0,
       loop_start: 0.0,
     });
-    setupClipProperties(requireMockHandle("live_set"), {
+    setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockHandle("live_set tracks 0"), {
+    setupClipProperties(requireMockObject("live_set tracks 0"), {
       arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement calls for tiling
     let callCount = 0;
 
-    composeCallOverride(trackHandle, function (method) {
+    overrideCall(track, function (method) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
 
@@ -404,7 +398,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
         }
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     vi.mocked(outlet).mockClear();
@@ -420,12 +414,12 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     // Should tile using arrangement length (4 beats) for spacing
     // Keeps original clip and tiles after it
     // Creates 2 full tiles at positions 4 and 8 (8 beats total, tiled at 4-beat intervals)
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       4.0,
     );
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       8.0,

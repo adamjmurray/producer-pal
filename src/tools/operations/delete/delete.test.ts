@@ -7,14 +7,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
 import { deleteObject } from "./delete.ts";
 
 describe("deleteObject", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set", { path: "live_set" });

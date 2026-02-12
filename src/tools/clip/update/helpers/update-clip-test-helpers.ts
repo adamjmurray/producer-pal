@@ -5,7 +5,7 @@
 
 import { expect } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -62,11 +62,11 @@ export const mockContext = {
   holdingAreaStartBeats: 40000,
 };
 
-export interface UpdateClipMockHandles {
-  clip123: MockObjectHandle;
-  clip456: MockObjectHandle;
-  clip789: MockObjectHandle;
-  clip999: MockObjectHandle;
+export interface UpdateClipMocks {
+  clip123: RegisteredMockObject;
+  clip456: RegisteredMockObject;
+  clip789: RegisteredMockObject;
+  clip999: RegisteredMockObject;
 }
 
 /**
@@ -93,9 +93,9 @@ function createNoteTrackingMethods(): Record<
 /**
  * Setup function for mock Live API implementations used across update-clip tests.
  * Registers 4 clip objects with note tracking. Should be called in beforeEach.
- * @returns Handles for the 4 registered clip objects
+ * @returns Mocks for the 4 registered clip objects
  */
-export function setupMocks(): UpdateClipMockHandles {
+export function setupUpdateClipMocks(): UpdateClipMocks {
   return {
     clip123: registerMockObject("123", {
       path: "live_set tracks 0 clip_slots 0 clip",
@@ -122,25 +122,25 @@ export function setupMocks(): UpdateClipMockHandles {
  * @param trackIndex - Track index
  * @param clipIds - Arrangement clip IDs. First entry is source clip; remaining
  * entries are the duplicate clip IDs expected in call order.
- * @returns Map of clip ID to new handle (re-registered clips have fresh handles)
+ * @returns Map of clip ID to registered mock (re-registered clips have fresh mocks)
  */
 export function setupArrangementClipPath(
   trackIndex: number,
   clipIds: string[],
-): Map<string, MockObjectHandle> {
+): Map<string, RegisteredMockObject> {
   registerMockObject("live-set", {
     path: "live_set",
     type: "LiveSet",
   });
-  const handles = new Map<string, MockObjectHandle>();
+  const clips = new Map<string, RegisteredMockObject>();
   const duplicateIds = clipIds.slice(1);
   let duplicateIndex = 0;
   let tempMidiCounter = 0;
 
   for (const id of clipIds) {
-    const handle = registerArrangementClipHandle(trackIndex, id);
+    const clip = setupArrangementClip(trackIndex, id);
 
-    handles.set(id, handle);
+    clips.set(id, clip);
   }
 
   registerMockObject(`track-${trackIndex}`, {
@@ -172,13 +172,13 @@ export function setupArrangementClipPath(
     },
   });
 
-  return handles;
+  return clips;
 }
 
-function registerArrangementClipHandle(
+function setupArrangementClip(
   trackIndex: number,
   id: string,
-): MockObjectHandle {
+): RegisteredMockObject {
   return registerMockObject(id, {
     path: `live_set tracks ${trackIndex} arrangement_clips 0`,
     type: "Clip",
@@ -188,14 +188,14 @@ function registerArrangementClipHandle(
 
 /**
  * Assert that source clip end_marker was set correctly.
- * @param handle - Mock handle for the clip
+ * @param clip - Registered mock clip
  * @param expectedEndMarker - Expected end marker value
  */
 export function assertSourceClipEndMarker(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   expectedEndMarker: number,
 ): void {
-  expect(handle.set).toHaveBeenCalledWith("end_marker", expectedEndMarker);
+  expect(clip.set).toHaveBeenCalledWith("end_marker", expectedEndMarker);
 }
 
 interface MidiClipMockOptions {
@@ -207,15 +207,15 @@ interface MidiClipMockOptions {
 }
 
 /**
- * Override a handle's get mock for a standard session MIDI clip.
- * Preserves the handle's call mock (e.g., note tracking from setupMocks).
- * @param handle - Mock handle for the clip
+ * Override a clip's get mock for a standard session MIDI clip.
+ * Preserves the clip's call mock (e.g., note tracking from setupUpdateClipMocks).
+ * @param clip - Registered mock clip
  * @param opts - Additional clip properties
  * @param opts.looping - Whether clip is looping (0 or 1)
  * @param opts.length - Clip length in beats
  */
 export function setupMidiClipMock(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   opts: MidiClipMockOptions = {},
 ): void {
   const properties: Record<string, unknown> = {
@@ -226,7 +226,7 @@ export function setupMidiClipMock(
     ...opts,
   };
 
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = properties[prop];
 
     if (value !== undefined) {
@@ -238,13 +238,13 @@ export function setupMidiClipMock(
 }
 
 /**
- * Override a handle's get mock for a standard session audio clip.
- * Preserves the handle's call mock (e.g., note tracking from setupMocks).
- * @param handle - Mock handle for the clip
+ * Override a clip's get mock for a standard session audio clip.
+ * Preserves the clip's call mock (e.g., note tracking from setupUpdateClipMocks).
+ * @param clip - Registered mock clip
  * @param opts - Additional clip properties
  */
 export function setupAudioClipMock(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   opts: Record<string, unknown> = {},
 ): void {
   const properties: Record<string, unknown> = {
@@ -256,7 +256,7 @@ export function setupAudioClipMock(
     ...opts,
   };
 
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = properties[prop];
 
     if (value !== undefined) {

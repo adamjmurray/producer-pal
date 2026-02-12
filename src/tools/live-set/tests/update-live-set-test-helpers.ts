@@ -5,7 +5,7 @@
 
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
@@ -32,9 +32,9 @@ interface SetupLocatorMocksOptions {
  * @returns Map of cue point ID to mock object handle
  */
 export function setupLocatorMocks(
-  liveSetHandle: MockObjectHandle,
+  liveSetHandle: RegisteredMockObject,
   { cuePoints = [], liveSet = {} }: SetupLocatorMocksOptions = {},
-): Map<string, MockObjectHandle> {
+): Map<string, RegisteredMockObject> {
   const { numerator = 4, denominator = 4, isPlaying = 0, songLength } = liveSet;
 
   const cueIds = cuePoints.map((c) => c.id);
@@ -60,7 +60,7 @@ export function setupLocatorMocks(
     return [0];
   });
 
-  const handles = new Map<string, MockObjectHandle>();
+  const handles = new Map<string, RegisteredMockObject>();
 
   for (const cp of cuePoints) {
     const props: Record<string, unknown> = { time: cp.time };
@@ -93,11 +93,11 @@ interface LocatorCreationConfig {
  * @returns Tracker object and new cue handle
  */
 export function setupLocatorCreationMocks(
-  liveSetHandle: MockObjectHandle,
+  liveSetHandle: RegisteredMockObject,
   config: LocatorCreationConfig = {},
 ): {
   getCreated: () => boolean;
-  newCue: MockObjectHandle;
+  newCue: RegisteredMockObject;
 } {
   const { time = 0, isPlaying = 0, songLength = 1000 } = config;
   let locatorCreated = false;

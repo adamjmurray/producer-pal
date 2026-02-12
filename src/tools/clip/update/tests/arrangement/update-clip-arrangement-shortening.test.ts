@@ -4,30 +4,30 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  composeCallOverride,
-  requireTrackHandle,
-  useCallFallback,
+  overrideCall,
+  requireMockTrack,
+  USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   setupMidiClipMock,
-  type UpdateClipMockHandles,
+  type UpdateClipMocks,
   setupArrangementClipPath,
-  setupMocks,
+  setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function setupClipProperties(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   props: Record<string, unknown>,
 ): void {
-  const fallbackGet = handle.get.getMockImplementation();
+  const fallbackGet = clip.get.getMockImplementation();
 
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = props[prop];
 
     if (value !== undefined) {
@@ -35,7 +35,7 @@ function setupClipProperties(
     }
 
     if (fallbackGet != null) {
-      return fallbackGet.call(handle, prop);
+      return fallbackGet.call(clip, prop);
     }
 
     return [0];
@@ -43,23 +43,23 @@ function setupClipProperties(
 }
 
 describe("updateClip - arrangementLength (shortening only)", () => {
-  let defaultHandles: UpdateClipMockHandles;
+  let defaultMocks: UpdateClipMocks;
 
   beforeEach(() => {
-    defaultHandles = setupMocks();
+    defaultMocks = setupUpdateClipMocks();
   });
 
   it("should shorten arrangement clip to 50% of original length", async () => {
     const trackIndex = 0;
 
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clipHandles.get("789");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected source clip handle for 789");
+      throw new Error("Expected source clip mock for 789");
     }
 
     setupClipProperties(sourceClip, {
@@ -78,17 +78,14 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should create temp clip at beat 8 with length 8
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "create_midi_clip",
       8.0, // newEndTime
       8.0, // tempClipLength
     );
 
     // Should delete the temp clip
-    expect(trackHandle.call).toHaveBeenCalledWith(
-      "delete_clip",
-      expect.any(String),
-    );
+    expect(track.call).toHaveBeenCalledWith("delete_clip", expect.any(String));
 
     expect(result).toStrictEqual({ id: "789" });
   });
@@ -96,14 +93,14 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   it("should shorten arrangement clip to single beat", async () => {
     const trackIndex = 0;
 
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clipHandles.get("789");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected source clip handle for 789");
+      throw new Error("Expected source clip mock for 789");
     }
 
     setupClipProperties(sourceClip, {
@@ -122,7 +119,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should create temp clip at beat 1 with length 15
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "create_midi_clip",
       1.0, // newEndTime
       15.0, // tempClipLength
@@ -132,12 +129,12 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should emit warning and ignore for session clips", async () => {
-    const trackHandle = registerMockObject("track-0-session-noop", {
+    const track = registerMockObject("track-0-session-noop", {
       path: "live_set tracks 0",
       type: "Track",
     });
 
-    setupMidiClipMock(defaultHandles.clip123, {
+    setupMidiClipMock(defaultMocks.clip123, {
       is_arrangement_clip: 0, // Session clip
       is_midi_clip: 1,
       signature_numerator: 4,
@@ -154,13 +151,13 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       "arrangementLength parameter ignored for session clip (id 123)",
     );
 
-    expect(trackHandle.call).not.toHaveBeenCalled();
+    expect(track.call).not.toHaveBeenCalled();
 
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should handle zero length with clear error", async () => {
-    setupClipProperties(defaultHandles.clip789, {
+    setupClipProperties(defaultMocks.clip789, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0,
@@ -179,14 +176,14 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should handle same length as no-op", async () => {
     const trackIndex = 0;
-    const clipHandles = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clipHandles.get("789");
-    const trackHandle = requireTrackHandle(trackIndex);
+    const clips = setupArrangementClipPath(trackIndex, ["789"]);
+    const sourceClip = clips.get("789");
+    const track = requireMockTrack(trackIndex);
 
     expect(sourceClip).toBeDefined();
 
     if (sourceClip == null) {
-      throw new Error("Expected source clip handle for 789");
+      throw new Error("Expected source clip mock for 789");
     }
 
     setupClipProperties(sourceClip, {
@@ -199,7 +196,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       trackIndex,
     });
 
-    trackHandle.call.mockClear();
+    track.call.mockClear();
 
     const result = await updateClip({
       ids: "789",
@@ -207,7 +204,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should not create temp clip (no-op)
-    expect(trackHandle.call).not.toHaveBeenCalledWith(
+    expect(track.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
       expect.anything(),
       expect.anything(),
@@ -221,19 +218,16 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     // This ensures lengthening operations use the new position for tile placement
     const trackIndex = 0;
     const movedClipId = "999";
-    const clipHandles = setupArrangementClipPath(trackIndex, [
-      "789",
-      movedClipId,
-    ]);
-    const trackHandle = requireTrackHandle(trackIndex);
-    const sourceClip = clipHandles.get("789");
-    const movedClip = clipHandles.get(movedClipId);
+    const clips = setupArrangementClipPath(trackIndex, ["789", movedClipId]);
+    const track = requireMockTrack(trackIndex);
+    const sourceClip = clips.get("789");
+    const movedClip = clips.get(movedClipId);
 
     expect(sourceClip).toBeDefined();
     expect(movedClip).toBeDefined();
 
     if (sourceClip == null || movedClip == null) {
-      throw new Error("Expected source and moved clip handles");
+      throw new Error("Expected source and moved clip mocks");
     }
 
     setupClipProperties(sourceClip, {
@@ -256,7 +250,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Mock duplicate_clip_to_arrangement to return moved clip
-    composeCallOverride(trackHandle, function (method: string) {
+    overrideCall(track, function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${movedClipId}`;
       }
@@ -265,7 +259,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         return "id temp-midi";
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     const result = await updateClip({
@@ -275,18 +269,18 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Should FIRST duplicate to new position (move operation)
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       32.0, // bar 9 in 4/4 = 32 beats
     );
 
     // Should delete original after move
-    expect(trackHandle.call).toHaveBeenCalledWith("delete_clip", "id 789");
+    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 789");
 
     // Should THEN create temp clip to shorten (at moved position)
     // Shortening from 32-48 to 32-40 means temp clip at position 40
-    expect(trackHandle.call).toHaveBeenCalledWith(
+    expect(track.call).toHaveBeenCalledWith(
       "create_midi_clip",
       40.0, // newEndTime = 32 + 8 (2 bars)
       8.0, // tempClipLength = 48 - 40 = 8
@@ -301,19 +295,19 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const tempClipId = "temp-session-clip";
     const tempArrangementClipId = "temp-arrangement-clip";
 
-    const clipHandles = setupArrangementClipPath(trackIndex, [
+    const clips = setupArrangementClipPath(trackIndex, [
       "789",
       tempArrangementClipId,
     ]);
-    const trackHandle = requireTrackHandle(trackIndex);
-    const sourceClip = clipHandles.get("789");
-    const tempArrangementClip = clipHandles.get(tempArrangementClipId);
+    const track = requireMockTrack(trackIndex);
+    const sourceClip = clips.get("789");
+    const tempArrangementClip = clips.get(tempArrangementClipId);
 
     expect(sourceClip).toBeDefined();
     expect(tempArrangementClip).toBeDefined();
 
     if (sourceClip == null || tempArrangementClip == null) {
-      throw new Error("Expected arrangement clip handles");
+      throw new Error("Expected arrangement clip mocks");
     }
 
     registerMockObject(tempClipId, {
@@ -341,12 +335,12 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     // Mock liveApiCall for duplicate_clip_to_arrangement
-    composeCallOverride(trackHandle, function (method: string) {
+    overrideCall(track, function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {
         return `id ${tempArrangementClipId}`;
       }
 
-      return useCallFallback;
+      return USE_CALL_FALLBACK;
     });
 
     // Mock createAudioClipInSession to verify it's called with correct arguments

@@ -6,16 +6,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - drum chain moving", () => {
-  let chain0: MockObjectHandle;
-  let chain1: MockObjectHandle;
-  let chain2: MockObjectHandle;
+  let chain0: RegisteredMockObject;
+  let chain1: RegisteredMockObject;
+  let chain2: RegisteredMockObject;
 
   beforeEach(() => {
     // Mock drum rack structure

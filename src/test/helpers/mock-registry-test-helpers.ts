@@ -5,61 +5,61 @@
 
 import { expect } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 type CallOverride = (method: string, ...args: unknown[]) => unknown;
 
-export const useCallFallback = Symbol("use-call-fallback");
+export const USE_CALL_FALLBACK = Symbol("USE_CALL_FALLBACK");
 
 /**
  * Look up a registered mock object by path and fail with a clear assertion if missing.
  * @param path - Live API path (e.g., "live_set tracks 0")
- * @returns Registered mock handle
+ * @returns Registered mock object
  */
-export function requireMockHandle(path: string): MockObjectHandle {
-  const handle = lookupMockObject(undefined, path);
+export function requireMockObject(path: string): RegisteredMockObject {
+  const mock = lookupMockObject(undefined, path);
 
-  expect(handle).toBeDefined();
+  expect(mock).toBeDefined();
 
-  if (handle == null) {
-    throw new Error(`Expected handle at path "${path}"`);
+  if (mock == null) {
+    throw new Error(`Expected mock object at path "${path}"`);
   }
 
-  return handle;
+  return mock;
 }
 
 /**
- * Look up a track mock handle by track index.
+ * Look up a track mock by track index.
  * @param trackIndex - Track index
- * @returns Registered track handle
+ * @returns Registered track mock
  */
-export function requireTrackHandle(trackIndex: number): MockObjectHandle {
-  return requireMockHandle(`live_set tracks ${trackIndex}`);
+export function requireMockTrack(trackIndex: number): RegisteredMockObject {
+  return requireMockObject(`live_set tracks ${trackIndex}`);
 }
 
 /**
  * Override specific call methods while preserving default call behavior for others.
- * Return `useCallFallback` from override to defer to the existing mock implementation.
- * @param handle - Mock object handle to override
+ * Return `USE_CALL_FALLBACK` from override to defer to the existing mock implementation.
+ * @param mock - Registered mock object to override
  * @param override - Method override callback
  */
-export function composeCallOverride(
-  handle: MockObjectHandle,
+export function overrideCall(
+  mock: RegisteredMockObject,
   override: CallOverride,
 ): void {
-  const fallbackCall = handle.call.getMockImplementation();
+  const fallbackCall = mock.call.getMockImplementation();
 
-  handle.call.mockImplementation((method: string, ...args: unknown[]) => {
+  mock.call.mockImplementation((method: string, ...args: unknown[]) => {
     const overrideResult = override(method, ...args);
 
-    if (overrideResult !== useCallFallback) {
+    if (overrideResult !== USE_CALL_FALLBACK) {
       return overrideResult;
     }
 
     if (fallbackCall != null) {
-      return fallbackCall.call(handle, method, ...args);
+      return fallbackCall.call(mock, method, ...args);
     }
 
     return null;

@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -14,9 +14,9 @@ import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice", () => {
-  let device123: MockObjectHandle;
-  let device456: MockObjectHandle;
-  let view123: MockObjectHandle;
+  let device123: RegisteredMockObject;
+  let device456: RegisteredMockObject;
+  let view123: RegisteredMockObject;
 
   beforeEach(() => {
     device123 = registerMockObject("123", {
@@ -147,8 +147,8 @@ describe("updateDevice", () => {
   });
 
   describe("params - numeric values", () => {
-    let param789: MockObjectHandle;
-    let param790: MockObjectHandle;
+    let param789: RegisteredMockObject;
+    let param790: RegisteredMockObject;
 
     beforeEach(() => {
       param789 = registerMockObject("789", {
@@ -208,7 +208,7 @@ describe("updateDevice", () => {
   });
 
   describe("params - enum values", () => {
-    let param791: MockObjectHandle;
+    let param791: RegisteredMockObject;
 
     beforeEach(() => {
       param791 = registerMockObject("791", {
@@ -245,7 +245,7 @@ describe("updateDevice", () => {
   });
 
   describe("params - note values", () => {
-    let param789: MockObjectHandle;
+    let param789: RegisteredMockObject;
 
     beforeEach(() => {
       param789 = registerMockObject("789", {
@@ -275,7 +275,7 @@ describe("updateDevice", () => {
   });
 
   describe("params - pan values", () => {
-    let param792: MockObjectHandle;
+    let param792: RegisteredMockObject;
 
     beforeEach(() => {
       param792 = registerMockObject("792", {
@@ -468,7 +468,7 @@ describe("updateDevice", () => {
   });
 
   describe("toPath - device moving", () => {
-    let liveSet: MockObjectHandle;
+    let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = registerMockObject("live-set", { path: "live_set" });

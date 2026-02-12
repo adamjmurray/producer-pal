@@ -6,17 +6,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children, liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "./create-scene.ts";
 
 describe("createScene", () => {
-  let liveSet: MockObjectHandle;
-  let scene0: MockObjectHandle;
-  let scene1: MockObjectHandle;
-  let scene2: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
+  let scene0: RegisteredMockObject;
+  let scene1: RegisteredMockObject;
+  let scene2: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set", {
@@ -223,9 +223,9 @@ describe("createScene", () => {
   });
 
   describe("capture mode", () => {
-    let captureLiveSet: MockObjectHandle;
-    let capturedScene: MockObjectHandle;
-    let appView: MockObjectHandle;
+    let captureLiveSet: RegisteredMockObject;
+    let capturedScene: RegisteredMockObject;
+    let appView: RegisteredMockObject;
 
     beforeEach(() => {
       captureLiveSet = registerMockObject("live_set", {

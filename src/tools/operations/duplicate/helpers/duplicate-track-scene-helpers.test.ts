@@ -8,7 +8,7 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   children,
   expectDeleteDeviceCalls,
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerClipSlot,
   registerMockObject,
 } from "./duplicate-test-helpers.ts";
@@ -241,7 +241,7 @@ describe("duplicate-track-scene-helpers", () => {
     function setupRoutingMocks(
       sourceConfig: SourceConfig,
       outputRoutingTypes: OutputRoutingType[],
-    ): { sourceTrack: MockObjectHandle; newTrack: MockObjectHandle } {
+    ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
       const sourceTrack = registerMockObject("live_set/tracks/0", {
         path: "live_set tracks 0",
         properties: {

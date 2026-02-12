@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "./create-clip.ts";
@@ -21,7 +21,7 @@ function setupSessionMocks(
     clipSlot?: Record<string, unknown>;
     clip?: Record<string, unknown>;
   } = {},
-): { clipSlot: MockObjectHandle; clip: MockObjectHandle } {
+): { clipSlot: RegisteredMockObject; clip: RegisteredMockObject } {
   registerMockObject("live-set", {
     path: "live_set",
     properties: opts.liveSet,

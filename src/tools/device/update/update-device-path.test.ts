@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -26,10 +26,10 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("device paths", () => {
-    let device456: MockObjectHandle;
-    let view456: MockObjectHandle;
-    let returnDevice: MockObjectHandle;
-    let masterDevice: MockObjectHandle;
+    let device456: RegisteredMockObject;
+    let view456: RegisteredMockObject;
+    let returnDevice: RegisteredMockObject;
+    let masterDevice: RegisteredMockObject;
 
     beforeEach(() => {
       device456 = registerMockObject("device-456", {
@@ -93,8 +93,8 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("chain paths", () => {
-    let chain123: MockObjectHandle;
-    let returnChain456: MockObjectHandle;
+    let chain123: RegisteredMockObject;
+    let returnChain456: RegisteredMockObject;
 
     beforeEach(() => {
       chain123 = registerMockObject("chain-123", {
@@ -170,8 +170,8 @@ describe("updateDevice with path parameter", () => {
       deviceProperties?: Record<string, DeviceProps>;
     }
     interface DrumPadMockResult {
-      chains: Map<string, MockObjectHandle>;
-      devices: Map<string, MockObjectHandle>;
+      chains: Map<string, RegisteredMockObject>;
+      devices: Map<string, RegisteredMockObject>;
     }
 
     const setupDrumPadMocks = (
@@ -193,7 +193,7 @@ describe("updateDevice with path parameter", () => {
         },
       });
 
-      const chains = new Map<string, MockObjectHandle>();
+      const chains = new Map<string, RegisteredMockObject>();
 
       for (const chainId of chainIds) {
         const chainProps = chainProperties[chainId] ?? {};
@@ -213,7 +213,7 @@ describe("updateDevice with path parameter", () => {
         );
       }
 
-      const devices = new Map<string, MockObjectHandle>();
+      const devices = new Map<string, RegisteredMockObject>();
 
       for (const [devId, devProps] of Object.entries(deviceProperties)) {
         devices.set(
@@ -351,9 +351,9 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("multiple comma-separated paths", () => {
-    let device100: MockObjectHandle;
-    let device101: MockObjectHandle;
-    let device200: MockObjectHandle;
+    let device100: RegisteredMockObject;
+    let device101: RegisteredMockObject;
+    let device200: RegisteredMockObject;
 
     beforeEach(() => {
       device100 = registerMockObject("device-100", {
@@ -473,8 +473,8 @@ describe("updateDevice with path parameter", () => {
   });
 
   describe("multiple paths with params", () => {
-    let param100: MockObjectHandle;
-    let param200: MockObjectHandle;
+    let param100: RegisteredMockObject;
+    let param200: RegisteredMockObject;
 
     beforeEach(() => {
       registerMockObject("device-100", {

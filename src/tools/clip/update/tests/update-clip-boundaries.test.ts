@@ -7,20 +7,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
-  setupMocks,
-  type UpdateClipMockHandles,
+  setupUpdateClipMocks,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - Clip boundaries (shortening)", () => {
-  let handles: UpdateClipMockHandles;
+  let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    handles = setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should set length without explicit start using current loop_start", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 1,
       loop_start: 4.0, // bar 2 beat 1 in 4/4
     });
@@ -30,7 +30,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       length: "2:0", // 8 beats = 2 bars
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       12, // loop_start (4) + length (8) = 12
     );
@@ -39,7 +39,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set firstStart for looping clips", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 1,
       end_marker: 16, // content boundary - must be > firstStart
     });
@@ -52,15 +52,15 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: true,
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       8, // 3|1 in 4/4 = 8 Ableton beats
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_start",
       0, // 1|1 in 4/4 = 0 Ableton beats
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       16, // start (0) + length (16) = 16
     );
@@ -69,7 +69,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should warn when firstStart provided for non-looping clips", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 0,
     });
 
@@ -90,7 +90,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set end_marker for non-looping clips", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 0,
       end_marker: 16, // content boundary - must be > start_marker
     });
@@ -102,11 +102,11 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       0, // 1|1 in 4/4 = 0 Ableton beats
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "end_marker",
       16, // start (0) + length (16) = 16
     );
@@ -115,7 +115,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set loop_start and loop_end for looping clips", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 1,
       end_marker: 12, // content boundary - must be > start_marker
     });
@@ -129,15 +129,15 @@ describe("updateClip - Clip boundaries (shortening)", () => {
 
     // start_marker is auto-set to match loop_start for looping clips
     // (set AFTER loop_end is expanded to avoid "Invalid syntax" errors)
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       4, // 2|1 in 4/4 = 4 Ableton beats
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_start",
       4, // 2|1 in 4/4 = 4 Ableton beats
     );
-    expect(handles.clip123.set).toHaveBeenCalledWith(
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       12, // start (4) + length (8) = 12
     );
@@ -147,14 +147,14 @@ describe("updateClip - Clip boundaries (shortening)", () => {
 });
 
 describe("updateClip - derived start warning (MIDI vs audio)", () => {
-  let handles: UpdateClipMockHandles;
+  let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    handles = setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("emits warning for non-looping MIDI clip with mismatched derived start", async () => {
-    setupMidiClipMock(handles.clip123, {
+    setupMidiClipMock(mocks.clip123, {
       looping: 0,
       start_marker: 0,
       end_marker: 4,
@@ -172,7 +172,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
   it("does NOT emit warning for non-looping audio clip with mismatched derived start", async () => {
     vi.mocked(outlet).mockClear();
 
-    setupAudioClipMock(handles.clip123, {
+    setupAudioClipMock(mocks.clip123, {
       looping: 0,
       start_marker: 0,
       end_marker: 0.131,

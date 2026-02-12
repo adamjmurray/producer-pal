@@ -9,7 +9,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
   children,
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
@@ -309,7 +309,7 @@ describe("duplicate - switchView functionality", () => {
  * Helper to set up common mocks for track switchView tests
  * @returns The new track mock object handle
  */
-function setupTrackForSwitchView(): MockObjectHandle {
+function setupTrackForSwitchView(): RegisteredMockObject {
   registerMockObject("track1", { path: "live_set tracks 0" });
   registerMockObject("live_set", { path: "live_set" });
 

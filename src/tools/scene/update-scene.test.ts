@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -26,9 +26,9 @@ async function withConsoleSpy(
 }
 
 describe("updateScene", () => {
-  let scene1: MockObjectHandle;
-  let scene2: MockObjectHandle;
-  let scene3: MockObjectHandle;
+  let scene1: RegisteredMockObject;
+  let scene2: RegisteredMockObject;
+  let scene3: RegisteredMockObject;
 
   beforeEach(() => {
     scene1 = registerMockObject("123", { path: "live_set scenes 0" });

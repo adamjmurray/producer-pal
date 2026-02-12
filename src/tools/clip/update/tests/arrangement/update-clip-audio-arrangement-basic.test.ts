@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { type MockObjectHandle } from "#src/test/mocks/mock-registry.ts";
+import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -47,10 +47,10 @@ function setupSessionTilingMock(fileContentBoundary = 8.0) {
 }
 
 function setupArrangementClipMock(
-  handle: MockObjectHandle,
+  clip: RegisteredMockObject,
   props: Record<string, unknown>,
 ): void {
-  handle.get.mockImplementation((prop: string) => {
+  clip.get.mockImplementation((prop: string) => {
     const value = props[prop];
 
     if (value !== undefined) {
@@ -75,12 +75,12 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       const cId = clipId as string;
       const endTime = sourceEndTime as number;
 
-      const clipHandles = setupArrangementClipPath(0, [cId]);
-      const clipHandle = clipHandles.get(cId);
+      const clips = setupArrangementClipPath(0, [cId]);
+      const clip = clips.get(cId);
 
-      expect(clipHandle).toBeDefined();
+      expect(clip).toBeDefined();
 
-      setupArrangementClipMock(clipHandle!, {
+      setupArrangementClipMock(clip!, {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -116,7 +116,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
       // Source clip NOT modified (no end_marker extension)
-      expect(clipHandle!.set).not.toHaveBeenCalledWith(
+      expect(clip!.set).not.toHaveBeenCalledWith(
         "end_marker",
         expect.anything(),
       );
@@ -142,12 +142,12 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       const cId = clipId as string;
       const endTime = sourceEndTime as number;
 
-      const clipHandles = setupArrangementClipPath(0, [cId]);
-      const clipHandle = clipHandles.get(cId);
+      const clips = setupArrangementClipPath(0, [cId]);
+      const clip = clips.get(cId);
 
-      expect(clipHandle).toBeDefined();
+      expect(clip).toBeDefined();
 
-      setupArrangementClipMock(clipHandle!, {
+      setupArrangementClipMock(clip!, {
         is_arrangement_clip: 1,
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -183,10 +183,10 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
       // Source clip loop_end set: loopStart(0) + effectiveTarget(8) = 8.0
-      expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 8.0);
+      expect(clip!.set).toHaveBeenCalledWith("loop_end", 8.0);
 
       // Source clip end_marker extended: startMarker(0) + effectiveTarget(8) = 8.0
-      assertSourceClipEndMarker(clipHandle!, 8.0);
+      assertSourceClipEndMarker(clip!, 8.0);
 
       // Single clip returned (extended in place via loop_end, no tiles)
       // unwrapSingleResult returns single object for single-element arrays
@@ -200,12 +200,12 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
   it("should extend via loop_end when file content exceeds target", async () => {
     const clipId = "661";
 
-    const clipHandles = setupArrangementClipPath(0, [clipId]);
-    const clipHandle = clipHandles.get(clipId);
+    const clips = setupArrangementClipPath(0, [clipId]);
+    const clip = clips.get(clipId);
 
-    expect(clipHandle).toBeDefined();
+    expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clipHandle!, {
+    setupArrangementClipMock(clip!, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -241,10 +241,10 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
     expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 
     // Source clip loop_end set: loopStart(0) + target(14) = 14.0
-    expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 14.0);
+    expect(clip!.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Source end_marker extended to target: 0 + 14 = 14
-    assertSourceClipEndMarker(clipHandle!, 14.0);
+    assertSourceClipEndMarker(clip!, 14.0);
 
     // Single clip returned (extended in place via loop_end, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -258,12 +258,12 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const clipId = "700";
     const trackIndex = 0;
 
-    const clipHandles = setupArrangementClipPath(trackIndex, [clipId]);
-    const clipHandle = clipHandles.get(clipId);
+    const clips = setupArrangementClipPath(trackIndex, [clipId]);
+    const clip = clips.get(clipId);
 
-    expect(clipHandle).toBeDefined();
+    expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clipHandle!, {
+    setupArrangementClipMock(clip!, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -289,13 +289,10 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     );
 
     // end_marker should NOT be shrunk from 40 to 14
-    expect(clipHandle!.set).not.toHaveBeenCalledWith(
-      "end_marker",
-      expect.anything(),
-    );
+    expect(clip!.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
 
     // loop_end set to target: loopStart(0) + 14 = 14.0
-    expect(clipHandle!.set).toHaveBeenCalledWith("loop_end", 14.0);
+    expect(clip!.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -307,12 +304,12 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const clipId = "710";
     const trackIndex = 0;
 
-    const clipHandles = setupArrangementClipPath(trackIndex, [clipId]);
-    const clipHandle = clipHandles.get(clipId);
+    const clips = setupArrangementClipPath(trackIndex, [clipId]);
+    const clip = clips.get(clipId);
 
-    expect(clipHandle).toBeDefined();
+    expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clipHandle!, {
+    setupArrangementClipMock(clip!, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,

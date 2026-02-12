@@ -6,16 +6,16 @@
 import { expect } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 const TRACK_0_PATH = "live_set tracks 0";
 
 export interface ArrangementClipMockHandles {
-  liveSet: MockObjectHandle;
-  track: MockObjectHandle;
-  clip: MockObjectHandle;
+  liveSet: RegisteredMockObject;
+  track: RegisteredMockObject;
+  clip: RegisteredMockObject;
 }
 
 /**
@@ -73,35 +73,32 @@ export function note(
 
 /**
  * Assert that create_clip was called on the given clip slot handle.
- * @param clipSlotHandle - Mock handle for the clip slot
+ * @param clipSlot - Mock handle for the clip slot
  * @param expectedLength - Expected clip length in beats
  */
 export function expectClipCreated(
-  clipSlotHandle: MockObjectHandle,
+  clipSlot: RegisteredMockObject,
   expectedLength: number,
 ): void {
-  expect(clipSlotHandle.call).toHaveBeenCalledWith(
-    "create_clip",
-    expectedLength,
-  );
+  expect(clipSlot.call).toHaveBeenCalledWith("create_clip", expectedLength);
 }
 
 /**
  * Assert that add_new_notes was called on the given clip handle.
- * @param clipHandle - Mock handle for the clip
+ * @param clip - Mock handle for the clip
  * @param notes - Expected notes array
  */
 export function expectNotesAdded(
-  clipHandle: MockObjectHandle,
+  clip: RegisteredMockObject,
   notes: Array<Record<string, number>>,
 ): void {
-  expect(clipHandle.call).toHaveBeenCalledWith("add_new_notes", { notes });
+  expect(clip.call).toHaveBeenCalledWith("add_new_notes", { notes });
 }
 
 export interface SessionAudioClipMockHandles {
-  liveSet: MockObjectHandle;
-  clipSlot: MockObjectHandle;
-  clip: MockObjectHandle;
+  liveSet: RegisteredMockObject;
+  clipSlot: RegisteredMockObject;
+  clip: RegisteredMockObject;
 }
 
 interface SetupSessionAudioMocksOptions {

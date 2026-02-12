@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -48,7 +48,7 @@ function buildScenesChildren(sceneIds: string[]): string[] {
 
 function setupLiveSet(
   properties: Record<string, unknown> = {},
-): MockObjectHandle {
+): RegisteredMockObject {
   const mergedProps: Record<string, unknown> = {
     signature_numerator: 4,
     signature_denominator: 4,
@@ -86,7 +86,7 @@ function setupLiveSet(
   return liveSet;
 }
 
-function setupTrack(trackIndex: number): MockObjectHandle {
+function setupTrack(trackIndex: number): RegisteredMockObject {
   return registerMockObject(`track-${trackIndex}`, {
     path: `live_set tracks ${trackIndex}`,
   });
@@ -96,7 +96,7 @@ function setupSessionClip(
   trackIndex: number,
   sceneIndex: number,
   opts: SessionClipSetupOptions = {},
-): { clipSlot: MockObjectHandle; clip: MockObjectHandle } {
+): { clipSlot: RegisteredMockObject; clip: RegisteredMockObject } {
   const clipPath = `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
   const clipSlot = registerMockObject(`clip-slot-${trackIndex}-${sceneIndex}`, {
     path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,

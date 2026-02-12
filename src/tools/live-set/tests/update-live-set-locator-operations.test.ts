@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
@@ -16,7 +16,7 @@ import {
 } from "./update-live-set-test-helpers.ts";
 
 describe("updateLiveSet - locator operations", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set_id", { path: "live_set" });
@@ -243,7 +243,7 @@ describe("updateLiveSet - locator operations", () => {
   });
 
   describe("rename locator", () => {
-    let cues: Map<string, MockObjectHandle>;
+    let cues: Map<string, RegisteredMockObject>;
 
     beforeEach(() => {
       cues = setupLocatorMocks(liveSet, {

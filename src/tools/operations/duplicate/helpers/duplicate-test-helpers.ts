@@ -6,12 +6,12 @@
 import { expect } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 export { children };
-export { type MockObjectHandle, registerMockObject };
+export { type RegisteredMockObject, registerMockObject };
 
 /**
  * Register a clip slot and optionally its clip in the mock registry.
@@ -26,8 +26,8 @@ export function registerClipSlot(
   sceneIndex: number,
   hasClip: boolean,
   clipProperties?: Record<string, unknown>,
-): MockObjectHandle {
-  const slotHandle = registerMockObject(
+): RegisteredMockObject {
+  const slot = registerMockObject(
     `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
     {
       path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
@@ -45,7 +45,7 @@ export function registerClipSlot(
     );
   }
 
-  return slotHandle;
+  return slot;
 }
 
 interface SourceTrackMock {
@@ -167,14 +167,14 @@ export function createTrackResultArray(
 
 /**
  * Verify that delete_device was called for each device in reverse order.
- * @param trackHandle - Mock object handle for the track
+ * @param track - Mock object handle for the track
  * @param deviceCount - Number of devices that should have been deleted
  */
 export function expectDeleteDeviceCalls(
-  trackHandle: MockObjectHandle,
+  track: RegisteredMockObject,
   deviceCount: number,
 ): void {
   for (let i = deviceCount - 1; i >= 0; i--) {
-    expect(trackHandle.call).toHaveBeenCalledWith("delete_device", i);
+    expect(track.call).toHaveBeenCalledWith("delete_device", i);
   }
 }

@@ -5,7 +5,7 @@
 
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -19,8 +19,8 @@ interface DrumChainConfig {
 }
 
 interface DeviceMockResult {
-  devices: Map<string, MockObjectHandle>;
-  parents: Map<string, MockObjectHandle>;
+  devices: Map<string, RegisteredMockObject>;
+  parents: Map<string, RegisteredMockObject>;
 }
 
 /**
@@ -48,8 +48,8 @@ function extractDeviceParentPath(devicePath: string): string | null {
 export function setupEntityMocks(
   idToPathMap: Record<string, string>,
   entityType: string,
-): Map<string, MockObjectHandle> {
-  const handles = new Map<string, MockObjectHandle>();
+): Map<string, RegisteredMockObject> {
+  const handles = new Map<string, RegisteredMockObject>();
 
   for (const [id, path] of Object.entries(idToPathMap)) {
     handles.set(id, registerMockObject(id, { path, type: entityType }));
@@ -65,7 +65,7 @@ export function setupEntityMocks(
  */
 export function setupTrackMocks(
   idToPathMap: Record<string, string>,
-): Map<string, MockObjectHandle> {
+): Map<string, RegisteredMockObject> {
   return setupEntityMocks(idToPathMap, "Track");
 }
 
@@ -76,7 +76,7 @@ export function setupTrackMocks(
  */
 export function setupSceneMocks(
   idToPathMap: Record<string, string>,
-): Map<string, MockObjectHandle> {
+): Map<string, RegisteredMockObject> {
   return setupEntityMocks(idToPathMap, "Scene");
 }
 
@@ -100,8 +100,8 @@ export function setupDeviceMocks(
       ? { [ids[0] as string]: pathOrMap }
       : pathOrMap;
 
-  const devices = new Map<string, MockObjectHandle>();
-  const parents = new Map<string, MockObjectHandle>();
+  const devices = new Map<string, RegisteredMockObject>();
+  const parents = new Map<string, RegisteredMockObject>();
 
   for (const [id, path] of Object.entries(pathMap)) {
     devices.set(id, registerMockObject(id, { path, type }));
@@ -154,9 +154,9 @@ export function setupDrumChainMocks({
   inNote = 36,
   extraPadPath = null,
 }: DrumChainConfig): {
-  drumRack: MockObjectHandle;
-  chain: MockObjectHandle;
-  extraPads: Map<string, MockObjectHandle>;
+  drumRack: RegisteredMockObject;
+  chain: RegisteredMockObject;
+  extraPads: Map<string, RegisteredMockObject>;
 } {
   const drumRack = registerMockObject(drumRackId, {
     path: devicePath,
@@ -173,7 +173,7 @@ export function setupDrumChainMocks({
     properties: { in_note: inNote },
   });
 
-  const extraPads = new Map<string, MockObjectHandle>();
+  const extraPads = new Map<string, RegisteredMockObject>();
 
   if (extraPadPath) {
     for (const [padId, padPath] of Object.entries(extraPadPath)) {

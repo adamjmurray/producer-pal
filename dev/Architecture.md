@@ -257,5 +257,5 @@ Semantic versioning (major.minor.patch) maintained in `src/shared/version.ts`:
 - **Mock registry:** `src/test/mocks/mock-registry.ts` (instance-level mocks per
   Live API object)
 - **Test location:** Colocated with source (`*.test.ts`)
-- **Assertions:** Use instance-level `MockObjectHandle` mocks for per-object
+- **Assertions:** Use instance-level `RegisteredMockObject` mocks for per-object
   assertions (e.g., `expect(device.set).toHaveBeenCalledWith(...)`)

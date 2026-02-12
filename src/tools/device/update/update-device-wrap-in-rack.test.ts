@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -14,9 +14,9 @@ import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - wrapInRack", () => {
-  let track0: MockObjectHandle;
-  let liveSet: MockObjectHandle;
-  let newRack: MockObjectHandle;
+  let track0: RegisteredMockObject;
+  let liveSet: RegisteredMockObject;
+  let newRack: RegisteredMockObject;
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {

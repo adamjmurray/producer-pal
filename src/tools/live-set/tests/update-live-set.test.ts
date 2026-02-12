@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
@@ -14,7 +14,7 @@ const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 
 describe("updateLiveSet", () => {
-  let liveSet: MockObjectHandle;
+  let liveSet: RegisteredMockObject;
   let mockRootNote = 0; // Track the root note state across tests
 
   beforeEach(() => {

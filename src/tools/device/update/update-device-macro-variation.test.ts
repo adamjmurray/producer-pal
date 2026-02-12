@@ -5,15 +5,15 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  type MockObjectHandle,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - macroVariation", () => {
-  let rackDevice: MockObjectHandle;
-  let nonRackDevice: MockObjectHandle;
+  let rackDevice: RegisteredMockObject;
+  let nonRackDevice: RegisteredMockObject;
 
   beforeEach(() => {
     // Default: rack device with 3 variations, variation 1 selected
