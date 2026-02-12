@@ -12,6 +12,7 @@ import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import {
   evaluateChoose,
   evaluateCurve,
+  evaluateMathFunction,
   evaluateMinMax,
   evaluatePow,
   evaluateRand,
@@ -77,12 +78,13 @@ export function evaluateFunction(
     );
   }
 
-  // Math functions - single argument (round, floor, ceil, abs)
+  // Math functions (round, floor, ceil, abs, clamp)
   if (
     name === "round" ||
     name === "floor" ||
     name === "ceil" ||
-    name === "abs"
+    name === "abs" ||
+    name === "clamp"
   ) {
     return evaluateMathFunction(
       name,
@@ -397,53 +399,4 @@ function parsePeriod(
   }
 
   return period;
-}
-
-/**
- * Evaluate single-argument math function (round, floor, ceil, abs)
- * @param name - Function name
- * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
- * @returns Math function result
- */
-function evaluateMathFunction(
-  name: string,
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length === 0) {
-    throw new Error(`Function ${name}() requires one argument`);
-  }
-
-  const value = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  switch (name) {
-    case "round":
-      return Math.round(value);
-    case "floor":
-      return Math.floor(value);
-    case "ceil":
-      return Math.ceil(value);
-    case "abs":
-      return Math.abs(value);
-    default:
-      throw new Error(`Unknown math function: ${name}()`);
-  }
 }

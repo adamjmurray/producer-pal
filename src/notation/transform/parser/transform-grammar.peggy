@@ -179,6 +179,7 @@ otherFunctionName
   / "floor" { return "floor"; }
   / "ceil" { return "ceil"; }
   / "abs" { return "abs"; }
+  / "clamp" { return "clamp"; }
   / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }

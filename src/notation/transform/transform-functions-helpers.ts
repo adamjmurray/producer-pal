@@ -276,3 +276,79 @@ export function evaluateMinMax(
 
   return name === "min" ? Math.min(...values) : Math.max(...values);
 }
+
+/**
+ * Evaluate math function (round, floor, ceil, abs, clamp)
+ * @param name - Function name
+ * @param args - Function arguments
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Math function result
+ */
+export function evaluateMathFunction(
+  name: string,
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (name === "clamp") {
+    if (args.length !== 3) {
+      throw new Error(
+        `Function clamp() requires exactly 3 arguments: clamp(value, min, max)`,
+      );
+    }
+
+    const evalArg = (i: number): number =>
+      evaluateExpression(
+        args[i] as ExpressionNode,
+        position,
+        timeSigNumerator,
+        timeSigDenominator,
+        timeRange,
+        noteProperties,
+      );
+
+    const value = evalArg(0);
+    const bound1 = evalArg(1);
+    const bound2 = evalArg(2);
+
+    return Math.min(
+      Math.max(value, Math.min(bound1, bound2)),
+      Math.max(bound1, bound2),
+    );
+  }
+
+  if (args.length === 0) {
+    throw new Error(`Function ${name}() requires one argument`);
+  }
+
+  const value = evaluateExpression(
+    args[0] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
+
+  switch (name) {
+    case "round":
+      return Math.round(value);
+    case "floor":
+      return Math.floor(value);
+    case "ceil":
+      return Math.ceil(value);
+    case "abs":
+      return Math.abs(value);
+    default:
+      throw new Error(`Unknown math function: ${name}()`);
+  }
+}

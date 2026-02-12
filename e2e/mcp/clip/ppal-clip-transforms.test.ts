@@ -500,6 +500,24 @@ describe("ppal-clip-transforms (math functions)", () => {
     await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v60"); // max(60, 50) = 60
+
+    // clamp(): constrain to range
+    clipId = await createMidiClip(35, "v30 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 50, 100)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v50"); // clamp(30, 50, 100) = 50
+
+    // clamp(): value within range passes through
+    clipId = await createMidiClip(36, "v75 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 50, 100)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v75"); // clamp(75, 50, 100) = 75
+
+    // clamp(): swapped bounds auto-corrected
+    clipId = await createMidiClip(37, "v75 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 100, 50)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v75"); // bounds sorted, clamp(75, 50, 100) = 75
   });
 
   it("uses modulo operator", async () => {

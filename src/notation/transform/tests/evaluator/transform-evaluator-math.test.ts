@@ -98,6 +98,30 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("clamp", () => {
+    it.each([
+      ["clamp(50, 0, 100)", 50, "within range"],
+      ["clamp(-10, 0, 100)", 0, "below min"],
+      ["clamp(150, 0, 100)", 100, "above max"],
+      ["clamp(50, 100, 0)", 50, "swapped bounds"],
+      ["clamp(50, 50, 50)", 50, "equal bounds"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("clamps variable to range", () => {
+      const result = evaluateTransform(
+        "velocity = clamp(note.velocity, 40, 100)",
+        CTX,
+        { velocity: 20 },
+      );
+
+      expect(result.velocity!.value).toBe(40);
+    });
+  });
+
   describe("pow", () => {
     it.each([
       ["pow(2, 3)", 8, "basic power"],

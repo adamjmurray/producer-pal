@@ -251,6 +251,9 @@ describe("Transform Evaluator Error Handling", () => {
       ["pow(-1, 0.5)", "pow producing NaN"],
       ["min(60)", "min with only one argument"],
       ["max(60)", "max with only one argument"],
+      ["clamp(50)", "clamp with only one argument"],
+      ["clamp(50, 0)", "clamp with only two arguments"],
+      ["clamp(50, 0, 100, 200)", "clamp with four arguments"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
     });
