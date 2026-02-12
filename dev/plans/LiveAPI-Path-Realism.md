@@ -11,6 +11,15 @@ within a test but don't necessarily reflect real Live API behavior:
   registered under a path that doesn't correspond to its track)
 - IDs in tests are arbitrary numbers that don't reflect Live's ID assignment
 - Property values in mocks may not match real defaults
+- **ID format mismatch**: The real Live API returns `.id` in `"id X"` format
+  (e.g., `"id 123"`). The mock registry strips this prefix via `normalizeId()`
+  and returns bare IDs (e.g., `"123"`). This causes test expectations to diverge
+  from production behavior — e.g., error messages containing `clipId=123` in
+  tests but `clipId=id 123` in production. Source files that parse or strip the
+  prefix (`duplicate-routing-helpers.ts`, `duplicate-helpers.ts`, `playback.ts`,
+  `arrangement-splitting.ts`) need auditing. ~62 files affected (~44 test files
+  with hardcoded bare IDs, ~6 source files with ID-parsing logic, plus mock
+  infrastructure).
 
 The mock registry migration made this easier to fix (paths are declared once per
 object) but didn't address the underlying accuracy.
