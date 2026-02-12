@@ -11,7 +11,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "./create-clip.ts";
-import { setupAudioArrangementClipMocks } from "./create-clip-test-helpers.ts";
+import {
+  setupAudioArrangementClipMocks,
+  setupSessionAudioClipMocks,
+} from "./create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
   describe("validation", () => {
@@ -42,25 +45,8 @@ describe("createClip - audio clips", () => {
 
   describe("session view", () => {
     it("should create audio clip in session view", async () => {
-      const liveSet = registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-
-      const clipSlot = registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 0 },
-      });
-
-      const clip = registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
-        properties: { length: 16 },
+      const { liveSet, clipSlot, clip } = setupSessionAudioClipMocks({
+        clipLength: 16,
       });
 
       const result = await createClip({
@@ -95,26 +81,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should create audio clip with name and color", async () => {
-      registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-
-      registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 0 },
-      });
-
-      const clip = registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
-        properties: { length: 8 },
-      });
+      const { clip } = setupSessionAudioClipMocks();
 
       const result = await createClip({
         view: "session",
@@ -276,19 +243,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should emit warning and return empty array when clip already exists", async () => {
-      registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-      registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 1 }, // Clip already exists
-      });
+      setupSessionAudioClipMocks({ hasClip: 1 });
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
@@ -492,23 +447,7 @@ describe("createClip - audio clips", () => {
 
   describe("audio clip length handling", () => {
     it("should use actual audio clip length from Live API", async () => {
-      registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-      registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
-        properties: { length: 12.5 }, // Irregular audio length
-      });
+      setupSessionAudioClipMocks({ clipLength: 12.5 });
 
       const result = await createClip({
         view: "session",
@@ -580,23 +519,7 @@ describe("createClip - audio clips", () => {
 
   describe("parameters ignored for audio clips", () => {
     it("should not set timing parameters on audio clips", async () => {
-      registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-      registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 0 },
-      });
-      const clip = registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
-        properties: { length: 8 },
-      });
+      const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
         view: "session",
@@ -631,23 +554,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should not set time signature on audio clips", async () => {
-      registerMockObject("live-set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0"),
-        },
-      });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
-      registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
-        properties: { has_clip: 0 },
-      });
-      const clip = registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
-        properties: { length: 8 },
-      });
+      const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
         view: "session",

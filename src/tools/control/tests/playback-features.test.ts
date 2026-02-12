@@ -10,7 +10,11 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { setupDefaultTimeSignature } from "./playback-test-helpers.ts";
+import {
+  registerFollowerTrack,
+  setupDefaultTimeSignature,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 describe("transport", () => {
   let liveSet: MockObjectHandle;
@@ -21,32 +25,12 @@ describe("transport", () => {
 
   describe("autoFollow behavior for play-arrangement", () => {
     it("should set all tracks to follow arrangement when autoFollow is true (default)", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2", "track3"),
-        },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2", "track3"),
       });
-      registerMockObject("track1", {
-        path: "id track1",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
-      registerMockObject("track2", {
-        path: "id track2",
-        type: "Track",
-        properties: { back_to_arranger: 1 },
-      });
-      registerMockObject("track3", {
-        path: "id track3",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
+      registerFollowerTrack("track1", true);
+      registerFollowerTrack("track2", false);
+      registerFollowerTrack("track3", true);
 
       const result = playback({
         action: "play-arrangement",
@@ -64,27 +48,11 @@ describe("transport", () => {
     });
 
     it("should set all tracks to follow arrangement when autoFollow is explicitly true", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
-      registerMockObject("track1", {
-        path: "id track1",
-        type: "Track",
-        properties: { back_to_arranger: 1 },
-      });
-      registerMockObject("track2", {
-        path: "id track2",
-        type: "Track",
-        properties: { back_to_arranger: 1 },
-      });
+      registerFollowerTrack("track1", false);
+      registerFollowerTrack("track2", false);
 
       const result = playback({
         action: "play-arrangement",
@@ -101,27 +69,11 @@ describe("transport", () => {
     });
 
     it("should NOT set tracks to follow when autoFollow is false", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
-      registerMockObject("track1", {
-        path: "id track1",
-        type: "Track",
-        properties: { back_to_arranger: 1 },
-      });
-      registerMockObject("track2", {
-        path: "id track2",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
+      registerFollowerTrack("track1", false);
+      registerFollowerTrack("track2", true);
 
       const result = playback({
         action: "play-arrangement",
@@ -139,32 +91,13 @@ describe("transport", () => {
     });
 
     it("should include arrangementFollowerTrackIds for all transport actions", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 0,
-          tracks: children("track1", "track2", "track3"),
-        },
+      liveSet = setupPlaybackLiveSet({
+        loop_length: 0,
+        tracks: children("track1", "track2", "track3"),
       });
-      registerMockObject("track1", {
-        path: "id track1",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
-      registerMockObject("track2", {
-        path: "id track2",
-        type: "Track",
-        properties: { back_to_arranger: 1 },
-      });
-      registerMockObject("track3", {
-        path: "id track3",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
+      registerFollowerTrack("track1", true);
+      registerFollowerTrack("track2", false);
+      registerFollowerTrack("track3", true);
 
       const result = playback({
         action: "stop",
@@ -190,16 +123,7 @@ describe("transport", () => {
     });
 
     it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
@@ -211,30 +135,14 @@ describe("transport", () => {
     });
 
     it("should switch to session view for play-scene action when switchView is true", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
       registerMockObject("live_set scenes 0", {
         path: "live_set scenes 0",
       });
-      registerMockObject("track1", {
-        path: "id track1",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
-      registerMockObject("track2", {
-        path: "id track2",
-        type: "Track",
-        properties: { back_to_arranger: 0 },
-      });
+      registerFollowerTrack("track1", true);
+      registerFollowerTrack("track2", true);
 
       playback({
         action: "play-scene",
@@ -246,16 +154,7 @@ describe("transport", () => {
     });
 
     it("should switch to session view for play-session-clips action when switchView is true", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
       registerMockObject("clip1", {
         path: "live_set tracks 0 clip_slots 0 clip",
       });
@@ -273,16 +172,7 @@ describe("transport", () => {
     });
 
     it("should not switch views when switchView is false", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
@@ -297,16 +187,7 @@ describe("transport", () => {
     });
 
     it("should not switch views for actions that don't have a target view", () => {
-      liveSet = registerMockObject("live_set", {
-        path: "live_set",
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "stop",
