@@ -178,6 +178,7 @@ export async function updateClip(
     processSingleClipUpdate({
       clip,
       clipIndex: i,
+      clipCount: mutableClips.length,
       notationString,
       transformString,
       noteUpdateMode,

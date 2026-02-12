@@ -16,14 +16,16 @@ import {
   type CreateClipResult,
   getToolWarnings,
   parseToolResult,
-  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import {
+  applyTransform as applyTransformHelper,
+  emptyMidiTrack,
+  readClipNotes as readClipNotesHelper,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
 
 /** Creates a MIDI arrangement clip with notes at given position. */
 async function createArrangementClip(
@@ -75,25 +77,12 @@ async function applyTransform(
   clipId: string,
   transform: string,
 ): Promise<unknown> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms: transform },
-  });
-
-  await sleep(100);
-
-  return result;
+  return applyTransformHelper(ctx, clipId, transform);
 }
 
 /** Reads clip notes as a string. */
 async function readClipNotes(clipId: string): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["clip-notes"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.notes ?? "";
+  return readClipNotesHelper(ctx, clipId);
 }
 
 /** Extracts velocity values from formatted note string. */

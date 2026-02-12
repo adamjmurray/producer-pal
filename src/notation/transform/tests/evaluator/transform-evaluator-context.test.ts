@@ -69,6 +69,49 @@ describe("Context Variables", () => {
     });
   });
 
+  describe("note.count", () => {
+    it("resolves note.count from noteProperties", () => {
+      const result = evaluateTransform(
+        "velocity = note.count",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        { count: 8 },
+      );
+
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 8 });
+    });
+
+    it("uses note.count in arithmetic expression", () => {
+      const result = evaluateTransform(
+        "velocity = 127 * note.index / (note.count - 1)",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        { count: 4, index: 2 },
+      );
+
+      // 127 * 2 / (4 - 1) = 254 / 3 ≈ 84.67
+      expect(result.velocity!.value).toBeCloseTo(84.67, 1);
+    });
+
+    it("sets note.count from notes.length in applyTransforms", () => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity: 100 },
+        { start_time: 1, velocity: 100 },
+        { start_time: 2, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "velocity = note.count * 10", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(30);
+      expect(notes[1]!.velocity).toBe(30);
+      expect(notes[2]!.velocity).toBe(30);
+    });
+  });
+
   describe("clip.duration", () => {
     it("resolves clip.duration from noteProperties", () => {
       const result = evaluateTransform(
@@ -88,6 +131,7 @@ describe("Context Variables", () => {
       const clipContext: ClipContext = {
         clipDuration: 8,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 4,
       };
 
@@ -128,6 +172,48 @@ describe("Context Variables", () => {
       );
 
       expect(result.pitch).toStrictEqual({ operator: "add", value: 21 });
+    });
+  });
+
+  describe("clip.count", () => {
+    it("resolves clip.count from noteProperties", () => {
+      const result = evaluateTransform(
+        "velocity = clip.count",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        { "clip:count": 5 },
+      );
+
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 5 });
+    });
+
+    it("uses clip.count for normalized fade across clips", () => {
+      const result = evaluateTransform(
+        "velocity = 127 * clip.index / (clip.count - 1)",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        { "clip:index": 2, "clip:count": 5 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(63.5);
+    });
+
+    it("resolves clip.count via clipContext in applyTransforms", () => {
+      const notes = createTestNotes([{ start_time: 0, velocity: 100 }]);
+      const clipContext: ClipContext = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 4,
+        barDuration: 4,
+      };
+
+      applyTransforms(notes, "velocity = clip.count * 10", 4, 4, clipContext);
+
+      expect(notes[0]!.velocity).toBe(40);
     });
   });
 
@@ -186,6 +272,7 @@ describe("Context Variables", () => {
       const clipContext: ClipContext = {
         clipDuration: 16,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 4,
       };
 
@@ -199,6 +286,7 @@ describe("Context Variables", () => {
       const clipContext: ClipContext = {
         clipDuration: 12,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 3,
       };
 
@@ -212,6 +300,7 @@ describe("Context Variables", () => {
       const clipContext: ClipContext = {
         clipDuration: 24,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 6,
       };
 
@@ -315,6 +404,7 @@ describe("Context Variables", () => {
       const clipContext: ClipContext = {
         clipDuration: 4,
         clipIndex: 0,
+        clipCount: 1,
         arrangementStart: 4,
         barDuration: 4,
       };

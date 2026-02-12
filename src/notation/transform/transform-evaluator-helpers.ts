@@ -36,6 +36,7 @@ export type NoteProperties = Record<string, number | undefined>;
 export interface ClipContext {
   clipDuration: number; // musical beats
   clipIndex: number; // 0-based in multi-clip operation
+  clipCount: number; // total clips in operation
   arrangementStart?: number; // musical beats; undefined for session clips
   barDuration: number; // musical beats per bar (timeSigNumerator)
 }

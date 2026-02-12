@@ -317,6 +317,7 @@ describe("Audio Transform Evaluator", () => {
       const result = applyAudioTransform(0, 0, "gain = clip.duration", {
         clipDuration: 16,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 4,
       });
 
@@ -327,16 +328,29 @@ describe("Audio Transform Evaluator", () => {
       const result = applyAudioTransform(0, 0, "gain = clip.index * -3", {
         clipDuration: 8,
         clipIndex: 2,
+        clipCount: 3,
         barDuration: 4,
       });
 
       expect(result.gain).toBe(-6);
     });
 
+    it("resolves clip.count with clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.count * -3", {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 4,
+        barDuration: 4,
+      });
+
+      expect(result.gain).toBe(-12);
+    });
+
     it("resolves clip.position for arrangement clips", () => {
       const result = applyAudioTransform(0, 0, "gain = clip.position / 4", {
         clipDuration: 16,
         clipIndex: 0,
+        clipCount: 1,
         arrangementStart: 32,
         barDuration: 4,
       });
@@ -348,6 +362,7 @@ describe("Audio Transform Evaluator", () => {
       const result = applyAudioTransform(-6, 0, "gain = clip.position", {
         clipDuration: 16,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 4,
       });
 
@@ -359,6 +374,7 @@ describe("Audio Transform Evaluator", () => {
       const result = applyAudioTransform(0, 0, "gain = bar.duration", {
         clipDuration: 24,
         clipIndex: 0,
+        clipCount: 1,
         barDuration: 6,
       });
 
@@ -385,6 +401,7 @@ describe("Audio Transform Evaluator", () => {
         {
           clipDuration: 8,
           clipIndex: 3,
+          clipCount: 4,
           barDuration: 4,
         },
       );

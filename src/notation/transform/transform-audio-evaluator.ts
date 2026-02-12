@@ -243,16 +243,20 @@ function resolveAudioVariable(
       );
     }
 
-    if (node.name === "duration") return clipContext.clipDuration;
-    if (node.name === "index") return clipContext.clipIndex;
+    const clipProps: Record<string, number | undefined> = {
+      duration: clipContext.clipDuration,
+      index: clipContext.clipIndex,
+      count: clipContext.clipCount,
+      position: clipContext.arrangementStart,
+    };
 
-    if (node.name === "position") {
-      if (clipContext.arrangementStart == null) {
-        throw new Error(`clip.position is not available for session clips`);
-      }
-
-      return clipContext.arrangementStart;
+    if (node.name === "position" && clipContext.arrangementStart == null) {
+      throw new Error(`clip.position is not available for session clips`);
     }
+
+    const value = clipProps[node.name];
+
+    if (value != null) return value;
   }
 
   if (node.namespace === "bar") {

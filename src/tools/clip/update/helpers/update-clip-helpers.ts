@@ -255,6 +255,7 @@ function handleNoteUpdates(
 export interface ProcessSingleClipUpdateParams {
   clip: LiveAPI;
   clipIndex: number;
+  clipCount: number;
   notationString?: string;
   transformString?: string;
   noteUpdateMode: string;
@@ -322,6 +323,7 @@ export function processSingleClipUpdate(
   const {
     clip,
     clipIndex,
+    clipCount,
     notationString,
     transformString,
     noteUpdateMode,
@@ -405,7 +407,7 @@ export function processSingleClipUpdate(
   // Build context for transform variables (clip.*, bar.*)
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
   // prettier-ignore
-  const clipContext = buildClipContext(clip, clipIndex, timeSigNumerator, timeSigDenominator);
+  const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
 
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });

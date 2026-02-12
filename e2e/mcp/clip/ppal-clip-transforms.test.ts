@@ -21,6 +21,12 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import {
+  applyTransform as applyTransformHelper,
+  createMidiClip as createMidiClipHelper,
+  emptyMidiTrack,
+  readClipNotes as readClipNotesHelper,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -80,14 +86,7 @@ async function applyTransform(
   clipId: string,
   transform: string,
 ): Promise<unknown> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms: transform },
-  });
-
-  await sleep(100);
-
-  return result;
+  return applyTransformHelper(ctx, clipId, transform);
 }
 
 // =============================================================================
@@ -230,39 +229,17 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
 // MIDI Transform Tests (update-clip)
 // =============================================================================
 
-const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
-
 /** Creates a MIDI clip with specified notes on the empty MIDI track. */
 async function createMidiClip(
   sceneIndex: number,
   notes: string,
 ): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      view: "session",
-      trackIndex: emptyMidiTrack,
-      sceneIndex: String(sceneIndex),
-      notes,
-      length: "2:0.0",
-    },
-  });
-  const clip = parseToolResult<CreateClipResult>(result);
-
-  await sleep(100);
-
-  return clip.id;
+  return createMidiClipHelper(ctx, sceneIndex, notes);
 }
 
 /** Reads clip notes as a string. */
 async function readClipNotes(clipId: string): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["clip-notes"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.notes ?? "";
+  return readClipNotesHelper(ctx, clipId);
 }
 
 describe("ppal-clip-transforms (midi velocity)", () => {
@@ -857,110 +834,5 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     for (let i = 1; i < velocities.length; i++) {
       expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
     }
-  });
-});
-
-// =============================================================================
-// Context Variable Tests
-// =============================================================================
-
-describe("ppal-clip-transforms (context variables)", () => {
-  it("note.index creates sequential crescendo", async () => {
-    const clipId = await createMidiClip(27, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
-
-    await applyTransform(clipId, "velocity = 60 + note.index * 10");
-    const notes = await readClipNotes(clipId);
-
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
-
-    expect(velocities[0]).toBe(60); // index 0
-    expect(velocities[1]).toBe(70); // index 1
-    expect(velocities[2]).toBe(80); // index 2
-    expect(velocities[3]).toBe(90); // index 3
-  });
-
-  it("clip.duration scales velocity based on clip length", async () => {
-    // 2:0.0 = 8 beats in 4/4
-    const clipId = await createMidiClip(28, "v100 C3 1|1");
-
-    await applyTransform(clipId, "velocity = clip.duration * 10");
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80"); // 8 beats * 10 = 80
-  });
-
-  it("bar.duration reflects time signature", async () => {
-    // Default 4/4, bar.duration = 4
-    const clipId = await createMidiClip(29, "v100 C3 1|1");
-
-    await applyTransform(clipId, "velocity = bar.duration * 20");
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80"); // 4 * 20 = 80
-  });
-
-  it("clip.index differentiates between multiple clips", async () => {
-    const clipId1 = await createMidiClip(30, "v100 C3 1|1");
-    const clipId2 = await createMidiClip(31, "v100 C3 1|1");
-
-    // Apply same transform to both clips via comma-separated ids
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: `${clipId1},${clipId2}`,
-        transforms: "pitch += clip.index * 7",
-      },
-    });
-    await sleep(100);
-
-    const notes1 = await readClipNotes(clipId1);
-    const notes2 = await readClipNotes(clipId2);
-
-    // clip.index 0 => pitch unchanged (C3), clip.index 1 => +7 (G3)
-    expect(notes1).toContain("C3");
-    expect(notes2).toContain("G3");
-  });
-
-  it("clip.position warns on session clips", async () => {
-    const clipId = await createMidiClip(32, "v100 C3 1|1");
-
-    const result = await applyTransform(clipId, "velocity = clip.position");
-    const warnings = getToolWarnings(result);
-
-    expect(warnings.length).toBeGreaterThan(0);
-  });
-});
-
-// =============================================================================
-// Arity Validation Tests
-// =============================================================================
-
-describe("ppal-clip-transforms (arity validation)", () => {
-  it("warns on rand() with too many arguments", async () => {
-    const clipId = await createMidiClip(33, "v80 C3 1|1");
-
-    const result = await applyTransform(clipId, "velocity = rand(0, 100, 50)");
-    const warnings = getToolWarnings(result);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    // Original velocity should be unchanged
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
-  });
-
-  it("warns on ramp() with too many arguments", async () => {
-    const clipId = await createMidiClip(34, "v80 C3 1|1");
-
-    const result = await applyTransform(
-      clipId,
-      "velocity = ramp(0, 100, 1, 2)",
-    );
-    const warnings = getToolWarnings(result);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
   });
 });

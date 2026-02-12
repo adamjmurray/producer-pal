@@ -86,6 +86,7 @@ export function applyTransforms(
     const noteProperties = buildNoteProperties(
       note,
       i,
+      notes.length,
       timeSigDenominator,
       clipContext,
     );
@@ -156,6 +157,7 @@ function buildNoteContext(
  * Build note properties object including note, clip, and bar context
  * @param note - Note event
  * @param noteIndex - 0-based note order in clip
+ * @param noteCount - Total number of notes in the clip
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context
  * @returns Properties for variable access (note.*, clip.*, bar.*)
@@ -163,6 +165,7 @@ function buildNoteContext(
 function buildNoteProperties(
   note: NoteEvent,
   noteIndex: number,
+  noteCount: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
 ): NoteProperties {
@@ -174,11 +177,13 @@ function buildNoteProperties(
     duration: note.duration * (timeSigDenominator / 4), // Convert to musical beats
     probability: note.probability,
     index: noteIndex,
+    count: noteCount,
   };
 
   if (clipContext) {
     props["clip:duration"] = clipContext.clipDuration;
     props["clip:index"] = clipContext.clipIndex;
+    props["clip:count"] = clipContext.clipCount;
 
     if (clipContext.arrangementStart != null) {
       props["clip:position"] = clipContext.arrangementStart;

@@ -146,6 +146,7 @@ notePropertyName
   / "index" { return "index"; }
   / "pitch" { return "pitch"; }
   / "start" { return "start"; }
+  / "count" { return "count"; }
 
 audioPropertyName
   = "gain" { return "gain"; }
@@ -155,6 +156,7 @@ clipPropertyName
   = "position" { return "position"; }
   / "duration" { return "duration"; }
   / "index" { return "index"; }
+  / "count" { return "count"; }
 
 barPropertyName
   = "duration" { return "duration"; }
