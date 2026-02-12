@@ -4,13 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 interface SetupLocatorReadMocksOptions {
   cuePoints?: Record<string, { name: string; time: number }>;
@@ -19,7 +15,7 @@ interface SetupLocatorReadMocksOptions {
 }
 
 /**
- * Setup liveApiId and mockLiveApiGet mocks for locator read tests.
+ * Setup registry-based mocks for locator read tests.
  * @param options - Configuration options
  * @param options.cuePoints - Cue point data keyed by ID
  * @param options.cueChildren - Override cue_points children list (defaults to cuePoints keys)
@@ -32,28 +28,29 @@ function setupLocatorReadMocks({
 }: SetupLocatorReadMocksOptions = {}): void {
   const cueIds = cueChildren ?? Object.keys(cuePoints);
 
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "live_set") return "live_set_id";
-
-    for (const id of cueIds) {
-      if (this._path === `id ${id}`) return id;
-    }
-
-    return this._id;
-  });
-
-  mockLiveApiGet({
-    LiveSet: {
-      name: "Test Set",
-      tempo: 120,
-      signature_numerator: signatureNumerator,
-      signature_denominator: 4,
-      scale_mode: 0,
-      tracks: [],
-      scenes: [],
-      cue_points: cueIds.length > 0 ? children(...cueIds) : [],
+  setupLiveSetPathMappedMocks({
+    liveSetId: "live_set_id",
+    pathIdMap: {
+      "live_set master_track": "master",
     },
-    ...cuePoints,
+    objects: {
+      LiveSet: {
+        name: "Test Set",
+        tempo: 120,
+        signature_numerator: signatureNumerator,
+        signature_denominator: 4,
+        scale_mode: 0,
+        tracks: [],
+        scenes: [],
+        cue_points: cueIds.length > 0 ? children(...cueIds) : [],
+      },
+      "live_set master_track": {
+        has_midi_input: 0,
+        name: "Master",
+        devices: [],
+      },
+      ...cuePoints,
+    },
   });
 }
 

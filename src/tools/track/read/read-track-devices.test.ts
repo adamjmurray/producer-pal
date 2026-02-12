@@ -10,7 +10,6 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
 import {
   ALL_DEVICE_INCLUDE_OPTIONS,
   createChainMockProperties,
@@ -91,23 +90,26 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
+        path: "t0/d0",
         type: "instrument: Analog",
         name: "Custom Analog",
       });
 
-      expect(stripPathProperties(result.audioEffects)).toStrictEqual([
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device2",
+          path: "t0/d1",
           type: "audio-effect: Reverb",
           name: "Custom Reverb",
         },
       ]);
 
-      expect(stripPathProperties(result.midiEffects)).toStrictEqual([
+      expect(result.midiEffects).toStrictEqual([
         {
           id: "device3",
+          path: "t0/d2",
           type: "midi-effect: Note Length",
           name: "Custom Note Length",
           deactivated: true,
@@ -139,8 +141,9 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
+        path: "t0/d0",
         name: "My Drums",
         type: "drum-rack",
         // drumPads: [], // Only included when drum-pads is requested
@@ -181,8 +184,9 @@ describe("readTrack", () => {
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "device1",
+        path: "t0/d0",
         type: "drum-rack",
         name: "My Drums",
         // drumPads: [], // Only included when drum-pads is requested
@@ -193,8 +197,9 @@ describe("readTrack", () => {
       >;
 
       expect(audioEffects).toHaveLength(1);
-      expect(stripPathProperties(audioEffects[0])).toStrictEqual({
+      expect(audioEffects[0]).toStrictEqual({
         id: "device2",
+        path: "t0/d1",
         type: "audio-effect: Reverb",
       });
     });
@@ -226,7 +231,7 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual(
+      expect(result.instrument).toStrictEqual(
         createSinglePianoChainRackExpectation("nested_device1"),
       );
     });
@@ -279,19 +284,22 @@ describe("readTrack", () => {
       >;
 
       expect(audioEffects2).toHaveLength(1);
-      expect(stripPathProperties(audioEffects2[0])).toStrictEqual({
+      expect(audioEffects2[0]).toStrictEqual({
         id: "fx_rack1",
+        path: "t0/d0",
         type: "audio-effect-rack",
         name: "Master FX",
         chains: [
           {
             id: "chain1",
+            path: "t0/d0/c0",
             type: "Chain",
             name: "Filter Chain",
             color: "#0000FF",
             devices: [
               {
                 id: "nested_effect1",
+                path: "t0/d0/c0/d0",
                 type: "audio-effect: Auto Filter",
                 name: "Sweep Filter",
               },
@@ -365,24 +373,28 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "outer_rack",
+        path: "t0/d0",
         type: "instrument-rack",
         name: "Master FX",
         chains: [
           {
             id: "outer_chain",
+            path: "t0/d0/c0",
             type: "Chain",
             name: "Wet",
             color: "#0000FF",
             devices: [
               {
                 id: "inner_rack",
+                path: "t0/d0/c0/d0",
                 type: "audio-effect-rack",
                 name: "Reverb Chain",
                 chains: [
                   {
                     id: "inner_chain",
+                    path: "t0/d0/c0/d0/c0",
                     type: "Chain",
                     name: "Hall",
                     color: "#00FF00",
@@ -390,6 +402,7 @@ describe("readTrack", () => {
                     devices: [
                       {
                         id: "deep_device",
+                        path: "t0/d0/c0/d0/c0/d0",
                         type: "audio-effect: Reverb",
                         name: "Big Hall",
                       },

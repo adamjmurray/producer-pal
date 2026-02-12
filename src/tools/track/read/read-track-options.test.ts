@@ -13,7 +13,6 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
@@ -365,13 +364,15 @@ describe("readTrack", () => {
           include: ["audio-effects"],
         });
 
-        expect(stripPathProperties(result.audioEffects)).toStrictEqual([
+        expect(result.audioEffects).toStrictEqual([
           {
             id: "compressor1",
+            path: "mt/d0",
             type: "audio-effect: Compressor",
           },
           {
             id: "limiter1",
+            path: "mt/d1",
             type: "audio-effect: Limiter",
           },
         ]);

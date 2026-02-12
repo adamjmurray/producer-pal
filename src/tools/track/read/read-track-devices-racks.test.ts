@@ -9,7 +9,6 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
 import {
   ALL_DEVICE_INCLUDE_OPTIONS,
   createChainMockProperties,
@@ -60,13 +59,15 @@ describe("readTrack", () => {
         include: ["instruments", "chains"],
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "rack1",
+        path: "t0/d0",
         name: "My Empty Rack",
         type: "instrument-rack",
         chains: [
           {
             id: "empty_chain",
+            path: "t0/d0/c0",
             type: "Chain",
             name: "Empty Chain",
             color: "#000000",
@@ -124,12 +125,13 @@ describe("readTrack", () => {
 
       const singleChainRack = createSinglePianoChainRackExpectation("device1");
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         ...singleChainRack,
         chains: [
           ...(singleChainRack.chains as Array<Record<string, unknown>>),
           {
             id: "chain2",
+            path: "t0/d0/c1",
             type: "Chain",
             name: "Bass",
             color: "#00FF00",
@@ -137,6 +139,7 @@ describe("readTrack", () => {
             devices: [
               {
                 id: "device2",
+                path: "t0/d0/c1/d0",
                 type: "instrument: Wavetable",
                 name: "Bass Synth",
               },
@@ -213,8 +216,9 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "drum_rack",
+        path: "t0/d0",
         type: "drum-rack",
         name: "My Drums",
         drumPads: [
@@ -226,12 +230,14 @@ describe("readTrack", () => {
             chains: [
               {
                 id: "kick_chain",
+                path: "t0/d0/pC1/c0",
                 type: "Chain",
                 name: "Kick",
                 color: "#FF0000",
                 state: "muted-via-solo",
                 devices: [
                   expect.objectContaining({
+                    path: "t0/d0/pC1/c0/d0",
                     type: "instrument: Simpler",
                   }),
                 ],
@@ -246,12 +252,14 @@ describe("readTrack", () => {
             chains: [
               {
                 id: "snare_chain",
+                path: "t0/d0/pD1/c0",
                 type: "Chain",
                 name: "Snare",
                 color: "#00FF00",
                 state: "soloed",
                 devices: [
                   expect.objectContaining({
+                    path: "t0/d0/pD1/c0/d0",
                     type: "instrument: Simpler",
                   }),
                 ],
@@ -294,13 +302,15 @@ describe("readTrack", () => {
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
-      expect(stripPathProperties(result.audioEffects)).toStrictEqual([
+      expect(result.audioEffects).toStrictEqual([
         {
           id: "device1",
+          path: "t0/d0",
           type: "audio-effect: Reverb",
         },
         {
           id: "device2",
+          path: "t0/d1",
           type: "audio-effect: Reverb",
           name: "My Custom Reverb",
         },

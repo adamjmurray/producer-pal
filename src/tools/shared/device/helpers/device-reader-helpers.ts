@@ -96,7 +96,7 @@ function processRegularChains(
         .getChildren("devices")
         .map((chainDevice, deviceIndex) => {
           const nestedDevicePath = chainPath
-            ? `${chainPath}/${deviceIndex}`
+            ? `${chainPath}/d${deviceIndex}`
             : null;
 
           return readDeviceFn(chainDevice, {
@@ -217,7 +217,9 @@ function processReturnChains(
       ? buildReturnChainPath(devicePath, index)
       : null;
     const devices = chain.getChildren("devices").map((d, deviceIndex) => {
-      const nestedDevicePath = chainPath ? `${chainPath}/${deviceIndex}` : null;
+      const nestedDevicePath = chainPath
+        ? `${chainPath}/d${deviceIndex}`
+        : null;
 
       return readDeviceFn(d, {
         includeChains,

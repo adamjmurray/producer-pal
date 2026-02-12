@@ -17,7 +17,6 @@ import {
   mockTrackProperties,
   setupDrumRackMocks,
 } from "./helpers/read-track-test-helpers.ts";
-import { stripPathProperties } from "./helpers/read-track-assertion-test-helpers.ts";
 import {
   createChainMockProperties,
   createDeviceMockProperties,
@@ -152,8 +151,9 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but NO chains
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "drumrack1",
+        path: "t0/d0",
         name: "Test Drum Rack",
         type: "drum-rack",
         // drumPads: [ // Only included when drum-pads is requested
@@ -184,8 +184,9 @@ describe("readTrack", () => {
       });
 
       // Should have instrument WITHOUT chains (drum racks don't expose main chains)
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "drumrack1",
+        path: "t0/d0",
         name: "Test Drum Rack",
         type: "drum-rack",
         // drumPads: [ // Only included when drum-pads is requested
@@ -282,14 +283,16 @@ describe("readTrack", () => {
       // All devices should have chains stripped
       const midiEffects = result.midiEffects as Record<string, unknown>[];
 
-      expect(stripPathProperties(midiEffects[0])).toStrictEqual({
+      expect(midiEffects[0]).toStrictEqual({
         id: "midi_effect_rack",
+        path: "t0/d0",
         type: "midi-effect-rack",
       });
       expect(midiEffects[0]!.chains).toBeUndefined();
 
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "instrument_rack",
+        path: "t0/d1",
         type: "instrument-rack",
       });
       expect(
@@ -298,8 +301,9 @@ describe("readTrack", () => {
 
       const audioEffects = result.audioEffects as Record<string, unknown>[];
 
-      expect(stripPathProperties(audioEffects[0])).toStrictEqual({
+      expect(audioEffects[0]).toStrictEqual({
         id: "audio_effect_rack",
+        path: "t0/d2",
         type: "audio-effect-rack",
       });
       expect(audioEffects[0]!.chains).toBeUndefined();
@@ -337,8 +341,9 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0 });
 
       // Should have instrument but NO chains (proving drum-maps is default, not chains)
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "instrument_rack",
+        path: "t0/d0",
         type: "instrument-rack",
       });
       expect(
@@ -370,8 +375,9 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but no drumMap
-      expect(stripPathProperties(result.instrument)).toStrictEqual({
+      expect(result.instrument).toStrictEqual({
         id: "wavetable",
+        path: "t0/d0",
         type: "instrument: Wavetable",
       });
       expect(result.drumMap).toBeUndefined();

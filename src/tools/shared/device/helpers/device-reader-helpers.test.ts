@@ -92,9 +92,9 @@ describe("device-reader-helpers", () => {
 
     it("includes path when provided", () => {
       const chain = createMockChain();
-      const result = buildChainInfo(chain, { path: "1/0/0" });
+      const result = buildChainInfo(chain, { path: "t0/d0/c0" });
 
-      expect(result.path).toBe("1/0/0");
+      expect(result.path).toBe("t0/d0/c0");
     });
 
     it("omits path when not provided", () => {
@@ -193,13 +193,13 @@ describe("device-reader-helpers", () => {
       });
       const devices = [{ id: "dev-1" }];
       const result = buildChainInfo(chain, {
-        path: "1/0/0",
+        path: "t0/d0/c0",
         devices,
       });
 
       expect(result).toStrictEqual({
         id: "chain-123",
-        path: "1/0/0",
+        path: "t0/d0/c0",
         type: "DrumChain",
         name: "Full Chain",
         color: "#00FF00",
@@ -643,7 +643,7 @@ describe("device-reader-helpers", () => {
           depth: 0,
           maxDepth: 2,
           readDeviceFn: mockReadDevice,
-          devicePath: "0",
+          devicePath: "t0/d0",
         },
       );
 
@@ -742,7 +742,7 @@ describe("device-reader-helpers", () => {
           depth: 0,
           maxDepth: 2,
           readDeviceFn: mockReadDevice,
-          devicePath: "0",
+          devicePath: "t0/d0",
         },
       );
 
@@ -754,7 +754,7 @@ describe("device-reader-helpers", () => {
       });
       // Verify readDevice was called with correct nested path
       expect(readDeviceCalls).toHaveLength(1);
-      expect(readDeviceCalls[0]!.options.parentPath).toBe("0/rc0/0");
+      expect(readDeviceCalls[0]!.options.parentPath).toBe("t0/d0/rc0/d0");
     });
   });
 });

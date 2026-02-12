@@ -3,69 +3,57 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set return_tracks 0":
-          return "return1";
-        case "live_set return_tracks 1":
-          return "return2";
-        case "live_set master_track":
-          return "master1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Track Types Test Set",
-        tracks: children("track1"),
-        return_tracks: children("return1", "return2"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
+        "live_set return_tracks 0": "return1",
+        "live_set return_tracks 1": "return2",
+        "live_set master_track": "master1",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Regular Track",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set return_tracks 0": {
-        has_midi_input: 0,
-        name: "Return A",
-        clip_slots: children(), // Return tracks don't have clip slots in actual Live
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set return_tracks 1": {
-        has_midi_input: 0,
-        name: "Return B",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set master_track": {
-        has_midi_input: 0,
-        name: "Master",
-        clip_slots: children(), // Master track doesn't have clip slots in actual Live
-        arrangement_clips: children(),
-        devices: [],
+      objects: {
+        LiveSet: {
+          name: "Track Types Test Set",
+          tracks: children("track1"),
+          return_tracks: children("return1", "return2"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Regular Track",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
+        "live_set return_tracks 0": {
+          has_midi_input: 0,
+          name: "Return A",
+          clip_slots: children(), // Return tracks don't have clip slots in actual Live
+          arrangement_clips: children(),
+          devices: [],
+        },
+        "live_set return_tracks 1": {
+          has_midi_input: 0,
+          name: "Return B",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
+        "live_set master_track": {
+          has_midi_input: 0,
+          name: "Master",
+          clip_slots: children(), // Master track doesn't have clip slots in actual Live
+          arrangement_clips: children(),
+          devices: [],
+        },
       },
     });
 
@@ -140,69 +128,60 @@ describe("readLiveSet - track types", () => {
   });
 
   it("includes all available options when '*' is used", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set return_tracks 0":
-          return "return1";
-        case "live_set master_track":
-          return "master1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set tracks 0 devices 0":
-          return "synth1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Wildcard Test Set",
-        tracks: children("track1"),
-        return_tracks: children("return1"),
-        scenes: children("scene1"),
-        cue_points: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
+        "live_set return_tracks 0": "return1",
+        "live_set master_track": "master1",
+        "live_set scenes 0": "scene1",
+        "live_set tracks 0 devices 0": "synth1",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: children("synth1"),
-        ...createSimpleRoutingMock(),
-      },
-      "live_set return_tracks 0": {
-        has_midi_input: 0,
-        name: "Return A",
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set master_track": {
-        has_midi_input: 0,
-        name: "Master",
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set scenes 0": {
-        name: "Scene 1",
-        is_empty: 0,
-        tempo_enabled: 0,
-        time_signature_enabled: 0,
-        is_triggered: 0,
-        color: 16777215,
-      },
-      synth1: {
-        name: "Analog",
-        class_name: "UltraAnalog",
-        class_display_name: "Analog",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
+      objects: {
+        LiveSet: {
+          name: "Wildcard Test Set",
+          tracks: children("track1"),
+          return_tracks: children("return1"),
+          scenes: children("scene1"),
+          cue_points: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Test Track",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: children("synth1"),
+          ...createSimpleRoutingMock(),
+        },
+        "live_set return_tracks 0": {
+          has_midi_input: 0,
+          name: "Return A",
+          arrangement_clips: children(),
+          devices: [],
+        },
+        "live_set master_track": {
+          has_midi_input: 0,
+          name: "Master",
+          arrangement_clips: children(),
+          devices: [],
+        },
+        "live_set scenes 0": {
+          name: "Scene 1",
+          is_empty: 0,
+          tempo_enabled: 0,
+          time_signature_enabled: 0,
+          is_triggered: 0,
+          color: 16777215,
+        },
+        synth1: {
+          name: "Analog",
+          class_name: "UltraAnalog",
+          class_display_name: "Analog",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
       },
     });
 

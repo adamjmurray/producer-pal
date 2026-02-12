@@ -7,142 +7,103 @@ import {
   children,
   expectedClip,
   expectedTrack,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
+import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - basic reading", () => {
   it("returns live set information including tracks and scenes", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 1":
-          return "track2";
-        case "live_set tracks 2":
-          return "track3";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set scenes 1":
-          return "scene2";
-        case "live_set scenes 2":
-          return "scene3";
-        case "live_set tracks 0 clip_slots 0 clip":
-          return "clip1";
-        case "live_set tracks 0 clip_slots 2 clip":
-          return "clip2";
-        case "live_set tracks 1 clip_slots 0 clip":
-          return "clip3";
-        case "live_set view selected_track":
-          return "track1";
-        case "live_set view selected_scene":
-          return "scene1";
-        case "live_set view detail_clip":
-          return "clip1";
-        case "live_set view highlighted_clip_slot":
-          return "highlighted_slot";
-        default:
-          // normally we should return this._id but in this test we mocked out everything
-          // and don't want any of the default mocks for clips or tracks to look like they exist:
-          return "id 0";
-      }
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set view selected_track":
-          return "live_set tracks 0"; // Return path of the selected track
-        case "live_set view selected_scene":
-          return "live_set scenes 0"; // Return path of the selected scene
-        case "live_set view highlighted_clip_slot":
-          return "live_set tracks 0 clip_slots 0"; // Return path of the highlighted slot
-        default:
-          return this._path;
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Test Live Set",
-        is_playing: 1,
-        scale_mode: 1,
-        scale_name: "Major",
-        root_note: 0,
-        scale_intervals: [0, 2, 4, 5, 7, 9, 11],
-        signature_numerator: 4,
-        signature_denominator: 4,
-        tempo: 120,
-        tracks: children("track1", "track2", "track3"),
-        scenes: children("scene1", "scene2", "scene3"),
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
+        "live_set tracks 1": "track2",
+        "live_set tracks 2": "track3",
+        "live_set scenes 0": "scene1",
+        "live_set scenes 1": "scene2",
+        "live_set scenes 2": "scene3",
+        "live_set tracks 0 clip_slots 0 clip": "clip1",
+        "live_set tracks 0 clip_slots 2 clip": "clip2",
+        "live_set tracks 1 clip_slots 0 clip": "clip3",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "MIDI Track 1",
-        color: 16711680, // Red
-        mute: 0,
-        solo: 1,
-        arm: 1,
-        can_be_armed: 0, // Group track
-        is_foldable: 1,
-        is_grouped: 0,
-        group_track: ["id", 0],
-        clip_slots: children("slot1", "slot2", "slot3"),
-      },
-      "live_set tracks 1": {
-        has_midi_input: 0,
-        name: "Audio Track 2",
-        color: 65280, // Green
-        mute: 1,
-        solo: 0,
-        arm: 0,
-        back_to_arranger: 1,
-        is_foldable: 0,
-        is_grouped: 1,
-        group_track: ["id", "track1"],
-        clip_slots: children("slot4"),
-      },
-      "live_set scenes 0": {
-        name: "Scene 1",
-        color: 16711680, // Red
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
-      },
-      "live_set scenes 1": {
-        name: "Scene 2",
-        color: 65280, // Green
-        is_empty: 1,
-        is_triggered: 1,
-        tempo: -1,
-        tempo_enabled: 0,
-        time_signature_numerator: -1,
-        time_signature_denominator: -1,
-        time_signature_enabled: 0,
-      },
-      "live_set scenes 2": {
-        name: "Scene 3",
-        color: 255, // Blue
-        is_empty: 0,
-        is_triggered: 0,
-        tempo: 120,
-        tempo_enabled: 1,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        time_signature_enabled: 1,
+      objects: {
+        LiveSet: {
+          name: "Test Live Set",
+          is_playing: 1,
+          scale_mode: 1,
+          scale_name: "Major",
+          root_note: 0,
+          scale_intervals: [0, 2, 4, 5, 7, 9, 11],
+          signature_numerator: 4,
+          signature_denominator: 4,
+          tempo: 120,
+          tracks: children("track1", "track2", "track3"),
+          scenes: children("scene1", "scene2", "scene3"),
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "MIDI Track 1",
+          color: 16711680, // Red
+          mute: 0,
+          solo: 1,
+          arm: 1,
+          can_be_armed: 0, // Group track
+          is_foldable: 1,
+          is_grouped: 0,
+          group_track: ["id", 0],
+          clip_slots: children("slot1", "slot2", "slot3"),
+        },
+        "live_set tracks 1": {
+          has_midi_input: 0,
+          name: "Audio Track 2",
+          color: 65280, // Green
+          mute: 1,
+          solo: 0,
+          arm: 0,
+          back_to_arranger: 1,
+          is_foldable: 0,
+          is_grouped: 1,
+          group_track: ["id", "track1"],
+          clip_slots: children("slot4"),
+        },
+        "live_set scenes 0": {
+          name: "Scene 1",
+          color: 16711680, // Red
+          is_empty: 0,
+          is_triggered: 0,
+          tempo: 120,
+          tempo_enabled: 1,
+          time_signature_numerator: 4,
+          time_signature_denominator: 4,
+          time_signature_enabled: 1,
+        },
+        "live_set scenes 1": {
+          name: "Scene 2",
+          color: 65280, // Green
+          is_empty: 1,
+          is_triggered: 1,
+          tempo: -1,
+          tempo_enabled: 0,
+          time_signature_numerator: -1,
+          time_signature_denominator: -1,
+          time_signature_enabled: 0,
+        },
+        "live_set scenes 2": {
+          name: "Scene 3",
+          color: 255, // Blue
+          is_empty: 0,
+          is_triggered: 0,
+          tempo: 120,
+          tempo_enabled: 1,
+          time_signature_numerator: 4,
+          time_signature_denominator: 4,
+          time_signature_enabled: 1,
+        },
       },
     });
 
@@ -246,8 +207,26 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    // Verify expensive Live API calls WERE made due to includeNotes: true
-    expect(liveApiCall).toHaveBeenCalledWith(
+    // Verify expensive note reads WERE made due to includeNotes: true
+    const clip1 = lookupMockObject("clip1");
+    const clip2 = lookupMockObject("clip2");
+    const clip3 = lookupMockObject("clip3");
+
+    expect(clip1?.call).toHaveBeenCalledWith(
+      "get_notes_extended",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(clip2?.call).toHaveBeenCalledWith(
+      "get_notes_extended",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(clip3?.call).toHaveBeenCalledWith(
       "get_notes_extended",
       expect.anything(),
       expect.anything(),
@@ -257,35 +236,23 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("handles when no tracks or scenes exist", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this.path === "live_set") {
-        return "live_set";
-      }
-
-      return "id 0"; // All selection objects return non-existent IDs
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      return this._path;
-    });
-
-    mockLiveApiGet({
-      AppView: {
-        focused_document_view: "Arranger",
-      },
-      LiveSet: {
-        name: "Empty Live Set",
-        is_playing: 0,
-        back_to_arranger: 1,
-        scale_mode: 0,
-        scale_name: "Minor",
-        root_note: 2,
-        scale_intervals: [0, 2, 3, 5, 7, 8, 10],
-        signature_numerator: 3,
-        signature_denominator: 4,
-        tempo: 100,
-        tracks: [],
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      objects: {
+        LiveSet: {
+          name: "Empty Live Set",
+          is_playing: 0,
+          back_to_arranger: 1,
+          scale_mode: 0,
+          scale_name: "Minor",
+          root_note: 2,
+          scale_intervals: [0, 2, 3, 5, 7, 8, 10],
+          signature_numerator: 3,
+          signature_denominator: 4,
+          tempo: 100,
+          tracks: [],
+          scenes: [],
+        },
       },
     });
 
@@ -311,64 +278,55 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("includes device information across multiple tracks with includeDrumPads", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      if (this._path === "live_set tracks 1") {
-        return "track2";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Device Test Set",
-        tracks: children("track1", "track2"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
+        "live_set tracks 1": "track2",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Synth Track",
-        devices: children("synth1", "eq1"),
-      },
-      "live_set tracks 1": {
-        has_midi_input: 0,
-        name: "Audio Track",
-        devices: children("reverb1"),
-      },
-      synth1: {
-        name: "Analog",
-        class_name: "UltraAnalog",
-        class_display_name: "Analog",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-      },
-      eq1: {
-        name: "EQ Eight",
-        class_name: "Eq8",
-        class_display_name: "EQ Eight",
-        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-      },
-      reverb1: {
-        name: "Reverb",
-        class_name: "Reverb",
-        class_display_name: "Reverb",
-        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
+      objects: {
+        LiveSet: {
+          name: "Device Test Set",
+          tracks: children("track1", "track2"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Synth Track",
+          devices: children("synth1", "eq1"),
+        },
+        "live_set tracks 1": {
+          has_midi_input: 0,
+          name: "Audio Track",
+          devices: children("reverb1"),
+        },
+        synth1: {
+          name: "Analog",
+          class_name: "UltraAnalog",
+          class_display_name: "Analog",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        eq1: {
+          name: "EQ Eight",
+          class_name: "Eq8",
+          class_display_name: "EQ Eight",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        reverb1: {
+          name: "Reverb",
+          class_name: "Reverb",
+          class_display_name: "Reverb",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
       },
     });
 
@@ -408,87 +366,65 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("excludes drum rack devices by default", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      if (this._path === "live_set tracks 0 devices 0") {
-        return "drum_rack1";
-      }
-
-      if (this._path === "live_set tracks 0 devices 1") {
-        return "reverb1";
-      }
-
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36") {
-        return "kick_pad";
-      }
-
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0") {
-        return "kick_chain";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Drum Rack Test Set",
-        tracks: children("track1"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Drum Track",
-        devices: children("drum_rack1", "reverb1"),
-      },
-      drum_rack1: {
-        name: "My Drums",
-        class_name: "DrumGroupDevice",
-        class_display_name: "Drum Rack",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 1,
-        can_have_drum_pads: 1,
-        drum_pads: children("kick_pad"),
-        return_chains: [],
-      },
-      kick_pad: {
-        name: "Kick",
-        note: 36, // C1
-        mute: 0,
-        solo: 0,
-        chains: children("kick_chain"),
-      },
-      kick_chain: {
-        name: "Kick",
-        color: 16711680, // Red
-        mute: 0,
-        solo: 0,
-        devices: children("kick_device"),
-      },
-      kick_device: {
-        name: "Simpler",
-        class_name: "Simpler",
-        class_display_name: "Simpler",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-      },
-      reverb1: {
-        name: "Reverb",
-        class_name: "Reverb",
-        class_display_name: "Reverb",
-        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
+      objects: {
+        LiveSet: {
+          name: "Drum Rack Test Set",
+          tracks: children("track1"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Drum Track",
+          devices: children("drum_rack1", "reverb1"),
+        },
+        drum_rack1: {
+          name: "My Drums",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          drum_pads: children("kick_pad"),
+          return_chains: [],
+        },
+        kick_pad: {
+          name: "Kick",
+          note: 36, // C1
+          mute: 0,
+          solo: 0,
+          chains: children("kick_chain"),
+        },
+        kick_chain: {
+          name: "Kick",
+          color: 16711680, // Red
+          mute: 0,
+          solo: 0,
+          devices: children("kick_device"),
+        },
+        kick_device: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        reverb1: {
+          name: "Reverb",
+          class_name: "Reverb",
+          class_display_name: "Reverb",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
       },
     });
 

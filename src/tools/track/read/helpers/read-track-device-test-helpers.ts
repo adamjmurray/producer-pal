@@ -168,17 +168,20 @@ export function createSinglePianoChainRackExpectation(
 ): Record<string, unknown> {
   return {
     id: "rack1",
+    path: "t0/d0",
     type: "instrument-rack",
     name: "My Custom Rack",
     chains: [
       {
         id: "chain1",
+        path: "t0/d0/c0",
         type: "Chain",
         name: "Piano",
         color: "#FF0000",
         devices: [
           {
             id: nestedDeviceId,
+            path: "t0/d0/c0/d0",
             type: "instrument: Operator",
             name: "Lead Synth",
           },

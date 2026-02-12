@@ -3,16 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type MockObjectHandle,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 interface LocatorLiveSetConfig {
   numerator?: number;
@@ -139,7 +135,7 @@ interface SetupRoutingTestOptions {
 
 /**
  * Setup common mocks for routing tests with a single track.
- * Configures liveApiId for live_set and track, and mockLiveApiGet for test data.
+ * Configures registry-based live_set and track objects for test data.
  * @param options - Configuration options
  * @param options.trackProps - Additional properties to include on the track
  */
@@ -148,28 +144,22 @@ export function setupRoutingTestMocks(
 ): void {
   const { trackProps = {} } = options;
 
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "live_set") {
-      return "live_set_id";
-    }
-
-    if (this._path === "live_set tracks 0") {
-      return "track1";
-    }
-
-    return this._id;
-  });
-
-  mockLiveApiGet({
-    LiveSet: {
-      name: "Routing Test Set",
-      tracks: children("track1"),
-      scenes: [],
+  setupLiveSetPathMappedMocks({
+    liveSetId: "live_set_id",
+    pathIdMap: {
+      "live_set tracks 0": "track1",
     },
-    "live_set tracks 0": {
-      has_midi_input: 1,
-      name: "Test Track",
-      ...trackProps,
+    objects: {
+      LiveSet: {
+        name: "Routing Test Set",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        ...trackProps,
+      },
     },
   });
 }

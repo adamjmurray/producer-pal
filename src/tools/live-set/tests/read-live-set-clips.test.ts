@@ -3,53 +3,47 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children, liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
-function setupIdMock(pathMap: Record<string, string> = {}): void {
-  const fullMap: Record<string, string> = {
-    live_set: "live_set_id",
-    "live_set tracks 0": "track1",
-    ...pathMap,
-  };
-
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    return fullMap[this.path ?? ""] ?? "id 0";
+function setupClipReadMocks(
+  objects: Record<string, Record<string, unknown>>,
+  pathIdMap: Record<string, string> = {},
+): void {
+  setupLiveSetPathMappedMocks({
+    liveSetId: "live_set_id",
+    pathIdMap: {
+      "live_set tracks 0": "track1",
+      ...pathIdMap,
+    },
+    objects,
   });
 }
 
 function setupSingleTrackWithClip(setName: string): void {
-  setupIdMock({
-    "live_set tracks 0 clip_slots 0 clip": "clip1",
-    "id slot1 clip": "clip1",
-    clip1: "clip1",
-    "id clip1": "clip1",
-  });
-
-  mockLiveApiGet({
-    LiveSet: {
-      name: setName,
-      tracks: children("track1"),
-      scenes: [],
+  setupClipReadMocks(
+    {
+      LiveSet: {
+        name: setName,
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children("slot1"),
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+      },
+      "id slot1": {
+        clip: ["id", "clip1"],
+      },
     },
-    "live_set tracks 0": {
-      has_midi_input: 1,
-      name: "Test Track",
-      clip_slots: children("slot1"),
-      arrangement_clips: children("arr_clip1"),
-      devices: [],
+    {
+      "live_set tracks 0 clip_slots 0 clip": "clip1",
     },
-    "id slot1": {
-      clip: ["id", "clip1"],
-    },
-  });
+  );
 }
 
 describe("readLiveSet - clips", () => {
@@ -91,36 +85,36 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when session-clips requested without regular-tracks", () => {
-    setupIdMock({
-      "live_set scenes 0": "scene1",
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
-      "id clip1": "clip1",
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Minimal Track Test",
-        tracks: children("track1"),
-        scenes: children("scene1"),
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Minimal Track Test",
+          tracks: children("track1"),
+          scenes: children("scene1"),
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Test Track",
+          back_to_arranger: 0,
+          clip_slots: children("slot1"),
+          arrangement_clips: children("arr_clip1"),
+          devices: [],
+          is_foldable: 0,
+        },
+        "live_set tracks 0 clip_slots 0": {
+          clip: ["id", "clip1"],
+        },
+        "id clip1": {
+          name: "Test Clip",
+          length: 4.0,
+          is_midi_clip: 1,
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        back_to_arranger: 0,
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-        is_foldable: 0,
+      {
+        "live_set scenes 0": "scene1",
+        "live_set tracks 0 clip_slots 0 clip": "clip1",
       },
-      "live_set tracks 0 clip_slots 0": {
-        clip: ["id", "clip1"],
-      },
-      "id clip1": {
-        name: "Test Clip",
-        length: 4.0,
-        is_midi_clip: 1,
-      },
-    });
+    );
 
     const result = readLiveSet({ include: ["session-clips"] });
 
@@ -161,41 +155,30 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when arrangement-clips requested without regular-tracks", () => {
-    setupIdMock({
-      arr_clip1: "arr_clip1",
-      "id arr_clip1": "arr_clip1",
-    });
-
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
-        return "Clip";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Minimal Track Test 2",
-        tracks: children("track1"),
-        scenes: [],
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Minimal Track Test 2",
+          tracks: children("track1"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 0,
+          clip_slots: [],
+          arrangement_clips: children("arr_clip1"),
+          devices: [],
+          is_foldable: 0,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          name: "Arrangement Clip",
+          length: 8.0,
+          is_midi_clip: 0,
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 0,
-        clip_slots: [],
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-        is_foldable: 0,
+      {
+        "live_set tracks 0 arrangement_clips 0": "arr_clip1",
       },
-      arr_clip1: {
-        name: "Arrangement Clip",
-        length: 8.0,
-        is_midi_clip: 0,
-      },
-      "id arr_clip1": {
-        name: "Arrangement Clip",
-        length: 8.0,
-        is_midi_clip: 0,
-      },
-    });
+    );
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
@@ -228,52 +211,40 @@ describe("readLiveSet - clips", () => {
   });
 
   it("auto-includes minimal track info when all-clips requested without regular-tracks", () => {
-    setupIdMock({
-      "live_set scenes 0": "scene1",
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
-      "id clip1": "clip1",
-      arr_clip1: "arr_clip1",
-      "id arr_clip1": "arr_clip1",
-    });
-
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
-        return "Clip";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "All Clips Test",
-        tracks: children("track1"),
-        scenes: children("scene1"),
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "All Clips Test",
+          tracks: children("track1"),
+          scenes: children("scene1"),
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          clip_slots: children("slot1"),
+          arrangement_clips: children("arr_clip1"),
+          devices: [],
+          is_foldable: 0,
+        },
+        "live_set tracks 0 clip_slots 0": {
+          clip: ["id", "clip1"],
+        },
+        "id clip1": {
+          name: "Session Clip",
+          length: 4.0,
+          is_midi_clip: 1,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          name: "Arrangement Clip",
+          length: 8.0,
+          is_midi_clip: 1,
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-        is_foldable: 0,
+      {
+        "live_set scenes 0": "scene1",
+        "live_set tracks 0 clip_slots 0 clip": "clip1",
+        "live_set tracks 0 arrangement_clips 0": "arr_clip1",
       },
-      "live_set tracks 0 clip_slots 0": {
-        clip: ["id", "clip1"],
-      },
-      "id clip1": {
-        name: "Session Clip",
-        length: 4.0,
-        is_midi_clip: 1,
-      },
-      arr_clip1: {
-        name: "Arrangement Clip",
-        length: 8.0,
-        is_midi_clip: 1,
-      },
-      "id arr_clip1": {
-        name: "Arrangement Clip",
-        length: 8.0,
-        is_midi_clip: 1,
-      },
-    });
+    );
 
     const result = readLiveSet({ include: ["all-clips"] });
 
@@ -298,36 +269,36 @@ describe("readLiveSet - clips", () => {
   });
 
   it("uses full track info when regular-tracks explicitly included with clips", () => {
-    setupIdMock({
-      "live_set scenes 0": "scene1",
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
-      "id clip1": "clip1",
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Full Track Test",
-        tracks: children("track1"),
-        scenes: children("scene1"),
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Full Track Test",
+          tracks: children("track1"),
+          scenes: children("scene1"),
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Test Track",
+          back_to_arranger: 0,
+          clip_slots: children("slot1"),
+          arrangement_clips: [],
+          devices: [],
+          is_foldable: 0,
+        },
+        "live_set tracks 0 clip_slots 0": {
+          clip: ["id", "clip1"],
+        },
+        "id clip1": {
+          name: "Test Clip",
+          length: 4.0,
+          is_midi_clip: 1,
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        back_to_arranger: 0,
-        clip_slots: children("slot1"),
-        arrangement_clips: [],
-        devices: [],
-        is_foldable: 0,
+      {
+        "live_set scenes 0": "scene1",
+        "live_set tracks 0 clip_slots 0 clip": "clip1",
       },
-      "live_set tracks 0 clip_slots 0": {
-        clip: ["id", "clip1"],
-      },
-      "id clip1": {
-        name: "Test Clip",
-        length: 4.0,
-        is_midi_clip: 1,
-      },
-    });
+    );
 
     const result = readLiveSet({
       include: ["regular-tracks", "session-clips"],
@@ -351,17 +322,18 @@ describe("readLiveSet - clips", () => {
   });
 
   it("throws for non-existent track in minimal mode", () => {
-    setupIdMock({
-      "live_set tracks 0": "0", // Non-existent track
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Non-existent Track Test",
-        tracks: children("track1"),
-        scenes: [],
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Non-existent Track Test",
+          tracks: children("track1"),
+          scenes: [],
+        },
       },
-    });
+      {
+        "live_set tracks 0": "0", // Non-existent track
+      },
+    );
 
     expect(() => readLiveSet({ include: ["session-clips"] })).toThrow(
       "readTrack: trackIndex 0 does not exist",
@@ -369,22 +341,23 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {
-    setupIdMock({ "live_set tracks 0": "group_track" });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Group Track Test",
-        tracks: children("group_track"),
-        scenes: [],
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Group Track Test",
+          tracks: children("group_track"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          clip_slots: [],
+          arrangement_clips: [],
+          devices: [],
+          is_foldable: 1, // This is a group track
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        clip_slots: [],
-        arrangement_clips: [],
-        devices: [],
-        is_foldable: 1, // This is a group track
-      },
-    });
+      { "live_set tracks 0": "group_track" },
+    );
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
@@ -406,22 +379,23 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns zero count for arrangement clips on group tracks when counting", () => {
-    setupIdMock({ "live_set tracks 0": "group_track" });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Group Track Count Test",
-        tracks: children("group_track"),
-        scenes: [],
+    setupClipReadMocks(
+      {
+        LiveSet: {
+          name: "Group Track Count Test",
+          tracks: children("group_track"),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          clip_slots: [],
+          arrangement_clips: [],
+          devices: [],
+          is_foldable: 1,
+        },
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        clip_slots: [],
-        arrangement_clips: [],
-        devices: [],
-        is_foldable: 1,
-      },
-    });
+      { "live_set tracks 0": "group_track" },
+    );
 
     // Without arrangement-clips, should get count instead of array
     const result = readLiveSet({ include: ["session-clips"] });
