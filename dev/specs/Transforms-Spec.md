@@ -3,11 +3,11 @@
 ## Function Signatures
 
 ```javascript
-// Waveforms
-cos(frequency, [phase]); // cosine wave
-tri(frequency, [phase]); // triangle wave
-saw(frequency, [phase]); // sawtooth wave
-square(frequency, [phase], [pulseWidth]); // square wave
+// Waveforms (sync is an optional trailing keyword, not an expression)
+cos(frequency, [phase], [sync]); // cosine wave
+tri(frequency, [phase], [sync]); // triangle wave
+saw(frequency, [phase], [sync]); // sawtooth wave
+square(frequency, [phase], [pulseWidth], [sync]); // square wave
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
 ramp(start, end, [speed]); // linear ramp over clip/time range
@@ -60,6 +60,38 @@ pow(base, exponent); // base raised to exponent
   - > 1 = slow start, fast end (exponential)
   - < 1 = fast start, slow end (logarithmic)
   - = 1 = linear (same as ramp)
+
+## Timeline Sync
+
+By default, waveform phase resets to 0 at each clip's start. The `sync` keyword
+makes phase relative to arrangement position 1|1, so waveforms are continuous
+across clips on the global timeline.
+
+- **Syntax**: `sync` is an optional trailing keyword (not an expression) on
+  cyclical waveform functions: `cos`, `tri`, `saw`, `square`
+- **Evaluation**: When `sync` is present,
+  `effectivePosition = note.start + clip.arrangementStart` is used instead of
+  `note.start` for phase computation
+- **Session clips**: Using `sync` on a session clip skips the assignment with a
+  warning (no arrangement position available)
+- **Audio clips**: `sync` follows the same rule; since audio evaluates at
+  position 0 with no arrangementStart, it will skip with a warning
+- **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
+  math functions is a parse error
+
+```javascript
+// Clip-relative (default) — phase resets at each clip start
+velocity += 20 * cos(4:0t)
+
+// Timeline-synced — continuous phase from 1|1
+velocity += 20 * cos(4:0t, sync)
+
+// With phase offset and sync
+velocity += 20 * cos(4:0t, 0.25, sync)
+
+// square with all args and sync
+velocity += 20 * square(2t, 0, 0.75, sync)
+```
 
 ## Waveform Behavior
 

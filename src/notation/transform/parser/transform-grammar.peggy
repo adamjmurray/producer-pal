@@ -160,11 +160,20 @@ barPropertyName
   = "duration" { return "duration"; }
 
 functionCall
-  = name:functionName "(" _ args:argumentList? _ ")" {
-    return { type: "function", name, args: args || [] };
+  = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {
+    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false };
+  }
+  / name:otherFunctionName "(" _ args:argumentList? _ ")" {
+    return { type: "function", name, args: args || [], sync: false };
   }
 
-functionName
+cyclicalFunctionName
+  = "cos" { return "cos"; }
+  / "saw" { return "saw"; }
+  / "square" { return "square"; }
+  / "tri" { return "tri"; }
+
+otherFunctionName
   = "round" { return "round"; }
   / "floor" { return "floor"; }
   / "ceil" { return "ceil"; }
@@ -172,14 +181,21 @@ functionName
   / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
-  / "cos" { return "cos"; }
-  / "tri" { return "tri"; }
-  / "saw" { return "saw"; }
-  / "square" { return "square"; }
   / "rand" { return "rand"; }
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
+
+syncArgumentList
+  = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {
+    return { args: [head, ...tail.map(t => t[3])], sync: true };
+  }
+  / "sync" {
+    return { args: [], sync: true };
+  }
+  / head:argument tail:(_ "," _ argument)* {
+    return { args: [head, ...tail.map(t => t[3])], sync: false };
+  }
 
 argumentList
   = head:argument tail:(_ "," _ argument)* {

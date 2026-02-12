@@ -155,11 +155,13 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
 - \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+- \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\`, \`clip.arrangementStart\` (arrangement only), \`bar.duration\` (all clips)
 
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
+velocity += 20 * cos(4:0t, sync) // continuous across clips
 timing += 0.05 * rand()        // humanize timing
 velocity += ramp(0, 60)        // fade in over clip
 C1-C2: velocity += 30          // accent bass notes

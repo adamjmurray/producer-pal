@@ -15,6 +15,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "cos",
         args: [{ type: "period", bars: 0, beats: 1 }],
+        sync: false,
       });
     });
 
@@ -25,6 +26,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "cos",
         args: [{ type: "period", bars: 0, beats: 1 }, 0.5],
+        sync: false,
       });
     });
 
@@ -35,6 +37,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "tri",
         args: [{ type: "period", bars: 0, beats: 2 }],
+        sync: false,
       });
     });
 
@@ -45,6 +48,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "saw",
         args: [{ type: "period", bars: 0, beats: 0.5 }, 0.25],
+        sync: false,
       });
     });
 
@@ -55,6 +59,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 4 }],
+        sync: false,
       });
     });
 
@@ -65,6 +70,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 1 }, 0.25],
+        sync: false,
       });
     });
 
@@ -75,6 +81,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "square",
         args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
+        sync: false,
       });
     });
 
@@ -85,6 +92,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "rand",
         args: [],
+        sync: false,
       });
     });
 
@@ -95,6 +103,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "rand",
         args: [10],
+        sync: false,
       });
     });
 
@@ -105,6 +114,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "rand",
         args: [-5, 5],
+        sync: false,
       });
     });
 
@@ -115,6 +125,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "choose",
         args: [60, 80, 100],
+        sync: false,
       });
     });
 
@@ -125,6 +136,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "curve",
         args: [0, 127, 2],
+        sync: false,
       });
     });
   });
@@ -380,6 +392,7 @@ describe("Transform Parser - Expressions", () => {
           type: "function",
           name: "cos",
           args: [{ type: "period", bars: 1, beats: 0 }],
+          sync: false,
         },
       });
     });
@@ -396,6 +409,7 @@ describe("Transform Parser - Expressions", () => {
             type: "function",
             name: "cos",
             args: [{ type: "period", bars: 4, beats: 0 }],
+            sync: false,
           },
         },
         right: {
@@ -405,6 +419,7 @@ describe("Transform Parser - Expressions", () => {
             type: "function",
             name: "rand",
             args: [],
+            sync: false,
           },
         },
       });
@@ -423,6 +438,7 @@ describe("Transform Parser - Expressions", () => {
             type: "function",
             name: "cos",
             args: [{ type: "period", bars: 2, beats: 0 }],
+            sync: false,
           },
         },
       });
@@ -440,11 +456,13 @@ describe("Transform Parser - Expressions", () => {
             type: "function",
             name: "cos",
             args: [{ type: "period", bars: 4, beats: 0 }],
+            sync: false,
           },
           right: {
             type: "function",
             name: "cos",
             args: [{ type: "period", bars: 0, beats: 1 }],
+            sync: false,
           },
         },
       });
@@ -462,6 +480,7 @@ describe("Transform Parser - Expressions", () => {
             type: "function",
             name: "cos",
             args: [{ type: "period", bars: 0, beats: 1 }],
+            sync: false,
           },
           right: 1,
         },
@@ -477,6 +496,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "round",
         args: [10.7],
+        sync: false,
       });
     });
 
@@ -493,6 +513,7 @@ describe("Transform Parser - Expressions", () => {
             right: 10,
           },
         ],
+        sync: false,
       });
     });
 
@@ -503,6 +524,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "abs",
         args: [-5],
+        sync: false,
       });
     });
 
@@ -513,6 +535,7 @@ describe("Transform Parser - Expressions", () => {
         type: "function",
         name: "min",
         args: [127, { type: "variable", namespace: "note", name: "velocity" }],
+        sync: false,
       });
     });
 
@@ -527,6 +550,7 @@ describe("Transform Parser - Expressions", () => {
           { type: "variable", namespace: "note", name: "velocity" },
           100,
         ],
+        sync: false,
       });
     });
 
@@ -547,9 +571,73 @@ describe("Transform Parser - Expressions", () => {
                 right: 2,
               },
             ],
+            sync: false,
           },
         ],
+        sync: false,
       });
+    });
+  });
+
+  describe("sync keyword", () => {
+    it("parses cos with frequency and sync", () => {
+      const result = parser.parse("velocity += cos(1t, sync)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "cos",
+        args: [{ type: "period", bars: 0, beats: 1 }],
+        sync: true,
+      });
+    });
+
+    it("parses tri with frequency, phase, and sync", () => {
+      const result = parser.parse("velocity += tri(2t, 0.5, sync)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "tri",
+        args: [{ type: "period", bars: 0, beats: 2 }, 0.5],
+        sync: true,
+      });
+    });
+
+    it("parses square with all args and sync", () => {
+      const result = parser.parse("velocity += square(2t, 0, 0.75, sync)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "square",
+        args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
+        sync: true,
+      });
+    });
+
+    it("parses saw with sync", () => {
+      const result = parser.parse("velocity += saw(4:0t, sync)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "saw",
+        args: [{ type: "period", bars: 4, beats: 0 }],
+        sync: true,
+      });
+    });
+
+    it("rejects sync on rand", () => {
+      expect(() => parser.parse("velocity += rand(sync)")).toThrow();
+    });
+
+    it("rejects sync on ramp", () => {
+      expect(() => parser.parse("velocity += ramp(0, 1, sync)")).toThrow();
+    });
+
+    it("rejects sync on round", () => {
+      expect(() => parser.parse("velocity += round(sync)")).toThrow();
+    });
+
+    it("rejects sync on choose", () => {
+      expect(() => parser.parse("velocity += choose(1, 2, sync)")).toThrow();
     });
   });
 

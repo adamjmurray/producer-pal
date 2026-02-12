@@ -31,6 +31,7 @@ export type EvaluateExpressionFn = (
  * Evaluate a function call
  * @param name - Function name
  * @param args - Function arguments
+ * @param sync - Whether to sync phase to arrangement timeline
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -42,6 +43,7 @@ export type EvaluateExpressionFn = (
 export function evaluateFunction(
   name: string,
   args: ExpressionNode[],
+  sync: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -151,6 +153,7 @@ export function evaluateFunction(
   return evaluateWaveform(
     name,
     args,
+    sync,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -238,6 +241,7 @@ function evaluateRamp(
  * Evaluate waveform function (cos, tri, saw, square)
  * @param name - Waveform function name
  * @param args - Function arguments
+ * @param sync - Whether to sync phase to arrangement timeline
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -249,6 +253,7 @@ function evaluateRamp(
 function evaluateWaveform(
   name: string,
   args: ExpressionNode[],
+  sync: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -273,8 +278,23 @@ function evaluateWaveform(
     name,
   );
 
+  // Sync: use absolute arrangement position for phase
+  let effectivePosition = position;
+
+  if (sync) {
+    const arrangementStart = noteProperties["clip:arrangementStart"];
+
+    if (arrangementStart == null) {
+      throw new Error(
+        "sync requires an arrangement clip (no arrangementStart available)",
+      );
+    }
+
+    effectivePosition = position + arrangementStart;
+  }
+
   // Calculate phase from position and period
-  const basePhase = (position / period) % 1.0;
+  const basePhase = (effectivePosition / period) % 1.0;
 
   // Optional second argument: phase offset
   let phaseOffset = 0;

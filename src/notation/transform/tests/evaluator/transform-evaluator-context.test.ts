@@ -221,6 +221,119 @@ describe("Context Variables", () => {
     });
   });
 
+  describe("sync keyword", () => {
+    it("syncs waveform phase to arrangement timeline", () => {
+      // Note at position 2 in a clip starting at beat 6
+      // With sync: effective = 2 + 6 = 8, phase = (8/4) % 1 = 0, cos(0) = 1
+      // Without sync would be: phase = (2/4) % 1 = 0.5, cos(0.5) = -1
+      const result = evaluateTransform(
+        "velocity += 100 * cos(4t, sync)",
+        { position: 2, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 6 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(100, 10);
+    });
+
+    it("combines sync with phase offset", () => {
+      // Effective position = 0 + 4 = 4, period = 4, basePhase = (4/4) % 1 = 0
+      // With phase offset 0.25, phase = 0.25, cos(0.25) ≈ 0
+      const result = evaluateTransform(
+        "velocity += 100 * cos(4t, 0.25, sync)",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 4 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(0, 10);
+    });
+
+    it("skips assignment when sync used on session clip", () => {
+      const result = evaluateTransform(
+        "velocity += 100 * cos(4t, sync)",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        {},
+      );
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("does not affect other assignments when sync fails", () => {
+      const result = evaluateTransform(
+        "velocity += 100 * cos(4t, sync)\npitch += 7",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        {},
+      );
+
+      expect(result.velocity).toBeUndefined();
+      expect(result.pitch).toStrictEqual({ operator: "add", value: 7 });
+    });
+
+    it("without sync, phase is clip-relative", () => {
+      // Position 2, period 4 → phase = (2/4) % 1 = 0.5, cos(0.5) = -1
+      // arrangementStart is ignored when sync is not used
+      const result = evaluateTransform(
+        "velocity += 100 * cos(4t)",
+        { position: 2, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 8 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(-100, 10);
+    });
+
+    it("sync at position 0 with arrangementStart 0 matches default", () => {
+      const synced = evaluateTransform(
+        "velocity += 100 * cos(4t, sync)",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 0 },
+      );
+      const unsynced = evaluateTransform(
+        "velocity += 100 * cos(4t)",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 0 },
+      );
+
+      expect(synced.velocity!.value).toBeCloseTo(unsynced.velocity!.value, 10);
+    });
+
+    it("works with tri waveform", () => {
+      // Effective position = 0 + 2 = 2, period = 4, phase = 0.5
+      // tri(0.5) = -1.0
+      const result = evaluateTransform(
+        "velocity += 100 * tri(4t, sync)",
+        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        { "clip:arrangementStart": 2 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(-100, 10);
+    });
+
+    it("works with applyTransforms and clipContext", () => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity: 100 },
+        { start_time: 1, velocity: 100 },
+      ]);
+      const clipContext: ClipContext = {
+        clipDuration: 4,
+        clipIndex: 0,
+        arrangementStart: 4,
+        barDuration: 4,
+      };
+
+      // Note 0: pos=0, effective=4, phase=(4/4)%1=0, cos(0)=1 → 100+50=127 (clamped)
+      // Note 1: pos=1, effective=5, phase=(5/4)%1=0.25, cos(0.25)≈0 → ≈100
+      applyTransforms(
+        notes,
+        "velocity += 50 * cos(4t, sync)",
+        4,
+        4,
+        clipContext,
+      );
+
+      expect(notes[0]!.velocity).toBe(127);
+      expect(notes[1]!.velocity).toBeCloseTo(100, 0);
+    });
+  });
+
   describe("context variable errors", () => {
     it("errors when clip variable is not available", () => {
       const result = evaluateTransform(

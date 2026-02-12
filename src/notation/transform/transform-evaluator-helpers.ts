@@ -357,6 +357,7 @@ export function evaluateExpression(
     return evaluateFunction(
       node.name,
       node.args,
+      node.sync,
       position,
       timeSigNumerator,
       timeSigDenominator,

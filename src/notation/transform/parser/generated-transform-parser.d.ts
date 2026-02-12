@@ -35,6 +35,7 @@ export interface FunctionNode {
   type: "function";
   name: string;
   args: ExpressionNode[];
+  sync: boolean;
 }
 
 /** Expression AST node */

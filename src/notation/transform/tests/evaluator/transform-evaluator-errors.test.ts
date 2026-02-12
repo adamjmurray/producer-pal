@@ -186,6 +186,7 @@ describe("Transform Evaluator Error Handling", () => {
             type: "function" as const,
             name: "unknown_func",
             args: [{ type: "period" as const, bars: 0, beats: 1 }],
+            sync: false,
           },
         },
       ];
@@ -211,6 +212,7 @@ describe("Transform Evaluator Error Handling", () => {
         evaluateFunction(
           "unknown_waveform",
           [1], // Simple number period in beats
+          false,
           0,
           4,
           4,
@@ -225,6 +227,7 @@ describe("Transform Evaluator Error Handling", () => {
       const result = evaluateFunction(
         "cos",
         [1], // Simple number period in beats
+        false,
         0,
         4,
         4,
