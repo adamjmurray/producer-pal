@@ -44,8 +44,8 @@ Key entry points:
 - Chat CLI: `evals/chat/index.ts`
 - Evaluation scenarios: `evals/eval/index.ts`
 
-See `dev-docs/Architecture.md` for detailed system design and
-`dev-docs/Chat-UI.md` for web UI architecture.
+See `dev/Architecture.md` for detailed system design and `dev/Chat-UI.md` for
+web UI architecture.
 
 ## Critical Coding Rules
 
@@ -307,13 +307,12 @@ Rules:
 
 ## Documentation
 
-- `dev-docs/Architecture.md` - System design and components
-- `dev-docs/Arrangement-Operations.md` - Live API constraints, arrangement
+- `dev/Architecture.md` - System design and components
+- `dev/Arrangement-Operations.md` - Live API constraints, arrangement
   algorithms, and edge cases
-- `dev-docs/Chat-UI.md` - Web UI architecture and development
-- `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
-- `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
-  inspector
-- `dev-docs/Documentation-Site.md` - VitePress documentation site setup and
+- `dev/Chat-UI.md` - Web UI architecture and development
+- `dev/Coding-Standards.md` - Code style, patterns, and rules
+- `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
+- `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
 - `DEVELOPERS.md` - Development setup and testing
