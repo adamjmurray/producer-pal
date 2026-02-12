@@ -3,12 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiGet,
-  liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   parseArrangementLength,
   getMinimalClipInfo,
@@ -91,149 +86,94 @@ describe("duplicate-helpers", () => {
     });
 
     it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
-      const clipId = "456";
-
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === clipId) {
-          return `live_set tracks 2 arrangement_clips 0`;
-        }
-
-        if (this._path === "live_set") {
-          return "live_set";
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 1,
-          start_time: 4.0,
-        },
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "LiveSet",
+        properties: {
           signature_numerator: 4,
           signature_denominator: 4,
         },
       });
+      registerMockObject("456", {
+        path: "live_set tracks 2 arrangement_clips 0",
+        type: "Clip",
+        properties: {
+          is_arrangement_clip: 1,
+          start_time: 4.0,
+        },
+      });
 
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 2 arrangement_clips 0`,
-        trackIndex: 2,
-        getProperty: liveApiGet,
-      };
+      const result = getMinimalClipInfo(LiveAPI.from("456"));
 
-      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI);
-
-      expect(result.id).toBe(clipId);
+      expect(result.id).toBe("456");
       expect(result.trackIndex).toBe(2);
       expect(result.arrangementStart).toBe("2|1");
     });
 
     it("omits trackIndex when specified in omitFields for arrangement clip", () => {
-      const clipId = "457";
-
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === clipId) {
-          return `live_set tracks 2 arrangement_clips 0`;
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 1,
-          start_time: 0,
-        },
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "LiveSet",
+        properties: {
           signature_numerator: 4,
           signature_denominator: 4,
         },
       });
+      registerMockObject("457", {
+        path: "live_set tracks 2 arrangement_clips 0",
+        type: "Clip",
+        properties: {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+      });
 
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 2 arrangement_clips 0`,
-        trackIndex: 2,
-        getProperty: liveApiGet,
-      };
+      const result = getMinimalClipInfo(LiveAPI.from("457"), ["trackIndex"]);
 
-      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
-        "trackIndex",
-      ]);
-
-      expect(result.id).toBe(clipId);
+      expect(result.id).toBe("457");
       expect(result.trackIndex).toBeUndefined();
       expect(result.arrangementStart).toBe("1|1");
     });
 
     it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
-      const clipId = "458";
-
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === clipId) {
-          return `live_set tracks 2 arrangement_clips 0`;
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 1,
-          start_time: 8.0,
-        },
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "LiveSet",
+        properties: {
           signature_numerator: 4,
           signature_denominator: 4,
         },
       });
+      registerMockObject("458", {
+        path: "live_set tracks 2 arrangement_clips 0",
+        type: "Clip",
+        properties: {
+          is_arrangement_clip: 1,
+          start_time: 8.0,
+        },
+      });
 
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 2 arrangement_clips 0`,
-        trackIndex: 2,
-        getProperty: liveApiGet,
-      };
-
-      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
+      const result = getMinimalClipInfo(LiveAPI.from("458"), [
         "arrangementStart",
       ]);
 
-      expect(result.id).toBe(clipId);
+      expect(result.id).toBe("458");
       expect(result.trackIndex).toBe(2);
       expect(result.arrangementStart).toBeUndefined();
     });
 
     it("returns id, trackIndex, and sceneIndex for session clip", () => {
-      const clipId = "789";
-
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === clipId) {
-          return `live_set tracks 1 clip_slots 3 clip`;
-        }
-
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        [clipId]: {
+      registerMockObject("789", {
+        path: "live_set tracks 1 clip_slots 3 clip",
+        type: "Clip",
+        properties: {
           is_arrangement_clip: 0,
         },
       });
 
-      const mockClip = {
-        id: clipId,
-        path: `live_set tracks 1 clip_slots 3 clip`,
-        trackIndex: 1,
-        sceneIndex: 3,
-        getProperty: liveApiGet,
-      };
+      const result = getMinimalClipInfo(LiveAPI.from("789"));
 
-      const result = getMinimalClipInfo(mockClip as unknown as LiveAPI);
-
-      expect(result.id).toBe(clipId);
+      expect(result.id).toBe("789");
       expect(result.trackIndex).toBe(1);
       expect(result.sceneIndex).toBe(3);
     });
@@ -254,21 +194,13 @@ describe("duplicate-helpers", () => {
     ])(
       "omits $omitField when specified in omitFields for session clip",
       ({ omitField, clipId, expectedTrackIndex, expectedSceneIndex }) => {
-        mockLiveApiGet({
-          [clipId]: { is_arrangement_clip: 0 },
+        registerMockObject(clipId, {
+          path: "live_set tracks 1 clip_slots 3 clip",
+          type: "Clip",
+          properties: { is_arrangement_clip: 0 },
         });
 
-        const mockClip = {
-          id: clipId,
-          path: `live_set tracks 1 clip_slots 3 clip`,
-          trackIndex: 1,
-          sceneIndex: 3,
-          getProperty: liveApiGet,
-        };
-
-        const result = getMinimalClipInfo(mockClip as unknown as LiveAPI, [
-          omitField,
-        ]);
+        const result = getMinimalClipInfo(LiveAPI.from(clipId), [omitField]);
 
         expect(result.id).toBe(clipId);
         expect(result.trackIndex).toBe(expectedTrackIndex);
@@ -277,20 +209,21 @@ describe("duplicate-helpers", () => {
     );
 
     it("throws error when trackIndex is null for arrangement clip", () => {
-      const clipId = "792";
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 1,
-          start_time: 0,
-        },
-      });
-
       const mockClip = {
-        id: clipId,
+        id: "792",
         path: `invalid_path`,
         trackIndex: null,
-        getProperty: liveApiGet,
+        getProperty: (property: string) => {
+          if (property === "is_arrangement_clip") {
+            return 1;
+          }
+
+          if (property === "start_time") {
+            return 0;
+          }
+
+          return 0;
+        },
       };
 
       expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
@@ -299,20 +232,12 @@ describe("duplicate-helpers", () => {
     });
 
     it("throws error when trackIndex or sceneIndex is null for session clip", () => {
-      const clipId = "793";
-
-      mockLiveApiGet({
-        [clipId]: {
-          is_arrangement_clip: 0,
-        },
-      });
-
       const mockClip = {
-        id: clipId,
+        id: "793",
         path: `invalid_path`,
         trackIndex: null,
         sceneIndex: null,
-        getProperty: liveApiGet,
+        getProperty: () => 0,
       };
 
       expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
