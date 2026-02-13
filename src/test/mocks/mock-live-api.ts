@@ -26,11 +26,76 @@ export interface MockLiveAPIContext {
   type?: string;
 }
 
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiId = vi.fn();
+
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiPath = vi.fn();
+
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiType = vi.fn();
+
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiGet = vi.fn();
+
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiSet = vi.fn();
+
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * These global mocks are kept as fallbacks for objects not in the registry,
+ * but new tests should use the registry system.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ */
 export const liveApiCall = vi.fn();
 
 export class LiveAPI {

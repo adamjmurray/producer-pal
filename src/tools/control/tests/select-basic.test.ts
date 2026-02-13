@@ -103,6 +103,15 @@ const viewStatePaths = [
   "live_set view highlighted_clip_slot",
 ] as const;
 
+/**
+ * @deprecated Use the mock registry system instead: `registerMockObject()` from
+ * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
+ * with better isolation and cleaner assertions.
+ *
+ * Migration guide: See `dev/Coding-Standards.md` section "Testing"
+ * @param pathHandlers - Path-to-mock object mapping
+ * @param fallback - Fallback object for unmatched paths
+ */
 function setupLiveAPIMock(
   pathHandlers: Record<string, unknown>,
   fallback: unknown = {},
@@ -379,6 +388,8 @@ describe("view", () => {
     });
   });
 
+  // NOTE: This test suite still uses the old mocking system (setupLiveAPIMock).
+  // It should be migrated to the mock registry system in a future refactor.
   describe("clip selection - view conflict", () => {
     it("warns when requested view conflicts with clip type", () => {
       // Create a session clip (has trackIndex and clipSlotIndex → requires session view)
