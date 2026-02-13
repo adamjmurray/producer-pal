@@ -20,6 +20,12 @@ export interface RegisteredMockObjectOptions {
   properties?: Record<string, unknown>;
   /** Method implementations for call() dispatch, keyed by method name */
   methods?: Record<string, (...args: unknown[]) => unknown>;
+  /**
+   * Path to return from .path getter (overrides registered path).
+   * Used for objects like "live_set view selected_track" that should return
+   * the actual track's path instead of the view path.
+   */
+  returnPath?: string;
 }
 
 export interface RegisteredMockObject {
@@ -37,6 +43,8 @@ export interface RegisteredMockObject {
   type: string;
   /** Property overrides to be copied onto LiveAPI instances */
   properties: Record<string, unknown>;
+  /** Path to return from .path getter (overrides path if set) */
+  returnPath?: string;
 }
 
 const registryById = new Map<string, RegisteredMockObject>();
@@ -124,6 +132,7 @@ export function registerMockObject(
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
   const properties = options.properties ?? {};
   const methods = options.methods ?? {};
+  const returnPath = options.returnPath;
 
   const mock: RegisteredMockObject = {
     get: createGetMock(properties, type, path),
@@ -133,6 +142,7 @@ export function registerMockObject(
     path,
     type,
     properties,
+    returnPath,
   };
 
   registryById.set(id, mock);

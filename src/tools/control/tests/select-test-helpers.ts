@@ -32,6 +32,7 @@ const LIVE_APP_VIEW_PATH = "live_app view";
 const LIVE_SET_VIEW_PATH = "live_set view";
 const LIVE_SET_VIEW_SELECTED_TRACK_PATH = "live_set view selected_track";
 const DETAIL_CLIP_VIEW_NAME = "Detail/Clip";
+const DETAIL_DEVICE_VIEW_NAME = "Detail/DeviceChain";
 const BROWSER_VIEW_NAME = "Browser";
 
 /**
@@ -39,6 +40,7 @@ const BROWSER_VIEW_NAME = "Browser";
  * @param options - Property overrides
  * @param options.currentView - Current view ("session" or "arrangement")
  * @param options.isDetailClipVisible - Whether detail clip view is visible
+ * @param options.isDetailDeviceVisible - Whether detail device view is visible
  * @param options.showBrowser - Whether browser is shown
  * @returns Registered app view mock
  */
@@ -46,18 +48,23 @@ export function setupAppViewMock(
   options: {
     currentView?: "session" | "arrangement";
     isDetailClipVisible?: boolean;
+    isDetailDeviceVisible?: boolean;
     showBrowser?: boolean;
   } = {},
 ): RegisteredMockObject {
   const {
     currentView = "session",
     isDetailClipVisible = false,
+    isDetailDeviceVisible = false,
     showBrowser = false,
   } = options;
 
   return registerMockObject("app-view", {
     path: LIVE_APP_VIEW_PATH,
     type: "Application.View",
+    properties: {
+      focused_document_view: currentView === "session" ? "Session" : "Arranger",
+    },
     methods: {
       show_view: () => 0,
       focus_view: () => 0,
@@ -67,14 +74,9 @@ export function setupAppViewMock(
 
         if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) return 1;
 
+        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) return 1;
+
         if (view === BROWSER_VIEW_NAME && showBrowser) return 1;
-
-        return 0;
-      },
-      getProperty: (...args: unknown[]) => {
-        const prop = args[0] as string;
-
-        if (prop === "view") return currentView === "session" ? 1 : 2;
 
         return 0;
       },
@@ -133,6 +135,8 @@ export function setupSelectedTrackMock(options?: {
   return registerMockObject(id, {
     path: LIVE_SET_VIEW_SELECTED_TRACK_PATH,
     type: "Track",
+    // Return actual track path from .path getter (instead of registered path)
+    returnPath: exists ? path : undefined,
     properties: {
       category: exists ? category : null,
       trackIndex: exists ? trackIndex : null,
@@ -259,6 +263,7 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
   const appView = setupAppViewMock({
     currentView: state.view,
     isDetailClipVisible: state.detailView === "clip",
+    isDetailDeviceVisible: state.detailView === "device",
     showBrowser: state.showBrowser,
   });
 

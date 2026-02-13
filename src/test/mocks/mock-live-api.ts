@@ -21,6 +21,7 @@ export { MockSequence, children };
 export interface MockLiveAPIContext {
   _path?: string;
   _id?: string;
+  _registered?: RegisteredMockObject;
   path?: string;
   id?: string;
   type?: string;
@@ -166,7 +167,9 @@ export class LiveAPI {
   }
 
   get path(): string {
-    if (this._registered) return this._registered.path;
+    if (this._registered) {
+      return this._registered.returnPath ?? this._registered.path;
+    }
 
     return (liveApiPath.apply(this) as string | undefined) ?? this._path ?? "";
   }
