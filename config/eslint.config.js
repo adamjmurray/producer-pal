@@ -776,12 +776,11 @@ export default [
   // Files still using deprecated global mocks (old mocking system)
   {
     files: [
-      // Control/Select tests (Phase 1C - partial)
-      "src/tools/control/tests/select-test-helpers.ts",
+      // Control/Select tests (Phase 1 - uses liveApiId for non-existent object testing)
       "src/tools/control/tests/playback-basic.test.ts",
-      // Validation tests (uses liveApiId as fallback for non-existent objects)
+      // Validation tests (Phase 3 - uses liveApiId as fallback for non-existent objects)
       "src/tools/shared/validation/id-validation.test.ts",
-      // Arrangement tests (uses liveApiGet for scene mocking in audio clip test)
+      // Arrangement tests (Phase 3 - uses liveApiGet for scene mocking)
       "src/tools/shared/arrangement/arrangement-splitting.test.ts",
       "src/tools/clip/update/tests/arrangement/update-clip-splitting.test.ts",
       // Device tests (Phase 2 - not started)

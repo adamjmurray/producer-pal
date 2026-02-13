@@ -210,9 +210,6 @@ describe("performSplitting", () => {
   it("should warn and abort when duplication fails", () => {
     const clipId = "clip_1";
 
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-
     const { callState } = setupClipSplittingMocks(clipId);
     const { mockClip, clips } = createPerformContext(clipId);
 
@@ -368,13 +365,6 @@ describe("performSplitting", () => {
   it("should warn and skip when middle segment duplication fails", () => {
     const clipId = "clip_1";
     let duplicateCount = 0;
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, {
-      looping: true,
-      endTime: 12.0, // 12-beat clip
-      loopEnd: 4.0,
-    });
 
     const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,

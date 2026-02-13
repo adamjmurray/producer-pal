@@ -65,7 +65,7 @@ interface SplittingClipProps {
 }
 
 /**
- * Setup liveApiGet mock for splitting tests
+ * Setup clip properties for splitting tests
  * @param clipId - The clip ID
  * @param clipProps - Clip properties
  */
@@ -131,7 +131,7 @@ interface SplittingCallState {
 }
 
 /**
- * Create a liveApiCall mock for splitting operations.
+ * Create instance-level call mock for splitting operations.
  * Returns sequential "dup_N" IDs for duplicate_clip_to_arrangement calls.
  * @returns State object for tracking mock calls (includes trackMock for assertions)
  */
