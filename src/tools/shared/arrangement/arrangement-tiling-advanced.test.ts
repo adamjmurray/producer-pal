@@ -391,6 +391,86 @@ describe("tileClipToRange", () => {
     expect(result).toHaveLength(3);
   });
 
+  it("sets end_marker to match loop_end when they differ", () => {
+    const sourceClip = setupArrangementClip("100", 0, {
+      is_midi_clip: 1,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 8, // end_marker differs from loop_end
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", "200"]],
+    });
+
+    setupClip("200", {
+      properties: {
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+
+    // Should set end_marker to loop_end (4) because they differed
+    expect(sourceClip.set).toHaveBeenCalledWith("end_marker", 4);
+  });
+
+  it("advances content offset correctly with custom tileLength", () => {
+    const sourceClip = setupArrangementClip("100", 0, {
+      is_midi_clip: 1,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 4,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [
+        ["id", "200"],
+        ["id", "201"],
+        ["id", "202"],
+      ],
+    });
+
+    const tile1 = setupClip("200", {
+      properties: {
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+    const tile2 = setupClip("201", {
+      properties: {
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+    const tile3 = setupClip("202", {
+      properties: {
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+
+    // Use tileLength larger than clip to shift offset through content
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      15,
+      1000,
+      mockContext,
+      { tileLength: 5 },
+    );
+
+    // tile0: offset=0, marker = 0+0 = 0
+    // tile1: offset=5, marker = 0+(5%4) = 0+1 = 1
+    // tile2: offset=10, marker = 0+(10%4) = 0+2 = 2
+    expect(tile1.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(tile2.set).toHaveBeenCalledWith("start_marker", 1);
+    expect(tile3.set).toHaveBeenCalledWith("start_marker", 2);
+    expect(result).toHaveLength(3);
+  });
+
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
     const sourceClip = setupArrangementClip("100", 0, {
       is_midi_clip: 1,

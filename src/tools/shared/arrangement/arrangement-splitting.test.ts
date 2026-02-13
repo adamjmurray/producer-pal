@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Mock } from "vitest";
 import {
   liveApiCall,
   liveApiGet,
@@ -142,6 +143,32 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-max-exceeded")).toBe(true);
+  });
+
+  it("should handle trailing commas in split string", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // Trailing comma produces an empty part that gets skipped
+    const result = prepareSplitParams("2|1, 3|1, ", [mockClip], warnings);
+
+    expect(result).toStrictEqual([4, 8]);
+    expect(warnings.size).toBe(0);
+  });
+
+  it("should not duplicate the same warning within a single call", () => {
+    const warnings = new Set<string>();
+
+    // First call: warns about no arrangement clips
+    prepareSplitParams("2|1", [], warnings);
+    expect(warnings.has("split-no-arrangement")).toBe(true);
+
+    // Second call with the same warnings set: should not warn again
+    const outletCallCount = (outlet as Mock).mock.calls.length;
+
+    prepareSplitParams("2|1", [], warnings);
+
+    // No additional outlet calls for the same warning
+    expect((outlet as Mock).mock.calls).toHaveLength(outletCallCount);
   });
 });
 
@@ -427,5 +454,40 @@ describe("performSplitting", () => {
     expect(clips.some((c) => c.id === "fresh_2")).toBe(true);
     // The original clip should have been replaced
     expect(clips.some((c) => c.id === clipId)).toBe(false);
+  });
+
+  it("should handle rescan when stale clip ID is not found in clips array", () => {
+    const clipId = "clip_1";
+
+    setupClipSplittingMocks(clipId);
+
+    const parentGet = liveApiGet.getMockImplementation();
+
+    liveApiGet.mockImplementation(function (
+      this: MockLiveAPIContext,
+      prop: string,
+    ) {
+      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
+        return ["id", "fresh_1"];
+      }
+
+      if (this._id === "fresh_1" && prop === "start_time") {
+        return [0.0];
+      }
+
+      return parentGet?.call(this, prop) ?? [0];
+    });
+
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+
+    // Pass an empty clips array so staleIndex will be -1
+    const clips: LiveAPI[] = [];
+
+    performSplitting([mockClip], [4], clips, {
+      holdingAreaStartBeats: 40000,
+    });
+
+    // clips array should remain empty since stale clip was not found
+    expect(clips).toHaveLength(0);
   });
 });
