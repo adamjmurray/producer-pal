@@ -4,11 +4,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  liveApiGet,
-  liveApiId,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  clearMockRegistry,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "./read-device.ts";
 import {
   setupBasicDeviceMock,
@@ -18,6 +17,7 @@ import {
 describe("readDevice with path parameter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   it("should throw error when neither deviceId nor path is provided", () => {
@@ -35,6 +35,7 @@ describe("readDevice with path parameter", () => {
   it("should read device by path", () => {
     setupBasicDeviceMock({
       id: "device-456",
+      path: "live_set tracks 1 devices 0",
       class_display_name: "Operator",
       type: 1,
     });
@@ -48,9 +49,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error for non-existent device by path", () => {
-    liveApiId.mockImplementation(function () {
-      return "0";
-    });
+    mockNonExistentObjects();
 
     expect(() => readDevice({ path: "t1/d0" })).toThrow(
       "Device not found at path: live_set tracks 1 devices 0",
@@ -103,56 +102,27 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should read chain with devices", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      const id = this._id;
-
-      if (id === "device-in-chain") return "device-in-chain";
-
-      return "chain-with-devices";
+    // Register the device in the chain
+    registerMockObject("device-in-chain", {
+      path: "id device-in-chain",
+      type: "Device",
+      properties: {
+        name: "Simpler",
+        class_display_name: "Simpler",
+        type: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+        is_active: 1,
+      },
     });
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "device-in-chain") return "Device";
 
-      return "Chain";
-    });
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      const id = this._id;
-
-      // Device properties
-      if (id === "device-in-chain") {
-        switch (prop) {
-          case "name":
-            return ["Simpler"];
-          case "class_display_name":
-            return ["Simpler"];
-          case "type":
-            return [1]; // instrument
-          case "can_have_chains":
-            return [0];
-          case "can_have_drum_pads":
-            return [0];
-          case "is_active":
-            return [1];
-          default:
-            return [];
-        }
-      }
-
-      // Chain properties
-      switch (prop) {
-        case "name":
-          return ["Chain With Devices"];
-        case "mute":
-          return [0];
-        case "solo":
-          return [0];
-        case "color":
-          return [];
-        case "devices":
-          return ["id", "device-in-chain"];
-        default:
-          return [];
-      }
+    // Register the chain with the device
+    setupChainMock({
+      id: "chain-with-devices",
+      name: "Chain With Devices",
+      mute: 0,
+      solo: 0,
+      deviceIds: ["device-in-chain"],
     });
 
     const result = readDevice({ path: "t1/d0/c0" });
@@ -181,9 +151,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error for non-existent chain by path", () => {
-    liveApiId.mockImplementation(function () {
-      return "0";
-    });
+    mockNonExistentObjects();
 
     expect(() => readDevice({ path: "t1/d0/c0" })).toThrow(
       "Chain not found at path: t1/d0/c0",
@@ -193,6 +161,7 @@ describe("readDevice with path parameter", () => {
   it("should read return chain by path with enriched properties", () => {
     setupChainMock({
       id: "return-chain-101",
+      path: "live_set tracks 1 devices 0 return_chains 0",
       name: "Return A",
       color: 0x0088ff,
     });
@@ -237,6 +206,7 @@ describe("readDevice with path parameter", () => {
   it("should read device from return track by path", () => {
     setupBasicDeviceMock({
       id: "return-device-123",
+      path: "live_set return_tracks 0 devices 0",
       class_display_name: "Reverb",
       type: 2,
     });
@@ -252,6 +222,7 @@ describe("readDevice with path parameter", () => {
   it("should read device from master track by path", () => {
     setupBasicDeviceMock({
       id: "master-device-123",
+      path: "live_set master_track devices 0",
       class_display_name: "Limiter",
       type: 2,
     });
@@ -265,9 +236,7 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error when device not found at drum pad path", () => {
-    liveApiId.mockImplementation(function () {
-      return "0"; // non-existent
-    });
+    mockNonExistentObjects();
 
     expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
       "Device not found at path: live_set tracks 1 devices 0",
