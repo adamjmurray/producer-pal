@@ -372,6 +372,34 @@ probability += -0.2`;
     });
   });
 
+  describe("note ordering for node.index", () => {
+    it("sorts notes by start_time then pitch before applying transforms", () => {
+      // Simulate Ableton's pitch-sorted order from get_notes_extended
+      const notes = createTestNotes([
+        { pitch: 48, start_time: 4, velocity: 100 },
+        { pitch: 72, start_time: 0, velocity: 100 },
+        { pitch: 60, start_time: 0, velocity: 100 },
+        { pitch: 84, start_time: 2, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "velocity = note.index * 10", 4, 4);
+
+      // After sorting by start_time then pitch:
+      // index 0: pitch=60, start=0 → velocity=0 (clamped to 1)
+      // index 1: pitch=72, start=0 → velocity=10
+      // index 2: pitch=84, start=2 → velocity=20
+      // index 3: pitch=48, start=4 → velocity=30
+      expect(notes[0]!.pitch).toBe(60);
+      expect(notes[0]!.velocity).toBe(1); // clamped from 0
+      expect(notes[1]!.pitch).toBe(72);
+      expect(notes[1]!.velocity).toBe(10);
+      expect(notes[2]!.pitch).toBe(84);
+      expect(notes[2]!.velocity).toBe(20);
+      expect(notes[3]!.pitch).toBe(48);
+      expect(notes[3]!.velocity).toBe(30);
+    });
+  });
+
   describe("undefined property handling", () => {
     it("handles probability transform when probability is undefined", () => {
       const notes: NoteEvent[] = createTestNote();

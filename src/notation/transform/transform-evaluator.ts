@@ -66,6 +66,10 @@ export function applyTransforms(
     console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
   }
 
+  // Sort by start_time then pitch so note.index reflects musical order
+  // (Ableton's get_notes_extended returns notes sorted by pitch)
+  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
+
   // Calculate the overall clip timeRange in musical beats
   const firstNote = notes[0] as NoteEvent;
   const clipStartTime = firstNote.start_time * (timeSigDenominator / 4);

@@ -157,7 +157,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
-**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\`, \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\`, \`clip.count\`, \`clip.position\` (arrangement only), \`bar.duration\` (all clips)
+**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`bar.duration\` (all clips)
 
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
