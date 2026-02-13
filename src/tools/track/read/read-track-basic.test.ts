@@ -4,11 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/version.ts";
-import {
-  children,
-  expectedClip,
-  liveApiPath,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
@@ -34,12 +30,10 @@ function createSoloedMidiTrackProperties(
 }
 
 function mockThisDeviceOnTrack1(): void {
-  liveApiPath.mockImplementation(function (this: { _path?: string }) {
-    if (this._path === "this_device") {
-      return "live_set tracks 1 devices 0";
-    }
-
-    return this._path;
+  registerMockObject("this_device", {
+    path: "this_device",
+    returnPath: "live_set tracks 1 devices 0",
+    type: "Device",
   });
 }
 

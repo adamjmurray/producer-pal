@@ -2,13 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as consoleModule from "#src/shared/v8-max-console.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
-  liveApiId,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
@@ -19,6 +18,10 @@ import {
 } from "./read-clip-test-helpers.ts";
 
 describe("readClip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearMockRegistry();
+  });
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
     const clip = setupMidiClipMock({
       clipProps: {
@@ -149,13 +152,20 @@ describe("readClip", () => {
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Track and scene exist, but clip does not
-      if (this._path === "live_set tracks 2") return "track2";
-      if (this._path === "live_set scenes 3") return "scene3";
-
-      return "id 0"; // Clip doesn't exist
+    // Track and scene exist, but clip does not
+    registerMockObject("track2", {
+      path: "live_set tracks 2",
+      type: "Track",
     });
+    registerMockObject("scene3", {
+      path: "live_set scenes 3",
+      type: "Scene",
+    });
+    registerMockObject("0", {
+      path: "live_set tracks 2 clip_slots 3 clip",
+      type: "Clip",
+    });
+
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
 
     expect(result).toStrictEqual({
@@ -173,7 +183,10 @@ describe("readClip", () => {
   });
 
   it("throws when track does not exist", () => {
-    liveApiId.mockReturnValue("id 0");
+    registerMockObject("0", {
+      path: "live_set tracks 99",
+      type: "Track",
+    });
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
       "trackIndex 99 does not exist",
@@ -181,11 +194,14 @@ describe("readClip", () => {
   });
 
   it("throws when scene does not exist", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Track exists, but scene does not
-      if (this._path === "live_set tracks 0") return "track0";
-
-      return "id 0";
+    // Track exists, but scene does not
+    registerMockObject("track0", {
+      path: "live_set tracks 0",
+      type: "Track",
+    });
+    registerMockObject("0", {
+      path: "live_set scenes 99",
+      type: "Scene",
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(

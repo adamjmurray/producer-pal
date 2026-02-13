@@ -3,31 +3,54 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LiveAPI, liveApiId } from "#src/test/mocks/mock-live-api.ts";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import {
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import "./live-api-extensions.ts";
 
 describe("LiveAPI extensions - basic methods", () => {
   let api: LiveAPI;
 
   beforeEach(() => {
-    api = LiveAPI.from("live_set");
     vi.resetAllMocks();
+    clearMockRegistry();
+    api = LiveAPI.from("live_set");
   });
 
   describe("exists", () => {
     it("returns true when LiveAPI object exists", () => {
-      liveApiId.mockReturnValue("1");
-      expect(api.exists()).toBe(true);
+      registerMockObject("1", {
+        path: "live_set",
+        type: "LiveSet",
+      });
+
+      const existingApi = LiveAPI.from("1");
+
+      expect(existingApi.exists()).toBe(true);
     });
 
     it("returns false when LiveAPI object does not exist ('id 0' case)", () => {
-      liveApiId.mockReturnValue("id 0");
-      expect(api.exists()).toBe(false);
+      registerMockObject("0", {
+        path: "live_set",
+        type: "LiveSet",
+      });
+
+      const nonExistentApi = LiveAPI.from("0");
+
+      expect(nonExistentApi.exists()).toBe(false);
     });
 
     it("returns false when LiveAPI object does not exist  ('0' case)", () => {
-      liveApiId.mockReturnValue("0");
-      expect(api.exists()).toBe(false);
+      registerMockObject("0", {
+        path: "live_set",
+        type: "LiveSet",
+      });
+
+      const nonExistentApi = LiveAPI.from("0");
+
+      expect(nonExistentApi.exists()).toBe(false);
     });
   });
 
