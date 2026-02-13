@@ -3,30 +3,42 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import {
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import "./live-api-extensions.ts";
 
 describe("LiveAPI extensions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   describe("getProperty", () => {
     it("should handle available_warp_modes property", () => {
-      const clip = LiveAPI.from("live_set tracks 0 clip_slots 0 clip");
+      const mockClip = registerMockObject("clip1", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+        type: "Clip",
+      });
 
-      liveApiGet.mockReturnValue(["Classic", "Beats", "Complex"]);
+      mockClip.get.mockReturnValue(["Classic", "Beats", "Complex"]);
 
+      const clip = LiveAPI.from("clip1");
       const warpModes = clip.getProperty("available_warp_modes");
 
       expect(warpModes).toStrictEqual(["Classic", "Beats", "Complex"]);
     });
 
     it("should handle scale_intervals property", () => {
-      const clip = LiveAPI.from("live_set tracks 0 clip_slots 0 clip");
+      const mockClip = registerMockObject("clip2", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+        type: "Clip",
+      });
 
-      liveApiGet.mockReturnValue([0, 2, 4, 5, 7, 9, 11]);
+      mockClip.get.mockReturnValue([0, 2, 4, 5, 7, 9, 11]);
 
+      const clip = LiveAPI.from("clip2");
       const intervals = clip.getProperty("scale_intervals");
 
       expect(intervals).toStrictEqual([0, 2, 4, 5, 7, 9, 11]);
@@ -123,32 +135,44 @@ describe("LiveAPI extensions", () => {
 
   describe("routing properties", () => {
     it("should handle input_routing_channel property", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const mockTrack = registerMockObject("track1", {
+        path: "live_set tracks 0",
+        type: "Track",
+      });
 
-      liveApiGet.mockReturnValue([
+      mockTrack.get.mockReturnValue([
         JSON.stringify({ input_routing_channel: { display_name: "1/2" } }),
       ]);
 
+      const track = LiveAPI.from("track1");
       const channel = track.getProperty("input_routing_channel");
 
       expect(channel).toStrictEqual({ display_name: "1/2" });
     });
 
     it("should return null for routing property with null raw value", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const mockTrack = registerMockObject("track2", {
+        path: "live_set tracks 0",
+        type: "Track",
+      });
 
-      liveApiGet.mockReturnValue([null]);
+      mockTrack.get.mockReturnValue([null]);
 
+      const track = LiveAPI.from("track2");
       const channel = track.getProperty("input_routing_channel");
 
       expect(channel).toBeNull();
     });
 
     it("should return null for routing property with invalid JSON", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const mockTrack = registerMockObject("track3", {
+        path: "live_set tracks 0",
+        type: "Track",
+      });
 
-      liveApiGet.mockReturnValue(["invalid json {"]);
+      mockTrack.get.mockReturnValue(["invalid json {"]);
 
+      const track = LiveAPI.from("track3");
       const channel = track.getProperty("input_routing_channel");
 
       expect(channel).toBeNull();

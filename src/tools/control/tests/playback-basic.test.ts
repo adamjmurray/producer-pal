@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { children, liveApiId, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import { children, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
@@ -183,7 +184,7 @@ describe("transport", () => {
   });
 
   it("should log warning when clip doesn't exist for play-session-clips", () => {
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = playback({
       action: "play-session-clips",
@@ -202,7 +203,7 @@ describe("transport", () => {
       path: "live_set tracks 99 clip_slots 0 clip",
     });
     // Clip slot at tracks 99 is NOT registered — falls through to shared mock
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     expect(() =>
       playback({
@@ -319,7 +320,7 @@ describe("transport", () => {
   });
 
   it("should log warning when clip doesn't exist for stop-session-clips", () => {
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = playback({
       action: "stop-session-clips",
@@ -364,7 +365,7 @@ describe("transport", () => {
       path: "live_set tracks 0 clip_slots 0 clip",
     });
     // Track at "live_set tracks 0" is NOT registered — make unregistered objects non-existent
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     expect(() =>
       playback({

@@ -4,20 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.ts";
-
-interface MockLiveApiContext {
-  _path: string | undefined;
-  _id: string | undefined;
-  id: string;
-  path: string;
-  type: string;
-}
+  clearMockRegistry,
+  lookupMockObject,
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface SplittingBaseMockOptions {
   path?: string;
@@ -33,69 +24,34 @@ export function setupSplittingClipBaseMocks(
   opts: SplittingBaseMockOptions = {},
 ): void {
   const { path = "live_set tracks 0 arrangement_clips 0" } = opts;
-  const generatedPrefixes = ["dup_", "temp_"];
 
-  liveApiId.mockImplementation(
-    /**
-     * @this - Mock context
-     * @returns Mocked ID
-     */
-    function (this: MockLiveApiContext): string {
-      if (this._path === `id ${clipId}`) {
-        return clipId;
-      }
-
-      return this._id ?? "";
+  // Register the main clip with trackIndex property
+  registerMockObject(clipId, {
+    path,
+    type: "Clip",
+    properties: {
+      track_index: 0,
     },
-  );
+  });
 
-  liveApiPath.mockImplementation(
-    /**
-     * @this - Mock context
-     * @returns Mocked path
-     */
-    function (this: MockLiveApiContext): string | undefined {
-      if (this._id === clipId) {
-        return path;
-      }
-
-      // Generated clips get valid track paths
-      if (generatedPrefixes.some((p) => this._id?.startsWith(p))) {
-        return "live_set tracks 0 arrangement_clips 1";
-      }
-
-      return this._path;
+  // Register the track
+  registerMockObject("track_0", {
+    path: "live_set tracks 0",
+    type: "Track",
+    properties: {
+      track_index: 0,
     },
-  );
+  });
 
-  liveApiType.mockImplementation(
-    /**
-     * @this - Mock context
-     * @returns Mocked type
-     */
-    function (this: MockLiveApiContext): string | undefined {
-      if (this._id === clipId) {
-        return "Clip";
-      }
+  // Register live_set for time signature
+  registerMockObject("live_set", {
+    path: "live_set",
+    type: "LiveSet",
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
     },
-  );
-}
-
-/**
- * Get property value for live_set path
- * @param path - API path
- * @param prop - Property name
- * @returns Property value or null if not applicable
- */
-function getLiveSetProp(
-  path: string | undefined,
-  prop: string,
-): number[] | null {
-  if (path !== "live_set") return null;
-  if (prop === "signature_numerator") return [4];
-  if (prop === "signature_denominator") return [4];
-
-  return null;
+  });
 }
 
 interface SplittingClipProps {
@@ -109,7 +65,7 @@ interface SplittingClipProps {
 }
 
 /**
- * Setup liveApiGet mock for splitting tests
+ * Setup clip properties for splitting tests
  * @param clipId - The clip ID
  * @param clipProps - Clip properties
  */
@@ -127,7 +83,17 @@ export function setupSplittingClipGetMock(
     endMarker = loopEnd,
   } = clipProps;
 
-  const mainClipProps: Record<string, number> = {
+  // Look up the existing clip mock (registered by setupSplittingClipBaseMocks)
+  const clip = lookupMockObject(clipId);
+
+  if (!clip) {
+    throw new Error(
+      "Clip mock not found - ensure setupSplittingClipBaseMocks was called first",
+    );
+  }
+
+  // Add clip properties to the existing mock
+  Object.assign(clip.properties, {
     is_midi_clip: isMidi ? 1 : 0,
     is_audio_clip: isMidi ? 0 : 1,
     is_arrangement_clip: 1,
@@ -138,28 +104,18 @@ export function setupSplittingClipGetMock(
     loop_end: loopEnd,
     end_marker: endMarker,
     start_marker: 0.0,
-  };
+  });
 
-  liveApiGet.mockImplementation(
-    /**
-     * @this - Mock context
-     * @param prop - Property name
-     * @returns Property value
-     */
-    function (this: MockLiveApiContext, prop: string): number[] {
-      const liveSetVal = getLiveSetProp(this._path, prop);
+  // Override the get mock to return proper values
+  clip.get.mockImplementation((prop: string) => {
+    const props = clip.properties as Record<string, number>;
 
-      if (liveSetVal) return liveSetVal;
+    if (prop in props) {
+      return [props[prop] as number];
+    }
 
-      if (this._id === clipId && prop in mainClipProps)
-        return [mainClipProps[prop] as number];
-
-      if (this._path === "live_set tracks 0" && prop === "track_index")
-        return [0];
-
-      return [0];
-    },
-  );
+    return [0];
+  });
 }
 
 interface DuplicateCall {
@@ -171,43 +127,61 @@ interface DuplicateCall {
 interface SplittingCallState {
   duplicateCount: number;
   duplicateCalls: DuplicateCall[];
+  trackMock: RegisteredMockObject;
 }
 
 /**
- * Create a liveApiCall mock for splitting operations.
+ * Create instance-level call mock for splitting operations.
  * Returns sequential "dup_N" IDs for duplicate_clip_to_arrangement calls.
- * @returns State object for tracking mock calls
+ * @returns State object for tracking mock calls (includes trackMock for assertions)
  */
 export function createSplittingCallMock(): SplittingCallState {
+  // Look up the existing track mock (should be registered by setupSplittingClipBaseMocks)
+  const trackMock = lookupMockObject("track_0", "live_set tracks 0");
+
+  if (!trackMock) {
+    throw new Error(
+      "Track mock not found - ensure setupSplittingClipBaseMocks was called first",
+    );
+  }
+
   const state: SplittingCallState = {
     duplicateCount: 0,
     duplicateCalls: [],
+    trackMock,
   };
 
-  liveApiCall.mockImplementation(
-    /**
-     * @this - Mock context
-     * @param method - Method name
-     * @param _args - Method arguments
-     * @returns Result
-     */
-    function (
-      this: MockLiveApiContext,
-      method: string,
-      ..._args: unknown[]
-    ): string[] | undefined {
-      if (method === "duplicate_clip_to_arrangement") {
-        state.duplicateCount++;
-        state.duplicateCalls.push({ method, args: _args, id: this._id });
+  // Set up the call mock with stateful implementation
+  trackMock.call.mockImplementation((method: string, ..._args: unknown[]) => {
+    if (method === "duplicate_clip_to_arrangement") {
+      state.duplicateCount++;
+      const dupId = `dup_${state.duplicateCount}`;
 
-        return ["id", `dup_${state.duplicateCount}`];
-      }
+      state.duplicateCalls.push({
+        method,
+        args: _args,
+        id: dupId,
+      });
 
-      if (method === "create_midi_clip") {
-        return ["id", "temp_1"];
-      }
-    },
-  );
+      // Register the new duplicate clip dynamically
+      registerMockObject(dupId, {
+        path: "live_set tracks 0 arrangement_clips 1",
+        type: "Clip",
+      });
+
+      return ["id", dupId];
+    }
+
+    if (method === "create_midi_clip") {
+      // Register temp clip
+      registerMockObject("temp_1", {
+        path: "live_set tracks 0 arrangement_clips 1",
+        type: "Clip",
+      });
+
+      return ["id", "temp_1"];
+    }
+  });
 
   return state;
 }
@@ -223,6 +197,7 @@ export function setupClipSplittingMocks(
   clipId: string,
   clipProps: SplittingClipProps = {},
 ): { callState: SplittingCallState } {
+  clearMockRegistry();
   setupSplittingClipBaseMocks(clipId);
   setupSplittingClipGetMock(clipId, clipProps);
   const callState = createSplittingCallMock();

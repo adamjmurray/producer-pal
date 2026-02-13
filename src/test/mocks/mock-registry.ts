@@ -9,7 +9,6 @@ import {
   detectTypeFromPath,
   getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
-import { liveApiId } from "./mock-live-api.ts";
 
 export interface RegisteredMockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
@@ -20,6 +19,12 @@ export interface RegisteredMockObjectOptions {
   properties?: Record<string, unknown>;
   /** Method implementations for call() dispatch, keyed by method name */
   methods?: Record<string, (...args: unknown[]) => unknown>;
+  /**
+   * Path to return from .path getter (overrides registered path).
+   * Used for objects like "live_set view selected_track" that should return
+   * the actual track's path instead of the view path.
+   */
+  returnPath?: string;
 }
 
 export interface RegisteredMockObject {
@@ -35,6 +40,10 @@ export interface RegisteredMockObject {
   path: string;
   /** The Live API type (e.g., "Track") */
   type: string;
+  /** Property overrides to be copied onto LiveAPI instances */
+  properties: Record<string, unknown>;
+  /** Path to return from .path getter (overrides path if set) */
+  returnPath?: string;
 }
 
 const registryById = new Map<string, RegisteredMockObject>();
@@ -122,6 +131,7 @@ export function registerMockObject(
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
   const properties = options.properties ?? {};
   const methods = options.methods ?? {};
+  const returnPath = options.returnPath;
 
   const mock: RegisteredMockObject = {
     get: createGetMock(properties, type, path),
@@ -130,6 +140,8 @@ export function registerMockObject(
     id,
     path,
     type,
+    properties,
+    returnPath,
   };
 
   registryById.set(id, mock);
@@ -164,13 +176,24 @@ export function lookupMockObject(
   return undefined;
 }
 
+let _nonExistentByDefault = false;
+
+/**
+ * Check whether unregistered LiveAPI objects should default to non-existent.
+ * Used by the LiveAPI mock class to determine the `id` getter fallback.
+ * @returns true if unregistered objects should be non-existent
+ */
+export function isNonExistentByDefault(): boolean {
+  return _nonExistentByDefault;
+}
+
 /**
  * Make unregistered LiveAPI objects non-existent (exists() returns false).
  * Registered objects are unaffected since they use instance-level mocks.
  * Use in tests that need to verify behavior for invalid/unknown IDs.
  */
 export function mockNonExistentObjects(): void {
-  liveApiId.mockReturnValue("id 0");
+  _nonExistentByDefault = true;
 }
 
 /**
@@ -179,4 +202,5 @@ export function mockNonExistentObjects(): void {
 export function clearMockRegistry(): void {
   registryById.clear();
   registryByPath.clear();
+  _nonExistentByDefault = false;
 }

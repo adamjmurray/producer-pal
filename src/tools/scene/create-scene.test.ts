@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { children, liveApiCall } from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -14,6 +14,7 @@ import { createScene } from "./create-scene.ts";
 
 describe("createScene", () => {
   let liveSet: RegisteredMockObject;
+  let appView: RegisteredMockObject;
   let scene0: RegisteredMockObject;
   let scene1: RegisteredMockObject;
   let scene2: RegisteredMockObject;
@@ -22,6 +23,9 @@ describe("createScene", () => {
     liveSet = registerMockObject("live_set", {
       path: "live_set",
       properties: { scenes: children("existing1", "existing2") },
+    });
+    appView = registerMockObject("app-view", {
+      path: "live_app view",
     });
     scene0 = registerMockObject("live_set/scenes/0", {
       path: "live_set scenes 0",
@@ -225,14 +229,14 @@ describe("createScene", () => {
   describe("capture mode", () => {
     let captureLiveSet: RegisteredMockObject;
     let capturedScene: RegisteredMockObject;
-    let appView: RegisteredMockObject;
+    let captureAppView: RegisteredMockObject;
 
     beforeEach(() => {
       captureLiveSet = registerMockObject("live_set", {
         path: "live_set",
         properties: { tracks: [] },
       });
-      appView = registerMockObject("live_set/view", {
+      captureAppView = registerMockObject("live_set/view", {
         path: "live_set view",
       });
       registerMockObject("live_set/scenes/1", {
@@ -267,7 +271,7 @@ describe("createScene", () => {
         name: "Custom Capture",
       });
 
-      expect(appView.set).toHaveBeenCalledWith(
+      expect(captureAppView.set).toHaveBeenCalledWith(
         "selected_scene",
         "id live_set/scenes/1",
       );
@@ -354,7 +358,7 @@ describe("createScene", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
         sceneIndex: 0,
@@ -375,7 +379,7 @@ describe("createScene", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
@@ -389,7 +393,7 @@ describe("createScene", () => {
         switchView: false,
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith(
+      expect(appView.call).not.toHaveBeenCalledWith(
         "show_view",
         expect.anything(),
       );
@@ -402,7 +406,7 @@ describe("createScene", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(3);
     });

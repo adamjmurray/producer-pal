@@ -3,13 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Mock } from "vitest";
 import {
-  liveApiCall,
-  liveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   prepareSplitParams,
   performSplitting,
@@ -32,16 +31,16 @@ function createPerformContext(clipId: string): {
   return { mockClip, clips };
 }
 
-function expectDuplicateCalled(): void {
-  expect(liveApiCall).toHaveBeenCalledWith(
+function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
+  expect(trackMock.call).toHaveBeenCalledWith(
     "duplicate_clip_to_arrangement",
     expect.any(String),
     expect.any(Number),
   );
 }
 
-function expectDuplicateNotCalled(): void {
-  expect(liveApiCall).not.toHaveBeenCalledWith(
+function expectDuplicateNotCalled(trackMock: RegisteredMockObject): void {
+  expect(trackMock.call).not.toHaveBeenCalledWith(
     "duplicate_clip_to_arrangement",
     expect.any(String),
     expect.any(Number),
@@ -62,10 +61,6 @@ describe("prepareSplitParams", () => {
 
     return { mockClip, warnings };
   }
-
-  beforeEach(() => {
-    liveApiGet.mockReset();
-  });
 
   it("should return null when split is undefined", () => {
     const warnings = new Set<string>();
@@ -173,29 +168,23 @@ describe("prepareSplitParams", () => {
 });
 
 describe("performSplitting", () => {
-  beforeEach(() => {
-    liveApiCall.mockReset();
-    liveApiGet.mockReset();
-  });
-
   it("should split looped clips at specified positions", () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId);
+    const { callState } = setupClipSplittingMocks(clipId);
     const { mockClip, clips } = createPerformContext(clipId);
 
     // Split a 16-beat clip at 4 and 8 beats (2|1 and 3|1 in 4/4)
     performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
 
     // Should create segments via duplication
-    expectDuplicateCalled();
+    expectDuplicateCalled(callState.trackMock);
   });
 
   it("should skip clips where all split points are beyond clip length", () => {
     const clipId = "clip_1";
 
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, {
+    const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,
       endTime: 4.0, // 4-beat clip
       loopEnd: 4.0,
@@ -206,18 +195,17 @@ describe("performSplitting", () => {
     performSplitting([mockClip], [8, 12], clips, HOLDING_AREA);
 
     // Should not create any duplicates
-    expectDuplicateNotCalled();
+    expectDuplicateNotCalled(callState.trackMock);
   });
 
   it("should warn and abort when duplication fails", () => {
     const clipId = "clip_1";
 
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
+    const { callState } = setupClipSplittingMocks(clipId);
     const { mockClip, clips } = createPerformContext(clipId);
 
     // Make duplicate_clip_to_arrangement return "0" (non-existent)
-    liveApiCall.mockImplementation(function (method: string) {
+    callState.trackMock.call.mockImplementation((method: string) => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "0"];
       }
@@ -234,7 +222,7 @@ describe("performSplitting", () => {
   it("should split unlooped MIDI clips using unified algorithm", () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId, {
+    const { callState } = setupClipSplittingMocks(clipId, {
       looping: false,
       endTime: 8.0,
       loopEnd: 8.0,
@@ -246,7 +234,7 @@ describe("performSplitting", () => {
     performSplitting([mockClip], [4], clips, HOLDING_AREA);
 
     // Should duplicate for segments
-    expectDuplicateCalled();
+    expectDuplicateCalled(callState.trackMock);
   });
 
   it("should skip clips with no trackIndex and emit warning", () => {
@@ -272,17 +260,14 @@ describe("performSplitting", () => {
     const clipId = "clip_1";
     let duplicateCount = 0;
 
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, {
+    const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,
       endTime: 8.0, // 8-beat clip
       loopEnd: 4.0,
     });
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    // Override to track duplicate count
+    callState.trackMock.call.mockImplementation((method: string) => {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCount++;
 
@@ -310,7 +295,7 @@ describe("performSplitting", () => {
   it("should split unlooped audio clips using unified algorithm", () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId, {
+    const { callState } = setupClipSplittingMocks(clipId, {
       isMidi: false,
       looping: false,
       endTime: 8.0,
@@ -319,22 +304,20 @@ describe("performSplitting", () => {
     });
     const { mockClip, clips } = createPerformContext(clipId);
 
-    // Audio splitting needs scene/slot mocking for createAndDeleteTempClip
-    const originalGet = liveApiGet.getMockImplementation();
-
-    liveApiGet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      prop: string,
-    ) {
-      if (this._path === "live_set" && prop === "scenes") {
-        return ["id", "scene_1"];
-      }
-
-      if (this._id === "scene_1" && prop === "is_empty") {
-        return [1]; // Scene is empty, no need to create new one
-      }
-
-      return originalGet?.call(this, prop) ?? [0];
+    // Audio splitting needs scene/slot for createAndDeleteTempClip
+    // Re-register live_set with scenes property
+    registerMockObject("live_set", {
+      path: "live_set",
+      type: "LiveSet",
+      properties: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: ["id", "scene_1"],
+      },
+    });
+    registerMockObject("scene_1", {
+      path: "live_set scenes 0",
+      properties: { is_empty: 1 },
     });
 
     // Split an 8-beat unlooped audio clip at 4 beats
@@ -344,7 +327,7 @@ describe("performSplitting", () => {
     });
 
     // Should duplicate for audio content
-    expectDuplicateCalled();
+    expectDuplicateCalled(callState.trackMock);
   });
 
   it("should split into 3 segments exercising middle segment extraction", () => {
@@ -372,17 +355,14 @@ describe("performSplitting", () => {
     const clipId = "clip_1";
     let duplicateCount = 0;
 
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, {
+    const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,
-      endTime: 12.0, // 12-beat clip
+      endTime: 12.0,
       loopEnd: 4.0,
     });
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    // Override the call mock to fail on second duplicate
+    callState.trackMock.call.mockImplementation((method: string) => {
       if (method === "duplicate_clip_to_arrangement") {
         duplicateCount++;
 
@@ -415,30 +395,31 @@ describe("performSplitting", () => {
   it("should rescan split clips replacing stale references with fresh ones", () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId);
+    const { callState } = setupClipSplittingMocks(clipId);
 
-    // Override liveApiGet to return child clip IDs for track's arrangement_clips
-    const parentGet = liveApiGet.getMockImplementation();
+    // Register fresh clips that will be returned by the track rescan
+    registerMockObject("fresh_1", {
+      path: "live_set tracks 0 arrangement_clips 0",
+      type: "Clip",
+      properties: {
+        start_time: 0.0,
+      },
+    });
+    registerMockObject("fresh_2", {
+      path: "live_set tracks 0 arrangement_clips 1",
+      type: "Clip",
+      properties: {
+        start_time: 4.0,
+      },
+    });
 
-    liveApiGet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      prop: string,
-    ) {
-      // When the track is queried for arrangement_clips, return fresh clip IDs
-      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
+    // Override track's get mock to return fresh clips for arrangement_clips
+    callState.trackMock.get.mockImplementation((prop: string) => {
+      if (prop === "arrangement_clips") {
         return ["id", "fresh_1", "id", "fresh_2"];
       }
 
-      // Fresh clips have start_time within the range of the original clip (0-16)
-      if (this._id === "fresh_1" && prop === "start_time") {
-        return [0.0];
-      }
-
-      if (this._id === "fresh_2" && prop === "start_time") {
-        return [4.0];
-      }
-
-      return parentGet?.call(this, prop) ?? [0];
+      return [0];
     });
 
     const mockClip = LiveAPI.from(`id ${clipId}`);
@@ -459,23 +440,24 @@ describe("performSplitting", () => {
   it("should handle rescan when stale clip ID is not found in clips array", () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId);
+    const { callState } = setupClipSplittingMocks(clipId);
 
-    const parentGet = liveApiGet.getMockImplementation();
+    // Register fresh clip that will be returned by the track rescan
+    registerMockObject("fresh_1", {
+      path: "live_set tracks 0 arrangement_clips 0",
+      type: "Clip",
+      properties: {
+        start_time: 0.0,
+      },
+    });
 
-    liveApiGet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      prop: string,
-    ) {
-      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
+    // Override track's get mock to return fresh clip for arrangement_clips
+    callState.trackMock.get.mockImplementation((prop: string) => {
+      if (prop === "arrangement_clips") {
         return ["id", "fresh_1"];
       }
 
-      if (this._id === "fresh_1" && prop === "start_time") {
-        return [0.0];
-      }
-
-      return parentGet?.call(this, prop) ?? [0];
+      return [0];
     });
 
     const mockClip = LiveAPI.from(`id ${clipId}`);

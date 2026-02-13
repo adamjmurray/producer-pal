@@ -4,130 +4,106 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "./read-device.ts";
 
-// Setup basic device mocks with two parameters
-function setupDeviceMocks() {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "id device-123") return "device-123";
-    if (this._path === "id param-1") return "param-1";
-    if (this._path === "id param-2") return "param-2";
-
-    return "0";
+/**
+ * Setup device with two parameters for search testing
+ * @param includeFullProps - Whether to include full param properties (for param-values)
+ */
+function setupTwoParamDevice(includeFullProps = false) {
+  // Register the device
+  registerMockObject("device-123", {
+    path: "id device-123",
+    type: "Device",
+    properties: {
+      name: "Operator",
+      class_display_name: "Operator",
+      type: 1,
+      can_have_chains: 0,
+      can_have_drum_pads: 0,
+      is_active: 1,
+      parameters: ["id", "param-1", "id", "param-2"],
+    },
   });
-}
 
-// Get device properties for mock
-function getDeviceProps(prop: string) {
-  switch (prop) {
-    case "name":
-      return ["Operator"];
-    case "class_display_name":
-      return ["Operator"];
-    case "type":
-      return [1];
-    case "can_have_chains":
-      return [0];
-    case "can_have_drum_pads":
-      return [0];
-    case "is_active":
-      return [1];
-    case "parameters":
-      return ["id", "param-1", "id", "param-2"];
-    default:
-      return [];
-  }
-}
+  // Register param-1 (Volume)
+  registerMockObject("param-1", {
+    path: "id param-1",
+    type: "DeviceParameter",
+    properties: {
+      name: "Volume",
+      original_name: "Volume",
+      ...(includeFullProps
+        ? {
+            value: 0.5,
+            state: 0,
+            is_enabled: 1,
+            automation_state: 0,
+            min: 0,
+            max: 1,
+            is_quantized: 0,
+            default_value: 0.7,
+            display_value: -6,
+          }
+        : {}),
+    },
+    methods: includeFullProps
+      ? {
+          str_for_value: (value: unknown) => {
+            if (value === 0) return "-inf dB";
+            if (value === 1) return "0 dB";
 
-// Get basic param props (for lightweight params)
-function getBasicParamProps(path: string, prop: string) {
-  if (path === "id param-1") {
-    if (prop === "name") return ["Volume"];
-    if (prop === "original_name") return ["Volume"];
-  }
+            return "-6 dB";
+          },
+        }
+      : {},
+  });
 
-  if (path === "id param-2") {
-    if (prop === "name") return ["Filter Cutoff"];
-    if (prop === "original_name") return ["Filter Cutoff"];
-  }
+  // Register param-2 (Filter Cutoff)
+  registerMockObject("param-2", {
+    path: "id param-2",
+    type: "DeviceParameter",
+    properties: {
+      name: "Filter Cutoff",
+      original_name: "Filter Cutoff",
+      ...(includeFullProps
+        ? {
+            value: 1000,
+            state: 0,
+            is_enabled: 1,
+            automation_state: 0,
+            min: 20,
+            max: 20000,
+            is_quantized: 0,
+            default_value: 10000,
+            display_value: 1000,
+          }
+        : {}),
+    },
+    methods: includeFullProps
+      ? {
+          str_for_value: (value: unknown) => {
+            if (value === 20) return "20 Hz";
+            if (value === 20000) return "20.0 kHz";
 
-  return [];
-}
-
-// Get full param props (for param-values)
-function getFullParamProps(path: string, prop: string) {
-  const basic = getBasicParamProps(path, prop);
-
-  if (basic.length > 0) return basic;
-
-  if (path === "id param-1") {
-    switch (prop) {
-      case "value":
-        return [0.5];
-      case "state":
-        return [0];
-      case "is_enabled":
-        return [1];
-      case "automation_state":
-        return [0];
-      case "min":
-        return [0];
-      case "max":
-        return [1];
-      case "is_quantized":
-        return [0];
-      case "default_value":
-        return [0.7];
-    }
-  }
-
-  if (path === "id param-2") {
-    switch (prop) {
-      case "value":
-        return [1000];
-      case "state":
-        return [0];
-      case "is_enabled":
-        return [1];
-      case "automation_state":
-        return [0];
-      case "min":
-        return [20];
-      case "max":
-        return [20000];
-      case "is_quantized":
-        return [0];
-      case "default_value":
-        return [10000];
-    }
-  }
-
-  return [];
+            return "1.00 kHz";
+          },
+        }
+      : {},
+  });
 }
 
 describe("readDevice paramSearch filtering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
-  function setupBasicMocks() {
-    setupDeviceMocks();
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      if (this._path === "id device-123") {
-        return getDeviceProps(prop);
-      }
-
-      return getBasicParamProps(this._path!, prop);
-    });
-  }
-
   it("should filter parameters by case-insensitive substring match", () => {
-    setupBasicMocks();
+    setupTwoParamDevice();
 
     const result = readDevice({
       deviceId: "device-123",
@@ -142,7 +118,7 @@ describe("readDevice paramSearch filtering", () => {
   });
 
   it("should be case-insensitive when filtering", () => {
-    setupBasicMocks();
+    setupTwoParamDevice();
 
     const result = readDevice({
       deviceId: "device-123",
@@ -157,7 +133,7 @@ describe("readDevice paramSearch filtering", () => {
   });
 
   it("should return empty array when no parameters match", () => {
-    setupBasicMocks();
+    setupTwoParamDevice();
 
     const result = readDevice({
       deviceId: "device-123",
@@ -169,48 +145,7 @@ describe("readDevice paramSearch filtering", () => {
   });
 
   it("should work with param-values include", () => {
-    setupDeviceMocks();
-
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      if (this._path === "id device-123") {
-        return getDeviceProps(prop);
-      }
-
-      const fullProps = getFullParamProps(this._path!, prop);
-
-      if (fullProps.length > 0) return fullProps;
-
-      if (prop === "display_value") {
-        if (this._path === "id param-1") return [-6];
-        if (this._path === "id param-2") return [1000];
-      }
-
-      return [];
-    });
-
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method,
-      value,
-    ) {
-      if (method === "str_for_value") {
-        if (this._path === "id param-1") {
-          if (value === 0) return "-inf dB";
-          if (value === 1) return "0 dB";
-
-          return "-6 dB";
-        }
-
-        if (this._path === "id param-2") {
-          if (value === 20) return "20 Hz";
-          if (value === 20000) return "20.0 kHz";
-
-          return "1.00 kHz";
-        }
-      }
-
-      return [];
-    });
+    setupTwoParamDevice(true); // Include full properties
 
     const result = readDevice({
       deviceId: "device-123",
