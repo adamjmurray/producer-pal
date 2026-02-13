@@ -776,14 +776,15 @@ export default [
   // Files still using deprecated global mocks (old mocking system)
   {
     files: [
-      // Control/Select tests
-      "src/tools/control/tests/select-basic.test.ts",
-      "src/tools/control/tests/select-advanced.test.ts",
-      "src/tools/control/tests/select-legacy-test-helpers.ts",
+      // Control/Select tests (Phase 1C - partial)
       "src/tools/control/tests/select-test-helpers.ts",
-      "src/tools/control/tests/raw-live-api.test.ts",
       "src/tools/control/tests/playback-basic.test.ts",
-      // Device tests
+      // Validation tests (uses liveApiId as fallback for non-existent objects)
+      "src/tools/shared/validation/id-validation.test.ts",
+      // Arrangement tests (uses liveApiGet for scene mocking in audio clip test)
+      "src/tools/shared/arrangement/arrangement-splitting.test.ts",
+      "src/tools/clip/update/tests/arrangement/update-clip-splitting.test.ts",
+      // Device tests (Phase 2 - not started)
       "src/tools/device/read-device.test.ts",
       "src/tools/device/read-device-param-search.test.ts",
       "src/tools/device/read-device-path.test.ts",
@@ -792,28 +793,20 @@ export default [
       "src/tools/shared/device/helpers/device-display-helpers.test.ts",
       "src/tools/shared/device/helpers/path/device-path-helpers.test.ts",
       "src/tools/shared/device/helpers/path/device-path-helpers-drumpad.test.ts",
-      // Clip tests
-      "src/tools/clip/read/tests/read-clip-core.test.ts",
+      // Clip tests (not yet migrated)
       "src/tools/clip/update/helpers/update-clip-arrangement-helpers.test.ts",
-      "src/tools/clip/update/tests/arrangement/update-clip-splitting.test.ts",
       "src/tools/clip/update/tests/update-clip-audio-helpers.test.ts",
       "src/tools/clip/update/tests/update-clip-quantization.test.ts",
-      // Arrangement tests
-      "src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts",
-      "src/tools/shared/arrangement/arrangement-splitting.test.ts",
+      // Arrangement tests (partial)
       "src/tools/shared/arrangement/get-host-track-index.test.ts",
-      // Operations tests
+      // Operations tests (not yet migrated)
       "src/tools/operations/delete/delete-device.test.ts",
       "src/tools/operations/delete/delete.test.ts",
       "src/tools/operations/duplicate/tests/duplicate-advanced-features.test.ts",
-      // Other tests
-      "src/tools/shared/validation/id-validation.test.ts",
+      // Other tests (not yet migrated)
       "src/tools/live-set/tests/read-live-set-clips.test.ts",
       "src/tools/scene/create-scene.test.ts",
-      "src/tools/track/read/read-track-basic.test.ts",
-      "src/live-api-adapter/live-api-extensions.test.ts",
-      "src/live-api-adapter/live-api-extensions-basic.test.ts",
-      // Test infrastructure
+      // Test infrastructure (contains deprecated exports until Phase 4)
       "src/test/mocks/mock-live-api.ts",
       "src/test/mocks/mock-registry.ts",
       "src/test/mocks/mock-registry.test.ts",
