@@ -85,4 +85,10 @@ describe("session - connect action", () => {
     expect(result).toHaveProperty("$instructions");
     expect(result).toHaveProperty("messagesForUser");
   });
+
+  it("throws error for unknown action", () => {
+    expect(() => session({ action: "unknown-action" })).toThrow(
+      "Unknown action: unknown-action",
+    );
+  });
 });

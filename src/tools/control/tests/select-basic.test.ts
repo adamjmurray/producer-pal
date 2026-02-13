@@ -379,6 +379,69 @@ describe("view", () => {
     });
   });
 
+  describe("clip selection - view conflict", () => {
+    it("warns when requested view conflicts with clip type", () => {
+      // Create a session clip (has trackIndex and clipSlotIndex → requires session view)
+      const mockSessionClip = {
+        exists: vi.fn().mockReturnValue(true),
+        _id: "id session_clip_456",
+        trackIndex: 1,
+        clipSlotIndex: 2,
+      };
+
+      Object.defineProperty(mockSessionClip, "id", {
+        get: function () {
+          return this._id;
+        },
+      });
+
+      Object.defineProperty(mockSessionClip, "type", {
+        get: function () {
+          return "Clip";
+        },
+      });
+
+      const mockClipSlot = {
+        exists: vi.fn().mockReturnValue(true),
+        _id: "id clipslot_789",
+      };
+
+      Object.defineProperty(mockClipSlot, "id", {
+        get: function () {
+          return this._id;
+        },
+      });
+
+      setupLiveAPIMock(
+        {
+          "live_set view": {
+            set: liveApiSet,
+            setProperty: vi.fn((property: string, value: unknown) =>
+              liveApiSet(property, value),
+            ),
+          },
+          "id session_clip_456": mockSessionClip,
+          "live_set tracks 1 clip_slots 2": mockClipSlot,
+        },
+        nonExistent(),
+      );
+
+      liveApiType.mockReturnValue("Clip");
+
+      // Request arrangement view but clip is a session clip → should warn
+      select({ clipId: "id session_clip_456", view: "arrangement" });
+
+      // Warning goes through v8-max-console.warn → outlet(1, ...) in test env
+      const outletMock = (globalThis as Record<string, unknown>)
+        .outlet as ReturnType<typeof vi.fn>;
+
+      expect(outletMock).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("ignoring view="),
+      );
+    });
+  });
+
   describe("device selection", () => {
     it("selects device by ID", () => {
       // Mock device with specific path

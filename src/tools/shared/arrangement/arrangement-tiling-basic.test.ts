@@ -15,12 +15,72 @@ import {
 } from "./arrangement-tiling-test-helpers.ts";
 import {
   adjustClipPreRoll,
+  createAudioClipInSession,
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "./arrangement-tiling.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("createAudioClipInSession", () => {
+  it("creates new scene when last scene is not empty", () => {
+    const liveSetMock = setupLiveSet({
+      properties: {
+        scenes: ["id", "1"],
+      },
+      methods: {
+        create_scene: () => ["id", "2"],
+      },
+    });
+
+    setupScene("1", 0, {
+      properties: {
+        is_empty: 0,
+      },
+    });
+
+    // Override get mock so "scenes" returns updated list after create_scene
+    let scenesCallCount = 0;
+    const originalGetImpl = liveSetMock.get.getMockImplementation();
+
+    liveSetMock.get.mockImplementation((prop: string) => {
+      if (prop === "scenes") {
+        scenesCallCount++;
+
+        if (scenesCallCount > 1) {
+          return ["id", "1", "id", "2"];
+        }
+
+        return ["id", "1"];
+      }
+
+      return originalGetImpl?.(prop) ?? [0];
+    });
+
+    const track = setupTrackWithQueuedMethods(0, {});
+
+    const clipSlot = setupClipSlot(0, 1, {
+      methods: {
+        create_audio_clip: () => null,
+      },
+    });
+
+    setupClip("session-clip", {
+      path: "live_set tracks 0 clip_slots 1 clip",
+    });
+
+    const result = createAudioClipInSession(track, 8, "/tmp/test-silence.wav");
+
+    expect(liveSetMock.call).toHaveBeenCalledWith("create_scene", 1);
+    expect(clipSlot.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/tmp/test-silence.wav",
+    );
+    expect(result.clip).toBeDefined();
+    expect(result.slot).toBeDefined();
+  });
 });
 
 describe("createShortenedClipInHolding", () => {
