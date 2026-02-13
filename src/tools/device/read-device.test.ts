@@ -3,13 +3,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
+import {
+  clearMockRegistry,
+  mockNonExistentObjects,
+} from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "./read-device.ts";
 import { setupBasicDeviceMock } from "./read-device-test-helpers.ts";
 
 describe("readDevice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   it("should read basic device properties", () => {
@@ -23,9 +27,7 @@ describe("readDevice", () => {
   });
 
   it("should throw error for non-existent device", () => {
-    liveApiId.mockImplementation(function () {
-      return "0";
-    });
+    mockNonExistentObjects();
 
     expect(() => readDevice({ deviceId: "invalid-id" })).toThrow(
       "Device with ID invalid-id not found",

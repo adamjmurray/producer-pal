@@ -2,12 +2,19 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+// TODO(Phase 2B): Remove max-lines exception when backward compatibility code is removed
+/* eslint-disable max-lines -- temporary backward compatibility for Phase 2B tests */
+
 import {
   liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiType,
 } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface PadProps {
   note?: number;
@@ -183,10 +190,6 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): void {
   });
 }
 
-// Mock path constants for param tests
-const DEVICE_PATH = "id device-123";
-const PARAM_PATH = "id param-1";
-
 // Default device properties for Operator instrument
 const DEFAULT_DEVICE_PROPS = {
   name: "Operator",
@@ -221,8 +224,13 @@ interface DeviceParamConfig {
 /**
  * Setup mocks for device parameter tests.
  * @param config - Configuration for the mocks
+ * @returns Registered mock objects for device and parameter
  */
-export function setupDeviceParamMocks(config: DeviceParamConfig = {}): void {
+// TODO(Phase 2B): Remove global mock setup and ESLint exceptions when param search tests are migrated
+export function setupDeviceParamMocks(config: DeviceParamConfig = {}): {
+  device: RegisteredMockObject;
+  param: RegisteredMockObject;
+} {
   const { device = {}, param = {}, strForValue } = config;
   const deviceProps: Record<string, unknown> = {
     ...DEFAULT_DEVICE_PROPS,
@@ -233,9 +241,43 @@ export function setupDeviceParamMocks(config: DeviceParamConfig = {}): void {
     ...param,
   };
 
+  const deviceId = "device-123";
+  const paramId = "param-1";
+  const deviceIdPath = `id ${deviceId}`;
+  const paramIdPath = `id ${paramId}`;
+
+  // Register the device
+  const deviceMock = registerMockObject(deviceId, {
+    path: deviceIdPath,
+    type: "Device",
+    properties: {
+      ...deviceProps,
+      parameters: ["id", paramId],
+    },
+  });
+
+  // Register the parameter
+  const paramMock = registerMockObject(paramId, {
+    path: paramIdPath,
+    type: "DeviceParameter",
+    properties: {
+      ...paramProps,
+    },
+    methods: {
+      // Add str_for_value method if provided
+      ...(strForValue
+        ? {
+            str_for_value: (value: unknown) => strForValue(value),
+          }
+        : {}),
+    },
+  });
+
+  // TEMPORARY: Also set up global mocks for backward compatibility
+  // TODO: Remove this when all param tests are migrated
   liveApiId.mockImplementation(function (this: { _path?: string }): string {
-    if (this._path === DEVICE_PATH) return "device-123";
-    if (this._path === PARAM_PATH) return "param-1";
+    if (this._path === deviceIdPath) return deviceId;
+    if (this._path === paramIdPath) return paramId;
 
     return "0";
   });
@@ -244,13 +286,13 @@ export function setupDeviceParamMocks(config: DeviceParamConfig = {}): void {
     this: { _path?: string },
     prop: string,
   ): unknown[] {
-    if (this._path === DEVICE_PATH) {
-      if (prop === "parameters") return ["id", "param-1"];
+    if (this._path === deviceIdPath) {
+      if (prop === "parameters") return ["id", paramId];
 
       return deviceProps[prop] != null ? [deviceProps[prop]] : [];
     }
 
-    if (this._path === PARAM_PATH) {
+    if (this._path === paramIdPath) {
       if (prop === "value_items" && paramProps.value_items) {
         return paramProps.value_items as unknown[];
       }
@@ -267,13 +309,18 @@ export function setupDeviceParamMocks(config: DeviceParamConfig = {}): void {
       method: string,
       value: unknown,
     ): unknown {
-      if (this._path === PARAM_PATH && method === "str_for_value") {
+      if (this._path === paramIdPath && method === "str_for_value") {
         return strForValue(value);
       }
 
       return [];
     });
   }
+
+  return {
+    device: deviceMock,
+    param: paramMock,
+  };
 }
 
 interface BasicDeviceConfig {
@@ -292,8 +339,15 @@ interface BasicDeviceConfig {
 /**
  * Setup mocks for basic device tests. Reduces boilerplate for simple device property tests.
  * @param config - Device configuration
+ * @returns Registered mock objects for device, view, and sample
  */
-export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): void {
+// TODO(Phase 2B): Remove global mock setup and ESLint exceptions when path tests are migrated
+// eslint-disable-next-line max-lines-per-function -- temporary backward compatibility
+export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
+  device: RegisteredMockObject;
+  view?: RegisteredMockObject;
+  sample?: RegisteredMockObject;
+} {
   const {
     id = "device-123",
     name,
@@ -308,13 +362,80 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): void {
   } = config;
 
   const deviceName = name ?? class_display_name;
+  const sampleObjId = "sample-obj";
+  const deviceIdPath = `id ${id}`;
+  const viewIdPath = `id ${id} view`;
+  const sampleObjPath = `id ${sampleObjId}`;
+
+  // Register the main device
+  const device = registerMockObject(id, {
+    path: deviceIdPath,
+    type: "Device",
+    properties: {
+      name: deviceName,
+      class_display_name,
+      type,
+      can_have_chains,
+      can_have_drum_pads,
+      is_active,
+      parameters: [],
+      sample: sample ? ["id", sampleObjId] : [],
+    },
+    methods: {
+      // For rack devices with chains
+      ...(can_have_chains === 1 || chainIds.length > 0
+        ? {
+            getChildren: (...args: unknown[]) => {
+              const childType = args[0];
+
+              if (childType === "chains" || childType === "return_chains") {
+                return chainIds.flatMap((c) => ["id", c]);
+              }
+
+              if (childType === "drum_pads") return [];
+
+              return [];
+            },
+          }
+        : {}),
+    },
+  });
+
+  // Register view object if collapsed state is specified
+  let viewMock: RegisteredMockObject | undefined;
+
+  if (is_collapsed !== undefined) {
+    viewMock = registerMockObject(`view-${id}`, {
+      path: viewIdPath,
+      type: "View",
+      properties: {
+        is_collapsed,
+      },
+    });
+  }
+
+  // Register sample object if sample path is specified
+  let sampleMock: RegisteredMockObject | undefined;
+
+  if (sample !== undefined) {
+    sampleMock = registerMockObject(sampleObjId, {
+      path: sampleObjPath,
+      type: "Sample",
+      properties: {
+        file_path: sample,
+      },
+    });
+  }
+
+  // TEMPORARY: Also set up global mocks for Phase 2B tests (path tests) that haven't been migrated yet
+  // TODO: Remove this in Phase 2B migration
   const hasView = is_collapsed !== undefined;
   const hasSample = sample !== undefined;
 
   liveApiId.mockImplementation(function (this: { _path?: string }): string {
-    if (this._path === `id ${id}`) return id;
-    if (hasView && this._path === `id ${id} view`) return `view-${id}`;
-    if (hasSample && this._path === "id sample-obj") return "sample-obj";
+    if (this._path === deviceIdPath) return id;
+    if (hasView && this._path === viewIdPath) return `view-${id}`;
+    if (hasSample && this._path === sampleObjPath) return sampleObjId;
 
     return id;
   });
@@ -324,14 +445,14 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): void {
     prop: string,
   ): unknown[] {
     // Handle view properties for collapsed state
-    if (hasView && this._path === `id ${id} view`) {
+    if (hasView && this._path === viewIdPath) {
       if (prop === "is_collapsed") return [is_collapsed];
 
       return [];
     }
 
     // Handle sample properties for Simpler
-    if (hasSample && this._path === "id sample-obj") {
+    if (hasSample && this._path === sampleObjPath) {
       if (prop === "file_path") return [sample];
 
       return [];
@@ -352,7 +473,7 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): void {
       case "is_active":
         return [is_active];
       case "sample":
-        return hasSample ? ["id", "sample-obj"] : [];
+        return hasSample ? ["id", sampleObjId] : [];
       case "parameters":
         return [];
       default:
@@ -379,6 +500,12 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): void {
       return [];
     });
   }
+
+  return {
+    device,
+    view: viewMock,
+    sample: sampleMock,
+  };
 }
 
 interface ChainMockConfig {
