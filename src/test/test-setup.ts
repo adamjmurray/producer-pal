@@ -5,15 +5,7 @@
 
 import { beforeEach, vi } from "vitest";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
-import { getPropertyByType } from "./mocks/mock-live-api-property-helpers.ts";
-import {
-  LiveAPI,
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-} from "./mocks/mock-live-api.ts";
+import { LiveAPI } from "./mocks/mock-live-api.ts";
 import { clearMockRegistry } from "./mocks/mock-registry.ts";
 import { Task } from "./mocks/mock-task.ts";
 
@@ -95,29 +87,6 @@ beforeEach(() => {
   // Clear mock folder structure
   clearMockFolderStructure();
 
-  // Clear registered mock objects before setting up defaults
+  // Clear registered mock objects
   clearMockRegistry();
-
-  // Set up default mock implementations for id, path, and type getters
-  // Return undefined to fall back to instance properties (_id, _path) and auto-detection
-  liveApiId.mockImplementation(() => {});
-  liveApiPath.mockImplementation(() => {});
-  liveApiType.mockImplementation(() => {});
-  liveApiGet.mockImplementation(function (
-    this: { type: string; path: string },
-    prop: string,
-  ) {
-    return getPropertyByType(this.type, prop, this.path) ?? [0];
-  });
-
-  liveApiCall.mockImplementation(function (method: string) {
-    switch (method) {
-      case "get_version_string":
-        return "12.3";
-      case "get_notes_extended":
-        return JSON.stringify({ notes: [] });
-      default:
-        return null;
-    }
-  });
 });

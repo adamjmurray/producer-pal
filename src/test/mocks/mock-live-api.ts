@@ -3,15 +3,17 @@
 // AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
 import {
   MockSequence,
   children,
   detectTypeFromPath,
+  getPropertyByType,
 } from "./mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
+  isNonExistentByDefault,
   lookupMockObject,
 } from "./mock-registry.ts";
 
@@ -27,85 +29,13 @@ export interface MockLiveAPIContext {
   type?: string;
 }
 
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiId = vi.fn();
-
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiPath = vi.fn();
-
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiType = vi.fn();
-
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiGet = vi.fn();
-
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiSet = vi.fn();
-
-/**
- * @deprecated Use the mock registry system instead: `registerMockObject()` from
- * `#src/test/mocks/mock-registry.ts`. The registry provides instance-level mocks
- * with better isolation and cleaner assertions.
- *
- * These global mocks are kept as fallbacks for objects not in the registry,
- * but new tests should use the registry system.
- *
- * Migration guide: See `dev/Coding-Standards.md` section "Testing"
- */
-export const liveApiCall = vi.fn();
-
 export class LiveAPI {
   _path?: string;
   _id?: string;
   _registered?: RegisteredMockObject;
-  get: typeof liveApiGet;
-  set: typeof liveApiSet;
-  call: typeof liveApiCall;
+  get: Mock;
+  set: Mock;
+  call: Mock;
 
   get mock(): RegisteredMockObject | undefined {
     return this._registered;
@@ -141,9 +71,21 @@ export class LiveAPI {
         });
       }
     } else {
-      this.get = liveApiGet;
-      this.set = liveApiSet;
-      this.call = liveApiCall;
+      // Use getters (this.type/this.path) so defaults stay correct after goto
+      this.get = vi.fn().mockImplementation((prop: string) => {
+        return getPropertyByType(this.type, prop, this.path) ?? [0];
+      }) as Mock;
+      this.set = vi.fn() as Mock;
+      this.call = vi.fn().mockImplementation((method: string) => {
+        switch (method) {
+          case "get_version_string":
+            return "12.3";
+          case "get_notes_extended":
+            return JSON.stringify({ notes: [] });
+          default:
+            return null;
+        }
+      }) as Mock;
     }
   }
 
@@ -162,8 +104,9 @@ export class LiveAPI {
 
   get id(): string {
     if (this._registered) return this._registered.id;
+    if (isNonExistentByDefault()) return "0";
 
-    return (liveApiId.apply(this) as string | undefined) ?? this._id ?? "";
+    return this._id ?? "";
   }
 
   get path(): string {
@@ -171,7 +114,7 @@ export class LiveAPI {
       return this._registered.returnPath ?? this._registered.path;
     }
 
-    return (liveApiPath.apply(this) as string | undefined) ?? this._path ?? "";
+    return this._path ?? "";
   }
 
   get unquotedpath(): string {
@@ -223,12 +166,6 @@ export class LiveAPI {
 
   get type(): string {
     if (this._registered) return this._registered.type;
-
-    const mockedType = liveApiType.apply(this) as string | undefined;
-
-    if (mockedType !== undefined) {
-      return mockedType;
-    }
 
     return detectTypeFromPath(this.path, this._id);
   }
@@ -324,7 +261,6 @@ interface ClipOverrides {
   [key: string]: unknown;
 }
 
-// For use with the default liveApiGet behavior configured in test-setup.ts
 export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",
@@ -343,23 +279,3 @@ export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   notes: "",
   ...overrides,
 });
-
-/**
- * Setup standard ID mock for common update/read tests.
- * Maps "id X" paths to return just "X" for IDs 123, 456, 789.
- * Falls back to default MockLiveAPI behavior for other paths.
- */
-export function setupStandardIdMock(): void {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    switch (this._path) {
-      case "id 123":
-        return "123";
-      case "id 456":
-        return "456";
-      case "id 789":
-        return "789";
-      default:
-        return this._id;
-    }
-  });
-}

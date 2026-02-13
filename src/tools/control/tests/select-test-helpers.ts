@@ -143,7 +143,6 @@ export function setupSelectedTrackMock(options?: {
       returnTrackIndex: exists ? returnTrackIndex : null,
     },
     methods: {
-      exists: () => exists,
       get: (...args: unknown[]) => {
         const prop = args[0] as string;
 
@@ -211,7 +210,6 @@ export function setupTrackViewMock(
       selected_device: selectedDeviceId ? ["id", selectedDeviceId] : null,
     },
     methods: {
-      exists: () => true,
       select_instrument: () => null,
     },
   });
@@ -270,26 +268,27 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
   const songView = setupSongViewMock();
   const selectedTrack = setupSelectedTrackMock(state.selectedTrack);
 
-  const selectedScene = registerMockObject(state.selectedScene?.id ?? "0", {
-    path: "live_set view selected_scene",
-    type: "Scene",
-    properties: {
-      sceneIndex: state.selectedScene?.exists
-        ? state.selectedScene.sceneIndex
-        : null,
-    },
-    methods: {
-      exists: () => Boolean(state.selectedScene?.exists),
-    },
-  });
+  const sceneExists = state.selectedScene?.exists ?? false;
+  const clipExists = state.selectedClip?.exists ?? false;
 
-  const selectedClip = registerMockObject(state.selectedClip?.id ?? "0", {
-    path: "live_set view detail_clip",
-    type: "Clip",
-    methods: {
-      exists: () => Boolean(state.selectedClip?.exists),
+  const selectedScene = registerMockObject(
+    state.selectedScene?.id ?? (sceneExists ? "selected-scene" : "0"),
+    {
+      path: "live_set view selected_scene",
+      type: "Scene",
+      properties: {
+        sceneIndex: sceneExists ? state.selectedScene?.sceneIndex : null,
+      },
     },
-  });
+  );
+
+  const selectedClip = registerMockObject(
+    state.selectedClip?.id ?? (clipExists ? "selected-clip" : "0"),
+    {
+      path: "live_set view detail_clip",
+      type: "Clip",
+    },
+  );
 
   const highlightedClipSlot = registerMockObject(
     state.highlightedClipSlot?.exists
@@ -305,9 +304,6 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
         sceneIndex: state.highlightedClipSlot?.exists
           ? state.highlightedClipSlot.sceneIndex
           : null,
-      },
-      methods: {
-        exists: () => Boolean(state.highlightedClipSlot?.exists),
       },
     },
   );

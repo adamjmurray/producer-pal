@@ -4,12 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  LiveAPI,
-  liveApiGet,
-  liveApiSet,
-  MockSequence,
-} from "./mock-live-api.ts";
+import { LiveAPI, MockSequence } from "./mock-live-api.ts";
 import {
   clearMockRegistry,
   lookupMockObject,
@@ -271,12 +266,18 @@ describe("mock-registry", () => {
       expect(api.type).toBe("Track");
     });
 
-    it("should use shared mocks for non-registered objects", () => {
-      // Don't register anything — object should use shared mocks
+    it("should create inline mocks for non-registered objects", () => {
+      // Don't register anything — object should get its own inline mocks
       const api = LiveAPI.from("999");
 
-      expect(api.get).toBe(liveApiGet);
-      expect(api.set).toBe(liveApiSet);
+      expect(api.get).toBeTypeOf("function");
+      expect(api.set).toBeTypeOf("function");
+      expect(api.call).toBeTypeOf("function");
+
+      // Each instance gets its own mock
+      const api2 = LiveAPI.from("998");
+
+      expect(api.get).not.toBe(api2.get);
     });
 
     it("should support set assertions without toHaveBeenCalledWithThis", () => {

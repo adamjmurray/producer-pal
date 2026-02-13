@@ -772,19 +772,6 @@ export default [
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
-  // TODO: Remove this block after Phase 5 infrastructure cleanup
-  // Test infrastructure still contains deprecated exports
-  {
-    files: [
-      "src/test/mocks/mock-live-api.ts",
-      "src/test/mocks/mock-registry.ts",
-      "src/test/mocks/mock-registry.test.ts",
-      "src/test/test-setup.ts",
-    ],
-    rules: {
-      "@typescript-eslint/no-deprecated": "off", // Allow deprecated mocks until cleanup
-    },
-  },
   // E2E MCP tests - override max-expects and prefer-to-have-length
   // Comprehensive tests have many assertions and often compare dynamic values
   {
