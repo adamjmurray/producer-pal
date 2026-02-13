@@ -779,6 +779,7 @@ export default [
       // Control/Select tests
       "src/tools/control/tests/select-basic.test.ts",
       "src/tools/control/tests/select-advanced.test.ts",
+      "src/tools/control/tests/select-legacy-test-helpers.ts",
       "src/tools/control/tests/select-test-helpers.ts",
       "src/tools/control/tests/raw-live-api.test.ts",
       "src/tools/control/tests/playback-basic.test.ts",

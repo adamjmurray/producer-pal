@@ -35,6 +35,8 @@ export interface RegisteredMockObject {
   path: string;
   /** The Live API type (e.g., "Track") */
   type: string;
+  /** Property overrides to be copied onto LiveAPI instances */
+  properties: Record<string, unknown>;
 }
 
 const registryById = new Map<string, RegisteredMockObject>();
@@ -130,6 +132,7 @@ export function registerMockObject(
     id,
     path,
     type,
+    properties,
   };
 
   registryById.set(id, mock);

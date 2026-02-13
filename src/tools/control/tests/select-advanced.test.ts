@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
@@ -14,7 +15,8 @@ import {
 } from "#src/test/mocks/mock-live-api.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
-import { setupSelectMocks, expectViewState } from "./select-test-helpers.ts";
+import { setupSelectMocks } from "./select-legacy-test-helpers.ts";
+import { expectViewState } from "./select-test-helpers.ts";
 
 // Type-safe way to access global LiveAPI
 const g = globalThis as Record<string, unknown>;

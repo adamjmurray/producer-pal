@@ -230,15 +230,21 @@ function readViewState(): ViewState {
   );
 
   // Extract track info using Live API extensions
-  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
+  const selectedTrackId = selectedTrack.exists()
+    ? toLiveApiId(selectedTrack.id)
+    : null;
   const category = selectedTrack.exists()
     ? (selectedTrack.category as TrackCategory | null)
     : null;
   const selectedSceneIndex = selectedScene.exists()
     ? selectedScene.sceneIndex
     : null;
-  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
-  const selectedClipId = detailClip.exists() ? detailClip.id : null;
+  const selectedSceneId = selectedScene.exists()
+    ? toLiveApiId(selectedScene.id)
+    : null;
+  const selectedClipId = detailClip.exists()
+    ? toLiveApiId(detailClip.id)
+    : null;
 
   // Get selected device from the selected track's view
   let selectedDeviceId: string | null = null;
@@ -306,4 +312,8 @@ function readViewState(): ViewState {
     },
     selectedClipSlot: highlightedSlot,
   };
+}
+
+function toLiveApiId(id: string): string {
+  return id.startsWith("id ") ? id : `id ${id}`;
 }

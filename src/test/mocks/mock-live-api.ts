@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
@@ -122,6 +122,23 @@ export class LiveAPI {
       this.get = this._registered.get;
       this.set = this._registered.set;
       this.call = this._registered.call;
+
+      // Copy registered properties onto the instance so they can be accessed directly
+      // (e.g., .category, .trackIndex instead of .get("category")[0])
+      // Use defineProperty to override extension getters
+      for (const [key, value] of Object.entries(this._registered.properties)) {
+        // Preserve core LiveAPI getters/setters.
+        if (key === "id" || key === "path" || key === "type") {
+          continue;
+        }
+
+        Object.defineProperty(this, key, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
     } else {
       this.get = liveApiGet;
       this.set = liveApiSet;
