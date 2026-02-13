@@ -5,9 +5,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
-import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
@@ -145,7 +145,7 @@ describe("deleteObject", () => {
   });
 
   it("should log warning when object doesn't exist", () => {
-    liveApiId.mockReturnValue("id 0"); // Unregistered objects are non-existent
+    mockNonExistentObjects();
 
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
@@ -178,7 +178,7 @@ describe("deleteObject", () => {
       track_0: "live_set tracks 0",
       track_2: "live_set tracks 2",
     });
-    liveApiId.mockReturnValue("id 0"); // Unregistered objects are non-existent
+    mockNonExistentObjects();
 
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
@@ -201,7 +201,7 @@ describe("deleteObject", () => {
   });
 
   it("should return empty array when all IDs are invalid", () => {
-    liveApiId.mockReturnValue("id 0"); // Unregistered objects are non-existent
+    mockNonExistentObjects();
 
     const consoleWarnSpy = vi.spyOn(console, "warn");
 

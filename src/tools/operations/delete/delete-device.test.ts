@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { children, liveApiType } from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
@@ -227,8 +227,6 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should return empty array when all paths are invalid", () => {
-      liveApiType.mockReturnValue(undefined);
-
       const result = deleteObject({ path: "t99/d99", type: "device" });
 
       expect(result).toStrictEqual([]);

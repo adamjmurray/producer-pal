@@ -2,19 +2,19 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiPath } from "#src/test/mocks/mock-live-api.ts";
+import { describe, expect, it, vi } from "vitest";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { getHostTrackIndex } from "./get-host-track-index.ts";
 
 const g = globalThis as Record<string, unknown>;
 
 describe("getHostTrackIndex", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should return track index when device path matches pattern", () => {
-    liveApiPath.mockReturnValue("live_set tracks 5 devices 0");
+    registerMockObject("this_device", {
+      path: "this_device",
+      returnPath: "live_set tracks 5 devices 0",
+      properties: { trackIndex: 5 },
+    });
 
     const result = getHostTrackIndex();
 
@@ -22,7 +22,10 @@ describe("getHostTrackIndex", () => {
   });
 
   it("should return null when device path does not match pattern", () => {
-    liveApiPath.mockReturnValue("some other path without tracks");
+    registerMockObject("this_device", {
+      path: "this_device",
+      returnPath: "some other path without tracks",
+    });
 
     const result = getHostTrackIndex();
 
@@ -30,7 +33,6 @@ describe("getHostTrackIndex", () => {
   });
 
   it("should return null when LiveAPI.from throws an error", () => {
-    // Mock the global LiveAPI.from to throw an error
     const originalLiveAPI = g.LiveAPI;
 
     g.LiveAPI = {
@@ -43,7 +45,6 @@ describe("getHostTrackIndex", () => {
 
     expect(result).toBe(null);
 
-    // Restore the original LiveAPI
     g.LiveAPI = originalLiveAPI;
   });
 
@@ -55,7 +56,11 @@ describe("getHostTrackIndex", () => {
     ];
 
     for (const { path, expected } of testCases) {
-      liveApiPath.mockReturnValue(path);
+      registerMockObject("this_device", {
+        path: "this_device",
+        returnPath: path,
+        properties: { trackIndex: expected },
+      });
 
       const result = getHostTrackIndex();
 

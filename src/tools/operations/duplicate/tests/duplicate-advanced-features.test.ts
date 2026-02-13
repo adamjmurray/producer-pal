@@ -3,15 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
 import {
   children,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+
+let appView: RegisteredMockObject;
 
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
@@ -173,6 +174,12 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 });
 
 describe("duplicate - switchView functionality", () => {
+  beforeEach(() => {
+    appView = registerMockObject("app-view", {
+      path: "live_app view",
+    });
+  });
+
   it("should switch to arrangement view when duplicating to arrangement destination", () => {
     registerMockObject("clip1", {
       path: "live_set tracks 0 clip_slots 0 clip",
@@ -202,7 +209,7 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
   });
 
   it("should switch to session view when duplicating to session destination", () => {
@@ -234,7 +241,7 @@ describe("duplicate - switchView functionality", () => {
       toSceneIndex: "1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
   });
 
   it("should switch to session view when duplicating tracks", () => {
@@ -246,7 +253,7 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
   });
 
   it("should switch to session view when duplicating scenes", () => {
@@ -267,7 +274,7 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
   });
 
   it("should not switch views when switchView=false", () => {
@@ -279,7 +286,7 @@ describe("duplicate - switchView functionality", () => {
       switchView: false,
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(appView.call).not.toHaveBeenCalledWith(
       "show_view",
       expect.anything(),
     );
@@ -300,7 +307,7 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
     expect(result).toHaveLength(2);
   });
 });

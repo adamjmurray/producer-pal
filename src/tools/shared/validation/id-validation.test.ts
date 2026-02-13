@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiId } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { validateIdType, validateIdTypes } from "./id-validation.ts";
@@ -48,8 +48,7 @@ describe("validateIdType", () => {
   it("should throw error when ID does not exist", () => {
     const id = "nonexistent_id";
 
-    // Mock non-existent ID via global fallback
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     expect(() => validateIdType(id, "track", "testTool")).toThrow(
       'testTool failed: id "nonexistent_id" does not exist',
@@ -72,8 +71,7 @@ describe("validateIdType", () => {
   it("should include tool name in error messages", () => {
     const id = "scene_1";
 
-    // Mock non-existent ID via global fallback
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     expect(() => validateIdType(id, "track", "updateTrack")).toThrow(
       "updateTrack failed:",
@@ -163,10 +161,7 @@ describe("validateIdTypes", () => {
         type: "Track",
       });
 
-      // Mock non-existent ID via global fallback
-      liveApiId.mockImplementation(function (this: { _id?: string }) {
-        return this._id === "nonexistent" ? "id 0" : this._id;
-      });
+      mockNonExistentObjects();
 
       expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
         'testTool failed: id "nonexistent" does not exist',
@@ -228,8 +223,7 @@ describe("validateIdTypes", () => {
     it("should return empty array when all IDs are invalid (non-existent)", () => {
       const ids = ["nonexistent_1", "nonexistent_2"];
 
-      // Mock all non-existent IDs via global fallback
-      liveApiId.mockReturnValue("id 0");
+      mockNonExistentObjects();
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
@@ -282,10 +276,7 @@ describe("validateIdTypes", () => {
         type: "Track",
       });
 
-      // Mock non-existent ID via global fallback
-      liveApiId.mockImplementation(function (this: { _id?: string }) {
-        return this._id === "nonexistent" ? "id 0" : this._id;
-      });
+      mockNonExistentObjects();
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,

@@ -6,8 +6,7 @@
  * Smoke tests for update-clip splitting integration.
  * Comprehensive splitting tests are in arrangement-splitting.test.ts
  */
-import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { describe, expect, it } from "vitest";
 import type { RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -21,10 +20,6 @@ function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
 }
 
 describe("updateClip - splitting smoke tests", () => {
-  beforeEach(() => {
-    liveApiGet.mockReset();
-  });
-
   it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 

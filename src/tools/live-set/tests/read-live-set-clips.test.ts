@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall } from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
@@ -80,8 +81,13 @@ describe("readLiveSet - clips", () => {
     expect(tracks[0]!.sessionClipCount).toBe(1);
     expect(tracks[0]!.arrangementClipCount).toBe(1);
 
-    // Verify expensive Live API calls were not made due to default minimal behavior
-    expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
+    // Default behavior: no expensive note reads (counts only, not full clip data)
+    const clipMock = lookupMockObject("clip1");
+
+    expect(clipMock?.call).not.toHaveBeenCalledWith(
+      "get_notes_extended",
+      expect.anything(),
+    );
   });
 
   it("auto-includes minimal track info when session-clips requested without regular-tracks", () => {

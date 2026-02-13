@@ -772,48 +772,17 @@ export default [
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
     },
   },
-  // TODO: Remove this block after migrating all files to mock registry
-  // Files still using deprecated global mocks (old mocking system)
+  // TODO: Remove this block after Phase 5 infrastructure cleanup
+  // Test infrastructure still contains deprecated exports
   {
     files: [
-      // Control/Select tests (Phase 1 - uses liveApiId for non-existent object testing)
-      "src/tools/control/tests/playback-basic.test.ts",
-      // Validation tests (Phase 3 - uses liveApiId as fallback for non-existent objects)
-      "src/tools/shared/validation/id-validation.test.ts",
-      // Arrangement tests (Phase 3 - uses liveApiGet for scene mocking)
-      "src/tools/shared/arrangement/arrangement-splitting.test.ts",
-      "src/tools/clip/update/tests/arrangement/update-clip-splitting.test.ts",
-      // Device tests (Phase 2 - not started)
-      "src/tools/device/read-device.test.ts",
-      "src/tools/device/read-device-param-search.test.ts",
-      "src/tools/device/read-device-path.test.ts",
-      "src/tools/device/read-device-params.test.ts",
-      "src/tools/device/read-device-test-helpers.ts",
-      "src/tools/shared/device/helpers/device-display-helpers.test.ts",
-      "src/tools/shared/device/helpers/path/device-path-helpers.test.ts",
-      "src/tools/shared/device/helpers/path/device-path-helpers-drumpad.test.ts",
-      // Clip tests (not yet migrated)
-      "src/tools/clip/update/helpers/update-clip-arrangement-helpers.test.ts",
-      "src/tools/clip/update/tests/update-clip-audio-helpers.test.ts",
-      "src/tools/clip/update/tests/update-clip-quantization.test.ts",
-      // Arrangement tests (partial)
-      "src/tools/shared/arrangement/get-host-track-index.test.ts",
-      // Operations tests (not yet migrated)
-      "src/tools/operations/delete/delete-device.test.ts",
-      "src/tools/operations/delete/delete.test.ts",
-      "src/tools/operations/duplicate/tests/duplicate-advanced-features.test.ts",
-      // Other tests (not yet migrated)
-      "src/tools/live-set/tests/read-live-set-clips.test.ts",
-      "src/tools/scene/create-scene.test.ts",
-      // Test infrastructure (contains deprecated exports until Phase 4)
       "src/test/mocks/mock-live-api.ts",
       "src/test/mocks/mock-registry.ts",
       "src/test/mocks/mock-registry.test.ts",
       "src/test/test-setup.ts",
-      "src/test/helpers/meta-test-helpers.ts",
     ],
     rules: {
-      "@typescript-eslint/no-deprecated": "off", // Allow deprecated mocks during migration
+      "@typescript-eslint/no-deprecated": "off", // Allow deprecated mocks until cleanup
     },
   },
   // E2E MCP tests - override max-expects and prefer-to-have-length

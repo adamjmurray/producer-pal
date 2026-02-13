@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Mock } from "vitest";
-import { liveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -62,10 +61,6 @@ describe("prepareSplitParams", () => {
 
     return { mockClip, warnings };
   }
-
-  beforeEach(() => {
-    liveApiGet.mockReset();
-  });
 
   it("should return null when split is undefined", () => {
     const warnings = new Set<string>();
@@ -173,10 +168,6 @@ describe("prepareSplitParams", () => {
 });
 
 describe("performSplitting", () => {
-  beforeEach(() => {
-    liveApiGet.mockReset();
-  });
-
   it("should split looped clips at specified positions", () => {
     const clipId = "clip_1";
 
@@ -313,22 +304,20 @@ describe("performSplitting", () => {
     });
     const { mockClip, clips } = createPerformContext(clipId);
 
-    // Audio splitting needs scene/slot mocking for createAndDeleteTempClip
-    const originalGet = liveApiGet.getMockImplementation();
-
-    liveApiGet.mockImplementation(function (
-      this: { _path?: string; _id?: string },
-      prop: string,
-    ) {
-      if (this._path === "live_set" && prop === "scenes") {
-        return ["id", "scene_1"];
-      }
-
-      if (this._id === "scene_1" && prop === "is_empty") {
-        return [1]; // Scene is empty, no need to create new one
-      }
-
-      return originalGet?.call(this, prop) ?? [0];
+    // Audio splitting needs scene/slot for createAndDeleteTempClip
+    // Re-register live_set with scenes property
+    registerMockObject("live_set", {
+      path: "live_set",
+      type: "LiveSet",
+      properties: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: ["id", "scene_1"],
+      },
+    });
+    registerMockObject("scene_1", {
+      path: "live_set scenes 0",
+      properties: { is_empty: 1 },
     });
 
     // Split an 8-beat unlooped audio clip at 4 beats
