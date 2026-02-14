@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
@@ -14,7 +15,7 @@ import {
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: {
         length: 8,
         looping: 0,
@@ -29,10 +30,10 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     const result = duplicate({
       type: "clip",
@@ -43,7 +44,7 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     expect(result).toStrictEqual({
-      id: "live_set tracks 0 arrangement_clips 0",
+      id: livePath.track(0).arrangementClip(0),
       arrangementStart: "5|1",
     });
 
@@ -54,7 +55,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
   it("should duplicate a looping clip with lengthening via updateClip", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: {
         length: 4,
         looping: 1,
@@ -69,24 +70,24 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     const track0 = registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: {
-        arrangement_clips: children("live_set tracks 0 arrangement_clips 0"),
+        arrangement_clips: children(livePath.track(0).arrangementClip(0)),
       },
       methods: {
         duplicate_clip_to_arrangement: () => [
           "id",
-          "live_set tracks 0 arrangement_clips 0",
+          livePath.track(0).arrangementClip(0),
         ],
       },
     });
 
-    registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: "live_set tracks 0 arrangement_clips 0",
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 16 },
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     const result = duplicate({
       type: "clip",
@@ -108,15 +109,12 @@ describe("duplicate - arrangementLength functionality", () => {
     // Just verify the result structure is valid
     // When updateClip returns a single clip, the result is the clip object directly
     expect(result).toHaveProperty("arrangementStart", "5|1");
-    expect(result).toHaveProperty(
-      "id",
-      "live_set tracks 0 arrangement_clips 0",
-    );
+    expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
   });
 
   it("should duplicate a non-looping clip at original length when requested length is longer", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: {
         length: 4,
         looping: 0,
@@ -127,24 +125,24 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     const track0 = registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: {
-        arrangement_clips: children("live_set tracks 0 arrangement_clips 0"),
+        arrangement_clips: children(livePath.track(0).arrangementClip(0)),
       },
       methods: {
         duplicate_clip_to_arrangement: () => [
           "id",
-          "live_set tracks 0 arrangement_clips 0",
+          livePath.track(0).arrangementClip(0),
         ],
       },
     });
 
-    registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: "live_set tracks 0 arrangement_clips 0",
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 16 },
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     const result = duplicate({
       type: "clip",
@@ -165,15 +163,12 @@ describe("duplicate - arrangementLength functionality", () => {
 
     // When updateClip returns a single clip, the result is the clip object directly
     expect(result).toHaveProperty("arrangementStart", "5|1");
-    expect(result).toHaveProperty(
-      "id",
-      "live_set tracks 0 arrangement_clips 0",
-    );
+    expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
   });
 
   it("should correctly handle 6/8 time signature duration conversion", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: {
         length: 12,
         looping: 0,
@@ -188,19 +183,19 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
     });
 
     registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: {
         signature_numerator: 4,
         signature_denominator: 4,
       },
     });
 
-    registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: "live_set tracks 0 arrangement_clips 0",
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 0 },
     });
 
@@ -217,14 +212,14 @@ describe("duplicate - arrangementLength functionality", () => {
     // Verify the result - new implementation uses holding area for shortening
     // The holding area operations correctly handle time signature conversion
     expect(result).toStrictEqual({
-      id: "live_set tracks 0 arrangement_clips 0",
+      id: livePath.track(0).arrangementClip(0),
       arrangementStart: "1|1",
     });
   });
 
   it("should correctly handle 2/2 time signature duration conversion", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: {
         length: 8,
         looping: 0,
@@ -239,19 +234,19 @@ describe("duplicate - arrangementLength functionality", () => {
     });
 
     registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
     });
 
     registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: {
         signature_numerator: 4,
         signature_denominator: 4,
       },
     });
 
-    registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: "live_set tracks 0 arrangement_clips 0",
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 0 },
     });
 
@@ -267,18 +262,18 @@ describe("duplicate - arrangementLength functionality", () => {
     // Verify the result - new implementation uses holding area for shortening
     // The holding area operations correctly handle time signature conversion
     expect(result).toStrictEqual({
-      id: "live_set tracks 0 arrangement_clips 0",
+      id: livePath.track(0).arrangementClip(0),
       arrangementStart: "1|1",
     });
   });
 
   it("should error when arrangementLength is zero or negative", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 4, looping: 1 },
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     expect(() =>
       duplicate({
@@ -295,29 +290,26 @@ describe("duplicate - arrangementLength functionality", () => {
 
   it("should work normally without arrangementLength (backward compatibility)", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 8, looping: 0 },
     });
 
     const track0 = registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       methods: {
         duplicate_clip_to_arrangement: () => [
           "id",
-          "live_set tracks 0 arrangement_clips 0",
+          livePath.track(0).arrangementClip(0),
         ],
       },
     });
 
-    const arrClip = registerMockObject(
-      "live_set tracks 0 arrangement_clips 0",
-      {
-        path: "live_set tracks 0 arrangement_clips 0",
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      },
-    );
+    const arrClip = registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
+      properties: { is_arrangement_clip: 1, start_time: 16 },
+    });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     const result = duplicate({
       type: "clip",
