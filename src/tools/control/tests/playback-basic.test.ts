@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -113,11 +114,12 @@ describe("transport", () => {
   it("should handle play-session-clips action with single clip", () => {
     liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject("live_set tracks 0 clip_slots 0", {
-      path: "live_set tracks 0 clip_slots 0",
-    });
+    const clipSlot0 = registerMockObject(
+      String(livePath.track(0).clipSlot(0)),
+      { path: livePath.track(0).clipSlot(0) },
+    );
 
     const result = playback({
       action: "play-session-clips",
@@ -200,7 +202,7 @@ describe("transport", () => {
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 99 clip_slots 0 clip",
+      path: livePath.track(99).clipSlot(0).clip(),
     });
     // Clip slot at tracks 99 is NOT registered — falls through to shared mock
     mockNonExistentObjects();
@@ -221,8 +223,8 @@ describe("transport", () => {
       tracks: children("track1", "track2"),
     });
 
-    const scene0 = registerMockObject("live_set scenes 0", {
-      path: "live_set scenes 0",
+    const scene0 = registerMockObject(livePath.scene(0), {
+      path: livePath.scene(0),
     });
 
     setupFollowerTrack({ id: "track1", index: 0, following: true });
@@ -263,10 +265,10 @@ describe("transport", () => {
   it("should handle stop-session-clips action with single clip", () => {
     liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
-    const track0 = registerMockObject("live_set tracks 0", {
-      path: "live_set tracks 0",
+    const track0 = registerMockObject(String(livePath.track(0)), {
+      path: livePath.track(0),
     });
 
     const result = playback({
@@ -285,22 +287,22 @@ describe("transport", () => {
   it("should handle stop-session-clips action with multiple clips", () => {
     liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
     registerMockObject("clip2", {
-      path: "live_set tracks 1 clip_slots 1 clip",
+      path: livePath.track(1).clipSlot(1).clip(),
     });
     registerMockObject("clip3", {
-      path: "live_set tracks 2 clip_slots 2 clip",
+      path: livePath.track(2).clipSlot(2).clip(),
     });
-    const track0 = registerMockObject("live_set tracks 0", {
-      path: "live_set tracks 0",
+    const track0 = registerMockObject(String(livePath.track(0)), {
+      path: livePath.track(0),
     });
-    const track1 = registerMockObject("live_set tracks 1", {
-      path: "live_set tracks 1",
+    const track1 = registerMockObject(String(livePath.track(1)), {
+      path: livePath.track(1),
     });
-    const track2 = registerMockObject("live_set tracks 2", {
-      path: "live_set tracks 2",
+    const track2 = registerMockObject(String(livePath.track(2)), {
+      path: livePath.track(2),
     });
 
     playback({
@@ -362,9 +364,9 @@ describe("transport", () => {
 
   it("should throw error when track does not exist for stop-session-clips", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 99 clip_slots 0 clip",
+      path: livePath.track(99).clipSlot(0).clip(),
     });
-    // Track at "live_set tracks 99" is NOT registered — make unregistered objects non-existent
+    // Track at index 99 is NOT registered — make unregistered objects non-existent
     mockNonExistentObjects();
 
     expect(() =>

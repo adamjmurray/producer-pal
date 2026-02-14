@@ -51,7 +51,7 @@ export function setupPlaybackLiveSet(
   overrides: Record<string, unknown> = {},
 ): RegisteredMockObject {
   return registerMockObject("live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
@@ -96,7 +96,7 @@ export function setupFollowerTrack({
  */
 export function setupDefaultTimeSignature(): RegisteredMockObject {
   const liveSet = registerMockObject("live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
@@ -179,13 +179,13 @@ export function expectLiveSetProperty(
  */
 export function setupMultiClipMocks(
   clipMappings: ClipPathMapping[] = [
-    { clipId: "clip1", path: "live_set tracks 0 clip_slots 0 clip" },
-    { clipId: "clip2", path: "live_set tracks 1 clip_slots 1 clip" },
-    { clipId: "clip3", path: "live_set tracks 2 clip_slots 2 clip" },
+    { clipId: "clip1", path: livePath.track(0).clipSlot(0).clip() },
+    { clipId: "clip2", path: livePath.track(1).clipSlot(1).clip() },
+    { clipId: "clip3", path: livePath.track(2).clipSlot(2).clip() },
   ],
 ): MultiClipMockResult {
   const liveSet = registerMockObject("live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,

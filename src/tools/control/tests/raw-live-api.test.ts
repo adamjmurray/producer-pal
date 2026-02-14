@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -28,7 +29,7 @@ describe("rawLiveApi", () => {
     // Register default mock for "live_set" path (rawLiveApi's default)
     // Use ID "1" so api.id returns "id 1"
     defaultMock = registerMockObject("1", {
-      path: "live_set",
+      path: livePath.liveSet,
       type: "Song",
       methods: {
         get_current_beats_song_time: () => "001.01.01.000",
@@ -251,17 +252,17 @@ describe("rawLiveApi", () => {
     it("should handle goto operation", () => {
       // Register mock for the goto target path
       registerMockObject("track-0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
       const result = rawLiveApi({
-        operations: [{ type: "goto", value: "live_set tracks 0" }],
+        operations: [{ type: "goto", value: String(livePath.track(0)) }],
       });
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe(1);
-      expect(result.path).toBe("live_set tracks 0");
+      expect(result.path).toBe(String(livePath.track(0)));
     });
 
     it("should throw error for goto without value", () => {
@@ -373,7 +374,7 @@ describe("rawLiveApi", () => {
   describe("path handling", () => {
     it("should create LiveAPI with path when provided", () => {
       const trackMock = registerMockObject("track-0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
@@ -383,11 +384,11 @@ describe("rawLiveApi", () => {
       });
 
       const result = rawLiveApi({
-        path: "live_set tracks 0",
+        path: String(livePath.track(0)),
         operations: [{ type: "info" }],
       });
 
-      expect(result.path).toBe("live_set tracks 0");
+      expect(result.path).toBe(String(livePath.track(0)));
       expect(trackMock).toBeDefined();
     });
 
@@ -446,12 +447,12 @@ describe("rawLiveApi", () => {
       });
 
       const result = rawLiveApi({
-        path: "live_set",
+        path: livePath.liveSet,
         operations: [{ type: "info" }],
       });
 
       expect(result).toStrictEqual({
-        path: "live_set",
+        path: livePath.liveSet,
         id: "1",
         results: [
           {

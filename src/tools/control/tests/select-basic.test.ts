@@ -107,7 +107,7 @@ describe("view", () => {
 
     it("selects regular track by index", () => {
       const track = registerMockObject("track_id_123", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
       });
       const songView = setupSongViewMock();
@@ -127,7 +127,7 @@ describe("view", () => {
 
     it("selects return track by index", () => {
       const track = registerMockObject("track_id_123", {
-        path: "live_set return_tracks 1",
+        path: livePath.returnTrack(1),
         type: "Track",
       });
       const songView = setupSongViewMock();
@@ -147,7 +147,7 @@ describe("view", () => {
 
     it("selects master track", () => {
       const track = registerMockObject("track_id_123", {
-        path: "live_set master_track",
+        path: livePath.masterTrack(),
         type: "Track",
       });
       const songView = setupSongViewMock();
@@ -164,7 +164,7 @@ describe("view", () => {
 
     it("defaults to regular track type when only index provided", () => {
       registerMockObject("track_id_123", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
       });
 
@@ -193,7 +193,7 @@ describe("view", () => {
 
     it("selects track by ID with trackIndex hint", () => {
       registerMockObject("track_123", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
       });
       const songView = setupSongViewMock();
@@ -210,7 +210,7 @@ describe("view", () => {
     it("skips track selection when track does not exist", () => {
       // Register non-existent track (id "0" makes exists() return false)
       registerMockObject("0", {
-        path: "live_set tracks 99",
+        path: livePath.track(99),
         type: "Track",
       });
       const songView = setupSongViewMock();
@@ -245,7 +245,7 @@ describe("view", () => {
 
     it("selects scene by index", () => {
       const scene = registerMockObject("scene_id_456", {
-        path: "live_set scenes 5",
+        path: livePath.scene(5),
         type: "Scene",
       });
       const songView = setupSongViewMock();
@@ -262,7 +262,7 @@ describe("view", () => {
 
     it("selects scene by ID with sceneIndex hint", () => {
       registerMockObject("scene_123", {
-        path: "live_set scenes 3",
+        path: livePath.scene(3),
         type: "Scene",
       });
       const songView = setupSongViewMock();
@@ -279,7 +279,7 @@ describe("view", () => {
     it("skips scene selection when scene does not exist", () => {
       // Register non-existent scene (id "0" makes exists() return false)
       registerMockObject("0", {
-        path: "live_set scenes 99",
+        path: livePath.scene(99),
         type: "Scene",
       });
       const songView = setupSongViewMock();
@@ -348,11 +348,11 @@ describe("view", () => {
     it("selects device by ID", () => {
       const device = setupDeviceMock(
         "device_123",
-        "live_set tracks 0 devices 0",
+        String(livePath.track(0).device(0)),
       );
       const songView = setupSongViewMock();
 
-      setupTrackViewMock("live_set tracks 0");
+      setupTrackViewMock(String(livePath.track(0)));
 
       const result = select({ deviceId: `id ${device.id}` });
 
@@ -365,7 +365,7 @@ describe("view", () => {
     });
 
     it("selects instrument on specified track", () => {
-      const trackView = setupTrackViewMock("live_set tracks 0");
+      const trackView = setupTrackViewMock(String(livePath.track(0)));
 
       const result = select({
         category: "regular",
@@ -385,9 +385,9 @@ describe("view", () => {
         category: "regular",
         trackIndex: 1,
         id: "track_123",
-        path: "live_set tracks 1",
+        path: String(livePath.track(1)),
       });
-      const trackView = setupTrackViewMock("live_set tracks 1");
+      const trackView = setupTrackViewMock(String(livePath.track(1)));
 
       const result = select({ instrument: true });
 
@@ -407,7 +407,7 @@ describe("view", () => {
 
     it("skips instrument selection when no track is selected", () => {
       setupSelectedTrackMock({ exists: false });
-      const trackView = setupTrackViewMock("live_set tracks 0");
+      const trackView = setupTrackViewMock(String(livePath.track(0)));
 
       const result = select({ instrument: true });
 
@@ -421,7 +421,7 @@ describe("view", () => {
   describe("highlighted clip slot", () => {
     it("sets highlighted clip slot by indices", () => {
       const clipSlot = registerMockObject("clipslot_id_789", {
-        path: "live_set tracks 1 clip_slots 3",
+        path: livePath.track(1).clipSlot(3),
         type: "ClipSlot",
       });
       const songView = setupSongViewMock();

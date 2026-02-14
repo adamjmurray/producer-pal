@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -116,10 +117,10 @@ describe("transport", () => {
 
     beforeEach(() => {
       // Register objects needed by select() for view switching
-      appView = registerMockObject("live_app view", {
-        path: "live_app view",
+      appView = registerMockObject(livePath.view.app, {
+        path: livePath.view.app,
       });
-      registerMockObject("live_set view", { path: "live_set view" });
+      registerMockObject(livePath.view.song, { path: livePath.view.song });
     });
 
     it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
@@ -138,8 +139,8 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2"),
       });
-      registerMockObject("live_set scenes 0", {
-        path: "live_set scenes 0",
+      registerMockObject(livePath.scene(0), {
+        path: livePath.scene(0),
       });
       setupFollowerTrack({ id: "track1", index: 0, following: true });
       setupFollowerTrack({ id: "track2", index: 1, following: true });
@@ -156,10 +157,10 @@ describe("transport", () => {
     it("should switch to session view for play-session-clips action when switchView is true", () => {
       liveSet = setupPlaybackLiveSet();
       registerMockObject("clip1", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
       });
-      registerMockObject("live_set tracks 0 clip_slots 0", {
-        path: "live_set tracks 0 clip_slots 0",
+      registerMockObject(String(livePath.track(0).clipSlot(0)), {
+        path: livePath.track(0).clipSlot(0),
       });
 
       playback({

@@ -170,7 +170,7 @@ describe("view", () => {
     it("throws error when track ID and index refer to different tracks", () => {
       // Track at index 2 has ID "track_at_index_2"
       registerMockObject("track_at_index_2", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
       });
       // The trackId "id track_123" refers to a different track
@@ -187,7 +187,7 @@ describe("view", () => {
     it("throws error when scene ID and index refer to different scenes", () => {
       // Scene at index 5 has ID "scene_at_index_5"
       registerMockObject("scene_at_index_5", {
-        path: "live_set scenes 5",
+        path: livePath.scene(5),
         type: "Scene",
       });
       // The sceneId "id scene_123" refers to a different scene
@@ -211,11 +211,11 @@ describe("view", () => {
         type: "Clip",
       });
       registerMockObject("track_1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         type: "Track",
       });
       registerMockObject("scene_3", {
-        path: "live_set scenes 3",
+        path: livePath.scene(3),
         type: "Scene",
       });
 
@@ -243,10 +243,10 @@ describe("view", () => {
 
     it("handles return track with device selection", () => {
       registerMockObject("return_track_2", {
-        path: "live_set return_tracks 2",
+        path: livePath.returnTrack(2),
         type: "Track",
       });
-      const trackView = setupTrackViewMock("live_set return_tracks 2");
+      const trackView = setupTrackViewMock(String(livePath.returnTrack(2)));
 
       const result = select({
         category: "return",
@@ -264,9 +264,9 @@ describe("view", () => {
         category: "regular",
         trackIndex: 3,
         id: "selected_track_123",
-        path: "live_set tracks 3",
+        path: String(livePath.track(3)),
       });
-      const trackView = setupTrackViewMock("live_set tracks 3");
+      const trackView = setupTrackViewMock(String(livePath.track(3)));
 
       const result = select({ instrument: true });
 
@@ -281,9 +281,9 @@ describe("view", () => {
         trackIndex: null,
         returnTrackIndex: 1,
         id: "return_track_123",
-        path: "live_set return_tracks 1",
+        path: String(livePath.returnTrack(1)),
       });
-      const trackView = setupTrackViewMock("live_set return_tracks 1");
+      const trackView = setupTrackViewMock(String(livePath.returnTrack(1)));
 
       const result = select({ instrument: true });
 
@@ -298,9 +298,9 @@ describe("view", () => {
         trackIndex: null,
         returnTrackIndex: null,
         id: "master_track_123",
-        path: "live_set master_track",
+        path: String(livePath.masterTrack()),
       });
-      const trackView = setupTrackViewMock("live_set master_track");
+      const trackView = setupTrackViewMock(String(livePath.masterTrack()));
 
       const result = select({ instrument: true });
 
@@ -310,7 +310,7 @@ describe("view", () => {
 
     it("validates matching track ID and index are accepted", () => {
       registerMockObject("track_id_123", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
       });
 
@@ -367,7 +367,7 @@ describe("view", () => {
           category: "regular",
           trackIndex: 0,
           id: "789",
-          path: "live_set tracks 0",
+          path: String(livePath.track(0)),
         },
         selectedScene: {
           exists: true,
@@ -385,7 +385,7 @@ describe("view", () => {
         },
       });
 
-      setupTrackViewMock("live_set tracks 0", "456"); // with selected device
+      setupTrackViewMock(String(livePath.track(0)), "456"); // with selected device
 
       const result = select();
 
@@ -457,14 +457,14 @@ describe("view", () => {
           category: "return",
           returnTrackIndex: 2,
           id: "return_456",
-          path: "live_set return_tracks 2",
+          path: String(livePath.returnTrack(2)),
         },
         selectedScene: { exists: false },
         selectedClip: { exists: false },
         highlightedClipSlot: { exists: false },
       });
 
-      setupTrackViewMock("live_set return_tracks 2", "789"); // with selected device
+      setupTrackViewMock(String(livePath.returnTrack(2)), "789"); // with selected device
 
       const result = select({});
 
