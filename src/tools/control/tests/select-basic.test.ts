@@ -352,7 +352,7 @@ describe("view", () => {
       );
       const songView = setupSongViewMock();
 
-      setupTrackViewMock(String(livePath.track(0)));
+      setupTrackViewMock(livePath.track(0));
 
       const result = select({ deviceId: `id ${device.id}` });
 
@@ -365,7 +365,7 @@ describe("view", () => {
     });
 
     it("selects instrument on specified track", () => {
-      const trackView = setupTrackViewMock(String(livePath.track(0)));
+      const trackView = setupTrackViewMock(livePath.track(0));
 
       const result = select({
         category: "regular",
@@ -387,7 +387,7 @@ describe("view", () => {
         id: "track_123",
         path: String(livePath.track(1)),
       });
-      const trackView = setupTrackViewMock(String(livePath.track(1)));
+      const trackView = setupTrackViewMock(livePath.track(1));
 
       const result = select({ instrument: true });
 
@@ -407,7 +407,7 @@ describe("view", () => {
 
     it("skips instrument selection when no track is selected", () => {
       setupSelectedTrackMock({ exists: false });
-      const trackView = setupTrackViewMock(String(livePath.track(0)));
+      const trackView = setupTrackViewMock(livePath.track(0));
 
       const result = select({ instrument: true });
 

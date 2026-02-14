@@ -3,7 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -183,14 +183,16 @@ export function setupSessionClipMock(
 
 /**
  * Register track view mock for device selection
- * @param trackPath - Track path (e.g., "live_set tracks 0")
+ * @param trackPathLike - Track path (e.g., "live_set tracks 0")
  * @param selectedDeviceId - Currently selected device ID
  * @returns Registered track view mock
  */
 export function setupTrackViewMock(
-  trackPath: string,
+  trackPathLike: PathLike,
   selectedDeviceId?: string,
 ): RegisteredMockObject {
+  const trackPath = String(trackPathLike);
+
   return registerMockObject(`track-view-${trackPath}`, {
     path: `${trackPath} view`,
     type: "Track.View",

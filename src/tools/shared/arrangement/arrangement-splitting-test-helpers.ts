@@ -138,7 +138,7 @@ interface SplittingCallState {
  */
 export function createSplittingCallMock(): SplittingCallState {
   // Look up the existing track mock (should be registered by setupSplittingClipBaseMocks)
-  const trackMock = lookupMockObject("track_0", String(livePath.track(0)));
+  const trackMock = lookupMockObject("track_0", livePath.track(0));
 
   if (!trackMock) {
     throw new Error(

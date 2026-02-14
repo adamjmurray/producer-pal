@@ -124,10 +124,10 @@ function createCallMock(
  * @returns Registered mock object with instance-level get/set/call mocks
  */
 export function registerMockObject(
-  idOrPath: string,
+  idOrPath: PathLike,
   options: RegisteredMockObjectOptions = {},
 ): RegisteredMockObject {
-  const id = normalizeId(idOrPath);
+  const id = normalizeId(String(idOrPath));
   const path = options.path != null ? String(options.path) : "";
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
   const properties = options.properties ?? {};
@@ -162,7 +162,7 @@ export function registerMockObject(
  */
 export function lookupMockObject(
   id?: string,
-  path?: string,
+  path?: PathLike,
 ): RegisteredMockObject | undefined {
   if (id != null) {
     const byId = registryById.get(id);
@@ -171,7 +171,7 @@ export function lookupMockObject(
   }
 
   if (path != null) {
-    return registryByPath.get(path);
+    return registryByPath.get(String(path));
   }
 
   return undefined;

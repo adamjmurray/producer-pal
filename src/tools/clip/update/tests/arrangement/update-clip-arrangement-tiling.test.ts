@@ -85,7 +85,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject(String(livePath.track(0))), {
+    setupClipProperties(requireMockObject(livePath.track(0)), {
       arrangement_clips: ["id", 789],
     });
 
@@ -153,7 +153,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockObject(String(livePath.track(0))), {
+    setupClipProperties(requireMockObject(livePath.track(0)), {
       arrangement_clips: ["id", 789],
     });
 
@@ -219,7 +219,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockObject(String(livePath.track(0))), {
+    setupClipProperties(requireMockObject(livePath.track(0)), {
       arrangement_clips: ["id", 789],
     });
 
@@ -277,7 +277,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject(String(livePath.track(0))), {
+    setupClipProperties(requireMockObject(livePath.track(0)), {
       arrangement_clips: ["id", 789],
     });
 
@@ -381,7 +381,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject(String(livePath.track(0))), {
+    setupClipProperties(requireMockObject(livePath.track(0)), {
       arrangement_clips: ["id", 789],
     });
 

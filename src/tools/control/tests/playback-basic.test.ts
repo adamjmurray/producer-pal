@@ -116,10 +116,9 @@ describe("transport", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject(
-      String(livePath.track(0).clipSlot(0)),
-      { path: livePath.track(0).clipSlot(0) },
-    );
+    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
 
     const result = playback({
       action: "play-session-clips",
@@ -267,7 +266,7 @@ describe("transport", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const track0 = registerMockObject(String(livePath.track(0)), {
+    const track0 = registerMockObject(livePath.track(0), {
       path: livePath.track(0),
     });
 
@@ -295,13 +294,13 @@ describe("transport", () => {
     registerMockObject("clip3", {
       path: livePath.track(2).clipSlot(2).clip(),
     });
-    const track0 = registerMockObject(String(livePath.track(0)), {
+    const track0 = registerMockObject(livePath.track(0), {
       path: livePath.track(0),
     });
-    const track1 = registerMockObject(String(livePath.track(1)), {
+    const track1 = registerMockObject(livePath.track(1), {
       path: livePath.track(1),
     });
-    const track2 = registerMockObject(String(livePath.track(2)), {
+    const track2 = registerMockObject(livePath.track(2), {
       path: livePath.track(2),
     });
 

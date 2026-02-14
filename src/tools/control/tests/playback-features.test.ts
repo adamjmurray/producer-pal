@@ -159,7 +159,7 @@ describe("transport", () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
-      registerMockObject(String(livePath.track(0).clipSlot(0)), {
+      registerMockObject(livePath.track(0).clipSlot(0), {
         path: livePath.track(0).clipSlot(0),
       });
 

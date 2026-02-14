@@ -206,7 +206,7 @@ describe("mock-registry", () => {
         path: livePath.track(0),
       });
 
-      expect(lookupMockObject(undefined, String(livePath.track(0)))).toBe(mock);
+      expect(lookupMockObject(undefined, livePath.track(0))).toBe(mock);
     });
 
     it("should prefer ID over path", () => {
@@ -219,14 +219,12 @@ describe("mock-registry", () => {
       });
 
       // Lookup with ID "123" should find track0 even if path is for tracks 1
-      expect(lookupMockObject("123", String(livePath.track(1)))).toBe(track0);
+      expect(lookupMockObject("123", livePath.track(1))).toBe(track0);
     });
 
     it("should return undefined for unregistered objects", () => {
       expect(lookupMockObject("999")).toBeUndefined();
-      expect(
-        lookupMockObject(undefined, String(livePath.track(99))),
-      ).toBeUndefined();
+      expect(lookupMockObject(undefined, livePath.track(99))).toBeUndefined();
     });
   });
 

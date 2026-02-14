@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   lookupMockObject,
@@ -19,13 +19,13 @@ export const USE_CALL_FALLBACK = Symbol("USE_CALL_FALLBACK");
  * @param path - Live API path (e.g., "live_set tracks 0")
  * @returns Registered mock object
  */
-export function requireMockObject(path: string): RegisteredMockObject {
+export function requireMockObject(path: PathLike): RegisteredMockObject {
   const mock = lookupMockObject(undefined, path);
 
   expect(mock).toBeDefined();
 
   if (mock == null) {
-    throw new Error(`Expected mock object at path "${path}"`);
+    throw new Error(`Expected mock object at path "${String(path)}"`);
   }
 
   return mock;
@@ -37,7 +37,7 @@ export function requireMockObject(path: string): RegisteredMockObject {
  * @returns Registered track mock
  */
 export function requireMockTrack(trackIndex: number): RegisteredMockObject {
-  return requireMockObject(String(livePath.track(trackIndex)));
+  return requireMockObject(livePath.track(trackIndex));
 }
 
 /**

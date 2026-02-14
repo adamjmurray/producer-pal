@@ -246,7 +246,7 @@ describe("view", () => {
         path: livePath.returnTrack(2),
         type: "Track",
       });
-      const trackView = setupTrackViewMock(String(livePath.returnTrack(2)));
+      const trackView = setupTrackViewMock(livePath.returnTrack(2));
 
       const result = select({
         category: "return",
@@ -266,7 +266,7 @@ describe("view", () => {
         id: "selected_track_123",
         path: String(livePath.track(3)),
       });
-      const trackView = setupTrackViewMock(String(livePath.track(3)));
+      const trackView = setupTrackViewMock(livePath.track(3));
 
       const result = select({ instrument: true });
 
@@ -283,7 +283,7 @@ describe("view", () => {
         id: "return_track_123",
         path: String(livePath.returnTrack(1)),
       });
-      const trackView = setupTrackViewMock(String(livePath.returnTrack(1)));
+      const trackView = setupTrackViewMock(livePath.returnTrack(1));
 
       const result = select({ instrument: true });
 
@@ -300,7 +300,7 @@ describe("view", () => {
         id: "master_track_123",
         path: String(livePath.masterTrack()),
       });
-      const trackView = setupTrackViewMock(String(livePath.masterTrack()));
+      const trackView = setupTrackViewMock(livePath.masterTrack());
 
       const result = select({ instrument: true });
 
@@ -385,7 +385,7 @@ describe("view", () => {
         },
       });
 
-      setupTrackViewMock(String(livePath.track(0)), "456"); // with selected device
+      setupTrackViewMock(livePath.track(0), "456"); // with selected device
 
       const result = select();
 
@@ -464,7 +464,7 @@ describe("view", () => {
         highlightedClipSlot: { exists: false },
       });
 
-      setupTrackViewMock(String(livePath.returnTrack(2)), "789"); // with selected device
+      setupTrackViewMock(livePath.returnTrack(2), "789"); // with selected device
 
       const result = select({});
 
