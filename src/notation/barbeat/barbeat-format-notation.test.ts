@@ -5,6 +5,10 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import type { NoteEvent } from "../types.ts";
+import {
+  drumPatternNotation,
+  drumPatternNotes,
+} from "./barbeat-test-fixtures.ts";
 import { formatNotation } from "./barbeat-format-notation.ts";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.ts";
 
@@ -205,36 +209,9 @@ describe("bar|beat formatNotation()", () => {
   });
 
   it("handles complex drum pattern with probability and velocity range", () => {
-    const notes = [
-      createNote({ pitch: 36, duration: 0.25 }), // C1 (kick)
-      createNote({
-        pitch: 42,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.8,
-        velocity_deviation: 20,
-      }), // Gb1 (hihat)
-      createNote({
-        pitch: 42,
-        start_time: 0.5,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.6,
-        velocity_deviation: 20,
-      }), // Gb1 (hihat)
-      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }), // D1 (snare)
-      createNote({
-        pitch: 42,
-        start_time: 1,
-        duration: 0.25,
-        probability: 0.9,
-      }), // Gb1 (hihat)
-    ] as NoteEvent[];
-    const result = formatNotation(notes);
+    const result = formatNotation(drumPatternNotes);
 
-    expect(result).toBe(
-      "t0.25 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
-    );
+    expect(result).toBe(drumPatternNotation);
   });
 
   it("handles notes with missing probability and velocity_deviation properties", () => {

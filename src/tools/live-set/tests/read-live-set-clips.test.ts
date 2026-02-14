@@ -23,6 +23,35 @@ function setupClipReadMocks(
   });
 }
 
+function midiTrackProps(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    has_midi_input: 1,
+    clip_slots: children("slot1"),
+    arrangement_clips: children("arr_clip1"),
+    devices: [],
+    is_foldable: 0,
+    ...overrides,
+  };
+}
+
+function setupGroupTrackMocks(setName: string): void {
+  setupClipReadMocks(
+    {
+      LiveSet: { name: setName, tracks: children("group_track"), scenes: [] },
+      [String(livePath.track(0))]: {
+        has_midi_input: 1,
+        clip_slots: [],
+        arrangement_clips: [],
+        devices: [],
+        is_foldable: 1,
+      },
+    },
+    { [String(livePath.track(0))]: "group_track" },
+  );
+}
+
 function setupSingleTrackWithClip(setName: string): void {
   setupClipReadMocks(
     {
@@ -31,13 +60,7 @@ function setupSingleTrackWithClip(setName: string): void {
         tracks: children("track1"),
         scenes: [],
       },
-      [String(livePath.track(0))]: {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children("slot1"),
-        arrangement_clips: children("arr_clip1"),
-        devices: [],
-      },
+      [String(livePath.track(0))]: midiTrackProps({ name: "Test Track" }),
       "id slot1": {
         clip: ["id", "clip1"],
       },
@@ -99,15 +122,10 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
+        [String(livePath.track(0))]: midiTrackProps({
           name: "Test Track",
           back_to_arranger: 0,
-          clip_slots: children("slot1"),
-          arrangement_clips: children("arr_clip1"),
-          devices: [],
-          is_foldable: 0,
-        },
+        }),
         [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
@@ -169,13 +187,10 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: [],
         },
-        [String(livePath.track(0))]: {
+        [String(livePath.track(0))]: midiTrackProps({
           has_midi_input: 0,
           clip_slots: [],
-          arrangement_clips: children("arr_clip1"),
-          devices: [],
-          is_foldable: 0,
-        },
+        }),
         [livePath.track(0).arrangementClip(0)]: {
           name: "Arrangement Clip",
           length: 8.0,
@@ -225,13 +240,7 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
-          clip_slots: children("slot1"),
-          arrangement_clips: children("arr_clip1"),
-          devices: [],
-          is_foldable: 0,
-        },
+        [String(livePath.track(0))]: midiTrackProps(),
         [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
@@ -283,15 +292,11 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
+        [String(livePath.track(0))]: midiTrackProps({
           name: "Test Track",
           back_to_arranger: 0,
-          clip_slots: children("slot1"),
           arrangement_clips: [],
-          devices: [],
-          is_foldable: 0,
-        },
+        }),
         [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
@@ -348,23 +353,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns empty array for arrangement clips on group tracks with arrangement-clips requested", () => {
-    setupClipReadMocks(
-      {
-        LiveSet: {
-          name: "Group Track Test",
-          tracks: children("group_track"),
-          scenes: [],
-        },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
-          clip_slots: [],
-          arrangement_clips: [],
-          devices: [],
-          is_foldable: 1, // This is a group track
-        },
-      },
-      { [String(livePath.track(0))]: "group_track" },
-    );
+    setupGroupTrackMocks("Group Track Test");
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
 
@@ -386,23 +375,7 @@ describe("readLiveSet - clips", () => {
   });
 
   it("returns zero count for arrangement clips on group tracks when counting", () => {
-    setupClipReadMocks(
-      {
-        LiveSet: {
-          name: "Group Track Count Test",
-          tracks: children("group_track"),
-          scenes: [],
-        },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
-          clip_slots: [],
-          arrangement_clips: [],
-          devices: [],
-          is_foldable: 1,
-        },
-      },
-      { [String(livePath.track(0))]: "group_track" },
-    );
+    setupGroupTrackMocks("Group Track Count Test");
 
     // Without arrangement-clips, should get count instead of array
     const result = readLiveSet({ include: ["session-clips"] });

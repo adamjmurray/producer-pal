@@ -17,6 +17,46 @@ import {
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
+const SYNTH_DEVICE = {
+  name: "Analog",
+  class_name: "UltraAnalog",
+  class_display_name: "Analog",
+  type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  is_active: 1,
+  can_have_chains: 0,
+  can_have_drum_pads: 0,
+};
+
+const EQ_DEVICE = {
+  name: "EQ Eight",
+  class_name: "Eq8",
+  class_display_name: "EQ Eight",
+  type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  is_active: 1,
+  can_have_chains: 0,
+  can_have_drum_pads: 0,
+};
+
+const REVERB_DEVICE = {
+  name: "Reverb",
+  class_name: "Reverb",
+  class_display_name: "Reverb",
+  type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  is_active: 1,
+  can_have_chains: 0,
+  can_have_drum_pads: 0,
+};
+
+const SIMPLER_DEVICE = {
+  name: "Simpler",
+  class_name: "Simpler",
+  class_display_name: "Simpler",
+  type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  is_active: 1,
+  can_have_chains: 0,
+  can_have_drum_pads: 0,
+};
+
 describe("readLiveSet - basic reading", () => {
   it("returns live set information including tracks and scenes", () => {
     setupLiveSetPathMappedMocks({
@@ -301,33 +341,9 @@ describe("readLiveSet - basic reading", () => {
           name: "Audio Track",
           devices: children("reverb1"),
         },
-        synth1: {
-          name: "Analog",
-          class_name: "UltraAnalog",
-          class_display_name: "Analog",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        eq1: {
-          name: "EQ Eight",
-          class_name: "Eq8",
-          class_display_name: "EQ Eight",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        reverb1: {
-          name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        synth1: SYNTH_DEVICE,
+        eq1: EQ_DEVICE,
+        reverb1: REVERB_DEVICE,
       },
     });
 
@@ -408,24 +424,8 @@ describe("readLiveSet - basic reading", () => {
           solo: 0,
           devices: children("kick_device"),
         },
-        kick_device: {
-          name: "Simpler",
-          class_name: "Simpler",
-          class_display_name: "Simpler",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        reverb1: {
-          name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
+        kick_device: SIMPLER_DEVICE,
+        reverb1: REVERB_DEVICE,
       },
     });
 

@@ -12,6 +12,34 @@ import {
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
+interface LengthMocks {
+  track0: ReturnType<typeof registerMockObject>;
+}
+
+function setupLengthMocks(): LengthMocks {
+  const track0 = registerMockObject("live_set/tracks/0", {
+    path: livePath.track(0),
+    properties: {
+      arrangement_clips: children(livePath.track(0).arrangementClip(0)),
+    },
+    methods: {
+      duplicate_clip_to_arrangement: () => [
+        "id",
+        livePath.track(0).arrangementClip(0),
+      ],
+    },
+  });
+
+  registerMockObject(livePath.track(0).arrangementClip(0), {
+    path: livePath.track(0).arrangementClip(0),
+    properties: { is_arrangement_clip: 1, start_time: 16 },
+  });
+
+  registerMockObject("live_set", { path: livePath.liveSet });
+
+  return { track0 };
+}
+
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", () => {
     registerMockObject("clip1", {
@@ -69,25 +97,7 @@ describe("duplicate - arrangementLength functionality", () => {
       },
     });
 
-    const track0 = registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-      properties: {
-        arrangement_clips: children(livePath.track(0).arrangementClip(0)),
-      },
-      methods: {
-        duplicate_clip_to_arrangement: () => [
-          "id",
-          livePath.track(0).arrangementClip(0),
-        ],
-      },
-    });
-
-    registerMockObject(livePath.track(0).arrangementClip(0), {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 16 },
-    });
-
-    registerMockObject("live_set", { path: livePath.liveSet });
+    const { track0 } = setupLengthMocks();
 
     const result = duplicate({
       type: "clip",
@@ -124,25 +134,7 @@ describe("duplicate - arrangementLength functionality", () => {
       },
     });
 
-    const track0 = registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-      properties: {
-        arrangement_clips: children(livePath.track(0).arrangementClip(0)),
-      },
-      methods: {
-        duplicate_clip_to_arrangement: () => [
-          "id",
-          livePath.track(0).arrangementClip(0),
-        ],
-      },
-    });
-
-    registerMockObject(livePath.track(0).arrangementClip(0), {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 16 },
-    });
-
-    registerMockObject("live_set", { path: livePath.liveSet });
+    const { track0 } = setupLengthMocks();
 
     const result = duplicate({
       type: "clip",
