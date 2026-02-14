@@ -7,10 +7,7 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
-import {
-  type PathLike,
-  livePath,
-} from "#src/test/helpers/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface ClipProps {

@@ -109,8 +109,14 @@ web UI architecture.
   automatically coerces. The MCP SDK validates schemas before our handler runs,
   so coercion must happen at the schema level.
 
-- **Live API**: Use `src/live-api-adapter/live-api-extensions.ts` interface
-  instead of raw `.get("property")?.[0]` calls
+- **Live API**: Always use `src/live-api-adapter/live-api-extensions.ts`
+  interface instead of raw `.get("property")?.[0]` calls
+
+- **Live API paths**: Never hardcode path strings. Use `livePath` from
+  `src/shared/live-api-path-builders.ts` for all Live API paths (e.g.,
+  `livePath.track(i)` not `` `live_set tracks ${i}` ``). `LiveAPI.from()`
+  accepts `PathLike` objects directly. See `dev/Coding-Standards.md` for the
+  full API reference.
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 

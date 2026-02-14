@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
-import type { PathLike } from "#src/test/helpers/live-api-path-builders.ts";
+import type { PathLike } from "#src/shared/live-api-path-builders.ts";
 import {
   MockSequence,
   detectTypeFromPath,

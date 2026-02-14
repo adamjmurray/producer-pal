@@ -6,7 +6,7 @@
 /* eslint-disable no-restricted-syntax -- Infrastructure tests need direct constructor access */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   lookupMockObject,

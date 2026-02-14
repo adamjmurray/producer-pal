@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 

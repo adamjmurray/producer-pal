@@ -3,7 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -126,9 +126,9 @@ export function setupSelectedTrackMock(options?: {
     id = exists ? "selected-track" : "0",
     path = exists
       ? category === "master"
-        ? livePath.masterTrack()
+        ? String(livePath.masterTrack())
         : category === "return"
-          ? livePath.returnTrack(returnTrackIndex ?? 0)
+          ? String(livePath.returnTrack(returnTrackIndex ?? 0))
           : String(livePath.track(trackIndex ?? 0))
       : LIVE_SET_VIEW_SELECTED_TRACK_PATH,
   } = options ?? {};

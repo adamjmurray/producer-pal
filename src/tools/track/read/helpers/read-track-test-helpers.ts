@@ -5,7 +5,7 @@
 /**
  * Test helper functions for read-track tests
  */
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";

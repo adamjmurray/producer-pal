@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
@@ -16,9 +16,9 @@ describe("readLiveSet - track types", () => {
       liveSetId: "live_set_id",
       pathIdMap: {
         [String(livePath.track(0))]: "track1",
-        [livePath.returnTrack(0)]: "return1",
-        [livePath.returnTrack(1)]: "return2",
-        [livePath.masterTrack()]: "master1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.returnTrack(1))]: "return2",
+        [String(livePath.masterTrack())]: "master1",
       },
       objects: {
         LiveSet: {
@@ -34,21 +34,21 @@ describe("readLiveSet - track types", () => {
           arrangement_clips: children(),
           devices: [],
         },
-        [livePath.returnTrack(0)]: {
+        [String(livePath.returnTrack(0))]: {
           has_midi_input: 0,
           name: "Return A",
           clip_slots: children(), // Return tracks don't have clip slots in actual Live
           arrangement_clips: children(),
           devices: [],
         },
-        [livePath.returnTrack(1)]: {
+        [String(livePath.returnTrack(1))]: {
           has_midi_input: 0,
           name: "Return B",
           clip_slots: children(),
           arrangement_clips: children(),
           devices: [],
         },
-        [livePath.masterTrack()]: {
+        [String(livePath.masterTrack())]: {
           has_midi_input: 0,
           name: "Master",
           clip_slots: children(), // Master track doesn't have clip slots in actual Live
@@ -133,8 +133,8 @@ describe("readLiveSet - track types", () => {
       liveSetId: "live_set_id",
       pathIdMap: {
         [String(livePath.track(0))]: "track1",
-        [livePath.returnTrack(0)]: "return1",
-        [livePath.masterTrack()]: "master1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.masterTrack())]: "master1",
         [livePath.scene(0)]: "scene1",
         [String(livePath.track(0).device(0))]: "synth1",
       },
@@ -154,13 +154,13 @@ describe("readLiveSet - track types", () => {
           devices: children("synth1"),
           ...createSimpleRoutingMock(),
         },
-        [livePath.returnTrack(0)]: {
+        [String(livePath.returnTrack(0))]: {
           has_midi_input: 0,
           name: "Return A",
           arrangement_clips: children(),
           devices: [],
         },
-        [livePath.masterTrack()]: {
+        [String(livePath.masterTrack())]: {
           has_midi_input: 0,
           name: "Master",
           arrangement_clips: children(),

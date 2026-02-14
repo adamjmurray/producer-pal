@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/version.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";

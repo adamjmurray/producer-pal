@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
@@ -23,7 +23,7 @@ function setupSingleTrackMixerMock({
       [livePath.track(0).mixerDevice()]: "mixer_1",
       [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
       [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
-      [livePath.masterTrack()]: "master",
+      [String(livePath.masterTrack())]: "master",
     },
     objects: {
       LiveSet: {
@@ -38,13 +38,13 @@ function setupSingleTrackMixerMock({
         clip_slots: [],
         devices: [],
       },
-      [livePath.masterTrack()]: {
+      [String(livePath.masterTrack())]: {
         has_midi_input: 0,
         name: "Master",
         mixer_device: children("master_mixer"),
         devices: [],
       },
-      [`${livePath.masterTrack()} mixer_device`]: {
+      [livePath.masterTrack().mixerDevice()]: {
         volume: children("master_volume"),
         panning: children("master_pan"),
       },
@@ -115,10 +115,10 @@ describe("readLiveSet - mixer properties", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        [livePath.returnTrack(0)]: "return1",
-        [`${livePath.returnTrack(0)} mixer_device`]: "mixer_1",
-        [`${livePath.returnTrack(0)} mixer_device volume`]: "volume_param_1",
-        [`${livePath.returnTrack(0)} mixer_device panning`]: "panning_param_1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [livePath.returnTrack(0).mixerDevice()]: "mixer_1",
+        [`${livePath.returnTrack(0).mixerDevice()} volume`]: "volume_param_1",
+        [`${livePath.returnTrack(0).mixerDevice()} panning`]: "panning_param_1",
       },
       objects: {
         LiveSet: {
@@ -126,14 +126,14 @@ describe("readLiveSet - mixer properties", () => {
           return_tracks: children("return1"),
           scenes: [],
         },
-        [livePath.returnTrack(0)]: {
+        [String(livePath.returnTrack(0))]: {
           has_midi_input: 0,
           name: "Return Track",
           mixer_device: children("mixer_1"),
           clip_slots: [],
           devices: [],
         },
-        [`${livePath.returnTrack(0)} mixer_device`]: {
+        [livePath.returnTrack(0).mixerDevice()]: {
           volume: children("volume_param_1"),
           panning: children("panning_param_1"),
         },
@@ -165,10 +165,10 @@ describe("readLiveSet - mixer properties", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        [livePath.masterTrack()]: "master",
-        [`${livePath.masterTrack()} mixer_device`]: "mixer_1",
-        [`${livePath.masterTrack()} mixer_device volume`]: "volume_param_1",
-        [`${livePath.masterTrack()} mixer_device panning`]: "panning_param_1",
+        [String(livePath.masterTrack())]: "master",
+        [livePath.masterTrack().mixerDevice()]: "mixer_1",
+        [`${livePath.masterTrack().mixerDevice()} volume`]: "volume_param_1",
+        [`${livePath.masterTrack().mixerDevice()} panning`]: "panning_param_1",
       },
       objects: {
         LiveSet: {
@@ -176,13 +176,13 @@ describe("readLiveSet - mixer properties", () => {
           master_track: children("master"),
           scenes: [],
         },
-        [livePath.masterTrack()]: {
+        [String(livePath.masterTrack())]: {
           has_midi_input: 0,
           name: "Master",
           mixer_device: children("mixer_1"),
           devices: [],
         },
-        [`${livePath.masterTrack()} mixer_device`]: {
+        [livePath.masterTrack().mixerDevice()]: {
           volume: children("volume_param_1"),
           panning: children("panning_param_1"),
         },

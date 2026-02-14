@@ -9,7 +9,7 @@ import {
   expectedTrack,
 } from "#src/test/mocks/mock-live-api.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,

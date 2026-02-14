@@ -5,6 +5,7 @@
 
 import { type Mock, vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
+import type { PathLike } from "#src/shared/live-api-path-builders.ts";
 import {
   MockSequence,
   children,
@@ -94,7 +95,7 @@ export class LiveAPI {
    * @param idOrPath - ID or path
    * @returns LiveAPI instance
    */
-  static from(idOrPath: string | string[] | number): LiveAPI {
+  static from(idOrPath: string | string[] | number | PathLike): LiveAPI {
     return new LiveAPI(parseIdOrPath(idOrPath));
   }
 

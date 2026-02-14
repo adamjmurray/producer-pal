@@ -7,7 +7,7 @@
  * Test helper functions for read-clip tests
  */
 import { expect } from "vitest";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,

@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
@@ -34,32 +34,30 @@ describe("deleteObject device deletion", () => {
 
   it("should delete a device from a return track", () => {
     const id = "device_2";
-    const path = `${livePath.returnTrack(0)} devices 1`;
+    const path = String(livePath.returnTrack(0).device(1));
 
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get(livePath.returnTrack(0))?.call).toHaveBeenCalledWith(
-      "delete_device",
-      1,
-    );
+    expect(
+      parents.get(String(livePath.returnTrack(0)))?.call,
+    ).toHaveBeenCalledWith("delete_device", 1);
   });
 
   it("should delete a device from the master track", () => {
     const id = "device_3";
-    const path = `${livePath.masterTrack()} devices 0`;
+    const path = String(livePath.masterTrack().device(0));
 
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get(livePath.masterTrack())?.call).toHaveBeenCalledWith(
-      "delete_device",
-      0,
-    );
+    expect(
+      parents.get(String(livePath.masterTrack()))?.call,
+    ).toHaveBeenCalledWith("delete_device", 0);
   });
 
   it("should delete multiple devices", () => {
