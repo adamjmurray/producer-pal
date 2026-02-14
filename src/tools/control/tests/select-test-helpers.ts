@@ -29,9 +29,9 @@ interface ViewState {
 }
 
 // Constants for Live API paths
-const LIVE_APP_VIEW_PATH = "live_app view";
-const LIVE_SET_VIEW_PATH = "live_set view";
-const LIVE_SET_VIEW_SELECTED_TRACK_PATH = "live_set view selected_track";
+const LIVE_APP_VIEW_PATH = livePath.view.app;
+const LIVE_SET_VIEW_PATH = livePath.view.song;
+const LIVE_SET_VIEW_SELECTED_TRACK_PATH = livePath.view.selectedTrack;
 const DETAIL_CLIP_VIEW_NAME = "Detail/Clip";
 const DETAIL_DEVICE_VIEW_NAME = "Detail/DeviceChain";
 const BROWSER_VIEW_NAME = "Browser";
@@ -262,7 +262,7 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
   const selectedScene = registerMockObject(
     state.selectedScene?.id ?? (sceneExists ? "selected-scene" : "0"),
     {
-      path: "live_set view selected_scene",
+      path: livePath.view.selectedScene,
       type: "Scene",
       properties: {
         sceneIndex: sceneExists ? state.selectedScene?.sceneIndex : null,
@@ -273,7 +273,7 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
   const selectedClip = registerMockObject(
     state.selectedClip?.id ?? (clipExists ? "selected-clip" : "0"),
     {
-      path: "live_set view detail_clip",
+      path: livePath.view.detailClip,
       type: "Clip",
     },
   );
@@ -283,7 +283,7 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
       ? `clipslot-${state.highlightedClipSlot.trackIndex}-${state.highlightedClipSlot.sceneIndex}`
       : "0",
     {
-      path: "live_set view highlighted_clip_slot",
+      path: livePath.view.highlightedClipSlot,
       type: "ClipSlot",
       properties: {
         trackIndex: state.highlightedClipSlot?.exists
