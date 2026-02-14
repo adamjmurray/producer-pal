@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   parseArrangementLength,
@@ -46,7 +48,7 @@ function createMockLiveAPI(
     constructor(path: string) {
       this.path = path;
 
-      if (path === "live_set") {
+      if (path === livePath.liveSet) {
         this._isLiveSet = true;
       }
     }
@@ -87,7 +89,7 @@ describe("duplicate-helpers", () => {
 
     it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         type: "Song",
         properties: {
           signature_numerator: 4,
@@ -95,7 +97,7 @@ describe("duplicate-helpers", () => {
         },
       });
       registerMockObject("456", {
-        path: "live_set tracks 2 arrangement_clips 0",
+        path: livePath.track(2).arrangementClip(0),
         type: "Clip",
         properties: {
           is_arrangement_clip: 1,
@@ -112,7 +114,7 @@ describe("duplicate-helpers", () => {
 
     it("omits trackIndex when specified in omitFields for arrangement clip", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         type: "Song",
         properties: {
           signature_numerator: 4,
@@ -120,7 +122,7 @@ describe("duplicate-helpers", () => {
         },
       });
       registerMockObject("457", {
-        path: "live_set tracks 2 arrangement_clips 0",
+        path: livePath.track(2).arrangementClip(0),
         type: "Clip",
         properties: {
           is_arrangement_clip: 1,
@@ -137,7 +139,7 @@ describe("duplicate-helpers", () => {
 
     it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         type: "Song",
         properties: {
           signature_numerator: 4,
@@ -145,7 +147,7 @@ describe("duplicate-helpers", () => {
         },
       });
       registerMockObject("458", {
-        path: "live_set tracks 2 arrangement_clips 0",
+        path: livePath.track(2).arrangementClip(0),
         type: "Clip",
         properties: {
           is_arrangement_clip: 1,
@@ -164,7 +166,7 @@ describe("duplicate-helpers", () => {
 
     it("returns id, trackIndex, and sceneIndex for session clip", () => {
       registerMockObject("789", {
-        path: "live_set tracks 1 clip_slots 3 clip",
+        path: livePath.track(1).clipSlot(3).clip(),
         type: "Clip",
         properties: {
           is_arrangement_clip: 0,
@@ -195,7 +197,7 @@ describe("duplicate-helpers", () => {
       "omits $omitField when specified in omitFields for session clip",
       ({ omitField, clipId, expectedTrackIndex, expectedSceneIndex }) => {
         registerMockObject(clipId, {
-          path: "live_set tracks 1 clip_slots 3 clip",
+          path: livePath.track(1).clipSlot(3).clip(),
           type: "Clip",
           properties: { is_arrangement_clip: 0 },
         });
