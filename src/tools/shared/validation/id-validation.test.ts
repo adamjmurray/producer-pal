@@ -31,7 +31,7 @@ describe("validateIdType", () => {
     expect(result.type).toBe("Track");
   });
 
-  it("should be case-insensitive for type matching", () => {
+  it("should reject mismatched case for expected type", () => {
     const id = "track_1";
 
     registerMockObject(id, {
@@ -39,10 +39,10 @@ describe("validateIdType", () => {
       type: "Track",
     });
 
-    // Should work with lowercase, uppercase, mixed case
+    // Tool-level types must be exact lowercase
     expect(() => validateIdType(id, "track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "Track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "TRACK", "testTool")).not.toThrow();
+    expect(() => validateIdType(id, "Track", "testTool")).toThrow();
+    expect(() => validateIdType(id, "TRACK", "testTool")).toThrow();
   });
 
   it("should throw error when ID does not exist", () => {
