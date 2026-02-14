@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
@@ -19,12 +20,12 @@ describe("createClip - audio clips", () => {
   describe("validation", () => {
     it("should throw error when both sampleFile and notes are provided", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
       registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
+        path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
       });
 
@@ -116,7 +117,7 @@ describe("createClip - audio clips", () => {
 
     it("should create multiple audio clips in successive scenes", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,
@@ -124,25 +125,25 @@ describe("createClip - audio clips", () => {
         },
       });
 
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
 
       const clipSlot0 = registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
+        path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
       });
 
       const clipSlot1 = registerMockObject("clip-slot-0-1", {
-        path: "live_set tracks 0 clip_slots 1",
+        path: livePath.track(0).clipSlot(1),
         properties: { has_clip: 0 },
       });
 
       registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
         properties: { length: 4 },
       });
 
       registerMockObject("audio_clip_0_1", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
         properties: { length: 4 },
       });
 
@@ -182,7 +183,7 @@ describe("createClip - audio clips", () => {
 
     it("should auto-create scenes for audio clips when needed", async () => {
       const liveSet = registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,
@@ -190,15 +191,15 @@ describe("createClip - audio clips", () => {
         },
       });
 
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
 
       const clipSlot = registerMockObject("clip-slot-0-1", {
-        path: "live_set tracks 0 clip_slots 1",
+        path: livePath.track(0).clipSlot(1),
         properties: { has_clip: 0 },
       });
 
       registerMockObject("audio_clip_0_1", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
         properties: { length: 4 },
       });
 
@@ -224,10 +225,10 @@ describe("createClip - audio clips", () => {
 
     it("should emit warning and return empty array when scene index exceeds maximum", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
@@ -310,11 +311,11 @@ describe("createClip - audio clips", () => {
       let clipCounter = 0;
 
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
       const track = registerMockObject("track-0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           create_audio_clip: () => [
             "id",
@@ -384,10 +385,10 @@ describe("createClip - audio clips", () => {
 
     it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       // Runtime errors during clip creation are now warnings, not fatal errors
@@ -406,7 +407,7 @@ describe("createClip - audio clips", () => {
       mockNonExistentObjects();
 
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
 
@@ -422,11 +423,11 @@ describe("createClip - audio clips", () => {
 
     it("should emit warning and return empty array when audio clip creation fails", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { signature_numerator: 4, signature_denominator: 4 },
       });
       registerMockObject("track-0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           create_audio_clip: () => ["id", "0"], // Return invalid clip reference
         },
@@ -466,28 +467,28 @@ describe("createClip - audio clips", () => {
 
     it("should report same length for multiple clips from same sample", async () => {
       registerMockObject("live-set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,
           scenes: children("scene_0", "scene_1"),
         },
       });
-      registerMockObject("track-0", { path: "live_set tracks 0" });
+      registerMockObject("track-0", { path: livePath.track(0) });
       registerMockObject("clip-slot-0-0", {
-        path: "live_set tracks 0 clip_slots 0",
+        path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
       });
       registerMockObject("clip-slot-0-1", {
-        path: "live_set tracks 0 clip_slots 1",
+        path: livePath.track(0).clipSlot(1),
         properties: { has_clip: 0 },
       });
       registerMockObject("audio_clip_0_0", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
         properties: { length: 8 },
       });
       registerMockObject("audio_clip_0_1", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
         properties: { length: 8 },
       });
 

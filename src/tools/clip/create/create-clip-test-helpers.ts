@@ -24,7 +24,7 @@ export interface ArrangementClipMockHandles {
  */
 export function setupArrangementClipMocks(): ArrangementClipMockHandles {
   const liveSet = registerMockObject("live-set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: { signature_numerator: 4, signature_denominator: 4 },
   });
 
@@ -121,7 +121,7 @@ export function setupSessionAudioClipMocks(
   const { sceneIds = ["scene_0"], clipLength = 8, hasClip = 0 } = options;
 
   const liveSet = registerMockObject("live-set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
@@ -161,7 +161,7 @@ export function setupAudioArrangementClipMocks(
   const { clipLength = 8 } = options;
 
   const liveSet = registerMockObject("live-set", {
-    path: "live_set",
+    path: livePath.liveSet,
     properties: { signature_numerator: 4, signature_denominator: 4 },
   });
 
