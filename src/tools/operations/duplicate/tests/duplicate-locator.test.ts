@@ -13,11 +13,12 @@ import {
   registerClipSlot,
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
     it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
         duplicate({
@@ -31,7 +32,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
         duplicate({
@@ -47,7 +48,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
         duplicate({
@@ -63,7 +64,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
         duplicate({
@@ -81,11 +82,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("scene duplication with locator", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       // Mock scene with one clip
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1"),
@@ -96,18 +97,18 @@ describe("duplicate - locator-based arrangement positioning", () => {
       registerMockObject("cue1", { properties: { time: 16, name: "Verse" } });
 
       const track0 = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           duplicate_clip_to_arrangement: () => [
             "id",
-            "live_set tracks 0 arrangement_clips 0",
+            livePath.track(0).arrangementClip(0),
           ],
           get_notes_extended: () => JSON.stringify({ notes: [] }),
         },
       });
 
       registerMockObject("live_set tracks 0 arrangement_clips 0", {
-        path: "live_set tracks 0 arrangement_clips 0",
+        path: livePath.track(0).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 16 },
       });
 
@@ -130,10 +131,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
 
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1", "cue2"),
@@ -145,18 +146,18 @@ describe("duplicate - locator-based arrangement positioning", () => {
       registerMockObject("cue2", { properties: { time: 32, name: "Chorus" } });
 
       const track0 = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           duplicate_clip_to_arrangement: () => [
             "id",
-            "live_set tracks 0 arrangement_clips 0",
+            livePath.track(0).arrangementClip(0),
           ],
           get_notes_extended: () => JSON.stringify({ notes: [] }),
         },
       });
 
       registerMockObject("live_set tracks 0 arrangement_clips 0", {
-        path: "live_set tracks 0 arrangement_clips 0",
+        path: livePath.track(0).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 32 },
       });
 
@@ -185,18 +186,18 @@ describe("duplicate - locator-based arrangement positioning", () => {
      */
     function setupLocatorDuplicationMocks(): RegisteredMockObject {
       registerMockObject("clip1", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
       });
 
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: children("track0"),
           cue_points: children("cue0", "cue1"),
         },
       });
       registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
         properties: createStandardMidiClipMock({
           length: 4,
           name: "Test Clip",
@@ -206,18 +207,18 @@ describe("duplicate - locator-based arrangement positioning", () => {
       registerMockObject("cue1", { properties: { time: 8, name: "Drop" } });
 
       const track0 = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           duplicate_clip_to_arrangement: () => [
             "id",
-            "live_set tracks 0 arrangement_clips 0",
+            livePath.track(0).arrangementClip(0),
           ],
           get_notes_extended: () => JSON.stringify({ notes: [] }),
         },
       });
 
       registerMockObject("live_set tracks 0 arrangement_clips 0", {
-        path: "live_set tracks 0 arrangement_clips 0",
+        path: livePath.track(0).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 8 },
       });
 
@@ -268,9 +269,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
   describe("error handling", () => {
     /** Helper to set up common mocks for error handling tests */
     function setupErrorHandlingMocks(): void {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: children("track0"),
           cue_points: children("cue0"),
