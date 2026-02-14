@@ -28,18 +28,18 @@ describe("updateDevice - wrapInRack", () => {
     // Audio effects on track 0
     registerMockObject("device-0", {
       path: livePath.track(0).device(0),
-      type: "AudioEffectDevice",
+      type: "RackDevice",
       properties: { type: 2 },
     });
     registerMockObject("device-1", {
       path: livePath.track(0).device(1),
-      type: "AudioEffectDevice",
+      type: "RackDevice",
       properties: { type: 2 },
     });
     // MIDI effect
     registerMockObject("device-2", {
       path: livePath.track(0).device(2),
-      type: "MidiEffectDevice",
+      type: "RackDevice",
       properties: { type: 4 },
     });
 
@@ -148,12 +148,12 @@ describe("updateDevice - wrapInRack", () => {
       // Instrument devices
       registerMockObject("device-3", {
         path: livePath.track(0).device(3),
-        type: "InstrumentDevice",
+        type: "RackDevice",
         properties: { type: 1 },
       });
       registerMockObject("device-4", {
         path: livePath.track(0).device(4),
-        type: "InstrumentDevice",
+        type: "RackDevice",
         properties: { type: 1 },
       });
 
@@ -373,7 +373,7 @@ describe("updateDevice - wrapInRack", () => {
   it("should warn and return null when device type is unrecognized", () => {
     registerMockObject("device-0", {
       path: livePath.track(0).device(0),
-      type: "UnknownDevice",
+      type: "Device",
       properties: { type: 0 },
     });
 

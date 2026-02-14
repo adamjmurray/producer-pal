@@ -7,10 +7,11 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface SetupMockOptions {
   path?: string;
-  type?: string;
+  type?: LiveObjectType;
   properties?: Record<string, unknown>;
   methods?: Record<string, (...args: unknown[]) => unknown>;
 }

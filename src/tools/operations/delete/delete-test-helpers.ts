@@ -8,6 +8,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface DrumChainConfig {
   devicePath: string;
@@ -47,7 +48,7 @@ function extractDeviceParentPath(devicePath: string): string | null {
  */
 export function setupEntityMocks(
   idToPathMap: Record<string, string>,
-  entityType: string,
+  entityType: LiveObjectType,
 ): Map<string, RegisteredMockObject> {
   const handles = new Map<string, RegisteredMockObject>();
 
@@ -91,7 +92,7 @@ export function setupSceneMocks(
 export function setupDeviceMocks(
   deviceIds: string | string[],
   pathOrMap: string | Record<string, string>,
-  type: string = "Device",
+  type: LiveObjectType = "Device",
 ): DeviceMockResult {
   const ids = Array.isArray(deviceIds) ? deviceIds : [deviceIds];
   // ids always has at least one element since deviceIds is string | string[]
@@ -160,7 +161,7 @@ export function setupDrumChainMocks({
 } {
   const drumRack = registerMockObject(drumRackId, {
     path: devicePath,
-    type: "DrumGroupDevice",
+    type: "RackDevice",
     properties: {
       chains: children(chainId),
       can_have_drum_pads: 1,

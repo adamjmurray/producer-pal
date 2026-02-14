@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -17,7 +18,7 @@ import {
 interface ChainProperties {
   [chainId: string]: {
     inNote?: number;
-    type?: string;
+    type?: LiveObjectType;
     deviceIds?: string[];
   };
 }
@@ -238,7 +239,7 @@ describe("device-path-helpers", () => {
 
       registerMockObject(nestedRackId, {
         path: nestedPath,
-        type: "DrumGroupDevice",
+        type: "RackDevice",
         properties: { chains: ["id", nestedChainId] },
       });
 
@@ -273,7 +274,7 @@ describe("device-path-helpers", () => {
 
       registerMockObject("drum-rack", {
         path: "live_set tracks 1 devices 0",
-        type: "DrumGroupDevice",
+        type: "RackDevice",
         properties: { chains: ["id", drumChainId] },
       });
 
@@ -283,7 +284,7 @@ describe("device-path-helpers", () => {
       });
 
       registerMockObject(instrRackId, {
-        type: "InstrumentGroupDevice",
+        type: "RackDevice",
         properties: { chains: ["id", rackChainId] },
       });
 
@@ -419,7 +420,7 @@ describe("device-path-helpers", () => {
 
       const deviceMock = registerMockObject("drum-rack-1", {
         path: "live_set tracks 0 devices 0",
-        type: "DrumGroupDevice",
+        type: "RackDevice",
         properties: { chains: chainIdArray },
         methods: includeCreationMocks
           ? {

@@ -5,6 +5,7 @@
 
 import { type Mock, vi } from "vitest";
 import type { PathLike } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   MockSequence,
   detectTypeFromPath,
@@ -15,7 +16,7 @@ export interface RegisteredMockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
   path?: PathLike;
   /** Type override (e.g., "Track", "Clip"). Auto-detected from path if omitted. */
-  type?: string;
+  type?: LiveObjectType;
   /** Property overrides for get() calls, keyed by property name */
   properties?: Record<string, unknown>;
   /** Method implementations for call() dispatch, keyed by method name */
@@ -40,7 +41,7 @@ export interface RegisteredMockObject {
   /** The path (e.g., "live_set tracks 0") */
   path: string;
   /** The Live API type (e.g., "Track") */
-  type: string;
+  type: LiveObjectType;
   /** Property overrides to be copied onto LiveAPI instances */
   properties: Record<string, unknown>;
   /** Path to return from .path getter (overrides path if set) */
@@ -69,7 +70,7 @@ function normalizeId(idOrPath: string): string {
  */
 function createGetMock(
   properties: Record<string, unknown>,
-  type: string,
+  type: LiveObjectType,
   path: string,
 ): Mock {
   const callCounts: Record<string, number> = {};
@@ -129,7 +130,7 @@ export function registerMockObject(
 ): RegisteredMockObject {
   const id = normalizeId(String(idOrPath));
   const path = options.path != null ? String(options.path) : "";
-  const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
+  const type = options.type ?? (path ? detectTypeFromPath(path) : "Device");
   const properties = options.properties ?? {};
   const methods = options.methods ?? {};
   const returnPath = options.returnPath;

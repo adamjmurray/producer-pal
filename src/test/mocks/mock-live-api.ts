@@ -6,6 +6,7 @@
 import { type Mock, vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
 import type { PathLike } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   MockSequence,
   children,
@@ -27,7 +28,7 @@ export interface MockLiveAPIContext {
   _registered?: RegisteredMockObject;
   path?: string;
   id?: string;
-  type?: string;
+  type?: LiveObjectType;
 }
 
 export class LiveAPI {
@@ -165,7 +166,7 @@ export class LiveAPI {
     return result[0];
   }
 
-  get type(): string {
+  get type(): LiveObjectType {
     if (this._registered) return this._registered.type;
 
     return detectTypeFromPath(this.path, this._id);

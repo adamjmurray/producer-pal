@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -159,7 +160,7 @@ describe("updateDevice with path parameter", () => {
       mute?: number;
       solo?: number;
       deviceIds?: string[];
-      type?: string;
+      type?: LiveObjectType;
     }
     interface DeviceProps {
       name?: string;

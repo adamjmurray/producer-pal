@@ -60,16 +60,16 @@ describe("mock-registry", () => {
     it("should use explicit type override when provided", () => {
       const mock = registerMockObject("1", {
         path: livePath.track(0),
-        type: "ReturnTrack",
+        type: "Track",
       });
 
-      expect(mock.type).toBe("ReturnTrack");
+      expect(mock.type).toBe("Track");
     });
 
-    it("should return 'Unknown' type when no path or type is provided", () => {
+    it("should return 'Device' type when no path or type is provided", () => {
       const mock = registerMockObject("1");
 
-      expect(mock.type).toBe("Unknown");
+      expect(mock.type).toBe("Device");
     });
   });
 

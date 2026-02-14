@@ -8,7 +8,10 @@ import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
   setupDrumChainMocks,
@@ -214,6 +217,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should skip invalid paths and continue with valid ones", () => {
+      mockNonExistentObjects();
       setupDeviceMocks("valid_dev", String(livePath.track(0).device(0)));
 
       const result = deleteObject({ path: "t0/d0, t99/d99", type: "device" });
@@ -226,6 +230,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should return empty array when all paths are invalid", () => {
+      mockNonExistentObjects(); // Unregistered paths should not exist
       const result = deleteObject({ path: "t99/d99", type: "device" });
 
       expect(result).toStrictEqual([]);
@@ -255,7 +260,7 @@ describe("deleteObject device deletion", () => {
 
       registerMockObject("drum-rack", {
         path: drumRackPath,
-        type: "DrumGroupDevice",
+        type: "RackDevice",
         properties: {
           chains: children(chainId),
           can_have_drum_pads: 1,
@@ -398,11 +403,10 @@ describe("deleteObject device deletion", () => {
     it("should warn when path resolves to device instead of drum-pad", () => {
       const consoleSpy = vi.spyOn(console, "warn");
 
-      // Path 0/0 resolves to device, not drum-pad - this results in no valid IDs
-      expect(() => deleteObject({ path: "t0/d0", type: "drum-pad" })).toThrow(
-        "delete failed: ids or path is required",
-      );
+      // Path t0/d0 resolves to device, not drum-pad - returns empty results
+      const result = deleteObject({ path: "t0/d0", type: "drum-pad" });
 
+      expect(result).toStrictEqual([]);
       expect(consoleSpy).toHaveBeenCalledWith(
         'delete: path "t0/d0" resolves to device, not drum-pad',
       );

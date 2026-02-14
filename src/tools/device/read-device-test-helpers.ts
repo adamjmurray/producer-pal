@@ -7,6 +7,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface PadProps {
   note?: number;
@@ -24,7 +25,7 @@ interface ChainProps {
   out_note?: number;
   color?: number;
   deviceIds?: string[];
-  type?: string;
+  type?: LiveObjectType;
 }
 
 interface DeviceProps {
@@ -333,7 +334,7 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
   if (is_collapsed !== undefined) {
     viewMock = registerMockObject(`view-${id}`, {
       path: viewIdPath,
-      type: "View",
+      type: "Device.View",
       properties: {
         is_collapsed,
       },

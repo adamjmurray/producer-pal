@@ -9,6 +9,7 @@
 import { vi } from "vitest";
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface ClipProps {
   looping?: number;
@@ -21,7 +22,7 @@ interface ClipProps {
 
 interface RegisterOptions {
   path?: PathLike;
-  type?: string;
+  type?: LiveObjectType;
   properties?: Record<string, unknown>;
 }
 

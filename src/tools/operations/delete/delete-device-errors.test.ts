@@ -19,7 +19,7 @@ describe("deleteObject device path error cases", () => {
 
     registerMockObject("drum-rack", {
       path: drumRackPath,
-      type: "DrumGroupDevice",
+      type: "RackDevice",
       properties: {
         chains: children(chainId),
         can_have_drum_pads: 1,
@@ -36,10 +36,9 @@ describe("deleteObject device path error cases", () => {
     });
 
     // Path goes to drum pad chain, then asks for device 0 which doesn't exist
-    expect(() =>
-      deleteObject({ path: "t0/d0/pC1/c0/d0", type: "device" }),
-    ).toThrow("delete failed: ids or path is required");
+    const result = deleteObject({ path: "t0/d0/pC1/c0/d0", type: "device" });
 
+    expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: device at path "t0/d0/pC1/c0/d0" does not exist',
     );
@@ -60,10 +59,9 @@ describe("deleteObject device path error cases", () => {
     });
 
     // Path t0/d0/c0 resolves to chain, not device
-    expect(() => deleteObject({ path: "t0/d0/c0", type: "device" })).toThrow(
-      "delete failed: ids or path is required",
-    );
+    const result = deleteObject({ path: "t0/d0/c0", type: "device" });
 
+    expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/c0" resolves to chain, not device',
     );
@@ -74,10 +72,9 @@ describe("deleteObject device path error cases", () => {
 
     // Path with invalid format that causes resolvePathToLiveApi to throw
     // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
-    expect(() => deleteObject({ path: "t0/d0/p", type: "device" })).toThrow(
-      "delete failed: ids or path is required",
-    );
+    const result = deleteObject({ path: "t0/d0/p", type: "device" });
 
+    expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
       "delete: Invalid drum pad note in path: t0/d0/p",
     );
@@ -89,10 +86,9 @@ describe("deleteObject device path error cases", () => {
     // Register as non-existent (id "0" makes exists() return false)
     registerMockObject("0", { path: livePath.track(0).device(0) });
 
-    expect(() => deleteObject({ path: "t0/d0", type: "device" })).toThrow(
-      "delete failed: ids or path is required",
-    );
+    const result = deleteObject({ path: "t0/d0", type: "device" });
 
+    expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: device at path "t0/d0" does not exist',
     );

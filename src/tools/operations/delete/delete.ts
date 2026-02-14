@@ -75,7 +75,11 @@ export function deleteObject(
   }
 
   if (objectIds.length === 0) {
-    throw new Error("delete failed: ids or path is required");
+    if (!ids && !path) {
+      throw new Error("delete failed: ids or path is required");
+    }
+
+    return [];
   }
 
   const deletedObjects: DeleteResult[] = [];

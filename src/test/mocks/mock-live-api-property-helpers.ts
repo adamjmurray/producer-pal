@@ -3,10 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
+
 export class MockSequence extends Array<unknown> {}
 
 // Exact path → type mappings
-const EXACT_PATH_TYPES = new Map<string, string>([
+const EXACT_PATH_TYPES = new Map<string, LiveObjectType>([
   ["live_set", "Song"],
   ["live_set view", "Song.View"],
   ["live_app", "Application"],
@@ -20,7 +22,7 @@ const EXACT_PATH_TYPES = new Map<string, string>([
 
 // Regex patterns matched against the full path or path suffix.
 // Order matters: more specific patterns (clip_slots \d+ clip) before less specific (clip_slots \d+).
-const PATH_PATTERNS: [RegExp, string][] = [
+const PATH_PATTERNS: [RegExp, LiveObjectType][] = [
   [/^live_set (?:return_)?tracks \d+$/, "Track"],
   [/^live_set scenes \d+$/, "Scene"],
   [/^live_set cue_points \d+$/, "CuePoint"],
@@ -41,9 +43,9 @@ const PATH_PATTERNS: [RegExp, string][] = [
  * Detect Live API type from path using standard Live API path patterns.
  * @param path - Live API object path
  * @param id - Optional bare ID for chain detection
- * @returns Detected type string
+ * @returns Detected Live API object type
  */
-export function detectTypeFromPath(path: string, id?: string): string {
+export function detectTypeFromPath(path: string, id?: string): LiveObjectType {
   const exactMatch = EXACT_PATH_TYPES.get(path);
 
   if (exactMatch) return exactMatch;
@@ -55,7 +57,7 @@ export function detectTypeFromPath(path: string, id?: string): string {
   // Chain detection (broad match - after more specific terminal patterns)
   if (path.includes("chain") || id?.includes("chain")) return "Chain";
 
-  return `TODO: Unknown type for path: "${path}"`;
+  return "Device";
 }
 
 /**
@@ -248,7 +250,7 @@ function getDeviceParameterProperty(prop: string): unknown[] | null {
  * @returns Mock property value
  */
 export function getPropertyByType(
-  type: string,
+  type: LiveObjectType,
   prop: string,
   _path: string,
 ): unknown[] | null {

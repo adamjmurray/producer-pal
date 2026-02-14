@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type { PathLike } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 
 /**
  * Type declarations for Max for Live's LiveAPI class and custom extensions.
@@ -29,7 +30,7 @@ declare global {
     readonly path: string;
 
     /** The type of the Live object (e.g., "Track", "Clip", "Device") */
-    readonly type: string;
+    readonly type: LiveObjectType;
 
     /** Get a property value from the Live object (returns array) */
     get(property: string): unknown[];

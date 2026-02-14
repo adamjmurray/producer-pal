@@ -435,7 +435,7 @@ describe("device-path-helpers", () => {
 
       registerMockObject("drum-rack", {
         path: "live_set tracks 0 devices 0",
-        type: "DrumGroupDevice",
+        type: "RackDevice",
         properties: {
           chains: ["id", drumChainId],
         },

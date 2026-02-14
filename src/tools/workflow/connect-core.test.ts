@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import { VERSION } from "#src/shared/version.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -183,7 +184,7 @@ function registerWithTracking(
   id: string,
   options: {
     path?: string;
-    type?: string;
+    type?: LiveObjectType;
     properties?: Record<string, unknown>;
     methods?: Record<string, (...args: unknown[]) => unknown>;
   },

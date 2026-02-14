@@ -91,7 +91,7 @@ describe("validateIdType", () => {
       "PluginDevice",
       "RackDevice",
       "MixerDevice",
-    ];
+    ] as const;
 
     for (const subclass of deviceSubclasses) {
       vi.clearAllMocks();
