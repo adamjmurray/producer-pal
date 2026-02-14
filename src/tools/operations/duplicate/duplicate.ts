@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
@@ -274,7 +275,7 @@ function duplicateSceneToArrangementView(
   context: Partial<ToolContext>,
 ): object {
   // All arrangement operations need song time signature for bar|beat conversion
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",
   ) as number;

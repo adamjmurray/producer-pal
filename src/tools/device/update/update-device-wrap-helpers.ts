@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -96,7 +97,7 @@ export function wrapDevicesInRack({
     rack.set("name", name);
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   for (let i = 0; i < devices.length; i++) {
     const device = assertDefined(devices[i], `device at index ${i}`);
@@ -251,7 +252,7 @@ function wrapInstrumentsInRack(
   toPath?: string,
   name?: string,
 ): WrapResult {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const firstDevice = assertDefined(devices[0], "first device");
 
   // 1. Get source track from first instrument

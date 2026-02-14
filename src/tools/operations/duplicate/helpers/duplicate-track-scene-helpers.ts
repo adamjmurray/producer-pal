@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
@@ -212,7 +213,7 @@ export function duplicateTrack(
   routeToSource?: boolean,
   sourceTrackIndex?: number,
 ): { id: string; trackIndex: number; clips: MinimalClipInfo[] } {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
 
@@ -252,7 +253,7 @@ export function duplicateScene(
   name?: string,
   withoutClips?: boolean,
 ): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_scene", sceneIndex);
 
@@ -293,7 +294,7 @@ export function duplicateScene(
  * @returns Length in Ableton beats
  */
 export function calculateSceneLength(sceneIndex: number): number {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
 
   let maxLength = 4; // Default minimum scene length
@@ -356,7 +357,7 @@ export function duplicateSceneToArrangement(
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
 
   const duplicatedClips: MinimalClipInfo[] = [];

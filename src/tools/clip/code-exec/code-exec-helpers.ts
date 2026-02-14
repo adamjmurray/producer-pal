@@ -10,6 +10,7 @@
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
 import type { NoteEvent } from "#src/notation/types.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import type {
@@ -303,7 +304,7 @@ function buildLocationContext(
 }
 
 function buildLiveSetContext(): CodeLiveSetContext {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   const tempo = liveSet.getProperty("tempo") as number;
   const sigNum = liveSet.getProperty("signature_numerator") as number;

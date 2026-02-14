@@ -6,6 +6,7 @@ import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-int
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -140,7 +141,7 @@ export async function createClip(
     throw new Error(`createClip failed: track ${trackIndex} does not exist`);
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   // Get song time signature for arrangementStart conversion
   const songTimeSigNumerator = liveSet.getProperty(

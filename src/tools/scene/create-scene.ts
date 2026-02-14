@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
 import { captureScene } from "./capture-scene.ts";
@@ -82,7 +83,7 @@ export function createScene(
   // After validation, sceneIndex is guaranteed to be a number
   const validatedSceneIndex = sceneIndex as number;
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   ensureSceneCountForIndex(liveSet, validatedSceneIndex);
 

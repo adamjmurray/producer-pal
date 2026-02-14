@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createAudioClipInSession,
   tileClipToRange,
@@ -108,7 +109,7 @@ export function handleArrangementLengthening({
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
@@ -337,7 +338,7 @@ export function handleArrangementShortening({
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Create temporary clip to truncate
   truncateWithTempClip({

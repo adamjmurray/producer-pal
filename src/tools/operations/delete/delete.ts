@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
@@ -118,7 +119,7 @@ function deleteTrackObject(id: string, object: LiveAPI): void {
 
   if (returnMatch) {
     const returnTrackIndex = Number(returnMatch[1]);
-    const liveSet = LiveAPI.from("live_set");
+    const liveSet = LiveAPI.from(livePath.liveSet);
 
     liveSet.call("delete_return_track", returnTrackIndex);
 
@@ -142,7 +143,7 @@ function deleteTrackObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_track", trackIndex);
 }
@@ -161,7 +162,7 @@ function deleteSceneObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_scene", sceneIndex);
 }

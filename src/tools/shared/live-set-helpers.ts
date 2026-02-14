@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+
 export interface TimeSignature {
   numerator: number;
   denominator: number;
@@ -12,7 +14,7 @@ export interface TimeSignature {
  * @returns Time signature components
  */
 export function parseSongTimeSignature(): TimeSignature {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   return {
     numerator: liveSet.getProperty("signature_numerator") as number,

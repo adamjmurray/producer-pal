@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface CapturedClip {
@@ -31,8 +32,8 @@ export function captureScene({
   sceneIndex,
   name,
 }: CaptureSceneArgs = {}): CaptureSceneResult {
-  const liveSet = LiveAPI.from("live_set");
-  const appView = LiveAPI.from("live_set view");
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const appView = LiveAPI.from(livePath.view.song);
 
   if (sceneIndex != null) {
     const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
@@ -40,7 +41,7 @@ export function captureScene({
     appView.set("selected_scene", toLiveApiId(scene.id));
   }
 
-  const selectedScene = LiveAPI.from("live_set view selected_scene");
+  const selectedScene = LiveAPI.from(livePath.view.selectedScene);
   const selectedSceneIndex = Number.parseInt(
     selectedScene.path.match(/live_set scenes (\d+)/)?.[1] ?? "",
   );

@@ -26,62 +26,34 @@ module and adopted everywhere.
 
 ---
 
-## Phase 1: Production Source Code (~65 instances, ~26 files)
+## Phase 1: Production Source Code (~65 instances, ~30 files) — DONE
 
-Replace hardcoded path strings in production source files. This is higher
-priority than tests since production path bugs are real bugs.
+All hardcoded path strings in production source files replaced with `livePath`
+builders across 3 batches (1a, 1b, 1c).
 
-**All batches are fully parallel-safe — no file overlaps.**
+### Batch 1a: Path Construction + View Paths (~31 instances, 6 files) — DONE
 
-### Batch 1a: Path Construction + View Paths (~31 instances, 7 files)
+Adopted `livePath` builders in `select-helpers.ts`, `select.ts`,
+`device-path-to-live-api.ts`, `device-path-helpers.ts`,
+`device-chain-creation-helpers.ts`, and `read-track.ts`.
 
-Files that _construct_ paths from indices, plus view/app paths in the same
-files:
+### Batch 1b: Clip Slot / Arrangement Paths (~15 instances, 6 files) — DONE
 
-- `src/tools/control/select-helpers.ts` — `buildTrackPath()`, scene paths, and
-  view paths (14 instances)
-- `src/tools/control/select.ts` — `live_set view`, `live_app view`, etc. (5)
-- `src/tools/shared/device/helpers/path/device-path-to-live-api.ts` — track path
-  construction (3)
-- `src/tools/shared/device/helpers/path/device-path-helpers.ts` — track
-  resolution (3)
-- `src/tools/shared/device/helpers/device-chain-creation-helpers.ts` —
-  `resolveTrackPath()` (3)
-- `src/tools/track/read/read-track.ts` — track path construction (3)
+Adopted `livePath` builders in `arrangement-tiling.ts`,
+`arrangement-splitting.ts`, `playback.ts`, `clip-result-helpers.ts`,
+`read-track-helpers.ts`, and `duplicate-helpers.ts`. Updated custom test mocks
+in `duplicate-helpers.test.ts` to accept `PathLike`.
 
-### Batch 1b: Clip Slot / Arrangement Paths (~15 instances, 6 files)
+### Batch 1c: Simple `LiveAPI.from("live_set")` + View Paths (~33 instances, 18 files) — DONE
 
-Template literals building `tracks X clip_slots Y` paths:
-
-- `src/tools/shared/arrangement/arrangement-tiling.ts` (3)
-- `src/tools/shared/arrangement/arrangement-splitting.ts` (2)
-- `src/tools/control/playback.ts` (2)
-- `src/tools/clip/helpers/clip-result-helpers.ts` (1)
-- `src/tools/track/read/helpers/read-track-helpers.ts` (3)
-- `src/tools/operations/duplicate/helpers/duplicate-helpers.ts` (4)
-
-### Batch 1c: Simple `LiveAPI.from("live_set")` + View Paths (~33 instances, 17 files)
-
-`LiveAPI.from("live_set")` → `livePath.liveSet`, plus view paths in
-`capture-scene.ts`:
-
-- `src/tools/clip/create/create-clip.ts`
-- `src/tools/clip/read/helpers/read-clip-helpers.ts`
-- `src/tools/clip/code-exec/code-exec-helpers.ts`
-- `src/tools/clip/update/helpers/update-clip-quantization-helpers.ts`
-- `src/tools/clip/arrangement/helpers/arrangement-operations-helpers.ts`
-- `src/tools/device/update/update-device-wrap-helpers.ts`
-- `src/tools/device/update/update-device-helpers.ts`
-- `src/tools/live-set/read-live-set.ts`
-- `src/tools/live-set/update-live-set.ts`
-- `src/tools/operations/delete/delete.ts`
-- `src/tools/operations/duplicate/duplicate.ts`
-- `src/tools/operations/duplicate/helpers/duplicate-track-scene-helpers.ts`
-- `src/tools/operations/duplicate/helpers/duplicate-routing-helpers.ts`
-- `src/tools/operations/duplicate/helpers/duplicate-clip-position-helpers.ts`
-- `src/tools/scene/capture-scene.ts` (includes view paths)
-- `src/tools/scene/create-scene.ts`
-- `src/tools/shared/live-set-helpers.ts`
+Adopted `livePath` builders in 18 production files: `create-clip.ts`,
+`read-clip-helpers.ts`, `code-exec-helpers.ts`,
+`update-clip-quantization-helpers.ts`, `arrangement-operations-helpers.ts`,
+`update-device-wrap-helpers.ts`, `update-device-helpers.ts`, `read-live-set.ts`,
+`update-live-set.ts`, `delete.ts`, `duplicate.ts`,
+`duplicate-track-scene-helpers.ts`, `duplicate-routing-helpers.ts`,
+`duplicate-clip-position-helpers.ts`, `duplicate-device-helpers.ts`,
+`capture-scene.ts`, `create-scene.ts`, and `live-set-helpers.ts`.
 
 ---
 
