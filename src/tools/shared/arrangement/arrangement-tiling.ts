@@ -8,6 +8,7 @@
  * arrangement clips using the holding area technique.
  */
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { assertDefined, toLiveApiId } from "#src/tools/shared/utils.ts";
 
 export interface TilingContext {
@@ -52,7 +53,7 @@ export function createAudioClipInSession(
   targetLength: number,
   audioFilePath: string,
 ): SessionClipResult {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   let sceneIds = liveSet.getChildIds("scenes");
   const lastSceneId = assertDefined(sceneIds.at(-1), "last scene ID");
   const lastScene = LiveAPI.from(lastSceneId);
@@ -79,16 +80,14 @@ export function createAudioClipInSession(
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
   // Create clip in session slot with audio file
-  const slot = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
-  );
+  const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
 
   // create_audio_clip requires a file path
   slot.call("create_audio_clip", audioFilePath);
 
   // Get the created clip by reconstructing the path
   const clip = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+    livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
   );
 
   // Enable warping and looping, then set length via loop_end
@@ -390,7 +389,7 @@ export function tileClipToRange(
 
   for (let i = 0; i < fullTiles; i++) {
     // Create fresh track object for each iteration to avoid staleness issues
-    const freshTrack = LiveAPI.from(`live_set tracks ${trackIndex}`);
+    const freshTrack = LiveAPI.from(livePath.track(trackIndex as number));
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
     const result = freshTrack.call(

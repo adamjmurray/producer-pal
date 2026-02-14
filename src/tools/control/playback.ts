@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
@@ -131,7 +132,7 @@ export function playback(
     "loopEnd",
   );
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty(
@@ -319,7 +320,7 @@ function handlePlaySessionClips(
     }
 
     const clipSlot = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (!clipSlot.exists()) {
@@ -377,7 +378,7 @@ function handleStopSessionClips(
       );
     }
 
-    const trackPath = `live_set tracks ${trackIndex}`;
+    const trackPath = livePath.track(trackIndex).toString();
 
     tracksToStop.add(trackPath);
   }

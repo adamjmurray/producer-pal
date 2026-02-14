@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
@@ -86,7 +87,7 @@ export function prepareSplitParams(
     return null;
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",
   ) as number;
@@ -184,7 +185,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     return false;
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
   const originalClipId = clip.id;
 
   splitClipRanges.set(originalClipId, {
@@ -346,7 +347,7 @@ function rescanSplitClips(
   clips: LiveAPI[],
 ): void {
   for (const [oldClipId, range] of splitClipRanges) {
-    const track = LiveAPI.from(`live_set tracks ${range.trackIndex}`);
+    const track = LiveAPI.from(livePath.track(range.trackIndex));
     const trackClipIds = track.getChildIds("arrangement_clips");
     const freshClips = trackClipIds
       .map((id) => LiveAPI.from(id))

@@ -26,7 +26,7 @@ interface MockLiveAPIInstance {
 
 interface MockLiveAPIConstructor {
   new (path: string): MockLiveAPIInstance;
-  from: (idOrPath: string) => MockLiveAPIInstance;
+  from: (idOrPath: string | { toString: () => string }) => MockLiveAPIInstance;
 }
 
 /**
@@ -51,8 +51,8 @@ function createMockLiveAPI(
       }
     }
 
-    static from(idOrPath: string): MockLiveAPI {
-      return new MockLiveAPI(idOrPath);
+    static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
+      return new MockLiveAPI(String(idOrPath));
     }
 
     getChildIds(property: string): string[] {
@@ -490,7 +490,9 @@ interface ClipSlotMockLiveAPIInstance {
 
 interface ClipSlotMockLiveAPIConstructor {
   new (path: string): ClipSlotMockLiveAPIInstance;
-  from: (idOrPath: string) => ClipSlotMockLiveAPIInstance;
+  from: (
+    idOrPath: string | { toString: () => string },
+  ) => ClipSlotMockLiveAPIInstance;
 }
 
 /**
@@ -513,8 +515,8 @@ function createClipSlotMockLiveAPI({
       this.path = path;
     }
 
-    static from(idOrPath: string): MockLiveAPI {
-      return new MockLiveAPI(idOrPath);
+    static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
+      return new MockLiveAPI(String(idOrPath));
     }
 
     exists(): boolean {
@@ -560,7 +562,9 @@ interface ArrangementMockLiveAPIInstance {
 
 interface ArrangementMockLiveAPIConstructor {
   new (path: string): ArrangementMockLiveAPIInstance;
-  from: (idOrPath: string) => ArrangementMockLiveAPIInstance;
+  from: (
+    idOrPath: string | { toString: () => string },
+  ) => ArrangementMockLiveAPIInstance;
 }
 
 /**
@@ -590,8 +594,8 @@ function createArrangementMockLiveAPI({
       }
     }
 
-    static from(idOrPath: string): MockLiveAPI {
-      return new MockLiveAPI(idOrPath);
+    static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
+      return new MockLiveAPI(String(idOrPath));
     }
 
     exists(): boolean {

@@ -7,6 +7,7 @@ import {
   barBeatDurationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -91,7 +92,7 @@ export function getMinimalClipInfo(
 
     const arrangementStartBeats = clip.getProperty("start_time") as number;
     // Convert to bar|beat format using song time signature
-    const liveSet = LiveAPI.from("live_set");
+    const liveSet = LiveAPI.from(livePath.liveSet);
     const timeSigNum = liveSet.getProperty("signature_numerator") as number;
     const timeSigDenom = liveSet.getProperty("signature_denominator") as number;
     const arrangementStart = abletonBeatsToBarBeat(
@@ -288,7 +289,7 @@ export function duplicateClipSlot(
 ): MinimalClipInfo {
   // Get source clip slot
   const sourceClipSlot = LiveAPI.from(
-    `live_set tracks ${sourceTrackIndex} clip_slots ${sourceSceneIndex}`,
+    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
   );
 
   if (!sourceClipSlot.exists()) {
@@ -305,7 +306,7 @@ export function duplicateClipSlot(
 
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
-    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex}`,
+    livePath.track(toTrackIndex).clipSlot(toSceneIndex),
   );
 
   if (!destClipSlot.exists()) {
@@ -319,7 +320,7 @@ export function duplicateClipSlot(
 
   // Get the newly created clip
   const newClip = LiveAPI.from(
-    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex} clip`,
+    livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
   );
 
   if (name != null) {
@@ -365,7 +366,7 @@ export function duplicateClipToArrangement(
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
