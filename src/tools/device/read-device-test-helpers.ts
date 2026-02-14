@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -67,7 +68,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
 
   // Register the main drum rack device
   const device = registerMockObject(deviceId, {
-    path: "live_set tracks 1 devices 0",
+    path: livePath.track(1).device(0),
     type: "Device",
     properties: {
       can_have_drum_pads: 1,
@@ -75,7 +76,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     },
   });
 
-  const devicePath = "live_set tracks 1 devices 0";
+  const devicePath = String(livePath.track(1).device(0));
 
   // Register each drum pad
   const pads: Record<string, RegisteredMockObject> = {};

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -39,7 +40,7 @@ export function setupTrack(
   options: Omit<SetupMockOptions, "path" | "type"> = {},
 ): RegisteredMockObject {
   return registerMockObject(`track-${String(trackIndex)}`, {
-    path: `live_set tracks ${String(trackIndex)}`,
+    path: livePath.track(trackIndex),
     type: "Track",
     properties: {
       track_index: trackIndex,
@@ -78,7 +79,7 @@ export function setupScene(
   options: Omit<SetupMockOptions, "path" | "type"> = {},
 ): RegisteredMockObject {
   return registerMockObject(sceneId, {
-    path: `live_set scenes ${String(sceneIndex)}`,
+    path: livePath.scene(sceneIndex),
     type: "Scene",
     properties: options.properties,
     methods: options.methods,
@@ -100,7 +101,7 @@ export function setupClipSlot(
   return registerMockObject(
     `clip-slot-${String(trackIndex)}-${String(sceneIndex)}`,
     {
-      path: `live_set tracks ${String(trackIndex)} clip_slots ${String(sceneIndex)}`,
+      path: livePath.track(trackIndex).clipSlot(sceneIndex),
       type: "ClipSlot",
       properties: options.properties,
       methods: options.methods,
@@ -172,7 +173,7 @@ export function setupTrackWithQueuedMethods(
 
   setupTrack(trackIndex, { methods });
 
-  return LiveAPI.from(`live_set tracks ${String(trackIndex)}`);
+  return LiveAPI.from(String(livePath.track(trackIndex)));
 }
 
 /**
@@ -190,7 +191,7 @@ export function setupArrangementClip(
   arrangementClipIndex: number = 0,
 ): LiveAPI {
   setupClip(clipId, {
-    path: `live_set tracks ${String(trackIndex)} arrangement_clips ${String(arrangementClipIndex)}`,
+    path: livePath.track(trackIndex).arrangementClip(arrangementClipIndex),
     properties,
   });
 

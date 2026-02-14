@@ -4,13 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-
-const TRACK_0_PATH = "live_set tracks 0";
 
 export interface ArrangementClipMockHandles {
   liveSet: RegisteredMockObject;
@@ -30,7 +29,7 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
   });
 
   const track = registerMockObject("track-0", {
-    path: TRACK_0_PATH,
+    path: livePath.track(0),
     methods: {
       create_midi_clip: () => ["id", "arrangement_clip"],
     },
@@ -130,15 +129,15 @@ export function setupSessionAudioClipMocks(
     },
   });
 
-  registerMockObject("track-0", { path: "live_set tracks 0" });
+  registerMockObject("track-0", { path: livePath.track(0) });
 
   const clipSlot = registerMockObject("clip-slot-0-0", {
-    path: "live_set tracks 0 clip_slots 0",
+    path: livePath.track(0).clipSlot(0),
     properties: { has_clip: hasClip },
   });
 
   const clip = registerMockObject("audio_clip_0_0", {
-    path: "live_set tracks 0 clip_slots 0 clip",
+    path: livePath.track(0).clipSlot(0).clip(),
     properties: { length: clipLength },
   });
 
@@ -167,7 +166,7 @@ export function setupAudioArrangementClipMocks(
   });
 
   const track = registerMockObject("track-0", {
-    path: TRACK_0_PATH,
+    path: livePath.track(0),
     methods: {
       create_audio_clip: () => ["id", "arrangement_audio_clip"],
     },

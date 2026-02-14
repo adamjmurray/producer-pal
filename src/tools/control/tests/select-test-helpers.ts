@@ -3,6 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -125,10 +126,10 @@ export function setupSelectedTrackMock(options?: {
     id = exists ? "selected-track" : "0",
     path = exists
       ? category === "master"
-        ? "live_set master_track"
+        ? livePath.masterTrack()
         : category === "return"
-          ? `live_set return_tracks ${returnTrackIndex}`
-          : `live_set tracks ${trackIndex}`
+          ? livePath.returnTrack(returnTrackIndex ?? 0)
+          : String(livePath.track(trackIndex ?? 0))
       : LIVE_SET_VIEW_SELECTED_TRACK_PATH,
   } = options ?? {};
 
@@ -160,7 +161,7 @@ export function setupSessionClipMock(
   properties: Record<string, unknown> = {},
 ): { clip: RegisteredMockObject; clipSlot: RegisteredMockObject } {
   const clip = registerMockObject(clipId, {
-    path: `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`,
+    path: livePath.track(trackIndex).clipSlot(clipSlotIndex).clip(),
     type: "Clip",
     properties: {
       trackIndex,
@@ -172,7 +173,7 @@ export function setupSessionClipMock(
   const clipSlot = registerMockObject(
     `clipslot-${trackIndex}-${clipSlotIndex}`,
     {
-      path: `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
+      path: livePath.track(trackIndex).clipSlot(clipSlotIndex),
       type: "ClipSlot",
     },
   );

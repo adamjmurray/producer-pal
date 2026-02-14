@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   lookupMockObject,
@@ -23,7 +24,7 @@ export function setupSplittingClipBaseMocks(
   clipId: string,
   opts: SplittingBaseMockOptions = {},
 ): void {
-  const { path = "live_set tracks 0 arrangement_clips 0" } = opts;
+  const { path = livePath.track(0).arrangementClip(0) } = opts;
 
   // Register the main clip with trackIndex property
   registerMockObject(clipId, {
@@ -36,7 +37,7 @@ export function setupSplittingClipBaseMocks(
 
   // Register the track
   registerMockObject("track_0", {
-    path: "live_set tracks 0",
+    path: livePath.track(0),
     type: "Track",
     properties: {
       track_index: 0,
@@ -137,7 +138,7 @@ interface SplittingCallState {
  */
 export function createSplittingCallMock(): SplittingCallState {
   // Look up the existing track mock (should be registered by setupSplittingClipBaseMocks)
-  const trackMock = lookupMockObject("track_0", "live_set tracks 0");
+  const trackMock = lookupMockObject("track_0", String(livePath.track(0)));
 
   if (!trackMock) {
     throw new Error(
@@ -165,7 +166,7 @@ export function createSplittingCallMock(): SplittingCallState {
 
       // Register the new duplicate clip dynamically
       registerMockObject(dupId, {
-        path: "live_set tracks 0 arrangement_clips 1",
+        path: livePath.track(0).arrangementClip(1),
         type: "Clip",
       });
 
@@ -175,7 +176,7 @@ export function createSplittingCallMock(): SplittingCallState {
     if (method === "create_midi_clip") {
       // Register temp clip
       registerMockObject("temp_1", {
-        path: "live_set tracks 0 arrangement_clips 1",
+        path: livePath.track(0).arrangementClip(1),
         type: "Clip",
       });
 

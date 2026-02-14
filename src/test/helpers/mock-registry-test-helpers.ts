@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   lookupMockObject,
@@ -36,7 +37,7 @@ export function requireMockObject(path: string): RegisteredMockObject {
  * @returns Registered track mock
  */
 export function requireMockTrack(trackIndex: number): RegisteredMockObject {
-  return requireMockObject(`live_set tracks ${trackIndex}`);
+  return requireMockObject(String(livePath.track(trackIndex)));
 }
 
 /**

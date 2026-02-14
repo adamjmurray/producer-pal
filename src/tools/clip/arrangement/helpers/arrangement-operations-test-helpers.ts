@@ -7,6 +7,10 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
+import {
+  type PathLike,
+  livePath,
+} from "#src/test/helpers/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface ClipProps {
@@ -19,7 +23,7 @@ interface ClipProps {
 }
 
 interface RegisterOptions {
-  path?: string;
+  path?: PathLike;
   type?: string;
   properties?: Record<string, unknown>;
 }
@@ -38,11 +42,11 @@ export function setupArrangementClipPath(
   trackIndex: number = 0,
 ): void {
   setupArrangementMock(`track-${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
+    path: livePath.track(trackIndex),
     type: "Track",
   });
   setupArrangementMock(clipId, {
-    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
   });
 }
@@ -122,7 +126,7 @@ export function setupArrangementMocks(
 
   setupArrangementClipPath(clipId, trackIndex);
   setupArrangementMock(clipId, {
-    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
     properties: createClipProps(clipProps),
   });

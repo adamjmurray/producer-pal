@@ -7,6 +7,7 @@
  * Test helper functions for read-clip tests
  */
 import { expect } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -72,7 +73,7 @@ function resolveClipPath({
     return path;
   }
 
-  return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
+  return livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 }
 
 function defaultClipId(path: string): string {

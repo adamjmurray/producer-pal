@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -98,19 +99,19 @@ function createNoteTrackingMethods(): Record<
 export function setupUpdateClipMocks(): UpdateClipMocks {
   return {
     clip123: registerMockObject("123", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       methods: createNoteTrackingMethods(),
     }),
     clip456: registerMockObject("456", {
-      path: "live_set tracks 1 clip_slots 1 clip",
+      path: livePath.track(1).clipSlot(1).clip(),
       methods: createNoteTrackingMethods(),
     }),
     clip789: registerMockObject("789", {
-      path: "live_set tracks 2 arrangement_clips 0",
+      path: livePath.track(2).arrangementClip(0),
       methods: createNoteTrackingMethods(),
     }),
     clip999: registerMockObject("999", {
-      path: "live_set tracks 3 arrangement_clips 1",
+      path: livePath.track(3).arrangementClip(1),
       methods: createNoteTrackingMethods(),
     }),
   };
@@ -144,7 +145,7 @@ export function setupArrangementClipPath(
   }
 
   registerMockObject(`track-${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
+    path: livePath.track(trackIndex),
     type: "Track",
     properties: {
       track_index: trackIndex,
@@ -180,7 +181,7 @@ function setupArrangementClip(
   id: string,
 ): RegisteredMockObject {
   return registerMockObject(id, {
-    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
     methods: createNoteTrackingMethods(),
   });

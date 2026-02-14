@@ -3,6 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -252,7 +253,7 @@ export function setupReturnTrackNames(names: string[]): void {
 
   for (const [index, name] of names.entries()) {
     registerMockObject(returnTrackIds[index] ?? `return${index + 1}`, {
-      path: `live_set return_tracks ${index}`,
+      path: livePath.returnTrack(index),
       type: "Track",
       properties: {
         ...mockTrackProperties({

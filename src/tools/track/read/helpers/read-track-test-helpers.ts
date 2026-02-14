@@ -5,6 +5,7 @@
 /**
  * Test helper functions for read-track tests
  */
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
@@ -142,14 +143,14 @@ export function setupDrumRackMocks(
   const { kickDeviceId = "kick_device" } = options;
 
   registerMockObject("track1", {
-    path: "live_set tracks 0",
+    path: livePath.track(0),
     type: "Track",
     properties: mockTrackProperties({
       devices: children("drumrack1"),
     }),
   });
   registerMockObject("drumrack1", {
-    path: "live_set tracks 0 devices 0",
+    path: livePath.track(0).device(0),
     type: "Device",
     properties: {
       name: "Test Drum Rack",

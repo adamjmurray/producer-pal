@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface SetupConnectMocksOptions {
@@ -67,7 +68,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
 
   for (const [index, trackId] of trackIds.entries()) {
     registerMockObject(trackId, {
-      path: `live_set tracks ${index}`,
+      path: livePath.track(index),
       type: "Track",
     });
   }

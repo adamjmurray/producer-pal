@@ -3,6 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
@@ -146,7 +147,7 @@ export function setupInstrumentRackOnTrack0(chainIds: string[]): void {
     },
   });
   registerMockObject("rack1", {
-    path: "live_set tracks 0 devices 0",
+    path: livePath.track(0).device(0),
     type: "Device",
     properties: createRackDeviceMockProperties({
       name: "My Custom Rack",
