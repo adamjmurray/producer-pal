@@ -5,6 +5,38 @@
 
 export class MockSequence extends Array<unknown> {}
 
+// Exact path → type mappings
+const EXACT_PATH_TYPES = new Map<string, string>([
+  ["live_set", "Song"],
+  ["live_set view", "Song.View"],
+  ["live_app", "Application"],
+  ["live_app view", "Application.View"],
+  ["live_set master_track", "Track"],
+  ["live_set view selected_track", "Track"],
+  ["live_set view selected_scene", "Scene"],
+  ["live_set view detail_clip", "Clip"],
+  ["live_set view highlighted_clip_slot", "ClipSlot"],
+]);
+
+// Regex patterns matched against the full path or path suffix.
+// Order matters: more specific patterns (clip_slots \d+ clip) before less specific (clip_slots \d+).
+const PATH_PATTERNS: [RegExp, string][] = [
+  [/^live_set (?:return_)?tracks \d+$/, "Track"],
+  [/^live_set scenes \d+$/, "Scene"],
+  [/^live_set cue_points \d+$/, "CuePoint"],
+  [/clip_slots \d+ clip$/, "Clip"],
+  [/clip_slots \d+$/, "ClipSlot"],
+  [/arrangement_clips \d+$/, "Clip"],
+  [/devices \d+$/, "Device"],
+  [/drum_pads \d+$/, "DrumPad"],
+  [/parameters \d+$/, "DeviceParameter"],
+  [/mixer_device$/, "MixerDevice"],
+  [
+    /mixer_device (?:volume|panning|left_split_stereo|right_split_stereo|crossfader|song_tempo)$/,
+    "DeviceParameter",
+  ],
+];
+
 /**
  * Detect Live API type from path using standard Live API path patterns.
  * @param path - Live API object path
@@ -12,15 +44,15 @@ export class MockSequence extends Array<unknown> {}
  * @returns Detected type string
  */
 export function detectTypeFromPath(path: string, id?: string): string {
-  if (path === "live_set") return "Song";
-  if (path === "live_set view") return "Song.View";
-  if (path === "live_app") return "Application";
-  if (path === "live_app view") return "Application.View";
-  if (/^live_set tracks \d+$/.test(path)) return "Track";
-  if (/^live_set scenes \d+$/.test(path)) return "Scene";
-  if (/^live_set tracks \d+ clip_slots \d+$/.test(path)) return "ClipSlot";
-  if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(path)) return "Clip";
-  if (/^live_set tracks \d+ arrangement_clips \d+$/.test(path)) return "Clip";
+  const exactMatch = EXACT_PATH_TYPES.get(path);
+
+  if (exactMatch) return exactMatch;
+
+  for (const [pattern, type] of PATH_PATTERNS) {
+    if (pattern.test(path)) return type;
+  }
+
+  // Chain detection (broad match - after more specific terminal patterns)
   if (path.includes("chain") || id?.includes("chain")) return "Chain";
 
   return `TODO: Unknown type for path: "${path}"`;
