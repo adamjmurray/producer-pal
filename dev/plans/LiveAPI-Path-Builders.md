@@ -31,12 +31,16 @@ module and adopted everywhere.
 Replace hardcoded path strings in production source files. This is higher
 priority than tests since production path bugs are real bugs.
 
-### Batch 1a: High-Value — Path Construction Functions (~20 instances, 5 files)
+**All batches are fully parallel-safe — no file overlaps.**
 
-Files that _construct_ paths from indices — the primary value of the builder:
+### Batch 1a: Path Construction + View Paths (~31 instances, 7 files)
 
-- `src/tools/control/select-helpers.ts` — `buildTrackPath()` and scene paths (12
-  instances)
+Files that _construct_ paths from indices, plus view/app paths in the same
+files:
+
+- `src/tools/control/select-helpers.ts` — `buildTrackPath()`, scene paths, and
+  view paths (14 instances)
+- `src/tools/control/select.ts` — `live_set view`, `live_app view`, etc. (5)
 - `src/tools/shared/device/helpers/path/device-path-to-live-api.ts` — track path
   construction (3)
 - `src/tools/shared/device/helpers/path/device-path-helpers.ts` — track
@@ -56,9 +60,10 @@ Template literals building `tracks X clip_slots Y` paths:
 - `src/tools/track/read/helpers/read-track-helpers.ts` (3)
 - `src/tools/operations/duplicate/helpers/duplicate-helpers.ts` (4)
 
-### Batch 1c: Simple `LiveAPI.from("live_set")` Calls (~30 instances, 18 files)
+### Batch 1c: Simple `LiveAPI.from("live_set")` + View Paths (~33 instances, 17 files)
 
-These are just `LiveAPI.from("live_set")` — could use `livePath.liveSet`:
+`LiveAPI.from("live_set")` → `livePath.liveSet`, plus view paths in
+`capture-scene.ts`:
 
 - `src/tools/clip/create/create-clip.ts`
 - `src/tools/clip/read/helpers/read-clip-helpers.ts`
@@ -72,138 +77,118 @@ These are just `LiveAPI.from("live_set")` — could use `livePath.liveSet`:
 - `src/tools/operations/delete/delete.ts`
 - `src/tools/operations/duplicate/duplicate.ts`
 - `src/tools/operations/duplicate/helpers/duplicate-track-scene-helpers.ts`
-- `src/tools/operations/duplicate/helpers/duplicate-helpers.ts`
 - `src/tools/operations/duplicate/helpers/duplicate-routing-helpers.ts`
 - `src/tools/operations/duplicate/helpers/duplicate-clip-position-helpers.ts`
-- `src/tools/scene/capture-scene.ts`
+- `src/tools/scene/capture-scene.ts` (includes view paths)
 - `src/tools/scene/create-scene.ts`
 - `src/tools/shared/live-set-helpers.ts`
 
-### Batch 1d: View/App Paths (~10 instances, 3 files)
-
-- `src/tools/control/select.ts` — `live_set view`, `live_app view`, etc. (5)
-- `src/tools/control/select-helpers.ts` — `live_set view selected_track` (2)
-- `src/tools/scene/capture-scene.ts` — `live_set view selected_scene` (3)
-
 ---
 
-## Phase 2: Remaining Test Files — Not Yet Importing `livePath`
+## Phase 2: Remaining Test Files + Test Helpers
 
-~62 files, ~1,094 instances. Ordered by priority/size for reasonable sessions.
+~62 test files + ~10 test helpers, ~1,094 instances. Each batch includes its
+related test helpers so batches are self-contained.
 
-### Batch 2a: Operations/Duplicate (10 files, ~442 instances)
+**All batches are fully parallel-safe — no file overlaps.**
 
-Largest concentration. One focused session per ~3 files.
+### Batch 2a: Duplicate — Scene & Validation (~93 instances, 3 files)
 
-| File                                    | Count |
-| --------------------------------------- | ----- |
-| `duplicate-scene.test.ts`               | 83    |
-| `duplicate-track-scene-helpers.test.ts` | 79    |
-| `duplicate-device.test.ts`              | 53    |
-| `duplicate-arrangement-length.test.ts`  | 53    |
-| `duplicate-track.test.ts`               | 47    |
-| `duplicate-clip.test.ts`                | 45    |
-| `duplicate-advanced-features.test.ts`   | 44    |
-| `duplicate-locator.test.ts`             | 33    |
-| `duplicate-helpers.test.ts`             | 12    |
-| `duplicate-validation.test.ts`          | 10    |
+- `duplicate-scene.test.ts` (83)
+- `duplicate-validation.test.ts` (10)
 
-**Session breakdown:**
+### Batch 2b: Duplicate — Track-Scene Helpers (~91 instances, 3 files)
 
-- Session A: `duplicate-scene` + `duplicate-validation` (~93)
-- Session B: `duplicate-track-scene-helpers` + `duplicate-helpers` (~91)
-- Session C: `duplicate-device` + `duplicate-arrangement-length` (~106)
-- Session D: `duplicate-track` + `duplicate-clip` (~92)
-- Session E: `duplicate-advanced-features` + `duplicate-locator` (~77)
+- `duplicate-track-scene-helpers.test.ts` (79)
+- `duplicate-helpers.test.ts` (12)
 
-### Batch 2b: Scene Operations (4 files, ~87 instances)
+### Batch 2c: Duplicate — Device & Arrangement Length (~106 instances, 2 files)
+
+- `duplicate-device.test.ts` (53)
+- `duplicate-arrangement-length.test.ts` (53)
+
+### Batch 2d: Duplicate — Track & Clip (~92 instances, 3 files)
+
+- `duplicate-track.test.ts` (47)
+- `duplicate-clip.test.ts` (45)
+
+### Batch 2e: Duplicate — Advanced & Locator (~77 instances, 3 files)
+
+- `duplicate-advanced-features.test.ts` (44)
+- `duplicate-locator.test.ts` (33)
+- `duplicate-test-helpers.ts` — shared test helper
+
+### Batch 2f: Scene Operations (~87 instances, 4 files)
 
 - `create-scene.test.ts` (44)
 - `capture-scene.test.ts` (36)
 - `read-scene.test.ts` (4)
 - `update-scene.test.ts` (3)
 
-One session.
-
-### Batch 2c: Control Operations (5 files, ~95 instances)
+### Batch 2g: Control Operations (~95 instances, 7 files)
 
 - `playback-basic.test.ts` (20)
 - `select-advanced.test.ts` (17) — already has livePath, finish conversion
 - `select-basic.test.ts` (16) — already has livePath, finish conversion
 - `playback-features.test.ts` (7)
 - `raw-live-api.test.ts` (10)
-- `playback-test-helpers.ts` (9) — shared helper
-- `select-test-helpers.ts` (7) — shared helper
+- `playback-test-helpers.ts` (9) — shared test helper
+- `select-test-helpers.ts` (7) — shared test helper
 
-One session.
-
-### Batch 2d: Track & Device Operations (~151 instances, ~17 files)
+### Batch 2h: Track & Device Operations (~151 instances, ~17 files)
 
 - `read-track-options.test.ts` (22)
 - `read-track-parameters.test.ts` (13)
 - `update-track-mixer.test.ts` (13)
 - `update-track-send.test.ts` (11)
 - Plus partial conversions in files already importing livePath (~60 remaining)
-- Device: `read-device-path.test.ts` (4), `read-device-test-helpers.ts`, etc.
+- Device: `read-device-path.test.ts` (4), etc.
+- `read-track-test-helpers.ts` — shared test helper
+- `read-track-registry-test-helpers.ts` — shared test helper
+- `read-track-path-mapped-test-helpers.ts` — shared test helper
+- `read-device-test-helpers.ts` — shared test helper
 
-One or two sessions.
-
-### Batch 2e: Live-Set, Delete, Workflow (~116 instances, ~10 files)
+### Batch 2i: Live-Set, Delete, Workflow (~116 instances, ~10 files)
 
 - `update-live-set.test.ts` (21)
 - `delete.test.ts` (26)
 - `connect-core.test.ts` (11)
 - `read-live-set-routing.test.ts` (6)
 - Plus finishing partial conversions in already-imported files
+- `read-live-set-path-mapped-test-helpers.ts` — shared test helper
 
-One session.
-
-### Batch 2f: Clip & Remaining (~35 instances, ~5 files)
+### Batch 2j: Clip & Remaining (~35 instances, ~5 files)
 
 - `create-clip-audio.test.ts` (28)
 - `arrangement-operations-helpers.test.ts` (4)
 - `update-clip-quantization.test.ts` (1)
+- `read-clip-test-helpers.ts` — shared test helper
 - Miscellaneous stragglers
 
-One session.
-
 ---
 
-## Phase 3: Test Helpers Not Yet Converted
+## Parallelism
 
-~10 remaining test helper files:
+All batches within each phase are designed with **zero file overlaps**, making
+them safe to run as parallel subagents. Phase 1 (3 batches) and Phase 2 (10
+batches) can also run in parallel with each other since production source and
+test files don't overlap.
 
-- `playback-test-helpers.ts`
-- `select-test-helpers.ts`
-- `duplicate-test-helpers.ts`
-- `read-live-set-path-mapped-test-helpers.ts`
-- `read-track-test-helpers.ts`
-- `read-track-registry-test-helpers.ts`
-- `read-track-path-mapped-test-helpers.ts`
-- `read-clip-test-helpers.ts`
-- `read-device-test-helpers.ts`
-
-These can be done alongside their corresponding test files in Phase 2 batches.
-
----
-
-## Session Sizing Guidance
-
-Target: **~80-120 path replacements per session** to avoid context exhaustion.
-Each session should end with `npm run check` passing and a clean commit.
-
-Estimated total sessions: **~12-15** across all phases.
+Total: **13 independent batches** that can all run concurrently.
 
 ---
 
 ## Verification
 
-After each session:
+After each batch:
 
 1. `npm run fix` — auto-fix formatting
 2. `npm run check` — lint + typecheck + format + tests + coverage
 3. Commit with descriptive message following existing pattern:
    `"Adopt livePath builders in X files for <area>"`
+
+When running batches in parallel, each agent should verify independently. Merge
+conflicts are not expected since batches have no file overlaps.
 
 ## Out of Scope
 
