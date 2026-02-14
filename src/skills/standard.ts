@@ -50,7 +50,6 @@ Create MIDI clips using the bar|beat notation syntax:
 
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
-  - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, defaults to duration)
     - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step = duration)
@@ -76,14 +75,14 @@ Audio params ignored when updating MIDI clips.
 C3 E3 G3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1x4@1 // kick on every beat (explicit step)
-v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
+v100 C3 1|1 D3 1|2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
 t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
 t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
-v90-110 C1 1|1,3 D1 |2,4 // humanized drum pattern
+v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern
 v60-80 Gb1 1|1.5,2.5,3.5,4.5 // natural hi-hat feel
 p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
 p1.0 D1 1|2,4 // back to 100% - snare always plays
@@ -94,9 +93,9 @@ p1.0 D1 1|2,4 // back to 100% - snare always plays
 Group by instrument per bar (pitch persistence). Complete bars before copying. Use beat lists for irregular patterns.
 
 \`\`\`
-C1 1|1,3 D1 |2,4 // bar 1
-@2-3=1           // bar 1 -> 2,3
-C1 4|1,3.5 D1 |4 // bar 4
+C1 1|1,3 D1 1|2,4 // bar 1
+@2-3=1            // bar 1 -> 2,3
+C1 4|1,3.5 D1 4|4 // bar 4
 @5-7=1           // bar 1 -> 5,6,7
 @8=4             // bar 4 -> 8
 \`\`\`
@@ -106,12 +105,12 @@ C1 4|1,3.5 D1 |4 // bar 4
 Copy foundation to **all bars** (including variation bars), then modify:
 
 \`\`\`
-C1 1|1,3 D1 |2,4               // bar 1 foundation
-Gb1 |1.5,2.5,3.5,4.5
+C1 1|1,3 D1 1|2,4              // bar 1 foundation
+Gb1 1|1.5,2.5,3.5,4.5
 @2-16=1                        // copy to ALL bars, not just 2-8
 v0 Gb1 9|4.5 v100              // remove hat from bar 9
-C1 |3.5                        // add extra kick to bar 9
-v0 C1 13|3 v100 D1 |3          // replace kick with snare in bar 13
+C1 9|3.5                       // add extra kick to bar 9
+v0 C1 13|3 v100 D1 13|3        // replace kick with snare in bar 13
 \`\`\`
 
 ### Multi-bar phrases

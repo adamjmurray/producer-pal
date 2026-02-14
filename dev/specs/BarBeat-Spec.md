@@ -13,7 +13,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 ### Components:
 
 - **Start Time (`bar|beat`)** Time position that emits buffered notes.
-  - `bar` – 1-based bar number (integer), or omit for beat-only shorthand (`|2`)
+  - `bar` – 1-based bar number (integer, required)
   - `beat` – 1-based beat number within bar (float for sub-beat precision)
   - **Repeat patterns**: `beat x times @ step` generates multiple positions
     - Example: `1|1x4@1` → beats 1,2,3,4
@@ -85,7 +85,8 @@ before a time position are buffered and emitted together when a time is reached.
   1|1
 - **First pitch after time clears buffer:** `C1 1|1 D1 1|2` emits C1 at 1|1,
   then D1 at 1|2
-- **Pitches persist until changed:** `C1 1|1 |2 |3` emits C1 at three positions
+- **Pitches persist until changed:** `C1 1|1 1|2 1|3` emits C1 at three
+  positions
 
 ### State Capture
 
@@ -99,7 +100,7 @@ v100 C3 v80 E3 1|1  // C3 has v100, E3 has v80
 State changes after time positions update all buffered pitches:
 
 ```
-v100 C4 1|1 v90 |2  // C4@v100 at 1|1, C4@v90 at 1|2
+v100 C4 1|1 v90 1|2  // C4@v100 at 1|1, C4@v90 at 1|2
 ```
 
 ### Warnings
@@ -274,13 +275,6 @@ operations.
 1|3x6@1          // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4
 ```
 
-**Bar shorthand**: Works with `|beat` notation:
-
-```
-C3 1|1           // Bar 1, beat 1
-|1x4@1           // Bar 1, beats 1,2,3,4 (bar persists)
-```
-
 **Mixing with regular beats**: Combine repeat patterns with explicit beats:
 
 ```
@@ -353,16 +347,16 @@ numbers are positive integers (1-based).
 
 ```
 # Copy previous bar
-C1 1|1 |2 |3 |4     # Bar 1: kick pattern
+C1 1|1 1|2 1|3 1|4  # Bar 1: kick pattern
 @2=                 # Bar 2: same kick pattern
 
 # Copy specific bar
-C1 1|1 |2 |3 |4
+C1 1|1 1|2 1|3 1|4
 @5=1                # Bar 5: copy bar 1
 
 # Copy range
-C1 1|1 |2 |3 |4
-D1 1|2 |4
+C1 1|1 1|2 1|3 1|4
+D1 1|2 1|4
 @5=1-2              # Bars 5-6: copy bars 1-2
 
 # Chain copies
@@ -370,7 +364,7 @@ C1 1|1
 @2= @3= @4=         # Bars 2, 3, 4 each copy previous
 
 # Copy to range (destination range)
-C1 1|1 |2 |3 |4
+C1 1|1 1|2 1|3 1|4
 @2-5=1              # Bars 2-5: all copy bar 1
 
 # Tile multi-bar pattern
@@ -429,16 +423,12 @@ When a bar copy operation executes:
   - `@N=` operations: Updates to N|1
   - `@clear` operation: Stays at current position (does not update time)
 
-#### Beat Shorthand
-
-After `@N=` you can use beat shorthand: `@2=1` then `|2` goes to 2|2
-
 ### Composition
 
 ```
-C1 1|1 |2 |3 |4     # Define bar 1
+C1 1|1 1|2 1|3 1|4  # Define bar 1
 @2=1                # Copy to bar 2, time now at 2|1
-D1 |2 |4            # Add notes to bar 2 at beats 2 and 4
+D1 2|2 2|4          # Add notes to bar 2 at beats 2 and 4
 ```
 
 **Result**: Bar 1 has C1 on all beats. Bar 2 has C1 on all beats + D1 on beats 2
@@ -537,10 +527,10 @@ These are console warnings, not errors - parsing completes successfully.
 C3 E3 G3 1|1
 
 // Drum pattern - kick on every beat (pitch persistence)
-C1 1|1 |2 |3 |4
+C1 1|1 1|2 1|3 1|4
 
 // Layered drum pattern - kick on 1 & 3, snare on 2 & 4
-C1 1|1 |3  D1 1|2 |4
+C1 1|1 1|3  D1 1|2 1|4
 
 // Simple melody with state changes
 v100 t1.0 C3 1|1 D3 1|2 E3 1|3 F3 1|4
@@ -570,7 +560,7 @@ C1 1|1,2,3,4   // Same as above (comma-separated beats still supported)
 // Repeat patterns - triplets
 t1/3 C3 1|1x3@1/3           // Triplet eighth notes
 t/3 C3 1|1x3@/3             // Same as above (numerator defaults to 1)
-t1/3 C3 1|1x3@1/3 |2x3@1/3  // Two sets of triplets
+t1/3 C3 1|1x3@1/3 1|2x3@1/3  // Two sets of triplets
 
 // Repeat patterns - 16th notes
 t1/4 Gb1 1|1x16@1/4  // Full bar of hi-hat 16ths
@@ -594,7 +584,7 @@ C3 E3 G3 1|1  D3 F3 A3 1|2  E3 G3 B3 1|3  F3 A3 C4 1|4
 v127 C3 v100 E3 v80 G3 1|1
 
 // Same pitches with varying velocity (state updates after time)
-v100 C4 G4 1|1 v90 |2 v80 |3 v70 |4
+v100 C4 G4 1|1 v90 1|2 v80 1|3 v70 1|4
 
 // Note deletion with v0
 C3 D3 E3 1|1 v0 C3 1|1  // D3 and E3 remain (C3 deleted)
@@ -634,8 +624,7 @@ Element[]
 
 type Element =
   | { pitch: number }                                                // Note (0-127)
-  | { bar: number, beat: number | RepeatPattern }                    // Time with bar
-  | { bar: null, beat: number | RepeatPattern }                      // Time without bar (beat shorthand)
+  | { bar: number, beat: number | RepeatPattern }                    // Time position
   | { velocity: number }                                             // Single velocity (0-127)
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
   | { duration: number }                                             // Duration in beats

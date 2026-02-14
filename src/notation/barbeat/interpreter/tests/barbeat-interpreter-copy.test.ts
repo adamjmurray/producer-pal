@@ -51,7 +51,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       ]);
     });
     it("overlays notes after copy", () => {
-      const result = interpretNotation("C3 1|1 @2=1 D3 |2");
+      const result = interpretNotation("C3 1|1 @2=1 D3 2|2");
 
       expect(result).toStrictEqual([
         createNote(), // Bar 1
@@ -62,7 +62,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("accumulates notes in chained copies", () => {
       // Without auto-clear: bar 2 gets C3 from bar 1, then D3 is added
       // bar 3 gets both C3 and D3 from bar 2
-      const result = interpretNotation("C3 1|1 @2= D3 |2 @3=");
+      const result = interpretNotation("C3 1|1 @2= D3 2|2 @3=");
 
       expect(result).toStrictEqual([
         createNote(), // Bar 1
@@ -122,9 +122,8 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       ]);
     });
     it("updates current time position after copy", () => {
-      const result = interpretNotation("C3 1|1 @2=1 D3 |2");
+      const result = interpretNotation("C3 1|1 @2=1 D3 2|2");
 
-      // After @2=1, current time should be 2|1, so |2 should mean 2|2
       expect(result).toStrictEqual([
         createNote(),
         createNote({ start_time: 4 }),
@@ -136,7 +135,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       // Multi-bar beat list creates notes across bars 1-8
       // @16=1 should only copy bar 1's notes (beats 1 and 3), not all 16 notes
       const result = interpretNotation(
-        "C1 1|1,5,9,13,17,21,25,29 |3,7,11,15,19,23,27,31 @16=1",
+        "C1 1|1,5,9,13,17,21,25,29 1|3,7,11,15,19,23,27,31 @16=1",
       );
 
       // Should have 18 notes: 16 original (bars 1-8) + 2 copied (bar 16)

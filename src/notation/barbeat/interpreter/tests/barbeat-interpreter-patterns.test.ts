@@ -74,8 +74,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[5]!.start_time).toBe(7); // bar 2, beat 4
     });
 
-    it("handles repeat pattern without bar (uses current bar)", () => {
-      const result = interpretNotation("C1 1|1 D1 |2x2@1");
+    it("handles repeat pattern with explicit bar", () => {
+      const result = interpretNotation("C1 1|1 D1 1|2x2@1");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.pitch).toBe(36); // C1 at 1|1

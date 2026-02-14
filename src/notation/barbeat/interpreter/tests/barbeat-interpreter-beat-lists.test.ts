@@ -26,7 +26,7 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
   });
 
   it("handles beat lists with bar shorthand", () => {
-    const result = interpretNotation("C1 1|1 D1 |2,4");
+    const result = interpretNotation("C1 1|1 D1 1|2,4");
 
     expect(result).toStrictEqual([note(36, 0), note(38, 1), note(38, 3)]);
   });
@@ -68,7 +68,7 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
 
   it("handles drum pattern with beat lists", () => {
     const result = interpretNotation(
-      "C1 1|1,3 D1 |2,4 F#1 |1,1.5,2,2.5,3,3.5,4,4.5",
+      "C1 1|1,3 D1 1|2,4 F#1 1|1,1.5,2,2.5,3,3.5,4,4.5",
     );
 
     // Hi-hats on every eighth note
@@ -92,7 +92,7 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
   });
 
   it("clears pitch buffer after first beat list", () => {
-    const result = interpretNotation("C1 1|1,2 D1 |3,4");
+    const result = interpretNotation("C1 1|1,2 D1 1|3,4");
 
     expect(result).toStrictEqual([
       // C1 at beats 1 and 2

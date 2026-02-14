@@ -98,12 +98,6 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("parses repeat pattern without bar (uses current bar)", () => {
-    expect(parser.parse("|1x4@1")).toStrictEqual([
-      { bar: null, beat: { start: 1, times: 4, step: 1 } },
-    ]);
-  });
-
   it("parses repeat pattern without step (defaults to null)", () => {
     expect(parser.parse("1|1x4")).toStrictEqual([
       { bar: 1, beat: { start: 1, times: 4, step: null } },
