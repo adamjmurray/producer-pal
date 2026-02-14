@@ -208,7 +208,7 @@ describe("readTrack", () => {
     it("includes nested devices from instrument rack chains", () => {
       setupInstrumentRackOnTrack0(["chain1"]);
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Piano",
@@ -217,7 +217,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("nested_device1", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Lead Synth",
@@ -256,7 +256,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Filter Chain",
@@ -265,7 +265,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("nested_effect1", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Sweep Filter",
@@ -329,7 +329,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("outer_chain", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Wet",
@@ -338,7 +338,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("inner_rack", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Reverb Chain",
@@ -349,7 +349,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("inner_chain", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Hall",
@@ -359,7 +359,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("deep_device", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Big Hall",

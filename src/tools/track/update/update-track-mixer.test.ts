@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -21,25 +22,25 @@ describe("updateTrack - mixer properties", () => {
   let panningParam2: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: "live_set tracks 0" });
-    registerMockObject("456", { path: "live_set tracks 1" });
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    registerMockObject("456", { path: livePath.track(1) });
     mixer1 = registerMockObject("mixer_1", {
-      path: "live_set tracks 0 mixer_device",
+      path: livePath.track(0).mixerDevice(),
     });
     registerMockObject("mixer_2", {
-      path: "live_set tracks 1 mixer_device",
+      path: livePath.track(1).mixerDevice(),
     });
     volumeParam1 = registerMockObject("volume_param_1", {
-      path: "live_set tracks 0 mixer_device volume",
+      path: `${livePath.track(0).mixerDevice()} volume`,
     });
     volumeParam2 = registerMockObject("volume_param_2", {
-      path: "live_set tracks 1 mixer_device volume",
+      path: `${livePath.track(1).mixerDevice()} volume`,
     });
     panningParam1 = registerMockObject("panning_param_1", {
-      path: "live_set tracks 0 mixer_device panning",
+      path: `${livePath.track(0).mixerDevice()} panning`,
     });
     panningParam2 = registerMockObject("panning_param_2", {
-      path: "live_set tracks 1 mixer_device panning",
+      path: `${livePath.track(1).mixerDevice()} panning`,
     });
   });
 
@@ -150,7 +151,7 @@ describe("updateTrack - mixer properties", () => {
   it("should handle missing mixer device gracefully", () => {
     // Override mixer to be non-existent for this test
     registerMockObject("id 0", {
-      path: "live_set tracks 0 mixer_device",
+      path: livePath.track(0).mixerDevice(),
     });
 
     updateTrack({
@@ -184,10 +185,10 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update leftPan and rightPan in split mode", () => {
     const leftSplitParam1 = registerMockObject("left_split_param_1", {
-      path: "live_set tracks 0 mixer_device left_split_stereo",
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
     });
     const rightSplitParam1 = registerMockObject("right_split_param_1", {
-      path: "live_set tracks 0 mixer_device right_split_stereo",
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
     mixer1.get.mockImplementation((prop: string) => {
@@ -249,10 +250,10 @@ describe("updateTrack - mixer properties", () => {
 
   it("should switch mode and update panning in one call", () => {
     const leftSplitParam1 = registerMockObject("left_split_param_1", {
-      path: "live_set tracks 0 mixer_device left_split_stereo",
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
     });
     const rightSplitParam1 = registerMockObject("right_split_param_1", {
-      path: "live_set tracks 0 mixer_device right_split_stereo",
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
     // Start in stereo mode (default)

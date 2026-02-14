@@ -71,7 +71,7 @@ function setupTrackWithDrumRack(chainIds: string[]): void {
 
 function registerKickAndEmptyChains(includeSnare: boolean): void {
   registerMockObject("kick_chain", {
-    path: "live_set tracks 0 devices 0 chains 0",
+    path: livePath.track(0).device(0).chain(0),
     type: "Chain",
     properties: createDrumChainMock({
       inNote: 36,
@@ -81,7 +81,7 @@ function registerKickAndEmptyChains(includeSnare: boolean): void {
     }),
   });
   registerMockObject("empty_chain", {
-    path: "live_set tracks 0 devices 0 chains 1",
+    path: livePath.track(0).device(0).chain(1),
     type: "Chain",
     properties: createDrumChainMock({
       inNote: 37,
@@ -90,7 +90,7 @@ function registerKickAndEmptyChains(includeSnare: boolean): void {
     }), // No deviceId = no instruments
   });
   registerMockObject("kick_device", {
-    path: "live_set tracks 0 devices 0 chains 0 devices 0",
+    path: livePath.track(0).device(0).chain(0).device(0),
     type: "Device",
     properties: createSimpleInstrumentMock(),
   });
@@ -100,7 +100,7 @@ function registerKickAndEmptyChains(includeSnare: boolean): void {
   }
 
   registerMockObject("snare_chain", {
-    path: "live_set tracks 0 devices 0 chains 2",
+    path: livePath.track(0).device(0).chain(2),
     type: "Chain",
     properties: createDrumChainMock({
       inNote: 38,
@@ -110,7 +110,7 @@ function registerKickAndEmptyChains(includeSnare: boolean): void {
     }),
   });
   registerMockObject("snare_device", {
-    path: "live_set tracks 0 devices 0 chains 2 devices 0",
+    path: livePath.track(0).device(0).chain(2).device(0),
     type: "Device",
     properties: createSimpleInstrumentMock(),
   });
@@ -121,7 +121,7 @@ describe("readTrack", () => {
     it("returns null when instrument rack first chain has no devices", () => {
       setupTrackWithInstrumentRack("Track Instrument Rack Empty Chain");
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: {
           devices: [],
@@ -135,14 +135,14 @@ describe("readTrack", () => {
     it("returns null when instrument rack first chain first device is not a drum rack", () => {
       setupTrackWithInstrumentRack("Track Instrument Rack Non-Drum Device");
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: {
           devices: children("wavetable"),
         },
       });
       registerMockObject("wavetable", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -172,7 +172,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("drumchain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: {
           in_note: 60, // C3
@@ -181,7 +181,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("kickdevice", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -199,14 +199,14 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("rackchain1", {
-        path: "live_set tracks 0 devices 1 chains 0",
+        path: livePath.track(0).device(1).chain(0),
         type: "Chain",
         properties: {
           devices: children("nestedDrumRack"),
         },
       });
       registerMockObject("nestedDrumRack", {
-        path: "live_set tracks 0 devices 1 chains 0 devices 0",
+        path: livePath.track(0).device(1).chain(0).device(0),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -215,7 +215,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("drumchain2", {
-        path: "live_set tracks 0 devices 1 chains 0 devices 0 chains 0",
+        path: livePath.track(0).device(1).chain(0).device(0).chain(0),
         type: "Chain",
         properties: {
           in_note: 61, // Db3
@@ -224,7 +224,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("snaredevice", {
-        path: "live_set tracks 0 devices 1 chains 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(1).chain(0).device(0).chain(0).device(0),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -304,7 +304,7 @@ describe("readTrack", () => {
         properties: createDrumRackMock({ chainIds: ["kick_chain"] }),
       });
       registerMockObject("kick_chain", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createDrumChainMock({
           inNote: 36,
@@ -314,7 +314,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("nested_rack", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: {
           name: "Nested Rack",
@@ -329,7 +329,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("nested_chain", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0).device(0).chain(0),
         type: "Chain",
         properties: {
           name: "Nested Chain",
@@ -341,7 +341,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("nested_instrument", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createSimpleInstrumentMock(),
       });

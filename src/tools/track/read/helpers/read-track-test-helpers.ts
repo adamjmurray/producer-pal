@@ -165,7 +165,7 @@ export function setupDrumRackMocks(
     },
   });
   registerMockObject("chain1", {
-    path: "live_set tracks 0 devices 0 chains 0",
+    path: livePath.track(0).device(0).chain(0),
     type: "Chain",
     properties: {
       in_note: 60, // C3
@@ -177,7 +177,7 @@ export function setupDrumRackMocks(
     },
   });
   registerMockObject(kickDeviceId, {
-    path: "live_set tracks 0 devices 0 chains 0 devices 0",
+    path: livePath.track(0).device(0).chain(0).device(0),
     type: "Device",
     properties: {
       name: "Kick Instrument",

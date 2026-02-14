@@ -33,19 +33,19 @@ describe("updateDevice - drum chain moving", () => {
 
     // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
     chain0 = registerMockObject("chain-0", {
-      path: "live_set tracks 0 devices 0 chains 0",
+      path: livePath.track(0).device(0).chain(0),
       type: "DrumChain",
       properties: { in_note: 36 },
     });
 
     chain1 = registerMockObject("chain-1", {
-      path: "live_set tracks 0 devices 0 chains 1",
+      path: livePath.track(0).device(0).chain(1),
       type: "DrumChain",
       properties: { in_note: 36 },
     });
 
     chain2 = registerMockObject("chain-2", {
-      path: "live_set tracks 0 devices 0 chains 2",
+      path: livePath.track(0).device(0).chain(2),
       type: "DrumChain",
       properties: { in_note: 38 },
     });

@@ -134,8 +134,8 @@ describe("readTrack", () => {
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
           [String(livePath.track(0).device(0))]: "drumrack",
-          "live_set tracks 0 devices 0 chains 0": "chain1",
-          "live_set tracks 0 devices 0 chains 1": "chain2",
+          [String(livePath.track(0).device(0).chain(0))]: "chain1",
+          [String(livePath.track(0).device(0).chain(1))]: "chain2",
         },
         objects: {
           Track: mockTrackProperties({
@@ -188,8 +188,8 @@ describe("readTrack", () => {
           [String(livePath.track(0).device(0))]: "midiEffect",
           [String(livePath.track(0).device(1))]: "drumrack1",
           [String(livePath.track(0).device(2))]: "drumrack2",
-          "live_set tracks 0 devices 1 chains 0": "chain1",
-          "live_set tracks 0 devices 2 chains 0": "chain2",
+          [String(livePath.track(0).device(1).chain(0))]: "chain1",
+          [String(livePath.track(0).device(2).chain(0))]: "chain2",
         },
         objects: {
           Track: mockTrackProperties({
@@ -277,11 +277,12 @@ describe("readTrack", () => {
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
           [String(livePath.track(0).device(0))]: "instrumentRack",
-          "live_set tracks 0 devices 0 chains 0": "rackchain1",
-          "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
-          "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
+          [String(livePath.track(0).device(0).chain(0))]: "rackchain1",
+          [String(livePath.track(0).device(0).chain(0).device(0))]:
+            "nestedDrumRack",
+          [String(livePath.track(0).device(0).chain(0).device(0).chain(0))]:
             "drumchain1",
-          "live_set tracks 0 devices 0 chains 0 devices 0 chains 1":
+          [String(livePath.track(0).device(0).chain(0).device(0).chain(1))]:
             "drumchain2",
         },
         objects: {
@@ -361,8 +362,9 @@ describe("readTrack", () => {
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
           [String(livePath.track(0).device(0))]: "drumrack",
-          "live_set tracks 0 devices 0 chains 0": "catchAllChain",
-          "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
+          [String(livePath.track(0).device(0).chain(0))]: "catchAllChain",
+          [String(livePath.track(0).device(0).chain(0).device(0))]:
+            "nestedDrumRack",
         },
         objects: {
           Track: mockTrackProperties({
@@ -418,7 +420,7 @@ describe("readTrack", () => {
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
           [String(livePath.track(0).device(0))]: "drumrack",
-          "live_set tracks 0 devices 0 chains 0": "mutedChain",
+          [String(livePath.track(0).device(0).chain(0))]: "mutedChain",
         },
         objects: {
           Track: mockTrackProperties({

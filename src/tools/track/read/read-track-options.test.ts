@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -47,14 +48,14 @@ describe("readTrack", () => {
     it("includes all available options when '*' is used", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 mixer_device": "mixer_1",
-          "live_set tracks 0 mixer_device volume": "volume_param_1",
-          "live_set tracks 0 mixer_device panning": "panning_param_1",
-          "live_set tracks 0 devices 0": "synth1",
-          "live_set tracks 0 devices 1": "effect1",
-          "live_set tracks 0 clip_slots 0 clip": "clip1",
-          "live_set tracks 0 arrangement_clips 0": "arr_clip1",
+          [String(livePath.track(0))]: "track1",
+          [livePath.track(0).mixerDevice()]: "mixer_1",
+          [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
+          [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+          [String(livePath.track(0).device(0))]: "synth1",
+          [String(livePath.track(0).device(1))]: "effect1",
+          [livePath.track(0).clipSlot(0).clip()]: "clip1",
+          [livePath.track(0).arrangementClip(0)]: "arr_clip1",
         },
         objects: {
           Track: mockTrackProperties({
@@ -148,8 +149,8 @@ describe("readTrack", () => {
     it("applies mapped path-key object properties", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 arrangement_clips 0": "arr_clip1",
+          [String(livePath.track(0))]: "track1",
+          [livePath.track(0).arrangementClip(0)]: "arr_clip1",
         },
         objects: {
           Track: mockTrackProperties({
@@ -157,7 +158,7 @@ describe("readTrack", () => {
             devices: [],
             clip_slots: [],
           }),
-          "live_set tracks 0 arrangement_clips 0": {
+          [livePath.track(0).arrangementClip(0)]: {
             is_arrangement_clip: 1,
             name: "Clip From Path Key",
           },
@@ -182,7 +183,7 @@ describe("readTrack", () => {
     describe("return tracks", () => {
       it("reads return track when category is 'return'", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set return_tracks 1",
+          trackPath: String(livePath.returnTrack(1)),
           trackId: "return_track_1",
           objects: {
             Track: {
@@ -223,7 +224,7 @@ describe("readTrack", () => {
 
       it("throws when return track does not exist", () => {
         registerMockObject("0", {
-          path: "live_set return_tracks 99",
+          path: livePath.returnTrack(99),
           type: "Track",
         });
 
@@ -234,7 +235,7 @@ describe("readTrack", () => {
 
       it("includes routing properties for return tracks when requested", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set return_tracks 0",
+          trackPath: String(livePath.returnTrack(0)),
           trackId: "return_track_1",
           objects: {
             Track: createMasterTrackProperties({
@@ -275,10 +276,10 @@ describe("readTrack", () => {
     describe("master track", () => {
       it("reads master track when category is 'master'", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set master_track",
+          trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           pathIdMap: {
-            "live_set master_track devices 0": "compressor1",
+            [String(livePath.masterTrack().device(0))]: "compressor1",
           },
           objects: {
             Track: createMasterTrackProperties({
@@ -316,7 +317,7 @@ describe("readTrack", () => {
 
       it("throws when master track does not exist", () => {
         registerMockObject("0", {
-          path: "live_set master_track",
+          path: livePath.masterTrack(),
           type: "Track",
         });
 
@@ -327,11 +328,11 @@ describe("readTrack", () => {
 
       it("includes audio effects for master track when requested", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set master_track",
+          trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           pathIdMap: {
-            "live_set master_track devices 0": "compressor1",
-            "live_set master_track devices 1": "limiter1",
+            [String(livePath.masterTrack().device(0))]: "compressor1",
+            [String(livePath.masterTrack().device(1))]: "limiter1",
           },
           objects: {
             Track: createMasterTrackProperties({
@@ -380,7 +381,7 @@ describe("readTrack", () => {
 
       it("sets null routing properties for master track when requested", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set master_track",
+          trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
             Track: createMasterTrackProperties(),
@@ -406,7 +407,7 @@ describe("readTrack", () => {
 
       it("reads master track without requiring trackIndex", () => {
         setupTrackPathMappedMocks({
-          trackPath: "live_set master_track",
+          trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
             Track: createMasterTrackProperties({

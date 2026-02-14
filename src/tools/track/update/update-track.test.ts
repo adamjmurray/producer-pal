@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -19,9 +20,9 @@ describe("updateTrack", () => {
   let track789: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: "live_set tracks 0" });
-    track456 = registerMockObject("456", { path: "live_set tracks 1" });
-    track789 = registerMockObject("789", { path: "live_set tracks 2" });
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    track456 = registerMockObject("456", { path: livePath.track(1) });
+    track789 = registerMockObject("789", { path: livePath.track(2) });
   });
 
   it("should update a single track by ID", () => {
