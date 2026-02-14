@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { VERSION } from "#src/shared/version.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -69,7 +71,7 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
   const registeredPaths = new Set<string>();
 
   registerWithTracking(registeredIds, registeredPaths, "live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     type: "Song",
     properties: liveSetProperties,
   });
@@ -89,7 +91,8 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
   const trackIds = extractChildIds(liveSetProperties.tracks);
 
   for (const [trackIndex, trackId] of trackIds.entries()) {
-    const trackPath = `live_set tracks ${trackIndex}`;
+    const track = livePath.track(trackIndex);
+    const trackPath = String(track);
     const trackProperties = resolveMappedObjectProperties(
       config,
       trackPath,
@@ -105,7 +108,7 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
     const deviceIds = extractChildIds(trackProperties.devices);
 
     for (const [deviceIndex, deviceId] of deviceIds.entries()) {
-      const devicePath = `${trackPath} devices ${deviceIndex}`;
+      const devicePath = String(track.device(deviceIndex));
       const deviceProperties = resolveMappedObjectProperties(
         config,
         devicePath,
@@ -123,7 +126,7 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
   const sceneIds = extractChildIds(liveSetProperties.scenes);
 
   for (const [sceneIndex, sceneId] of sceneIds.entries()) {
-    const scenePath = `live_set scenes ${sceneIndex}`;
+    const scenePath = livePath.scene(sceneIndex);
     const sceneProperties = resolveMappedObjectProperties(
       config,
       scenePath,
@@ -242,9 +245,9 @@ describe("connect", () => {
         tracks: children("track0", "track1", "track2"),
         scenes: children("scene0", "scene1"),
         extra: {
-          "live_set tracks 0": { has_midi_input: 1, devices: [] },
-          "live_set tracks 1": { has_midi_input: 1, devices: [] },
-          "live_set tracks 2": { has_midi_input: 0, devices: [] },
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(2))]: { has_midi_input: 0, devices: [] },
         },
       }),
       "12.3",
@@ -293,7 +296,9 @@ describe("connect", () => {
         view: "Arranger",
         tracks: children("track0"),
         scenes: children("scene0"),
-        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
+        extra: {
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+        },
       }),
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
@@ -338,8 +343,8 @@ describe("connect", () => {
         tracks: children("track0", "track1"),
         scenes: children("scene0"),
         extra: {
-          "live_set tracks 0": { has_midi_input: 1, devices: [] },
-          "live_set tracks 1": { has_midi_input: 1, devices: [] },
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
         },
       }),
       "12.3",
@@ -359,7 +364,9 @@ describe("connect", () => {
         name: "No Host Index Project",
         tracks: children("track0"),
         scenes: children("scene0"),
-        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
+        extra: {
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+        },
       }),
       "12.3",
     );

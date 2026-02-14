@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -181,7 +182,7 @@ function deleteClipObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(Number(trackIndex)));
 
   track.call("delete_clip", toLiveApiId(object.id));
 }

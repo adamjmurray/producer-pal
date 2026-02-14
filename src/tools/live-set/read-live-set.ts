@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -43,7 +44,7 @@ export function readLiveSet(
 
   // Compute return track names once for efficiency (used for sends in mixer data)
   const returnTrackNames: string[] = returnTrackIds.map((_, idx) => {
-    const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
+    const rt = LiveAPI.from(livePath.returnTrack(idx));
 
     return rt.getProperty("name") as string;
   });
@@ -98,7 +99,7 @@ export function readLiveSet(
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
         const returnTrack = LiveAPI.from(
-          `live_set return_tracks ${returnTrackIndex}`,
+          livePath.returnTrack(returnTrackIndex),
         );
 
         return readTrackGeneric({

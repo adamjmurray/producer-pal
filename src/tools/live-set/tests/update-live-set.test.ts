@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -18,7 +19,7 @@ describe("updateLiveSet", () => {
   let mockRootNote = 0; // Track the root note state across tests
 
   beforeEach(() => {
-    liveSet = registerMockObject("live_set_id", { path: "live_set" });
+    liveSet = registerMockObject("live_set_id", { path: livePath.liveSet });
     mockRootNote = 0; // Reset to C for each test
 
     // Mock scale_intervals and root_note for tests that need it

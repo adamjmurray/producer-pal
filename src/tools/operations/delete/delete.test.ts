@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   type RegisteredMockObject,
@@ -17,11 +18,11 @@ describe("deleteObject", () => {
   let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
-    liveSet = registerMockObject("live_set", { path: "live_set" });
+    liveSet = registerMockObject("live_set", { path: livePath.liveSet });
   });
 
   it("should delete a single track when type is 'track'", () => {
-    setupTrackMocks({ track_2: "live_set tracks 1" });
+    setupTrackMocks({ track_2: String(livePath.track(1)) });
 
     const result = deleteObject({ ids: "track_2", type: "track" });
 
@@ -35,9 +36,9 @@ describe("deleteObject", () => {
 
   it("should delete multiple tracks in descending index order", () => {
     setupTrackMocks({
-      track_0: "live_set tracks 0",
-      track_1: "live_set tracks 1",
-      track_2: "live_set tracks 2",
+      track_0: String(livePath.track(0)),
+      track_1: String(livePath.track(1)),
+      track_2: String(livePath.track(2)),
     });
 
     const result = deleteObject({
@@ -58,7 +59,7 @@ describe("deleteObject", () => {
   });
 
   it("should delete a single scene when type is 'scene'", () => {
-    setupSceneMocks({ scene_2: "live_set scenes 1" });
+    setupSceneMocks({ scene_2: livePath.scene(1) });
 
     const result = deleteObject({ ids: "scene_2", type: "scene" });
 
@@ -72,8 +73,8 @@ describe("deleteObject", () => {
 
   it("should delete multiple scenes in descending index order", () => {
     setupSceneMocks({
-      scene_0: "live_set scenes 0",
-      scene_2: "live_set scenes 2",
+      scene_0: livePath.scene(0),
+      scene_2: livePath.scene(2),
     });
 
     const result = deleteObject({ ids: "scene_0, scene_2", type: "scene" });
@@ -92,18 +93,18 @@ describe("deleteObject", () => {
     const ids = "clip_0_0,clip_1_1";
 
     registerMockObject("clip_0_0", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       type: "Clip",
     });
     registerMockObject("clip_1_1", {
-      path: "live_set tracks 1 clip_slots 1 clip",
+      path: livePath.track(1).clipSlot(1).clip(),
       type: "Clip",
     });
     const track0 = registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
     });
     const track1 = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
     });
 
     const result = deleteObject({ ids, type: "clip" });
@@ -159,7 +160,7 @@ describe("deleteObject", () => {
 
   it("should log warning when object is wrong type", () => {
     registerMockObject("scene_1", {
-      path: "live_set scenes 0",
+      path: livePath.scene(0),
       type: "Scene",
     });
 
@@ -175,8 +176,8 @@ describe("deleteObject", () => {
 
   it("should skip invalid IDs in comma-separated list and delete valid ones", () => {
     setupTrackMocks({
-      track_0: "live_set tracks 0",
-      track_2: "live_set tracks 2",
+      track_0: String(livePath.track(0)),
+      track_2: String(livePath.track(2)),
     });
     mockNonExistentObjects();
 
@@ -222,10 +223,10 @@ describe("deleteObject", () => {
 
   it("should throw error when trying to delete Producer Pal host track", () => {
     registerMockObject("this_device", {
-      path: "live_set tracks 1 devices 0",
+      path: livePath.track(1).device(0),
     });
     registerMockObject("track_1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       type: "Track",
     });
 
@@ -238,8 +239,8 @@ describe("deleteObject", () => {
     const ids = " track_0 , track_1 ";
 
     setupTrackMocks({
-      track_0: "live_set tracks 0",
-      track_1: "live_set tracks 1",
+      track_0: String(livePath.track(0)),
+      track_1: String(livePath.track(1)),
     });
     const result = deleteObject({ ids, type: "track" });
 
@@ -251,8 +252,8 @@ describe("deleteObject", () => {
 
   it("should return single object for single ID and array for multiple IDs", () => {
     setupTrackMocks({
-      track_0: "live_set tracks 0",
-      track_1: "live_set tracks 1",
+      track_0: String(livePath.track(0)),
+      track_1: String(livePath.track(1)),
     });
 
     const singleResult = deleteObject({ ids: "track_0", type: "track" });
@@ -306,9 +307,11 @@ describe("deleteObject", () => {
   it("should delete a single return track", () => {
     const id = "return_1";
     const returnTrackIndex = 1;
-    const path = `live_set return_tracks ${returnTrackIndex}`;
 
-    registerMockObject(id, { path, type: "Track" });
+    registerMockObject(id, {
+      path: livePath.returnTrack(returnTrackIndex),
+      type: "Track",
+    });
 
     const result = deleteObject({ ids: id, type: "track" });
 
@@ -323,11 +326,11 @@ describe("deleteObject", () => {
     const ids = "return_0,return_2";
 
     registerMockObject("return_0", {
-      path: "live_set return_tracks 0",
+      path: livePath.returnTrack(0),
       type: "Track",
     });
     registerMockObject("return_2", {
-      path: "live_set return_tracks 2",
+      path: livePath.returnTrack(2),
       type: "Track",
     });
 
