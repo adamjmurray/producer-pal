@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
@@ -18,11 +19,13 @@ import {
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
-    const liveSet = registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("track1", { path: livePath.track(0) });
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+    });
 
     registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
 
@@ -33,18 +36,20 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate multiple tracks with auto-incrementing names", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
-    const liveSet = registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("track1", { path: livePath.track(0) });
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+    });
     const track1 = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
     const track2 = registerMockObject("live_set/tracks/2", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
     const track3 = registerMockObject("live_set/tracks/3", {
-      path: "live_set tracks 3",
+      path: livePath.track(3),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
 
@@ -67,10 +72,10 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without clips when withoutClips is true", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
     const newTrack = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         devices: [],
         clip_slots: children("slot0", "slot1", "slot2"),
@@ -80,16 +85,16 @@ describe("duplicate - track duplication", () => {
 
     // Register clip slot children
     const slot0 = registerMockObject("slot0", {
-      path: "live_set tracks 1 clip_slots 0",
+      path: livePath.track(1).clipSlot(0),
       properties: { has_clip: 1 },
     });
 
     registerMockObject("slot1", {
-      path: "live_set tracks 1 clip_slots 1",
+      path: livePath.track(1).clipSlot(1),
       properties: { has_clip: 0 },
     });
     const slot2 = registerMockObject("slot2", {
-      path: "live_set tracks 1 clip_slots 2",
+      path: livePath.track(1).clipSlot(2),
       properties: { has_clip: 1 },
     });
 
@@ -117,10 +122,12 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without devices when withoutDevices is true", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
-    const liveSet = registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("track1", { path: livePath.track(0) });
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+    });
     const newTrack = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         devices: children("device0", "device1", "device2"),
         clip_slots: [],
@@ -145,10 +152,12 @@ describe("duplicate - track duplication", () => {
   ] as const)(
     "should duplicate a track with devices when %s",
     (_desc: string, withoutDevices: boolean | undefined) => {
-      registerMockObject("track1", { path: "live_set tracks 0" });
-      const liveSet = registerMockObject("live_set", { path: "live_set" });
+      registerMockObject("track1", { path: livePath.track(0) });
+      const liveSet = registerMockObject("live_set", {
+        path: livePath.liveSet,
+      });
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: children("device0", "device1"),
           clip_slots: [],
@@ -181,13 +190,15 @@ describe("duplicate - track duplication", () => {
     liveSet: RegisteredMockObject;
     newTrack: RegisteredMockObject;
   } {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("this_device", {
-      path: "live_set tracks 0 devices 1",
+      path: livePath.track(0).device(1),
     });
-    const liveSet = registerMockObject("live_set", { path: "live_set" });
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+    });
     const newTrack = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         devices: children("device0", "device1", "device2"),
         clip_slots: [],
@@ -253,19 +264,22 @@ describe("duplicate - track duplication", () => {
     function setupRoutingMocks(
       opts: Parameters<typeof setupRouteToSourceMock>[0] = {},
     ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
-      registerMockObject("track1", { path: "live_set tracks 0" });
-      registerMockObject("live_set", { path: "live_set" });
+      registerMockObject("track1", { path: livePath.track(0) });
+      registerMockObject("live_set", { path: livePath.liveSet });
 
       const mockData = setupRouteToSourceMock(opts);
 
       const sourceTrack = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
-        properties: mockData["live_set tracks 0"] as Record<string, unknown>,
+        path: livePath.track(0),
+        properties: mockData[String(livePath.track(0))] as Record<
+          string,
+          unknown
+        >,
       });
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
-          ...(mockData["live_set tracks 1"] as Record<string, unknown>),
+          ...(mockData[String(livePath.track(1))] as Record<string, unknown>),
           devices: [],
           clip_slots: [],
           arrangement_clips: [],
