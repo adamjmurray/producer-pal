@@ -9,6 +9,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "./create-scene.ts";
 
@@ -21,26 +22,26 @@ describe("createScene", () => {
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: { scenes: children("existing1", "existing2") },
     });
     appView = registerMockObject("app-view", {
-      path: "live_app view",
+      path: livePath.view.app,
     });
     scene0 = registerMockObject("live_set/scenes/0", {
-      path: "live_set scenes 0",
+      path: livePath.scene(0),
     });
     scene1 = registerMockObject("live_set/scenes/1", {
-      path: "live_set scenes 1",
+      path: livePath.scene(1),
     });
     scene2 = registerMockObject("live_set/scenes/2", {
-      path: "live_set scenes 2",
+      path: livePath.scene(2),
     });
 
     // Register additional scenes for tests that need higher indices (e.g., padding)
     for (let i = 3; i <= 5; i++) {
       registerMockObject(`live_set/scenes/${i}`, {
-        path: `live_set scenes ${i}`,
+        path: livePath.scene(i),
       });
     }
   });
@@ -233,20 +234,20 @@ describe("createScene", () => {
 
     beforeEach(() => {
       captureLiveSet = registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: [] },
       });
       captureAppView = registerMockObject("live_set/view", {
-        path: "live_set view",
+        path: livePath.view.song,
       });
       registerMockObject("live_set/scenes/1", {
-        path: "live_set scenes 1",
+        path: livePath.scene(1),
       });
       registerMockObject("live_set/view/selected_scene", {
-        path: "live_set scenes 1",
+        path: livePath.scene(1),
       });
       capturedScene = registerMockObject("live_set/scenes/2", {
-        path: "live_set scenes 2",
+        path: livePath.scene(2),
       });
     });
 
@@ -327,12 +328,12 @@ describe("createScene", () => {
 
     it("should return clips when capturing with existing clips", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
       });
       // Mark track 1's clip as non-existent (id "0" makes exists() return false)
       registerMockObject("0", {
-        path: "live_set tracks 1 clip_slots 2 clip",
+        path: livePath.track(1).clipSlot(2).clip(),
       });
 
       const result = createScene({
@@ -367,11 +368,11 @@ describe("createScene", () => {
 
     it("should switch to session view when capturing scenes with switchView=true", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: [] },
       });
       registerMockObject("live_set/view/selected_scene", {
-        path: "live_set scenes 1",
+        path: livePath.scene(1),
       });
 
       const result = createScene({

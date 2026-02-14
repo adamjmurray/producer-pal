@@ -8,6 +8,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readScene } from "./read-scene.ts";
 
 // Helper to create default Scene mock config
@@ -26,7 +27,7 @@ const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({
 
 function setupLiveSetTracks(trackIds: string[]): void {
   registerMockObject("live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     type: "Song",
     properties: {
       tracks: trackIds.length > 0 ? children(...trackIds) : [],
@@ -35,7 +36,7 @@ function setupLiveSetTracks(trackIds: string[]): void {
 
   for (const [index, trackId] of trackIds.entries()) {
     registerMockObject(trackId, {
-      path: `live_set tracks ${index}`,
+      path: livePath.track(index),
       type: "Track",
       properties: {
         has_midi_input: 1,
@@ -50,7 +51,7 @@ function setupScene(
   sceneProperties: Record<string, unknown> = defaultSceneConfig(),
 ): void {
   registerMockObject(sceneId, {
-    path: `live_set scenes ${sceneIndex}`,
+    path: livePath.scene(sceneIndex),
     type: "Scene",
     properties: sceneProperties,
   });
@@ -62,7 +63,7 @@ function setupSessionClip(
   sceneIndex: number,
 ): void {
   registerMockObject(clipId, {
-    path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+    path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
     type: "Clip",
   });
 }
@@ -86,7 +87,7 @@ describe("readScene", () => {
 
   it("throws when no scene exists", () => {
     registerMockObject("0", {
-      path: "live_set scenes 99",
+      path: livePath.scene(99),
       type: "Scene",
     });
 
@@ -150,7 +151,7 @@ describe("readScene", () => {
     setupSessionClip("clip_0_0", 0, 0);
     setupSessionClip("clip_1_0", 1, 0);
     registerMockObject("0", {
-      path: "live_set tracks 2 clip_slots 0 clip",
+      path: livePath.track(2).clipSlot(0).clip(),
       type: "Clip",
     });
 
