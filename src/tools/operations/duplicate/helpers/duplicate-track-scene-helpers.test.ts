@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   children,
@@ -76,7 +77,7 @@ describe("duplicate-track-scene-helpers", () => {
     vi.clearAllMocks();
 
     registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
     });
   });
@@ -84,7 +85,7 @@ describe("duplicate-track-scene-helpers", () => {
   describe("calculateSceneLength", () => {
     it("should return default minimum length when scene has no clips", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("10") },
       });
       registerClipSlot(0, 0, false);
@@ -96,7 +97,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should return length of longest clip in scene", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("10", "11") },
       });
       registerClipSlot(0, 0, true, { length: 8 });
@@ -111,12 +112,12 @@ describe("duplicate-track-scene-helpers", () => {
   describe("duplicateTrack", () => {
     it("should duplicate a track and return basic info", () => {
       const liveSet = registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
       });
 
       registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
@@ -132,7 +133,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should set name when provided", () => {
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
@@ -143,7 +144,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should delete all devices when withoutDevices is true", () => {
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: children("device0", "device1", "device2"),
           clip_slots: [],
@@ -158,7 +159,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should delete clips when withoutClips is true", () => {
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: [],
           clip_slots: children("slot0", "slot1"),
@@ -167,11 +168,11 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       registerMockObject("slot0", {
-        path: "live_set tracks 1 clip_slots 0",
+        path: livePath.track(1).clipSlot(0),
         properties: { has_clip: 1 },
       });
       registerMockObject("slot1", {
-        path: "live_set tracks 1 clip_slots 1",
+        path: livePath.track(1).clipSlot(1),
         properties: { has_clip: 0 },
       });
 
@@ -183,7 +184,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should return empty clips array when no clips exist", () => {
       registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
@@ -194,7 +195,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should configure routing when routeToSource is true", () => {
       const sourceTrack = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         properties: {
           name: "Source Track",
           arm: 0,
@@ -206,7 +207,7 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: [],
           clip_slots: [],
@@ -243,7 +244,7 @@ describe("duplicate-track-scene-helpers", () => {
       outputRoutingTypes: OutputRoutingType[],
     ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
       const sourceTrack = registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         properties: {
           name: "Source Track",
           arm: sourceConfig.arm ?? 0,
@@ -257,7 +258,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
       const newTrack = registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: [],
           clip_slots: [],
@@ -367,7 +368,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should delete session clips when withoutClips is true", () => {
       registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: [],
           clip_slots: children("slot0"),
@@ -375,7 +376,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
       const slot0 = registerMockObject("slot0", {
-        path: "live_set tracks 1 clip_slots 0",
+        path: livePath.track(1).clipSlot(0),
         properties: { has_clip: 1 },
       });
 
@@ -388,7 +389,7 @@ describe("duplicate-track-scene-helpers", () => {
       const arrClipId = "arr_clip_456";
 
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: ["id", "10", "id", "11", "id", "12"],
           signature_numerator: 4,
@@ -396,7 +397,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
       registerMockObject("live_set/tracks/1", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
         properties: {
           devices: [],
           clip_slots: [],
@@ -404,7 +405,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
       registerMockObject(arrClipId, {
-        path: "live_set tracks 1 arrangement_clips 0",
+        path: livePath.track(1).arrangementClip(0),
         properties: {
           is_arrangement_clip: 1,
           start_time: 8,
@@ -422,12 +423,12 @@ describe("duplicate-track-scene-helpers", () => {
   describe("duplicateScene", () => {
     it("should duplicate a scene and return basic info", () => {
       const liveSet = registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0") },
       });
 
       registerClipSlot(0, 1, false);
-      registerMockObject("live_set/scenes/1", { path: "live_set scenes 1" });
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0);
 
@@ -441,12 +442,12 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should set name when provided", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0") },
       });
       registerClipSlot(0, 1, false);
       const scene = registerMockObject("live_set/scenes/1", {
-        path: "live_set scenes 1",
+        path: livePath.scene(1),
       });
 
       duplicateScene(0, "New Scene");
@@ -456,7 +457,7 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should delete clips when withoutClips is true", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0", "track1") },
       });
       const slot0 = registerClipSlot(0, 1, true);
@@ -464,12 +465,12 @@ describe("duplicate-track-scene-helpers", () => {
       registerClipSlot(1, 1, true);
       // Register clip objects so forEachClipInScene finds them
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
       });
       registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
-        path: "live_set tracks 1 clip_slots 1 clip",
+        path: livePath.track(1).clipSlot(1).clip(),
       });
-      registerMockObject("live_set/scenes/1", { path: "live_set scenes 1" });
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0, undefined, true);
 
@@ -481,15 +482,15 @@ describe("duplicate-track-scene-helpers", () => {
 
     it("should collect clips when withoutClips is not true", () => {
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0") },
       });
       registerClipSlot(0, 1, true);
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
         properties: { is_arrangement_clip: 0 },
       });
-      registerMockObject("live_set/scenes/1", { path: "live_set scenes 1" });
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0);
 
@@ -531,14 +532,14 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return empty clips when withoutClips is true", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0") },
       });
       registerClipSlot(0, 0, true);
       registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
       });
 
       const result = duplicateSceneToArrangement(
@@ -558,9 +559,9 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use provided arrangementLength", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: { tracks: children("track0") },
       });
       registerClipSlot(0, 0, true, {
@@ -570,16 +571,16 @@ describe("duplicate-track-scene-helpers", () => {
         is_midi_clip: 1,
       });
       registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           duplicate_clip_to_arrangement: () => [
             "id",
-            "live_set tracks 0 arrangement_clips 0",
+            livePath.track(0).arrangementClip(0),
           ],
         },
       });
-      registerMockObject("live_set tracks 0 arrangement_clips 0", {
-        path: "live_set tracks 0 arrangement_clips 0",
+      registerMockObject(livePath.track(0).arrangementClip(0), {
+        path: livePath.track(0).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 16 },
       });
 
@@ -598,9 +599,9 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use calculateSceneLength when arrangementLength is not provided", () => {
-      registerMockObject("scene1", { path: "live_set scenes 0" });
+      registerMockObject("scene1", { path: livePath.scene(0) });
       registerMockObject("live_set", {
-        path: "live_set",
+        path: livePath.liveSet,
         properties: {
           tracks: children("track0"),
           signature_numerator: 4,
@@ -614,16 +615,16 @@ describe("duplicate-track-scene-helpers", () => {
         is_midi_clip: 1,
       });
       registerMockObject("live_set/tracks/0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: {
           duplicate_clip_to_arrangement: () => [
             "id",
-            "live_set tracks 0 arrangement_clips 0",
+            livePath.track(0).arrangementClip(0),
           ],
         },
       });
-      registerMockObject("live_set tracks 0 arrangement_clips 0", {
-        path: "live_set tracks 0 arrangement_clips 0",
+      registerMockObject(livePath.track(0).arrangementClip(0), {
+        path: livePath.track(0).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 16 },
       });
 
