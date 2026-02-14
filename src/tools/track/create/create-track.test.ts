@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -25,7 +26,7 @@ describe("createTrack", () => {
   beforeEach(() => {
     returnTrackCounter = 0;
     liveSet = registerMockObject("liveSet", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: {
         tracks: children("existing1", "existing2"),
         return_tracks: children("returnA", "returnB"),

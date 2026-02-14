@@ -380,7 +380,7 @@ export function setupChainMock(
 ): RegisteredMockObject {
   const {
     id = "chain-123",
-    path = "live_set tracks 1 devices 0 chains 0",
+    path = String(livePath.track(1).device(0).chain(0)),
     name = "Chain",
     deviceIds = [],
   } = config;

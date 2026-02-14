@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
@@ -167,7 +168,7 @@ function applySendProperties(
 
   // Find matching send by return track name
   // Match exact name OR letter prefix (e.g., "A" matches "A-Reverb")
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const returnTrackIds = liveSet.getChildIds("return_tracks");
 
   let sendIndex = -1;

@@ -38,21 +38,21 @@ describe("updateDevice with path parameter", () => {
         type: "Device",
       });
       view456 = registerMockObject("view-456", {
-        path: "live_set tracks 1 devices 0 view",
+        path: `${String(livePath.track(1).device(0))} view`,
       });
       returnDevice = registerMockObject("return-device-123", {
-        path: "live_set return_tracks 0 devices 0",
+        path: livePath.returnTrack(0).device(0),
         type: "Device",
       });
       registerMockObject("view-return-123", {
-        path: "live_set return_tracks 0 devices 0 view",
+        path: `${String(livePath.returnTrack(0).device(0))} view`,
       });
       masterDevice = registerMockObject("master-device-789", {
-        path: "live_set master_track devices 0",
+        path: livePath.masterTrack().device(0),
         type: "Device",
       });
       registerMockObject("view-master-789", {
-        path: "live_set master_track devices 0 view",
+        path: `${String(livePath.masterTrack().device(0))} view`,
       });
     });
 
@@ -99,11 +99,11 @@ describe("updateDevice with path parameter", () => {
 
     beforeEach(() => {
       chain123 = registerMockObject("chain-123", {
-        path: "live_set tracks 1 devices 0 chains 0",
+        path: livePath.track(1).device(0).chain(0),
         type: "Chain",
       });
       returnChain456 = registerMockObject("return-chain-456", {
-        path: "live_set tracks 1 devices 0 return_chains 0",
+        path: livePath.track(1).device(0).returnChain(0),
         type: "Chain",
       });
     });
@@ -461,7 +461,7 @@ describe("updateDevice with path parameter", () => {
         type: "Device",
       });
       const chain200 = registerMockObject("chain-200", {
-        path: "live_set tracks 1 devices 0 chains 0",
+        path: livePath.track(1).device(0).chain(0),
         type: "Chain",
       });
 
@@ -499,7 +499,7 @@ describe("updateDevice with path parameter", () => {
     it("should update params on multiple devices using path-based param IDs", () => {
       const result = updateDevice({
         path: "t0/d0, t1/d0",
-        params: '{"live_set tracks 0 devices 0 parameters 5": 1000}',
+        params: `{"${livePath.track(0).device(0).parameter(5)}": 1000}`,
       });
 
       expect(param100.set).toHaveBeenCalledWith("display_value", 1000);

@@ -32,10 +32,10 @@ describe("updateDevice", () => {
 
     // Views for collapsed state
     view123 = registerMockObject("view-123", {
-      path: "live_set tracks 0 devices 0 view",
+      path: `${String(livePath.track(0).device(0))} view`,
     });
     registerMockObject("view-456", {
-      path: "live_set tracks 0 devices 1 view",
+      path: `${String(livePath.track(0).device(1))} view`,
     });
 
     // Default param objects
@@ -484,7 +484,7 @@ describe("updateDevice", () => {
         },
       });
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 1",
+        path: livePath.track(0).device(0).chain(1),
       });
     });
 

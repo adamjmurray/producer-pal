@@ -75,7 +75,7 @@ interface TrackMixerMockHandles {
   sends: RegisteredMockObject[];
 }
 
-const DEFAULT_TRACK_PATH = "live_set tracks 0";
+const DEFAULT_TRACK_PATH = String(livePath.track(0));
 
 const DEFAULT_TRACK_MIXER_OPTIONS: ResolvedTrackMixerMocksOptions = {
   trackPath: DEFAULT_TRACK_PATH,
@@ -243,7 +243,7 @@ export function setupReturnTrackNames(names: string[]): void {
   const returnTrackIds = names.map((_, index) => `return${index + 1}`);
 
   registerMockObject("liveSet", {
-    path: "live_set",
+    path: livePath.liveSet,
     type: "Song",
     properties: {
       return_tracks:

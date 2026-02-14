@@ -34,7 +34,7 @@ describe("createDevice", () => {
     });
 
     chain0 = registerMockObject("chain-0-handle", {
-      path: "live_set tracks 0 devices 0 chains 0",
+      path: livePath.track(0).device(0).chain(0),
       methods: { insert_device: () => ["id", "device123"] },
     });
   });
@@ -265,7 +265,7 @@ describe("createDevice", () => {
         });
 
         registerMockObject("device123", {
-          path: "live_set return_tracks 0 devices 0",
+          path: livePath.returnTrack(0).device(0),
         });
 
         const result = createDevice({
@@ -309,7 +309,7 @@ describe("createDevice", () => {
         });
 
         registerMockObject("device123", {
-          path: "live_set master_track devices 0",
+          path: livePath.masterTrack().device(0),
         });
 
         const result = createDevice({
@@ -350,13 +350,13 @@ describe("createDevice", () => {
           },
         });
         const chain = registerMockObject("chain-0-handle", {
-          path: "live_set tracks 0 devices 0 chains 0",
+          path: livePath.track(0).device(0).chain(0),
           properties: { devices: ["id", "existing-device"] },
           methods: { insert_device: () => ["id", "device123"] },
         });
 
         registerMockObject("device123", {
-          path: "live_set tracks 0 devices 0 chains 0 devices 0",
+          path: livePath.track(0).device(0).chain(0).device(0),
         });
 
         const result = createDevice({
@@ -381,13 +381,13 @@ describe("createDevice", () => {
           },
         });
         const returnChain = registerMockObject("rchain-0-handle", {
-          path: "live_set tracks 0 devices 0 return_chains 0",
+          path: livePath.track(0).device(0).returnChain(0),
           properties: { devices: ["id", "existing-device"] },
           methods: { insert_device: () => ["id", "device123"] },
         });
 
         registerMockObject("device123", {
-          path: "live_set tracks 0 devices 0 return_chains 0 devices 0",
+          path: livePath.track(0).device(0).returnChain(0).device(0),
         });
 
         const result = createDevice({
@@ -446,7 +446,7 @@ describe("createDevice", () => {
 
       it("should throw error when insert_device fails", () => {
         registerMockObject("chain-0-handle", {
-          path: "live_set tracks 0 devices 0 chains 0",
+          path: livePath.track(0).device(0).chain(0),
           methods: { insert_device: () => ["id", "0"] },
         });
 

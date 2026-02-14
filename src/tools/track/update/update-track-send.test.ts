@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -19,28 +20,28 @@ describe("updateTrack - send properties", () => {
   let send3: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: "live_set tracks 0" });
-    registerMockObject("456", { path: "live_set tracks 1" });
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    registerMockObject("456", { path: livePath.track(1) });
 
     registerMockObject("mixer_1", {
-      path: "live_set tracks 0 mixer_device",
+      path: livePath.track(0).mixerDevice(),
       properties: { sends: children("send_1", "send_2") },
     });
     registerMockObject("mixer_2", {
-      path: "live_set tracks 1 mixer_device",
+      path: livePath.track(1).mixerDevice(),
       properties: { sends: children("send_3", "send_4") },
     });
 
     registerMockObject("liveSet", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: { return_tracks: children("return_A", "return_B") },
     });
     registerMockObject("return_A", {
-      path: "live_set return_tracks 0",
+      path: livePath.returnTrack(0),
       properties: { name: "A-Reverb" },
     });
     registerMockObject("return_B", {
-      path: "live_set return_tracks 1",
+      path: livePath.returnTrack(1),
       properties: { name: "B-Delay" },
     });
 
@@ -134,7 +135,7 @@ describe("updateTrack - send properties", () => {
   it("should warn and skip when track has no sends", () => {
     // Override mixer_1 with empty sends for this test
     registerMockObject("mixer_1", {
-      path: "live_set tracks 0 mixer_device",
+      path: livePath.track(0).mixerDevice(),
       properties: { sends: [] },
     });
 
@@ -185,7 +186,7 @@ describe("updateTrack - send properties", () => {
   it("should warn and skip when mixer device does not exist", () => {
     // Override mixer to be non-existent for this test
     registerMockObject("id 0", {
-      path: "live_set tracks 0 mixer_device",
+      path: livePath.track(0).mixerDevice(),
     });
 
     // Should not throw, just warn and skip the send update
@@ -201,13 +202,13 @@ describe("updateTrack - send properties", () => {
   it("should warn and skip when send index exceeds available sends", () => {
     // Setup: 3 return tracks but only 2 sends
     registerMockObject("liveSet", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: {
         return_tracks: children("return_A", "return_B", "return_C"),
       },
     });
     registerMockObject("return_C", {
-      path: "live_set return_tracks 2",
+      path: livePath.returnTrack(2),
       properties: { name: "C-Echo" },
     });
 

@@ -46,7 +46,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("empty_chain", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Empty Chain",
@@ -80,7 +80,7 @@ describe("readTrack", () => {
     it("handles multiple chains in a rack", () => {
       setupInstrumentRackOnTrack0(["chain1", "chain2"]);
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Piano",
@@ -89,7 +89,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("chain2", {
-        path: "live_set tracks 0 devices 0 chains 1",
+        path: livePath.track(0).device(0).chain(1),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Bass",
@@ -99,7 +99,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("device1", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Lead Synth",
@@ -109,7 +109,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("device2", {
-        path: "live_set tracks 0 devices 0 chains 1 devices 0",
+        path: livePath.track(0).device(0).chain(1).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Bass Synth",
@@ -173,7 +173,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("kick_chain", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createDrumChainMock({
           inNote: 36,
@@ -184,7 +184,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("snare_chain", {
-        path: "live_set tracks 0 devices 0 chains 1",
+        path: livePath.track(0).device(0).chain(1),
         type: "Chain",
         properties: createDrumChainMock({
           inNote: 38,
@@ -195,12 +195,12 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("kick_device", {
-        path: "live_set tracks 0 devices 0 chains 0 devices 0",
+        path: livePath.track(0).device(0).chain(0).device(0),
         type: "Device",
         properties: createSimpleInstrumentMock(),
       });
       registerMockObject("snare_device", {
-        path: "live_set tracks 0 devices 0 chains 1 devices 0",
+        path: livePath.track(0).device(0).chain(1).device(0),
         type: "Device",
         properties: createSimpleInstrumentMock(),
       });

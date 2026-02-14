@@ -36,7 +36,7 @@ describe("readDevice with path parameter", () => {
   it("should read device by path", () => {
     setupBasicDeviceMock({
       id: "device-456",
-      path: "live_set tracks 1 devices 0",
+      path: String(livePath.track(1).device(0)),
       class_display_name: "Operator",
       type: 1,
     });
@@ -163,7 +163,7 @@ describe("readDevice with path parameter", () => {
   it("should read return chain by path with enriched properties", () => {
     setupChainMock({
       id: "return-chain-101",
-      path: "live_set tracks 1 devices 0 return_chains 0",
+      path: String(livePath.track(1).device(0).returnChain(0)),
       name: "Return A",
       color: 0x0088ff,
     });
@@ -208,7 +208,7 @@ describe("readDevice with path parameter", () => {
   it("should read device from return track by path", () => {
     setupBasicDeviceMock({
       id: "return-device-123",
-      path: "live_set return_tracks 0 devices 0",
+      path: String(livePath.returnTrack(0).device(0)),
       class_display_name: "Reverb",
       type: 2,
     });
@@ -224,7 +224,7 @@ describe("readDevice with path parameter", () => {
   it("should read device from master track by path", () => {
     setupBasicDeviceMock({
       id: "master-device-123",
-      path: "live_set master_track devices 0",
+      path: String(livePath.masterTrack().device(0)),
       class_display_name: "Limiter",
       type: 2,
     });

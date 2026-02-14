@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
@@ -29,7 +30,7 @@ describe("readTrack", () => {
   describe("trackId parameter", () => {
     it("reads track by trackId", () => {
       registerMockObject("123", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
         properties: mockTrackProperties({
           name: "Track by ID",
@@ -55,7 +56,7 @@ describe("readTrack", () => {
 
     it("reads return track by trackId", () => {
       registerMockObject("456", {
-        path: "live_set return_tracks 1",
+        path: livePath.returnTrack(1),
         type: "Track",
         properties: mockTrackProperties({
           name: "Return by ID",
@@ -81,7 +82,7 @@ describe("readTrack", () => {
 
     it("reads master track by trackId", () => {
       registerMockObject("789", {
-        path: "live_set master_track",
+        path: livePath.masterTrack(),
         type: "Track",
         properties: mockTrackProperties({
           name: "Master by ID",
@@ -120,7 +121,7 @@ describe("readTrack", () => {
 
     it("ignores category when trackId is provided", () => {
       registerMockObject("999", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
         properties: mockTrackProperties({
           name: "Track ignores type",
@@ -215,7 +216,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("midi_effect_rack", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "MIDI Effect Rack",
@@ -226,7 +227,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("instrument_rack", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Instrument Rack",
@@ -237,7 +238,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("audio_effect_rack", {
-        path: "live_set tracks 0 devices 2",
+        path: livePath.track(0).device(2),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Audio Effect Rack",
@@ -248,7 +249,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("midi_chain", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "MIDI Chain",
@@ -257,7 +258,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("inst_chain", {
-        path: "live_set tracks 0 devices 1 chains 0",
+        path: livePath.track(0).device(1).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Inst Chain",
@@ -266,7 +267,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("audio_chain", {
-        path: "live_set tracks 0 devices 2 chains 0",
+        path: livePath.track(0).device(2).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Audio Chain",
@@ -317,7 +318,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("instrument_rack", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Instrument Rack",
@@ -328,7 +329,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("chain1", {
-        path: "live_set tracks 0 devices 0 chains 0",
+        path: livePath.track(0).device(0).chain(0),
         type: "Chain",
         properties: createChainMockProperties({
           name: "Chain 1",
@@ -359,7 +360,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("wavetable", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Wavetable",

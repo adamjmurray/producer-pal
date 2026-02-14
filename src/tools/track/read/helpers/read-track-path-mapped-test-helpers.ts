@@ -3,6 +3,7 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   normalizeIdLike,
   resolveMappedObjectProperties,
@@ -26,7 +27,7 @@ interface SetupTrackPathMappedMocksOptions {
  * @param options.objects - Object properties keyed by "Track", object ID, or path
  */
 export function setupTrackPathMappedMocks({
-  trackPath = "live_set tracks 0",
+  trackPath = String(livePath.track(0)),
   trackId = "track1",
   pathIdMap = {},
   objects,
