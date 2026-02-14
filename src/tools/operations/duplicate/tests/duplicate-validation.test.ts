@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
@@ -42,7 +43,7 @@ describe("duplicate - input validation", () => {
   });
 
   it("should throw an error when type is 'track' and destination is 'arrangement'", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
     expect(() =>
       duplicate({
         type: "track",
@@ -56,14 +57,14 @@ describe("duplicate - input validation", () => {
   });
 
   it("should allow type 'track' with destination 'session'", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
     expect(() =>
       duplicate({ type: "track", id: "track1", destination: "session" }),
     ).not.toThrow();
   });
 
   it("should allow type 'track' without destination parameter", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
     expect(() => duplicate({ type: "track", id: "track1" })).not.toThrow();
   });
 });
@@ -71,7 +72,7 @@ describe("duplicate - input validation", () => {
 describe("duplicate - clip session validation", () => {
   it("should throw an error when toTrackIndex is missing for session destination", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
 
     expect(() =>
@@ -86,7 +87,7 @@ describe("duplicate - clip session validation", () => {
 
   it("should throw an error when toSceneIndex is missing for session destination", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
 
     expect(() =>
@@ -101,7 +102,7 @@ describe("duplicate - clip session validation", () => {
 
   it("should throw an error when toSceneIndex is empty for session destination", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
 
     expect(() =>
@@ -118,7 +119,7 @@ describe("duplicate - clip session validation", () => {
 
 describe("duplicate - return format", () => {
   it("should return single object format when count=1", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
 
     const result = duplicate({ type: "track", id: "track1", count: 1 });
 
@@ -130,7 +131,7 @@ describe("duplicate - return format", () => {
   });
 
   it("should return objects array format when count>1", () => {
-    registerMockObject("track1", { path: "live_set tracks 0" });
+    registerMockObject("track1", { path: livePath.track(0) });
 
     const result = duplicate({ type: "track", id: "track1", count: 2 });
 
