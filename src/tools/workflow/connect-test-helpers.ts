@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -32,7 +33,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
   } = opts;
 
   registerMockObject("live_set", {
-    path: "live_set",
+    path: livePath.liveSet,
     type: "Song",
     properties: {
       name: liveSetName,

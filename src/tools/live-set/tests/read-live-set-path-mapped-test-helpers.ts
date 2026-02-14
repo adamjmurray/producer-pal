@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   normalizeIdLike,
   resolveMappedObjectProperties,
@@ -30,7 +31,7 @@ interface SetupLiveSetPathMappedMocksOptions {
  * @param options.strictNonExistent - Return "id 0" for unregistered objects
  */
 export function setupLiveSetPathMappedMocks({
-  liveSetPath = "live_set",
+  liveSetPath = livePath.liveSet,
   liveSetId = "live_set",
   pathIdMap = {},
   objects,
