@@ -15,6 +15,7 @@ import {
   evaluateMathFunction,
   evaluateMinMax,
   evaluatePow,
+  evaluateQuant,
   evaluateRand,
 } from "./transform-functions-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
@@ -27,6 +28,16 @@ export type EvaluateExpressionFn = (
   timeRange: TimeRange,
   noteProperties?: NoteProperties,
 ) => number;
+
+// Dispatch map for functions with the standard (args, pos, num, den, range, props, eval) signature
+const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
+  rand: evaluateRand,
+  choose: evaluateChoose,
+  quant: evaluateQuant,
+  pow: evaluatePow,
+  curve: evaluateCurve,
+  ramp: evaluateRamp,
+};
 
 /**
  * Evaluate a function call
@@ -52,9 +63,11 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // rand() - random value with 0/1/2 arguments
-  if (name === "rand") {
-    return evaluateRand(
+  // Functions with standard signature: (args, pos, num, den, range, props, eval)
+  const standardFn = standardFnDispatch[name];
+
+  if (standardFn) {
+    return standardFn(
       args,
       position,
       timeSigNumerator,
@@ -65,20 +78,7 @@ export function evaluateFunction(
     );
   }
 
-  // choose() - random selection from arguments
-  if (name === "choose") {
-    return evaluateChoose(
-      args,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
-  }
-
-  // Math functions (round, floor, ceil, abs, clamp)
+  // Math functions with name dispatch (round, floor, ceil, abs, clamp)
   if (
     name === "round" ||
     name === "floor" ||
@@ -102,45 +102,6 @@ export function evaluateFunction(
   if (name === "min" || name === "max") {
     return evaluateMinMax(
       name,
-      args,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
-  }
-
-  // Math function - binary (pow)
-  if (name === "pow") {
-    return evaluatePow(
-      args,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
-  }
-
-  // ramp() is special - it uses timeRange instead of period
-  if (name === "ramp") {
-    return evaluateRamp(
-      args,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
-  }
-
-  // curve() - exponential ramp using timeRange
-  if (name === "curve") {
-    return evaluateCurve(
       args,
       position,
       timeSigNumerator,

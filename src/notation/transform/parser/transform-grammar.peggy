@@ -189,6 +189,7 @@ otherFunctionName
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
+  / "quant" { return "quant"; }
 
 syncArgumentList
   = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {

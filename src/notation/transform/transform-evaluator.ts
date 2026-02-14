@@ -194,6 +194,10 @@ function buildNoteProperties(
     }
 
     props["bar:duration"] = clipContext.barDuration;
+
+    if (clipContext.scalePitchClassMask != null) {
+      props["scale:mask"] = clipContext.scalePitchClassMask;
+    }
   }
 
   return props;

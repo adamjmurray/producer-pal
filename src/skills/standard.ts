@@ -146,7 +146,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
@@ -170,6 +170,7 @@ C1-C2: velocity += 30          // accent bass notes
 velocity = 60 + note.index * 5 // sequential crescendo
 pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
+pitch = quant(note.pitch + 7)  // transpose up fifth, snap to scale
 \`\`\`
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. Use update-clip with only transforms to modify existing notes.

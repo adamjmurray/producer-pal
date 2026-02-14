@@ -39,6 +39,7 @@ export interface ClipContext {
   clipCount: number; // total clips in operation
   arrangementStart?: number; // musical beats; undefined for session clips
   barDuration: number; // musical beats per bar (timeSigNumerator)
+  scalePitchClassMask?: number; // bitmask of in-scale pitch classes (bit N = pitch class N)
 }
 
 export interface TransformResult {

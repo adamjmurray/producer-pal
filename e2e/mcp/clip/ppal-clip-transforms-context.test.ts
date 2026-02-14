@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for transform context variables (note.*, clip.*, bar.*)
- * and function arity validation.
+ * E2E tests for transform context variables (note.*, clip.*, bar.*),
+ * function arity validation, and scale-dependent functions (quant).
  * Uses: e2e-test-set - t8 is empty MIDI track
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -44,6 +44,15 @@ async function applyTransform(
   transform: string,
 ): Promise<unknown> {
   return applyTransformHelper(ctx, clipId, transform);
+}
+
+/** Sets or disables the Live Set scale. */
+async function setScale(scale: string): Promise<void> {
+  await ctx.client!.callTool({
+    name: "ppal-update-live-set",
+    arguments: { scale },
+  });
+  await sleep(100);
 }
 
 // =============================================================================
@@ -183,5 +192,48 @@ describe("ppal-clip-transforms (arity validation)", () => {
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("v80");
+  });
+});
+
+// =============================================================================
+// Scale-Dependent Function Tests (quant)
+// =============================================================================
+
+describe("ppal-clip-transforms (quant)", () => {
+  it("quantizes chromatic pitches to C Major scale", async () => {
+    await setScale("C Major");
+
+    // Create clip with out-of-scale notes (Db, Eb, Gb are not in C Major)
+    const clipId = await createMidiClip(20, "C3 1|1 Db3 1|2 Eb3 1|3 Gb3 1|4");
+
+    await applyTransform(clipId, "pitch = quant(note.pitch)");
+
+    const notes = await readClipNotes(clipId);
+
+    // C3(60) stays C3 (in scale)
+    // Db3(61) → D3(62) (equidistant from C and D, prefer higher)
+    // Eb3(63) → E3(64) (equidistant from D and E, prefer higher)
+    // Gb3(66) → G3(67) (equidistant from F and G, prefer higher)
+    expect(notes).toContain("C3");
+    expect(notes).toContain("D3");
+    expect(notes).toContain("E3");
+    expect(notes).toContain("G3");
+    expect(notes).not.toContain("Db3");
+    expect(notes).not.toContain("Eb3");
+    expect(notes).not.toContain("Gb3");
+  });
+
+  it("is a no-op when no scale is active", async () => {
+    await setScale("");
+
+    const clipId = await createMidiClip(21, "Db3 1|1 Eb3 1|2");
+
+    await applyTransform(clipId, "pitch = quant(note.pitch)");
+
+    const notes = await readClipNotes(clipId);
+
+    // Notes should remain unchanged — no scale means quant is a no-op
+    expect(notes).toContain("Db3");
+    expect(notes).toContain("Eb3");
   });
 });
