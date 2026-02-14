@@ -383,7 +383,7 @@ describe("view", () => {
       expect(result).toStrictEqual(
         expectViewState({
           selectedTrack: {
-            trackId: "id track_123",
+            trackId: "track_123",
             category: "regular",
             trackIndex: 1,
           },

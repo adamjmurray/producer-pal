@@ -386,14 +386,14 @@ describe("view", () => {
         detailView: null,
         showBrowser: false,
         selectedTrack: {
-          trackId: "id 789",
+          trackId: "789",
           category: "regular",
           trackIndex: 0,
         },
-        selectedClipId: "id 123",
+        selectedClipId: "123",
         selectedDeviceId: "456",
         selectedScene: {
-          sceneId: "id 012",
+          sceneId: "012",
           sceneIndex: 2,
         },
         selectedClipSlot: {
@@ -461,7 +461,7 @@ describe("view", () => {
       const result = select({});
 
       expect(result.selectedTrack).toStrictEqual({
-        trackId: "id return_456",
+        trackId: "return_456",
         category: "return",
         returnTrackIndex: 2,
       });
