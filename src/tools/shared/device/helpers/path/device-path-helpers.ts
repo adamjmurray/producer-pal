@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   autoCreateDrumPadChains,
@@ -31,19 +32,19 @@ export interface InsertionPathResolution {
  */
 function resolveTrack(segment: string): LiveAPI {
   if (segment === "mt") {
-    return LiveAPI.from("live_set master_track");
+    return LiveAPI.from(livePath.masterTrack());
   }
 
   if (segment.startsWith("rt")) {
     const returnIndex = Number.parseInt(segment.slice(2));
 
-    return LiveAPI.from(`live_set return_tracks ${returnIndex}`);
+    return LiveAPI.from(livePath.returnTrack(returnIndex));
   }
 
   if (segment.startsWith("t")) {
     const trackIndex = Number.parseInt(segment.slice(1));
 
-    return LiveAPI.from(`live_set tracks ${trackIndex}`);
+    return LiveAPI.from(livePath.track(trackIndex));
   }
 
   throw new Error(`Invalid track segment: ${segment}`);

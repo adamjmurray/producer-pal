@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import type { ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { getDrumMap } from "#src/tools/shared/device/device-reader.ts";
@@ -93,23 +94,16 @@ export function readTrack(
     // Determine track category and index from the track's path
     resolvedCategory = (track.category as string | undefined) ?? "regular";
     resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
+  } else if (category === "regular") {
+    track = LiveAPI.from(livePath.track(trackIndex as number)); // validated above
+  } else if (category === "return") {
+    track = LiveAPI.from(livePath.returnTrack(trackIndex as number)); // validated above
+  } else if (category === "master") {
+    track = LiveAPI.from(livePath.masterTrack());
   } else {
-    // Construct the appropriate Live API path based on track category
-    let trackPath: string;
-
-    if (category === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (category === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (category === "master") {
-      trackPath = "live_set master_track";
-    } else {
-      throw new Error(
-        `Invalid category: ${category}. Must be "regular", "return", or "master".`,
-      );
-    }
-
-    track = LiveAPI.from(trackPath);
+    throw new Error(
+      `Invalid category: ${category}. Must be "regular", "return", or "master".`,
+    );
   }
 
   return readTrackGeneric({

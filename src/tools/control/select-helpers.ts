@@ -3,11 +3,10 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-
-const MASTER_TRACK_PATH = "live_set master_track";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -74,7 +73,7 @@ export function buildTrackPath(
       return null;
     }
 
-    return `live_set tracks ${trackIndex}`;
+    return livePath.track(trackIndex).toString();
   }
 
   if (finalCategory === "return") {
@@ -82,11 +81,11 @@ export function buildTrackPath(
       return null;
     }
 
-    return `live_set return_tracks ${trackIndex}`;
+    return livePath.returnTrack(trackIndex).toString();
   }
 
   if (finalCategory === "master") {
-    return MASTER_TRACK_PATH;
+    return livePath.masterTrack().toString();
   }
 
   return null;
@@ -141,7 +140,7 @@ export function validateParameters({
 
   // Cross-validation for scene ID vs index
   if (sceneId != null && sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
 
     if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
       throw new Error("sceneId and sceneIndex refer to different scenes");
@@ -231,7 +230,7 @@ export function updateSceneSelection({
       result.selectedSceneIndex = sceneIndex;
     }
   } else if (sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
 
     if (sceneAPI.exists()) {
       const finalSceneId = toLiveApiId(sceneAPI.id);
@@ -259,7 +258,7 @@ export function updateDeviceSelection({
 }: UpdateDeviceSelectionOptions): void {
   if (deviceId != null) {
     validateIdType(deviceId, "device", "select");
-    const songView = LiveAPI.from("live_set view");
+    const songView = LiveAPI.from(livePath.view.song);
 
     songView.call("select_device", toLiveApiId(deviceId));
   } else if (instrument === true) {
@@ -269,7 +268,7 @@ export function updateDeviceSelection({
     );
 
     if (!trackPath) {
-      const selectedTrackAPI = LiveAPI.from("live_set view selected_track");
+      const selectedTrackAPI = LiveAPI.from(livePath.view.selectedTrack);
 
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
@@ -305,7 +304,7 @@ export function updateHighlightedClipSlot({
   if (clipSlot != null) {
     const { trackIndex, sceneIndex } = clipSlot;
     const clipSlotAPI = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (clipSlotAPI.exists()) {
