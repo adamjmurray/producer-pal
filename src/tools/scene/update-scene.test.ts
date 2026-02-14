@@ -9,6 +9,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { updateScene } from "./update-scene.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
@@ -31,9 +32,9 @@ describe("updateScene", () => {
   let scene3: RegisteredMockObject;
 
   beforeEach(() => {
-    scene1 = registerMockObject("123", { path: "live_set scenes 0" });
-    scene2 = registerMockObject("456", { path: "live_set scenes 1" });
-    scene3 = registerMockObject("789", { path: "live_set scenes 2" });
+    scene1 = registerMockObject("123", { path: livePath.scene(0) });
+    scene2 = registerMockObject("456", { path: livePath.scene(1) });
+    scene3 = registerMockObject("789", { path: livePath.scene(2) });
   });
 
   it("should update a single scene by ID", () => {
