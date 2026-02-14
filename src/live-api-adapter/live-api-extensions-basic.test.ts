@@ -301,7 +301,7 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("uses path as-is for normal Live API paths", () => {
-      const result = LiveAPI.from(String(livePath.track(0)));
+      const result = LiveAPI.from(livePath.track(0));
 
       expect(result.path).toBe(String(livePath.track(0)));
     });

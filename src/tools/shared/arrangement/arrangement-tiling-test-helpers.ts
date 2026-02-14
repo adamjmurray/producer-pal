@@ -173,7 +173,7 @@ export function setupTrackWithQueuedMethods(
 
   setupTrack(trackIndex, { methods });
 
-  return LiveAPI.from(String(livePath.track(trackIndex)));
+  return LiveAPI.from(livePath.track(trackIndex));
 }
 
 /**

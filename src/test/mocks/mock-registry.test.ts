@@ -313,7 +313,7 @@ describe("mock-registry", () => {
       });
 
       // Construct via path instead of ID
-      const api = LiveAPI.from(String(livePath.track(0)));
+      const api = LiveAPI.from(livePath.track(0));
 
       expect(api.get("name")).toStrictEqual(["Track 0"]);
       expect(api.get).toBe(mock.get);

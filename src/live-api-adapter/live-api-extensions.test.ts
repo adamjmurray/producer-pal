@@ -48,7 +48,7 @@ describe("LiveAPI extensions", () => {
 
   describe("setAll", () => {
     it("should set multiple properties at once", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -63,7 +63,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should skip null values", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -78,7 +78,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should handle color property with setColor", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
       const setColorSpy = vi.spyOn(track, "setColor");
       const setSpy = vi.spyOn(track, "set");
 
@@ -94,19 +94,19 @@ describe("LiveAPI extensions", () => {
 
   describe("clipSlotIndex property", () => {
     it("should extract clip slot index from clip_slots path", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(2).clipSlot(5)));
+      const clipSlot = LiveAPI.from(livePath.track(2).clipSlot(5));
 
       expect(clipSlot.clipSlotIndex).toBe(5);
     });
 
     it("should extract clip slot index from scenes path", () => {
-      const scene = LiveAPI.from(String(livePath.scene(3)));
+      const scene = LiveAPI.from(livePath.scene(3));
 
       expect(scene.clipSlotIndex).toBe(3);
     });
 
     it("should return null for non-clip-slot paths", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
 
       expect(track.clipSlotIndex).toBeNull();
     });
@@ -114,7 +114,7 @@ describe("LiveAPI extensions", () => {
 
   describe("deviceIndex property", () => {
     it("should extract device index from devices path", () => {
-      const device = LiveAPI.from(String(livePath.track(0).device(2)));
+      const device = LiveAPI.from(livePath.track(0).device(2));
 
       expect(device.deviceIndex).toBe(2);
     });
@@ -128,7 +128,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should return null for paths without devices", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
 
       expect(track.deviceIndex).toBeNull();
     });

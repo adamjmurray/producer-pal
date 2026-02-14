@@ -94,7 +94,7 @@ class ClipSlotPath {
 }
 
 // Intermediate builder: track path with chaining methods
-class TrackPath {
+export class TrackPath {
   private readonly base: string;
 
   constructor(base: string) {

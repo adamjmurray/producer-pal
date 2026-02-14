@@ -14,19 +14,19 @@ describe("LiveAPI extensions - path index extensions", () => {
 
   describe("trackIndex", () => {
     it("should return trackIndex from valid track path", () => {
-      const track = LiveAPI.from(String(livePath.track(3)));
+      const track = LiveAPI.from(livePath.track(3));
 
       expect(track.trackIndex).toBe(3);
     });
 
     it("should return trackIndex from clip_slots path", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(5).clipSlot(2)));
+      const clipSlot = LiveAPI.from(livePath.track(5).clipSlot(2));
 
       expect(clipSlot.trackIndex).toBe(5);
     });
 
     it("should return trackIndex from nested device path", () => {
-      const device = LiveAPI.from(String(livePath.track(7).device(1)));
+      const device = LiveAPI.from(livePath.track(7).device(1));
 
       expect(device.trackIndex).toBe(7);
     });
@@ -36,19 +36,19 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(liveSet.trackIndex).toBe(null);
 
-      const scene = LiveAPI.from(String(livePath.scene(2)));
+      const scene = LiveAPI.from(livePath.scene(2));
 
       expect(scene.trackIndex).toBe(null);
     });
 
     it("should handle track index 0", () => {
-      const track = LiveAPI.from(String(livePath.track(0)));
+      const track = LiveAPI.from(livePath.track(0));
 
       expect(track.trackIndex).toBe(0);
     });
 
     it("should handle double-digit track indices", () => {
-      const track = LiveAPI.from(String(livePath.track(42)));
+      const track = LiveAPI.from(livePath.track(42));
 
       expect(track.trackIndex).toBe(42);
     });
@@ -56,20 +56,20 @@ describe("LiveAPI extensions - path index extensions", () => {
 
   describe("sceneIndex", () => {
     it("should return sceneIndex from valid scene path", () => {
-      const scene = LiveAPI.from(String(livePath.scene(4)));
+      const scene = LiveAPI.from(livePath.scene(4));
 
       expect(scene.sceneIndex).toBe(4);
     });
 
     it("should return sceneIndex from clip_slots path (session view)", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(2).clipSlot(6)));
+      const clipSlot = LiveAPI.from(livePath.track(2).clipSlot(6));
 
       expect(clipSlot.sceneIndex).toBe(6);
     });
 
     it("should prioritize scene path over clip_slots path", () => {
       // This would be an unusual case, but scene path should win
-      const scene = LiveAPI.from(String(livePath.scene(10)));
+      const scene = LiveAPI.from(livePath.scene(10));
 
       expect(scene.sceneIndex).toBe(10);
     });
@@ -79,31 +79,31 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(liveSet.sceneIndex).toBe(null);
 
-      const track = LiveAPI.from(String(livePath.track(1)));
+      const track = LiveAPI.from(livePath.track(1));
 
       expect(track.sceneIndex).toBe(null);
 
-      const device = LiveAPI.from(String(livePath.track(1).device(0)));
+      const device = LiveAPI.from(livePath.track(1).device(0));
 
       expect(device.sceneIndex).toBe(null);
     });
 
     it("should handle scene index 0", () => {
-      const scene = LiveAPI.from(String(livePath.scene(0)));
+      const scene = LiveAPI.from(livePath.scene(0));
 
       expect(scene.sceneIndex).toBe(0);
 
-      const clipSlot = LiveAPI.from(String(livePath.track(1).clipSlot(0)));
+      const clipSlot = LiveAPI.from(livePath.track(1).clipSlot(0));
 
       expect(clipSlot.sceneIndex).toBe(0);
     });
 
     it("should handle double-digit scene indices", () => {
-      const scene = LiveAPI.from(String(livePath.scene(99)));
+      const scene = LiveAPI.from(livePath.scene(99));
 
       expect(scene.sceneIndex).toBe(99);
 
-      const clipSlot = LiveAPI.from(String(livePath.track(5).clipSlot(99)));
+      const clipSlot = LiveAPI.from(livePath.track(5).clipSlot(99));
 
       expect(clipSlot.sceneIndex).toBe(99);
     });
@@ -111,25 +111,25 @@ describe("LiveAPI extensions - path index extensions", () => {
 
   describe("clipSlotIndex", () => {
     it("should return clipSlotIndex from valid clip_slots path", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(2).clipSlot(6)));
+      const clipSlot = LiveAPI.from(livePath.track(2).clipSlot(6));
 
       expect(clipSlot.clipSlotIndex).toBe(6);
     });
 
     it("should return clipSlotIndex from scene path (session view)", () => {
-      const scene = LiveAPI.from(String(livePath.scene(8)));
+      const scene = LiveAPI.from(livePath.scene(8));
 
       expect(scene.clipSlotIndex).toBe(8);
     });
 
     it("should prioritize clip_slots path over scene path", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(1).clipSlot(5)));
+      const clipSlot = LiveAPI.from(livePath.track(1).clipSlot(5));
 
       expect(clipSlot.clipSlotIndex).toBe(5);
     });
 
     it("should return clipSlotIndex from nested clip path", () => {
-      const clip = LiveAPI.from(String(livePath.track(1).clipSlot(3).clip()));
+      const clip = LiveAPI.from(livePath.track(1).clipSlot(3).clip());
 
       expect(clip.clipSlotIndex).toBe(3);
     });
@@ -139,31 +139,31 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(liveSet.clipSlotIndex).toBe(null);
 
-      const track = LiveAPI.from(String(livePath.track(1)));
+      const track = LiveAPI.from(livePath.track(1));
 
       expect(track.clipSlotIndex).toBe(null);
 
-      const device = LiveAPI.from(String(livePath.track(1).device(0)));
+      const device = LiveAPI.from(livePath.track(1).device(0));
 
       expect(device.clipSlotIndex).toBe(null);
     });
 
     it("should handle clipSlot index 0", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(0).clipSlot(0)));
+      const clipSlot = LiveAPI.from(livePath.track(0).clipSlot(0));
 
       expect(clipSlot.clipSlotIndex).toBe(0);
 
-      const scene = LiveAPI.from(String(livePath.scene(0)));
+      const scene = LiveAPI.from(livePath.scene(0));
 
       expect(scene.clipSlotIndex).toBe(0);
     });
 
     it("should handle double-digit clipSlot indices", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(15).clipSlot(25)));
+      const clipSlot = LiveAPI.from(livePath.track(15).clipSlot(25));
 
       expect(clipSlot.clipSlotIndex).toBe(25);
 
-      const scene = LiveAPI.from(String(livePath.scene(25)));
+      const scene = LiveAPI.from(livePath.scene(25));
 
       expect(scene.clipSlotIndex).toBe(25);
     });
@@ -171,7 +171,7 @@ describe("LiveAPI extensions - path index extensions", () => {
 
   describe("deviceIndex", () => {
     it("should return deviceIndex from regular track device path", () => {
-      const device = LiveAPI.from(String(livePath.track(0).device(1)));
+      const device = LiveAPI.from(livePath.track(0).device(1));
 
       expect(device.deviceIndex).toBe(1);
     });
@@ -189,7 +189,7 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
 
     it("should return null for non-device paths", () => {
-      const track = LiveAPI.from(String(livePath.track(1)));
+      const track = LiveAPI.from(livePath.track(1));
 
       expect(track.deviceIndex).toBe(null);
 
@@ -197,19 +197,19 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(liveSet.deviceIndex).toBe(null);
 
-      const clipSlot = LiveAPI.from(String(livePath.track(1).clipSlot(0)));
+      const clipSlot = LiveAPI.from(livePath.track(1).clipSlot(0));
 
       expect(clipSlot.deviceIndex).toBe(null);
     });
 
     it("should handle device index 0", () => {
-      const device = LiveAPI.from(String(livePath.track(0).device(0)));
+      const device = LiveAPI.from(livePath.track(0).device(0));
 
       expect(device.deviceIndex).toBe(0);
     });
 
     it("should handle double-digit device indices", () => {
-      const device = LiveAPI.from(String(livePath.track(0).device(15)));
+      const device = LiveAPI.from(livePath.track(0).device(15));
 
       expect(device.deviceIndex).toBe(15);
     });
@@ -233,7 +233,7 @@ describe("LiveAPI extensions - path index extensions", () => {
 
   describe("session view integration", () => {
     it("should extract both trackIndex and sceneIndex from clip_slots path", () => {
-      const clipSlot = LiveAPI.from(String(livePath.track(8).clipSlot(12)));
+      const clipSlot = LiveAPI.from(livePath.track(8).clipSlot(12));
 
       expect(clipSlot.trackIndex).toBe(8);
       expect(clipSlot.sceneIndex).toBe(12);
@@ -241,7 +241,7 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
 
     it("should work with scene objects in session view", () => {
-      const scene = LiveAPI.from(String(livePath.scene(5)));
+      const scene = LiveAPI.from(livePath.scene(5));
 
       expect(scene.trackIndex).toBe(null);
       expect(scene.sceneIndex).toBe(5);
@@ -335,7 +335,7 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
 
     it("should return correct time signature for Clip objects", () => {
-      const clip = LiveAPI.from(String(livePath.track(0).clipSlot(0).clip()));
+      const clip = LiveAPI.from(livePath.track(0).clipSlot(0).clip());
 
       clip.getProperty = vi.fn((prop) => {
         if (prop === "signature_numerator") {
@@ -355,7 +355,7 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
 
     it("should return correct time signature for Scene objects", () => {
-      const scene = LiveAPI.from(String(livePath.scene(0)));
+      const scene = LiveAPI.from(livePath.scene(0));
 
       scene.getProperty = vi.fn((prop) => {
         if (prop === "time_signature_numerator") {

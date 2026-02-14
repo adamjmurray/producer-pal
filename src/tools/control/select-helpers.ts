@@ -3,7 +3,10 @@
 // AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type TrackPath,
+  livePath,
+} from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
@@ -65,7 +68,7 @@ interface UpdateHighlightedClipSlotOptions {
 export function buildTrackPath(
   category?: string | null,
   trackIndex?: number | null,
-): string | null {
+): TrackPath | null {
   const finalCategory = category ?? "regular";
 
   if (finalCategory === "regular") {
@@ -73,7 +76,7 @@ export function buildTrackPath(
       return null;
     }
 
-    return livePath.track(trackIndex).toString();
+    return livePath.track(trackIndex);
   }
 
   if (finalCategory === "return") {
@@ -81,11 +84,11 @@ export function buildTrackPath(
       return null;
     }
 
-    return livePath.returnTrack(trackIndex).toString();
+    return livePath.returnTrack(trackIndex);
   }
 
   if (finalCategory === "master") {
-    return livePath.masterTrack().toString();
+    return livePath.masterTrack();
   }
 
   return null;
