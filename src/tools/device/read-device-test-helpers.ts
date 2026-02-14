@@ -75,15 +75,17 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     },
   });
 
+  const devicePath = "live_set tracks 1 devices 0";
+
   // Register each drum pad
   const pads: Record<string, RegisteredMockObject> = {};
 
-  for (const padId of padIds) {
+  for (const [padIndex, padId] of padIds.entries()) {
     const padProps = padProperties[padId] ?? {};
     const padChainIds = padProps.chainIds ?? [];
 
     pads[padId] = registerMockObject(padId, {
-      path: `id ${padId}`,
+      path: `${devicePath} drum_pads ${padIndex}`,
       type: "DrumPad",
       properties: {
         note: padProps.note ?? 36,
@@ -98,15 +100,17 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
   // Register chains (from all pads)
   const chains: Record<string, RegisteredMockObject> = {};
 
-  for (const padProps of Object.values(padProperties)) {
+  for (const [padIndex, padId] of padIds.entries()) {
+    const padProps = padProperties[padId] ?? {};
     const padChainIds = padProps.chainIds ?? [];
+    const padPath = `${devicePath} drum_pads ${padIndex}`;
 
-    for (const chainId of padChainIds) {
+    for (const [chainIndex, chainId] of padChainIds.entries()) {
       const chainProps = chainProperties[chainId] ?? {};
       const chainDeviceIds = chainProps.deviceIds ?? [];
 
       chains[chainId] = registerMockObject(chainId, {
-        path: `id ${chainId}`,
+        path: `${padPath} chains ${chainIndex}`,
         type: chainProps.type ?? "DrumChain",
         properties: {
           name: chainProps.name ?? "Chain",
@@ -125,15 +129,15 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
   // Register devices (from all chains)
   const devices: Record<string, RegisteredMockObject> = {};
 
-  for (const chainId of Object.keys(chains)) {
+  for (const [chainId, chainMock] of Object.entries(chains)) {
     const chainProps = chainProperties[chainId] ?? {};
     const chainDeviceIds = chainProps.deviceIds ?? [];
 
-    for (const devId of chainDeviceIds) {
+    for (const [devIndex, devId] of chainDeviceIds.entries()) {
       const devProps = deviceProperties[devId] ?? {};
 
       devices[devId] = registerMockObject(devId, {
-        path: `id ${devId}`,
+        path: `${chainMock.path} devices ${devIndex}`,
         type: "Device",
         properties: {
           name: devProps.name ?? "Device",

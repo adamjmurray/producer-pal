@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
@@ -104,7 +105,7 @@ describe("readDevice with path parameter", () => {
   it("should read chain with devices", () => {
     // Register the device in the chain
     registerMockObject("device-in-chain", {
-      path: "id device-in-chain",
+      path: livePath.track(0).device(1),
       type: "Device",
       properties: {
         name: "Simpler",
@@ -135,6 +136,7 @@ describe("readDevice with path parameter", () => {
       devices: [
         {
           id: "device-in-chain",
+          path: "t0/d1",
           type: "instrument: Simpler",
         },
       ],

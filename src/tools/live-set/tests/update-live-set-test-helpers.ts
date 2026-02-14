@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -62,14 +63,17 @@ export function setupLocatorMocks(
 
   const handles = new Map<string, RegisteredMockObject>();
 
-  for (const cp of cuePoints) {
+  for (const [index, cp] of cuePoints.entries()) {
     const props: Record<string, unknown> = { time: cp.time };
 
     if (cp.name != null) props.name = cp.name;
 
     handles.set(
       cp.id,
-      registerMockObject(cp.id, { path: `id ${cp.id}`, properties: props }),
+      registerMockObject(cp.id, {
+        path: livePath.cuePoint(index),
+        properties: props,
+      }),
     );
   }
 
@@ -103,7 +107,7 @@ export function setupLocatorCreationMocks(
   let locatorCreated = false;
 
   const newCue = registerMockObject("new_cue", {
-    path: "id new_cue",
+    path: livePath.cuePoint(0),
     properties: { time },
   });
 

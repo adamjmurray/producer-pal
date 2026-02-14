@@ -41,8 +41,8 @@ describe("transport", () => {
     liveSet = setupPlaybackLiveSet({
       tracks: children("track1", "track2"),
     });
-    setupFollowerTrack("track1", true);
-    setupFollowerTrack("track2", false);
+    setupFollowerTrack({ id: "track1", index: 0, following: true });
+    setupFollowerTrack({ id: "track2", index: 1, following: false });
 
     const result = playback({
       action: "play-arrangement",
@@ -64,9 +64,9 @@ describe("transport", () => {
       current_song_time: 10,
       tracks: children("track1", "track2", "track3"),
     });
-    setupFollowerTrack("track1", true);
-    setupFollowerTrack("track2", false);
-    setupFollowerTrack("track3", true);
+    setupFollowerTrack({ id: "track1", index: 0, following: true });
+    setupFollowerTrack({ id: "track2", index: 1, following: false });
+    setupFollowerTrack({ id: "track3", index: 2, following: true });
 
     const result = playback({
       action: "update-arrangement",
@@ -225,8 +225,8 @@ describe("transport", () => {
       path: "live_set scenes 0",
     });
 
-    setupFollowerTrack("track1", true);
-    setupFollowerTrack("track2", true);
+    setupFollowerTrack({ id: "track1", index: 0, following: true });
+    setupFollowerTrack({ id: "track2", index: 1, following: true });
 
     const result = playback({
       action: "play-scene",
@@ -362,9 +362,9 @@ describe("transport", () => {
 
   it("should throw error when track does not exist for stop-session-clips", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: "live_set tracks 99 clip_slots 0 clip",
     });
-    // Track at "live_set tracks 0" is NOT registered — make unregistered objects non-existent
+    // Track at "live_set tracks 99" is NOT registered — make unregistered objects non-existent
     mockNonExistentObjects();
 
     expect(() =>

@@ -28,9 +28,9 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2", "track3"),
       });
-      setupFollowerTrack("track1", true);
-      setupFollowerTrack("track2", false);
-      setupFollowerTrack("track3", true);
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
+      setupFollowerTrack({ id: "track3", index: 2, following: true });
 
       const result = playback({
         action: "play-arrangement",
@@ -51,8 +51,8 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2"),
       });
-      setupFollowerTrack("track1", false);
-      setupFollowerTrack("track2", false);
+      setupFollowerTrack({ id: "track1", index: 0, following: false });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
 
       const result = playback({
         action: "play-arrangement",
@@ -72,8 +72,8 @@ describe("transport", () => {
       liveSet = setupPlaybackLiveSet({
         tracks: children("track1", "track2"),
       });
-      setupFollowerTrack("track1", false);
-      setupFollowerTrack("track2", true);
+      setupFollowerTrack({ id: "track1", index: 0, following: false });
+      setupFollowerTrack({ id: "track2", index: 1, following: true });
 
       const result = playback({
         action: "play-arrangement",
@@ -95,9 +95,9 @@ describe("transport", () => {
         loop_length: 0,
         tracks: children("track1", "track2", "track3"),
       });
-      setupFollowerTrack("track1", true);
-      setupFollowerTrack("track2", false);
-      setupFollowerTrack("track3", true);
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
+      setupFollowerTrack({ id: "track3", index: 2, following: true });
 
       const result = playback({
         action: "stop",
@@ -141,8 +141,8 @@ describe("transport", () => {
       registerMockObject("live_set scenes 0", {
         path: "live_set scenes 0",
       });
-      setupFollowerTrack("track1", true);
-      setupFollowerTrack("track2", true);
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: true });
 
       playback({
         action: "play-scene",

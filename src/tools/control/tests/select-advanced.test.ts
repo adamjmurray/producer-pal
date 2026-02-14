@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -98,7 +99,10 @@ describe("view", () => {
       const appView = setupAppViewMock();
       const songView = setupSongViewMock();
 
-      registerMockObject("clip_123", { path: "id clip_123", type: "Clip" });
+      registerMockObject("clip_123", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        type: "Clip",
+      });
 
       const result = select({
         clipId: "id clip_123",
@@ -171,7 +175,7 @@ describe("view", () => {
       });
       // The trackId "id track_123" refers to a different track
       registerMockObject("track_123", {
-        path: "id track_123",
+        path: livePath.track(3),
         type: "Track",
       });
 
@@ -188,7 +192,7 @@ describe("view", () => {
       });
       // The sceneId "id scene_123" refers to a different scene
       registerMockObject("scene_123", {
-        path: "id scene_123",
+        path: livePath.scene(3),
         type: "Scene",
       });
 
@@ -202,7 +206,10 @@ describe("view", () => {
     it("updates multiple properties at once", () => {
       const appView = setupAppViewMock();
 
-      registerMockObject("clip_456", { path: "id clip_456", type: "Clip" });
+      registerMockObject("clip_456", {
+        path: livePath.track(1).clipSlot(0).clip(),
+        type: "Clip",
+      });
       registerMockObject("track_1", {
         path: "live_set tracks 1",
         type: "Track",

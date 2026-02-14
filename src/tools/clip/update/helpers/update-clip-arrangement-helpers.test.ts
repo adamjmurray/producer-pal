@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.ts";
 
@@ -78,7 +79,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       // Register new clip that will be created by duplication
       registerMockObject(newClipId, {
-        path: `id ${newClipId}`,
+        path: livePath.track(trackIndex).arrangementClip(0),
       });
 
       const mockClip = {
@@ -168,7 +169,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       // Register new clip mock
       registerMockObject(newClipId, {
-        path: `id ${newClipId}`,
+        path: livePath.track(trackIndex).arrangementClip(0),
       });
 
       const mockClip = {

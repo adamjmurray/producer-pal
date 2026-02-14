@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
+import type { PathLike } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   MockSequence,
   detectTypeFromPath,
@@ -12,7 +13,7 @@ import {
 
 export interface RegisteredMockObjectOptions {
   /** Path for the Live API object (e.g., "live_set tracks 0") */
-  path?: string;
+  path?: PathLike;
   /** Type override (e.g., "Track", "Clip"). Auto-detected from path if omitted. */
   type?: string;
   /** Property overrides for get() calls, keyed by property name */
@@ -127,7 +128,7 @@ export function registerMockObject(
   options: RegisteredMockObjectOptions = {},
 ): RegisteredMockObject {
   const id = normalizeId(idOrPath);
-  const path = options.path ?? "";
+  const path = options.path != null ? String(options.path) : "";
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Unknown");
   const properties = options.properties ?? {};
   const methods = options.methods ?? {};

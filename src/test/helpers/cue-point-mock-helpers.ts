@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -71,9 +72,9 @@ export function setupCuePointMocksRegistry({
     },
   });
 
-  for (const cuePoint of cuePoints) {
+  for (const [index, cuePoint] of cuePoints.entries()) {
     registerMockObject(cuePoint.id, {
-      path: `id ${cuePoint.id}`,
+      path: livePath.cuePoint(index),
       properties: {
         time: cuePoint.time,
         ...(cuePoint.name != null ? { name: cuePoint.name } : {}),

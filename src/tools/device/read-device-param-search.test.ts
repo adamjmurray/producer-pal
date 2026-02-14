@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -16,7 +17,7 @@ import { readDevice } from "./read-device.ts";
 function setupTwoParamDevice(includeFullProps = false) {
   // Register the device
   registerMockObject("device-123", {
-    path: "id device-123",
+    path: livePath.track(0).device(0),
     type: "Device",
     properties: {
       name: "Operator",
@@ -31,7 +32,7 @@ function setupTwoParamDevice(includeFullProps = false) {
 
   // Register param-1 (Volume)
   registerMockObject("param-1", {
-    path: "id param-1",
+    path: livePath.track(0).device(0).parameter(0),
     type: "DeviceParameter",
     properties: {
       name: "Volume",
@@ -64,7 +65,7 @@ function setupTwoParamDevice(includeFullProps = false) {
 
   // Register param-2 (Filter Cutoff)
   registerMockObject("param-2", {
-    path: "id param-2",
+    path: livePath.track(0).device(0).parameter(1),
     type: "DeviceParameter",
     properties: {
       name: "Filter Cutoff",

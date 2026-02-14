@@ -5,6 +5,7 @@
 
 import { expect } from "vitest";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-mock-helpers.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -62,18 +63,27 @@ export function setupPlaybackLiveSet(
   });
 }
 
+interface FollowerTrackOptions {
+  id: string;
+  index: number;
+  following: boolean;
+}
+
 /**
  * Register a track mock with arrangement follower state.
- * @param trackId - The track ID to register
- * @param following - Whether the track is following the arrangement (back_to_arranger=0)
+ * @param options - Track configuration
+ * @param options.id - The track ID to register
+ * @param options.index - The track index for path construction
+ * @param options.following - Whether the track is following the arrangement (back_to_arranger=0)
  * @returns RegisteredMockObject for the track
  */
-export function setupFollowerTrack(
-  trackId: string,
-  following: boolean,
-): RegisteredMockObject {
-  return registerMockObject(trackId, {
-    path: `id ${trackId}`,
+export function setupFollowerTrack({
+  id,
+  index,
+  following,
+}: FollowerTrackOptions): RegisteredMockObject {
+  return registerMockObject(id, {
+    path: livePath.track(index),
     type: "Track",
     properties: { back_to_arranger: following ? 0 : 1 },
   });
@@ -94,8 +104,8 @@ export function setupDefaultTimeSignature(): RegisteredMockObject {
   });
 
   // Register default tracks (fallback getLiveSetProperty returns children("track1", "track2"))
-  registerMockObject("track1", { path: "id track1", type: "Track" });
-  registerMockObject("track2", { path: "id track2", type: "Track" });
+  registerMockObject("track1", { path: livePath.track(0), type: "Track" });
+  registerMockObject("track2", { path: livePath.track(1), type: "Track" });
 
   return liveSet;
 }
@@ -187,8 +197,8 @@ export function setupMultiClipMocks(
   });
 
   // Register default tracks
-  registerMockObject("track1", { path: "id track1", type: "Track" });
-  registerMockObject("track2", { path: "id track2", type: "Track" });
+  registerMockObject("track1", { path: livePath.track(0), type: "Track" });
+  registerMockObject("track2", { path: livePath.track(1), type: "Track" });
 
   const clipSlots: RegisteredMockObject[] = [];
 

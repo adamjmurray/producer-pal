@@ -95,8 +95,9 @@ export default defineConfig({
         // ignore loggers:
         "src/portal/file-logger.ts",
 
-        // ignore test mocks:
+        // ignore test infrastructure:
         "src/test/mocks/**",
+        "src/test/helpers/**",
 
         // evals: Targeted exclusions for code requiring live LLM/MCP connections.
         // Tested: assertions/{helpers,tool-call,response,state}.ts,

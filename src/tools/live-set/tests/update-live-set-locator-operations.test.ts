@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -82,7 +83,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       registerMockObject("existing_cue", {
-        path: "id existing_cue",
+        path: livePath.cuePoint(0),
         properties: { time: 16, name: "Existing" },
       });
 
@@ -163,15 +164,15 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       registerMockObject("cue1", {
-        path: "id cue1",
+        path: livePath.cuePoint(0),
         properties: { time: 0, name: "Verse" },
       });
       registerMockObject("cue2", {
-        path: "id cue2",
+        path: livePath.cuePoint(1),
         properties: { time: 16, name: "Chorus" },
       });
       registerMockObject("cue3", {
-        path: "id cue3",
+        path: livePath.cuePoint(2),
         properties: { time: 32, name: "Verse" },
       });
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -88,7 +89,10 @@ describe("view", () => {
 
   describe("track selection", () => {
     it("selects track by ID", () => {
-      registerMockObject("track_123", { path: "id track_123", type: "Track" });
+      registerMockObject("track_123", {
+        path: livePath.track(0),
+        type: "Track",
+      });
       const songView = setupSongViewMock();
 
       const result = select({ trackId: "id track_123" });
@@ -171,7 +175,10 @@ describe("view", () => {
     });
 
     it("selects track by ID with category hint", () => {
-      registerMockObject("track_123", { path: "id track_123", type: "Track" });
+      registerMockObject("track_123", {
+        path: livePath.track(0),
+        type: "Track",
+      });
       const songView = setupSongViewMock();
 
       const result = select({ trackId: "id track_123", category: "return" });
@@ -220,7 +227,10 @@ describe("view", () => {
 
   describe("scene selection", () => {
     it("selects scene by ID", () => {
-      registerMockObject("scene_123", { path: "id scene_123", type: "Scene" });
+      registerMockObject("scene_123", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
       const songView = setupSongViewMock();
 
       const result = select({ sceneId: "id scene_123" });
@@ -286,7 +296,10 @@ describe("view", () => {
 
   describe("clip selection", () => {
     it("selects clip by ID", () => {
-      registerMockObject("clip_123", { path: "id clip_123", type: "Clip" });
+      registerMockObject("clip_123", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        type: "Clip",
+      });
       const songView = setupSongViewMock();
 
       const result = select({ clipId: "id clip_123" });
