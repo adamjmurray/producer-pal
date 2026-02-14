@@ -11,13 +11,14 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 
 let appView: RegisteredMockObject;
 
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
     registerMockObject("track2", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         name: "Synth",
         current_monitoring_state: 0,
@@ -31,23 +32,23 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: { tracks: children("track0", "track2", "track3") },
     });
 
     registerMockObject("track0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: { name: "Synth" },
     });
 
     registerMockObject("track3", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       properties: { name: "Bass" },
     });
 
     // The new duplicated track at index 2
     registerMockObject("live_set/tracks/2", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       properties: {
         devices: [],
         clip_slots: [],
@@ -78,7 +79,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
   it("should handle unique track names without crashing (backward compatibility)", () => {
     registerMockObject("track1", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: {
         name: "UniqueTrack",
         current_monitoring_state: 0,
@@ -91,10 +92,10 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       },
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         devices: [],
         clip_slots: [],
@@ -123,7 +124,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
   it("should warn when track is not found in routing options", () => {
     registerMockObject("track1", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: {
         name: "NonExistentTrack",
         current_monitoring_state: 0,
@@ -136,10 +137,10 @@ describe("duplicate - routeToSource with duplicate track names", () => {
       },
     });
 
-    registerMockObject("live_set", { path: "live_set" });
+    registerMockObject("live_set", { path: livePath.liveSet });
 
     const newTrack = registerMockObject("live_set/tracks/1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       properties: {
         devices: [],
         clip_slots: [],
@@ -176,28 +177,28 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 describe("duplicate - switchView functionality", () => {
   beforeEach(() => {
     appView = registerMockObject("app-view", {
-      path: "live_app view",
+      path: livePath.view.app,
     });
   });
 
   it("should switch to arrangement view when duplicating to arrangement destination", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 4 },
     });
 
     registerMockObject("live_set/tracks/0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       methods: {
         duplicate_clip_to_arrangement: () => [
           "id",
-          "live_set tracks 0 arrangement_clips 0",
+          livePath.track(0).arrangementClip(0),
         ],
       },
     });
 
     registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: "live_set tracks 0 arrangement_clips 0",
+      path: livePath.track(0).arrangementClip(0),
       properties: { is_arrangement_clip: 1, start_time: 0 },
     });
 
@@ -214,21 +215,21 @@ describe("duplicate - switchView functionality", () => {
 
   it("should switch to session view when duplicating to session destination", () => {
     registerMockObject("clip1", {
-      path: "live_set tracks 0 clip_slots 0 clip",
+      path: livePath.track(0).clipSlot(0).clip(),
     });
 
     registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: "live_set tracks 0 clip_slots 0",
+      path: livePath.track(0).clipSlot(0),
       properties: { has_clip: 1 },
     });
 
     registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: "live_set tracks 0 clip_slots 1",
+      path: livePath.track(0).clipSlot(1),
       properties: { has_clip: 0 },
     });
 
     registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: "live_set tracks 0 clip_slots 1 clip",
+      path: livePath.track(0).clipSlot(1).clip(),
       properties: { is_arrangement_clip: 0 },
     });
 
@@ -257,16 +258,16 @@ describe("duplicate - switchView functionality", () => {
   });
 
   it("should switch to session view when duplicating scenes", () => {
-    registerMockObject("scene1", { path: "live_set scenes 0" });
+    registerMockObject("scene1", { path: livePath.scene(0) });
     registerMockObject("live_set", {
-      path: "live_set",
+      path: livePath.liveSet,
       properties: { tracks: children("track0") },
     });
     registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: "live_set tracks 0 clip_slots 1",
+      path: livePath.track(0).clipSlot(1),
       properties: { has_clip: 0 },
     });
-    registerMockObject("live_set/scenes/1", { path: "live_set scenes 1" });
+    registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
     duplicate({
       type: "scene",
@@ -296,7 +297,7 @@ describe("duplicate - switchView functionality", () => {
     setupTrackForSwitchView();
     // Register second new track for count=2
     registerMockObject("live_set/tracks/2", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
     });
 
@@ -317,11 +318,11 @@ describe("duplicate - switchView functionality", () => {
  * @returns The new track mock object handle
  */
 function setupTrackForSwitchView(): RegisteredMockObject {
-  registerMockObject("track1", { path: "live_set tracks 0" });
-  registerMockObject("live_set", { path: "live_set" });
+  registerMockObject("track1", { path: livePath.track(0) });
+  registerMockObject("live_set", { path: livePath.liveSet });
 
   return registerMockObject("live_set/tracks/1", {
-    path: "live_set tracks 1",
+    path: livePath.track(1),
     properties: { devices: [], clip_slots: [], arrangement_clips: [] },
   });
 }

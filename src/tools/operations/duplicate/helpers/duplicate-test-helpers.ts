@@ -124,8 +124,11 @@ export function setupRouteToSourceMock(
   }
 
   return {
-    "live_set tracks 0": sourceTrackMock as unknown as Record<string, unknown>,
-    "live_set tracks 1": {
+    [livePath.track(0).toString()]: sourceTrackMock as unknown as Record<
+      string,
+      unknown
+    >,
+    [livePath.track(1).toString()]: {
       available_output_routing_types: [
         { display_name: "Master", identifier: "master_id" },
         { display_name: trackName, identifier: "source_track_id" },
