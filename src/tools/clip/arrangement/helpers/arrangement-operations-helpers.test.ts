@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
   requireMockObject,
@@ -80,7 +81,7 @@ describe("arrangement-operations-helpers", () => {
         clipProps,
         extraMocks: { [sessionClipId]: {}, [arrangementClipId]: {} },
       });
-      const track = requireMockObject("live_set tracks 0");
+      const track = requireMockObject(String(livePath.track(0)));
 
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
@@ -223,9 +224,9 @@ describe("arrangement-operations-helpers", () => {
       const arrangementClipId = "arr-456";
 
       setupArrangementClipPath("789");
-      const track = requireMockObject("live_set tracks 0");
+      const track = requireMockObject(String(livePath.track(0)));
       const arrangementClip = registerMockObject(arrangementClipId, {
-        path: "live_set tracks 0 arrangement_clips 1",
+        path: livePath.track(0).arrangementClip(1),
         type: "Clip",
       });
       const mockSlotCall = vi.fn();
@@ -272,7 +273,7 @@ describe("arrangement-operations-helpers", () => {
 
     it("should shorten midi clip using create_midi_clip", () => {
       setupArrangementClipPath("789");
-      const track = requireMockObject("live_set tracks 0");
+      const track = requireMockObject(String(livePath.track(0)));
 
       overrideCall(track, (method: string) => {
         if (method === "create_midi_clip") {
