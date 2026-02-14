@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import preact from "@preact/preset-vite";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { defineConfig } from "vitest/config";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dirname;
 
 // Node 25+ enables webstorage by default, which conflicts with happy-dom's mock.
 // Disable it for tests. The flag doesn't exist in Node 24, so only add it for 25+.
@@ -19,12 +18,12 @@ export default defineConfig({
   plugins: [preact()],
   resolve: {
     alias: {
-      "#webui": join(__dirname, "../webui/src"),
-      "#src": join(__dirname, "../src"),
-      "#evals": join(__dirname, "../evals"),
+      "#webui": join(__dirname, "webui/src"),
+      "#src": join(__dirname, "src"),
+      "#evals": join(__dirname, "evals"),
       "virtual:chat-ui-html": join(
         __dirname,
-        "../src/test/mocks/mock-chat-ui-html.ts",
+        "src/test/mocks/mock-chat-ui-html.ts",
       ),
     },
   },

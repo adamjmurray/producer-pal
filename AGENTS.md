@@ -278,8 +278,8 @@ first:**
   eslint-disable and @ts-expect-error comments. Increasing these limits weakens
   code quality enforcement.
 
-- `config/vitest.config.ts` (thresholds section) - Test coverage thresholds.
-  Lowering these allows coverage to drop.
+- `vitest.config.ts` (thresholds section) - Test coverage thresholds. Lowering
+  these allows coverage to drop.
 
 If a change requires relaxing these limits, ask the user for approval before
 making the modification.
