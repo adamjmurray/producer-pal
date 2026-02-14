@@ -14,6 +14,7 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -190,7 +191,7 @@ export function createClipsForLength(
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
+      toLiveApiId(sourceClip.id),
       arrangementStartBeats,
     ) as string;
     const newClip = LiveAPI.from(newClipResult);
@@ -314,7 +315,7 @@ export function duplicateClipSlot(
   }
 
   // Use duplicate_clip_to to copy the clip to the destination
-  sourceClipSlot.call("duplicate_clip_to", `id ${destClipSlot.id}`);
+  sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
 
   // Get the newly created clip
   const newClip = LiveAPI.from(
@@ -396,7 +397,7 @@ export function duplicateClipToArrangement(
     // No length specified - use original behavior
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${clip.id}`,
+      toLiveApiId(clip.id),
       arrangementStartBeats,
     ) as string;
     const newClip = LiveAPI.from(newClipResult);

@@ -7,6 +7,7 @@ import {
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
 export interface ArrangementContext {
@@ -389,7 +390,7 @@ function truncateWithTempClip({
     );
     const tempResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
+      toLiveApiId(sessionClip.id),
       position,
     ) as string;
     const tempClip = LiveAPI.from(tempResult);
@@ -399,7 +400,7 @@ function truncateWithTempClip({
     }
 
     slot.call("delete_clip");
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {
     const tempClipResult = track.call(
       "create_midi_clip",
@@ -408,6 +409,6 @@ function truncateWithTempClip({
     ) as string;
     const tempClip = LiveAPI.from(tempClipResult);
 
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   }
 }

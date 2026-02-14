@@ -9,6 +9,7 @@ import {
   isPanLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // ============================================================================
 // Device move helpers
@@ -40,12 +41,13 @@ export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
   }
 
   const liveSet = LiveAPI.from("live_set");
-  const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
-  const containerId = container.id.startsWith("id ")
-    ? container.id
-    : `id ${container.id}`;
 
-  liveSet.call("move_device", deviceId, containerId, position ?? 0);
+  liveSet.call(
+    "move_device",
+    toLiveApiId(device.id),
+    toLiveApiId(container.id),
+    position ?? 0,
+  );
 }
 
 /**

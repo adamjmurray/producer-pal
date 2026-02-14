@@ -21,7 +21,8 @@ import {
 } from "./select-test-helpers.ts";
 
 // Mock utility functions
-vi.mock(import("#src/tools/shared/utils.ts"), async () => ({
+vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
   toLiveApiView: vi.fn((view: string) => {
     const viewMap: Record<string, string> = {
       session: "Session",

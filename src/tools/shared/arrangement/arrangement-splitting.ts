@@ -10,6 +10,7 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 const EPSILON = 0.001;
 
@@ -201,7 +202,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const sourcePos = holdingAreaStart;
   const result = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${originalClipId}`,
+    toLiveApiId(originalClipId),
     sourcePos,
   ) as [string, string | number];
   const sourceClip = LiveAPI.from(result);
@@ -300,7 +301,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
     const workPos = holdingAreaStart + i * (clipLength + 4);
     const workResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClipId}`,
+      toLiveApiId(sourceClipId),
       workPos,
     ) as [string, string | number];
     const workClipId = LiveAPI.from(workResult).id;

@@ -194,3 +194,15 @@ export function assertDefined<T>(value: T, msg: string): NonNullable<T> {
 
   return value;
 }
+
+/**
+ * Formats an ID for Live API calls that expect "id X" format.
+ * Handles bare numeric IDs, already-prefixed IDs, and number inputs.
+ * @param id - ID to format (e.g., "25", "id 25", or 25)
+ * @returns Formatted ID string (e.g., "id 25")
+ */
+export function toLiveApiId(id: string | number): string {
+  const s = String(id);
+
+  return s.startsWith("id ") ? s : `id ${s}`;
+}

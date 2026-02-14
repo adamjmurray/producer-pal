@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
+
 interface CapturedClip {
   id: string;
   trackIndex: number;
@@ -35,7 +37,7 @@ export function captureScene({
   if (sceneIndex != null) {
     const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
 
-    appView.set("selected_scene", `id ${scene.id}`);
+    appView.set("selected_scene", toLiveApiId(scene.id));
   }
 
   const selectedScene = LiveAPI.from("live_set view selected_scene");

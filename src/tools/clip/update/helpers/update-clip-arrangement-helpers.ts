@@ -5,6 +5,7 @@
 import * as console from "#src/shared/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {
   id: string;
@@ -63,13 +64,10 @@ export function handleArrangementStartOperation({
 
   tracksWithMovedClips.set(trackIndex, moveCount);
 
-  // Format clip ID for Live API (requires "id X" format)
-  const formattedClipId = clip.id.startsWith("id ") ? clip.id : `id ${clip.id}`;
-
   // duplicate_clip_to_arrangement returns ["id", number] array format
   const newClipResult = track.call(
     "duplicate_clip_to_arrangement",
-    formattedClipId,
+    toLiveApiId(clip.id),
     arrangementStartBeats,
   ) as [string, number];
   const newClip = LiveAPI.from(newClipResult);
@@ -82,7 +80,7 @@ export function handleArrangementStartOperation({
   }
 
   // Delete original clip
-  track.call("delete_clip", formattedClipId);
+  track.call("delete_clip", toLiveApiId(clip.id));
 
   // Return the new clip ID
   return newClip.id;

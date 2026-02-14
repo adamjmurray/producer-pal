@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 const MASTER_TRACK_PATH = "live_set master_track";
@@ -260,12 +260,8 @@ export function updateDeviceSelection({
   if (deviceId != null) {
     validateIdType(deviceId, "device", "select");
     const songView = LiveAPI.from("live_set view");
-    const deviceIdStr = deviceId.toString();
-    const deviceIdForApi = deviceIdStr.startsWith("id ")
-      ? deviceIdStr
-      : `id ${deviceIdStr}`;
 
-    songView.call("select_device", deviceIdForApi);
+    songView.call("select_device", toLiveApiId(deviceId));
   } else if (instrument === true) {
     let trackPath = buildTrackPath(
       trackSelectionResult.selectedCategory,
@@ -370,10 +366,6 @@ export function updateClipSelection({
       },
     });
   }
-}
-
-function toLiveApiId(id: string): string {
-  return id.startsWith("id ") ? id : `id ${id}`;
 }
 
 function normalizeLiveApiId(id: string): string {

@@ -12,6 +12,7 @@ import {
 import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   parseCommaSeparatedIds,
+  toLiveApiId,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
@@ -181,7 +182,7 @@ function deleteClipObject(id: string, object: LiveAPI): void {
 
   const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
 
-  track.call("delete_clip", `id ${object.id}`);
+  track.call("delete_clip", toLiveApiId(object.id));
 }
 
 /**
@@ -224,7 +225,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): void {
  * @param object - The object to delete
  */
 function deleteDrumPadObject(_id: string, object: LiveAPI): void {
-  const drumPad = LiveAPI.from(`id ${object.id}`);
+  const drumPad = LiveAPI.from(toLiveApiId(object.id));
 
   drumPad.call("delete_all_chains");
 }

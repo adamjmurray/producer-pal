@@ -8,7 +8,7 @@
  * arrangement clips using the holding area technique.
  */
 
-import { assertDefined } from "#src/tools/shared/utils.ts";
+import { assertDefined, toLiveApiId } from "#src/tools/shared/utils.ts";
 
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */
@@ -124,7 +124,7 @@ export function createAndDeleteTempClip(
     ];
     const tempClip = LiveAPI.from(tempResult);
 
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
@@ -134,13 +134,13 @@ export function createAndDeleteTempClip(
 
     const tempResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
+      toLiveApiId(sessionClip.id),
       position,
     ) as [string, string | number];
     const tempClip = LiveAPI.from(tempResult);
 
     slot.call("delete_clip");
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   }
 }
 
@@ -171,7 +171,7 @@ export function createShortenedClipInHolding(
   // Duplicate source clip to holding area
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${sourceClipId}`,
+    toLiveApiId(sourceClipId),
     holdingAreaStart,
   ) as [string, string | number];
   const holdingClip = LiveAPI.from(holdingResult);
@@ -218,13 +218,13 @@ export function moveClipFromHolding(
   // Duplicate holding clip to target position
   const finalResult = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${holdingClipId}`,
+    toLiveApiId(holdingClipId),
     targetPosition,
   ) as string;
   const movedClip = LiveAPI.from(finalResult);
 
   // Clean up holding area
-  track.call("delete_clip", `id ${holdingClipId}`);
+  track.call("delete_clip", toLiveApiId(holdingClipId));
 
   return movedClip;
 }
@@ -395,7 +395,7 @@ export function tileClipToRange(
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
     const result = freshTrack.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClipId}`,
+      toLiveApiId(sourceClipId),
       currentPosition,
     ) as [string, string | number];
 
@@ -403,7 +403,7 @@ export function tileClipToRange(
     const clipId = tileClip.id;
 
     // Recreate LiveAPI object with fresh reference
-    const freshClip = LiveAPI.from(`id ${clipId}`);
+    const freshClip = LiveAPI.from(toLiveApiId(clipId));
 
     // Set start_marker to show correct portion of clip content
     let tileStartMarker = clipLoopStart + (currentContentOffset % clipLength);
