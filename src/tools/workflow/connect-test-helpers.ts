@@ -32,7 +32,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
 
   registerMockObject("live_set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: {
       name: liveSetName,
       tempo,
@@ -55,7 +55,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
 
   registerMockObject("app_view", {
     path: "live_app view",
-    type: "AppView",
+    type: "Application.View",
     properties: {
       focused_document_view: view,
     },

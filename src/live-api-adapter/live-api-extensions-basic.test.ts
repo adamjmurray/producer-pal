@@ -23,7 +23,7 @@ describe("LiveAPI extensions - basic methods", () => {
     it("returns true when LiveAPI object exists", () => {
       registerMockObject("1", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
       });
 
       const existingApi = LiveAPI.from("1");
@@ -34,7 +34,7 @@ describe("LiveAPI extensions - basic methods", () => {
     it("returns false when LiveAPI object does not exist ('id 0' case)", () => {
       registerMockObject("0", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
       });
 
       const nonExistentApi = LiveAPI.from("0");
@@ -45,7 +45,7 @@ describe("LiveAPI extensions - basic methods", () => {
     it("returns false when LiveAPI object does not exist  ('0' case)", () => {
       registerMockObject("0", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
       });
 
       const nonExistentApi = LiveAPI.from("0");

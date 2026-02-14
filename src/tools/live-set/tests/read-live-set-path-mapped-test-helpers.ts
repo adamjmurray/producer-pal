@@ -57,7 +57,7 @@ export function setupLiveSetPathMappedMocks({
 
   registerMockObject(resolvedLiveSetId, {
     path: liveSetPath,
-    type: "LiveSet",
+    type: "Song",
     properties: liveSetProperties,
   });
 

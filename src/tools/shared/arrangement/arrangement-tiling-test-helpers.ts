@@ -59,7 +59,7 @@ export function setupLiveSet(
 ): RegisteredMockObject {
   return registerMockObject("live-set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: options.properties,
     methods: options.methods,
   });

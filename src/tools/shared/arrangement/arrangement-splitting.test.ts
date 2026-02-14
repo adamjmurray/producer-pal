@@ -308,7 +308,7 @@ describe("performSplitting", () => {
     // Re-register live_set with scenes property
     registerMockObject("live_set", {
       path: "live_set",
-      type: "LiveSet",
+      type: "Song",
       properties: {
         signature_numerator: 4,
         signature_denominator: 4,

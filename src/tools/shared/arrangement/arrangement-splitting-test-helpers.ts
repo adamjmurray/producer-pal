@@ -46,7 +46,7 @@ export function setupSplittingClipBaseMocks(
   // Register live_set for time signature
   registerMockObject("live_set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,

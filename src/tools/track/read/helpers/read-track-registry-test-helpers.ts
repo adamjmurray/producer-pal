@@ -243,7 +243,7 @@ export function setupReturnTrackNames(names: string[]): void {
 
   registerMockObject("liveSet", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: {
       return_tracks:
         returnTrackIds.length > 0 ? children(...returnTrackIds) : [],

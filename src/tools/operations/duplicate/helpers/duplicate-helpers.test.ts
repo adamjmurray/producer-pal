@@ -88,7 +88,7 @@ describe("duplicate-helpers", () => {
     it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
       registerMockObject("live_set", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,
@@ -113,7 +113,7 @@ describe("duplicate-helpers", () => {
     it("omits trackIndex when specified in omitFields for arrangement clip", () => {
       registerMockObject("live_set", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,
@@ -138,7 +138,7 @@ describe("duplicate-helpers", () => {
     it("omits arrangementStart when specified in omitFields for arrangement clip", () => {
       registerMockObject("live_set", {
         path: "live_set",
-        type: "LiveSet",
+        type: "Song",
         properties: {
           signature_numerator: 4,
           signature_denominator: 4,

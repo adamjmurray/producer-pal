@@ -130,7 +130,7 @@ export function setupArrangementClipPath(
 ): Map<string, RegisteredMockObject> {
   registerMockObject("live-set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
   });
   const clips = new Map<string, RegisteredMockObject>();
   const duplicateIds = clipIds.slice(1);

@@ -53,7 +53,7 @@ describe("mock-registry", () => {
       expect(clipSlot.type).toBe("ClipSlot");
       expect(clip.type).toBe("Clip");
       expect(arrClip.type).toBe("Clip");
-      expect(liveSet.type).toBe("LiveSet");
+      expect(liveSet.type).toBe("Song");
     });
 
     it("should use explicit type override when provided", () => {

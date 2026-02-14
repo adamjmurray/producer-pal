@@ -27,7 +27,7 @@ const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({
 function setupLiveSetTracks(trackIds: string[]): void {
   registerMockObject("live_set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: {
       tracks: trackIds.length > 0 ? children(...trackIds) : [],
     },

@@ -12,10 +12,10 @@ export class MockSequence extends Array<unknown> {}
  * @returns Detected type string
  */
 export function detectTypeFromPath(path: string, id?: string): string {
-  if (path === "live_set") return "LiveSet";
-  if (path === "live_set view") return "SongView";
+  if (path === "live_set") return "Song";
+  if (path === "live_set view") return "Song.View";
   if (path === "live_app") return "Application";
-  if (path === "live_app view") return "AppView";
+  if (path === "live_app view") return "Application.View";
   if (/^live_set tracks \d+$/.test(path)) return "Track";
   if (/^live_set scenes \d+$/.test(path)) return "Scene";
   if (/^live_set tracks \d+ clip_slots \d+$/.test(path)) return "ClipSlot";
@@ -36,7 +36,7 @@ export function children(...childIds: string[]): string[] {
 }
 
 /**
- * Get mock property value for LiveSet objects
+ * Get mock property value for Song (live_set) objects
  * @param prop - Property name to retrieve
  * @returns Mock property value
  */
@@ -56,7 +56,7 @@ export function getLiveSetProperty(prop: string): unknown[] | null {
 }
 
 /**
- * Get mock property value for AppView objects
+ * Get mock property value for Application.View objects
  * @param prop - Property name to retrieve
  * @returns Mock property value
  */
@@ -210,7 +210,7 @@ function getDeviceParameterProperty(prop: string): unknown[] | null {
 
 /**
  * Get mock property value based on Live API object type
- * @param type - Live API object type (LiveSet, Track, Scene, etc.)
+ * @param type - Live API object type (Song, Track, Scene, etc.)
  * @param prop - Property name to retrieve
  * @param _path - Object path (currently unused but kept for API consistency)
  * @returns Mock property value
@@ -221,9 +221,9 @@ export function getPropertyByType(
   _path: string,
 ): unknown[] | null {
   switch (type) {
-    case "LiveSet":
+    case "Song":
       return getLiveSetProperty(prop);
-    case "AppView":
+    case "Application.View":
       return getAppViewProperty(prop);
     case "Track":
       return getTrackProperty(prop);

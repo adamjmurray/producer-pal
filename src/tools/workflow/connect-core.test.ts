@@ -70,7 +70,7 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
 
   registerWithTracking(registeredIds, registeredPaths, "live_set", {
     path: "live_set",
-    type: "LiveSet",
+    type: "Song",
     properties: liveSetProperties,
   });
   registerWithTracking(registeredIds, registeredPaths, "live_app", {
@@ -82,7 +82,7 @@ function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
   });
   registerWithTracking(registeredIds, registeredPaths, "app_view", {
     path: "live_app view",
-    type: "AppView",
+    type: "Application.View",
     properties: asObject(config.AppView),
   });
 
