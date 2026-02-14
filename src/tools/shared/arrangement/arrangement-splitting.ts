@@ -207,7 +207,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   ) as [string, string | number];
   const sourceClip = LiveAPI.from(result);
 
-  if (sourceClip.id === "0") {
+  if (!sourceClip.exists()) {
     console.warn(
       `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
     );

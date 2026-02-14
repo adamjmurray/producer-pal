@@ -142,19 +142,6 @@ export function setupSelectedTrackMock(options?: {
       trackIndex: exists ? trackIndex : null,
       returnTrackIndex: exists ? returnTrackIndex : null,
     },
-    methods: {
-      get: (...args: unknown[]) => {
-        const prop = args[0] as string;
-
-        if (!exists) return [null];
-
-        if (prop === "id") return [`id ${id}`];
-
-        if (prop === "path") return [path];
-
-        return [null];
-      },
-    },
   });
 }
 

@@ -324,7 +324,7 @@ function handlePlaySessionClips(
 
     if (!clipSlot.exists()) {
       throw new Error(
-        `playback play-session-clips action failed: clip slot for clipId=${clip.id.replace(/^id /, "")} does not exist`,
+        `playback play-session-clips action failed: clip slot for clipId=${clip.id} does not exist`,
       );
     }
 
