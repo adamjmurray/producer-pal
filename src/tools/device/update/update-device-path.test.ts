@@ -39,21 +39,21 @@ describe("updateDevice with path parameter", () => {
         type: "Device",
       });
       view456 = registerMockObject("view-456", {
-        path: `${String(livePath.track(1).device(0))} view`,
+        path: `${livePath.track(1).device(0)} view`,
       });
       returnDevice = registerMockObject("return-device-123", {
         path: livePath.returnTrack(0).device(0),
         type: "Device",
       });
       registerMockObject("view-return-123", {
-        path: `${String(livePath.returnTrack(0).device(0))} view`,
+        path: `${livePath.returnTrack(0).device(0)} view`,
       });
       masterDevice = registerMockObject("master-device-789", {
         path: livePath.masterTrack().device(0),
         type: "Device",
       });
       registerMockObject("view-master-789", {
-        path: `${String(livePath.masterTrack().device(0))} view`,
+        path: `${livePath.masterTrack().device(0)} view`,
       });
     });
 

@@ -32,10 +32,10 @@ describe("updateDevice", () => {
 
     // Views for collapsed state
     view123 = registerMockObject("view-123", {
-      path: `${String(livePath.track(0).device(0))} view`,
+      path: `${livePath.track(0).device(0)} view`,
     });
     registerMockObject("view-456", {
-      path: `${String(livePath.track(0).device(1))} view`,
+      path: `${livePath.track(0).device(1)} view`,
     });
 
     // Default param objects

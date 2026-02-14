@@ -77,7 +77,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     },
   });
 
-  const devicePath = String(livePath.track(1).device(0));
+  const devicePath = livePath.track(1).device(0);
 
   // Register each drum pad
   const pads: Record<string, RegisteredMockObject> = {};
@@ -381,7 +381,7 @@ export function setupChainMock(
 ): RegisteredMockObject {
   const {
     id = "chain-123",
-    path = String(livePath.track(1).device(0).chain(0)),
+    path = livePath.track(1).device(0).chain(0),
     name = "Chain",
     deviceIds = [],
   } = config;
