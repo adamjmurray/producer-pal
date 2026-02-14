@@ -6,6 +6,7 @@
 /* eslint-disable no-restricted-syntax -- Infrastructure tests need direct constructor access */
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   lookupMockObject,
@@ -23,7 +24,7 @@ describe("Mock LiveAPI Infrastructure", () => {
       registerMockObject("test-obj", {
         path: "live_set view selected_track",
         type: "Track",
-        returnPath: "live_set tracks 3",
+        returnPath: String(livePath.track(3)),
       });
 
       const api = new LiveAPI("live_set view selected_track");
@@ -33,11 +34,11 @@ describe("Mock LiveAPI Infrastructure", () => {
 
     it("returns registered path from .path getter when returnPath is undefined", () => {
       registerMockObject("test-obj", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
-      const api = new LiveAPI("live_set tracks 0");
+      const api = new LiveAPI(String(livePath.track(0)));
 
       expect(api.path).toBe("live_set tracks 0");
     });
@@ -46,7 +47,7 @@ describe("Mock LiveAPI Infrastructure", () => {
       registerMockObject("test-obj", {
         path: "live_set view selected_track",
         type: "Track",
-        returnPath: "live_set tracks 3",
+        returnPath: String(livePath.track(3)),
       });
 
       const registered = lookupMockObject(
@@ -63,7 +64,7 @@ describe("Mock LiveAPI Infrastructure", () => {
   describe("property copying", () => {
     it("copies registered properties onto LiveAPI instances", () => {
       registerMockObject("test-track", {
-        path: "live_set tracks 2",
+        path: livePath.track(2),
         type: "Track",
         properties: {
           category: "regular",
@@ -72,7 +73,7 @@ describe("Mock LiveAPI Infrastructure", () => {
         },
       });
 
-      const api = new LiveAPI("live_set tracks 2");
+      const api = new LiveAPI(String(livePath.track(2)));
 
       expect(api.category).toBe("regular");
       expect(api.trackIndex).toBe(2);
@@ -83,7 +84,7 @@ describe("Mock LiveAPI Infrastructure", () => {
 
     it("does not override core getters (id, path, type)", () => {
       registerMockObject("123", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
         properties: {
           id: "should-be-ignored",
@@ -92,7 +93,7 @@ describe("Mock LiveAPI Infrastructure", () => {
         },
       });
 
-      const api = new LiveAPI("live_set tracks 0");
+      const api = new LiveAPI(String(livePath.track(0)));
 
       // Core getters should use LiveAPI logic, not properties
       // Registry stores bare IDs (without "id " prefix)
@@ -118,13 +119,13 @@ describe("Mock LiveAPI Infrastructure", () => {
   describe("instance-level mocks", () => {
     it("uses instance-level get mock from registry", () => {
       const mock = registerMockObject("test-track", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
       mock.get.mockReturnValueOnce(["Test Track"]);
 
-      const api = new LiveAPI("live_set tracks 0");
+      const api = new LiveAPI(String(livePath.track(0)));
       const result = api.get("name");
 
       expect(result).toStrictEqual(["Test Track"]);
@@ -133,13 +134,13 @@ describe("Mock LiveAPI Infrastructure", () => {
 
     it("uses instance-level set mock from registry", () => {
       const mock = registerMockObject("test-track", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
       mock.set.mockReturnValueOnce(1);
 
-      const api = new LiveAPI("live_set tracks 0");
+      const api = new LiveAPI(String(livePath.track(0)));
       const result = api.set("name", "New Name");
 
       expect(result).toBe(1);
@@ -148,14 +149,14 @@ describe("Mock LiveAPI Infrastructure", () => {
 
     it("uses instance-level call mock from registry", () => {
       const mock = registerMockObject("test-track", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
         methods: {
           duplicate_clip_to: () => 1,
         },
       });
 
-      const api = new LiveAPI("live_set tracks 0");
+      const api = new LiveAPI(String(livePath.track(0)));
       const result = api.call("duplicate_clip_to", 1, 2);
 
       expect(result).toBe(1);

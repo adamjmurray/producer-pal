@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
@@ -18,14 +19,14 @@ import { deleteObject } from "./delete.ts";
 describe("deleteObject device deletion", () => {
   it("should delete a device from a regular track", () => {
     const id = "device_1";
-    const path = "live_set tracks 0 devices 1";
+    const path = String(livePath.track(0).device(1));
 
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get("live_set tracks 0")?.call).toHaveBeenCalledWith(
+    expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
       1,
     );
@@ -33,14 +34,14 @@ describe("deleteObject device deletion", () => {
 
   it("should delete a device from a return track", () => {
     const id = "device_2";
-    const path = "live_set return_tracks 0 devices 1";
+    const path = `${livePath.returnTrack(0)} devices 1`;
 
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get("live_set return_tracks 0")?.call).toHaveBeenCalledWith(
+    expect(parents.get(livePath.returnTrack(0))?.call).toHaveBeenCalledWith(
       "delete_device",
       1,
     );
@@ -48,14 +49,14 @@ describe("deleteObject device deletion", () => {
 
   it("should delete a device from the master track", () => {
     const id = "device_3";
-    const path = "live_set master_track devices 0";
+    const path = `${livePath.masterTrack()} devices 0`;
 
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get("live_set master_track")?.call).toHaveBeenCalledWith(
+    expect(parents.get(livePath.masterTrack())?.call).toHaveBeenCalledWith(
       "delete_device",
       0,
     );
@@ -65,8 +66,8 @@ describe("deleteObject device deletion", () => {
     const ids = "device_1,device_2";
 
     const { parents } = setupDeviceMocks(["device_1", "device_2"], {
-      device_1: "live_set tracks 0 devices 0",
-      device_2: "live_set tracks 1 devices 1",
+      device_1: String(livePath.track(0).device(0)),
+      device_2: String(livePath.track(1).device(1)),
     });
 
     const result = deleteObject({ ids, type: "device" });
@@ -75,11 +76,11 @@ describe("deleteObject device deletion", () => {
       { id: "device_1", type: "device", deleted: true },
       { id: "device_2", type: "device", deleted: true },
     ]);
-    expect(parents.get("live_set tracks 0")?.call).toHaveBeenCalledWith(
+    expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
       0,
     );
-    expect(parents.get("live_set tracks 1")?.call).toHaveBeenCalledWith(
+    expect(parents.get(String(livePath.track(1)))?.call).toHaveBeenCalledWith(
       "delete_device",
       1,
     );
@@ -148,7 +149,7 @@ describe("deleteObject device deletion", () => {
     it("should delete a device by path", () => {
       const { parents } = setupDeviceMocks(
         "device_by_path",
-        "live_set tracks 0 devices 1",
+        String(livePath.track(0).device(1)),
       );
 
       const result = deleteObject({ path: "t0/d1", type: "device" });
@@ -158,7 +159,7 @@ describe("deleteObject device deletion", () => {
         type: "device",
         deleted: true,
       });
-      expect(parents.get("live_set tracks 0")?.call).toHaveBeenCalledWith(
+      expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
         "delete_device",
         1,
       );
@@ -166,8 +167,8 @@ describe("deleteObject device deletion", () => {
 
     it("should delete multiple devices by path", () => {
       setupDeviceMocks(["dev_0_0", "dev_1_1"], {
-        dev_0_0: "live_set tracks 0 devices 0",
-        dev_1_1: "live_set tracks 1 devices 1",
+        dev_0_0: String(livePath.track(0).device(0)),
+        dev_1_1: String(livePath.track(1).device(1)),
       });
 
       const result = deleteObject({ path: "t0/d0, t1/d1", type: "device" });
@@ -180,8 +181,8 @@ describe("deleteObject device deletion", () => {
 
     it("should delete devices from both ids and path", () => {
       setupDeviceMocks(["dev_by_id", "dev_by_path"], {
-        dev_by_id: "live_set tracks 1 devices 1",
-        dev_by_path: "live_set tracks 0 devices 0",
+        dev_by_id: String(livePath.track(1).device(1)),
+        dev_by_path: String(livePath.track(0).device(0)),
       });
 
       const result = deleteObject({
@@ -215,7 +216,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should skip invalid paths and continue with valid ones", () => {
-      setupDeviceMocks("valid_dev", "live_set tracks 0 devices 0");
+      setupDeviceMocks("valid_dev", String(livePath.track(0).device(0)));
 
       const result = deleteObject({ path: "t0/d0, t99/d99", type: "device" });
 
@@ -236,7 +237,7 @@ describe("deleteObject device deletion", () => {
       const consoleSpy = vi.spyOn(console, "warn");
 
       registerMockObject("track_1", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
@@ -248,11 +249,11 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete a device nested inside a drum chain by path", () => {
-      const drumRackPath = "live_set tracks 1 devices 0";
+      const drumRackPath = String(livePath.track(1).device(0));
       const chainId = "chain-1";
       const deviceId = "nested-device";
-      const devicePath = "live_set tracks 1 devices 0 chains 0 devices 0";
-      const chainPath = "live_set tracks 1 devices 0 chains 0";
+      const devicePath = `${String(livePath.track(1).device(0))} chains 0 devices 0`;
+      const chainPath = `${String(livePath.track(1).device(0))} chains 0`;
 
       registerMockObject("drum-rack", {
         path: drumRackPath,

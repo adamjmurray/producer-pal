@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   overrideCall,
   requireMockTrack,
@@ -130,7 +131,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should emit warning and ignore for session clips", async () => {
     const track = registerMockObject("track-0-session-noop", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       type: "Track",
     });
 
@@ -311,7 +312,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     }
 
     registerMockObject(tempClipId, {
-      path: `live_set tracks ${trackIndex} clip_slots 0 clip`,
+      path: livePath.track(trackIndex).clipSlot(0).clip(),
       properties: {
         is_midi_clip: 0,
         is_audio_clip: 1,
@@ -364,7 +365,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     // 2. tempClipLength (8.0 beats)
     // 3. silenceWavPath from context
     expect(mockCreateAudioClip).toHaveBeenCalledWith(
-      expect.objectContaining({ _path: `live_set tracks ${trackIndex}` }),
+      expect.objectContaining({ _path: String(livePath.track(trackIndex)) }),
       8.0, // tempClipLength = originalEnd (16) - newEnd (8)
       silenceWavPath,
     );

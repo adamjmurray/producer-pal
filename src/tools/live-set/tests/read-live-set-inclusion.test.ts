@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
@@ -13,7 +14,7 @@ describe("readLiveSet - inclusion", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        "live_set tracks 0": "track1",
+        [String(livePath.track(0))]: "track1",
       },
       objects: {
         LiveSet: {
@@ -27,7 +28,7 @@ describe("readLiveSet - inclusion", () => {
           tracks: children("track1"),
           scenes: children("scene9", "scene10", "scene11"),
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Test Track",
           clip_slots: children(),
@@ -88,8 +89,8 @@ describe("readLiveSet - inclusion", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",
       pathIdMap: {
-        "live_set tracks 0": "track1",
-        "live_set tracks 0 devices 0": "drumrack1",
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.track(0).device(0))]: "drumrack1",
         "live_set tracks 0 devices 0 chains 0": "chain1",
         "live_set tracks 0 devices 0 chains 0 devices 0": "kick_device",
         live_app: "live_app",
@@ -106,7 +107,7 @@ describe("readLiveSet - inclusion", () => {
           signature_denominator: 4,
           scale_mode: 0, // Scale disabled
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Drums",
           color: 16711680,

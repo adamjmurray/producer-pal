@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -20,24 +21,24 @@ describe("updateDevice - wrapInRack", () => {
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       methods: { insert_device: () => ["id", "new-rack"] },
     });
 
     // Audio effects on track 0
     registerMockObject("device-0", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "AudioEffectDevice",
       properties: { type: 2 },
     });
     registerMockObject("device-1", {
-      path: "live_set tracks 0 devices 1",
+      path: livePath.track(0).device(1),
       type: "AudioEffectDevice",
       properties: { type: 2 },
     });
     // MIDI effect
     registerMockObject("device-2", {
-      path: "live_set tracks 0 devices 2",
+      path: livePath.track(0).device(2),
       type: "MidiEffectDevice",
       properties: { type: 4 },
     });
@@ -146,24 +147,24 @@ describe("updateDevice - wrapInRack", () => {
 
       // Instrument devices
       registerMockObject("device-3", {
-        path: "live_set tracks 0 devices 3",
+        path: livePath.track(0).device(3),
         type: "InstrumentDevice",
         properties: { type: 1 },
       });
       registerMockObject("device-4", {
-        path: "live_set tracks 0 devices 4",
+        path: livePath.track(0).device(4),
         type: "InstrumentDevice",
         properties: { type: 1 },
       });
 
       // Temp track for instrument wrapping
       registerMockObject("temp-track", {
-        path: "live_set tracks 1",
+        path: livePath.track(1),
       });
 
       // Override track0 to support insert_device
       track0 = registerMockObject("track-0", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         methods: { insert_device: () => ["id", "new-rack"] },
       });
 
@@ -300,7 +301,7 @@ describe("updateDevice - wrapInRack", () => {
 
   it("should place rack at toPath when provided", () => {
     const track1 = registerMockObject("track-1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       methods: { insert_device: () => ["id", "new-rack"] },
     });
 
@@ -371,7 +372,7 @@ describe("updateDevice - wrapInRack", () => {
 
   it("should warn and return null when device type is unrecognized", () => {
     registerMockObject("device-0", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "UnknownDevice",
       properties: { type: 0 },
     });

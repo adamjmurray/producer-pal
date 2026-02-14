@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -28,11 +29,11 @@ function setupSessionMocks(
     properties: opts.liveSet,
   });
   const clipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
-    path: "live_set tracks 0 clip_slots 0",
+    path: livePath.track(0).clipSlot(0),
     properties: { has_clip: 0, ...opts.clipSlot },
   });
   const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
-    path: "live_set tracks 0 clip_slots 0 clip",
+    path: livePath.track(0).clipSlot(0).clip(),
     properties: opts.clip,
   });
 
@@ -84,18 +85,18 @@ describe("createClip - advanced features", () => {
       liveSet: { signature_numerator: 4 },
     });
     registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: "live_set tracks 0 clip_slots 1",
+      path: livePath.track(0).clipSlot(1),
       properties: { has_clip: 0 },
     });
     registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: "live_set tracks 0 clip_slots 1 clip",
+      path: livePath.track(0).clipSlot(1).clip(),
     });
     registerMockObject("live_set/tracks/0/clip_slots/2", {
-      path: "live_set tracks 0 clip_slots 2",
+      path: livePath.track(0).clipSlot(2),
       properties: { has_clip: 0 },
     });
     registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
-      path: "live_set tracks 0 clip_slots 2 clip",
+      path: livePath.track(0).clipSlot(2).clip(),
     });
 
     const singleResult = await createClip({
@@ -265,11 +266,11 @@ describe("createClip - advanced features", () => {
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
       registerMockObject("live_set/tracks/0/clip_slots/1", {
-        path: "live_set tracks 0 clip_slots 1",
+        path: livePath.track(0).clipSlot(1),
         properties: { has_clip: 0 },
       });
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: "live_set tracks 0 clip_slots 1 clip",
+        path: livePath.track(0).clipSlot(1).clip(),
       });
       const appView = registerMockObject("app-view", {
         path: "live_app view",

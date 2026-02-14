@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -22,7 +23,7 @@ describe("updateDevice - drum chain moving", () => {
     // Track 0 has a drum rack at device 0
     // The drum rack has chains with different in_note values
     registerMockObject("drumrack-id", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "RackDevice",
       properties: {
         can_have_drum_pads: 1,

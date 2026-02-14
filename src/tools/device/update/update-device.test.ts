@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -20,12 +21,12 @@ describe("updateDevice", () => {
 
   beforeEach(() => {
     device123 = registerMockObject("123", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "Device",
     });
 
     device456 = registerMockObject("456", {
-      path: "live_set tracks 0 devices 1",
+      path: livePath.track(0).device(1),
       type: "Device",
     });
 
@@ -324,13 +325,13 @@ describe("updateDevice", () => {
     beforeEach(() => {
       // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
       device123 = registerMockObject("123", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "RackDevice",
         properties: { can_have_chains: 1, visible_macro_count: 4 },
       });
 
       device456 = registerMockObject("456", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: { can_have_chains: 0 },
       });
@@ -401,13 +402,13 @@ describe("updateDevice", () => {
   describe("abCompare", () => {
     beforeEach(() => {
       device123 = registerMockObject("123", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: { can_compare_ab: 1 },
       });
 
       device456 = registerMockObject("456", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: { can_compare_ab: 0 },
       });
@@ -473,10 +474,10 @@ describe("updateDevice", () => {
     beforeEach(() => {
       liveSet = registerMockObject("live-set", { path: "live_set" });
 
-      registerMockObject("track1", { path: "live_set tracks 1" });
-      registerMockObject("track0", { path: "live_set tracks 0" });
+      registerMockObject("track1", { path: livePath.track(1) });
+      registerMockObject("track0", { path: livePath.track(0) });
       registerMockObject("device0", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         properties: {
           chains: children("chain-0", "chain-1"),
           can_have_drum_pads: 0,

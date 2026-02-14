@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   overrideCall,
   requireMockObject,
@@ -84,7 +85,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject("live_set tracks 0"), {
+    setupClipProperties(requireMockObject(String(livePath.track(0))), {
       arrangement_clips: ["id", 789],
     });
 
@@ -152,7 +153,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockObject("live_set tracks 0"), {
+    setupClipProperties(requireMockObject(String(livePath.track(0))), {
       arrangement_clips: ["id", 789],
     });
 
@@ -218,7 +219,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupClipProperties(requireMockObject("live_set"), {
       tracks: ["id", 0],
     });
-    setupClipProperties(requireMockObject("live_set tracks 0"), {
+    setupClipProperties(requireMockObject(String(livePath.track(0))), {
       arrangement_clips: ["id", 789],
     });
 
@@ -276,7 +277,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject("live_set tracks 0"), {
+    setupClipProperties(requireMockObject(String(livePath.track(0))), {
       arrangement_clips: ["id", 789],
     });
 
@@ -380,7 +381,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       signature_numerator: 4,
       signature_denominator: 4,
     });
-    setupClipProperties(requireMockObject("live_set tracks 0"), {
+    setupClipProperties(requireMockObject(String(livePath.track(0))), {
       arrangement_clips: ["id", 789],
     });
 

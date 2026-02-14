@@ -9,6 +9,7 @@ import {
   expectedTrack,
 } from "#src/test/mocks/mock-live-api.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -21,15 +22,15 @@ describe("readLiveSet - basic reading", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        "live_set tracks 0": "track1",
-        "live_set tracks 1": "track2",
-        "live_set tracks 2": "track3",
-        "live_set scenes 0": "scene1",
-        "live_set scenes 1": "scene2",
-        "live_set scenes 2": "scene3",
-        "live_set tracks 0 clip_slots 0 clip": "clip1",
-        "live_set tracks 0 clip_slots 2 clip": "clip2",
-        "live_set tracks 1 clip_slots 0 clip": "clip3",
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.track(1))]: "track2",
+        [String(livePath.track(2))]: "track3",
+        [livePath.scene(0)]: "scene1",
+        [livePath.scene(1)]: "scene2",
+        [livePath.scene(2)]: "scene3",
+        [livePath.track(0).clipSlot(0).clip()]: "clip1",
+        [livePath.track(0).clipSlot(2).clip()]: "clip2",
+        [livePath.track(1).clipSlot(0).clip()]: "clip3",
       },
       objects: {
         LiveSet: {
@@ -45,7 +46,7 @@ describe("readLiveSet - basic reading", () => {
           tracks: children("track1", "track2", "track3"),
           scenes: children("scene1", "scene2", "scene3"),
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "MIDI Track 1",
           color: 16711680, // Red
@@ -58,7 +59,7 @@ describe("readLiveSet - basic reading", () => {
           group_track: ["id", 0],
           clip_slots: children("slot1", "slot2", "slot3"),
         },
-        "live_set tracks 1": {
+        [String(livePath.track(1))]: {
           has_midi_input: 0,
           name: "Audio Track 2",
           color: 65280, // Green
@@ -71,7 +72,7 @@ describe("readLiveSet - basic reading", () => {
           group_track: ["id", "track1"],
           clip_slots: children("slot4"),
         },
-        "live_set scenes 0": {
+        [livePath.scene(0)]: {
           name: "Scene 1",
           color: 16711680, // Red
           is_empty: 0,
@@ -82,7 +83,7 @@ describe("readLiveSet - basic reading", () => {
           time_signature_denominator: 4,
           time_signature_enabled: 1,
         },
-        "live_set scenes 1": {
+        [livePath.scene(1)]: {
           name: "Scene 2",
           color: 65280, // Green
           is_empty: 1,
@@ -93,7 +94,7 @@ describe("readLiveSet - basic reading", () => {
           time_signature_denominator: -1,
           time_signature_enabled: 0,
         },
-        "live_set scenes 2": {
+        [livePath.scene(2)]: {
           name: "Scene 3",
           color: 255, // Blue
           is_empty: 0,
@@ -281,8 +282,8 @@ describe("readLiveSet - basic reading", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        "live_set tracks 0": "track1",
-        "live_set tracks 1": "track2",
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.track(1))]: "track2",
       },
       objects: {
         LiveSet: {
@@ -290,12 +291,12 @@ describe("readLiveSet - basic reading", () => {
           tracks: children("track1", "track2"),
           scenes: [],
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Synth Track",
           devices: children("synth1", "eq1"),
         },
-        "live_set tracks 1": {
+        [String(livePath.track(1))]: {
           has_midi_input: 0,
           name: "Audio Track",
           devices: children("reverb1"),
@@ -369,7 +370,7 @@ describe("readLiveSet - basic reading", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
-        "live_set tracks 0": "track1",
+        [String(livePath.track(0))]: "track1",
       },
       objects: {
         LiveSet: {
@@ -377,7 +378,7 @@ describe("readLiveSet - basic reading", () => {
           tracks: children("track1"),
           scenes: [],
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Drum Track",
           devices: children("drum_rack1", "reverb1"),

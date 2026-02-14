@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -40,21 +41,21 @@ function setupSessionCodeExecMocks(
     },
   });
   registerMockObject("track-0", {
-    path: "live_set tracks 0",
+    path: livePath.track(0),
   });
 
   const clipsByScene = new Map<number, RegisteredMockObject>();
 
   for (const sceneIndex of sceneIndices) {
     registerMockObject(`clip-slot-0-${sceneIndex}`, {
-      path: `live_set tracks 0 clip_slots ${sceneIndex}`,
+      path: livePath.track(0).clipSlot(sceneIndex),
       properties: { has_clip: 0 },
     });
 
     const clip = registerMockObject(
       `live_set/tracks/0/clip_slots/${sceneIndex}/clip`,
       {
-        path: `live_set tracks 0 clip_slots ${sceneIndex} clip`,
+        path: livePath.track(0).clipSlot(sceneIndex).clip(),
         properties: { length: 4 },
       },
     );

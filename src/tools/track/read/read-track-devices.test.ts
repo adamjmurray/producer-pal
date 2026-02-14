@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -46,7 +47,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("device1", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Custom Analog",
@@ -56,7 +57,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("device2", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Custom Reverb",
@@ -66,7 +67,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("device3", {
-        path: "live_set tracks 0 devices 2",
+        path: livePath.track(0).device(2),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Custom Note Length",
@@ -125,7 +126,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("device1", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "My Drums",
@@ -158,7 +159,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("device1", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "My Drums",
@@ -169,7 +170,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("device2", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: createDeviceMockProperties({
           name: "Reverb",
@@ -244,7 +245,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("fx_rack1", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Master FX",
@@ -317,7 +318,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("outer_rack", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createRackDeviceMockProperties({
           name: "Master FX",

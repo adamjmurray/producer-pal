@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -26,7 +27,7 @@ describe("updateDevice - division params", () => {
 
   beforeEach(() => {
     registerMockObject("123", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "Device",
     });
 

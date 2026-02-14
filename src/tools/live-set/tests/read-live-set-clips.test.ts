@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
@@ -15,7 +16,7 @@ function setupClipReadMocks(
   setupLiveSetPathMappedMocks({
     liveSetId: "live_set_id",
     pathIdMap: {
-      "live_set tracks 0": "track1",
+      [String(livePath.track(0))]: "track1",
       ...pathIdMap,
     },
     objects,
@@ -30,7 +31,7 @@ function setupSingleTrackWithClip(setName: string): void {
         tracks: children("track1"),
         scenes: [],
       },
-      "live_set tracks 0": {
+      [String(livePath.track(0))]: {
         has_midi_input: 1,
         name: "Test Track",
         clip_slots: children("slot1"),
@@ -42,7 +43,7 @@ function setupSingleTrackWithClip(setName: string): void {
       },
     },
     {
-      "live_set tracks 0 clip_slots 0 clip": "clip1",
+      [livePath.track(0).clipSlot(0).clip()]: "clip1",
     },
   );
 }
@@ -98,7 +99,7 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Test Track",
           back_to_arranger: 0,
@@ -107,7 +108,7 @@ describe("readLiveSet - clips", () => {
           devices: [],
           is_foldable: 0,
         },
-        "live_set tracks 0 clip_slots 0": {
+        [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
         "id clip1": {
@@ -117,8 +118,8 @@ describe("readLiveSet - clips", () => {
         },
       },
       {
-        "live_set scenes 0": "scene1",
-        "live_set tracks 0 clip_slots 0 clip": "clip1",
+        [livePath.scene(0)]: "scene1",
+        [livePath.track(0).clipSlot(0).clip()]: "clip1",
       },
     );
 
@@ -168,21 +169,21 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: [],
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 0,
           clip_slots: [],
           arrangement_clips: children("arr_clip1"),
           devices: [],
           is_foldable: 0,
         },
-        "live_set tracks 0 arrangement_clips 0": {
+        [livePath.track(0).arrangementClip(0)]: {
           name: "Arrangement Clip",
           length: 8.0,
           is_midi_clip: 0,
         },
       },
       {
-        "live_set tracks 0 arrangement_clips 0": "arr_clip1",
+        [livePath.track(0).arrangementClip(0)]: "arr_clip1",
       },
     );
 
@@ -224,14 +225,14 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           clip_slots: children("slot1"),
           arrangement_clips: children("arr_clip1"),
           devices: [],
           is_foldable: 0,
         },
-        "live_set tracks 0 clip_slots 0": {
+        [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
         "id clip1": {
@@ -239,16 +240,16 @@ describe("readLiveSet - clips", () => {
           length: 4.0,
           is_midi_clip: 1,
         },
-        "live_set tracks 0 arrangement_clips 0": {
+        [livePath.track(0).arrangementClip(0)]: {
           name: "Arrangement Clip",
           length: 8.0,
           is_midi_clip: 1,
         },
       },
       {
-        "live_set scenes 0": "scene1",
-        "live_set tracks 0 clip_slots 0 clip": "clip1",
-        "live_set tracks 0 arrangement_clips 0": "arr_clip1",
+        [livePath.scene(0)]: "scene1",
+        [livePath.track(0).clipSlot(0).clip()]: "clip1",
+        [livePath.track(0).arrangementClip(0)]: "arr_clip1",
       },
     );
 
@@ -282,7 +283,7 @@ describe("readLiveSet - clips", () => {
           tracks: children("track1"),
           scenes: children("scene1"),
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Test Track",
           back_to_arranger: 0,
@@ -291,7 +292,7 @@ describe("readLiveSet - clips", () => {
           devices: [],
           is_foldable: 0,
         },
-        "live_set tracks 0 clip_slots 0": {
+        [String(livePath.track(0).clipSlot(0))]: {
           clip: ["id", "clip1"],
         },
         "id clip1": {
@@ -301,8 +302,8 @@ describe("readLiveSet - clips", () => {
         },
       },
       {
-        "live_set scenes 0": "scene1",
-        "live_set tracks 0 clip_slots 0 clip": "clip1",
+        [livePath.scene(0)]: "scene1",
+        [livePath.track(0).clipSlot(0).clip()]: "clip1",
       },
     );
 
@@ -337,7 +338,7 @@ describe("readLiveSet - clips", () => {
         },
       },
       {
-        "live_set tracks 0": "0", // Non-existent track
+        [String(livePath.track(0))]: "0", // Non-existent track
       },
     );
 
@@ -354,7 +355,7 @@ describe("readLiveSet - clips", () => {
           tracks: children("group_track"),
           scenes: [],
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           clip_slots: [],
           arrangement_clips: [],
@@ -362,7 +363,7 @@ describe("readLiveSet - clips", () => {
           is_foldable: 1, // This is a group track
         },
       },
-      { "live_set tracks 0": "group_track" },
+      { [String(livePath.track(0))]: "group_track" },
     );
 
     const result = readLiveSet({ include: ["arrangement-clips"] });
@@ -392,7 +393,7 @@ describe("readLiveSet - clips", () => {
           tracks: children("group_track"),
           scenes: [],
         },
-        "live_set tracks 0": {
+        [String(livePath.track(0))]: {
           has_midi_input: 1,
           clip_slots: [],
           arrangement_clips: [],
@@ -400,7 +401,7 @@ describe("readLiveSet - clips", () => {
           is_foldable: 1,
         },
       },
-      { "live_set tracks 0": "group_track" },
+      { [String(livePath.track(0))]: "group_track" },
     );
 
     // Without arrangement-clips, should get count instead of array

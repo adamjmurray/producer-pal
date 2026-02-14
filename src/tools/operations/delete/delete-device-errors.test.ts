@@ -7,13 +7,14 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "./delete.ts";
 
 describe("deleteObject device path error cases", () => {
   it("should warn when device path through drum pad does not exist", () => {
     const consoleSpy = vi.spyOn(console, "warn");
-    const drumRackPath = "live_set tracks 0 devices 0";
+    const drumRackPath = livePath.track(0).device(0);
     const chainId = "chain-1";
 
     registerMockObject("drum-rack", {
@@ -48,7 +49,7 @@ describe("deleteObject device path error cases", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     registerMockObject("device_0", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "Device",
       properties: { chains: children("chain_0") },
     });
@@ -86,7 +87,7 @@ describe("deleteObject device path error cases", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     // Register as non-existent (id "0" makes exists() return false)
-    registerMockObject("0", { path: "live_set tracks 0 devices 0" });
+    registerMockObject("0", { path: livePath.track(0).device(0) });
 
     expect(() => deleteObject({ path: "t0/d0", type: "device" })).toThrow(
       "delete failed: ids or path is required",

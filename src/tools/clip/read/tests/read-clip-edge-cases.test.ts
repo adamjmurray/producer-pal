@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
@@ -16,7 +17,7 @@ describe("readClip", () => {
   // E2E test with real bar|beat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
     registerMockObject("track-0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       properties: { devices: children("drumRack") },
     });
     registerMockObject("drumRack", {

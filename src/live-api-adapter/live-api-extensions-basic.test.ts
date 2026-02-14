@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
@@ -300,9 +301,9 @@ describe("LiveAPI extensions - basic methods", () => {
     });
 
     it("uses path as-is for normal Live API paths", () => {
-      const result = LiveAPI.from("live_set tracks 0");
+      const result = LiveAPI.from(String(livePath.track(0)));
 
-      expect(result.path).toBe("live_set tracks 0");
+      expect(result.path).toBe(String(livePath.track(0)));
     });
 
     it("uses path as-is for strings with non-digit characters", () => {

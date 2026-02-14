@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
@@ -31,7 +32,7 @@ function setupLocatorReadMocks({
   setupLiveSetPathMappedMocks({
     liveSetId: "live_set_id",
     pathIdMap: {
-      "live_set master_track": "master",
+      [livePath.masterTrack()]: "master",
     },
     objects: {
       LiveSet: {
@@ -44,7 +45,7 @@ function setupLocatorReadMocks({
         scenes: [],
         cue_points: cueIds.length > 0 ? children(...cueIds) : [],
       },
-      "live_set master_track": {
+      [livePath.masterTrack()]: {
         has_midi_input: 0,
         name: "Master",
         devices: [],

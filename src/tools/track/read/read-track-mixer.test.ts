@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   setupReturnTrackNames,
   setupTrackMixerMocks,
@@ -70,7 +71,7 @@ describe("readTrack - mixer properties", () => {
 
   it("includes mixer properties for return tracks", () => {
     setupTrackMixerMocks({
-      trackPath: "live_set return_tracks 0",
+      trackPath: livePath.returnTrack(0),
       trackId: "return1",
       trackProperties: {
         has_midi_input: 0,
@@ -96,7 +97,7 @@ describe("readTrack - mixer properties", () => {
 
   it("includes mixer properties for master track", () => {
     setupTrackMixerMocks({
-      trackPath: "live_set master_track",
+      trackPath: livePath.masterTrack(),
       trackId: "master",
       trackProperties: {
         has_midi_input: 0,

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -92,7 +93,7 @@ describe("createClip - arrangement view", () => {
     mockNonExistentObjects();
 
     registerMockObject("track-0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       methods: {
         create_midi_clip: vi.fn(() => ["id", "missing-arrangement-clip"]),
       },

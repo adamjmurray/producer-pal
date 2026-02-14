@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -88,7 +89,7 @@ function setupLiveSet(
 
 function setupTrack(trackIndex: number): RegisteredMockObject {
   return registerMockObject(`track-${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
+    path: livePath.track(trackIndex),
   });
 }
 
@@ -97,16 +98,15 @@ function setupSessionClip(
   sceneIndex: number,
   opts: SessionClipSetupOptions = {},
 ): { clipSlot: RegisteredMockObject; clip: RegisteredMockObject } {
-  const clipPath = `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
   const clipSlot = registerMockObject(`clip-slot-${trackIndex}-${sceneIndex}`, {
-    path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    path: livePath.track(trackIndex).clipSlot(sceneIndex),
     properties: { has_clip: opts.hasClip ?? 0 },
   });
   const clip = registerMockObject(
     opts.clipId ??
       `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}/clip`,
     {
-      path: clipPath,
+      path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
       properties: opts.clipProperties,
     },
   );
@@ -167,7 +167,7 @@ describe("createClip - session view", () => {
       clipProperties: { signature_numerator: 4, signature_denominator: 4 },
     });
     const scene0 = registerMockObject("scene0-handle", {
-      path: "live_set scenes 0",
+      path: livePath.scene(0),
     });
 
     const result = await createClip({

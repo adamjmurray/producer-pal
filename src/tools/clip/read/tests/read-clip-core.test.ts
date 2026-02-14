@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as consoleModule from "#src/shared/v8-max-console.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -154,15 +155,15 @@ describe("readClip", () => {
 
     // Track and scene exist, but clip does not
     registerMockObject("track2", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       type: "Track",
     });
     registerMockObject("scene3", {
-      path: "live_set scenes 3",
+      path: livePath.scene(3),
       type: "Scene",
     });
     registerMockObject("0", {
-      path: "live_set tracks 2 clip_slots 3 clip",
+      path: livePath.track(2).clipSlot(3).clip(),
       type: "Clip",
     });
 
@@ -184,7 +185,7 @@ describe("readClip", () => {
 
   it("throws when track does not exist", () => {
     registerMockObject("0", {
-      path: "live_set tracks 99",
+      path: livePath.track(99),
       type: "Track",
     });
 
@@ -196,11 +197,11 @@ describe("readClip", () => {
   it("throws when scene does not exist", () => {
     // Track exists, but scene does not
     registerMockObject("track0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       type: "Track",
     });
     registerMockObject("0", {
-      path: "live_set scenes 99",
+      path: livePath.scene(99),
       type: "Scene",
     });
 
@@ -335,7 +336,7 @@ describe("readClip", () => {
   it("reads a session clip by ID", () => {
     setupMidiClipMock({
       clipId: "session_clip_id",
-      path: "live_set tracks 2 clip_slots 4 clip",
+      path: livePath.track(2).clipSlot(4).clip(),
       clipProps: {
         is_arrangement_clip: 0,
         signature_numerator: 4,
@@ -361,7 +362,7 @@ describe("readClip", () => {
   it("reads an Arrangement clip by ID using song time signature for arrangementStart and arrangementLength", () => {
     setupMidiClipMock({
       clipId: "arrangement_clip_id",
-      path: "live_set tracks 3 arrangement_clips 2",
+      path: livePath.track(3).arrangementClip(2),
       clipProps: {
         is_arrangement_clip: 1,
         start_time: 16.0, // Ableton beats

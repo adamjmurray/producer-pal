@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
@@ -45,7 +46,7 @@ function setupTrackWithInstrumentRack(name: string): void {
     }),
   });
   registerMockObject("instrumentRack", {
-    path: "live_set tracks 0 devices 0",
+    path: livePath.track(0).device(0),
     type: "Device",
     properties: {
       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -62,7 +63,7 @@ function setupTrackWithDrumRack(chainIds: string[]): void {
     properties: mockTrackProperties({ devices: children("drum_rack") }),
   });
   registerMockObject("drum_rack", {
-    path: "live_set tracks 0 devices 0",
+    path: livePath.track(0).device(0),
     type: "Device",
     properties: createDrumRackMock({ chainIds }),
   });
@@ -162,7 +163,7 @@ describe("readTrack", () => {
         }),
       });
       registerMockObject("directDrumRack", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -188,7 +189,7 @@ describe("readTrack", () => {
         },
       });
       registerMockObject("instrumentRack", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
         properties: {
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -298,7 +299,7 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ devices: children("drum_rack") }),
       });
       registerMockObject("drum_rack", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
         properties: createDrumRackMock({ chainIds: ["kick_chain"] }),
       });

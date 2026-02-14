@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -18,7 +19,7 @@ describe("LiveAPI extensions", () => {
   describe("getProperty", () => {
     it("should handle available_warp_modes property", () => {
       const mockClip = registerMockObject("clip1", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
         type: "Clip",
       });
 
@@ -32,7 +33,7 @@ describe("LiveAPI extensions", () => {
 
     it("should handle scale_intervals property", () => {
       const mockClip = registerMockObject("clip2", {
-        path: "live_set tracks 0 clip_slots 0 clip",
+        path: livePath.track(0).clipSlot(0).clip(),
         type: "Clip",
       });
 
@@ -47,7 +48,7 @@ describe("LiveAPI extensions", () => {
 
   describe("setAll", () => {
     it("should set multiple properties at once", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const track = LiveAPI.from(String(livePath.track(0)));
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -62,7 +63,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should skip null values", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const track = LiveAPI.from(String(livePath.track(0)));
       const setSpy = vi.spyOn(track, "set");
 
       track.setAll({
@@ -77,7 +78,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should handle color property with setColor", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const track = LiveAPI.from(String(livePath.track(0)));
       const setColorSpy = vi.spyOn(track, "setColor");
       const setSpy = vi.spyOn(track, "set");
 
@@ -93,19 +94,19 @@ describe("LiveAPI extensions", () => {
 
   describe("clipSlotIndex property", () => {
     it("should extract clip slot index from clip_slots path", () => {
-      const clipSlot = LiveAPI.from("live_set tracks 2 clip_slots 5");
+      const clipSlot = LiveAPI.from(String(livePath.track(2).clipSlot(5)));
 
       expect(clipSlot.clipSlotIndex).toBe(5);
     });
 
     it("should extract clip slot index from scenes path", () => {
-      const scene = LiveAPI.from("live_set scenes 3");
+      const scene = LiveAPI.from(String(livePath.scene(3)));
 
       expect(scene.clipSlotIndex).toBe(3);
     });
 
     it("should return null for non-clip-slot paths", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const track = LiveAPI.from(String(livePath.track(0)));
 
       expect(track.clipSlotIndex).toBeNull();
     });
@@ -113,7 +114,7 @@ describe("LiveAPI extensions", () => {
 
   describe("deviceIndex property", () => {
     it("should extract device index from devices path", () => {
-      const device = LiveAPI.from("live_set tracks 0 devices 2");
+      const device = LiveAPI.from(String(livePath.track(0).device(2)));
 
       expect(device.deviceIndex).toBe(2);
     });
@@ -127,7 +128,7 @@ describe("LiveAPI extensions", () => {
     });
 
     it("should return null for paths without devices", () => {
-      const track = LiveAPI.from("live_set tracks 0");
+      const track = LiveAPI.from(String(livePath.track(0)));
 
       expect(track.deviceIndex).toBeNull();
     });
@@ -136,7 +137,7 @@ describe("LiveAPI extensions", () => {
   describe("routing properties", () => {
     it("should handle input_routing_channel property", () => {
       const mockTrack = registerMockObject("track1", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
@@ -152,7 +153,7 @@ describe("LiveAPI extensions", () => {
 
     it("should return null for routing property with null raw value", () => {
       const mockTrack = registerMockObject("track2", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 
@@ -166,7 +167,7 @@ describe("LiveAPI extensions", () => {
 
     it("should return null for routing property with invalid JSON", () => {
       const mockTrack = registerMockObject("track3", {
-        path: "live_set tracks 0",
+        path: livePath.track(0),
         type: "Track",
       });
 

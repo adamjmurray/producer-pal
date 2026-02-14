@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/version.ts";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
@@ -32,14 +33,14 @@ function createSoloedMidiTrackProperties(
 function mockThisDeviceOnTrack1(): void {
   registerMockObject("this_device", {
     path: "this_device",
-    returnPath: "live_set tracks 1 devices 0",
+    returnPath: String(livePath.track(1).device(0)),
     type: "Device",
   });
 }
 
 function registerTrackWithSessionSlots(name: string): void {
   registerMockObject("track3", {
-    path: "live_set tracks 2",
+    path: livePath.track(2),
     type: "Track",
     properties: {
       has_midi_input: 1,
@@ -59,20 +60,20 @@ function registerTrackWithSessionSlots(name: string): void {
 
 function registerSessionClipMocksForTrack2(): void {
   registerMockObject("clip1", {
-    path: "live_set tracks 2 clip_slots 0 clip",
+    path: livePath.track(2).clipSlot(0).clip(),
   });
   registerMockObject("0", {
-    path: "live_set tracks 2 clip_slots 1 clip",
+    path: livePath.track(2).clipSlot(1).clip(),
     type: "Clip",
   });
   registerMockObject("clip2", {
-    path: "live_set tracks 2 clip_slots 2 clip",
+    path: livePath.track(2).clipSlot(2).clip(),
   });
 }
 
 describe("readTrack", () => {
   it("throws when the track does not exist", () => {
-    registerMockObject("0", { path: "live_set tracks 99", type: "Track" });
+    registerMockObject("0", { path: livePath.track(99), type: "Track" });
 
     expect(() => readTrack({ trackIndex: 99 })).toThrow(
       "readTrack: trackIndex 99 does not exist",
@@ -107,7 +108,7 @@ describe("readTrack", () => {
 
   it("returns track information for audio tracks", () => {
     setupTrackPathMappedMocks({
-      trackPath: "live_set tracks 1",
+      trackPath: String(livePath.track(1)),
       trackId: "track2",
       objects: {
         Track: {
@@ -177,12 +178,12 @@ describe("readTrack", () => {
     mockThisDeviceOnTrack1();
 
     registerMockObject("track1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       type: "Track",
       properties: mockTrackProperties(),
     });
     registerMockObject("track0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       type: "Track",
       properties: mockTrackProperties(),
     });
@@ -202,14 +203,14 @@ describe("readTrack", () => {
     mockThisDeviceOnTrack1();
 
     registerMockObject("track1", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       type: "Track",
       properties: mockTrackProperties({
         devices: [], // No devices means instrument will be null
       }),
     });
     registerMockObject("track0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       type: "Track",
       properties: mockTrackProperties({
         devices: [],
@@ -260,7 +261,7 @@ describe("readTrack", () => {
 
   it("returns arrangementClips when the track has clips in Arrangement view", () => {
     registerMockObject("track3", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       type: "Track",
       properties: {
         has_midi_input: 1,
@@ -272,14 +273,14 @@ describe("readTrack", () => {
       },
     });
     registerMockObject("arr_clip1", {
-      path: "live_set tracks 2 arrangement_clips 0",
+      path: livePath.track(2).arrangementClip(0),
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
       },
     });
     registerMockObject("arr_clip2", {
-      path: "live_set tracks 2 arrangement_clips 1",
+      path: livePath.track(2).arrangementClip(1),
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
@@ -310,7 +311,7 @@ describe("readTrack", () => {
 
   it("returns arrangement clip count when includeArrangementClips is false", () => {
     registerMockObject("track3", {
-      path: "live_set tracks 2",
+      path: livePath.track(2),
       type: "Track",
       properties: {
         has_midi_input: 1,
@@ -332,7 +333,7 @@ describe("readTrack", () => {
 
   it("returns arrangement clip count when includeArrangementClips is false (additional test)", () => {
     registerMockObject("track2", {
-      path: "live_set tracks 1",
+      path: livePath.track(1),
       type: "Track",
       properties: {
         has_midi_input: 1,

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -102,8 +103,8 @@ describe("readTrack", () => {
     it("returns empty array when the drum rack has no chains", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "drumrack",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "drumrack",
         },
         objects: {
           Track: mockTrackProperties({
@@ -131,8 +132,8 @@ describe("readTrack", () => {
     it("includes all drum chains that have instruments", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "drumrack",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "drumrack",
           "live_set tracks 0 devices 0 chains 0": "chain1",
           "live_set tracks 0 devices 0 chains 1": "chain2",
         },
@@ -183,10 +184,10 @@ describe("readTrack", () => {
     it("stops at first drum rack found", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "midiEffect",
-          "live_set tracks 0 devices 1": "drumrack1",
-          "live_set tracks 0 devices 2": "drumrack2",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "midiEffect",
+          [String(livePath.track(0).device(1))]: "drumrack1",
+          [String(livePath.track(0).device(2))]: "drumrack2",
           "live_set tracks 0 devices 1 chains 0": "chain1",
           "live_set tracks 0 devices 2 chains 0": "chain2",
         },
@@ -274,8 +275,8 @@ describe("readTrack", () => {
     it("finds drum chains in nested drum rack inside instrument rack", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "instrumentRack",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "instrumentRack",
           "live_set tracks 0 devices 0 chains 0": "rackchain1",
           "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
           "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
@@ -358,8 +359,8 @@ describe("readTrack", () => {
     it("handles catch-all chains (in_note=-1) in drum racks", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "drumrack",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "drumrack",
           "live_set tracks 0 devices 0 chains 0": "catchAllChain",
           "live_set tracks 0 devices 0 chains 0 devices 0": "nestedDrumRack",
         },
@@ -415,8 +416,8 @@ describe("readTrack", () => {
     it("aggregates muted state from chains", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
-          "live_set tracks 0": "track1",
-          "live_set tracks 0 devices 0": "drumrack",
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "drumrack",
           "live_set tracks 0 devices 0 chains 0": "mutedChain",
         },
         objects: {

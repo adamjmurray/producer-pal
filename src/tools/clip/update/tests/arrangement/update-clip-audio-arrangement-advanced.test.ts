@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -54,11 +55,11 @@ function setupArrangementClip(
 ): RegisteredMockObject {
   registerMockObject("live-set", { path: "live_set" });
   registerMockObject(`track-${trackIndex}`, {
-    path: `live_set tracks ${trackIndex}`,
+    path: livePath.track(trackIndex),
   });
 
   return registerMockObject(clipId, {
-    path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+    path: livePath.track(trackIndex).arrangementClip(0),
     properties,
   });
 }
@@ -304,7 +305,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     });
 
     const track = registerMockObject(`track-${trackIndex}`, {
-      path: `live_set tracks ${trackIndex}`,
+      path: livePath.track(trackIndex),
       methods: {
         duplicate_clip_to_arrangement: () => ["id", movedClipId],
         delete_clip: () => 1,

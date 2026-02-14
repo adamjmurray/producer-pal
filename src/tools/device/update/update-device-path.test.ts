@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -33,7 +34,7 @@ describe("updateDevice with path parameter", () => {
 
     beforeEach(() => {
       device456 = registerMockObject("device-456", {
-        path: "live_set tracks 1 devices 0",
+        path: livePath.track(1).device(0),
         type: "Device",
       });
       view456 = registerMockObject("view-456", {
@@ -185,7 +186,7 @@ describe("updateDevice with path parameter", () => {
       } = config;
 
       registerMockObject(deviceId, {
-        path: "live_set tracks 1 devices 0",
+        path: livePath.track(1).device(0),
         type: "RackDevice",
         properties: {
           can_have_drum_pads: 1,
@@ -357,15 +358,15 @@ describe("updateDevice with path parameter", () => {
 
     beforeEach(() => {
       device100 = registerMockObject("device-100", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
       });
       device101 = registerMockObject("device-101", {
-        path: "live_set tracks 0 devices 1",
+        path: livePath.track(0).device(1),
         type: "Device",
       });
       device200 = registerMockObject("device-200", {
-        path: "live_set tracks 1 devices 0",
+        path: livePath.track(1).device(0),
         type: "Device",
       });
       // t1/d1 is non-existent — not registered
@@ -456,7 +457,7 @@ describe("updateDevice with path parameter", () => {
   describe("multiple paths with mixed types", () => {
     it("should update mixed device and chain types", () => {
       const device100 = registerMockObject("device-100", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
       });
       const chain200 = registerMockObject("chain-200", {
@@ -478,19 +479,19 @@ describe("updateDevice with path parameter", () => {
 
     beforeEach(() => {
       registerMockObject("device-100", {
-        path: "live_set tracks 0 devices 0",
+        path: livePath.track(0).device(0),
         type: "Device",
       });
       param100 = registerMockObject("param-100-5", {
-        path: "live_set tracks 0 devices 0 parameters 5",
+        path: livePath.track(0).device(0).parameter(5),
         properties: { is_quantized: 0 },
       });
       registerMockObject("device-200", {
-        path: "live_set tracks 1 devices 0",
+        path: livePath.track(1).device(0),
         type: "Device",
       });
       param200 = registerMockObject("param-200-5", {
-        path: "live_set tracks 1 devices 0 parameters 5",
+        path: livePath.track(1).device(0).parameter(5),
         properties: { is_quantized: 0 },
       });
     });

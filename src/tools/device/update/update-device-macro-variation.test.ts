@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -18,7 +19,7 @@ describe("updateDevice - macroVariation", () => {
   beforeEach(() => {
     // Default: rack device with 3 variations, variation 1 selected
     rackDevice = registerMockObject("123", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       type: "RackDevice",
       properties: {
         can_have_chains: 1,
@@ -29,7 +30,7 @@ describe("updateDevice - macroVariation", () => {
 
     // Non-rack device (can_have_chains = 0)
     nonRackDevice = registerMockObject("456", {
-      path: "live_set tracks 0 devices 1",
+      path: livePath.track(0).device(1),
       type: "RackDevice",
       properties: { can_have_chains: 0 },
     });

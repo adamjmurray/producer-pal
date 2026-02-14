@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/test/helpers/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -18,17 +19,17 @@ describe("createDevice", () => {
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {
-      path: "live_set tracks 0",
+      path: livePath.track(0),
       methods: { insert_device: () => ["id", "device123"] },
     });
 
     registerMockObject("device123", {
-      path: "live_set tracks 0 devices 2",
+      path: livePath.track(0).device(2),
     });
 
     // Default rack for chain path resolution
     registerMockObject("rack-0", {
-      path: "live_set tracks 0 devices 0",
+      path: livePath.track(0).device(0),
       properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
     });
 
@@ -237,7 +238,7 @@ describe("createDevice", () => {
 
       it("should create device on track via path with position", () => {
         registerMockObject("device123", {
-          path: "live_set tracks 0 devices 1",
+          path: livePath.track(0).device(1),
         });
 
         const result = createDevice({
@@ -258,7 +259,7 @@ describe("createDevice", () => {
 
       it("should create device on return track via path", () => {
         const returnTrack = registerMockObject("rt-0", {
-          path: "live_set return_tracks 0",
+          path: livePath.returnTrack(0),
           properties: { devices: ["id", "existing-device"] },
           methods: { insert_device: () => ["id", "device123"] },
         });
@@ -285,7 +286,7 @@ describe("createDevice", () => {
 
       it("should fallback to append when position is 0 on empty container", () => {
         registerMockObject("device123", {
-          path: "live_set tracks 0 devices 0",
+          path: livePath.track(0).device(0),
         });
 
         const result = createDevice({
@@ -303,7 +304,7 @@ describe("createDevice", () => {
 
       it("should create device on master track via path", () => {
         const masterTrack = registerMockObject("mt-0", {
-          path: "live_set master_track",
+          path: livePath.masterTrack(),
           methods: { insert_device: () => ["id", "device123"] },
         });
 
@@ -341,7 +342,7 @@ describe("createDevice", () => {
 
       it("should create device in chain via path with position", () => {
         registerMockObject("rack-0", {
-          path: "live_set tracks 0 devices 0",
+          path: livePath.track(0).device(0),
           properties: {
             chains: children("chain-0"),
             can_have_drum_pads: 0,
@@ -372,7 +373,7 @@ describe("createDevice", () => {
 
       it("should create device in return chain via path", () => {
         registerMockObject("rack-0", {
-          path: "live_set tracks 0 devices 0",
+          path: livePath.track(0).device(0),
           properties: {
             chains: children("chain-0"),
             return_chains: children("rchain-0"),
