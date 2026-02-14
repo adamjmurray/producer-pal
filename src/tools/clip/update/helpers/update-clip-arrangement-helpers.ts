@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -57,7 +58,7 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Track clips being moved to same track
   const moveCount = (tracksWithMovedClips.get(trackIndex) ?? 0) + 1;

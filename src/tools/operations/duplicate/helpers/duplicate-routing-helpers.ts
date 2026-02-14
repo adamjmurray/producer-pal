@@ -208,7 +208,8 @@ export function configureRouting(
   newTrack: LiveAPI,
   sourceTrackIndex: number | undefined,
 ): void {
-  const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
+  // sourceTrackIndex is guaranteed by caller when routeToSource is true
+  const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex as number));
   const sourceTrackName = sourceTrack.getProperty("name") as string;
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);

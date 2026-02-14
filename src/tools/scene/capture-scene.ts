@@ -36,7 +36,7 @@ export function captureScene({
   const appView = LiveAPI.from(livePath.view.song);
 
   if (sceneIndex != null) {
-    const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
     appView.set("selected_scene", toLiveApiId(scene.id));
   }
@@ -55,7 +55,7 @@ export function captureScene({
   liveSet.call("capture_and_insert_scene");
 
   const newSceneIndex = selectedSceneIndex + 1;
-  const newScene = LiveAPI.from(`live_set scenes ${newSceneIndex}`);
+  const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
 
   if (name != null) {
     newScene.set("name", name);
@@ -67,7 +67,7 @@ export function captureScene({
 
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
     const clip = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
+      livePath.track(trackIndex).clipSlot(newSceneIndex).clip(),
     );
 
     if (clip.exists()) {

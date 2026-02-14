@@ -254,7 +254,7 @@ function buildTrackContext(clip: LiveAPI): CodeTrackContext {
   const trackMatch = clipPath.match(/tracks (\d+)/);
   const trackIndex = trackMatch?.[1] ? Number.parseInt(trackMatch[1], 10) : 0;
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   const name = track.getProperty("name") as string;
   const hasMidiInput = (track.getProperty("has_midi_input") as number) > 0;

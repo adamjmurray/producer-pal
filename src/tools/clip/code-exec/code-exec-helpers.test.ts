@@ -231,7 +231,9 @@ describe("code-exec-helpers", () => {
       // Mock LiveAPI.from
       const originalFrom = LiveAPI.from;
 
-      LiveAPI.from = vi.fn((path: string) => {
+      LiveAPI.from = vi.fn((pathLike: unknown) => {
+        const path = String(pathLike);
+
         if (path.includes("tracks 1") && !path.includes("clip")) {
           return {
             getProperty: vi.fn((prop: string) => {
@@ -318,7 +320,9 @@ describe("code-exec-helpers", () => {
 
       const originalFrom = LiveAPI.from;
 
-      LiveAPI.from = vi.fn((path: string) => {
+      LiveAPI.from = vi.fn((pathLike: unknown) => {
+        const path = String(pathLike);
+
         if (path.includes("tracks 0") && !path.includes("arrangement")) {
           return {
             getProperty: vi.fn((prop: string) => {

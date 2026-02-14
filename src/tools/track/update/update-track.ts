@@ -174,7 +174,7 @@ function applySendProperties(
   let sendIndex = -1;
 
   for (let i = 0; i < returnTrackIds.length; i++) {
-    const rt = LiveAPI.from(`live_set return_tracks ${i}`);
+    const rt = LiveAPI.from(livePath.returnTrack(i));
     const name = rt.getProperty("name") as string;
 
     // Match exact name or single-letter prefix

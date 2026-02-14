@@ -135,7 +135,7 @@ export async function createClip(
   );
 
   // Validate track exists (fatal - affects all clips)
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   if (!track.exists()) {
     throw new Error(`createClip failed: track ${trackIndex} does not exist`);

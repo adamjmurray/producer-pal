@@ -206,7 +206,7 @@ function applyCaptureProperties(
   const { color, tempo, timeSignature } = props;
 
   if (color != null || tempo != null || timeSignature != null) {
-    const scene = LiveAPI.from(`live_set scenes ${result.sceneIndex}`);
+    const scene = LiveAPI.from(livePath.scene(result.sceneIndex));
 
     applySceneProperties(scene, { color, tempo, timeSignature });
   }
@@ -235,7 +235,7 @@ function createSingleScene(
   timeSignature?: string | null,
 ): SceneResult {
   liveSet.call("create_scene", sceneIndex);
-  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+  const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
   const sceneName = buildSceneName(name, creationIndex, count);
 

@@ -51,7 +51,7 @@ export function duplicateDevice(
   const tempTrackIndex = trackIndex + 1;
 
   // 4. Find the corresponding device on the temp track
-  const tempDevicePath = `live_set tracks ${tempTrackIndex} ${devicePathWithinTrack}`;
+  const tempDevicePath = `${livePath.track(tempTrackIndex).toString()} ${devicePathWithinTrack}`;
   const tempDevice = LiveAPI.from(tempDevicePath);
 
   if (!tempDevice.exists()) {

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 
@@ -68,7 +69,7 @@ export function createAudioArrangementClip(
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Create audio clip at position
   const newClipResult = track.call(

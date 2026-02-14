@@ -37,7 +37,7 @@ function forEachClipInScene(
 ): void {
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
     const clipSlot = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
@@ -218,7 +218,7 @@ export function duplicateTrack(
   liveSet.call("duplicate_track", trackIndex);
 
   const newTrackIndex = trackIndex + 1;
-  const newTrack = LiveAPI.from(`live_set tracks ${newTrackIndex}`);
+  const newTrack = LiveAPI.from(livePath.track(newTrackIndex));
 
   if (name != null) {
     newTrack.set("name", name);
@@ -258,7 +258,7 @@ export function duplicateScene(
   liveSet.call("duplicate_scene", sceneIndex);
 
   const newSceneIndex = sceneIndex + 1;
-  const newScene = LiveAPI.from(`live_set scenes ${newSceneIndex}`);
+  const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
 
   if (name != null) {
     newScene.set("name", name);
@@ -380,7 +380,7 @@ export function duplicateSceneToArrangement(
     // Only duplicate clips if withoutClips is not explicitly true
     // Find all clips in this scene and duplicate them to arrangement
     forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
-      const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+      const track = LiveAPI.from(livePath.track(trackIndex));
 
       // Use the new length-aware clip creation logic
       // Omit arrangementStart since all clips share the same start time
