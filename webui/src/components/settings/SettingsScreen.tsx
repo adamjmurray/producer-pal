@@ -1,7 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type {
+  McpStatus,
+  McpTool,
+} from "#webui/hooks/connection/use-mcp-connection";
 import type { Provider } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
@@ -29,8 +34,8 @@ interface SettingsScreenProps {
   setTheme: (theme: string) => void;
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
-  enableAllTools: () => void;
-  disableAllTools: () => void;
+  mcpTools: McpTool[] | null;
+  mcpStatus: McpStatus;
   resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
@@ -82,8 +87,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} props.setTheme - Function to update theme
  * @param {object} props.enabledTools - Map of enabled/disabled tools
  * @param {Function} props.setEnabledTools - Function to update enabled tools
- * @param {Function} props.enableAllTools - Function to enable all tools
- * @param {Function} props.disableAllTools - Function to disable all tools
+ * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
+ * @param {McpStatus} props.mcpStatus - MCP connection status
  * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
  * @param {Function} props.saveSettings - Function to save settings
  * @param {Function} props.cancelSettings - Function to cancel settings changes
@@ -109,8 +114,8 @@ export function SettingsScreen({
   setTheme,
   enabledTools,
   setEnabledTools,
-  enableAllTools,
-  disableAllTools,
+  mcpTools,
+  mcpStatus,
   resetBehaviorToDefaults,
   saveSettings,
   cancelSettings,
@@ -161,10 +166,10 @@ export function SettingsScreen({
               {/* Tools Tab */}
               {activeTab === "tools" && (
                 <ToolToggles
+                  tools={mcpTools}
+                  mcpStatus={mcpStatus}
                   enabledTools={enabledTools}
                   setEnabledTools={setEnabledTools}
-                  enableAllTools={enableAllTools}
-                  disableAllTools={disableAllTools}
                 />
               )}
 

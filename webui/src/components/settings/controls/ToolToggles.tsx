@@ -1,31 +1,50 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { TOOLS } from "#webui/lib/constants/tools";
+import type {
+  McpStatus,
+  McpTool,
+} from "#webui/hooks/connection/use-mcp-connection";
 
 interface ToolTogglesProps {
+  tools: McpTool[] | null;
+  mcpStatus: McpStatus;
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
-  enableAllTools: () => void;
-  disableAllTools: () => void;
 }
 
 /**
  * Checkboxes for enabling/disabling individual tools
  * @param {ToolTogglesProps} props - Component props
+ * @param {McpTool[] | null} props.tools - Available tools from MCP server
+ * @param {McpStatus} props.mcpStatus - MCP connection status
  * @param {Record<string, boolean>} props.enabledTools - Tool enabled states
  * @param {(tools: Record<string, boolean>) => void} props.setEnabledTools - Setter for tool states
- * @param {() => void} props.enableAllTools - Enable all tools callback
- * @param {() => void} props.disableAllTools - Disable all tools callback
  * @returns {JSX.Element} - React component
  */
 export function ToolToggles({
+  tools,
+  mcpStatus,
   enabledTools,
   setEnabledTools,
-  enableAllTools,
-  disableAllTools,
 }: ToolTogglesProps) {
+  if (!tools) {
+    return (
+      <div>
+        <label className="block text-sm font-medium mb-3">
+          Available Tools
+        </label>
+        <p className="text-sm text-gray-500">
+          {mcpStatus === "error"
+            ? "Tools cannot be loaded"
+            : "Loading tools..."}
+        </p>
+      </div>
+    );
+  }
+
   const handleToggle = (toolId: string) => {
     setEnabledTools({
       ...enabledTools,
@@ -33,14 +52,25 @@ export function ToolToggles({
     });
   };
 
-  // Filter out Raw Live API if not built with env var
-  const visibleTools = TOOLS.filter((tool) => {
-    if (tool.requiresEnvVar) {
-      return import.meta.env.ENABLE_RAW_LIVE_API === true;
+  const enableAllTools = () => {
+    const allEnabled: Record<string, boolean> = {};
+
+    for (const tool of tools) {
+      allEnabled[tool.id] = true;
     }
 
-    return true;
-  });
+    setEnabledTools(allEnabled);
+  };
+
+  const disableAllTools = () => {
+    const allDisabled: Record<string, boolean> = {};
+
+    for (const tool of tools) {
+      allDisabled[tool.id] = false;
+    }
+
+    setEnabledTools(allDisabled);
+  };
 
   return (
     <div>
@@ -65,7 +95,7 @@ export function ToolToggles({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {visibleTools.map((tool) => (
+        {tools.map((tool) => (
           <div key={tool.id} className="flex items-center gap-2">
             <input
               type="checkbox"

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState, useEffect, useRef } from "preact/hooks";
@@ -11,7 +12,6 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { TOOLS } from "#webui/lib/constants/tools";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 
@@ -21,20 +21,6 @@ const PROVIDER_BASE_URLS = {
   mistral: "https://api.mistral.ai/v1",
   openrouter: "https://openrouter.ai/api/v1",
 } as const;
-
-// Filter tools that are visible (not requiring env var unless it's set)
-const VISIBLE_TOOLS = TOOLS.filter(
-  (tool) => !tool.requiresEnvVar || import.meta.env.ENABLE_RAW_LIVE_API,
-);
-
-/**
- * Calculate the number of enabled tools
- * @param {Record<string, boolean>} enabledTools - Map of tool IDs to enabled state
- * @returns {number} - Number of enabled tools
- */
-function getEnabledToolsCount(enabledTools: Record<string, boolean>): number {
-  return VISIBLE_TOOLS.filter((tool) => enabledTools[tool.id] !== false).length;
-}
 
 /**
  * Normalize URL for local providers by ensuring /v1 suffix
@@ -84,7 +70,8 @@ function getBaseUrl(
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
-  const { mcpStatus, mcpError, checkMcpConnection } = useMcpConnection();
+  const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
+    useMcpConnection();
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   // Use Gemini chat for Gemini provider
@@ -145,7 +132,10 @@ export function App() {
     });
 
   // Calculate tools counts for header display
-  const enabledToolsCount = getEnabledToolsCount(settings.enabledTools);
+  const totalToolsCount = mcpTools?.length ?? 0;
+  const enabledToolsCount = mcpTools
+    ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
+    : 0;
 
   const [showSettings, setShowSettings] = useState(
     !settings.settingsConfigured,
@@ -197,8 +187,8 @@ export function App() {
         setTheme={setTheme}
         enabledTools={settings.enabledTools}
         setEnabledTools={settings.setEnabledTools}
-        enableAllTools={settings.enableAllTools}
-        disableAllTools={settings.disableAllTools}
+        mcpTools={mcpTools}
+        mcpStatus={mcpStatus}
         resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
@@ -222,7 +212,7 @@ export function App() {
       defaultTemperature={settings.temperature}
       defaultShowThoughts={settings.showThoughts}
       enabledToolsCount={enabledToolsCount}
-      totalToolsCount={VISIBLE_TOOLS.length}
+      totalToolsCount={totalToolsCount}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}

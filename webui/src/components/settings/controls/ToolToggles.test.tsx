@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,19 +8,25 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { TOOLS } from "#webui/lib/constants/tools";
+import type { McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { ToolToggles } from "./ToolToggles";
+
+const TEST_TOOLS: McpTool[] = [
+  { id: "ppal-session", name: "Session Management" },
+  { id: "ppal-read-live-set", name: "Read Live Set" },
+  { id: "ppal-create-track", name: "Create Track" },
+];
 
 describe("ToolToggles", () => {
   const defaultProps = {
-    enabledTools: TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
-      acc[tool.id] = true;
-
-      return acc;
-    }, {}),
+    tools: TEST_TOOLS,
+    mcpStatus: "connected" as const,
+    enabledTools: {
+      "ppal-session": true,
+      "ppal-read-live-set": true,
+      "ppal-create-track": true,
+    },
     setEnabledTools: vi.fn(),
-    enableAllTools: vi.fn(),
-    disableAllTools: vi.fn(),
   };
 
   describe("basic rendering", () => {
@@ -38,41 +45,68 @@ describe("ToolToggles", () => {
       expect(screen.getByRole("button", { name: "Disable all" })).toBeDefined();
     });
 
-    it("renders all non-conditional tools", () => {
+    it("renders all tools", () => {
       render(<ToolToggles {...defaultProps} />);
 
-      // Check for a few tools (not Raw Live API which is conditional)
       expect(screen.getByLabelText("Session Management")).toBeDefined();
       expect(screen.getByLabelText("Read Live Set")).toBeDefined();
       expect(screen.getByLabelText("Create Track")).toBeDefined();
     });
   });
 
-  describe("button interactions", () => {
-    it("calls enableAllTools when Enable all button is clicked", () => {
-      const enableAllTools = vi.fn();
+  describe("loading and error states", () => {
+    it("shows loading message when tools are null and connecting", () => {
+      render(
+        <ToolToggles {...defaultProps} tools={null} mcpStatus="connecting" />,
+      );
 
-      render(<ToolToggles {...defaultProps} enableAllTools={enableAllTools} />);
+      expect(screen.getByText("Loading tools...")).toBeDefined();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    });
+
+    it("shows error message when tools are null and status is error", () => {
+      render(<ToolToggles {...defaultProps} tools={null} mcpStatus="error" />);
+
+      expect(screen.getByText("Tools cannot be loaded")).toBeDefined();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    });
+  });
+
+  describe("button interactions", () => {
+    it("calls setEnabledTools with all enabled when Enable all is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
 
       const button = screen.getByRole("button", { name: "Enable all" });
 
       fireEvent.click(button);
 
-      expect(enableAllTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
+        "ppal-session": true,
+        "ppal-read-live-set": true,
+        "ppal-create-track": true,
+      });
     });
 
-    it("calls disableAllTools when Disable all button is clicked", () => {
-      const disableAllTools = vi.fn();
+    it("calls setEnabledTools with all disabled when Disable all is clicked", () => {
+      const setEnabledTools = vi.fn();
 
       render(
-        <ToolToggles {...defaultProps} disableAllTools={disableAllTools} />,
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
       const button = screen.getByRole("button", { name: "Disable all" });
 
       fireEvent.click(button);
 
-      expect(disableAllTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
+        "ppal-session": false,
+        "ppal-read-live-set": false,
+        "ppal-create-track": false,
+      });
     });
   });
 
@@ -129,15 +163,6 @@ describe("ToolToggles", () => {
       const call = setEnabledTools.mock.calls[0]?.[0];
 
       expect(call?.["ppal-session"]).toBe(false); // Was true, now false
-    });
-  });
-
-  describe("Raw Live API conditional rendering", () => {
-    it("does not render Raw Live API when env var is false", () => {
-      // Default test environment has ENABLE_RAW_LIVE_API = false
-      render(<ToolToggles {...defaultProps} />);
-
-      expect(screen.queryByLabelText("Raw Live API")).toBeNull();
     });
   });
 });

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_MODELS } from "#webui/lib/constants/models";
-import { DEFAULT_ENABLED_TOOLS, TOOLS } from "#webui/lib/constants/tools";
 import type { Provider } from "#webui/types/settings";
 
 export interface ProviderSettings {
@@ -240,44 +239,20 @@ export function loadCurrentProvider(): Provider {
 
 /**
  * Loads enabled tools from localStorage
- * @returns {any} - Hook return value
+ * @returns {Record<string, boolean>} - Tool enabled states
  */
 export function loadEnabledTools(): Record<string, boolean> {
   const saved = localStorage.getItem("producer_pal_enabled_tools");
 
   if (saved) {
     try {
-      return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
+      return JSON.parse(saved) as Record<string, boolean>;
     } catch {
-      return DEFAULT_ENABLED_TOOLS;
+      return {};
     }
   }
 
-  return DEFAULT_ENABLED_TOOLS;
-}
-
-/**
- * Creates record with all tools enabled
- * @returns {any} - Hook return value
- */
-export function createAllToolsEnabled(): Record<string, boolean> {
-  return TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
-    acc[tool.id] = true;
-
-    return acc;
-  }, {});
-}
-
-/**
- * Creates record with all tools disabled
- * @returns {any} - Hook return value
- */
-export function createAllToolsDisabled(): Record<string, boolean> {
-  return TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
-    acc[tool.id] = false;
-
-    return acc;
-  }, {});
+  return {};
 }
 
 /**
