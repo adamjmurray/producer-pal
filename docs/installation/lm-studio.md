@@ -33,20 +33,15 @@ _It should display "Producer Pal Running" or something isn't working._
 
 ### 2. Enable Small Model Mode (Optional but Recommended)
 
-In Producer Pal's "Setup" tab, enable "Small Model Mode":
+Small model mode provides a smaller, simpler interface optimized for small/local
+language models.
+
+If you're using Options A or C below, the `-s` flag in the configuration
+automatically enables small model mode on the device when connected.
+
+Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
 <img src="/small-model-mode.png" alt="Small model mode setting" width="375"/>
-
-This provides a smaller, simpler interface optimized for small/local language
-models.
-
-::: tip Making small model mode the default.
-
-This option is disabled by default and must be enabled each time you _add a new_
-Producer Pal device to Live (the setting is saved with your Live Set though).
-You can **make a preset** for the device with small model model enabled.
-
-:::
 
 ### 3. Install a Compatible Model
 
@@ -69,37 +64,16 @@ mcp.json:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"],
-      "env": {
-        "SMALL_MODEL_MODE": "true"
-      }
+      "args": ["-y", "producer-pal", "-s"]
     }
   }
 }
 ```
 
-The producer-pal package is a proxy that responds to requests even when Ableton
-Live or the Producer Pal device are not running, to let you know there's a
-problem.
-
-::: info About the SMALL_MODEL_MODE setting
-
-If you forget to start Live or Producer Pal, your AI can read and cache the tool
-interface from this proxy, which defaults to the normal mode for large models.
-When this happens you may need to restart your conversation. Setting
-`"SMALL_MODEL_MODE": "true"` here avoids this problem. Use it if you're enabling
-small model mode in the device
-[as explained above](#_2-enable-small-model-mode-optional-but-recommended).
-
-:::
-
-::: warning
-
-`"SMALL_MODEL_MODE": "true"` does not enable small model mode in the Live
-device. You must
-[enable it there too](#_2-enable-small-model-mode-optional-but-recommended).
-
-:::
+The `-s` flag enables small model mode. It automatically configures the device
+when connected, so you don't need to enable it in both places. The producer-pal
+package is a proxy that responds to requests even when Ableton Live or the
+Producer Pal device are not running, to let you know there's a problem.
 
 **Option B: Direct HTTP**:
 
@@ -124,18 +98,14 @@ and configure:
   "mcpServers": {
     "producer-pal": {
       "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js"],
-      "env": {
-        "SMALL_MODEL_MODE": "true"
-      }
+      "args": ["/absolute/path/to/producer-pal-portal.js", "-s"]
     }
   }
 }
 ```
 
-This is a standalone version of `npx producer-pal` (Option A). See
-[the notes above](#_4-configure-lm-studio) on why to use
-`"SMALL_MODEL_MODE": "true"`.
+This is a standalone version of `npx producer-pal` (Option A). The `-s` flag
+enables small model mode and automatically configures the device when connected.
 
 ### 5. Verify Tools
 

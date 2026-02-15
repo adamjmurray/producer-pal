@@ -130,6 +130,7 @@ interface BridgeInternals {
   mcpServer: object | null;
   httpClient: object | null;
   isConnected: boolean;
+  smallModelMode: boolean;
   fallbackTools: {
     tools: Array<{
       name: string;
@@ -329,6 +330,63 @@ describe("StdioHttpBridge", () => {
         "Error closing old client: Close failed",
       );
       expect(bridge.isConnected).toBe(true);
+    });
+
+    it("pushes small model mode config after connection when enabled", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify({ smallModelMode: true })),
+        );
+      const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        smallModelMode: true,
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await smBridge._ensureHttpConnection();
+
+      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smallModelMode: true }),
+      });
+      expect(logger.info).toHaveBeenCalledWith(
+        "Enabled small model mode on server",
+      );
+      fetchSpy.mockRestore();
+    });
+
+    it("does not push config when small model mode is disabled", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bridge._ensureHttpConnection();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("handles config push failure gracefully", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("Network error"));
+      const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        smallModelMode: true,
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await smBridge._ensureHttpConnection();
+
+      expect(smBridge.isConnected).toBe(true);
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to push small model mode config: Network error",
+      );
+      fetchSpy.mockRestore();
     });
   });
 

@@ -102,11 +102,14 @@ Edit Settings → Program → Integrations → `mcp.json`:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal", "-s"]
     }
   }
 }
 ```
+
+The `-s` flag enables [small model mode](#cli-flags). See the
+[LM Studio guide](https://producer-pal.org/installation/lm-studio) for details.
 
 </details>
 
@@ -136,12 +139,21 @@ Consult your client's documentation for MCP server configuration syntax.
 
 </details>
 
+### CLI Flags
+
+- `-s` / `--small-model-mode` - Enable
+  [small model mode](https://producer-pal.org/installation/lm-studio)
+  (simplifies tool interface for smaller LLMs and automatically enables it on
+  the device)
+
 ### Environment Variables
 
 Optional environment variables can be configured through your MCP client:
 
 - `MCP_SERVER_ORIGIN` - URL for the Max for Live device (default:
   `http://localhost:3350`)
+- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Equivalent to
+  the `-s` flag above.
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 
