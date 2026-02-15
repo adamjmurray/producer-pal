@@ -2,14 +2,14 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import OpenAI from "openai";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
 } from "#webui/chat/helpers/mcp-client-helpers";
-import type { ReasoningEffort } from "#webui/hooks/settings/config-builders";
-import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
+import { type ReasoningEffort } from "#webui/hooks/settings/config-builders";
+import { type OpenAIMessage, type OpenAIToolCall } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 import {

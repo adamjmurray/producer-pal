@@ -6,8 +6,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createAudioClipInSession,
   tileClipToRange,
+  type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 

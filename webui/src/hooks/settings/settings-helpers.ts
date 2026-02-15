@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_MODELS } from "#webui/lib/constants/models";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 export interface ProviderSettings {
   apiKey: string;

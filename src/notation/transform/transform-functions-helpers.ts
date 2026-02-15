@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { quantizePitchToScale } from "#src/shared/pitch.ts";
-import type { ExpressionNode } from "./parser/transform-parser.ts";
-import type {
-  TimeRange,
-  NoteProperties,
+import { type ExpressionNode } from "./parser/transform-parser.ts";
+import {
+  type TimeRange,
+  type NoteProperties,
 } from "./transform-evaluator-helpers.ts";
-import type { EvaluateExpressionFn } from "./transform-functions.ts";
+import { type EvaluateExpressionFn } from "./transform-functions.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 /**

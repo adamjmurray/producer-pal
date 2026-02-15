@@ -12,7 +12,7 @@
  * config/rollup.config.mjs (codeExecAliases) to match.
  */
 
-import type { SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
+import { type SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
 
 /**
  * Stub: always returns an error since code execution is disabled.

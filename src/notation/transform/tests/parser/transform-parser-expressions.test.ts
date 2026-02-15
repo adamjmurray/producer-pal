@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
+import { type FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
 describe("Transform Parser - Expressions", () => {

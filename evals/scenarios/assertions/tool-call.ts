@@ -6,10 +6,10 @@
  * Tool call assertion - verify specific tools were called with expected args
  */
 
-import type {
-  ToolCallAssertion,
-  EvalTurnResult,
-  EvalAssertionResult,
+import {
+  type ToolCallAssertion,
+  type EvalTurnResult,
+  type EvalAssertionResult,
 } from "../types.ts";
 import {
   exactMatch,

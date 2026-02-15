@@ -7,7 +7,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface PadProps {
   note?: number;

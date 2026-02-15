@@ -8,9 +8,9 @@ import {
   mcpToTool,
   type GenerateContentConfig,
 } from "@google/genai";
-import type {
-  GeminiResponse,
-  GeminiResponsePart as ResponsePart,
+import {
+  type GeminiResponse,
+  type GeminiResponsePart as ResponsePart,
 } from "#evals/shared/gemini-types.ts";
 import {
   debugCall,
@@ -27,7 +27,7 @@ import {
 } from "./shared/readline.ts";
 import { GEMINI_THINKING_MAP } from "./shared/thinking-maps.ts";
 import { processThoughtText } from "./shared/thought-processing.ts";
-import type { ChatOptions, TurnResult } from "./shared/types.ts";
+import { type ChatOptions, type TurnResult } from "./shared/types.ts";
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
 

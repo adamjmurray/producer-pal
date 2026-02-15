@@ -7,7 +7,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { RawMessageStreamEvent } from "@anthropic-ai/sdk/resources/messages/messages";
+import { type RawMessageStreamEvent } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   ANTHROPIC_CONFIG,
   validateApiKey,

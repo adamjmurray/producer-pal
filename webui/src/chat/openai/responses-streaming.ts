@@ -6,11 +6,11 @@
  * Streaming event handlers for OpenAI Responses API
  * Processes typed events from responses.create({ stream: true })
  */
-import type {
-  ResponsesConversationItem,
-  ResponsesOutputItem,
-  ResponsesStreamEvent,
-  ResponsesStreamState,
+import {
+  type ResponsesConversationItem,
+  type ResponsesOutputItem,
+  type ResponsesStreamEvent,
+  type ResponsesStreamState,
 } from "#webui/types/responses-api";
 
 type McpClient = {

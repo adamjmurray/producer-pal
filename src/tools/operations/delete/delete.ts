@@ -11,7 +11,7 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   parseCommaSeparatedIds,
   toLiveApiId,

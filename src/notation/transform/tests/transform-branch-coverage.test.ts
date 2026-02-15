@@ -5,7 +5,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { evaluateTransformAST } from "#src/notation/transform/transform-evaluator-helpers.ts";
-import type { TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
+import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 

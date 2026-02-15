@@ -9,7 +9,7 @@ import { runAnthropic } from "./anthropic.ts";
 import { runGemini } from "./gemini.ts";
 import { runOpenAI } from "./openai/index.ts";
 import { runOpenRouter } from "./openrouter/index.ts";
-import type { ChatOptions } from "./shared/types.ts";
+import { type ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 

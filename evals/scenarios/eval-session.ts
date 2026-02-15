@@ -7,10 +7,10 @@
  */
 
 import { GoogleGenAI, mcpToTool } from "@google/genai";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { connectMcp } from "#evals/chat/shared/mcp.ts";
 import { printGeminiStream } from "#evals/shared/gemini-streaming.ts";
-import type { GeminiResponse } from "#evals/shared/gemini-types.ts";
+import { type GeminiResponse } from "#evals/shared/gemini-types.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
@@ -22,7 +22,7 @@ import {
 import { createAnthropicEvalSession } from "./helpers/anthropic-session.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
 import { createOpenAIEvalSession } from "./helpers/openai-session.ts";
-import type { EvalProvider, TurnResult } from "./types.ts";
+import { type EvalProvider, type TurnResult } from "./types.ts";
 
 /**
  * Get the default model for a provider

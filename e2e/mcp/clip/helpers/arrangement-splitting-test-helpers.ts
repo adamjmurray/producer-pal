@@ -7,7 +7,7 @@
  * Shared helpers for arrangement clip splitting e2e tests.
  * Depends on arrangement-lengthening-test-helpers for shared utilities.
  */
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   getToolWarnings,
   type ReadClipResult,

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { UIMessage } from "#webui/types/messages";
+import { type UIMessage } from "#webui/types/messages";
 import { expectValidTimestamps, stripTimestamps } from "./message-test-helpers";
 
 describe("stripTimestamps", () => {

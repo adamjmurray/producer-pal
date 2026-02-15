@@ -7,7 +7,7 @@
  */
 
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import type { JudgeResult } from "../judge-response-parser.ts";
+import { type JudgeResult } from "../judge-response-parser.ts";
 import { isQuietMode } from "../output-config.ts";
 
 /**

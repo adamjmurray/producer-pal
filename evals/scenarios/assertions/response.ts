@@ -6,10 +6,10 @@
  * Response assertion - text/regex matching on assistant responses
  */
 
-import type {
-  ResponseContainsAssertion,
-  EvalTurnResult,
-  EvalAssertionResult,
+import {
+  type ResponseContainsAssertion,
+  type EvalTurnResult,
+  type EvalAssertionResult,
 } from "../types.ts";
 import { getTargetTurns } from "./helpers.ts";
 

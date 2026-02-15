@@ -17,8 +17,7 @@
  * Usage: node scripts/eval-lib/open-live-set.ts /path/to/project.als
  */
 
-import type { ChildProcess } from "node:child_process";
-import { exec, spawn } from "node:child_process";
+import { type ChildProcess, exec, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";

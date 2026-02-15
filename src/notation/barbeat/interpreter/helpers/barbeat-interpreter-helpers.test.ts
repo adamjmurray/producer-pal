@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
-import type { InterpreterState } from "./barbeat-interpreter-buffer-helpers.ts";
+import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
 import {
+  type InterpreterState,
   clearPitchBuffer,
   trackStateChange,
   updateBufferedPitches,

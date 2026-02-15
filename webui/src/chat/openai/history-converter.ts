@@ -6,8 +6,8 @@
  * Converters between OpenAI Chat Completions and Responses API conversation formats.
  * Useful for migrating saved chat history between API formats.
  */
-import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type OpenAIMessage, type OpenAIToolCall } from "#webui/types/messages";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 
 /**
  * Get string content from a message

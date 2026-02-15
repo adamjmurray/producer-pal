@@ -3,12 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type {
-  ConnectResult,
-  MemoryResult,
-  SamplesResult,
-} from "./session-helpers.ts";
 import {
+  type ConnectResult,
+  type MemoryResult,
+  type SamplesResult,
   handleConnect,
   handleReadMemory,
   handleSearchSamples,

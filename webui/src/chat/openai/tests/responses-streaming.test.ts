@@ -8,10 +8,10 @@ import {
   extractReasoningText,
   processStreamEvent,
 } from "#webui/chat/openai/responses-streaming";
-import type {
-  ResponsesConversationItem,
-  ResponsesOutputItem,
-  ResponsesStreamEvent,
+import {
+  type ResponsesConversationItem,
+  type ResponsesOutputItem,
+  type ResponsesStreamEvent,
 } from "#webui/types/responses-api";
 
 describe("createStreamState", () => {

@@ -6,7 +6,7 @@
 /**
  * Shared helpers for arrangement clip lengthening e2e tests
  */
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
   type CreateClipResult,
@@ -14,7 +14,7 @@ import {
   parseToolResult,
   type ReadClipResult,
 } from "../../mcp-test-helpers.ts";
-import type { ExpectedClip } from "./arrangement-lengthening-expected.ts";
+import { type ExpectedClip } from "./arrangement-lengthening-expected.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";

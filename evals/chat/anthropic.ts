@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Anthropic from "@anthropic-ai/sdk";
-import type {
-  Message,
-  MessageParam,
-  ThinkingConfigParam,
-  Tool,
-  ToolUseBlock,
+import {
+  type Message,
+  type MessageParam,
+  type ThinkingConfigParam,
+  type Tool,
+  type ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { ANTHROPIC_THINKING_MAP } from "./anthropic/config.ts";
 import {
   formatNonStreamingResponse,
@@ -28,7 +28,7 @@ import {
   runChatLoop,
   type ChatLoopCallbacks,
 } from "./shared/readline.ts";
-import type { ChatOptions, TurnResult } from "./shared/types.ts";
+import { type ChatOptions, type TurnResult } from "./shared/types.ts";
 
 interface AnthropicSessionContext {
   client: Anthropic;

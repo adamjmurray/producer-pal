@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 /**
  * Validates a single ID matches expected type

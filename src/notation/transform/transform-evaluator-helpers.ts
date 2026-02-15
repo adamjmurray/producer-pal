@@ -5,10 +5,10 @@
 import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type {
-  ExpressionNode,
-  TransformAssignment,
-  PitchRange,
+import {
+  type ExpressionNode,
+  type TransformAssignment,
+  type PitchRange,
 } from "./parser/transform-parser.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 

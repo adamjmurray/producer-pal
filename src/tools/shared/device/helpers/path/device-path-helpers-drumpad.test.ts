@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,

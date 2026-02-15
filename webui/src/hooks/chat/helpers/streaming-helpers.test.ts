@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
-import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type GeminiMessage, type OpenAIMessage } from "#webui/types/messages";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 import {
   handleMessageStream,
   createGeminiErrorMessage,

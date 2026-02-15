@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import type { NoteEvent, BarCopyNote } from "../../../types.ts";
+import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 import {
   validateBufferedState,
   type BufferState,

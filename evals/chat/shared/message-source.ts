@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readFile } from "node:fs/promises";
-import type { Interface } from "node:readline";
+import { type Interface } from "node:readline";
 import { isExitCommand, question } from "./readline.ts";
-import type { ChatOptions, MessageSource } from "./types.ts";
+import { type ChatOptions, type MessageSource } from "./types.ts";
 
 /**
  * Interactive message source that reads from readline

@@ -8,7 +8,7 @@ import {
   stripTimestamps,
 } from "#webui/test-utils/message-test-helpers";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 
 describe("formatResponsesMessages", () => {
   it("formats a simple user message", () => {

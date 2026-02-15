@@ -5,12 +5,14 @@
 /**
  * @vitest-environment happy-dom
  */
-import type { RenderResult } from "@testing-library/preact";
-import { render, screen, fireEvent } from "@testing-library/preact";
-import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
-import type { ChatStartProps } from "./ChatStart";
-import { ChatStart } from "./ChatStart";
+import {
+  type RenderResult,
+  render,
+  screen,
+  fireEvent,
+} from "@testing-library/preact";
+import { type Mock, describe, expect, it, vi } from "vitest";
+import { type ChatStartProps, ChatStart } from "./ChatStart";
 
 const defaultOverrides = {
   thinking: "Default",

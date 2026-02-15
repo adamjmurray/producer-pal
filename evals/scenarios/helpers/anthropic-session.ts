@@ -7,11 +7,11 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type {
-  MessageParam,
-  Tool,
+import {
+  type MessageParam,
+  type Tool,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { handleStreamingResponse } from "#evals/chat/anthropic/streaming.ts";
 import {
   convertMcpToolsToAnthropic,
@@ -22,7 +22,7 @@ import {
   ANTHROPIC_CONFIG,
   validateApiKey,
 } from "#evals/shared/provider-configs.ts";
-import type { TurnResult } from "../types.ts";
+import { type TurnResult } from "../types.ts";
 import { logTurnStart } from "./eval-session-base.ts";
 
 export { ANTHROPIC_CONFIG };

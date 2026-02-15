@@ -6,7 +6,7 @@
  * Shared utilities for assertion evaluation
  */
 
-import type { EvalTurnResult } from "../types.ts";
+import { type EvalTurnResult } from "../types.ts";
 
 /**
  * Get target turns based on assertion's turn specification

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 export class MockSequence extends Array<unknown> {}
 

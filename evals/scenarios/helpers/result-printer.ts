@@ -8,9 +8,9 @@
  */
 
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import type { EvalScenarioResult, LlmJudgeAssertion } from "../types.ts";
+import { type EvalScenarioResult, type LlmJudgeAssertion } from "../types.ts";
 import { computeCorrectnessScore } from "./correctness-score.ts";
-import type { JudgeResult } from "./judge-response-parser.ts";
+import { type JudgeResult } from "./judge-response-parser.ts";
 
 /**
  * Print result for a single scenario run

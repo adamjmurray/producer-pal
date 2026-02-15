@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type {
-  BinaryOpNode,
-  FunctionNode,
-  VariableNode,
+import {
+  type BinaryOpNode,
+  type FunctionNode,
+  type VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 

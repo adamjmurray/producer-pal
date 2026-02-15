@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { GeminiClientConfig } from "#webui/chat/gemini/client";
-import type { OpenAIClientConfig } from "#webui/chat/openai/client";
-import type { ResponsesClientConfig } from "#webui/chat/openai/responses-client";
+import { type GeminiClientConfig } from "#webui/chat/gemini/client";
+import { type OpenAIClientConfig } from "#webui/chat/openai/client";
+import { type ResponsesClientConfig } from "#webui/chat/openai/responses-client";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "#webui/lib/config";
-import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type GeminiMessage, type OpenAIMessage } from "#webui/types/messages";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 /**

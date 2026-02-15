@@ -11,10 +11,10 @@ import {
   handleContentText,
 } from "../shared/api/responses-streaming.ts";
 import { debugLog, DEBUG_SEPARATOR } from "../shared/formatting.ts";
-import type {
-  ChatOptions,
-  ResponsesStreamEvent,
-  ResponsesStreamState,
+import {
+  type ChatOptions,
+  type ResponsesStreamEvent,
+  type ResponsesStreamState,
 } from "../shared/types.ts";
 
 /**

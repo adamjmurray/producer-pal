@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { ChatOptions } from "../shared/types.ts";
+import { type ChatOptions } from "../shared/types.ts";
 import { runOpenAIChat } from "./chat.ts";
 import { runOpenAIResponses } from "./responses.ts";
 

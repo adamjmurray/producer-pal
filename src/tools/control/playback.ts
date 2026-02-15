@@ -15,8 +15,8 @@ import {
   resolveLoopStart,
   resolveStartTime,
   validateLocatorOrTime,
+  type PlaybackState,
 } from "./playback-helpers.ts";
-import type { PlaybackState } from "./playback-helpers.ts";
 import { select } from "./select.ts";
 
 interface PlaybackActionParams {

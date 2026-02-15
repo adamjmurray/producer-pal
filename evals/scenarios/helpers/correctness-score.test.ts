@@ -10,7 +10,7 @@ import {
   computeCorrectnessBreakdown,
   computeCorrectnessScore,
 } from "./correctness-score.ts";
-import type { EvalAssertionResult, ToolCallAssertion } from "../types.ts";
+import { type EvalAssertionResult, type ToolCallAssertion } from "../types.ts";
 
 /**
  * Create a tool_called assertion result

@@ -6,7 +6,7 @@
  * Scenario: Create track, add device, update properties
  */
 
-import type { EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../types.ts";
 
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",

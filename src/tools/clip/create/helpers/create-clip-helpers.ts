@@ -8,8 +8,10 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  prepareSessionClipSlot,
+  type MidiNote,
+} from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {

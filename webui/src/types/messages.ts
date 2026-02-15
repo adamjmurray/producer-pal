@@ -12,7 +12,7 @@
  */
 
 // Import authoritative types from SDKs
-import type { Content as GeminiContent } from "@google/genai";
+import { type Content as GeminiContent } from "@google/genai";
 import type OpenAI from "openai";
 
 // Re-export provider types for use throughout the application

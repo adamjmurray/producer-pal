@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import type { Provider, UseSettingsReturn } from "#webui/types/settings";
+import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
   buildAllProviderSettings,
   checkHasApiKey,

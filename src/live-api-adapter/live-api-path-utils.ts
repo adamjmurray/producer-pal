@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { PathLike } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 
 /**
  * Parse an ID or path value to a path string for LiveAPI constructor

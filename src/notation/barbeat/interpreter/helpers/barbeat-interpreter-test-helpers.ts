@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
-import type {
-  BufferState,
-  PitchState,
+import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
+import {
+  type BufferState,
+  type PitchState,
 } from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   handleBarCopyRangeDestination,

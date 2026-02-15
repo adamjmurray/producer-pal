@@ -6,7 +6,7 @@
  * Type definitions for the Producer Pal evaluation system
  */
 
-import type { ConfigOptions } from "#evals/shared/config.ts";
+import { type ConfigOptions } from "#evals/shared/config.ts";
 
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";

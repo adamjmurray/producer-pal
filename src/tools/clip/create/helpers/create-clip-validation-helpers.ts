@@ -4,7 +4,7 @@
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 /**
  * Validates createClip parameters

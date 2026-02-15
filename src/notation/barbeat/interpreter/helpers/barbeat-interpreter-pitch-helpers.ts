@@ -4,11 +4,11 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
-import type { NoteEvent, BarCopyNote } from "../../../types.ts";
-import type {
-  PitchState,
-  InterpreterState,
-  TimePosition,
+import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
+import {
+  type PitchState,
+  type InterpreterState,
+  type TimePosition,
 } from "./barbeat-interpreter-buffer-helpers.ts";
 
 export interface RepeatPattern {

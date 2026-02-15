@@ -4,12 +4,12 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type {
-  ExpressionNode,
-  TransformAssignment,
+import {
+  type ExpressionNode,
+  type TransformAssignment,
 } from "./parser/transform-parser.ts";
 import * as parser from "./parser/transform-parser.ts";
-import type { ClipContext } from "./transform-evaluator-helpers.ts";
+import { type ClipContext } from "./transform-evaluator-helpers.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
 // Constants for gain clamping

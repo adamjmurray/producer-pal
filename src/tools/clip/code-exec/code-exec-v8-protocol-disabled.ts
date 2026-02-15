@@ -12,11 +12,11 @@
  * config/rollup.config.mjs (codeExecAliases) to match.
  */
 
-import type {
-  CodeExecutionContext,
-  CodeExecutionResult,
-  CodeNote,
-  SandboxResult,
+import {
+  type CodeExecutionContext,
+  type CodeExecutionResult,
+  type CodeNote,
+  type SandboxResult,
 } from "#src/tools/clip/code-exec/code-exec-types.ts";
 
 const DISABLED_ERROR = "Code execution is not available";

@@ -10,7 +10,7 @@
  */
 
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
-import type { ConfigProfile } from "./types.ts";
+import { type ConfigProfile } from "./types.ts";
 
 const defaultProfile: ConfigProfile = {
   id: "default",

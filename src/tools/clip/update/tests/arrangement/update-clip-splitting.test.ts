@@ -7,7 +7,7 @@
  * Comprehensive splitting tests are in arrangement-splitting.test.ts
  */
 import { describe, expect, it } from "vitest";
-import type { RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 

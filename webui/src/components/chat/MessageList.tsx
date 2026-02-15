@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from "preact/hooks";
 import { formatTimestamp } from "#webui/lib/utils/format-timestamp";
-import type { UIMessage } from "#webui/types/messages";
+import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { RetryButton } from "./controls/RetryButton";

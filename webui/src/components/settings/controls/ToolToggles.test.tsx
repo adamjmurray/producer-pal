@@ -8,7 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { McpTool } from "#webui/hooks/connection/use-mcp-connection";
+import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { ToolToggles } from "./ToolToggles";
 
 const TEST_TOOLS: McpTool[] = [

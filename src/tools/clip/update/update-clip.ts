@@ -16,8 +16,8 @@ import {
 import {
   prepareSplitParams,
   performSplitting,
+  type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import type { SplittingContext } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,

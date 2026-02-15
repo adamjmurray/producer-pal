@@ -4,7 +4,10 @@
 
 import { describe, it, expect } from "vitest";
 import { assertResponseContains } from "./response.ts";
-import type { EvalTurnResult, ResponseContainsAssertion } from "../types.ts";
+import {
+  type EvalTurnResult,
+  type ResponseContainsAssertion,
+} from "../types.ts";
 
 const createTurn = (response: string, turnIndex = 0): EvalTurnResult => ({
   turnIndex,

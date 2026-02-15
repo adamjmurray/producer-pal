@@ -3,8 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
-import type { Mock } from "vitest";
+import { describe, expect, it, type Mock } from "vitest";
 import {
   registerMockObject,
   type RegisteredMockObject,

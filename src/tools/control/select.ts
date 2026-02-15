@@ -12,8 +12,8 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
+  type TrackCategory,
 } from "./select-helpers.ts";
-import type { TrackCategory } from "./select-helpers.ts";
 
 interface SelectArgs {
   view?: "session" | "arrangement";

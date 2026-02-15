@@ -11,15 +11,15 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
-import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { NoteEvent, BarCopyNote } from "../../types.ts";
+import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   extractBufferState,
   handlePropertyUpdate,

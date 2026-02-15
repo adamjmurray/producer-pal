@@ -13,7 +13,7 @@ import {
   projectNotesWorkflow,
   trackAndDeviceWorkflow,
 } from "./defs/index.ts";
-import type { EvalScenario } from "./types.ts";
+import { type EvalScenario } from "./types.ts";
 
 /**
  * All registered scenarios

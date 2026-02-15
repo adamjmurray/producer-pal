@@ -4,7 +4,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { KbConfig } from "./kb-config.ts";
+import { type KbConfig } from "./kb-config.ts";
 
 export interface FindFilesOptions {
   excludePaths?: string[];

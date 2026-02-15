@@ -15,10 +15,10 @@ import {
   endThought,
 } from "../formatting.ts";
 import { extractToolResultText } from "../mcp.ts";
-import type {
-  OpenRouterStreamChunk,
-  OpenRouterToolCall,
-  ReasoningDetail,
+import {
+  type OpenRouterStreamChunk,
+  type OpenRouterToolCall,
+  type ReasoningDetail,
 } from "../types.ts";
 
 export interface StreamState {

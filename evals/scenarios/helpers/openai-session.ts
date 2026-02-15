@@ -7,7 +7,7 @@
  * Supports both OpenAI and OpenRouter providers
  */
 
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type OpenAI from "openai";
 import {
   createStreamState,
@@ -17,11 +17,11 @@ import {
 } from "#evals/chat/shared/api/chat-streaming.ts";
 import { endThought } from "#evals/chat/shared/formatting.ts";
 import { getMcpToolsForChat } from "#evals/chat/shared/mcp.ts";
-import type {
-  ChatTool,
-  OpenRouterMessage,
-  OpenRouterStreamChunk,
-  OpenRouterToolCall,
+import {
+  type ChatTool,
+  type OpenRouterMessage,
+  type OpenRouterStreamChunk,
+  type OpenRouterToolCall,
 } from "#evals/chat/shared/types.ts";
 import {
   OPENAI_CONFIG,
@@ -29,7 +29,7 @@ import {
   validateApiKey,
   type OpenAIProviderConfig,
 } from "#evals/shared/provider-configs.ts";
-import type { TurnResult } from "../types.ts";
+import { type TurnResult } from "../types.ts";
 import { logTurnStart } from "./eval-session-base.ts";
 import { isQuietMode } from "./output-config.ts";
 

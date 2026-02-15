@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { assertToolCalled } from "./tool-call.ts";
-import type { EvalTurnResult, ToolCallAssertion } from "../types.ts";
+import { type EvalTurnResult, type ToolCallAssertion } from "../types.ts";
 
 const createTurn = (
   toolCalls: Array<{ name: string; args: Record<string, unknown> }>,

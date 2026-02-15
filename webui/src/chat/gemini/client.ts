@@ -2,11 +2,17 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai/web";
-import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  GoogleGenAI,
+  FunctionCallingConfigMode,
+  type Chat,
+  type ThinkingConfig,
+  type Tool,
+  type Part,
+} from "@google/genai/web";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createConnectedMcpClient } from "#webui/chat/helpers/mcp-client-helpers";
-import type { GeminiMessage } from "#webui/types/messages";
+import { type GeminiMessage } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import {
   addOrMergePartToTurn,

@@ -8,9 +8,9 @@ import {
 } from "#webui/chat/openai/client";
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
-import type { OpenAIMessage } from "#webui/types/messages";
+import { type OpenAIMessage } from "#webui/types/messages";
 import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
-import type { ChatAdapter } from "./use-chat";
+import { type ChatAdapter } from "./use-chat";
 
 /**
  * OpenAI Chat Completions API adapter for use with the generic useChat hook.

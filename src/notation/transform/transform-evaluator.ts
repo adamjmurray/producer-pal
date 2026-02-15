@@ -4,10 +4,10 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
-import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { NoteEvent } from "../types.ts";
+import { type NoteEvent } from "../types.ts";
 import * as parser from "./parser/transform-parser.ts";
 import {
   type ClipContext,

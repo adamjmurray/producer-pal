@@ -11,8 +11,10 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
-import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  type CallLiveApiFunction,
+  createMcpServer,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
 import { VERSION } from "#src/shared/version.ts";

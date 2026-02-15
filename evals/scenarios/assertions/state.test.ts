@@ -6,8 +6,8 @@
  * Tests for state.ts - State assertion with mocked MCP client
  */
 import { describe, it, expect, vi } from "vitest";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { StateAssertion } from "../types.ts";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type StateAssertion } from "../types.ts";
 import { assertState } from "./state.ts";
 
 /** Type for state assertion details */

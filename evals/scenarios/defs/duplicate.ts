@@ -6,7 +6,7 @@
  * Scenario: Duplicate track
  */
 
-import type { EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../types.ts";
 
 export const duplicate: EvalScenario = {
   id: "duplicate",

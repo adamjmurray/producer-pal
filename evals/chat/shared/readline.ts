@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { createInterface, type Interface } from "node:readline";
-import type { MessageSource, TurnResult } from "./types.ts";
+import { type MessageSource, type TurnResult } from "./types.ts";
 
 /**
  * Create a readline interface for user input

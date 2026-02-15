@@ -6,7 +6,7 @@
  * Scenario: Write and read project notes
  */
 
-import type { EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../types.ts";
 
 const TOOL_SESSION = "ppal-session";
 

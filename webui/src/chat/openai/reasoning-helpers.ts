@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type OpenAI from "openai";
-import type { OpenAIToolCall } from "#webui/types/messages";
+import { type OpenAIToolCall } from "#webui/types/messages";
 
 type Delta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 

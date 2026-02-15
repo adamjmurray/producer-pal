@@ -7,7 +7,7 @@ import {
   runChatSession,
   type ChatProviderConfig,
 } from "../shared/api/chat-api-base.ts";
-import type { ChatOptions } from "../shared/types.ts";
+import { type ChatOptions } from "../shared/types.ts";
 import { DEFAULT_MODEL } from "./config.ts";
 
 const openaiConfig: ChatProviderConfig = {

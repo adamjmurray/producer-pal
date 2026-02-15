@@ -10,7 +10,7 @@ import {
   normalizeCount,
   formatExpectedCount,
 } from "./helpers.ts";
-import type { EvalTurnResult } from "../types.ts";
+import { type EvalTurnResult } from "../types.ts";
 
 describe("getTargetTurns", () => {
   const mockTurns: EvalTurnResult[] = [

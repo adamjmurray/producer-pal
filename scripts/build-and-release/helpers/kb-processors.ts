@@ -4,7 +4,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { KbConfig, KbItem } from "./kb-config.ts";
+import { type KbConfig, type KbItem } from "./kb-config.ts";
 import { findAllFiles, copyFile } from "./kb-file-operations.ts";
 
 /**

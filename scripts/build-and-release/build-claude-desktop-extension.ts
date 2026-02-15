@@ -8,8 +8,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
-import type { CallLiveApiFunction } from "../../src/mcp-server/create-mcp-server.ts";
-import { createMcpServer } from "../../src/mcp-server/create-mcp-server.ts";
+import {
+  type CallLiveApiFunction,
+  createMcpServer,
+} from "../../src/mcp-server/create-mcp-server.ts";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 

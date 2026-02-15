@@ -6,22 +6,22 @@
  * Client for OpenAI Responses API with MCP tool support.
  * Uses the newer responses.create() API that supports Codex models.
  */
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import OpenAI from "openai";
-import type {
-  ResponseCreateParamsBase,
-  ResponseInput,
-  Tool,
+import {
+  type ResponseCreateParamsBase,
+  type ResponseInput,
+  type Tool,
 } from "openai/resources/responses/responses";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
 } from "#webui/chat/helpers/mcp-client-helpers";
-import type {
-  ReasoningSummary,
-  ResponsesConversationItem,
-  ResponsesStreamEvent,
-  ResponsesTool,
+import {
+  type ReasoningSummary,
+  type ResponsesConversationItem,
+  type ResponsesStreamEvent,
+  type ResponsesTool,
 } from "#webui/types/responses-api";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { createStreamState, processStreamEvent } from "./responses-streaming";

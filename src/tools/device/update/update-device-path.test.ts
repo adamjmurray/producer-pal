@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,

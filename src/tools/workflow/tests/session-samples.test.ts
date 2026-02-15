@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import type { SamplesResult } from "../session-helpers.ts";
+import { type SamplesResult } from "../session-helpers.ts";
 import { session } from "../session.ts";
 
 describe("session - search-samples action", () => {

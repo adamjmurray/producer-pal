@@ -4,8 +4,10 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
-import { readDevice } from "#src/tools/shared/device/device-reader.ts";
-import type { DeviceWithDrumPads } from "#src/tools/shared/device/device-reader.ts";
+import {
+  readDevice,
+  type DeviceWithDrumPads,
+} from "#src/tools/shared/device/device-reader.ts";
 
 export interface CategorizedDevices {
   midiEffects: DeviceWithDrumPads[];

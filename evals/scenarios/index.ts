@@ -22,7 +22,7 @@ import {
 import { printResult } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import type { ConfigProfile, EvalScenarioResult } from "./types.ts";
+import { type ConfigProfile, type EvalScenarioResult } from "./types.ts";
 
 export type { ModelSpec, ModelSpec as JudgeOverride };
 

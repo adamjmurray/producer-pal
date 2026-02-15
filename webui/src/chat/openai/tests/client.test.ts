@@ -8,7 +8,7 @@ import {
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
 } from "#webui/chat/openai/client";
-import type { OpenAIToolCall } from "#webui/types/messages";
+import { type OpenAIToolCall } from "#webui/types/messages";
 import { createToolCallsMap } from "#webui/test-utils/openai-client-test-helpers";
 
 // Mock MCP SDK

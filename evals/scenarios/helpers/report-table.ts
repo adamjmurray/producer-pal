@@ -7,10 +7,10 @@
  * Console table formatter for multi-model/config eval results
  */
 
-import type { ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import type { ConfigProfile, EvalScenarioResult } from "../types.ts";
+import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
 import { computeCorrectnessScore } from "./correctness-score.ts";
-import type { JudgeResult } from "./judge-response-parser.ts";
+import { type JudgeResult } from "./judge-response-parser.ts";
 
 /** A composite column in the results table (model + config) */
 interface ColumnKey {

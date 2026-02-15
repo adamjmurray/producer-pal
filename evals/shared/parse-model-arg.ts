@@ -10,7 +10,7 @@
  * - model: infer provider from prefix (e.g., "claude-sonnet-4-5" → anthropic)
  */
 
-import type { EvalProvider } from "#evals/scenarios/types.ts";
+import { type EvalProvider } from "#evals/scenarios/types.ts";
 
 export interface ModelSpec {
   provider: EvalProvider;

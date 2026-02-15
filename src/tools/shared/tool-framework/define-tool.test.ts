@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { defineTool, type ToolOptions } from "./define-tool.ts";
 
 type MockServer = McpServer & { registerTool: Mock };

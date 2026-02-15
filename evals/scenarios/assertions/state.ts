@@ -6,9 +6,9 @@
  * State assertion - verify Live Set state via MCP tool calls
  */
 
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText } from "#evals/chat/shared/mcp.ts";
-import type { StateAssertion, EvalAssertionResult } from "../types.ts";
+import { type StateAssertion, type EvalAssertionResult } from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 
 /**

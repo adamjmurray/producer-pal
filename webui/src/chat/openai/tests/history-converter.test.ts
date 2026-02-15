@@ -7,8 +7,8 @@ import {
   chatToResponsesHistory,
   responsesToChatHistory,
 } from "#webui/chat/openai/history-converter";
-import type { OpenAIMessage } from "#webui/types/messages";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type OpenAIMessage } from "#webui/types/messages";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 
 describe("chatToResponsesHistory", () => {
   it("converts user message", () => {

@@ -6,7 +6,7 @@
  * Scenario: Create a drum clip, add notes, and quantize
  */
 
-import type { EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../types.ts";
 
 export const createAndEditClip: EvalScenario = {
   id: "create-and-edit-clip",

@@ -5,14 +5,14 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   getMinimalClipInfo,
   createClipsForLength,
   parseArrangementLength,
+  type MinimalClipInfo,
 } from "./duplicate-helpers.ts";
-import type { MinimalClipInfo } from "./duplicate-helpers.ts";
 import { configureRouting } from "./duplicate-routing-helpers.ts";
 
 /**

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { formatParserError } from "./peggy-error-formatter.ts";
-import type { PeggySyntaxError } from "./peggy-parser-types.ts";
+import { type PeggySyntaxError } from "./peggy-parser-types.ts";
 
 interface SyntaxErrorOverrides {
   expected?: PeggySyntaxError["expected"];

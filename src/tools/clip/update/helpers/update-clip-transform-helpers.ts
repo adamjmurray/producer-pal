@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import {
   CHROMATIC_SCALE_MASK,
   scaleIntervalsToPitchClassMask,

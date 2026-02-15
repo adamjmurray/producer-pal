@@ -8,7 +8,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "./ChatInput";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 const defaultProps = {
   handleSend: vi.fn(),

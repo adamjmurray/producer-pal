@@ -6,7 +6,7 @@
  * Correctness score calculation from deterministic assertions
  */
 
-import type { EvalAssertionResult } from "../types.ts";
+import { type EvalAssertionResult } from "../types.ts";
 
 interface ToolCallDetails {
   nameMatchCount: number;

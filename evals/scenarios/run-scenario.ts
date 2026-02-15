@@ -30,15 +30,15 @@ import {
 import { computeCorrectnessBreakdown } from "./helpers/correctness-score.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
 import { openLiveSet } from "./open-live-set.ts";
-import type {
-  ConfigProfile,
-  EvalScenario,
-  EvalScenarioResult,
-  EvalTurnResult,
-  EvalAssertion,
-  EvalAssertionResult,
-  EvalProvider,
-  MatrixConfigValues,
+import {
+  type ConfigProfile,
+  type EvalScenario,
+  type EvalScenarioResult,
+  type EvalTurnResult,
+  type EvalAssertion,
+  type EvalAssertionResult,
+  type EvalProvider,
+  type MatrixConfigValues,
 } from "./types.ts";
 
 const LIVE_SETS_DIR = "evals/live-sets";

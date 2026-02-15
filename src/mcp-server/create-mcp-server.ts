@@ -20,7 +20,7 @@ import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
-import type { ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";

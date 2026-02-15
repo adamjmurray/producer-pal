@@ -7,7 +7,7 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "#webui/types/messages";
+import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "./ChatScreen";
 
 describe("ChatScreen", () => {

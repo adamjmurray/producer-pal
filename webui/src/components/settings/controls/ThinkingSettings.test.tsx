@@ -5,12 +5,17 @@
 /**
  * @vitest-environment happy-dom
  */
-import type { RenderResult } from "@testing-library/preact";
-import { render, screen, fireEvent } from "@testing-library/preact";
-import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
-import type { ThinkingSettingsProps } from "./ThinkingSettings";
-import { ThinkingSettings } from "./ThinkingSettings";
+import {
+  type RenderResult,
+  render,
+  screen,
+  fireEvent,
+} from "@testing-library/preact";
+import { type Mock, describe, expect, it, vi } from "vitest";
+import {
+  type ThinkingSettingsProps,
+  ThinkingSettings,
+} from "./ThinkingSettings";
 
 type RenderProps = Partial<ThinkingSettingsProps> & {
   setThinking?: Mock;

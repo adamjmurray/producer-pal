@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { Chat } from "@google/genai/web";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Chat } from "@google/genai/web";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
 import { GeminiClient } from "./client";
 import {

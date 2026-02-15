@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { OpenAIMessage } from "#webui/types/messages";
+import { type OpenAIMessage } from "#webui/types/messages";
 
 export const historyWithEmptyToolCallArgs: OpenAIMessage[] = [
   {

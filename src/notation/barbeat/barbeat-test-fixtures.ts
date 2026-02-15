@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 
 /**

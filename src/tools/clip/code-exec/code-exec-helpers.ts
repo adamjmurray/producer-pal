@@ -9,18 +9,18 @@
  */
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
-import type {
-  CodeClipContext,
-  CodeExecutionContext,
-  CodeExecutionResult,
-  CodeLiveSetContext,
-  CodeLocationContext,
-  CodeNote,
-  CodeTrackContext,
+import {
+  type CodeClipContext,
+  type CodeExecutionContext,
+  type CodeExecutionResult,
+  type CodeLiveSetContext,
+  type CodeLocationContext,
+  type CodeNote,
+  type CodeTrackContext,
 } from "./code-exec-types.ts";
 
 /**

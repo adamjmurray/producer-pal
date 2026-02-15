@@ -13,8 +13,8 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
+  type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 /**

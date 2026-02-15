@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 import { responsesAdapter } from "./responses-adapter";
 
 describe("responsesAdapter", () => {

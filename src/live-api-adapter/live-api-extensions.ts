@@ -4,7 +4,7 @@
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
-import type { PathLike } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {

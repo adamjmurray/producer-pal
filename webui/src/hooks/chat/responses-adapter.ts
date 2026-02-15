@@ -12,9 +12,9 @@ import {
 } from "#webui/chat/openai/responses-client";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { buildResponsesConfig } from "#webui/hooks/settings/config-builders";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 import { createResponsesErrorMessage } from "./helpers/streaming-helpers";
-import type { ChatAdapter } from "./use-chat";
+import { type ChatAdapter } from "./use-chat";
 
 /**
  * Responses API adapter for OpenAI provider

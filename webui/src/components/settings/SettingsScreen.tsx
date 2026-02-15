@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type {
-  McpStatus,
-  McpTool,
+import {
+  type McpStatus,
+  type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";

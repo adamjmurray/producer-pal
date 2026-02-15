@@ -4,7 +4,7 @@
 
 import { expect } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 
 /**
  * Creates a standard test note with common defaults.

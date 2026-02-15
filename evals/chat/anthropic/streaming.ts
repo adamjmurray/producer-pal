@@ -4,12 +4,12 @@
 
 import { inspect } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import type {
-  ContentBlock,
-  Message,
-  RawContentBlockDeltaEvent,
-  RawContentBlockStartEvent,
-  RawMessageStreamEvent,
+import {
+  type ContentBlock,
+  type Message,
+  type RawContentBlockDeltaEvent,
+  type RawContentBlockStartEvent,
+  type RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import {
@@ -19,7 +19,7 @@ import {
   endThought,
   startThought,
 } from "../shared/formatting.ts";
-import type { TurnResult } from "../shared/types.ts";
+import { type TurnResult } from "../shared/types.ts";
 
 export interface StreamResult {
   response: Message;

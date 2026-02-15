@@ -10,7 +10,7 @@ import {
   OPENAI_MODELS,
   OPENROUTER_MODELS,
 } from "#webui/lib/constants/models";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   gemini: "e.g., gemini-2.0-flash",

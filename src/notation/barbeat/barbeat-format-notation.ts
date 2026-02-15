@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
-import type { NoteEvent } from "../types.ts";
+import { type NoteEvent } from "../types.ts";
 import {
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,

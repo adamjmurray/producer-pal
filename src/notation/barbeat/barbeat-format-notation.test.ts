@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
-import type { NoteEvent } from "../types.ts";
+import { type NoteEvent } from "../types.ts";
 import {
   drumPatternNotation,
   drumPatternNotes,

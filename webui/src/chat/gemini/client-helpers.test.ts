@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
-import type { Part } from "@google/genai/web";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Part } from "@google/genai/web";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   isToolCall,
   isErrorResult,

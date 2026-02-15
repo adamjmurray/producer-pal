@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { ExpressionNode } from "./parser/transform-parser.ts";
-import type {
-  TimeRange,
-  NoteProperties,
+import { type ExpressionNode } from "./parser/transform-parser.ts";
+import {
+  type TimeRange,
+  type NoteProperties,
 } from "./transform-evaluator-helpers.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import {

@@ -9,13 +9,13 @@
 import { callAnthropicJudge } from "../helpers/judge/anthropic-judge.ts";
 import { callGeminiJudge } from "../helpers/judge/gemini-judge.ts";
 import { callOpenAIJudge } from "../helpers/judge/openai-judge.ts";
-import type { JudgeResult } from "../helpers/judge-response-parser.ts";
-import type {
-  LlmJudgeAssertion,
-  EvalTurnResult,
-  EvalAssertionResult,
-  EvalProvider,
-  DimensionMinScores,
+import { type JudgeResult } from "../helpers/judge-response-parser.ts";
+import {
+  type LlmJudgeAssertion,
+  type EvalTurnResult,
+  type EvalAssertionResult,
+  type EvalProvider,
+  type DimensionMinScores,
 } from "../types.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are evaluating an AI assistant's response for a music production task.

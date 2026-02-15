@@ -5,8 +5,8 @@
 
 import { type Mock, vi } from "vitest";
 import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
-import type { PathLike } from "#src/shared/live-api-path-builders.ts";
-import type { LiveObjectType } from "#src/types/live-object-types.ts";
+import { type PathLike } from "#src/shared/live-api-path-builders.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   MockSequence,
   children,

@@ -38,7 +38,9 @@ const baseRules = {
   "import/no-self-import": "error", // File can't import itself
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
   "import/no-relative-packages": "error", // Don't use relative paths to node_modules
+  "import/no-duplicates": ["error", { "prefer-inline": true }], // Merge duplicate imports
   "import/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
+  "import/consistent-type-specifier-style": ["error", "prefer-inline"], // Use `import { type X }` not `import type { X }`
   "import/order": [
     "error",
     {
@@ -268,7 +270,10 @@ const tsOnlyRules = {
   ],
   "@typescript-eslint/no-explicit-any": "error", // Force proper typing instead of any
   "@typescript-eslint/no-non-null-assertion": "error", // No ! operator - use proper null checks
-  "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
+  "@typescript-eslint/consistent-type-imports": [
+    "error",
+    { fixStyle: "inline-type-imports" },
+  ], // Use `import { type X }` for types
   "@typescript-eslint/prefer-nullish-coalescing": "error", // Use ?? instead of || for null/undefined
   "@typescript-eslint/prefer-optional-chain": "error", // Use a?.b instead of a && a.b
   "@typescript-eslint/no-unnecessary-condition": [
