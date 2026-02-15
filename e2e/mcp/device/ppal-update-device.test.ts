@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -144,17 +145,19 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 2: Update non-existent device - should return empty or warning
+    // Test 2: Update non-existent device - should return empty with warning
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: "99999", name: "Won't Work" },
     });
-    const nonExistent =
-      parseToolResult<UpdateDeviceResult[]>(nonExistentResult);
+    const { data: nonExistent, warnings } =
+      parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
 
     // Should be empty array (device not found, no error thrown)
     expect(Array.isArray(nonExistent)).toBe(true);
     expect(nonExistent).toHaveLength(0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("target not found");
   });
 });
 

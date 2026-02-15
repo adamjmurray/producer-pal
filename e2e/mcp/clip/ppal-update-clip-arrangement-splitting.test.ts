@@ -166,7 +166,7 @@ describe("Behavioral splitting tests", () => {
         view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "200|1",
-        notes: "1|1 C3\n2|1 D3\n3|1 E3\n4|1 F3",
+        notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4:0.0",
         looping: true,
       },
