@@ -1,31 +1,28 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiSet, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
-  setupMocks,
+  setupUpdateClipMocks,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - Clip boundaries (shortening)", () => {
+  let mocks: UpdateClipMocks;
+
   beforeEach(() => {
-    setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should set length without explicit start using current loop_start", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 1,
-        loop_start: 4.0, // bar 2 beat 1 in 4/4
-      },
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 4.0, // bar 2 beat 1 in 4/4
     });
 
     const result = await updateClip({
@@ -33,8 +30,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       length: "2:0", // 8 beats = 2 bars
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       12, // loop_start (4) + length (8) = 12
     );
@@ -43,15 +39,9 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set firstStart for looping clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 1,
-        end_marker: 16, // content boundary - must be > firstStart
-      },
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      end_marker: 16, // content boundary - must be > firstStart
     });
 
     const result = await updateClip({
@@ -62,18 +52,15 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       8, // 3|1 in 4/4 = 8 Ableton beats
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_start",
       0, // 1|1 in 4/4 = 0 Ableton beats
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       16, // start (0) + length (16) = 16
     );
@@ -82,14 +69,8 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should warn when firstStart provided for non-looping clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 0,
-      },
+    setupMidiClipMock(mocks.clip123, {
+      looping: 0,
     });
 
     const result = await updateClip({
@@ -109,15 +90,9 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set end_marker for non-looping clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 0,
-        end_marker: 16, // content boundary - must be > start_marker
-      },
+    setupMidiClipMock(mocks.clip123, {
+      looping: 0,
+      end_marker: 16, // content boundary - must be > start_marker
     });
 
     const result = await updateClip({
@@ -127,13 +102,11 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       0, // 1|1 in 4/4 = 0 Ableton beats
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "end_marker",
       16, // start (0) + length (16) = 16
     );
@@ -142,15 +115,9 @@ describe("updateClip - Clip boundaries (shortening)", () => {
   });
 
   it("should set loop_start and loop_end for looping clips", async () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        looping: 1,
-        end_marker: 12, // content boundary - must be > start_marker
-      },
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      end_marker: 12, // content boundary - must be > start_marker
     });
 
     const result = await updateClip({
@@ -162,18 +129,15 @@ describe("updateClip - Clip boundaries (shortening)", () => {
 
     // start_marker is auto-set to match loop_start for looping clips
     // (set AFTER loop_end is expanded to avoid "Invalid syntax" errors)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "start_marker",
       4, // 2|1 in 4/4 = 4 Ableton beats
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_start",
       4, // 2|1 in 4/4 = 4 Ableton beats
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "loop_end",
       12, // start (4) + length (8) = 12
     );
@@ -183,12 +147,14 @@ describe("updateClip - Clip boundaries (shortening)", () => {
 });
 
 describe("updateClip - derived start warning (MIDI vs audio)", () => {
+  let mocks: UpdateClipMocks;
+
   beforeEach(() => {
-    setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("emits warning for non-looping MIDI clip with mismatched derived start", async () => {
-    setupMidiClipMock("123", {
+    setupMidiClipMock(mocks.clip123, {
       looping: 0,
       start_marker: 0,
       end_marker: 4,
@@ -206,7 +172,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
   it("does NOT emit warning for non-looping audio clip with mismatched derived start", async () => {
     vi.mocked(outlet).mockClear();
 
-    setupAudioClipMock("123", {
+    setupAudioClipMock(mocks.clip123, {
       looping: 0,
       start_marker: 0,
       end_marker: 0.131,

@@ -16,10 +16,10 @@ export const connectToAbleton: EvalScenario = {
   messages: ["Connect to Ableton Live"],
 
   assertions: [
-    // Verify ppal-connect was called
+    // Verify ppal-session was called with connect action (default)
     {
       type: "tool_called",
-      tool: "ppal-connect",
+      tool: "ppal-session",
       turn: 0,
       args: {},
     },

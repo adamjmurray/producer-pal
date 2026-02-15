@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import preact from "@preact/preset-vite";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { defineConfig } from "vitest/config";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dirname;
 
 // Node 25+ enables webstorage by default, which conflicts with happy-dom's mock.
 // Disable it for tests. The flag doesn't exist in Node 24, so only add it for 25+.
@@ -19,12 +18,12 @@ export default defineConfig({
   plugins: [preact()],
   resolve: {
     alias: {
-      "#webui": join(__dirname, "../webui/src"),
-      "#src": join(__dirname, "../src"),
-      "#evals": join(__dirname, "../evals"),
+      "#webui": join(__dirname, "webui/src"),
+      "#src": join(__dirname, "src"),
+      "#evals": join(__dirname, "evals"),
       "virtual:chat-ui-html": join(
         __dirname,
-        "../src/test/mocks/mock-chat-ui-html.ts",
+        "src/test/mocks/mock-chat-ui-html.ts",
       ),
     },
   },
@@ -95,8 +94,9 @@ export default defineConfig({
         // ignore loggers:
         "src/portal/file-logger.ts",
 
-        // ignore test mocks:
+        // ignore test infrastructure:
         "src/test/mocks/**",
+        "src/test/helpers/**",
 
         // evals: Targeted exclusions for code requiring live LLM/MCP connections.
         // Tested: assertions/{helpers,tool-call,response,state}.ts,
@@ -125,6 +125,7 @@ export default defineConfig({
 
         // Eval orchestration (integration code)
         "evals/eval/index.ts",
+        "evals/eval/config-profiles.ts",
         "evals/eval/run-scenario.ts",
         "evals/eval/eval-session.ts",
         "evals/eval/open-live-set.ts",
@@ -140,6 +141,7 @@ export default defineConfig({
         "evals/eval/helpers/eval-session-base.ts",
         "evals/eval/helpers/openai-session.ts",
         "evals/eval/helpers/report-table.ts",
+        "evals/eval/helpers/result-printer.ts",
 
         // Judge helpers (require live LLM APIs)
         "evals/eval/helpers/judge/**",

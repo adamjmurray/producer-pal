@@ -1,40 +1,37 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiCall,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { setupDefaultTimeSignature } from "./playback-test-helpers.ts";
+import {
+  setupFollowerTrack,
+  setupDefaultTimeSignature,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 describe("transport", () => {
+  let liveSet: RegisteredMockObject;
+
   beforeEach(() => {
-    setupDefaultTimeSignature();
+    liveSet = setupDefaultTimeSignature();
   });
 
   describe("autoFollow behavior for play-arrangement", () => {
     it("should set all tracks to follow arrangement when autoFollow is true (default)", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2", "track3"),
-        },
-        track1: { back_to_arranger: 0 },
-        track2: { back_to_arranger: 1 },
-        track3: { back_to_arranger: 0 },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2", "track3"),
       });
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
+      setupFollowerTrack({ id: "track3", index: 2, following: true });
 
       const result = playback({
         action: "play-arrangement",
@@ -42,11 +39,7 @@ describe("transport", () => {
       });
 
       // Should call back_to_arranger on the song level (affects all tracks)
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "back_to_arranger",
-        0,
-      );
+      expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual({
         playing: true,
@@ -56,29 +49,18 @@ describe("transport", () => {
     });
 
     it("should set all tracks to follow arrangement when autoFollow is explicitly true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
-        track1: { back_to_arranger: 1 }, // not following
-        track2: { back_to_arranger: 1 }, // not following
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
+      setupFollowerTrack({ id: "track1", index: 0, following: false });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
 
       const result = playback({
         action: "play-arrangement",
         autoFollow: true,
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "back_to_arranger",
-        0,
-      );
+      expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual({
         playing: true,
@@ -88,18 +70,11 @@ describe("transport", () => {
     });
 
     it("should NOT set tracks to follow when autoFollow is false", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
-        track1: { back_to_arranger: 1 }, // not following
-        track2: { back_to_arranger: 0 }, // following
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
+      setupFollowerTrack({ id: "track1", index: 0, following: false });
+      setupFollowerTrack({ id: "track2", index: 1, following: true });
 
       const result = playback({
         action: "play-arrangement",
@@ -107,7 +82,7 @@ describe("transport", () => {
       });
 
       // Should NOT call back_to_arranger when autoFollow is false
-      expect(liveApiSet).not.toHaveBeenCalledWith("back_to_arranger", 0);
+      expect(liveSet.set).not.toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual({
         playing: true,
@@ -117,19 +92,13 @@ describe("transport", () => {
     });
 
     it("should include arrangementFollowerTrackIds for all transport actions", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 0,
-          tracks: children("track1", "track2", "track3"),
-        },
-        track1: { back_to_arranger: 0 },
-        track2: { back_to_arranger: 1 },
-        track3: { back_to_arranger: 0 },
+      liveSet = setupPlaybackLiveSet({
+        loop_length: 0,
+        tracks: children("track1", "track2", "track3"),
       });
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: false });
+      setupFollowerTrack({ id: "track3", index: 2, following: true });
 
       const result = playback({
         action: "stop",
@@ -144,16 +113,18 @@ describe("transport", () => {
   });
 
   describe("switchView functionality", () => {
-    it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
+    let appView: RegisteredMockObject;
+
+    beforeEach(() => {
+      // Register objects needed by select() for view switching
+      appView = registerMockObject(livePath.view.app, {
+        path: livePath.view.app,
       });
+      registerMockObject(livePath.view.song, { path: livePath.view.song });
+    });
+
+    it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
@@ -161,45 +132,18 @@ describe("transport", () => {
       });
 
       // Check that select was called with arrangement view
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
     });
 
     it("should switch to session view for play-scene action when switchView is true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-          tracks: children("track1", "track2"),
-        },
-        Track: {
-          back_to_arranger: 0,
-        },
-        AppView: {
-          focused_document_view: "Session",
-        },
+      liveSet = setupPlaybackLiveSet({
+        tracks: children("track1", "track2"),
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set") {
-          return "LiveSet";
-        }
-
-        if (this._path === "live_app view") {
-          return "AppView";
-        }
-
-        if (this._path === "live_set scenes 0") {
-          return "Scene";
-        }
-
-        if (this._path === "id track1" || this._path === "id track2") {
-          return "Track";
-        }
-
-        // Fall back to default MockLiveAPI logic (returns undefined)
+      registerMockObject(livePath.scene(0), {
+        path: livePath.scene(0),
       });
+      setupFollowerTrack({ id: "track1", index: 0, following: true });
+      setupFollowerTrack({ id: "track2", index: 1, following: true });
 
       playback({
         action: "play-scene",
@@ -207,27 +151,16 @@ describe("transport", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
     });
 
     it("should switch to session view for play-session-clips action when switchView is true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
+      liveSet = setupPlaybackLiveSet();
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
       });
-
-      // Mock clip path resolution
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "clip1") {
-          return "live_set tracks 0 clip_slots 0 clip";
-        }
-
-        return this._path;
+      registerMockObject(livePath.track(0).clipSlot(0), {
+        path: livePath.track(0).clipSlot(0),
       });
 
       playback({
@@ -236,19 +169,11 @@ describe("transport", () => {
         switchView: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
     });
 
     it("should not switch views when switchView is false", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
@@ -256,29 +181,21 @@ describe("transport", () => {
       });
 
       // Check that show_view was NOT called for view switching
-      expect(liveApiCall).not.toHaveBeenCalledWith(
+      expect(appView.call).not.toHaveBeenCalledWith(
         "show_view",
         expect.anything(),
       );
     });
 
     it("should not switch views for actions that don't have a target view", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          loop: 0,
-          loop_start: 0,
-          loop_length: 4,
-        },
-      });
+      liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "stop",
         switchView: true,
       });
 
-      expect(liveApiCall).not.toHaveBeenCalledWith(
+      expect(appView.call).not.toHaveBeenCalledWith(
         "show_view",
         expect.anything(),
       );

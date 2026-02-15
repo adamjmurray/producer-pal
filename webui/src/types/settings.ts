@@ -83,8 +83,6 @@ export interface UseSettingsReturn {
   // Tool toggles
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
-  enableAllTools: () => void;
-  disableAllTools: () => void;
   resetBehaviorToDefaults: () => void;
   isToolEnabled: (toolId: string) => boolean;
 }

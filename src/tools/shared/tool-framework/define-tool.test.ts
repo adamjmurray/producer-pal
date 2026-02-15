@@ -75,6 +75,15 @@ function getRegisteredHandler(mockServer: MockServer) {
 }
 
 describe("defineTool", () => {
+  it("should expose toolName on the returned function", () => {
+    const toolRegistrar = defineTool("my-custom-tool", {
+      description: "Test",
+      inputSchema: { param: z.string() },
+    });
+
+    expect(toolRegistrar.toolName).toBe("my-custom-tool");
+  });
+
   it("should register tool with correct config", () => {
     const { mockServer } = registerTestTool({
       title: "Test Tool",

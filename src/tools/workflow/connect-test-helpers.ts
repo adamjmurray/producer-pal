@@ -1,13 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 interface SetupConnectMocksOptions {
   liveSetName?: string;
@@ -35,27 +32,10 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
     liveSetOverrides = {},
   } = opts;
 
-  liveApiId.mockImplementation(function (this: { _id: string }): string {
-    return this._id;
-  });
-
-  liveApiPath.mockImplementation(function (this: { _path: string }): string {
-    return this._path;
-  });
-
-  liveApiCall.mockImplementation(function (
-    this: unknown,
-    method: string,
-  ): string | null {
-    if (method === "get_version_string") {
-      return version;
-    }
-
-    return null;
-  });
-
-  mockLiveApiGet({
-    LiveSet: {
+  registerMockObject("live_set", {
+    path: livePath.liveSet,
+    type: "Song",
+    properties: {
       name: liveSetName,
       tempo,
       signature_numerator: 4,
@@ -65,8 +45,48 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
       scenes: [],
       ...liveSetOverrides,
     },
-    AppView: {
+  });
+
+  registerMockObject("live_app", {
+    path: "live_app",
+    type: "Application",
+    methods: {
+      get_version_string: () => version,
+    },
+  });
+
+  registerMockObject("app_view", {
+    path: "live_app view",
+    type: "Application.View",
+    properties: {
       focused_document_view: view,
     },
   });
+
+  const trackIds = extractChildIds(
+    (liveSetOverrides.tracks as unknown[] | undefined) ?? [],
+  );
+
+  for (const [index, trackId] of trackIds.entries()) {
+    registerMockObject(trackId, {
+      path: livePath.track(index),
+      type: "Track",
+    });
+  }
+}
+
+function extractChildIds(childArray: unknown[]): string[] {
+  if (!Array.isArray(childArray)) {
+    return [];
+  }
+
+  const ids: string[] = [];
+
+  for (let i = 0; i < childArray.length; i += 2) {
+    if (childArray[i] === "id") {
+      ids.push(String(childArray[i + 1]));
+    }
+  }
+
+  return ids;
 }

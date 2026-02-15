@@ -3,10 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  LiveAPI as MockLiveAPI,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { getLocatorId, resolveLocatorToBeats } from "./locator-helpers.ts";
 
 // Make the mock LiveAPI globally available
@@ -52,8 +50,9 @@ describe("locator-helpers", () => {
     });
 
     it("resolves locator by ID", () => {
-      mockLiveApiGet({
-        "id locator1": {
+      registerMockObject("locator1", {
+        type: "CuePoint",
+        properties: {
           time: 32,
         },
       });
@@ -72,8 +71,9 @@ describe("locator-helpers", () => {
     });
 
     it("resolves locator by name", () => {
-      mockLiveApiGet({
-        "id locator1": {
+      registerMockObject("locator1", {
+        type: "CuePoint",
+        properties: {
           name: "Bridge",
           time: 64,
         },
@@ -93,8 +93,9 @@ describe("locator-helpers", () => {
     });
 
     it("throws when locator name not found", () => {
-      mockLiveApiGet({
-        "id locator1": {
+      registerMockObject("locator1", {
+        type: "CuePoint",
+        properties: {
           name: "Verse",
           time: 16,
         },

@@ -97,6 +97,18 @@ describe("Transform Evaluator Error Handling", () => {
       expect(result).toStrictEqual({});
     });
 
+    it("handles rand with too many arguments", () => {
+      expectTransformError("velocity = rand(0, 100, 50)");
+    });
+
+    it("handles ramp with too few arguments", () => {
+      expectTransformError("velocity = ramp(100)");
+    });
+
+    it("handles ramp with too many arguments", () => {
+      expectTransformError("velocity = ramp(0, 100, 1, 2)");
+    });
+
     it("handles waveform with zero period gracefully", () => {
       expectTransformError("velocity += cos(0)");
     });
@@ -174,6 +186,7 @@ describe("Transform Evaluator Error Handling", () => {
             type: "function" as const,
             name: "unknown_func",
             args: [{ type: "period" as const, bars: 0, beats: 1 }],
+            sync: false,
           },
         },
       ];
@@ -199,6 +212,7 @@ describe("Transform Evaluator Error Handling", () => {
         evaluateFunction(
           "unknown_waveform",
           [1], // Simple number period in beats
+          false,
           0,
           4,
           4,
@@ -213,6 +227,7 @@ describe("Transform Evaluator Error Handling", () => {
       const result = evaluateFunction(
         "cos",
         [1], // Simple number period in beats
+        false,
         0,
         4,
         4,
@@ -230,8 +245,15 @@ describe("Transform Evaluator Error Handling", () => {
       ["round()", "round with no arguments"],
       ["floor()", "floor with no arguments"],
       ["abs()", "abs with no arguments"],
+      ["ceil()", "ceil with no arguments"],
+      ["pow(2)", "pow with only one argument"],
+      ["pow(0, -1)", "pow producing Infinity"],
+      ["pow(-1, 0.5)", "pow producing NaN"],
       ["min(60)", "min with only one argument"],
       ["max(60)", "max with only one argument"],
+      ["clamp(50)", "clamp with only one argument"],
+      ["clamp(50, 0)", "clamp with only two arguments"],
+      ["clamp(50, 0, 100, 200)", "clamp with four arguments"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
     });

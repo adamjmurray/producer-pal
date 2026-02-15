@@ -6,6 +6,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.ts";
@@ -155,7 +156,7 @@ export function prepareSessionClipSlot(
   }
 
   const clipSlot = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+    livePath.track(trackIndex).clipSlot(sceneIndex),
   );
 
   if (clipSlot.getProperty("has_clip")) {

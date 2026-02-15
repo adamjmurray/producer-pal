@@ -226,3 +226,81 @@ export function intervalsToPitchClasses(
     return PITCH_CLASS_NAMES[pitchClass] as string;
   });
 }
+
+/** Bitmask with all 12 pitch classes set (chromatic scale). */
+export const CHROMATIC_SCALE_MASK = 0xfff;
+
+/**
+ * Convert scale intervals and root note to a pitch class bitmask.
+ * Bit N = 1 means pitch class N is in the scale.
+ * @param intervals - Semitone intervals from root (e.g., [0, 2, 4, 5, 7, 9, 11])
+ * @param rootNote - Root note number (0-11, where 0 = C)
+ * @returns Bitmask (e.g., C Major → 2741)
+ */
+export function scaleIntervalsToPitchClassMask(
+  intervals: number[],
+  rootNote: number,
+): number {
+  let mask = 0;
+
+  for (const interval of intervals) {
+    const pitchClass = (rootNote + interval) % 12;
+
+    mask |= 1 << pitchClass;
+  }
+
+  return mask;
+}
+
+/**
+ * Quantize a pitch to the nearest in-scale pitch using a pitch class bitmask.
+ * When equidistant, prefers the higher pitch. Clamps result to 0-127 using
+ * scale-aware boundary clamping (nearest in-scale pitch within range).
+ * @param pitch - Input pitch (will be rounded to nearest integer)
+ * @param scaleMask - Bitmask of in-scale pitch classes (bit N = pitch class N)
+ * @returns Nearest in-scale MIDI pitch (0-127)
+ */
+export function quantizePitchToScale(pitch: number, scaleMask: number): number {
+  const rounded = Math.round(pitch);
+
+  // Search outward from rounded pitch; check higher first for tie-breaking
+  for (let distance = 0; distance <= 11; distance++) {
+    const higher = rounded + distance;
+
+    if ((scaleMask >> (((higher % 12) + 12) % 12)) & 1) {
+      return clampToScaleBounds(higher, scaleMask);
+    }
+
+    if (distance > 0) {
+      const lower = rounded - distance;
+
+      if ((scaleMask >> (((lower % 12) + 12) % 12)) & 1) {
+        return clampToScaleBounds(lower, scaleMask);
+      }
+    }
+  }
+
+  return Math.max(0, Math.min(127, rounded));
+}
+
+/**
+ * Clamp a pitch to 0-127, snapping to the nearest in-scale pitch at boundaries.
+ * @param pitch - Pitch to clamp
+ * @param scaleMask - Bitmask of in-scale pitch classes
+ * @returns In-scale pitch within 0-127
+ */
+function clampToScaleBounds(pitch: number, scaleMask: number): number {
+  if (pitch > 127) {
+    for (let p = 127; p >= 0; p--) {
+      if ((scaleMask >> (p % 12)) & 1) return p;
+    }
+  }
+
+  if (pitch < 0) {
+    for (let p = 0; p <= 127; p++) {
+      if ((scaleMask >> (p % 12)) & 1) return p;
+    }
+  }
+
+  return pitch;
+}

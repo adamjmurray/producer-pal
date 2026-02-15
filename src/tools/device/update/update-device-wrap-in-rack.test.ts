@@ -1,149 +1,62 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - wrapInRack", () => {
+  let track0: RegisteredMockObject;
+  let liveSet: RegisteredMockObject;
+  let newRack: RegisteredMockObject;
+
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Default mock: devices exist at track 0 devices 0, 1, 2
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      // Track
-      if (this._path === "live_set tracks 0") return "Track";
-      // Audio effects
-      if (this._path === "live_set tracks 0 devices 0")
-        return "AudioEffectDevice";
-      if (this._path === "live_set tracks 0 devices 1")
-        return "AudioEffectDevice";
-      // MIDI effect
-      if (this._path === "live_set tracks 0 devices 2")
-        return "MidiEffectDevice";
-      // Instrument
-      if (this._path === "live_set tracks 0 devices 3")
-        return "InstrumentDevice";
-      // Rack
-      if (this._path?.includes("rack")) return "RackDevice";
-      // Chains
-      if (this._path?.includes("chains")) return "Chain";
-      // By ID (with "id " prefix)
-      if (this._path === "id device-0") return "AudioEffectDevice";
-      if (this._path === "id device-1") return "AudioEffectDevice";
-      if (this._path === "id device-2") return "MidiEffectDevice";
-      if (this._path === "id device-3") return "InstrumentDevice";
-      if (this._path === "id new-rack") return "RackDevice";
-      // By ID (without "id " prefix - for LiveAPI.from() with non-numeric IDs)
-      if (this._path === "device-0") return "AudioEffectDevice";
-      if (this._path === "device-1") return "AudioEffectDevice";
-      if (this._path === "device-2") return "MidiEffectDevice";
-      if (this._path === "device-3") return "InstrumentDevice";
-
-      return "Device";
+    track0 = registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: { insert_device: () => ["id", "new-rack"] },
     });
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0") return "track-0";
-      if (this._path === "live_set tracks 0 devices 0") return "device-0";
-      if (this._path === "live_set tracks 0 devices 1") return "device-1";
-      if (this._path === "live_set tracks 0 devices 2") return "device-2";
-      if (this._path === "live_set tracks 0 devices 3") return "device-3";
-      // By ID (with "id " prefix)
-      if (this._path === "id device-0") return "device-0";
-      if (this._path === "id device-1") return "device-1";
-      if (this._path === "id device-2") return "device-2";
-      if (this._path === "id device-3") return "device-3";
-      if (this._path === "id new-rack") return "new-rack";
-      // By ID (without "id " prefix - for LiveAPI.from() with non-numeric IDs)
-      if (this._path === "device-0") return "device-0";
-      if (this._path === "device-1") return "device-1";
-      if (this._path === "device-2") return "device-2";
-      if (this._path === "device-3") return "device-3";
-      // Chains
-      if (this._path?.includes("chains 0")) return "chain-0";
-      if (this._path?.includes("chains 1")) return "chain-1";
-
-      return "0";
+    // Audio effects on track 0
+    registerMockObject("device-0", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { type: 2 },
+    });
+    registerMockObject("device-1", {
+      path: livePath.track(0).device(1),
+      type: "RackDevice",
+      properties: { type: 2 },
+    });
+    // MIDI effect
+    registerMockObject("device-2", {
+      path: livePath.track(0).device(2),
+      type: "RackDevice",
+      properties: { type: 4 },
     });
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      // By ID (with "id " prefix)
-      if (this._path === "id device-0") return "live_set tracks 0 devices 0";
-      if (this._path === "id device-1") return "live_set tracks 0 devices 1";
-      if (this._path === "id device-2") return "live_set tracks 0 devices 2";
-      if (this._path === "id device-3") return "live_set tracks 0 devices 3";
-      if (this._path === "id new-rack") return "live_set tracks 0 devices 0";
-      if (this._path === "id track-0") return "live_set tracks 0";
-      // By ID (without "id " prefix - for LiveAPI.from() with non-numeric IDs)
-      if (this._path === "device-0") return "live_set tracks 0 devices 0";
-      if (this._path === "device-1") return "live_set tracks 0 devices 1";
-      if (this._path === "device-2") return "live_set tracks 0 devices 2";
-      if (this._path === "device-3") return "live_set tracks 0 devices 3";
-
-      return this._path;
+    // New rack created by insert_device
+    newRack = registerMockObject("new-rack", {
+      path: "new-rack",
+      type: "RackDevice",
+      properties: { chains: children("chain-0", "chain-1") },
+      methods: { insert_chain: () => ["id", "new-chain"] },
     });
 
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      // Device type property: 1=instrument, 2=audio, 4=midi
-      if (prop === "type") {
-        if (
-          this._path === "live_set tracks 0 devices 0" ||
-          this._path === "id device-0" ||
-          this._path === "device-0" ||
-          this._path === "live_set tracks 0 devices 1" ||
-          this._path === "id device-1" ||
-          this._path === "device-1"
-        ) {
-          return [2]; // Audio effect
-        }
+    // Chains inside the rack (paths match ${rack.path} chains ${i})
+    registerMockObject("chain-0", { type: "Chain", path: "new-rack chains 0" });
+    registerMockObject("chain-1", { type: "Chain", path: "new-rack chains 1" });
 
-        if (
-          this._path === "live_set tracks 0 devices 2" ||
-          this._path === "id device-2" ||
-          this._path === "device-2"
-        ) {
-          return [4]; // MIDI effect
-        }
-
-        if (
-          this._path === "live_set tracks 0 devices 3" ||
-          this._path === "id device-3" ||
-          this._path === "device-3"
-        ) {
-          return [1]; // Instrument
-        }
-      }
-
-      // Rack chains - new rack comes with 2 chains pre-created
-      if (prop === "chains" && this._path?.includes("new-rack")) {
-        return ["id", "chain-0", "id", "chain-1"];
-      }
-
-      return [0];
-    });
-
-    // Mock insert_device to return a new rack ID
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "insert_device") {
-        return ["id", "new-rack"];
-      }
-
-      if (method === "insert_chain") {
-        return ["id", "new-chain"];
-      }
-
-      return null;
-    });
+    // live_set for move operations
+    liveSet = registerMockObject("live-set", { path: "live_set" });
   });
 
   it("should wrap a single audio effect in an Audio Effect Rack", () => {
@@ -153,16 +66,14 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // Should create Audio Effect Rack at device position
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 0" }),
+    expect(track0.call).toHaveBeenCalledWith(
       "insert_device",
       "Audio Effect Rack",
       0,
     );
 
     // Should move device into rack
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set" }),
+    expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
       "id chain-0",
@@ -183,8 +94,7 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // Should create MIDI Effect Rack
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 0" }),
+    expect(track0.call).toHaveBeenCalledWith(
       "insert_device",
       "MIDI Effect Rack",
       2,
@@ -204,23 +114,20 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // Should create Audio Effect Rack at first device's position
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 0" }),
+    expect(track0.call).toHaveBeenCalledWith(
       "insert_device",
       "Audio Effect Rack",
       0,
     );
 
     // Should move both devices into separate chains
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set" }),
+    expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
       "id chain-0",
       0,
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set" }),
+    expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-1",
       "id chain-1",
@@ -236,75 +143,41 @@ describe("updateDevice - wrapInRack", () => {
 
   describe("instrument wrapping", () => {
     beforeEach(() => {
-      // Extended mocks for instrument wrapping with temp track
       let chainCount = 0;
 
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0") return "Track";
-        if (this._path === "live_set tracks 1") return "Track"; // temp track
-        if (this._path === "live_set tracks 0 devices 3")
-          return "InstrumentDevice";
-        if (this._path === "live_set tracks 0 devices 4")
-          return "InstrumentDevice";
-        if (this._path === "live_set tracks 1 devices 0")
-          return "InstrumentDevice";
-        if (this._path === "id device-3") return "InstrumentDevice";
-        if (this._path === "id device-4") return "InstrumentDevice";
-        if (this._path === "id temp-track") return "Track";
-        if (this._path === "id new-rack") return "RackDevice";
-        if (this._path === "device-3") return "InstrumentDevice";
-        if (this._path === "device-4") return "InstrumentDevice";
-        if (this._path?.includes("rack")) return "RackDevice";
-        if (this._path?.includes("chains")) return "Chain";
-
-        return "Device";
+      // Instrument devices
+      registerMockObject("device-3", {
+        path: livePath.track(0).device(3),
+        type: "RackDevice",
+        properties: { type: 1 },
+      });
+      registerMockObject("device-4", {
+        path: livePath.track(0).device(4),
+        type: "RackDevice",
+        properties: { type: 1 },
       });
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 1") return "temp-track";
-        if (this._path === "live_set tracks 0 devices 3") return "device-3";
-        if (this._path === "live_set tracks 0 devices 4") return "device-4";
-        if (this._path === "live_set tracks 1 devices 0") return "device-3";
-        if (this._path === "id device-3") return "device-3";
-        if (this._path === "id device-4") return "device-4";
-        if (this._path === "id temp-track") return "temp-track";
-        if (this._path === "id new-rack") return "new-rack";
-        if (this._path === "device-3") return "device-3";
-        if (this._path === "device-4") return "device-4";
-        if (this._path?.includes("chains 0")) return "chain-0";
-        if (this._path?.includes("chains 1")) return "chain-1";
-
-        return "0";
+      // Temp track for instrument wrapping
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
       });
 
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id device-3") return "live_set tracks 0 devices 3";
-        if (this._path === "id device-4") return "live_set tracks 0 devices 4";
-        if (this._path === "id temp-track") return "live_set tracks 1";
-        if (this._path === "id new-rack") return "live_set tracks 0 devices 3";
-        if (this._path === "device-3") return "live_set tracks 0 devices 3";
-        if (this._path === "device-4") return "live_set tracks 0 devices 4";
-
-        return this._path;
+      // Override track0 to support insert_device
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "new-rack"] },
       });
 
-      liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-        if (
-          prop === "type" &&
-          (this._path === "live_set tracks 0 devices 3" ||
-            this._path === "id device-3" ||
-            this._path === "device-3" ||
-            this._path === "live_set tracks 0 devices 4" ||
-            this._path === "id device-4" ||
-            this._path === "device-4" ||
-            this._path === "live_set tracks 1 devices 0")
-        ) {
-          return [1]; // Instrument
-        }
-
-        // Return dynamic chain count for rack
-        if (prop === "chains" && this._path?.includes("new-rack")) {
+      // New rack with dynamic chain counting
+      newRack = registerMockObject("new-rack", {
+        path: "new-rack",
+        type: "RackDevice",
+        properties: {
+          chains: [], // starts empty, grows as chains are inserted
+        },
+      });
+      newRack.get.mockImplementation((prop: string) => {
+        if (prop === "chains") {
           const chains = [];
 
           for (let i = 0; i < chainCount; i++) {
@@ -316,27 +189,33 @@ describe("updateDevice - wrapInRack", () => {
 
         return [0];
       });
-
-      liveApiCall.mockImplementation(function (method) {
-        if (method === "create_midi_track") {
-          return ["id", "temp-track"];
-        }
-
-        if (method === "insert_device") {
-          return ["id", "new-rack"];
-        }
-
+      newRack.call.mockImplementation((method: string) => {
         if (method === "insert_chain") {
           chainCount++;
 
           return ["id", `chain-${chainCount - 1}`];
         }
 
-        if (method === "delete_track") {
-          return null;
-        }
-
         return null;
+      });
+
+      // live_set for move/create/delete operations
+      liveSet = registerMockObject("live-set", {
+        path: "live_set",
+        methods: {
+          create_midi_track: () => ["id", "temp-track"],
+          delete_track: () => null,
+        },
+      });
+
+      // Register chains (paths match ${rack.path} chains ${i})
+      registerMockObject("chain-0", {
+        type: "Chain",
+        path: "new-rack chains 0",
+      });
+      registerMockObject("chain-1", {
+        type: "Chain",
+        path: "new-rack chains 1",
       });
     });
 
@@ -347,15 +226,10 @@ describe("updateDevice - wrapInRack", () => {
       });
 
       // Should create temp track
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
-        "create_midi_track",
-        -1,
-      );
+      expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
 
       // Should move instrument to temp track
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id device-3",
         "id temp-track",
@@ -363,16 +237,14 @@ describe("updateDevice - wrapInRack", () => {
       );
 
       // Should create Instrument Rack at device position
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "insert_device",
         "Instrument Rack",
         3,
       );
 
       // Should delete temp track
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set" }),
+      expect(liveSet.call).toHaveBeenCalledWith(
         "delete_track",
         expect.any(Number),
       );
@@ -391,8 +263,7 @@ describe("updateDevice - wrapInRack", () => {
       });
 
       // Should create Instrument Rack
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ _path: "live_set tracks 0" }),
+      expect(track0.call).toHaveBeenCalledWith(
         "insert_device",
         "Instrument Rack",
         3,
@@ -420,7 +291,6 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should warn and return null when mixing MIDI and Audio effects", () => {
-    // Should not throw, just warn and return null
     const result = updateDevice({
       path: "t0/d0,t0/d2",
       wrapInRack: true,
@@ -430,25 +300,9 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should place rack at toPath when provided", () => {
-    // Mock track 1 exists
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 1") return "Track";
-      if (this._path === "live_set tracks 0 devices 0")
-        return "AudioEffectDevice";
-      if (this._path === "id device-0") return "AudioEffectDevice";
-      if (this._path === "id new-rack") return "RackDevice";
-
-      return "Device";
-    });
-
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 1") return "track-1";
-      if (this._path === "live_set tracks 0 devices 0") return "device-0";
-      if (this._path === "id device-0") return "device-0";
-      if (this._path === "id new-rack") return "new-rack";
-      if (this._path?.includes("chains 0")) return "chain-0";
-
-      return "0";
+    const track1 = registerMockObject("track-1", {
+      path: livePath.track(1),
+      methods: { insert_device: () => ["id", "new-rack"] },
     });
 
     const result = updateDevice({
@@ -458,8 +312,7 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // Should create rack on track 1, not track 0
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 1" }),
+    expect(track1.call).toHaveBeenCalledWith(
       "insert_device",
       "Audio Effect Rack",
       expect.any(Number),
@@ -475,8 +328,6 @@ describe("updateDevice - wrapInRack", () => {
       name: "My Effect Rack",
     });
 
-    // Note: We can't easily verify set() was called on the rack
-    // but we can verify the result
     const r = result as Record<string, unknown>;
 
     expect(r.id).toBe("new-rack");
@@ -497,10 +348,8 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should warn and return null when no devices found", () => {
-    // Mock non-existent device
-    liveApiId.mockReturnValue("0");
+    mockNonExistentObjects();
 
-    // Should not throw, just warn and return null
     const result = updateDevice({
       ids: "nonexistent",
       wrapInRack: true,
@@ -510,29 +359,8 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should warn and return null when toPath container does not exist", () => {
-    // Mock device exists but target container doesn't
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0 devices 0")
-        return "AudioEffectDevice";
-      if (this._path === "id device-0") return "AudioEffectDevice";
-      if (this._path === "device-0") return "AudioEffectDevice";
-      // Track 99 doesn't exist
-      if (this._path === "live_set tracks 99") return "Track";
+    mockNonExistentObjects();
 
-      return "Device";
-    });
-
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0 devices 0") return "device-0";
-      if (this._path === "id device-0") return "device-0";
-      if (this._path === "device-0") return "device-0";
-      // Non-existent track returns "0"
-      if (this._path === "live_set tracks 99") return "0";
-
-      return "0";
-    });
-
-    // Should not throw, just warn and return null
     const result = updateDevice({
       path: "t0/d0",
       wrapInRack: true,
@@ -543,44 +371,12 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should warn and return null when device type is unrecognized", () => {
-    // Mock device with unknown type (not instrument=1, audio=2, or midi=4)
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (
-        this._path === "live_set tracks 0 devices 0" ||
-        this._path === "id device-0" ||
-        this._path === "device-0"
-      ) {
-        return "UnknownDevice";
-      }
-
-      return "Device";
+    registerMockObject("device-0", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { type: 0 },
     });
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0 devices 0") return "device-0";
-      if (this._path === "id device-0") return "device-0";
-      if (this._path === "device-0") return "device-0";
-
-      return "0";
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "id device-0") return "live_set tracks 0 devices 0";
-      if (this._path === "device-0") return "live_set tracks 0 devices 0";
-
-      return this._path;
-    });
-
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      // Return unknown device type (0 = unknown)
-      if (prop === "type") {
-        return [0];
-      }
-
-      return [0];
-    });
-
-    // Should not throw, just warn and return null
     const result = updateDevice({
       path: "t0/d0",
       wrapInRack: true,
@@ -590,39 +386,18 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should warn but continue when insert_chain fails", () => {
-    // Mock rack with no pre-existing chains
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      if (
-        prop === "type" &&
-        (this._path === "live_set tracks 0 devices 0" ||
-          this._path === "id device-0" ||
-          this._path === "device-0")
-      ) {
-        return [2]; // Audio effect
-      }
-
-      // Rack starts with no chains
-      if (prop === "chains" && this._path?.includes("new-rack")) {
-        return [];
-      }
+    // Override rack to have no pre-existing chains and fail on insert_chain
+    newRack.get.mockImplementation((prop: string) => {
+      if (prop === "chains") return [];
 
       return [0];
     });
-
-    // Mock insert_chain to fail (returns 1 instead of ["id", "chain-id"])
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "insert_device") {
-        return ["id", "new-rack"];
-      }
-
-      if (method === "insert_chain") {
-        return 1; // Failure
-      }
+    newRack.call.mockImplementation((method: string) => {
+      if (method === "insert_chain") return 1; // Failure
 
       return null;
     });
 
-    // Should not throw, operation continues (rack created but chain failed)
     const result = updateDevice({
       path: "t0/d0",
       wrapInRack: true,

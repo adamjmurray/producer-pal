@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-connect tool
+ * E2E tests for ppal-session tool (connect action)
  * Uses once mode to reuse MCP connection across tests (faster).
  *
  * Run with: npm run e2e:mcp
@@ -17,17 +17,17 @@ import {
 
 const ctx = setupMcpTestContext({ once: true });
 
-/** Helper to call ppal-connect and parse the result */
+/** Helper to call ppal-session with connect action and parse the result */
 async function callConnect(): Promise<ConnectResult> {
   const result = await ctx.client!.callTool({
-    name: "ppal-connect",
-    arguments: {},
+    name: "ppal-session",
+    arguments: { action: "connect" },
   });
 
   return parseToolResult<ConnectResult>(result);
 }
 
-describe("ppal-connect", () => {
+describe("ppal-session (connect action)", () => {
   it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
     // Ensure standard mode is active
     await setConfig({ smallModelMode: false });
@@ -103,52 +103,52 @@ describe("ppal-connect", () => {
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
   });
 
-  describe("project notes", () => {
+  describe("memory contents", () => {
     const TEST_NOTES = "Test project notes content for e2e testing";
 
     it("excludes projectNotes when disabled (default)", async () => {
-      await setConfig({ useProjectNotes: false, projectNotes: "" });
+      await setConfig({ memoryEnabled: false, memoryContent: "" });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.memoryContent).toBeUndefined();
       expect(parsed.$instructions).not.toContain("project notes");
     });
 
     it("includes projectNotes when enabled with content (read-only)", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: TEST_NOTES,
-        projectNotesWritable: false,
+        memoryEnabled: true,
+        memoryContent: TEST_NOTES,
+        memoryWritable: false,
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project notes");
-      expect(parsed.$instructions).not.toContain("update the project notes");
+      expect(parsed.memoryContent).toBe(TEST_NOTES);
+      expect(parsed.$instructions).toContain("Summarize the project memory");
+      expect(parsed.$instructions).not.toContain("update the memory");
     });
 
-    it("includes writable instruction when projectNotesWritable is true", async () => {
+    it("includes writable instruction when memoryWritable is true", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: TEST_NOTES,
-        projectNotesWritable: true,
+        memoryEnabled: true,
+        memoryContent: TEST_NOTES,
+        memoryWritable: true,
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project notes");
-      expect(parsed.$instructions).toContain("update the project notes");
+      expect(parsed.memoryContent).toBe(TEST_NOTES);
+      expect(parsed.$instructions).toContain("Summarize the project memory");
+      expect(parsed.$instructions).toContain("update the memory");
     });
 
     it("excludes projectNotes when enabled but content is empty", async () => {
       await setConfig({
-        useProjectNotes: true,
-        projectNotes: "",
-        projectNotesWritable: false,
+        memoryEnabled: true,
+        memoryContent: "",
+        memoryWritable: false,
       });
       const parsed = await callConnect();
 
-      expect(parsed.projectNotes).toBeUndefined();
+      expect(parsed.memoryContent).toBeUndefined();
       expect(parsed.$instructions).not.toContain("project notes");
     });
   });
@@ -172,5 +172,5 @@ interface ConnectResult {
   $skills?: string;
   $instructions?: string;
   messagesForUser?: string;
-  projectNotes?: string;
+  memoryContent?: string;
 }

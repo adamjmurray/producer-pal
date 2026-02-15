@@ -7,23 +7,40 @@ import { describe, expect, it } from "vitest";
 import { formatParserError } from "./peggy-error-formatter.ts";
 import type { PeggySyntaxError } from "./peggy-parser-types.ts";
 
+interface SyntaxErrorOverrides {
+  expected?: PeggySyntaxError["expected"];
+  found?: string | null;
+  location?: PeggySyntaxError["location"];
+}
+
+function createSyntaxError(
+  overrides: SyntaxErrorOverrides = {},
+): PeggySyntaxError {
+  return {
+    name: "SyntaxError",
+    message: "Expected ...",
+    expected:
+      "expected" in overrides
+        ? (overrides.expected as PeggySyntaxError["expected"])
+        : [{ type: "other", description: "time position" }],
+    found: overrides.found !== undefined ? overrides.found : "x",
+    location: overrides.location ?? {
+      start: { offset: 0, line: 1, column: 1 },
+      end: { offset: 1, line: 1, column: 2 },
+    },
+  };
+}
+
 describe("Peggy Error Formatter", () => {
   describe("formatParserError", () => {
     it("formats error with labeled expectations for barbeat", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [
           { type: "other", description: "time position" },
           { type: "other", description: "note pitch" },
           { type: "other", description: "velocity value" },
         ],
-        found: "x",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 1, line: 1, column: 2 },
-        },
-      };
+      });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -33,9 +50,7 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("formats error with labeled expectations for transform", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [
           { type: "other", description: "parameter name" },
           { type: "other", description: "range selector" },
@@ -45,7 +60,7 @@ describe("Peggy Error Formatter", () => {
           start: { offset: 0, line: 1, column: 1 },
           end: { offset: 7, line: 1, column: 8 },
         },
-      };
+      });
 
       const result = formatParserError(error, "transform");
 
@@ -55,9 +70,7 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("limits expectations to 5 items", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [
           { type: "other", description: "option1" },
           { type: "other", description: "option2" },
@@ -67,12 +80,7 @@ describe("Peggy Error Formatter", () => {
           { type: "other", description: "option6" },
           { type: "other", description: "option7" },
         ],
-        found: "x",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 1, line: 1, column: 2 },
-        },
-      };
+      });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -84,16 +92,14 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("handles error at end of input", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [{ type: "other", description: "expression" }],
         found: null,
         location: {
           start: { offset: 10, line: 1, column: 11 },
           end: { offset: 10, line: 1, column: 11 },
         },
-      };
+      });
 
       const result = formatParserError(error, "transform");
 
@@ -103,21 +109,14 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("ignores non-labeled expectations", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [
           { type: "literal", value: "+" },
           { type: "class", value: "[0-9]" },
           { type: "other", description: "time position" },
           { type: "literal", value: "v" },
         ],
-        found: "x",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 1, line: 1, column: 2 },
-        },
-      };
+      });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -129,19 +128,16 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("falls back to 'valid syntax' when no labels", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [
           { type: "literal", value: "+" },
           { type: "literal", value: "-" },
         ],
-        found: "x",
         location: {
           start: { offset: 5, line: 1, column: 6 },
           end: { offset: 6, line: 1, column: 7 },
         },
-      };
+      });
 
       const result = formatParserError(error, "transform");
 
@@ -151,11 +147,10 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("handles missing location info", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
-        expected: [{ type: "other", description: "parameter name" }],
-        found: "x",
+      const error = {
+        ...createSyntaxError({
+          expected: [{ type: "other", description: "parameter name" }],
+        }),
         location: undefined as unknown as PeggySyntaxError["location"],
       };
 
@@ -166,16 +161,13 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("escapes control characters in found value", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
-        expected: [{ type: "other", description: "time position" }],
+      const error = createSyntaxError({
         found: "\n\t\\",
         location: {
           start: { offset: 0, line: 1, column: 1 },
           end: { offset: 3, line: 1, column: 4 },
         },
-      };
+      });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -183,16 +175,7 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("handles empty expected array", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
-        expected: [],
-        found: "x",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 1, line: 1, column: 2 },
-        },
-      };
+      const error = createSyntaxError({ expected: [] });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -200,16 +183,7 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("handles undefined expected array", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
-        expected: undefined,
-        found: "x",
-        location: {
-          start: { offset: 0, line: 1, column: 1 },
-          end: { offset: 1, line: 1, column: 2 },
-        },
-      };
+      const error = createSyntaxError({ expected: undefined });
 
       const result = formatParserError(error, "bar|beat");
 
@@ -217,16 +191,13 @@ describe("Peggy Error Formatter", () => {
     });
 
     it("formats multi-line error position correctly", () => {
-      const error: PeggySyntaxError = {
-        name: "SyntaxError",
-        message: "Expected ...",
+      const error = createSyntaxError({
         expected: [{ type: "other", description: "parameter assignment" }],
-        found: "x",
         location: {
           start: { offset: 42, line: 3, column: 15 },
           end: { offset: 43, line: 3, column: 16 },
         },
-      };
+      });
 
       const result = formatParserError(error, "transform");
 

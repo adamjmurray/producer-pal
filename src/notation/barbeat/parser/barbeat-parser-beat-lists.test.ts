@@ -33,15 +33,6 @@ describe("BarBeatScript Parser - beat lists", () => {
       ]);
     });
 
-    it("parses beat list with bar shorthand", () => {
-      expect(parser.parse("|1,2,3,4")).toStrictEqual([
-        { bar: null, beat: 1 },
-        { bar: null, beat: 2 },
-        { bar: null, beat: 3 },
-        { bar: null, beat: 4 },
-      ]);
-    });
-
     it("parses beat list with floating point beats", () => {
       expect(parser.parse("1|1,1.5,2,2.5")).toStrictEqual([
         { bar: 1, beat: 1 },
@@ -71,13 +62,9 @@ describe("BarBeatScript Parser - beat lists", () => {
       ]);
     });
 
-    it("parses beat lists mixed with single beats", () => {
-      expect(parser.parse("1|1,2 |3 |4")).toStrictEqual([
-        { bar: 1, beat: 1 },
-        { bar: 1, beat: 2 },
-        { bar: null, beat: 3 },
-        { bar: null, beat: 4 },
-      ]);
+    it("rejects beat list without bar number", () => {
+      expect(() => parser.parse("|1,2,3,4")).toThrow();
+      expect(() => parser.parse("1|1,2 |3 |4")).toThrow();
     });
 
     it("parses beat lists with notes", () => {
@@ -144,23 +131,23 @@ describe("BarBeatScript Parser - beat lists", () => {
 
     it("parses complex drum pattern with beat lists", () => {
       expect(
-        parser.parse("C1 1|1,3 D1 |2,4 F#1 |1,1.5,2,2.5,3,3.5,4,4.5"),
+        parser.parse("C1 1|1,3 D1 1|2,4 F#1 1|1,1.5,2,2.5,3,3.5,4,4.5"),
       ).toStrictEqual([
         { pitch: 36 }, // C1 - kick
         { bar: 1, beat: 1 },
         { bar: 1, beat: 3 },
         { pitch: 38 }, // D1 - snare
-        { bar: null, beat: 2 },
-        { bar: null, beat: 4 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 4 },
         { pitch: 42 }, // F#1 - hi-hat
-        { bar: null, beat: 1 },
-        { bar: null, beat: 1.5 },
-        { bar: null, beat: 2 },
-        { bar: null, beat: 2.5 },
-        { bar: null, beat: 3 },
-        { bar: null, beat: 3.5 },
-        { bar: null, beat: 4 },
-        { bar: null, beat: 4.5 },
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 1.5 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 2.5 },
+        { bar: 1, beat: 3 },
+        { bar: 1, beat: 3.5 },
+        { bar: 1, beat: 4 },
+        { bar: 1, beat: 4.5 },
       ]);
     });
   });

@@ -1,17 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import type { LiveObjectType } from "#src/types/live-object-types.ts";
 import { VERSION } from "#src/shared/version.ts";
-import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { connect } from "./connect.ts";
@@ -23,21 +20,6 @@ vi.mock(
     getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
   }),
 );
-
-function setupBasicMocks(version = "12.3", idMap: Record<string, string> = {}) {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext): string {
-    return idMap[this._path ?? ""] ?? this._id ?? "";
-  });
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext): string {
-    return this._path ?? "";
-  });
-  liveApiCall.mockImplementation(function (
-    this: MockLiveAPIContext,
-    method: string,
-  ): string | null {
-    return method === "get_version_string" ? version : null;
-  });
-}
 
 interface LiveSetConfigOverrides {
   name?: string;
@@ -84,27 +66,192 @@ function createLiveSetConfig(
   return result;
 }
 
-describe("connect", () => {
-  it("returns basic Live Set information and connection status", () => {
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-      "live_set tracks 1": "track1",
-      "live_set tracks 2": "track2",
+function setupConnectScenario(config: LiveSetConfig, version = "12.3"): void {
+  const liveSetProperties = asObject(config.LiveSet);
+  const registeredIds = new Set<string>();
+  const registeredPaths = new Set<string>();
+
+  registerWithTracking(registeredIds, registeredPaths, "live_set", {
+    path: livePath.liveSet,
+    type: "Song",
+    properties: liveSetProperties,
+  });
+  registerWithTracking(registeredIds, registeredPaths, "live_app", {
+    path: "live_app",
+    type: "Application",
+    methods: {
+      get_version_string: () => version,
+    },
+  });
+  registerWithTracking(registeredIds, registeredPaths, "app_view", {
+    path: "live_app view",
+    type: "Application.View",
+    properties: asObject(config.AppView),
+  });
+
+  const trackIds = extractChildIds(liveSetProperties.tracks);
+
+  for (const [trackIndex, trackId] of trackIds.entries()) {
+    const track = livePath.track(trackIndex);
+    const trackPath = String(track);
+    const trackProperties = resolveMappedObjectProperties(
+      config,
+      trackPath,
+      trackId,
+    );
+
+    registerWithTracking(registeredIds, registeredPaths, trackId, {
+      path: trackPath,
+      type: "Track",
+      properties: trackProperties,
     });
 
-    mockLiveApiGet(
+    const deviceIds = extractChildIds(trackProperties.devices);
+
+    for (const [deviceIndex, deviceId] of deviceIds.entries()) {
+      const devicePath = String(track.device(deviceIndex));
+      const deviceProperties = resolveMappedObjectProperties(
+        config,
+        devicePath,
+        deviceId,
+      );
+
+      registerWithTracking(registeredIds, registeredPaths, deviceId, {
+        path: devicePath,
+        type: "Device",
+        properties: deviceProperties,
+      });
+    }
+  }
+
+  const sceneIds = extractChildIds(liveSetProperties.scenes);
+
+  for (const [sceneIndex, sceneId] of sceneIds.entries()) {
+    const scenePath = livePath.scene(sceneIndex);
+    const sceneProperties = resolveMappedObjectProperties(
+      config,
+      scenePath,
+      sceneId,
+    );
+
+    registerWithTracking(registeredIds, registeredPaths, sceneId, {
+      path: scenePath,
+      type: "Scene",
+      properties: sceneProperties,
+    });
+  }
+
+  for (const [key, rawProperties] of Object.entries(config)) {
+    if (key === "LiveSet" || key === "AppView") {
+      continue;
+    }
+
+    const properties = asObject(rawProperties);
+
+    if (isLiveApiPathKey(key)) {
+      if (registeredPaths.has(key)) {
+        continue;
+      }
+
+      const id = key.replaceAll(/\s+/g, "/");
+
+      if (registeredIds.has(id)) {
+        continue;
+      }
+
+      registerWithTracking(registeredIds, registeredPaths, id, {
+        path: key,
+        properties,
+      });
+      continue;
+    }
+
+    const normalizedId = key.startsWith("id ") ? key.slice(3) : key;
+
+    if (registeredIds.has(normalizedId)) {
+      continue;
+    }
+
+    registerWithTracking(registeredIds, registeredPaths, normalizedId, {
+      properties,
+    });
+  }
+}
+
+function registerWithTracking(
+  registeredIds: Set<string>,
+  registeredPaths: Set<string>,
+  id: string,
+  options: {
+    path?: string;
+    type?: LiveObjectType;
+    properties?: Record<string, unknown>;
+    methods?: Record<string, (...args: unknown[]) => unknown>;
+  },
+): void {
+  registerMockObject(id, options);
+  registeredIds.add(id);
+
+  if (options.path) {
+    registeredPaths.add(options.path);
+  }
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (value != null && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function extractChildIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const ids: string[] = [];
+
+  for (let index = 0; index < value.length; index += 2) {
+    if (value[index] === "id") {
+      ids.push(String(value[index + 1]));
+    }
+  }
+
+  return ids;
+}
+
+function resolveMappedObjectProperties(
+  config: LiveSetConfig,
+  path: string,
+  id: string,
+): Record<string, unknown> {
+  return {
+    ...asObject(config[path]),
+    ...asObject(config[id]),
+    ...asObject(config[`id ${id}`]),
+  };
+}
+
+function isLiveApiPathKey(key: string): boolean {
+  return key.startsWith("live_set ") || key === "live_set";
+}
+
+describe("connect", () => {
+  it("returns basic Live Set information and connection status", () => {
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Test Project",
         is_playing: 1,
         tracks: children("track0", "track1", "track2"),
         scenes: children("scene0", "scene1"),
         extra: {
-          "live_set tracks 0": { has_midi_input: 1, devices: [] },
-          "live_set tracks 1": { has_midi_input: 1, devices: [] },
-          "live_set tracks 2": { has_midi_input: 0, devices: [] },
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(2))]: { has_midi_input: 0, devices: [] },
         },
       }),
+      "12.3",
     );
 
     const result = connect();
@@ -142,8 +289,7 @@ describe("connect", () => {
   });
 
   it("handles arrangement view correctly", () => {
-    setupBasicMocks();
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Arrangement Project",
         tempo: 140,
@@ -151,7 +297,9 @@ describe("connect", () => {
         view: "Arranger",
         tracks: children("track0"),
         scenes: children("scene0"),
-        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
+        extra: {
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+        },
       }),
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
@@ -166,13 +314,7 @@ describe("connect", () => {
   });
 
   it("detects instruments on non-host tracks and provides appropriate suggestion", () => {
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-      "live_set tracks 1": "track1",
-      "live_set tracks 0 devices 0": "synth_device",
-    });
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Synth Project",
         tracks: children("track0", "track1"),
@@ -183,6 +325,7 @@ describe("connect", () => {
           synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
         },
       }),
+      "12.3",
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(1);
 
@@ -195,21 +338,17 @@ describe("connect", () => {
   });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-      "live_set tracks 1": "track1",
-    });
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Empty Project",
         tracks: children("track0", "track1"),
         scenes: children("scene0"),
         extra: {
-          "live_set tracks 0": { has_midi_input: 1, devices: [] },
-          "live_set tracks 1": { has_midi_input: 1, devices: [] },
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
         },
       }),
+      "12.3",
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(1);
 
@@ -221,17 +360,16 @@ describe("connect", () => {
   });
 
   it("handles null host track index gracefully", () => {
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-    });
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "No Host Index Project",
         tracks: children("track0"),
         scenes: children("scene0"),
-        extra: { "live_set tracks 0": { has_midi_input: 1, devices: [] } },
+        extra: {
+          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
+        },
       }),
+      "12.3",
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(null);
 
@@ -246,8 +384,10 @@ describe("connect", () => {
   });
 
   it("handles empty Live Set correctly", () => {
-    setupBasicMocks("12.3", { live_set: "live_set_id" });
-    mockLiveApiGet(createLiveSetConfig({ name: "Empty Live Set" }));
+    setupConnectScenario(
+      createLiveSetConfig({ name: "Empty Live Set" }),
+      "12.3",
+    );
     vi.mocked(getHostTrackIndex).mockReturnValue(null);
 
     const result = connect();
@@ -262,8 +402,7 @@ describe("connect", () => {
   });
 
   it("includes scale property when scale is enabled", () => {
-    setupBasicMocks();
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Scale Test Project",
         liveSetExtra: { scale_mode: 1, scale_name: "Minor", root_note: 3 },
@@ -275,8 +414,7 @@ describe("connect", () => {
   });
 
   it("excludes scale property when scale is disabled", () => {
-    setupBasicMocks();
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "No Scale Project",
         liveSetExtra: { scale_mode: 0, scale_name: "Major", root_note: 0 },
@@ -288,8 +426,7 @@ describe("connect", () => {
   });
 
   it("omits name property when Live Set name is empty string", () => {
-    setupBasicMocks();
-    mockLiveApiGet(createLiveSetConfig({ name: "" }));
+    setupConnectScenario(createLiveSetConfig({ name: "" }));
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect();
@@ -300,13 +437,7 @@ describe("connect", () => {
 
   it("skips non-instrument devices when searching for instruments", () => {
     // Test that the inner loop continues when a device is not an instrument (effect device)
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-      "live_set tracks 0 devices 0": "effect_device",
-      "live_set tracks 0 devices 1": "synth_device",
-    });
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Mixed Devices Project",
         tracks: children("track0"),
@@ -320,6 +451,7 @@ describe("connect", () => {
           synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
         },
       }),
+      "12.3",
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
@@ -331,14 +463,7 @@ describe("connect", () => {
 
   it("breaks outer loop after finding first instrument", () => {
     // Test the outer break when foundAnyInstrument is true
-    setupBasicMocks("12.3", {
-      live_set: "live_set_id",
-      "live_set tracks 0": "track0",
-      "live_set tracks 1": "track1",
-      "live_set tracks 0 devices 0": "synth_device0",
-      "live_set tracks 1 devices 0": "synth_device1",
-    });
-    mockLiveApiGet(
+    setupConnectScenario(
       createLiveSetConfig({
         name: "Multi-Instrument Project",
         tracks: children("track0", "track1"),
@@ -350,6 +475,7 @@ describe("connect", () => {
           synth_device1: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
         },
       }),
+      "12.3",
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 

@@ -1,38 +1,30 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { captureScene } from "./capture-scene.ts";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set view selected_scene") {
-        return "live_set scenes 1";
-      }
-
-      return this._path;
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
     });
-    mockLiveApiGet({
-      "live_set scenes 2": { name: "Captured Scene" },
-      LiveSet: { tracks: [] }, // No tracks means no clips
+
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(1),
+    });
+    registerMockObject("live_set/scenes/2", {
+      path: livePath.scene(2),
     });
 
     const result = captureScene();
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/2",
@@ -42,16 +34,22 @@ describe("captureScene", () => {
   });
 
   it("should select a scene before capturing if sceneIndex is provided", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set view selected_scene") {
-        return "live_set scenes 2";
-      }
-
-      return this._path;
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
     });
-    mockLiveApiGet({
-      "live_set scenes 3": { name: "Captured Scene after select" },
-      LiveSet: { tracks: [] }, // No tracks means no clips
+    const appView = registerMockObject("live_set/view", {
+      path: livePath.view.song,
+    });
+
+    registerMockObject("live_set/scenes/2", {
+      path: livePath.scene(2),
+    });
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(2),
+    });
+    registerMockObject("live_set/scenes/3", {
+      path: livePath.scene(3),
     });
 
     const result = captureScene({ sceneIndex: 2 });
@@ -62,42 +60,32 @@ describe("captureScene", () => {
       clips: [],
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
+    expect(appView.set).toHaveBeenCalledWith(
       "selected_scene",
       "id live_set/scenes/2",
     );
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
   });
 
   it("should set the scene name when provided", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set view selected_scene") {
-        return "live_set scenes 1";
-      }
-
-      return this._path;
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
     });
-    mockLiveApiGet({
-      LiveSet: { tracks: [] }, // No tracks means no clips
+
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(1),
+    });
+    const newScene = registerMockObject("live_set/scenes/2", {
+      path: livePath.scene(2),
     });
 
     const result = captureScene({ name: "Captured Custom Name" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set scenes 2" }),
-      "name",
-      "Captured Custom Name",
-    );
+    expect(newScene.set).toHaveBeenCalledWith("name", "Captured Custom Name");
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/2",
@@ -107,33 +95,27 @@ describe("captureScene", () => {
   });
 
   it("should throw an error when selected scene index can't be determined", () => {
-    liveApiPath.mockReturnValue("");
+    registerMockObject("live_set/view/selected_scene", { path: "" });
+
     expect(() => captureScene()).toThrow(
       "capture-scene failed: couldn't determine selected scene index",
     );
   });
 
   it("should return captured clips with their IDs and track indices", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set view selected_scene") {
-        return "live_set scenes 0";
-      }
-
-      return this._path;
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
     });
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
-      if (this._path === "live_set tracks 1 clip_slots 1 clip") {
-        return "0";
-      }
-
-      return this._id;
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(0),
     });
-    mockLiveApiGet({
-      "live_set scenes 1": { name: "Captured Scene" },
-      LiveSet: {
-        tracks: ["id", "1", "id", "2", "id", "3"],
-      },
+    registerMockObject("live_set/scenes/1", {
+      path: livePath.scene(1),
+    });
+    // Mark track 1's clip as non-existent (id "0" makes exists() return false)
+    registerMockObject("0", {
+      path: livePath.track(1).clipSlot(1).clip(),
     });
 
     const result = captureScene();

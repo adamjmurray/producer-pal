@@ -9,6 +9,7 @@ import {
 import * as console from "#src/shared/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>
@@ -96,7 +97,7 @@ export function extendSongIfNeeded(
 
   const arrangementClipResult = selectedTrack.call(
     "duplicate_clip_to_arrangement",
-    `id ${sessionClip.id}`,
+    toLiveApiId(sessionClip.id),
     targetBeats,
   ) as string;
   const arrangementClip = LiveAPI.from(arrangementClipResult);
@@ -121,7 +122,7 @@ export function cleanupTempClip(tempClipInfo: TempClipInfo | null): void {
   const { track, clipId, isMidiTrack, slot } = tempClipInfo;
 
   // Delete the arrangement clip
-  track.call("delete_clip", `id ${clipId}`);
+  track.call("delete_clip", toLiveApiId(clipId));
 
   // For audio clips, also delete the session clip
   if (!isMidiTrack && slot) {

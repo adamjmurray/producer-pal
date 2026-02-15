@@ -1,36 +1,41 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "./create-device.ts";
 
 describe("createDevice", () => {
+  let track0: RegisteredMockObject;
+  let chain0: RegisteredMockObject;
+
   beforeEach(() => {
-    liveApiId.mockReturnValue("device123");
-    liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
-
-    // Default: chains exist so auto-creation isn't triggered
-    liveApiGet.mockImplementation(function (prop) {
-      if (prop === "chains") return ["id", "chain-0"];
-      if (prop === "can_have_drum_pads") return [0];
-
-      return [];
+    track0 = registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: { insert_device: () => ["id", "device123"] },
     });
 
-    liveApiCall.mockImplementation((method, _deviceName, _deviceIndex) => {
-      if (method === "insert_device") {
-        return ["id", "device123"];
-      }
+    registerMockObject("device123", {
+      path: livePath.track(0).device(2),
+    });
 
-      return null;
+    // Default rack for chain path resolution
+    registerMockObject("rack-0", {
+      path: livePath.track(0).device(0),
+      properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
+    });
+
+    chain0 = registerMockObject("chain-0-handle", {
+      path: livePath.track(0).device(0).chain(0),
+      methods: { insert_device: () => ["id", "device123"] },
     });
   });
 
@@ -203,7 +208,8 @@ describe("createDevice", () => {
     it("should not call Live API when listing devices", () => {
       createDevice({});
 
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(track0.call).not.toHaveBeenCalled();
+      expect(chain0.call).not.toHaveBeenCalled();
     });
   });
 
@@ -218,18 +224,12 @@ describe("createDevice", () => {
   describe("path-based device creation", () => {
     describe("track paths", () => {
       it("should create device on track via path (append)", () => {
-        liveApiPath.mockReturnValue("live_set tracks 0 devices 2");
-
         const result = createDevice({
           path: "t0",
           deviceName: "Compressor",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ _path: "live_set tracks 0" }),
-          "insert_device",
-          "Compressor",
-        );
+        expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 2,
@@ -237,15 +237,16 @@ describe("createDevice", () => {
       });
 
       it("should create device on track via path with position", () => {
-        liveApiPath.mockReturnValue("live_set tracks 0 devices 1");
+        registerMockObject("device123", {
+          path: livePath.track(0).device(1),
+        });
 
         const result = createDevice({
           path: "t0/d1",
           deviceName: "EQ Eight",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ _path: "live_set tracks 0" }),
+        expect(track0.call).toHaveBeenCalledWith(
           "insert_device",
           "EQ Eight",
           1,
@@ -257,23 +258,22 @@ describe("createDevice", () => {
       });
 
       it("should create device on return track via path", () => {
-        // Mock existing device so position is passed (not fallback to append)
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "devices") return ["id", "existing-device"];
-          if (prop === "chains") return ["id", "chain-0"];
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
+        const returnTrack = registerMockObject("rt-0", {
+          path: livePath.returnTrack(0),
+          properties: { devices: ["id", "existing-device"] },
+          methods: { insert_device: () => ["id", "device123"] },
         });
-        liveApiPath.mockReturnValue("live_set return_tracks 0 devices 0");
+
+        registerMockObject("device123", {
+          path: livePath.returnTrack(0).device(0),
+        });
 
         const result = createDevice({
           path: "rt0/d0",
           deviceName: "Reverb",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ _path: "live_set return_tracks 0" }),
+        expect(returnTrack.call).toHaveBeenCalledWith(
           "insert_device",
           "Reverb",
           0,
@@ -285,8 +285,9 @@ describe("createDevice", () => {
       });
 
       it("should fallback to append when position is 0 on empty container", () => {
-        // Default mock returns empty devices array
-        liveApiPath.mockReturnValue("live_set tracks 0 devices 0");
+        registerMockObject("device123", {
+          path: livePath.track(0).device(0),
+        });
 
         const result = createDevice({
           path: "t0/d0",
@@ -294,11 +295,7 @@ describe("createDevice", () => {
         });
 
         // Should call insert_device WITHOUT position (append mode)
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ _path: "live_set tracks 0" }),
-          "insert_device",
-          "Compressor",
-        );
+        expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,
@@ -306,18 +303,25 @@ describe("createDevice", () => {
       });
 
       it("should create device on master track via path", () => {
-        liveApiPath.mockReturnValue("live_set master_track devices 0");
+        const masterTrack = registerMockObject("mt-0", {
+          path: livePath.masterTrack(),
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+
+        registerMockObject("device123", {
+          path: livePath.masterTrack().device(0),
+        });
 
         const result = createDevice({
           path: "mt",
           deviceName: "Limiter",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ _path: "live_set master_track" }),
+        expect(masterTrack.call).toHaveBeenCalledWith(
           "insert_device",
           "Limiter",
         );
+        expect(track0.call).not.toHaveBeenCalled();
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,
@@ -332,42 +336,35 @@ describe("createDevice", () => {
           deviceName: "Compressor",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({
-            _path: "live_set tracks 0 devices 0 chains 0",
-          }),
-          "insert_device",
-          "Compressor",
-        );
-        expect((result as { id: string }).id).toBe("device123");
+        expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
+        expect(result).toMatchObject({ id: "device123" });
       });
 
       it("should create device in chain via path with position", () => {
-        // Mock existing device so position is passed (not fallback to append)
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "devices") return ["id", "existing-device"];
-          if (prop === "chains") return ["id", "chain-0"];
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
+        registerMockObject("rack-0", {
+          path: livePath.track(0).device(0),
+          properties: {
+            chains: children("chain-0"),
+            can_have_drum_pads: 0,
+            devices: ["id", "existing-device"],
+          },
         });
-        liveApiPath.mockReturnValue(
-          "live_set tracks 0 devices 0 chains 0 devices 0",
-        );
+        const chain = registerMockObject("chain-0-handle", {
+          path: livePath.track(0).device(0).chain(0),
+          properties: { devices: ["id", "existing-device"] },
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+
+        registerMockObject("device123", {
+          path: livePath.track(0).device(0).chain(0).device(0),
+        });
 
         const result = createDevice({
           path: "t0/d0/c0/d0",
           deviceName: "EQ Eight",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({
-            _path: "live_set tracks 0 devices 0 chains 0",
-          }),
-          "insert_device",
-          "EQ Eight",
-          0,
-        );
+        expect(chain.call).toHaveBeenCalledWith("insert_device", "EQ Eight", 0);
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,
@@ -375,27 +372,30 @@ describe("createDevice", () => {
       });
 
       it("should create device in return chain via path", () => {
-        // Mock existing device so position is passed (not fallback to append)
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "devices") return ["id", "existing-device"];
-          if (prop === "chains") return ["id", "chain-0"];
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
+        registerMockObject("rack-0", {
+          path: livePath.track(0).device(0),
+          properties: {
+            chains: children("chain-0"),
+            return_chains: children("rchain-0"),
+            can_have_drum_pads: 0,
+          },
         });
-        liveApiPath.mockReturnValue(
-          "live_set tracks 0 devices 0 return_chains 0 devices 0",
-        );
+        const returnChain = registerMockObject("rchain-0-handle", {
+          path: livePath.track(0).device(0).returnChain(0),
+          properties: { devices: ["id", "existing-device"] },
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+
+        registerMockObject("device123", {
+          path: livePath.track(0).device(0).returnChain(0).device(0),
+        });
 
         const result = createDevice({
           path: "t0/d0/rc0/d0",
           deviceName: "Delay",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({
-            _path: "live_set tracks 0 devices 0 return_chains 0",
-          }),
+        expect(returnChain.call).toHaveBeenCalledWith(
           "insert_device",
           "Delay",
           0,
@@ -409,7 +409,7 @@ describe("createDevice", () => {
 
     describe("error handling", () => {
       it("should throw error for non-existent container", () => {
-        liveApiId.mockReturnValue("0");
+        mockNonExistentObjects();
 
         expect(() =>
           createDevice({
@@ -420,15 +420,14 @@ describe("createDevice", () => {
       });
 
       it("should throw error when container exists() returns false", () => {
-        // Mock track to return valid id but chain container to not exist
         const liveAPIGlobal = global as unknown as {
           LiveAPI: { prototype: { exists: () => boolean } };
         };
         const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (
-          this: MockLiveAPIContext,
-        ) {
+        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
+          _path?: string;
+        }) {
           // Chains container doesn't exist
           return !this._path?.includes("chains");
         });
@@ -446,9 +445,9 @@ describe("createDevice", () => {
       });
 
       it("should throw error when insert_device fails", () => {
-        liveApiCall.mockReturnValue(["id", "0"]);
-        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-          return this._path?.includes("id 0") ? "0" : "device123";
+        registerMockObject("chain-0-handle", {
+          path: livePath.track(0).device(0).chain(0),
+          methods: { insert_device: () => ["id", "0"] },
         });
 
         expect(() =>
@@ -460,8 +459,11 @@ describe("createDevice", () => {
       });
 
       it("should throw error with position when insert_device returns falsy id", () => {
-        // Return undefined as id to trigger the null branch
-        liveApiCall.mockReturnValue(["id", undefined]);
+        track0.call.mockImplementation((method: string) => {
+          if (method === "insert_device") return ["id", undefined];
+
+          return null;
+        });
 
         expect(() =>
           createDevice({

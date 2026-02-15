@@ -453,7 +453,7 @@ describe("Transform Parser", () => {
 
     it("parses multi-parameter transform", () => {
       const result = parser.parse(
-        "velocity += 20 * cos(1:0t) + 10 * noise()\ntiming += 0.03 * noise()\nprobability += 0.2 * cos(0:2t)",
+        "velocity += 20 * cos(1:0t) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(0:2t)",
       );
 
       expect(result).toHaveLength(3);
@@ -535,6 +535,8 @@ describe("Transform Parser", () => {
         "probability",
         "duration",
         "start",
+        "index",
+        "count",
       ];
 
       for (const prop of properties) {
@@ -546,12 +548,54 @@ describe("Transform Parser", () => {
       }
     });
 
+    it("parses clip.duration with namespace", () => {
+      const result = parser.parse("velocity = clip.duration");
+      const variable = result[0]!.expression as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "clip",
+        name: "duration",
+      });
+    });
+
+    it("parses all clip properties with namespace", () => {
+      const properties = ["duration", "index", "position", "count"];
+
+      for (const prop of properties) {
+        const result = parser.parse(`velocity = clip.${prop}`);
+        const variable = result[0]!.expression as VariableNode;
+
+        expect(variable.namespace).toBe("clip");
+        expect(variable.name).toBe(prop);
+      }
+    });
+
+    it("parses bar.duration with namespace", () => {
+      const result = parser.parse("velocity = bar.duration");
+      const variable = result[0]!.expression as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "bar",
+        name: "duration",
+      });
+    });
+
     it("rejects invalid audio property", () => {
       expect(() => parser.parse("gain = audio.velocity")).toThrow();
     });
 
     it("rejects invalid note property", () => {
       expect(() => parser.parse("velocity = note.gain")).toThrow();
+    });
+
+    it("rejects invalid clip property", () => {
+      expect(() => parser.parse("velocity = clip.invalid")).toThrow();
+    });
+
+    it("rejects invalid bar property", () => {
+      expect(() => parser.parse("velocity = bar.invalid")).toThrow();
     });
   });
 

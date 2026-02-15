@@ -16,14 +16,14 @@ Common issues and solutions for Producer Pal.
 ### If AI Claims It Can't Interact with Ableton Live
 
 1. Ask "what tools do you have?"
-2. Verify it lists Producer Pal tools like `ppal-connect`
-3. Say "call your ppal-connect tool"
+2. Verify it lists Producer Pal tools like `ppal-session`
+3. Say "call your ppal-session tool"
 
-Once ppal-connect is called, Producer Pal should work. If "connect to ableton"
+Once ppal-session is called, Producer Pal should work. If "connect to ableton"
 doesn't trigger it, try:
 
 - "connect to ableton with your tools"
-- "connect to ableton with your ppal-connect tool"
+- "connect to ableton with your ppal-session tool"
 
 If tools are visible but the AI won't call them, check you're using a model that
 supports tool calling. Many local models (including some in LM Studio) don't

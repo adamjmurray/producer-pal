@@ -3,15 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  expectedClip,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   createOutputOnlyRoutingMock,
   createSimpleRoutingMock,
@@ -21,93 +15,88 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "./read-track.ts";
+
+function createMasterTrackProperties(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    name: "Master",
+    has_midi_input: 0,
+    can_be_armed: 0,
+    color: 0,
+    mute: 0,
+    solo: 0,
+    arm: 0,
+    is_foldable: 0,
+    is_grouped: 0,
+    group_track: ["id", 0],
+    devices: [],
+    clip_slots: [],
+    arrangement_clips: [],
+    back_to_arranger: 0,
+    playing_slot_index: -1,
+    fired_slot_index: -1,
+    muted_via_solo: 0,
+    ...overrides,
+  };
+}
 
 describe("readTrack", () => {
   describe("wildcard include '*'", () => {
     it("includes all available options when '*' is used", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        switch (this._path) {
-          case "live_set tracks 0":
-            return "track1";
-          case "live_set tracks 0 mixer_device":
-            return "mixer_1";
-          case "live_set tracks 0 mixer_device volume":
-            return "volume_param_1";
-          case "live_set tracks 0 mixer_device panning":
-            return "panning_param_1";
-          case "live_set tracks 0 devices 0":
-            return "synth1";
-          case "live_set tracks 0 devices 1":
-            return "effect1";
-          case "live_set tracks 0 clip_slots 0 clip":
-            return "clip1";
-          default:
-            return this._id!;
-        }
-      });
-
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._path === "id arr_clip1") {
-          return "Clip";
-        }
-
-        if (this._path === "id clip1") {
-          return "Clip";
-        }
-
-        if (this._path === "id synth1") {
-          return "Device";
-        }
-
-        if (this._path === "id effect1") {
-          return "Device";
-        }
-        // Fall back to default MockLiveAPI logic
-      });
-
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          name: "Wildcard Test Track",
-          has_midi_input: 1,
-          devices: children("synth1", "effect1"),
-          clip_slots: children("slot1"),
-          arrangement_clips: children("arr_clip1"),
-          ...createSimpleRoutingMock(),
-        }),
-        MixerDevice: {
-          volume: children("volume_param_1"),
-          panning: children("panning_param_1"),
+      setupTrackPathMappedMocks({
+        pathIdMap: {
+          [String(livePath.track(0))]: "track1",
+          [livePath.track(0).mixerDevice()]: "mixer_1",
+          [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
+          [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+          [String(livePath.track(0).device(0))]: "synth1",
+          [String(livePath.track(0).device(1))]: "effect1",
+          [livePath.track(0).clipSlot(0).clip()]: "clip1",
+          [livePath.track(0).arrangementClip(0)]: "arr_clip1",
         },
-        volume_param_1: {
-          display_value: 0,
+        objects: {
+          Track: mockTrackProperties({
+            name: "Wildcard Test Track",
+            has_midi_input: 1,
+            devices: children("synth1", "effect1"),
+            clip_slots: children("slot1"),
+            arrangement_clips: children("arr_clip1"),
+            ...createSimpleRoutingMock(),
+          }),
+          mixer_1: {
+            volume: children("volume_param_1"),
+            panning: children("panning_param_1"),
+          },
+          volume_param_1: {
+            display_value: 0,
+          },
+          panning_param_1: {
+            value: 0,
+          },
+          synth1: {
+            name: "Analog",
+            class_name: "UltraAnalog",
+            class_display_name: "Analog",
+            type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+            is_active: 1,
+            can_have_chains: 0,
+            can_have_drum_pads: 0,
+          },
+          effect1: {
+            name: "Reverb",
+            class_name: "Reverb",
+            class_display_name: "Reverb",
+            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            is_active: 1,
+            can_have_chains: 0,
+            can_have_drum_pads: 0,
+          },
+          clip1: expectedClip({ id: "clip1", view: "session" }),
+          arr_clip1: expectedClip({ id: "arr_clip1", view: "arrangement" }),
         },
-        panning_param_1: {
-          value: 0,
-        },
-        synth1: {
-          name: "Analog",
-          class_name: "UltraAnalog",
-          class_display_name: "Analog",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        effect1: {
-          name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        slot1: {
-          clip: expectedClip({ id: "clip1", view: "session" }),
-        },
-        clip1: expectedClip({ id: "clip1", view: "session" }),
-        arr_clip1: expectedClip({ id: "arr_clip1", view: "arrangement" }),
       });
 
       // Test with '*' - should include everything
@@ -156,38 +145,66 @@ describe("readTrack", () => {
         }),
       );
     });
+
+    it("applies mapped path-key object properties", () => {
+      setupTrackPathMappedMocks({
+        pathIdMap: {
+          [String(livePath.track(0))]: "track1",
+          [livePath.track(0).arrangementClip(0)]: "arr_clip1",
+        },
+        objects: {
+          Track: mockTrackProperties({
+            arrangement_clips: children("arr_clip1"),
+            devices: [],
+            clip_slots: [],
+          }),
+          [livePath.track(0).arrangementClip(0)]: {
+            is_arrangement_clip: 1,
+            name: "Clip From Path Key",
+          },
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["arrangement-clips"],
+      });
+
+      const arrangementClips = result.arrangementClips as Array<{
+        name: string;
+      }>;
+
+      expect(arrangementClips).toHaveLength(1);
+      expect(arrangementClips[0]!.name).toBe("Clip From Path Key");
+    });
   });
 
   describe("category parameter", () => {
     describe("return tracks", () => {
       it("reads return track when category is 'return'", () => {
-        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-          if (this.path === "live_set return_tracks 1") {
-            return "return_track_1";
-          }
-
-          return "id 0";
-        });
-
-        mockLiveApiGet({
-          "live_set return_tracks 1": {
-            name: "Return B",
-            has_midi_input: 0, // Return tracks are typically audio
-            color: 65280, // Green
-            mute: 0,
-            solo: 0,
-            arm: 0,
-            can_be_armed: 0, // Return tracks cannot be armed
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: [],
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.returnTrack(1)),
+          trackId: "return_track_1",
+          objects: {
+            Track: {
+              name: "Return B",
+              has_midi_input: 0, // Return tracks are typically audio
+              color: 65280, // Green
+              mute: 0,
+              solo: 0,
+              arm: 0,
+              can_be_armed: 0, // Return tracks cannot be armed
+              is_foldable: 0,
+              is_grouped: 0,
+              group_track: ["id", 0],
+              devices: [],
+              clip_slots: [],
+              arrangement_clips: [],
+              back_to_arranger: 0,
+              playing_slot_index: -1,
+              fired_slot_index: -1,
+              muted_via_solo: 0,
+            },
           },
         });
 
@@ -206,7 +223,10 @@ describe("readTrack", () => {
       });
 
       it("throws when return track does not exist", () => {
-        liveApiId.mockReturnValue("id 0");
+        registerMockObject("0", {
+          path: livePath.returnTrack(99),
+          type: "Track",
+        });
 
         expect(() => readTrack({ trackIndex: 99, category: "return" })).toThrow(
           "readTrack: returnTrackIndex 99 does not exist",
@@ -214,41 +234,18 @@ describe("readTrack", () => {
       });
 
       it("includes routing properties for return tracks when requested", () => {
-        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-          if (this.path === "live_set return_tracks 0") {
-            return "return_track_1";
-          }
-
-          return "id 0";
-        });
-        liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-          return this._path;
-        });
-
-        mockLiveApiGet({
-          "live_set return_tracks 0": {
-            name: "Return A",
-            has_midi_input: 0,
-            can_be_armed: 0,
-            color: 0,
-            mute: 0,
-            solo: 0,
-            arm: 0,
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: [],
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
-            ...createOutputOnlyRoutingMock(),
-            available_input_routing_channels: null,
-            available_input_routing_types: null,
-            input_routing_channel: null,
-            input_routing_type: null,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.returnTrack(0)),
+          trackId: "return_track_1",
+          objects: {
+            Track: createMasterTrackProperties({
+              name: "Return A",
+              ...createOutputOnlyRoutingMock(),
+              available_input_routing_channels: null,
+              available_input_routing_types: null,
+              input_routing_channel: null,
+              input_routing_type: null,
+            }),
           },
         });
 
@@ -278,42 +275,26 @@ describe("readTrack", () => {
 
     describe("master track", () => {
       it("reads master track when category is 'master'", () => {
-        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-          if (this.path === "live_set master_track") {
-            return "master_track";
-          }
-
-          return "id 0";
-        });
-
-        mockLiveApiGet({
-          "live_set master_track": {
-            name: "Master",
-            has_midi_input: 0, // Master track is audio
-            color: 16777215, // White
-            can_be_armed: 0, // Master track cannot be armed
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: children("compressor1"),
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
-            mute: 0,
-            solo: 0,
-            arm: 0,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.masterTrack()),
+          trackId: "master_track",
+          pathIdMap: {
+            [String(livePath.masterTrack().device(0))]: "compressor1",
           },
-          compressor1: {
-            name: "Compressor",
-            class_name: "Compressor2",
-            class_display_name: "Compressor",
-            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-            is_active: 1,
-            can_have_chains: 0,
-            can_have_drum_pads: 0,
+          objects: {
+            Track: createMasterTrackProperties({
+              color: 16777215, // White
+              devices: children("compressor1"),
+            }),
+            compressor1: {
+              name: "Compressor",
+              class_name: "Compressor2",
+              class_display_name: "Compressor",
+              type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+              is_active: 1,
+              can_have_chains: 0,
+              can_have_drum_pads: 0,
+            },
           },
         });
 
@@ -335,7 +316,10 @@ describe("readTrack", () => {
       });
 
       it("throws when master track does not exist", () => {
-        liveApiId.mockReturnValue("id 0");
+        registerMockObject("0", {
+          path: livePath.masterTrack(),
+          type: "Track",
+        });
 
         expect(() => readTrack({ trackIndex: 0, category: "master" })).toThrow(
           "readTrack: trackIndex null does not exist",
@@ -343,56 +327,35 @@ describe("readTrack", () => {
       });
 
       it("includes audio effects for master track when requested", () => {
-        liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-          switch (this._path) {
-            case "live_set master_track":
-              return "master_track";
-            case "live_set master_track devices 0":
-              return "compressor1";
-            case "live_set master_track devices 1":
-              return "limiter1";
-            default:
-              return this._id!;
-          }
-        });
-
-        mockLiveApiGet({
-          "live_set master_track": {
-            name: "Master",
-            has_midi_input: 0,
-            color: 0,
-            mute: 0,
-            solo: 0,
-            arm: 0,
-            can_be_armed: 0,
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: children("compressor1", "limiter1"),
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.masterTrack()),
+          trackId: "master_track",
+          pathIdMap: {
+            [String(livePath.masterTrack().device(0))]: "compressor1",
+            [String(livePath.masterTrack().device(1))]: "limiter1",
           },
-          compressor1: {
-            name: "Compressor",
-            class_name: "Compressor2",
-            class_display_name: "Compressor",
-            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-            is_active: 1,
-            can_have_chains: 0,
-            can_have_drum_pads: 0,
-          },
-          limiter1: {
-            name: "Limiter",
-            class_name: "Limiter",
-            class_display_name: "Limiter",
-            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-            is_active: 1,
-            can_have_chains: 0,
-            can_have_drum_pads: 0,
+          objects: {
+            Track: createMasterTrackProperties({
+              devices: children("compressor1", "limiter1"),
+            }),
+            compressor1: {
+              name: "Compressor",
+              class_name: "Compressor2",
+              class_display_name: "Compressor",
+              type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+              is_active: 1,
+              can_have_chains: 0,
+              can_have_drum_pads: 0,
+            },
+            limiter1: {
+              name: "Limiter",
+              class_name: "Limiter",
+              class_display_name: "Limiter",
+              type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+              is_active: 1,
+              can_have_chains: 0,
+              can_have_drum_pads: 0,
+            },
           },
         });
 
@@ -405,36 +368,23 @@ describe("readTrack", () => {
         expect(result.audioEffects).toStrictEqual([
           {
             id: "compressor1",
+            path: "mt/d0",
             type: "audio-effect: Compressor",
           },
           {
             id: "limiter1",
+            path: "mt/d1",
             type: "audio-effect: Limiter",
           },
         ]);
       });
 
       it("sets null routing properties for master track when requested", () => {
-        liveApiId.mockReturnValue("master_track");
-        mockLiveApiGet({
-          Track: {
-            name: "Master",
-            has_midi_input: 0,
-            can_be_armed: 0,
-            color: 0,
-            mute: 0,
-            solo: 0,
-            arm: 0,
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: [],
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.masterTrack()),
+          trackId: "master_track",
+          objects: {
+            Track: createMasterTrackProperties(),
           },
         });
 
@@ -456,26 +406,13 @@ describe("readTrack", () => {
       });
 
       it("reads master track without requiring trackIndex", () => {
-        liveApiId.mockReturnValue("master_track");
-        mockLiveApiGet({
-          "live_set master_track": {
-            name: "Master",
-            has_midi_input: 0,
-            can_be_armed: 0,
-            color: 16777215, // White
-            mute: 0,
-            solo: 0,
-            arm: 0,
-            is_foldable: 0,
-            is_grouped: 0,
-            group_track: ["id", 0],
-            devices: [],
-            clip_slots: [],
-            arrangement_clips: [],
-            back_to_arranger: 0,
-            playing_slot_index: -1,
-            fired_slot_index: -1,
-            muted_via_solo: 0,
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.masterTrack()),
+          trackId: "master_track",
+          objects: {
+            Track: createMasterTrackProperties({
+              color: 16777215, // White
+            }),
           },
         });
 
@@ -495,11 +432,13 @@ describe("readTrack", () => {
 
     describe("regular tracks (default behavior)", () => {
       it("defaults to regular track when category is not specified", () => {
-        liveApiId.mockReturnValue("track1");
-        mockLiveApiGet({
-          Track: mockTrackProperties({
-            name: "Default Track",
-          }),
+        setupTrackPathMappedMocks({
+          trackId: "track1",
+          objects: {
+            Track: mockTrackProperties({
+              name: "Default Track",
+            }),
+          },
         });
 
         const result = readTrack({ trackIndex: 0 });
@@ -510,11 +449,13 @@ describe("readTrack", () => {
       });
 
       it("reads regular track when category is explicitly 'regular'", () => {
-        liveApiId.mockReturnValue("track1");
-        mockLiveApiGet({
-          Track: mockTrackProperties({
-            name: "Regular Track",
-          }),
+        setupTrackPathMappedMocks({
+          trackId: "track1",
+          objects: {
+            Track: mockTrackProperties({
+              name: "Regular Track",
+            }),
+          },
         });
 
         const result = readTrack({ trackIndex: 0, category: "regular" });

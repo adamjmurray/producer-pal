@@ -345,7 +345,6 @@ describe("barbeat-interpreter-helpers", () => {
 
       expect(result).toStrictEqual({
         currentTime: { bar: 2, beat: 1 },
-        hasExplicitBarNumber: true,
       });
       expect(events).toHaveLength(1);
       expect(events[0]!.start_time).toBe(4); // Bar 2 starts at beat 4

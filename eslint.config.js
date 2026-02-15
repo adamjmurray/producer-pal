@@ -288,7 +288,21 @@ const tsOnlyRules = {
   // Strict type-checked rules
   "@typescript-eslint/no-unnecessary-type-assertion": "error", // Remove redundant `as X` casts
   "@typescript-eslint/restrict-plus-operands": "error", // Only add numbers or strings
-  "@typescript-eslint/restrict-template-expressions": "error", // Only strings in templates
+  "@typescript-eslint/restrict-template-expressions": [
+    "error",
+    {
+      allow: [
+        // Defaults from recommended config
+        { from: "lib", name: ["Error", "URL", "URLSearchParams"] },
+        // Live API path builders (have toString())
+        {
+          from: "file",
+          name: ["TrackPath", "DevicePath", "ClipSlotPath", "ChainPath"],
+          path: "src/shared/live-api-path-builders.ts",
+        },
+      ],
+    },
+  ], // Only strings in templates (path builders allowed)
   "@typescript-eslint/unified-signatures": "error", // Merge overloads when possible
   "@typescript-eslint/no-unnecessary-boolean-literal-compare": "error", // No `=== true`
   "@typescript-eslint/prefer-reduce-type-parameter": "error", // Use reduce<T>() not reduce(...) as T

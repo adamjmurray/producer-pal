@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
@@ -65,7 +66,7 @@ export function handleQuantization(
   const swingToUse = quantizeSwing ?? 0;
 
   // Set swing, quantize, restore swing
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const originalSwing = liveSet.getProperty("swing_amount");
 
   liveSet.set("swing_amount", swingToUse);

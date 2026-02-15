@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   parseIncludeArray,
@@ -55,7 +56,7 @@ export function readScene(
     args.include,
     READ_SCENE_DEFAULTS,
   );
-  const liveSet = LiveAPI.from(`live_set`);
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   let scene: LiveAPI;
   let resolvedSceneIndex: number | null | undefined = sceneIndex;
@@ -67,7 +68,8 @@ export function readScene(
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
-    scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    // sceneIndex guaranteed defined here: null-check at function start covers sceneId==null case
+    scene = LiveAPI.from(livePath.scene(sceneIndex as number));
   }
 
   if (!scene.exists()) {

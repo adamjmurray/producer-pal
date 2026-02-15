@@ -27,7 +27,7 @@ reach out directly.
 - More flexible randomization: arbitrary min and max, randomly choose between a
   set of choices (e.g. the notes of a chord)
 - More note properties available as variables (e.g. note.index within the MIDI
-  clip, clip.arrangementStart)
+  clip, clip.position)
 - Ability to apply LFOs relative to the arrangement start instead of clip start
 - Code execution feature for the AI to generate custom algorithms for transforms
   and MIDI note generation

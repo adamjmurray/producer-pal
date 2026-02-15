@@ -1,12 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Test helper functions for read-clip tests
  */
 import { expect } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface TestNote {
   note_id?: number;
@@ -39,10 +44,40 @@ interface ClipProperties {
 interface SetupMidiClipMockOptions {
   notes?: TestNote[];
   clipProps: ClipProperties;
+  trackIndex?: number;
+  sceneIndex?: number;
+  clipId?: string;
+  path?: string;
 }
 
 interface SetupAudioClipMockOptions {
   clipProps: ClipProperties;
+  trackIndex?: number;
+  sceneIndex?: number;
+  clipId?: string;
+  path?: string;
+}
+
+interface ResolveClipPathOptions {
+  trackIndex?: number;
+  sceneIndex?: number;
+  path?: string;
+}
+
+function resolveClipPath({
+  trackIndex = 1,
+  sceneIndex = 1,
+  path,
+}: ResolveClipPathOptions): string {
+  if (path != null) {
+    return path;
+  }
+
+  return livePath.track(trackIndex).clipSlot(sceneIndex).clip();
+}
+
+function defaultClipId(path: string): string {
+  return path.replaceAll(/\s+/g, "/");
 }
 
 // Default test notes: C3, D3, E3 at beats 0, 1, 2
@@ -99,37 +134,62 @@ export function createTestNote(opts: CreateTestNoteOptions): TestNote {
 }
 
 /**
- * Helper to set up mocks for a MIDI clip with notes
+ * Helper to set up mocks for a MIDI clip with notes.
+ * Registers a clip at "live_set tracks 1 clip_slots 1 clip".
  * @param opts - Options
  * @param opts.notes - Notes array (defaults to defaultTestNotes)
  * @param opts.clipProps - Clip properties to mock
+ * @param opts.trackIndex - Session track index (defaults to 1)
+ * @param opts.sceneIndex - Session scene index (defaults to 1)
+ * @param opts.clipId - Explicit clip ID for registry
+ * @param opts.path - Explicit clip path (overrides trackIndex/sceneIndex)
+ * @returns Handle for the registered clip
  */
 export function setupMidiClipMock({
   notes = defaultTestNotes,
   clipProps,
-}: SetupMidiClipMockOptions): void {
-  liveApiCall.mockImplementation(function (method: string) {
-    if (method === "get_notes_extended") {
-      return JSON.stringify({ notes });
-    }
+  trackIndex,
+  sceneIndex,
+  clipId,
+  path,
+}: SetupMidiClipMockOptions): RegisteredMockObject {
+  const clipPath = resolveClipPath({ trackIndex, sceneIndex, path });
 
-    return null;
-  });
-  mockLiveApiGet({
-    "live_set/tracks/1/clip_slots/1/clip": clipProps,
+  return registerMockObject(clipId ?? defaultClipId(clipPath), {
+    path: clipPath,
+    properties: {
+      is_midi_clip: 1,
+      ...clipProps,
+    },
+    methods: {
+      get_notes_extended: () => JSON.stringify({ notes }),
+    },
   });
 }
 
 /**
- * Helper to set up mocks for an audio clip (no notes)
+ * Helper to set up mocks for an audio clip (no notes).
+ * Registers a clip at "live_set tracks 1 clip_slots 1 clip".
  * @param opts - Options
  * @param opts.clipProps - Clip properties to mock
+ * @param opts.trackIndex - Session track index (defaults to 1)
+ * @param opts.sceneIndex - Session scene index (defaults to 1)
+ * @param opts.clipId - Explicit clip ID for registry
+ * @param opts.path - Explicit clip path (overrides trackIndex/sceneIndex)
+ * @returns Handle for the registered clip
  */
 export function setupAudioClipMock({
   clipProps,
-}: SetupAudioClipMockOptions): void {
-  mockLiveApiGet({
-    "live_set/tracks/1/clip_slots/1/clip": {
+  trackIndex,
+  sceneIndex,
+  clipId,
+  path,
+}: SetupAudioClipMockOptions): RegisteredMockObject {
+  const clipPath = resolveClipPath({ trackIndex, sceneIndex, path });
+
+  return registerMockObject(clipId ?? defaultClipId(clipPath), {
+    path: clipPath,
+    properties: {
       is_midi_clip: 0,
       ...clipProps,
     },
@@ -137,11 +197,15 @@ export function setupAudioClipMock({
 }
 
 /**
- * Helper to set up liveApiCall mock for get_notes_extended
- * @param notes - Notes array to return
+ * Override call mocking to return notes for get_notes_extended.
+ * @param handle - Mock handle for the clip
+ * @param notes - Notes array
  */
-export function setupNotesMock(notes: TestNote[]): void {
-  liveApiCall.mockImplementation((method: string) => {
+export function setupNotesMock(
+  handle: RegisteredMockObject,
+  notes: TestNote[],
+): void {
+  handle.call.mockImplementation((method: string) => {
     if (method === "get_notes_extended") {
       return JSON.stringify({ notes });
     }
@@ -192,19 +256,14 @@ export function createClipProps68(
 
 /**
  * Expect get_notes_extended was called with standard parameters.
- * @param clipPath - The clip path (e.g., "live_set tracks 1 clip_slots 1 clip")
+ * @param handle - Mock handle for the clip
  * @param clipLength - The clip length in Ableton beats (default 4)
  */
 export function expectGetNotesExtendedCall(
-  clipPath: string,
+  handle: RegisteredMockObject,
   clipLength = 4,
 ): void {
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({ path: clipPath }),
-    "get_notes_extended",
-    0,
-    128,
-    0,
-    clipLength,
-  );
+  const expectedArgs: unknown[] = ["get_notes_extended", 0, 128, 0, clipLength];
+
+  expect(handle.call).toHaveBeenCalledWith(...expectedArgs);
 }

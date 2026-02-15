@@ -199,7 +199,7 @@ function handleMultiBarSourceRangeCopy(
       `Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
     );
 
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   if (sourceStart > sourceEnd) {
@@ -207,7 +207,7 @@ function handleMultiBarSourceRangeCopy(
       `Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
     );
 
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   validateBufferedState(bufferState, "bar copy");
@@ -265,11 +265,10 @@ function handleMultiBarSourceRangeCopy(
   if (copiedAny) {
     return {
       currentTime: { bar: destStart, beat: 1 },
-      hasExplicitBarNumber: true,
     };
   }
 
-  return { currentTime: null, hasExplicitBarNumber: false };
+  return { currentTime: null };
 }
 
 /**
@@ -300,7 +299,7 @@ export function handleBarCopyRangeDestination(
       `Invalid destination range @${destStart}-${destEnd}= (invalid bar numbers)`,
     );
 
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   if (destStart > destEnd) {
@@ -308,7 +307,7 @@ export function handleBarCopyRangeDestination(
       `Invalid destination range @${destStart}-${destEnd}= (start > end)`,
     );
 
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   // Handle multi-bar source range tiling
@@ -336,7 +335,7 @@ export function handleBarCopyRangeDestination(
         `Cannot copy from previous bar when destination starts at bar ${destStart}`,
       );
 
-      return { currentTime: null, hasExplicitBarNumber: false };
+      return { currentTime: null };
     }
   } else {
     // source.bar must be defined (source.range was handled above at line 341)
@@ -345,7 +344,7 @@ export function handleBarCopyRangeDestination(
     if (sourceBar <= 0) {
       console.warn(`Cannot copy from bar ${sourceBar} (no such bar)`);
 
-      return { currentTime: null, hasExplicitBarNumber: false };
+      return { currentTime: null };
     }
   }
 
@@ -357,7 +356,7 @@ export function handleBarCopyRangeDestination(
   if (sourceNotes == null || sourceNotes.length === 0) {
     console.warn(`Bar ${sourceBar} is empty, nothing to copy`);
 
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   // Copy to each destination bar
@@ -394,11 +393,10 @@ export function handleBarCopyRangeDestination(
   if (copiedAny) {
     return {
       currentTime: { bar: destStart, beat: 1 },
-      hasExplicitBarNumber: true,
     };
   }
 
-  return { currentTime: null, hasExplicitBarNumber: false };
+  return { currentTime: null };
 }
 
 /**
@@ -423,7 +421,7 @@ export function handleBarCopySingleDestination(
   const sourceBars = determineSourceBarsForCopy(element);
 
   if (sourceBars === null) {
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return { currentTime: null };
   }
 
   validateBufferedState(bufferState, "bar copy");
@@ -459,11 +457,10 @@ export function handleBarCopySingleDestination(
   if (copiedAny) {
     return {
       currentTime: { bar: destBar, beat: 1 },
-      hasExplicitBarNumber: true,
     };
   }
 
-  return { currentTime: null, hasExplicitBarNumber: false };
+  return { currentTime: null };
 }
 
 /**

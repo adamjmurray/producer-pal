@@ -37,11 +37,11 @@ function createItemsArray(): KbItem[] {
     { src: "SECURITY.md" },
     { src: "package.json" },
 
-    // Dev docs (entire directory, exclude img and AI-Chat-Project-Instructions)
+    // Dev docs (entire directory, exclude img)
     {
-      src: "dev-docs",
+      src: "dev",
       isDir: true,
-      exclude: ["img", "AI-Chat-Project-Instructions.md"],
+      exclude: ["img"],
     },
 
     // User docs (entire directory, exclude .vitepress)

@@ -4,16 +4,19 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  CHROMATIC_SCALE_MASK,
   PITCH_CLASS_NAMES,
   PITCH_CLASS_VALUES,
   VALID_PITCH_CLASS_NAMES,
   isValidMidi,
   isValidNoteName,
   isValidPitchClassName,
-  pitchClassToNumber,
-  numberToPitchClass,
   midiToNoteName,
   noteNameToMidi,
+  numberToPitchClass,
+  pitchClassToNumber,
+  quantizePitchToScale,
+  scaleIntervalsToPitchClassMask,
 } from "#src/shared/pitch.ts";
 
 describe("PITCH_CLASS_NAMES", () => {
@@ -434,5 +437,107 @@ describe("round-trip conversions", () => {
 
       expect(result).toBe(name);
     }
+  });
+});
+
+describe("scaleIntervalsToPitchClassMask", () => {
+  it("computes C Major mask", () => {
+    // C Major: C D E F G A B → pitch classes 0,2,4,5,7,9,11
+    const mask = scaleIntervalsToPitchClassMask([0, 2, 4, 5, 7, 9, 11], 0);
+
+    expect(mask).toBe(
+      (1 << 0) |
+        (1 << 2) |
+        (1 << 4) |
+        (1 << 5) |
+        (1 << 7) |
+        (1 << 9) |
+        (1 << 11),
+    );
+  });
+
+  it("computes D Minor mask (root=2)", () => {
+    // D Minor intervals: 0,2,3,5,7,8,10 → pitch classes 2,4,5,7,9,10,0
+    const mask = scaleIntervalsToPitchClassMask([0, 2, 3, 5, 7, 8, 10], 2);
+
+    expect(mask & (1 << 2)).toBeTruthy(); // D
+    expect(mask & (1 << 4)).toBeTruthy(); // E
+    expect(mask & (1 << 5)).toBeTruthy(); // F
+    expect(mask & (1 << 7)).toBeTruthy(); // G
+    expect(mask & (1 << 9)).toBeTruthy(); // A
+    expect(mask & (1 << 10)).toBeTruthy(); // Bb
+    expect(mask & (1 << 0)).toBeTruthy(); // C
+  });
+
+  it("chromatic scale produces CHROMATIC_SCALE_MASK", () => {
+    const mask = scaleIntervalsToPitchClassMask(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      0,
+    );
+
+    expect(mask).toBe(CHROMATIC_SCALE_MASK);
+  });
+});
+
+describe("quantizePitchToScale", () => {
+  // C Major: pitch classes 0,2,4,5,7,9,11
+  const cMajorMask = scaleIntervalsToPitchClassMask([0, 2, 4, 5, 7, 9, 11], 0);
+
+  it("returns in-scale pitch unchanged", () => {
+    expect(quantizePitchToScale(60, cMajorMask)).toBe(60); // C3
+    expect(quantizePitchToScale(62, cMajorMask)).toBe(62); // D3
+    expect(quantizePitchToScale(64, cMajorMask)).toBe(64); // E3
+  });
+
+  it("rounds fractional input to nearest integer first", () => {
+    expect(quantizePitchToScale(60.3, cMajorMask)).toBe(60); // rounds to 60 (C)
+    expect(quantizePitchToScale(60.7, cMajorMask)).toBe(62); // rounds to 61 (C#) → quantizes to 62 (D)
+  });
+
+  it("quantizes out-of-scale pitch to nearest in-scale pitch", () => {
+    // C#/Db (61) is between C (60) and D (62) — equidistant, prefer higher
+    expect(quantizePitchToScale(61, cMajorMask)).toBe(62);
+    // F#/Gb (66) is between F (65) and G (67) — equidistant, prefer higher
+    expect(quantizePitchToScale(66, cMajorMask)).toBe(67);
+  });
+
+  it("prefers higher pitch when equidistant", () => {
+    // Eb (63) is between D (62) and E (64) — equidistant, prefer higher
+    expect(quantizePitchToScale(63, cMajorMask)).toBe(64);
+  });
+
+  it("quantizes to closer pitch when not equidistant", () => {
+    // G# (68) is between G (67) and A (69) — equidistant, prefer higher
+    expect(quantizePitchToScale(68, cMajorMask)).toBe(69);
+    // Bb (70) is between A (69) and B (71) — equidistant, prefer higher
+    expect(quantizePitchToScale(70, cMajorMask)).toBe(71);
+  });
+
+  it("clamps high pitches to nearest in-scale pitch <= 127", () => {
+    // 127 = G8, which IS in C Major
+    expect(quantizePitchToScale(127, cMajorMask)).toBe(127);
+    // 130 is out of range → highest in-scale pitch <= 127
+    expect(quantizePitchToScale(130, cMajorMask)).toBe(127);
+    // 128 rounds to 128 → G8 (127) is in scale
+    expect(quantizePitchToScale(128, cMajorMask)).toBe(127);
+  });
+
+  it("clamps low pitches to nearest in-scale pitch >= 0", () => {
+    // 0 = C-2, which IS in C Major
+    expect(quantizePitchToScale(0, cMajorMask)).toBe(0);
+    // -1 → nearest in-scale >= 0 is C (0)
+    expect(quantizePitchToScale(-1, cMajorMask)).toBe(0);
+    // -5 → nearest in-scale >= 0 is C (0)
+    expect(quantizePitchToScale(-5, cMajorMask)).toBe(0);
+  });
+
+  it("works with pentatonic scale", () => {
+    // C Minor Pentatonic: C Eb F G Bb → pitch classes 0,3,5,7,10
+    const cMinorPentMask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);
+
+    expect(quantizePitchToScale(60, cMinorPentMask)).toBe(60); // C → C
+    expect(quantizePitchToScale(61, cMinorPentMask)).toBe(60); // C# → C (closer)
+    expect(quantizePitchToScale(62, cMinorPentMask)).toBe(63); // D → Eb (closer)
+    expect(quantizePitchToScale(64, cMinorPentMask)).toBe(65); // E → F (closer)
   });
 });

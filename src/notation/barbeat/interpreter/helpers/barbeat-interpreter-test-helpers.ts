@@ -32,7 +32,6 @@ export const defaultBufferState: BufferState = {
  */
 export const nullCopyResult = {
   currentTime: null,
-  hasExplicitBarNumber: false,
 };
 
 /**

@@ -6,6 +6,7 @@
  * Helpers for auto-creating chains when resolving container paths
  */
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 
 // Maximum chains that can be auto-created to prevent runaway creation
@@ -58,15 +59,15 @@ export function resolveContainerWithAutoCreate(
  */
 function resolveTrackPath(segment: string): string {
   if (segment === "mt") {
-    return "live_set master_track";
+    return livePath.masterTrack().toString();
   }
 
   if (segment.startsWith("rt")) {
-    return `live_set return_tracks ${segment.slice(2)}`;
+    return livePath.returnTrack(Number.parseInt(segment.slice(2))).toString();
   }
 
   if (segment.startsWith("t")) {
-    return `live_set tracks ${segment.slice(1)}`;
+    return livePath.track(Number.parseInt(segment.slice(1))).toString();
   }
 
   throw new Error(`Invalid track segment: ${segment}`);

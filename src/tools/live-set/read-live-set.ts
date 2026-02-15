@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
@@ -35,14 +37,14 @@ export function readLiveSet(
 ): Record<string, unknown> {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
   // Compute return track names once for efficiency (used for sends in mixer data)
   const returnTrackNames: string[] = returnTrackIds.map((_, idx) => {
-    const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
+    const rt = LiveAPI.from(livePath.returnTrack(idx));
 
     return rt.getProperty("name") as string;
   });
@@ -97,7 +99,7 @@ export function readLiveSet(
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
         const returnTrack = LiveAPI.from(
-          `live_set return_tracks ${returnTrackIndex}`,
+          livePath.returnTrack(returnTrackIndex),
         );
 
         return readTrackGeneric({
@@ -112,7 +114,7 @@ export function readLiveSet(
   }
 
   if (includeFlags.includeMasterTrack) {
-    const masterTrack = LiveAPI.from("live_set master_track");
+    const masterTrack = LiveAPI.from(livePath.masterTrack());
 
     result.masterTrack = readTrackGeneric({
       track: masterTrack,

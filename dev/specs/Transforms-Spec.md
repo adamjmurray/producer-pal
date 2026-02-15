@@ -3,20 +3,25 @@
 ## Function Signatures
 
 ```javascript
-// Waveforms
-cos(frequency, [phase]); // cosine wave
-tri(frequency, [phase]); // triangle wave
-saw(frequency, [phase]); // sawtooth wave
-square(frequency, [phase], [pulseWidth]); // square wave
-noise(); // random per note
+// Waveforms (sync is an optional trailing keyword, not an expression)
+cos(frequency, [phase], [sync]); // cosine wave
+tri(frequency, [phase], [sync]); // triangle wave
+saw(frequency, [phase], [sync]); // sawtooth wave
+square(frequency, [phase], [pulseWidth], [sync]); // square wave
+rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
+choose(a, b, ...); // random pick from arguments (at least 1)
 ramp(start, end, [speed]); // linear ramp over clip/time range
+curve(start, end, exponent); // exponential ramp over clip/time range
 
 // Math functions
 round(value); // round to nearest integer
 floor(value); // round down to integer
+ceil(value); // round up to integer
 abs(value); // absolute value
+clamp(value, min, max); // clamp value to [min, max] range
 min(a, b, ...); // minimum of 2+ values
 max(a, b, ...); // maximum of 2+ values
+pow(base, exponent); // base raised to exponent
 ```
 
 ## Parameters
@@ -44,14 +49,50 @@ max(a, b, ...); // maximum of 2+ values
   - 0.75 = 75% high, 25% low
   - Can use expressions/variables
 
-- **start** (ramp only): starting value for the ramp (can use
-  expressions/variables)
-- **end** (ramp only): ending value for the ramp (can use expressions/variables)
+- **start** (ramp/curve): starting value (can use expressions/variables)
+- **end** (ramp/curve): ending value (can use expressions/variables)
 - **speed** (ramp only): optional speed multiplier, default 1 (can use
   expressions/variables)
   - 1 = one complete ramp over the clip/time range
   - 2 = two complete ramps
   - 0.5 = half a ramp (reaches midpoint at end)
+- **exponent** (curve only): curve shape, must be > 0 (can use
+  expressions/variables)
+  - > 1 = slow start, fast end (exponential)
+  - < 1 = fast start, slow end (logarithmic)
+  - = 1 = linear (same as ramp)
+
+## Timeline Sync
+
+By default, waveform phase resets to 0 at each clip's start. The `sync` keyword
+makes phase relative to arrangement position 1|1, so waveforms are continuous
+across clips on the global timeline.
+
+- **Syntax**: `sync` is an optional trailing keyword (not an expression) on
+  cyclical waveform functions: `cos`, `tri`, `saw`, `square`
+- **Evaluation**: When `sync` is present,
+  `effectivePosition = note.start + clip.position` is used instead of
+  `note.start` for phase computation
+- **Session clips**: Using `sync` on a session clip skips the assignment with a
+  warning (no arrangement position available)
+- **Audio clips**: `sync` follows the same rule; since audio evaluates at
+  position 0 with no arrangementStart, it will skip with a warning
+- **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
+  math functions is a parse error
+
+```javascript
+// Clip-relative (default) — phase resets at each clip start
+velocity += 20 * cos(4:0t)
+
+// Timeline-synced — continuous phase from 1|1
+velocity += 20 * cos(4:0t, sync)
+
+// With phase offset and sync
+velocity += 20 * cos(4:0t, 0.25, sync)
+
+// square with all args and sync
+velocity += 20 * square(2t, 0, 0.75, sync)
+```
 
 ## Waveform Behavior
 
@@ -63,7 +104,9 @@ max(a, b, ...); // maximum of 2+ values
 - **saw(1t, 0)**: starts at 1.0, descends linearly to -1.0, jumps back to 1.0
 - **square(1t, 0)**: starts high (1.0) for first half, low (-1.0) for second
   half
-- **noise()**: random value between -1.0 and 1.0 per note
+- **rand()**: random value between -1.0 and 1.0 per note (or rand(max) for 0 to
+  max, or rand(min, max) for min to max)
+- **choose(a, b, ...)**: randomly selects one of the provided values per note
 
 **Time range-based waveforms** ramp over the clip/time range duration:
 
@@ -72,6 +115,13 @@ max(a, b, ...); // maximum of 2+ values
   - At the end of the clip/range: wraps back to start (phase 1.0 % 1.0 = 0)
   - Example: ramp(0, 127) in a 4-bar clip goes 0→127 over 4 bars
   - With speed: ramp(0, 127, 2) completes two full 0→127 cycles
+
+- **curve(start, end, exponent)**: exponentially interpolates from start to end
+  - exponent > 1: slow start, fast end (exponential growth)
+  - exponent < 1: fast start, slow end (logarithmic shape)
+  - exponent = 1: linear (same as ramp)
+  - Example: curve(0, 127, 2) in a 4-bar clip goes 0→127 with exponential shape
+  - Example: curve(0, 127, 0.5) goes 0→127 with logarithmic shape
 
 ## Transform Syntax
 
@@ -170,6 +220,18 @@ Access audio clip properties in expressions using the `audio.` prefix:
 - `audio.gain` - Current gain in dB (-70 to 24)
 - `audio.pitchShift` - Current pitch shift in semitones (-48 to 48)
 
+### Context Variables (MIDI and audio clips)
+
+Access clip and bar context in expressions:
+
+- `note.index` - 0-based order of note in clip (MIDI only)
+- `clip.duration` - Clip length in musical beats
+- `clip.index` - 0-based clip order in multi-clip operations
+- `clip.position` - Arrangement position in musical beats (arrangement clips
+  only; session clips skip the assignment with a warning)
+- `bar.duration` - Beats per bar from time signature (e.g., 4 in 4/4, 3 in 3/4,
+  6 in 6/8)
+
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
 
@@ -204,8 +266,11 @@ velocity += 20 * cos(1:0t, 0.5)
 // Pulse width modulation
 velocity += 20 * square(2t, 0, 0.25)
 
+// Dynamic PWM (pulse width modulated by another waveform)
+velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5)
+
 // Combined functions
-velocity += 20 * cos(4:0t) + 10 * noise()
+velocity += 20 * cos(4:0t) + 10 * rand()
 
 // Swing timing (works consistently across all time signatures)
 timing += 0.05 * (cos(1t) - 1)
@@ -238,14 +303,56 @@ velocity += ramp(64, 100);
 velocity += ramp(0, 127, 2);
 
 // Combine ramp with periodic modulation
-velocity += ramp(20, 100) + 10 * noise();
+velocity += ramp(20, 100) + 10 * rand();
+```
+
+### Rand Function
+
+```javascript
+// Random velocity humanization (default range: -1 to 1)
+velocity += 10 * rand();
+
+// Random pitch variation (0 to 12 semitones)
+pitch += round(rand(12));
+
+// Random pitch variation (-6 to 6 semitones)
+pitch += round(rand(-6, 6));
+```
+
+### Choose Function
+
+```javascript
+// Random velocity from a set of values
+velocity = choose(60, 80, 100, 120);
+
+// Random chord tones
+pitch += choose(0, 3, 7, 12);
+
+// Weighted choice (60 appears 3x more often)
+velocity = choose(60, 60, 60, 100);
+```
+
+### Curve Function
+
+```javascript
+// Exponential fade-in (slow start, fast finish)
+velocity += curve(0, 127, 2);
+
+// Logarithmic fade-in (fast start, slow finish)
+velocity += curve(0, 127, 0.5);
+
+// Exponential fade-out
+velocity += curve(127, 0, 2);
+
+// Linear (same as ramp)
+velocity += curve(0, 127, 1);
 ```
 
 ### Math Functions
 
 ```javascript
 // Round to nearest semitone
-pitch += round(12 * noise());
+pitch += round(12 * rand());
 
 // Ensure minimum velocity
 velocity = max(60, note.velocity);
@@ -257,10 +364,16 @@ velocity = floor(note.velocity / 10) * 10;
 velocity = abs(note.pitch - 60) * 2;
 
 // Clamp velocity to range
-velocity = min(max(note.velocity, 40), 100);
+velocity = clamp(note.velocity, 40, 100);
 
 // Alternating pattern (every other beat)
 velocity = 60 + 40 * (floor(note.start) % 2);
+
+// Round velocity up to next multiple of 10
+velocity = ceil(note.velocity / 10) * 10;
+
+// Exponential scaling
+velocity = pow(note.velocity / 127, 2) * 127;
 ```
 
 ### Pitch Filtering
@@ -328,8 +441,8 @@ velocity += cos(1t, note.probability)
 ### Multi-Parameter
 
 ```javascript
-transforms: `velocity += 20 * cos(1:0t) + 10 * noise()
-timing += 0.03 * noise()
+transforms: `velocity += 20 * cos(1:0t) + 10 * rand()
+timing += 0.03 * rand()
 probability += 0.2 * cos(0:2t)`;
 
 // Using variables
@@ -348,13 +461,29 @@ pitch += 12;
 pitch = 60;
 
 // Random pitch variation (±6 semitones)
-pitch += round(12 * noise());
+pitch += round(12 * rand());
 
 // Octave based on velocity (louder = higher)
 pitch += floor(note.velocity / 32) * 12;
 
 // Quantize to pentatonic-ish (every 2 semitones)
 pitch = floor(note.pitch / 2) * 2;
+```
+
+### Context Variables
+
+```javascript
+// Sequential crescendo using note index
+velocity = 60 + note.index * 5;
+
+// Stacked fifths across clips in multi-clip operation
+pitch += clip.index * 7;
+
+// Scale gain by arrangement position
+gain = ramp(-24, 0) * (clip.position / 32);
+
+// Use bar duration for rhythmic patterns
+velocity += (20 * (note.start % bar.duration)) / bar.duration;
 ```
 
 ### Audio Clip Transforms

@@ -4,22 +4,25 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  liveApiId,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  clearMockRegistry,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { validateIdType, validateIdTypes } from "./id-validation.ts";
 
 describe("validateIdType", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   it("should return LiveAPI instance for valid ID with matching type", () => {
     const id = "track_1";
 
-    liveApiId.mockReturnValue(id);
-    liveApiType.mockReturnValue("Track");
+    registerMockObject(id, {
+      path: "live_set tracks 0",
+      type: "Track",
+    });
 
     const result = validateIdType(id, "track", "testTool");
 
@@ -28,22 +31,24 @@ describe("validateIdType", () => {
     expect(result.type).toBe("Track");
   });
 
-  it("should be case-insensitive for type matching", () => {
+  it("should reject mismatched case for expected type", () => {
     const id = "track_1";
 
-    liveApiId.mockReturnValue(id);
-    liveApiType.mockReturnValue("Track");
+    registerMockObject(id, {
+      path: "live_set tracks 0",
+      type: "Track",
+    });
 
-    // Should work with lowercase, uppercase, mixed case
+    // Tool-level types must be exact lowercase
     expect(() => validateIdType(id, "track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "Track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "TRACK", "testTool")).not.toThrow();
+    expect(() => validateIdType(id, "Track", "testTool")).toThrow();
+    expect(() => validateIdType(id, "TRACK", "testTool")).toThrow();
   });
 
   it("should throw error when ID does not exist", () => {
     const id = "nonexistent_id";
 
-    liveApiId.mockReturnValue("id 0"); // Mock non-existent
+    mockNonExistentObjects();
 
     expect(() => validateIdType(id, "track", "testTool")).toThrow(
       'testTool failed: id "nonexistent_id" does not exist',
@@ -53,8 +58,10 @@ describe("validateIdType", () => {
   it("should throw error when type does not match", () => {
     const id = "scene_1";
 
-    liveApiId.mockReturnValue(id);
-    liveApiType.mockReturnValue("Scene");
+    registerMockObject(id, {
+      path: "live_set scenes 0",
+      type: "Scene",
+    });
 
     expect(() => validateIdType(id, "track", "testTool")).toThrow(
       'testTool failed: id "scene_1" is not a track (found Scene)',
@@ -64,7 +71,7 @@ describe("validateIdType", () => {
   it("should include tool name in error messages", () => {
     const id = "scene_1";
 
-    liveApiId.mockReturnValue("id 0"); // Mock non-existent
+    mockNonExistentObjects();
 
     expect(() => validateIdType(id, "track", "updateTrack")).toThrow(
       "updateTrack failed:",
@@ -73,8 +80,6 @@ describe("validateIdType", () => {
 
   it("should match device subclasses to device type", () => {
     const id = "device_1";
-
-    liveApiId.mockReturnValue(id);
 
     // Test various device subclasses from the Live Object Model
     const deviceSubclasses = [
@@ -86,10 +91,17 @@ describe("validateIdType", () => {
       "PluginDevice",
       "RackDevice",
       "MixerDevice",
-    ];
+    ] as const;
 
     for (const subclass of deviceSubclasses) {
-      liveApiType.mockReturnValue(subclass);
+      vi.clearAllMocks();
+      clearMockRegistry();
+
+      registerMockObject(id, {
+        path: "live_set tracks 0 devices 0",
+        type: subclass,
+      });
+
       expect(() => validateIdType(id, "device", "testTool")).not.toThrow();
     }
   });
@@ -97,8 +109,10 @@ describe("validateIdType", () => {
   it("should match DrumPad to drum-pad type", () => {
     const id = "pad_1";
 
-    liveApiId.mockReturnValue(id);
-    liveApiType.mockReturnValue("DrumPad");
+    registerMockObject(id, {
+      path: "live_set tracks 0 devices 0 drum_pads 0",
+      type: "DrumPad",
+    });
 
     expect(() => validateIdType(id, "drum-pad", "testTool")).not.toThrow();
   });
@@ -107,16 +121,25 @@ describe("validateIdType", () => {
 describe("validateIdTypes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   describe("with skipInvalid=false (default)", () => {
     it("should return array of LiveAPI instances for all valid IDs", () => {
       const ids = ["track_1", "track_2", "track_3"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
+      registerMockObject("track_1", {
+        path: "live_set tracks 0",
+        type: "Track",
       });
-      liveApiType.mockReturnValue("Track");
+      registerMockObject("track_2", {
+        path: "live_set tracks 1",
+        type: "Track",
+      });
+      registerMockObject("track_3", {
+        path: "live_set tracks 2",
+        type: "Track",
+      });
 
       const result = validateIdTypes(ids, "track", "testTool");
 
@@ -129,11 +152,16 @@ describe("validateIdTypes", () => {
     it("should throw on first invalid ID (non-existent)", () => {
       const ids = ["track_1", "nonexistent", "track_3"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        // Return "id 0" for non-existent IDs
-        return this._id === "nonexistent" ? "id 0" : this._id;
+      registerMockObject("track_1", {
+        path: "live_set tracks 0",
+        type: "Track",
       });
-      liveApiType.mockReturnValue("Track");
+      registerMockObject("track_3", {
+        path: "live_set tracks 2",
+        type: "Track",
+      });
+
+      mockNonExistentObjects();
 
       expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
         'testTool failed: id "nonexistent" does not exist',
@@ -143,11 +171,17 @@ describe("validateIdTypes", () => {
     it("should throw on first invalid ID (wrong type)", () => {
       const ids = ["track_1", "scene_1", "track_3"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
+      registerMockObject("track_1", {
+        path: "live_set tracks 0",
+        type: "Track",
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id === "scene_1" ? "Scene" : "Track";
+      registerMockObject("scene_1", {
+        path: "live_set scenes 0",
+        type: "Scene",
+      });
+      registerMockObject("track_3", {
+        path: "live_set tracks 2",
+        type: "Track",
       });
 
       expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
@@ -160,11 +194,17 @@ describe("validateIdTypes", () => {
     it("should return only valid IDs and log warnings for invalid", () => {
       const ids = ["track_1", "scene_1", "track_3"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
+      registerMockObject("track_1", {
+        path: "live_set tracks 0",
+        type: "Track",
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id === "scene_1" ? "Scene" : "Track";
+      registerMockObject("scene_1", {
+        path: "live_set scenes 0",
+        type: "Scene",
+      });
+      registerMockObject("track_3", {
+        path: "live_set tracks 2",
+        type: "Track",
       });
 
       const result = validateIdTypes(ids, "track", "testTool", {
@@ -183,7 +223,7 @@ describe("validateIdTypes", () => {
     it("should return empty array when all IDs are invalid (non-existent)", () => {
       const ids = ["nonexistent_1", "nonexistent_2"];
 
-      liveApiId.mockReturnValue("id 0"); // All non-existent
+      mockNonExistentObjects();
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
@@ -203,10 +243,14 @@ describe("validateIdTypes", () => {
     it("should return empty array when all IDs are wrong type", () => {
       const ids = ["scene_1", "scene_2"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
+      registerMockObject("scene_1", {
+        path: "live_set scenes 0",
+        type: "Scene",
       });
-      liveApiType.mockReturnValue("Scene");
+      registerMockObject("scene_2", {
+        path: "live_set scenes 1",
+        type: "Scene",
+      });
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
@@ -223,13 +267,16 @@ describe("validateIdTypes", () => {
     it("should handle mix of non-existent and wrong type IDs", () => {
       const ids = ["nonexistent", "scene_1", "track_1"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        // Return "id 0" for non-existent, actual id for others
-        return this._id === "nonexistent" ? "id 0" : this._id;
+      registerMockObject("scene_1", {
+        path: "live_set scenes 0",
+        type: "Scene",
       });
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id === "scene_1" ? "Scene" : "Track";
+      registerMockObject("track_1", {
+        path: "live_set tracks 0",
+        type: "Track",
       });
+
+      mockNonExistentObjects();
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
@@ -250,18 +297,17 @@ describe("validateIdTypes", () => {
     it("should accept device subclasses when validating device type", () => {
       const ids = ["device_1", "device_2", "device_3"];
 
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return this._id;
+      registerMockObject("device_1", {
+        path: "live_set tracks 0 devices 0",
+        type: "Eq8Device",
       });
-      // Return different device subclass types
-      liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-        const subclassMap: Record<string, string> = {
-          device_1: "Eq8Device",
-          device_2: "HybridReverbDevice",
-          device_3: "SimplerDevice",
-        };
-
-        return (this._id ? subclassMap[this._id] : undefined) ?? "Device";
+      registerMockObject("device_2", {
+        path: "live_set tracks 0 devices 1",
+        type: "HybridReverbDevice",
+      });
+      registerMockObject("device_3", {
+        path: "live_set tracks 0 devices 2",
+        type: "SimplerDevice",
       });
 
       const result = validateIdTypes(ids, "device", "testTool", {

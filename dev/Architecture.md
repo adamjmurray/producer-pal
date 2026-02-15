@@ -201,7 +201,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
   - Real-time streaming chat interface
   - Settings persistence via localStorage
 
-See `dev-docs/Chat-UI.md` for detailed architecture and development workflow.
+See `dev/Chat-UI.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 
@@ -253,6 +253,9 @@ Semantic versioning (major.minor.patch) maintained in `src/shared/version.ts`:
 ## Testing Infrastructure
 
 - **Framework:** Vitest
-- **Mock Live API:** `src/test/mock-live-api.ts`
+- **Mock Live API:** `src/test/mocks/mock-live-api.ts` (mock `LiveAPI` class)
+- **Mock registry:** `src/test/mocks/mock-registry.ts` (instance-level mocks per
+  Live API object)
 - **Test location:** Colocated with source (`*.test.ts`)
-- **Assertions:** Use `expect.objectContaining()` for maintainable tests
+- **Assertions:** Use instance-level `RegisteredMockObject` mocks for per-object
+  assertions (e.g., `expect(device.set).toHaveBeenCalledWith(...)`)

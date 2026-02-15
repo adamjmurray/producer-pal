@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 /**
@@ -105,8 +106,9 @@ export function handleAutoPlayback(
   switch (auto) {
     case "play-scene": {
       // Launch the first scene for synchronization
-      const firstSceneIndex = sceneIndices[0];
-      const scene = LiveAPI.from(`live_set scenes ${firstSceneIndex}`);
+      // Length checked above: sceneIndices.length > 0
+      const firstSceneIndex = sceneIndices[0] as number;
+      const scene = LiveAPI.from(livePath.scene(firstSceneIndex));
 
       if (!scene.exists()) {
         throw new Error(
@@ -122,7 +124,7 @@ export function handleAutoPlayback(
       // Fire individual clips at each scene index
       for (const sceneIndex of sceneIndices) {
         const clipSlot = LiveAPI.from(
-          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+          livePath.track(trackIndex).clipSlot(sceneIndex),
         );
 
         clipSlot.call("fire");

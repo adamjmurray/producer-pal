@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
@@ -27,7 +28,7 @@ interface ChainSegmentResult {
  * @returns Live API path prefix
  */
 function parseTrackSegment(trackSegment: string, path: string): string {
-  if (trackSegment === "mt") return "live_set master_track";
+  if (trackSegment === "mt") return livePath.masterTrack().toString();
 
   if (trackSegment.startsWith("rt")) {
     const index = Number.parseInt(trackSegment.slice(2));
@@ -35,7 +36,7 @@ function parseTrackSegment(trackSegment: string, path: string): string {
     if (Number.isNaN(index))
       throw new Error(`Invalid return track index in path: ${path}`);
 
-    return `live_set return_tracks ${index}`;
+    return livePath.returnTrack(index).toString();
   }
 
   if (trackSegment.startsWith("t")) {
@@ -44,7 +45,7 @@ function parseTrackSegment(trackSegment: string, path: string): string {
     if (Number.isNaN(index))
       throw new Error(`Invalid track index in path: ${path}`);
 
-    return `live_set tracks ${index}`;
+    return livePath.track(index).toString();
   }
 
   throw new Error(`Invalid track segment in path: ${path}`);

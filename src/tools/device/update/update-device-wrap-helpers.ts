@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -12,6 +13,7 @@ import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/devi
 import {
   assertDefined,
   parseCommaSeparatedIds,
+  toLiveApiId,
 } from "#src/tools/shared/utils.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
@@ -95,7 +97,7 @@ export function wrapDevicesInRack({
     rack.set("name", name);
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   for (let i = 0; i < devices.length; i++) {
     const device = assertDefined(devices[i], `device at index ${i}`);
@@ -119,14 +121,13 @@ export function wrapDevicesInRack({
 
     const chainPath = `${rack.path} chains ${i}`;
     const chainContainer = LiveAPI.from(chainPath);
-    const deviceId = device.id.startsWith("id ")
-      ? device.id
-      : `id ${device.id}`;
-    const chainId = chainContainer.id.startsWith("id ")
-      ? chainContainer.id
-      : `id ${chainContainer.id}`;
 
-    liveSet.call("move_device", deviceId, chainId, 0);
+    liveSet.call(
+      "move_device",
+      toLiveApiId(device.id),
+      toLiveApiId(chainContainer.id),
+      0,
+    );
   }
 
   return { id: rack.id, type: rackType, deviceCount: devices.length };
@@ -251,7 +252,7 @@ function wrapInstrumentsInRack(
   toPath?: string,
   name?: string,
 ): WrapResult {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const firstDevice = assertDefined(devices[0], "first device");
 
   // 1. Get source track from first instrument
@@ -265,10 +266,15 @@ function wrapInstrumentsInRack(
 
   try {
     // 3. Move ALL instruments to temp track
-    const tempTrackIdForMove = formatId(tempTrack.id);
+    const tempTrackIdForMove = toLiveApiId(tempTrack.id);
 
     for (const device of devices) {
-      liveSet.call("move_device", formatId(device.id), tempTrackIdForMove, 0);
+      liveSet.call(
+        "move_device",
+        toLiveApiId(device.id),
+        tempTrackIdForMove,
+        0,
+      );
     }
 
     // 4. Create Instrument Rack on source track (or toPath)
@@ -305,8 +311,8 @@ function wrapInstrumentsInRack(
 
       liveSet.call(
         "move_device",
-        formatId(tempDevice.id),
-        formatId(chain.id),
+        toLiveApiId(tempDevice.id),
+        toLiveApiId(chain.id),
         0,
       );
     }
@@ -329,13 +335,4 @@ function wrapInstrumentsInRack(
 
     throw error;
   }
-}
-
-/**
- * Format an ID with "id " prefix if needed
- * @param id - ID to format
- * @returns Formatted ID
- */
-function formatId(id: string): string {
-  return id.startsWith("id ") ? id : `id ${id}`;
 }

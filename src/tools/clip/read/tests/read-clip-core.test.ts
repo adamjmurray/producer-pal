@@ -2,26 +2,29 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as consoleModule from "#src/shared/v8-max-console.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
   expectGetNotesExtendedCall,
+  setupAudioClipMock,
   setupMidiClipMock,
   setupNotesMock,
 } from "./read-clip-test-helpers.ts";
 
 describe("readClip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearMockRegistry();
+  });
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
-    setupMidiClipMock({
+    const clip = setupMidiClipMock({
       clipProps: {
         signature_numerator: 4,
         signature_denominator: 4,
@@ -35,7 +38,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
+    expectGetNotesExtendedCall(clip);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -55,7 +58,7 @@ describe("readClip", () => {
   });
 
   it("returns clip information when a valid MIDI clip exists (6/8 time)", () => {
-    setupMidiClipMock({
+    const clip = setupMidiClipMock({
       clipProps: {
         signature_numerator: 6,
         signature_denominator: 8,
@@ -69,7 +72,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
-    expectGetNotesExtendedCall("live_set tracks 1 clip_slots 1 clip");
+    expectGetNotesExtendedCall(clip);
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
@@ -89,16 +92,17 @@ describe("readClip", () => {
   });
 
   it("should format notes using clip's time signature", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 1,
+    const clip = setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         signature_numerator: 3,
         signature_denominator: 4,
         length: 4, // Ableton beats
       },
     });
 
-    setupNotesMock([
+    setupNotesMock(clip, [
       createTestNote({ pitch: 60, startTime: 0 }),
       createTestNote({ pitch: 62, startTime: 3 }), // Start of bar 2 in 3/4
       createTestNote({ pitch: 64, startTime: 4 }), // bar 2, beat 2
@@ -106,7 +110,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip");
+    expectGetNotesExtendedCall(clip);
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
@@ -115,9 +119,10 @@ describe("readClip", () => {
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
-    mockLiveApiGet({
-      Clip: {
-        is_midi_clip: 1,
+    const clip = setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         signature_numerator: 6,
         signature_denominator: 8,
         length: 3, // Ableton beats
@@ -129,7 +134,7 @@ describe("readClip", () => {
       },
     });
 
-    setupNotesMock([
+    setupNotesMock(clip, [
       createTestNote({ pitch: 60, startTime: 0 }),
       createTestNote({ pitch: 62, startTime: 3 }), // Start of bar 2 in 6/8 (3 quarter notes)
       createTestNote({ pitch: 64, startTime: 3.5 }), // bar 2, beat 2
@@ -137,7 +142,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
-    expectGetNotesExtendedCall("live_set tracks 0 clip_slots 0 clip", 3);
+    expectGetNotesExtendedCall(clip, 3);
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
@@ -148,13 +153,20 @@ describe("readClip", () => {
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Track and scene exist, but clip does not
-      if (this._path === "live_set tracks 2") return "track2";
-      if (this._path === "live_set scenes 3") return "scene3";
-
-      return "id 0"; // Clip doesn't exist
+    // Track and scene exist, but clip does not
+    registerMockObject("track2", {
+      path: livePath.track(2),
+      type: "Track",
     });
+    registerMockObject("scene3", {
+      path: livePath.scene(3),
+      type: "Scene",
+    });
+    registerMockObject("0", {
+      path: livePath.track(2).clipSlot(3).clip(),
+      type: "Clip",
+    });
+
     const result = readClip({ trackIndex: 2, sceneIndex: 3 });
 
     expect(result).toStrictEqual({
@@ -172,7 +184,10 @@ describe("readClip", () => {
   });
 
   it("throws when track does not exist", () => {
-    liveApiId.mockReturnValue("id 0");
+    registerMockObject("0", {
+      path: livePath.track(99),
+      type: "Track",
+    });
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
       "trackIndex 99 does not exist",
@@ -180,11 +195,14 @@ describe("readClip", () => {
   });
 
   it("throws when scene does not exist", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      // Track exists, but scene does not
-      if (this._path === "live_set tracks 0") return "track0";
-
-      return "id 0";
+    // Track exists, but scene does not
+    registerMockObject("track0", {
+      path: livePath.track(0),
+      type: "Track",
+    });
+    registerMockObject("0", {
+      path: livePath.scene(99),
+      type: "Scene",
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
@@ -193,8 +211,10 @@ describe("readClip", () => {
   });
 
   it("handles audio clips correctly", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 0,
         name: "Audio Sample",
         looping: 1,
@@ -233,8 +253,10 @@ describe("readClip", () => {
   });
 
   it("includes sampleFile with full path for audio clips with file_path", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 0,
         name: "Audio Sample",
         signature_numerator: 4,
@@ -251,8 +273,10 @@ describe("readClip", () => {
   });
 
   it("does not include sampleFile for MIDI clips", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
@@ -267,8 +291,10 @@ describe("readClip", () => {
   });
 
   it("does not include sampleFile for audio clips without file_path", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 0,
         signature_numerator: 4,
         signature_denominator: 4,
@@ -284,8 +310,10 @@ describe("readClip", () => {
   });
 
   it("reads warp mode and warping state when warp-markers included", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 0,
         name: "Warped Audio",
         signature_numerator: 4,
@@ -306,8 +334,10 @@ describe("readClip", () => {
   });
 
   it("reads a session clip by ID", () => {
-    mockLiveApiGet({
-      session_clip_id: {
+    setupMidiClipMock({
+      clipId: "session_clip_id",
+      path: livePath.track(2).clipSlot(4).clip(),
+      clipProps: {
         is_arrangement_clip: 0,
         signature_numerator: 4,
         signature_denominator: 4,
@@ -317,14 +347,6 @@ describe("readClip", () => {
         loop_start: 1,
         loop_end: 5,
       },
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "session_clip_id") {
-        return "live_set tracks 2 clip_slots 4 clip";
-      }
-
-      return this._path;
     });
 
     const result = readClip({ clipId: "id session_clip_id" });
@@ -338,8 +360,10 @@ describe("readClip", () => {
   });
 
   it("reads an Arrangement clip by ID using song time signature for arrangementStart and arrangementLength", () => {
-    mockLiveApiGet({
-      arrangement_clip_id: {
+    setupMidiClipMock({
+      clipId: "arrangement_clip_id",
+      path: livePath.track(3).arrangementClip(2),
+      clipProps: {
         is_arrangement_clip: 1,
         start_time: 16.0, // Ableton beats
         end_time: 20.0, // Ableton beats (start_time + length)
@@ -351,24 +375,13 @@ describe("readClip", () => {
         loop_start: 1,
         loop_end: 5,
       },
-      LiveSet: {
+    });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: {
         signature_numerator: 4, // Song is in 4/4
         signature_denominator: 4,
       },
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "arrangement_clip_id") {
-        return "live_set tracks 3 arrangement_clips 2";
-      }
-
-      return this._path;
-    });
-
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._id === "arrangement_clip_id") {
-        return "Clip";
-      }
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });

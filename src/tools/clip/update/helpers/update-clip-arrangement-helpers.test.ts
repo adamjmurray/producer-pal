@@ -3,17 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-} from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.ts";
-
-interface MockPathContext {
-  _id?: string;
-  _path?: string;
-}
 
 describe("update-clip-arrangement-helpers", () => {
   beforeEach(() => {
@@ -49,8 +41,6 @@ describe("update-clip-arrangement-helpers", () => {
     });
 
     it("should warn and return original clip id when trackIndex is null for arrangement clips", () => {
-      liveApiPath.mockReturnValue("live_set"); // Path without tracks pattern
-
       const mockClip = {
         id: "456",
         getProperty: vi.fn((prop) => {
@@ -79,28 +69,17 @@ describe("update-clip-arrangement-helpers", () => {
       const trackIndex = 2;
       const newClipId = "999";
 
-      liveApiPath.mockImplementation(function (this: MockPathContext) {
-        if (this._id === "789") {
-          return "live_set tracks 2 arrangement_clips 0";
-        }
-
-        return this._path;
+      // Register track mock with duplication method
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        methods: {
+          duplicate_clip_to_arrangement: () => ["id", 999],
+        },
       });
 
-      // Mock the id getter - LiveAPI.id returns just the number, not "id X" format
-      liveApiId.mockImplementation(function (this: MockPathContext) {
-        if (this._path === "id 999" || this._path === `id ${newClipId}`) {
-          return newClipId;
-        }
-
-        return this._id;
-      });
-
-      // duplicate_clip_to_arrangement returns array format ["id", number]
-      liveApiCall.mockImplementation((method) => {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", 999];
-        }
+      // Register new clip that will be created by duplication
+      registerMockObject(newClipId, {
+        path: livePath.track(trackIndex).arrangementClip(0),
       });
 
       const mockClip = {
@@ -124,28 +103,25 @@ describe("update-clip-arrangement-helpers", () => {
       });
 
       // Code now formats ID with "id " prefix for Live API calls
-      expect(liveApiCall).toHaveBeenCalledWith(
+      expect(trackMock.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id 789",
         32,
       );
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+      expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 789");
       expect(result).toBe(newClipId);
       expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
     });
 
     it("should warn and return original ID when duplication fails", () => {
-      liveApiPath.mockReturnValue("live_set tracks 0 arrangement_clips 0");
+      const trackIndex = 0;
 
-      // duplicate_clip_to_arrangement returns "id 0" (non-existent)
-      liveApiCall.mockImplementation((method) => {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", 0];
-        }
-      });
-
-      liveApiId.mockImplementation(function (this: MockPathContext) {
-        return this._id;
+      // Register track mock that returns non-existent "id 0" result
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        methods: {
+          duplicate_clip_to_arrangement: () => ["id", 0],
+        },
       });
 
       const mockClip = {
@@ -173,7 +149,7 @@ describe("update-clip-arrangement-helpers", () => {
       );
       expect(result).toBe("100");
       // Should NOT call delete_clip since duplication failed
-      expect(liveApiCall).not.toHaveBeenCalledWith(
+      expect(trackMock.call).not.toHaveBeenCalledWith(
         "delete_clip",
         expect.anything(),
       );
@@ -183,21 +159,17 @@ describe("update-clip-arrangement-helpers", () => {
       const trackIndex = 1;
       const newClipId = "888";
 
-      liveApiPath.mockReturnValue("live_set tracks 1 arrangement_clips 0");
-
-      liveApiId.mockImplementation(function (this: MockPathContext) {
-        if (this._path === `id ${newClipId}`) {
-          return newClipId;
-        }
-
-        return this._id;
+      // Register track mock
+      registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        methods: {
+          duplicate_clip_to_arrangement: () => ["id", 888],
+        },
       });
 
-      // duplicate_clip_to_arrangement returns array format ["id", number]
-      liveApiCall.mockImplementation((method) => {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", 888];
-        }
+      // Register new clip mock
+      registerMockObject(newClipId, {
+        path: livePath.track(trackIndex).arrangementClip(0),
       });
 
       const mockClip = {

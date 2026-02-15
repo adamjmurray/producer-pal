@@ -7,8 +7,6 @@ import type { Provider, UseSettingsReturn } from "#webui/types/settings";
 import {
   buildAllProviderSettings,
   checkHasApiKey,
-  createAllToolsDisabled,
-  createAllToolsEnabled,
   DEFAULT_SETTINGS,
   loadAllProviderSettings,
   loadCurrentProvider,
@@ -178,12 +176,8 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(newProvider);
   }, []);
   const hasApiKey = checkHasApiKey(provider);
-  const toolsUtils = useMemo(
-    () => ({
-      enableAll: () => setEnabledToolsState(createAllToolsEnabled()),
-      disableAll: () => setEnabledToolsState(createAllToolsDisabled()),
-      isEnabled: (toolId: string) => enabledTools[toolId] ?? true,
-    }),
+  const isToolEnabled = useCallback(
+    (toolId: string) => enabledTools[toolId] ?? true,
     [enabledTools],
   );
   const resetBehaviorToDefaults = useCallback(() => {
@@ -215,9 +209,7 @@ export function useSettings(): UseSettingsReturn {
     settingsConfigured,
     enabledTools,
     setEnabledTools: setEnabledToolsState,
-    enableAllTools: toolsUtils.enableAll,
-    disableAllTools: toolsUtils.disableAll,
     resetBehaviorToDefaults,
-    isToolEnabled: toolsUtils.isEnabled,
+    isToolEnabled,
   };
 }

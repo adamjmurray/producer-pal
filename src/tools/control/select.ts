@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
@@ -126,8 +127,8 @@ export function select(
     clipSlot,
   });
 
-  const appView = LiveAPI.from("live_app view");
-  const songView = LiveAPI.from("live_set view");
+  const appView = LiveAPI.from(livePath.view.app);
+  const songView = LiveAPI.from(livePath.view.song);
 
   // Update main view (Session/Arrangement)
   if (view != null) {
@@ -221,24 +222,28 @@ export function select(
  * @returns Current view state with all selection information
  */
 function readViewState(): ViewState {
-  const appView = LiveAPI.from("live_app view");
-  const selectedTrack = LiveAPI.from("live_set view selected_track");
-  const selectedScene = LiveAPI.from("live_set view selected_scene");
-  const detailClip = LiveAPI.from("live_set view detail_clip");
+  const appView = LiveAPI.from(livePath.view.app);
+  const selectedTrack = LiveAPI.from(livePath.view.selectedTrack);
+  const selectedScene = LiveAPI.from(livePath.view.selectedScene);
+  const detailClip = LiveAPI.from(livePath.view.detailClip);
   const highlightedClipSlotAPI = LiveAPI.from(
-    "live_set view highlighted_clip_slot",
+    livePath.view.highlightedClipSlot,
   );
 
   // Extract track info using Live API extensions
-  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
+  const selectedTrackId = selectedTrack.exists()
+    ? String(selectedTrack.id)
+    : null;
   const category = selectedTrack.exists()
     ? (selectedTrack.category as TrackCategory | null)
     : null;
   const selectedSceneIndex = selectedScene.exists()
     ? selectedScene.sceneIndex
     : null;
-  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
-  const selectedClipId = detailClip.exists() ? detailClip.id : null;
+  const selectedSceneId = selectedScene.exists()
+    ? String(selectedScene.id)
+    : null;
+  const selectedClipId = detailClip.exists() ? String(detailClip.id) : null;
 
   // Get selected device from the selected track's view
   let selectedDeviceId: string | null = null;

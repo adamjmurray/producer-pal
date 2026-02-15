@@ -6,6 +6,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorToBeats as resolveLocatorToBeatsRequired } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
@@ -326,7 +327,7 @@ export function handlePlayScene(
     );
   }
 
-  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+  const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
   if (!scene.exists()) {
     throw new Error(

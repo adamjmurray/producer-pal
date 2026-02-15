@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
@@ -69,7 +70,7 @@ export function duplicateClipWithPositions(
     }
   } else {
     // Arrangement destination
-    const liveSet = LiveAPI.from("live_set");
+    const liveSet = LiveAPI.from(livePath.liveSet);
     const songTimeSigNumerator = liveSet.getProperty(
       "signature_numerator",
     ) as number;

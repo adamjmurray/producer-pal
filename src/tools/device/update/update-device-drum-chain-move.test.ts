@@ -1,89 +1,53 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - drum chain moving", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  let chain0: RegisteredMockObject;
+  let chain1: RegisteredMockObject;
+  let chain2: RegisteredMockObject;
 
+  beforeEach(() => {
     // Mock drum rack structure
     // Track 0 has a drum rack at device 0
     // The drum rack has chains with different in_note values
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0 devices 0") return "RackDevice";
-      // Match both path formats for chains
-      if (this._path?.includes("chains") || this._path?.match(/^id chain-/))
-        return "DrumChain";
-
-      return "Device";
+    registerMockObject("drumrack-id", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: 1,
+        chains: children("chain-0", "chain-1", "chain-2"),
+      },
     });
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 0 devices 0") return "drumrack-id";
-      if (this._path === "live_set tracks 0 devices 0 chains 0")
-        return "chain-0";
-      if (this._path === "live_set tracks 0 devices 0 chains 1")
-        return "chain-1";
-      if (this._path === "live_set tracks 0 devices 0 chains 2")
-        return "chain-2";
-      if (this._path === "id chain-0") return "chain-0";
-      if (this._path === "id chain-1") return "chain-1";
-      if (this._path === "id chain-2") return "chain-2";
-
-      return "0";
+    // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
+    chain0 = registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "DrumChain",
+      properties: { in_note: 36 },
     });
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "id chain-0")
-        return "live_set tracks 0 devices 0 chains 0";
-      if (this._path === "id chain-1")
-        return "live_set tracks 0 devices 0 chains 1";
-      if (this._path === "id chain-2")
-        return "live_set tracks 0 devices 0 chains 2";
-
-      return this._path;
+    chain1 = registerMockObject("chain-1", {
+      path: livePath.track(0).device(0).chain(1),
+      type: "DrumChain",
+      properties: { in_note: 36 },
     });
 
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      // Drum rack properties
-      if (this._path === "live_set tracks 0 devices 0") {
-        if (prop === "can_have_drum_pads") return [1];
-        if (prop === "chains")
-          return ["id", "chain-0", "id", "chain-1", "id", "chain-2"];
-      }
-
-      // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
-      if (
-        (this._path?.includes("chains 0") || this._path === "id chain-0") &&
-        prop === "in_note"
-      )
-        return [36]; // C1
-
-      if (
-        (this._path?.includes("chains 1") || this._path === "id chain-1") &&
-        prop === "in_note"
-      )
-        return [36]; // C1 (layered)
-
-      if (
-        (this._path?.includes("chains 2") || this._path === "id chain-2") &&
-        prop === "in_note"
-      )
-        return [38]; // D1
-
-      return [0];
+    chain2 = registerMockObject("chain-2", {
+      path: livePath.track(0).device(0).chain(2),
+      type: "DrumChain",
+      properties: { in_note: 38 },
     });
   });
 
@@ -94,11 +58,7 @@ describe("updateDevice - drum chain moving", () => {
     });
 
     // Should set in_note to 38 (D1)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id chain-0" }),
-      "in_note",
-      38,
-    );
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
     expect(result).toStrictEqual({ id: "chain-0" });
   });
 
@@ -109,22 +69,10 @@ describe("updateDevice - drum chain moving", () => {
     });
 
     // Should set in_note to 40 (E1) on both chains with in_note=36
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id chain-0" }),
-      "in_note",
-      40,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id chain-1" }),
-      "in_note",
-      40,
-    );
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 40);
+    expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
     // chain-2 has in_note=38 (D1), should not be affected
-    expect(liveApiSet).not.toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id chain-2" }),
-      "in_note",
-      expect.anything(),
-    );
+    expect(chain2.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "chain-0" });
   });
 
@@ -139,8 +87,7 @@ describe("updateDevice - drum chain moving", () => {
   });
 
   it("should warn and skip when trying to move a regular Chain to a drum pad", () => {
-    liveApiType.mockReturnValue("Chain");
-    liveApiId.mockReturnValue("123");
+    registerMockObject("123", { type: "Chain" });
 
     // Should not throw, just warn and skip the move
     const result = updateDevice({

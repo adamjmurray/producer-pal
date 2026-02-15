@@ -44,8 +44,8 @@ Key entry points:
 - Chat CLI: `evals/chat/index.ts`
 - Evaluation scenarios: `evals/eval/index.ts`
 
-See `dev-docs/Architecture.md` for detailed system design and
-`dev-docs/Chat-UI.md` for web UI architecture.
+See `dev/Architecture.md` for detailed system design and `dev/Chat-UI.md` for
+web UI architecture.
 
 ## Critical Coding Rules
 
@@ -61,7 +61,9 @@ See `dev-docs/Architecture.md` for detailed system design and
 
   List all authors who contributed to the file. New files should include the
   current year and the contributor's name. When AI tools modify a file, add the
-  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`).
+  AI assistance line (e.g., `// AI assistance: Claude (Anthropic)`). If an AI
+  assistance line already exists, append additional tools as a comma-separated
+  list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
@@ -107,8 +109,14 @@ See `dev-docs/Architecture.md` for detailed system design and
   automatically coerces. The MCP SDK validates schemas before our handler runs,
   so coercion must happen at the schema level.
 
-- **Live API**: Use `src/live-api-adapter/live-api-extensions.ts` interface
-  instead of raw `.get("property")?.[0]` calls
+- **Live API**: Always use `src/live-api-adapter/live-api-extensions.ts`
+  interface instead of raw `.get("property")?.[0]` calls
+
+- **Live API paths**: Never hardcode path strings. Use `livePath` from
+  `src/shared/live-api-path-builders.ts` for all Live API paths (e.g.,
+  `livePath.track(i)` not `` `live_set tracks ${i}` ``). `LiveAPI.from()`
+  accepts `PathLike` objects directly. See `dev/Coding-Standards.md` for the
+  full API reference.
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
@@ -172,7 +180,7 @@ A file is classified as a **test file** if it matches any of these patterns:
 
 **Implications of test file classification:**
 
-- **Duplication limits**: Higher threshold (4.5%) vs source code (0.4%)
+- **Duplication limits**: Higher threshold (3%) vs source code (0.3%)
 - **Line limits**: Only `*.test.*` and `*-test-case.ts` files get 650 lines max
   (ignoring blanks/comments); test helpers use the standard 325 line limit
 - **Coverage**: Test helpers excluded from coverage requirements
@@ -270,8 +278,8 @@ first:**
   eslint-disable and @ts-expect-error comments. Increasing these limits weakens
   code quality enforcement.
 
-- `config/vitest.config.ts` (thresholds section) - Test coverage thresholds.
-  Lowering these allows coverage to drop.
+- `vitest.config.ts` (thresholds section) - Test coverage thresholds. Lowering
+  these allows coverage to drop.
 
 If a change requires relaxing these limits, ask the user for approval before
 making the modification.
@@ -307,13 +315,12 @@ Rules:
 
 ## Documentation
 
-- `dev-docs/Architecture.md` - System design and components
-- `dev-docs/Arrangement-Operations.md` - Live API constraints, arrangement
+- `dev/Architecture.md` - System design and components
+- `dev/Arrangement-Operations.md` - Live API constraints, arrangement
   algorithms, and edge cases
-- `dev-docs/Chat-UI.md` - Web UI architecture and development
-- `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
-- `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
-  inspector
-- `dev-docs/Documentation-Site.md` - VitePress documentation site setup and
+- `dev/Chat-UI.md` - Web UI architecture and development
+- `dev/Coding-Standards.md` - Code style, patterns, and rules
+- `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
+- `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
 - `DEVELOPERS.md` - Development setup and testing

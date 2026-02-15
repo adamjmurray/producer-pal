@@ -6,6 +6,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import type { MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -181,7 +182,7 @@ function createArrangementClip(
   arrangementStartBeats: number | null,
   clipLength: number,
 ): ArrangementClipResult {
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
   const newClipResult = track.call(
     "create_midi_clip",
     arrangementStartBeats,

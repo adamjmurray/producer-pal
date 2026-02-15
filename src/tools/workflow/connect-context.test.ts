@@ -21,7 +21,7 @@ describe("connect", () => {
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      projectNotes: {
+      memory: {
         enabled: true,
         writable: false,
         content: "Working on a house track with heavy bass",
@@ -30,15 +30,13 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toStrictEqual(
+    expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
-    expect(result.$instructions).toContain("Summarize the project notes");
-    expect(result.$instructions).toContain(
-      "follow instructions in project notes",
-    );
+    expect(result.$instructions).toContain("Summarize the project memory");
+    expect(result.$instructions).toContain("follow instructions in memory");
     expect(result.$instructions).not.toContain(
-      "mention you can update the project notes",
+      "mention you can update the memory",
     );
   });
 
@@ -47,7 +45,7 @@ describe("connect", () => {
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      projectNotes: {
+      memory: {
         enabled: true,
         writable: true,
         content: "Working on a house track with heavy bass",
@@ -56,16 +54,12 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toStrictEqual(
+    expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
-    expect(result.$instructions).toContain("Summarize the project notes");
-    expect(result.$instructions).toContain(
-      "follow instructions in project notes",
-    );
-    expect(result.$instructions).toContain(
-      "mention you can update the project notes",
-    );
+    expect(result.$instructions).toContain("Summarize the project memory");
+    expect(result.$instructions).toContain("follow instructions in memory");
+    expect(result.$instructions).toContain("mention you can update the memory");
   });
 
   it("excludes project notes when context is disabled", () => {
@@ -73,7 +67,7 @@ describe("connect", () => {
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      projectNotes: {
+      memory: {
         enabled: false,
         writable: false,
         content: "Should not be included",
@@ -82,7 +76,7 @@ describe("connect", () => {
 
     const result = connect({}, context);
 
-    expect(result.projectNotes).toBeUndefined();
+    expect(result.memoryContent).toBeUndefined();
   });
 
   it("handles missing context gracefully", () => {
@@ -91,7 +85,7 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.projectNotes).toBeUndefined();
+    expect(result.memoryContent).toBeUndefined();
   });
 
   it("returns standard skills and instructions by default", () => {

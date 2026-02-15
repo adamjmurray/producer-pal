@@ -24,7 +24,6 @@ export interface InterpreterState {
   currentProbability?: number;
   currentVelocityMin?: number | null;
   currentVelocityMax?: number | null;
-  hasExplicitBarNumber: boolean;
   currentPitches: PitchState[];
   pitchGroupStarted: boolean;
   pitchesEmitted: boolean;
@@ -42,7 +41,6 @@ export interface BufferState {
 
 export interface BarCopyResult {
   currentTime: TimePosition | null;
-  hasExplicitBarNumber: boolean;
 }
 
 /**
@@ -164,19 +162,4 @@ export function extractBufferState(state: InterpreterState): BufferState {
     pitchGroupStarted: state.pitchGroupStarted,
     stateChangedAfterEmission: state.stateChangedAfterEmission,
   };
-}
-
-/**
- * Apply bar copy result to interpreter state
- * @param state - Interpreter state to update
- * @param result - Bar copy result to apply
- */
-export function applyBarCopyResult(
-  state: InterpreterState,
-  result: BarCopyResult,
-): void {
-  if (result.currentTime) {
-    state.currentTime = result.currentTime;
-    state.hasExplicitBarNumber = result.hasExplicitBarNumber;
-  }
 }

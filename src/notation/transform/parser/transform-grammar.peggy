@@ -128,6 +128,12 @@ variable
   = "audio." name:audioPropertyName {
     return { type: "variable", namespace: "audio", name };
   }
+  / "bar." name:barPropertyName {
+    return { type: "variable", namespace: "bar", name };
+  }
+  / "clip." name:clipPropertyName {
+    return { type: "variable", namespace: "clip", name };
+  }
   / "note." name:notePropertyName {
     return { type: "variable", namespace: "note", name };
   }
@@ -137,30 +143,64 @@ notePropertyName
   / "velocity" { return "velocity"; }
   / "probability" { return "probability"; }
   / "duration" { return "duration"; }
+  / "index" { return "index"; }
   / "pitch" { return "pitch"; }
   / "start" { return "start"; }
+  / "count" { return "count"; }
 
 audioPropertyName
   = "gain" { return "gain"; }
   / "pitchShift" { return "pitchShift"; }
 
+clipPropertyName
+  = "position" { return "position"; }
+  / "duration" { return "duration"; }
+  / "index" { return "index"; }
+  / "count" { return "count"; }
+
+barPropertyName
+  = "duration" { return "duration"; }
+
 functionCall
-  = name:functionName "(" _ args:argumentList? _ ")" {
-    return { type: "function", name, args: args || [] };
+  = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {
+    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false };
+  }
+  / name:otherFunctionName "(" _ args:argumentList? _ ")" {
+    return { type: "function", name, args: args || [], sync: false };
   }
 
-functionName
+cyclicalFunctionName
+  = "cos" { return "cos"; }
+  / "saw" { return "saw"; }
+  / "sin" { return "sin"; }
+  / "square" { return "square"; }
+  / "tri" { return "tri"; }
+
+otherFunctionName
   = "round" { return "round"; }
   / "floor" { return "floor"; }
+  / "ceil" { return "ceil"; }
   / "abs" { return "abs"; }
+  / "clamp" { return "clamp"; }
+  / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
-  / "cos" { return "cos"; }
-  / "tri" { return "tri"; }
-  / "saw" { return "saw"; }
-  / "square" { return "square"; }
-  / "noise" { return "noise"; }
+  / "rand" { return "rand"; }
+  / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
+  / "curve" { return "curve"; }
+  / "quant" { return "quant"; }
+
+syncArgumentList
+  = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {
+    return { args: [head, ...tail.map(t => t[3])], sync: true };
+  }
+  / "sync" {
+    return { args: [], sync: true };
+  }
+  / head:argument tail:(_ "," _ argument)* {
+    return { args: [head, ...tail.map(t => t[3])], sync: false };
+  }
 
 argumentList
   = head:argument tail:(_ "," _ argument)* {

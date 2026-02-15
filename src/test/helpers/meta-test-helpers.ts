@@ -146,14 +146,14 @@ export function isTestFile(filename: string): boolean {
 }
 
 /**
- * Recursively find all source files in a directory
+ * Recursively find files in a directory matching a filter
  * @param dirPath - Directory to scan
- * @param excludeTests - Whether to exclude test files
+ * @param filter - Function that receives a filename and returns true to include it
  * @returns Array of file paths
  */
-export function findSourceFiles(
+function findFilesRecursive(
   dirPath: string,
-  excludeTests: boolean = false,
+  filter: (filename: string) => boolean,
 ): string[] {
   const results: string[] = [];
 
@@ -168,9 +168,8 @@ export function findSourceFiles(
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      results.push(...findSourceFiles(fullPath, excludeTests));
-    } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
-      if (excludeTests && isTestFile(item)) continue;
+      results.push(...findFilesRecursive(fullPath, filter));
+    } else if (filter(item)) {
       results.push(fullPath);
     }
   }
@@ -179,31 +178,32 @@ export function findSourceFiles(
 }
 
 /**
+ * Recursively find all source files in a directory
+ * @param dirPath - Directory to scan
+ * @param excludeTests - Whether to exclude test files
+ * @returns Array of file paths
+ */
+export function findSourceFiles(
+  dirPath: string,
+  excludeTests: boolean = false,
+): string[] {
+  return findFilesRecursive(dirPath, (item) => {
+    if (!SOURCE_EXTENSIONS.has(path.extname(item))) return false;
+
+    return !excludeTests || !isTestFile(item);
+  });
+}
+
+/**
  * Recursively find all test files in a directory
  * @param dirPath - Directory to scan
  * @returns Array of test file paths
  */
 export function findTestFiles(dirPath: string): string[] {
-  const results: string[] = [];
-
-  if (!fs.existsSync(dirPath)) return results;
-
-  const items = fs.readdirSync(dirPath);
-
-  for (const item of items) {
-    if (item === "node_modules") continue;
-
-    const fullPath = path.join(dirPath, item);
-    const stat = fs.statSync(fullPath);
-
-    if (stat.isDirectory()) {
-      results.push(...findTestFiles(fullPath));
-    } else if (SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item)) {
-      results.push(fullPath);
-    }
-  }
-
-  return results;
+  return findFilesRecursive(
+    dirPath,
+    (item) => SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item),
+  );
 }
 
 /**

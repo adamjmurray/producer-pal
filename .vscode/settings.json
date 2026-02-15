@@ -24,9 +24,6 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "files.insertFinalNewline": true,
-  "eslint.options": {
-    "overrideConfigFile": "config/eslint.config.js"
-  },
   "cSpell.words": [
     "ableton",
     "amxd",
@@ -64,7 +61,5 @@
     "wavetable",
     "webstorage",
     "webui"
-  ],
-  "prettier.configPath": "config/prettier.config.mjs",
-  "prettier.ignorePath": "config/.prettierignore"
+  ]
 }

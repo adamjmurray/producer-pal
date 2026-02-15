@@ -17,6 +17,28 @@ export type { ConfigOptions };
 export type EvalProvider = "anthropic" | "google" | "openai" | "openrouter";
 
 /**
+ * Config values that are orthogonal to scenarios and vary as a matrix dimension.
+ * Scenario-bound config (memory, sampleFolder) is not included here.
+ */
+export interface MatrixConfigValues {
+  smallModelMode?: boolean;
+  jsonOutput?: boolean;
+  excludedTools?: string[];
+}
+
+/**
+ * A named config profile for the eval matrix
+ */
+export interface ConfigProfile {
+  /** Unique profile identifier (kebab-case) */
+  id: string;
+  /** Human-readable description */
+  description: string;
+  /** Config values to apply */
+  config: MatrixConfigValues;
+}
+
+/**
  * A test scenario that runs against Ableton Live
  */
 export interface EvalScenario {
@@ -154,6 +176,8 @@ export interface EvalAssertionResult {
  */
 export interface EvalScenarioResult {
   scenario: EvalScenario;
+  /** Config profile used for this run (undefined means default) */
+  configProfileId?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
   passed: boolean;

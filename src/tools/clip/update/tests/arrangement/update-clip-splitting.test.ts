@@ -6,21 +6,24 @@
  * Smoke tests for update-clip splitting integration.
  * Comprehensive splitting tests are in arrangement-splitting.test.ts
  */
-import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { describe, expect, it } from "vitest";
+import type { RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-describe("updateClip - splitting smoke tests", () => {
-  beforeEach(() => {
-    liveApiCall.mockReset();
-    liveApiGet.mockReset();
-  });
+function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
+  expect(trackMock.call).toHaveBeenCalledWith(
+    "duplicate_clip_to_arrangement",
+    expect.any(String),
+    expect.any(Number),
+  );
+}
 
+describe("updateClip - splitting smoke tests", () => {
   it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId);
+    const { callState } = setupClipSplittingMocks(clipId);
 
     await updateClip(
       {
@@ -31,17 +34,13 @@ describe("updateClip - splitting smoke tests", () => {
     );
 
     // Should call duplicate_clip_to_arrangement (splitting is active)
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateCalled(callState.trackMock);
   });
 
   it("should apply other updates after splitting", async () => {
     const clipId = "clip_1";
 
-    setupClipSplittingMocks(clipId);
+    const { callState } = setupClipSplittingMocks(clipId);
 
     await updateClip(
       {
@@ -53,10 +52,6 @@ describe("updateClip - splitting smoke tests", () => {
     );
 
     // Should call duplicate_clip_to_arrangement (splitting is active)
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    expectDuplicateCalled(callState.trackMock);
   });
 });

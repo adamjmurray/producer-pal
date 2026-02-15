@@ -50,7 +50,6 @@ Create MIDI clips using the bar|beat notation syntax:
 
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
-  - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, defaults to duration)
     - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step = duration)
@@ -76,14 +75,14 @@ Audio params ignored when updating MIDI clips.
 C3 E3 G3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1x4@1 // kick on every beat (explicit step)
-v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
+v100 C3 1|1 D3 1|2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
 t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
 t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
-v90-110 C1 1|1,3 D1 |2,4 // humanized drum pattern
+v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern
 v60-80 Gb1 1|1.5,2.5,3.5,4.5 // natural hi-hat feel
 p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
 p1.0 D1 1|2,4 // back to 100% - snare always plays
@@ -94,9 +93,9 @@ p1.0 D1 1|2,4 // back to 100% - snare always plays
 Group by instrument per bar (pitch persistence). Complete bars before copying. Use beat lists for irregular patterns.
 
 \`\`\`
-C1 1|1,3 D1 |2,4 // bar 1
-@2-3=1           // bar 1 -> 2,3
-C1 4|1,3.5 D1 |4 // bar 4
+C1 1|1,3 D1 1|2,4 // bar 1
+@2-3=1            // bar 1 -> 2,3
+C1 4|1,3.5 D1 4|4 // bar 4
 @5-7=1           // bar 1 -> 5,6,7
 @8=4             // bar 4 -> 8
 \`\`\`
@@ -106,12 +105,12 @@ C1 4|1,3.5 D1 |4 // bar 4
 Copy foundation to **all bars** (including variation bars), then modify:
 
 \`\`\`
-C1 1|1,3 D1 |2,4               // bar 1 foundation
-Gb1 |1.5,2.5,3.5,4.5
+C1 1|1,3 D1 1|2,4              // bar 1 foundation
+Gb1 1|1.5,2.5,3.5,4.5
 @2-16=1                        // copy to ALL bars, not just 2-8
 v0 Gb1 9|4.5 v100              // remove hat from bar 9
-C1 |3.5                        // add extra kick to bar 9
-v0 C1 13|3 v100 D1 |3          // replace kick with snare in bar 13
+C1 9|3.5                       // add extra kick to bar 9
+v0 C1 13|3 v100 D1 13|3        // replace kick with snare in bar 13
 \`\`\`
 
 ### Multi-bar phrases
@@ -146,25 +145,31 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\` (add to value), \`=\` (set value)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), abs(x), min(a,b,...), max(a,b,...)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
-- \`cos(freq)\`, \`tri(freq)\`, \`saw(freq)\`, \`square(freq)\` - periodic waves
-- \`noise()\` - random value per note
+- \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
+- \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
+- \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
+- \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+- \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
-**Current values:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio)
+**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`bar.duration\` (all clips)
 
 \`\`\`
 velocity += 20 * cos(2t)       // cycle every 2 beats
-timing += 0.05 * noise()       // humanize timing
+velocity += 20 * cos(4:0t, sync) // continuous across clips
+velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5) // dynamic PWM
+timing += 0.05 * rand()        // humanize timing
 velocity += ramp(0, 60)        // fade in over clip
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
-velocity = note.velocity / 2   // halve existing velocity
-velocity = max(60, note.velocity) // ensure minimum velocity
+velocity = 60 + note.index * 5 // sequential crescendo
+pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
+pitch = quant(note.pitch + 7)  // transpose up fifth, snap to scale
 \`\`\`
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. Use update-clip with only transforms to modify existing notes.
@@ -222,20 +227,18 @@ Process in reverse \`arrangementStart\` order to prevent overwrites:
  * @returns Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context?: Partial<ToolContext>): string {
-  const projectNotes = context?.projectNotes;
+  const memory = context?.memory;
 
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
       "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
       "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(projectNotes?.content
+      ...(memory?.content
         ? [
-            `* Summarize the project notes, ${
-              projectNotes.writable
-                ? "mention you can update the project notes, "
-                : ""
-            }and verify you will follow instructions in project notes (if any).`,
+            `* Summarize the project memory, ${
+              memory.writable ? "mention you can update the memory, " : ""
+            }and verify you will follow instructions in memory (if any).`,
           ]
         : []),
       "* Say the messagesForUser, ask what's next, wait for input",

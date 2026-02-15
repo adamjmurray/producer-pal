@@ -19,7 +19,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const configDir = join(__dirname, "../..", "config");
+const rootDir = join(__dirname, "../..");
+const configDir = join(rootDir, "config");
 
 interface CoverageThresholds {
   statements: number;
@@ -43,7 +44,7 @@ interface DuplicationThresholds {
  */
 async function getCoverageThresholds(): Promise<CoverageThresholds> {
   const vitestConfig = await readFile(
-    join(configDir, "vitest.config.ts"),
+    join(rootDir, "vitest.config.ts"),
     "utf-8",
   );
 

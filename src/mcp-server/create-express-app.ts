@@ -14,21 +14,23 @@ import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 
 interface ProducerPalConfig {
-  useProjectNotes: boolean;
-  projectNotes: string;
-  projectNotesWritable: boolean;
+  memoryEnabled: boolean;
+  memoryContent: string;
+  memoryWritable: boolean;
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
+  excludedTools: string[];
 }
 
 const config: ProducerPalConfig = {
-  useProjectNotes: false,
-  projectNotes: "",
-  projectNotesWritable: false,
+  memoryEnabled: false,
+  memoryContent: "",
+  memoryWritable: false,
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
+  excludedTools: [],
 };
 
 let chatUIEnabled = true; // default
@@ -45,7 +47,7 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
 
 Max.addHandler("projectNotesEnabled", (enabled: unknown) => {
   // console.log(`[node] Setting projectNotesEnabled ${Boolean(enabled)}`);
-  config.useProjectNotes = Boolean(enabled);
+  config.memoryEnabled = Boolean(enabled);
 });
 
 Max.addHandler("projectNotes", (content: unknown) => {
@@ -53,12 +55,12 @@ Max.addHandler("projectNotes", (content: unknown) => {
   const value = content === "bang" ? "" : String(content ?? "");
 
   // console.log(`[node] Setting projectNotes ${value}`);
-  config.projectNotes = value;
+  config.memoryContent = value;
 });
 
 Max.addHandler("projectNotesWritable", (writable: unknown) => {
   // console.log(`[node] Setting projectNotesWritable ${Boolean(writable)}`);
-  config.projectNotesWritable = Boolean(writable);
+  config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -133,6 +135,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
+        excludedTools: config.excludedTools,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
@@ -187,28 +190,24 @@ export function createExpressApp(): Express {
     const incoming = req.body as Partial<ProducerPalConfig>;
     const outlets: Array<() => Promise<void>> = [];
 
-    if (incoming.useProjectNotes !== undefined) {
-      config.useProjectNotes = Boolean(incoming.useProjectNotes);
+    if (incoming.memoryEnabled !== undefined) {
+      config.memoryEnabled = Boolean(incoming.memoryEnabled);
       outlets.push(() =>
-        Max.outlet("config", "projectNotesEnabled", config.useProjectNotes),
+        Max.outlet("config", "projectNotesEnabled", config.memoryEnabled),
       );
     }
 
-    if (incoming.projectNotes !== undefined) {
-      config.projectNotes = incoming.projectNotes ?? "";
+    if (incoming.memoryContent !== undefined) {
+      config.memoryContent = incoming.memoryContent ?? "";
       outlets.push(() =>
-        Max.outlet("config", "projectNotes", config.projectNotes),
+        Max.outlet("config", "projectNotes", config.memoryContent),
       );
     }
 
-    if (incoming.projectNotesWritable !== undefined) {
-      config.projectNotesWritable = Boolean(incoming.projectNotesWritable);
+    if (incoming.memoryWritable !== undefined) {
+      config.memoryWritable = Boolean(incoming.memoryWritable);
       outlets.push(() =>
-        Max.outlet(
-          "config",
-          "projectNotesWritable",
-          config.projectNotesWritable,
-        ),
+        Max.outlet("config", "projectNotesWritable", config.memoryWritable),
       );
     }
 
@@ -230,6 +229,22 @@ export function createExpressApp(): Express {
       config.sampleFolder = incoming.sampleFolder ?? "";
       outlets.push(() =>
         Max.outlet("config", "sampleFolder", config.sampleFolder),
+      );
+    }
+
+    if (incoming.excludedTools !== undefined) {
+      const list = Array.isArray(incoming.excludedTools)
+        ? incoming.excludedTools.map(String)
+        : [];
+
+      // ppal-session is the required entry point and must never be excluded
+      config.excludedTools = list.filter((name) => name !== "ppal-session");
+      outlets.push(() =>
+        Max.outlet(
+          "config",
+          "excludedTools",
+          JSON.stringify(config.excludedTools),
+        ),
       );
     }
 

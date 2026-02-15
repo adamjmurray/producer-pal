@@ -86,9 +86,9 @@ multi-line comment */ D3 1|1`);
     const result = interpretNotation(`
         v100 t0.25 p1.0 C1 // kick drum
         v80-100 p0.8 Gb1 1|1 // hi-hat with variation
-        p0.6 Gb1 |1.5 // ghost hi-hat
+        p0.6 Gb1 1|1.5 // ghost hi-hat
         v90 p1.0 D1 // snare
-        v100 p0.9 Gb1 |2 // another hi-hat
+        v100 p0.9 Gb1 1|2 // another hi-hat
       `);
 
     expect(result).toStrictEqual([

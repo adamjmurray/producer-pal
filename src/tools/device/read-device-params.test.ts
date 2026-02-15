@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall } from "#src/test/mocks/mock-live-api.ts";
+import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { setupDeviceParamMocks } from "./read-device-test-helpers.ts";
 import { readDevice } from "./read-device.ts";
 
 describe("readDevice param-values include option", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   it("should include full parameters when param-values is requested", () => {
@@ -221,13 +222,11 @@ describe("readDevice param-values include option", () => {
 describe("readDevice params include option (lightweight)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
   });
 
   it("should return only id and name for params include", () => {
     setupDeviceParamMocks();
-
-    // Need to set up liveApiCall to not interfere since we're not requesting param-values
-    liveApiCall.mockReturnValue([]);
 
     const result = readDevice({
       deviceId: "device-123",

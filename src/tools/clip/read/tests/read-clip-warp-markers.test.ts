@@ -3,15 +3,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import {
+  setupAudioClipMock,
+  setupMidiClipMock,
+} from "./read-clip-test-helpers.ts";
 
 function setupAudioClipWithWarpMarkers(
   warpMarkers: string,
   name = "Warped Audio",
 ): void {
-  mockLiveApiGet({
-    Clip: {
+  setupAudioClipMock({
+    trackIndex: 0,
+    sceneIndex: 0,
+    clipProps: {
       is_midi_clip: 0,
       name,
       signature_numerator: 4,
@@ -99,8 +104,10 @@ describe("readClip - warp markers", () => {
   });
 
   it("does not include warp markers for MIDI clips", () => {
-    mockLiveApiGet({
-      Clip: {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
         is_midi_clip: 1,
         name: "MIDI Clip",
         signature_numerator: 4,
