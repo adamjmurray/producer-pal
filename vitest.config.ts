@@ -125,6 +125,7 @@ export default defineConfig({
 
         // Eval orchestration (integration code)
         "evals/eval/index.ts",
+        "evals/eval/config-profiles.ts",
         "evals/eval/run-scenario.ts",
         "evals/eval/eval-session.ts",
         "evals/eval/open-live-set.ts",
@@ -140,6 +141,7 @@ export default defineConfig({
         "evals/eval/helpers/eval-session-base.ts",
         "evals/eval/helpers/openai-session.ts",
         "evals/eval/helpers/report-table.ts",
+        "evals/eval/helpers/result-printer.ts",
 
         // Judge helpers (require live LLM APIs)
         "evals/eval/helpers/judge/**",

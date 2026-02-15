@@ -11,7 +11,11 @@ import {
   formatSectionHeader,
   formatSubsectionHeader,
 } from "#evals/chat/shared/formatting.ts";
-import { resetConfig, setConfig } from "#evals/shared/config.ts";
+import {
+  resetConfig,
+  setConfig,
+  type ConfigOptions,
+} from "#evals/shared/config.ts";
 import {
   assertToolCalled,
   assertState,
@@ -27,12 +31,14 @@ import { computeCorrectnessBreakdown } from "./helpers/correctness-score.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import type {
+  ConfigProfile,
   EvalScenario,
   EvalScenarioResult,
   EvalTurnResult,
   EvalAssertion,
   EvalAssertionResult,
   EvalProvider,
+  MatrixConfigValues,
 } from "./types.ts";
 
 const LIVE_SETS_DIR = "evals/live-sets";
@@ -47,6 +53,7 @@ export interface RunScenarioOptions {
   model?: string;
   skipLiveSetOpen?: boolean;
   judgeOverride?: JudgeOverride;
+  configProfile?: ConfigProfile;
 }
 
 /**
@@ -74,10 +81,15 @@ export async function runScenario(
       await openLiveSet(liveSetPath);
     }
 
-    // 2. Apply scenario config if specified
-    if (scenario.config) {
-      if (!isQuietMode()) console.log(`Applying scenario config...`);
-      await setConfig(scenario.config);
+    // 2. Apply merged config (scenario-bound + profile overrides)
+    const mergedConfig = mergeConfigs(
+      scenario.config,
+      options.configProfile?.config,
+    );
+
+    if (mergedConfig) {
+      if (!isQuietMode()) console.log(`Applying config...`);
+      await setConfig(mergedConfig);
     }
 
     // 3. Create evaluation session
@@ -91,6 +103,12 @@ export async function runScenario(
         effectiveModel,
       ),
     );
+
+    const profileId = options.configProfile?.id;
+
+    if (profileId && profileId !== "default") {
+      console.log(`| Config: ${profileId}`);
+    }
 
     session = await createEvalSession({
       provider,
@@ -156,6 +174,7 @@ export async function runScenario(
 
     return {
       scenario,
+      configProfileId: profileId,
       turns,
       assertions: assertionResults,
       passed,
@@ -164,6 +183,7 @@ export async function runScenario(
   } catch (error) {
     return {
       scenario,
+      configProfileId: options.configProfile?.id,
       turns,
       assertions: [],
       passed: false,
@@ -285,8 +305,26 @@ async function runCorrectnessAssertion(
 }
 
 /**
+ * Merge scenario-bound config with matrix profile config.
+ * Profile values override scenario values for any overlapping keys.
+ *
+ * @param scenarioConfig - Scenario-bound config (memory, sampleFolder)
+ * @param profileConfig - Matrix profile config (smallModelMode, jsonOutput, excludedTools)
+ * @returns Merged config, or undefined if both inputs are empty
+ */
+function mergeConfigs(
+  scenarioConfig?: ConfigOptions,
+  profileConfig?: MatrixConfigValues,
+): ConfigOptions | undefined {
+  if (!scenarioConfig && !profileConfig) return undefined;
+
+  return { ...scenarioConfig, ...profileConfig };
+}
+
+/**
  * Resolve a liveSet value to a full path.
  * If it's a short name (no `/`), resolves to the Ableton project structure.
+ *
  * @param liveSet - Short name or full path
  * @returns Full path to the .als file
  */

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -8,24 +9,27 @@
  */
 
 import { Command } from "commander";
-import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
-import { computeCorrectnessScore } from "./helpers/correctness-score.ts";
-import type { JudgeResult } from "./helpers/judge-response-parser.ts";
+import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
-import { printResultsTable } from "./helpers/report-table.ts";
+import {
+  printResultsTable,
+  type ResultsByScenario,
+} from "./helpers/report-table.ts";
+import { printResult } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import type { EvalScenarioResult, LlmJudgeAssertion } from "./types.ts";
+import type { ConfigProfile, EvalScenarioResult } from "./types.ts";
 
 export type { ModelSpec, ModelSpec as JudgeOverride };
 
 interface CliOptions {
   test: string[];
   model: string[];
+  config: string[];
   judge?: string;
   list?: boolean;
   all?: boolean;
@@ -63,10 +67,16 @@ program
     [],
   )
   .option(
+    "-c, --config <profile-id>",
+    "Config profile(s) to test (default: 'default')",
+    collectValues,
+    [],
+  )
+  .option(
     "-j, --judge <provider/model>",
     "Override judge LLM (e.g., google/gemini-2.0-flash)",
   )
-  .option("-l, --list", "List available scenarios")
+  .option("-l, --list", "List available scenarios and config profiles")
   .option(
     "-s, --skip-setup",
     "Skip Live Set setup (use existing MCP connection)",
@@ -86,12 +96,18 @@ program
 program.parse();
 
 /**
- * Print available scenarios
+ * Print available scenarios and config profiles
  */
 function printList(): void {
   console.log("Available scenarios:");
 
   for (const id of listScenarioIds()) {
+    console.log(`  - ${id}`);
+  }
+
+  console.log("\nAvailable config profiles:");
+
+  for (const id of listConfigProfileIds()) {
     console.log(`  - ${id}`);
   }
 }
@@ -117,8 +133,10 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   }
 
   try {
-    // Parse all model specs upfront
     const modelSpecs = options.model.map(parseModelArg);
+    const configProfiles = loadConfigProfiles(
+      options.config.length > 0 ? options.config : undefined,
+    );
 
     const scenarios = loadScenarios({
       testIds: options.all ? undefined : options.test,
@@ -129,47 +147,56 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       process.exit(1);
     }
 
-    // Parse judge override if provided
     const judgeOverride = options.judge
       ? parseModelArg(options.judge)
       : undefined;
 
-    const totalRuns = scenarios.length * modelSpecs.length;
+    const totalRuns =
+      scenarios.length * modelSpecs.length * configProfiles.length;
 
     console.log(
-      `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s) = ${totalRuns} run(s)...`,
+      `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
+        ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...`,
     );
 
-    // Results keyed by scenarioId -> modelSpec -> result
-    const resultsByScenario = new Map<
-      string,
-      Map<string, EvalScenarioResult>
-    >();
+    // Results: scenarioId → modelKey → configId → result
+    const resultsByScenario: ResultsByScenario = new Map();
 
     for (const scenario of scenarios) {
-      const scenarioResults = new Map<string, EvalScenarioResult>();
+      const modelResults = new Map<string, Map<string, EvalScenarioResult>>();
+      let liveSetOpened = false;
 
       for (const spec of modelSpecs) {
         const modelKey = `${spec.provider}/${spec.model}`;
-        const result = await runScenario(scenario, {
-          provider: spec.provider,
-          model: spec.model,
-          skipLiveSetOpen: options.skipSetup,
-          judgeOverride,
-        });
+        const configResults = new Map<string, EvalScenarioResult>();
 
-        scenarioResults.set(modelKey, result);
-        printResult(result, modelKey);
+        for (const profile of configProfiles) {
+          const result = await runScenario(scenario, {
+            provider: spec.provider,
+            model: spec.model,
+            skipLiveSetOpen: options.skipSetup ?? liveSetOpened,
+            judgeOverride,
+            configProfile: profile,
+          });
+
+          liveSetOpened = true;
+          configResults.set(profile.id, result);
+          printResult(result, modelKey, profile.id);
+        }
+
+        modelResults.set(modelKey, configResults);
       }
 
-      resultsByScenario.set(scenario.id, scenarioResults);
+      resultsByScenario.set(scenario.id, modelResults);
     }
 
-    printSummary(resultsByScenario, modelSpecs);
+    printSummary(resultsByScenario, modelSpecs, configProfiles);
 
     // Exit with error code if any scenario failed
-    const allPassed = [...resultsByScenario.values()].every((scenarioResults) =>
-      [...scenarioResults.values()].every((r) => r.passed),
+    const allPassed = [...resultsByScenario.values()].every((modelResults) =>
+      [...modelResults.values()].every((configResults) =>
+        [...configResults.values()].every((r) => r.passed),
+      ),
     );
 
     process.exit(allPassed ? 0 : 1);
@@ -183,110 +210,28 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 }
 
 /**
- * Print result for a single scenario run
- *
- * @param result - The scenario result
- * @param modelKey - The model identifier (provider or provider/model)
- */
-function printResult(result: EvalScenarioResult, modelKey: string): void {
-  const status = result.passed ? "PASSED" : "FAILED";
-
-  // Get scores
-  const correctness = computeCorrectnessScore(result.assertions);
-  const llmJudgeResult = result.assertions.find(
-    (a) => a.assertion.type === "llm_judge",
-  );
-  const llmDetails = llmJudgeResult?.details as JudgeResult | undefined;
-  const llmAssertion = llmJudgeResult?.assertion as
-    | LlmJudgeAssertion
-    | undefined;
-  const llmMinScore = llmAssertion?.minScore ?? 3;
-
-  console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
-  console.log(`${modelKey}: ${result.scenario.id}\n`);
-  console.log(`Duration: ${result.totalDurationMs}ms`);
-  console.log(`Result: ${status}`);
-
-  if (result.error) {
-    console.log(`Error: ${result.error}`);
-  }
-
-  // Print dimension table
-  printDimensionTable(correctness, llmDetails, llmMinScore);
-}
-
-/**
- * Print the dimension score table
- *
- * @param correctness - Correctness score from deterministic checks
- * @param llmDetails - LLM judge result with dimension scores
- * @param minScore - Minimum score threshold
- */
-function printDimensionTable(
-  correctness: number,
-  llmDetails: JudgeResult | undefined,
-  minScore: number,
-): void {
-  console.log(`\n┌───────────────┬───────┐`);
-  console.log(`│ Dimension     │ Score │`);
-  console.log(`├───────────────┼───────┤`);
-  console.log(`│ Correctness   │ ${correctness.toFixed(2).padStart(5)} │`);
-
-  const scores = [correctness];
-
-  if (llmDetails) {
-    console.log(
-      `│ Accuracy      │ ${llmDetails.accuracy.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Reasoning     │ ${llmDetails.reasoning.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Efficiency    │ ${llmDetails.efficiency.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Naturalness   │ ${llmDetails.naturalness.score.toFixed(2).padStart(5)} │`,
-    );
-    scores.push(
-      llmDetails.accuracy.score,
-      llmDetails.reasoning.score,
-      llmDetails.efficiency.score,
-      llmDetails.naturalness.score,
-    );
-  }
-
-  const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-  console.log(`├───────────────┼───────┤`);
-  console.log(`│ Average       │ ${average.toFixed(2).padStart(5)} │`);
-  console.log(`└───────────────┴───────┘`);
-
-  if (llmDetails) {
-    console.log(`\nMin score: ${minScore}`);
-  }
-}
-
-/**
  * Print summary of all results
  *
- * @param resultsByScenario - Results organized by scenario and model
+ * @param resultsByScenario - 3D results map
  * @param modelSpecs - All model specs tested
+ * @param configProfiles - All config profiles tested
  */
 function printSummary(
-  resultsByScenario: Map<string, Map<string, EvalScenarioResult>>,
+  resultsByScenario: ResultsByScenario,
   modelSpecs: ModelSpec[],
+  configProfiles: ConfigProfile[],
 ): void {
-  // If multiple models, print a table
-  if (modelSpecs.length > 1) {
-    printResultsTable(resultsByScenario, modelSpecs);
+  // Use table for multi-model or multi-config runs
+  if (modelSpecs.length > 1 || configProfiles.length > 1) {
+    printResultsTable(resultsByScenario, modelSpecs, configProfiles);
 
     return;
   }
 
-  // Single model - use simple summary
-  const allResults = [...resultsByScenario.values()].flatMap((m) => [
-    ...m.values(),
-  ]);
+  // Single model + single config - use simple summary
+  const allResults = [...resultsByScenario.values()].flatMap((modelMap) =>
+    [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
+  );
   const passed = allResults.filter((r) => r.passed).length;
   const failed = allResults.length - passed;
 
