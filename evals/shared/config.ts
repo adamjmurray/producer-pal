@@ -6,6 +6,8 @@
  * Configuration utilities for MCP server settings
  */
 
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+
 const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
@@ -20,7 +22,7 @@ export interface ConfigOptions {
   smallModelMode?: boolean;
   jsonOutput?: boolean;
   sampleFolder?: string;
-  excludedTools?: string[];
+  tools?: string[];
 }
 
 /**
@@ -51,6 +53,6 @@ export async function resetConfig(): Promise<void> {
     memoryWritable: false,
     jsonOutput: true,
     sampleFolder: "",
-    excludedTools: [],
+    tools: [...TOOL_NAMES],
   });
 }

@@ -309,7 +309,7 @@ async function runCorrectnessAssertion(
  * Profile values override scenario values for any overlapping keys.
  *
  * @param scenarioConfig - Scenario-bound config (memory, sampleFolder)
- * @param profileConfig - Matrix profile config (smallModelMode, jsonOutput, excludedTools)
+ * @param profileConfig - Matrix profile config (smallModelMode, jsonOutput, tools)
  * @returns Merged config, or undefined if both inputs are empty
  */
 function mergeConfigs(

@@ -31,9 +31,36 @@ export type CallLiveApiFunction = (
   args: object,
 ) => Promise<object>;
 
+const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
+  toolDefSession,
+  toolDefReadLiveSet,
+  toolDefUpdateLiveSet,
+  toolDefCreateTrack,
+  toolDefReadTrack,
+  toolDefUpdateTrack,
+  toolDefCreateScene,
+  toolDefReadScene,
+  toolDefUpdateScene,
+  toolDefCreateClip,
+  toolDefReadClip,
+  toolDefUpdateClip,
+  toolDefCreateDevice,
+  toolDefReadDevice,
+  toolDefUpdateDevice,
+  toolDefPlayback,
+  toolDefSelect,
+  toolDefDelete,
+  toolDefDuplicate,
+];
+
+/** All standard tool names (frozen). Does not include dev-only tools like ppal-raw-live-api. */
+export const TOOL_NAMES: readonly string[] = Object.freeze(
+  STANDARD_TOOL_DEFS.map((td) => td.toolName),
+);
+
 interface CreateMcpServerOptions {
   smallModelMode?: boolean;
-  excludedTools?: string[];
+  tools?: string[];
 }
 
 /**
@@ -47,47 +74,22 @@ export function createMcpServer(
   callLiveApi: CallLiveApiFunction,
   options: CreateMcpServerOptions = {},
 ): McpServer {
-  const { smallModelMode = false, excludedTools = [] } = options;
-  const excludedSet = new Set(excludedTools);
+  const { smallModelMode = false, tools } = options;
+  const includedSet = tools ? new Set(tools) : null;
 
   const server = new McpServer({
     name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
     version: VERSION,
   });
 
-  const addTool = (toolDef: ToolDefFunction): void => {
-    if (excludedSet.has(toolDef.toolName)) return;
+  for (const toolDef of STANDARD_TOOL_DEFS) {
+    if (includedSet && !includedSet.has(toolDef.toolName)) continue;
     toolDef(server, callLiveApi, { smallModelMode });
-  };
+  }
 
-  addTool(toolDefSession);
-
-  addTool(toolDefReadLiveSet);
-  addTool(toolDefUpdateLiveSet);
-
-  addTool(toolDefCreateTrack);
-  addTool(toolDefReadTrack);
-  addTool(toolDefUpdateTrack);
-
-  addTool(toolDefCreateScene);
-  addTool(toolDefReadScene);
-  addTool(toolDefUpdateScene);
-
-  addTool(toolDefCreateClip);
-  addTool(toolDefReadClip);
-  addTool(toolDefUpdateClip);
-
-  addTool(toolDefCreateDevice);
-  addTool(toolDefReadDevice);
-  addTool(toolDefUpdateDevice);
-
-  addTool(toolDefPlayback);
-  addTool(toolDefSelect);
-  addTool(toolDefDelete);
-  addTool(toolDefDuplicate);
-
+  // Dev-only tool: bypasses the tools whitelist, gated by env var
   if (process.env.ENABLE_RAW_LIVE_API === "true" && !smallModelMode) {
-    addTool(toolDefRawLiveApi);
+    toolDefRawLiveApi(server, callLiveApi, { smallModelMode });
   }
 
   return server;

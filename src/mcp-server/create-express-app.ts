@@ -9,7 +9,7 @@ import express from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { createMcpServer } from "./create-mcp-server.ts";
+import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 
@@ -20,7 +20,7 @@ interface ProducerPalConfig {
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
-  excludedTools: string[];
+  tools: string[];
 }
 
 const config: ProducerPalConfig = {
@@ -30,7 +30,7 @@ const config: ProducerPalConfig = {
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
-  excludedTools: [],
+  tools: [...TOOL_NAMES],
 };
 
 let chatUIEnabled = true; // default
@@ -135,7 +135,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
-        excludedTools: config.excludedTools,
+        tools: config.tools,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
@@ -232,19 +232,18 @@ export function createExpressApp(): Express {
       );
     }
 
-    if (incoming.excludedTools !== undefined) {
-      const list = Array.isArray(incoming.excludedTools)
-        ? incoming.excludedTools.map(String)
-        : [];
+    if (incoming.tools !== undefined) {
+      const validationError = validateTools(incoming.tools);
 
-      // ppal-session is the required entry point and must never be excluded
-      config.excludedTools = list.filter((name) => name !== "ppal-session");
+      if (validationError) {
+        res.status(400).json(validationError);
+
+        return;
+      }
+
+      config.tools = incoming.tools.map(String);
       outlets.push(() =>
-        Max.outlet(
-          "config",
-          "excludedTools",
-          JSON.stringify(config.excludedTools),
-        ),
+        Max.outlet("config", "tools", JSON.stringify(config.tools)),
       );
     }
 
@@ -257,4 +256,44 @@ export function createExpressApp(): Express {
   });
 
   return app;
+}
+
+const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
+
+/**
+ * Validate the tools array from a config update request.
+ * Returns an error object if invalid, or null if valid.
+ *
+ * @param tools - The tools value from the request body
+ * @returns Error response body or null
+ */
+function validateTools(
+  tools: unknown,
+): { error: string; validToolNames: string[] } | null {
+  if (!Array.isArray(tools)) {
+    return {
+      error: "tools must be an array of tool names",
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  const list = tools.map(String);
+  const invalid = list.filter((name) => !VALID_TOOL_SET.has(name));
+
+  if (invalid.length > 0) {
+    return {
+      error: `Invalid tool name(s): ${invalid.join(", ")}`,
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  if (!list.includes("ppal-session")) {
+    return {
+      error:
+        "ppal-session must be included in tools (it is the required entry point)",
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  return null;
 }

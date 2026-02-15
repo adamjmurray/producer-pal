@@ -9,6 +9,7 @@ import type { AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { TOOL_NAMES } from "./create-mcp-server.ts";
 import { setTimeoutForTesting } from "./max-api-adapter.ts";
 
 // Type for mock Max module with test-specific properties
@@ -539,7 +540,7 @@ describe("MCP Express App", () => {
         smallModelMode: expect.any(Boolean),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
-        excludedTools: expect.any(Array),
+        tools: expect.any(Array),
       });
     });
 
@@ -667,42 +668,69 @@ describe("MCP Express App", () => {
       });
     });
 
-    it("should update excludedTools and strip ppal-session", async () => {
-      // Update excludedTools
+    it("should update tools whitelist", async () => {
+      const subset = ["ppal-session", "ppal-read-live-set", "ppal-playback"];
+
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          excludedTools: ["ppal-session", "ppal-delete", "ppal-select"],
-        }),
+        body: JSON.stringify({ tools: subset }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      // ppal-session should be stripped (it's the required entry point)
-      expect(config.excludedTools).toStrictEqual([
-        "ppal-delete",
-        "ppal-select",
-      ]);
+      expect(config.tools).toStrictEqual(subset);
 
-      // Clear
+      // Restore
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ excludedTools: [] }),
+        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
       });
+    });
+
+    it("should return 400 for invalid tool names", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tools: ["ppal-session", "ppal-nonexistent"],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body.error).toContain("ppal-nonexistent");
+      expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+    });
+
+    it("should return 400 when ppal-session is omitted", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tools: ["ppal-read-live-set", "ppal-playback"],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body.error).toContain("ppal-session");
+      expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
     });
   });
 
-  describe("Excluded Tools Filtering", () => {
+  describe("Tools Whitelist Filtering", () => {
     let configUrl: string;
 
     beforeAll(() => {
       configUrl = serverUrl.replace("/mcp", "/config");
     });
 
-    it("should exclude tools from listTools and restore when cleared", async () => {
+    it("should only include specified tools in listTools", async () => {
       const headers = { "Content-Type": "application/json" };
       const postConfig = (body: object) =>
         fetch(configUrl, {
@@ -711,8 +739,12 @@ describe("MCP Express App", () => {
           body: JSON.stringify(body),
         });
 
-      // Set excludedTools and verify filtering
-      await postConfig({ excludedTools: ["ppal-delete", "ppal-select"] });
+      // Set tools to a subset (without ppal-delete and ppal-select)
+      const subset = [...TOOL_NAMES].filter(
+        (name) => name !== "ppal-delete" && name !== "ppal-select",
+      );
+
+      await postConfig({ tools: subset });
 
       const client1 = new Client({ name: "test-client", version: "1.0.0" });
       const transport1 = new StreamableHTTPClientTransport(new URL(serverUrl));
@@ -726,8 +758,8 @@ describe("MCP Express App", () => {
       expect(filteredNames).toContain("ppal-session");
       await transport1.close();
 
-      // Clear excludedTools and verify restoration
-      await postConfig({ excludedTools: [] });
+      // Restore all tools and verify
+      await postConfig({ tools: [...TOOL_NAMES] });
 
       const client2 = new Client({ name: "test-client", version: "1.0.0" });
       const transport2 = new StreamableHTTPClientTransport(new URL(serverUrl));

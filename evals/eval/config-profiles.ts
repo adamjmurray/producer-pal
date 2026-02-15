@@ -9,6 +9,7 @@
  * excludedTools) that vary independently from scenarios and models.
  */
 
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import type { ConfigProfile } from "./types.ts";
 
 const defaultProfile: ConfigProfile = {
@@ -17,7 +18,7 @@ const defaultProfile: ConfigProfile = {
   config: {
     smallModelMode: false,
     jsonOutput: true,
-    excludedTools: [],
+    tools: [...TOOL_NAMES],
   },
 };
 

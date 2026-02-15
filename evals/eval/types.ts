@@ -23,7 +23,7 @@ export type EvalProvider = "anthropic" | "google" | "openai" | "openrouter";
 export interface MatrixConfigValues {
   smallModelMode?: boolean;
   jsonOutput?: boolean;
-  excludedTools?: string[];
+  tools?: string[];
 }
 
 /**
