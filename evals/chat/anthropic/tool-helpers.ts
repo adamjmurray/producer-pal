@@ -14,7 +14,7 @@ import type {
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
+import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import { truncate } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
 import type { TurnResult } from "../shared/types.ts";

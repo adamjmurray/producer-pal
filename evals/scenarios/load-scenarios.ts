@@ -12,7 +12,7 @@ import {
   duplicate,
   projectNotesWorkflow,
   trackAndDeviceWorkflow,
-} from "./scenario-defs/index.ts";
+} from "./defs/index.ts";
 import type { EvalScenario } from "./types.ts";
 
 /**

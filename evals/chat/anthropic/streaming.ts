@@ -11,7 +11,7 @@ import type {
   RawContentBlockStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
+import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import {
   continueThought,
   DEBUG_SEPARATOR,

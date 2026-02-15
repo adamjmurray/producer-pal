@@ -124,30 +124,30 @@ export default defineConfig({
         "evals/chat/shared/types.ts",
 
         // Eval orchestration (integration code)
-        "evals/eval/index.ts",
-        "evals/eval/config-profiles.ts",
-        "evals/eval/run-scenario.ts",
-        "evals/eval/eval-session.ts",
-        "evals/eval/open-live-set.ts",
-        "evals/eval/load-scenarios.ts",
-        "evals/eval/types.ts",
+        "evals/scenarios/index.ts",
+        "evals/scenarios/config-profiles.ts",
+        "evals/scenarios/run-scenario.ts",
+        "evals/scenarios/eval-session.ts",
+        "evals/scenarios/open-live-set.ts",
+        "evals/scenarios/load-scenarios.ts",
+        "evals/scenarios/types.ts",
 
         // LLM-dependent assertions
-        "evals/eval/assertions/llm-judge.ts",
-        "evals/eval/assertions/index.ts",
+        "evals/scenarios/assertions/llm-judge.ts",
+        "evals/scenarios/assertions/index.ts",
 
         // LLM-dependent session helpers and eval output
-        "evals/eval/helpers/anthropic-session.ts",
-        "evals/eval/helpers/eval-session-base.ts",
-        "evals/eval/helpers/openai-session.ts",
-        "evals/eval/helpers/report-table.ts",
-        "evals/eval/helpers/result-printer.ts",
+        "evals/scenarios/helpers/anthropic-session.ts",
+        "evals/scenarios/helpers/eval-session-base.ts",
+        "evals/scenarios/helpers/openai-session.ts",
+        "evals/scenarios/helpers/report-table.ts",
+        "evals/scenarios/helpers/result-printer.ts",
 
         // Judge helpers (require live LLM APIs)
-        "evals/eval/helpers/judge/**",
+        "evals/scenarios/helpers/judge/**",
 
         // Scenario definitions (test data, not logic)
-        "evals/eval/scenario-defs/**",
+        "evals/scenarios/defs/**",
 
         // Ableton Live Set files (binary project files)
         "evals/live-sets/**",

@@ -14,7 +14,7 @@ import {
   extractToolResultText,
   type McpConnection,
 } from "#evals/chat/shared/mcp.ts";
-import { openLiveSet } from "#evals/eval/open-live-set.ts";
+import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
 import {
   CONFIG_URL,
   resetConfig,

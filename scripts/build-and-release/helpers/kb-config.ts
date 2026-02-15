@@ -63,7 +63,7 @@ function createItemsArray(): KbItem[] {
     { src: "e2e/live-sets/e2e-test-set-spec.md" },
 
     // Eval scenarios
-    { src: "evals/eval/scenario-defs", isDir: true },
+    { src: "evals/scenarios/defs", isDir: true },
   ];
 }
 
