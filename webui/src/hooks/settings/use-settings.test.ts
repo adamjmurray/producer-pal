@@ -472,7 +472,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Tools are enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(true);
   });
 
   it("isToolEnabled returns false for disabled tools", async () => {
@@ -482,11 +482,11 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setEnabledTools({
         ...result.current.enabledTools,
-        "ppal-connect": false,
+        "ppal-session": false,
       });
     });
 
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(false);
   });
 
   it("isToolEnabled returns true for unknown tools (default)", () => {
@@ -502,12 +502,12 @@ describe("useSettings", () => {
     // First disable some tools
     await act(() => {
       result.current.setEnabledTools({
-        "ppal-connect": false,
+        "ppal-session": false,
         "ppal-read-live-set": false,
       });
     });
 
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(false);
 
     // Enable all tools
     await act(() => {
@@ -515,7 +515,7 @@ describe("useSettings", () => {
     });
 
     // All tools should now be enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(true);
     expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(true);
   });
 
@@ -523,7 +523,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Tools start enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(true);
 
     // Disable all tools
     await act(() => {
@@ -531,7 +531,7 @@ describe("useSettings", () => {
     });
 
     // All tools should now be disabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(false);
     expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(false);
     expect(result.current.isToolEnabled("ppal-create-clip")).toBe(false);
   });
@@ -641,7 +641,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should fallback to defaults, all tools enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-session")).toBe(true);
     // Cleanup
     localStorage.removeItem("producer_pal_enabled_tools");
   });

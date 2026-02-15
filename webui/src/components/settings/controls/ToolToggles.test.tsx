@@ -42,8 +42,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} />);
 
       // Check for a few tools (not Raw Live API which is conditional)
-      expect(screen.getByLabelText("Connect to Ableton Live")).toBeDefined();
-      expect(screen.getByLabelText("Project Notes")).toBeDefined();
+      expect(screen.getByLabelText("Session Management")).toBeDefined();
       expect(screen.getByLabelText("Read Live Set")).toBeDefined();
       expect(screen.getByLabelText("Create Track")).toBeDefined();
     });
@@ -82,7 +81,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Session Management",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -91,13 +90,13 @@ describe("ToolToggles", () => {
     it("checkbox is unchecked when tool is disabled", () => {
       const enabledTools = {
         ...defaultProps.enabledTools,
-        "ppal-connect": false,
+        "ppal-session": false,
       };
 
       render(<ToolToggles {...defaultProps} enabledTools={enabledTools} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Session Management",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(false);
@@ -108,7 +107,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} enabledTools={{}} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Session Management",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -121,7 +120,7 @@ describe("ToolToggles", () => {
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const checkbox = screen.getByLabelText("Connect to Ableton Live");
+      const checkbox = screen.getByLabelText("Session Management");
 
       fireEvent.click(checkbox);
 
@@ -129,7 +128,7 @@ describe("ToolToggles", () => {
       // Check that it was called with the tool toggled
       const call = setEnabledTools.mock.calls[0]?.[0];
 
-      expect(call?.["ppal-connect"]).toBe(false); // Was true, now false
+      expect(call?.["ppal-session"]).toBe(false); // Was true, now false
     });
   });
 

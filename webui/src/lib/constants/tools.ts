@@ -10,9 +10,7 @@ export interface Tool {
 
 export const TOOLS: Tool[] = [
   // Row 1
-  { id: "ppal-connect", name: "Connect to Ableton Live" },
-  { id: "ppal-memory", name: "Project Notes" },
-  // Row 2
+  { id: "ppal-session", name: "Session Management" },
   { id: "ppal-read-live-set", name: "Read Live Set" },
   { id: "ppal-update-live-set", name: "Update Live Set" },
   // Row 3
@@ -37,9 +35,7 @@ export const TOOLS: Tool[] = [
   // Row 8
   { id: "ppal-delete", name: "Delete Objects" },
   { id: "ppal-duplicate", name: "Duplicate Objects" },
-  // Row 9
-  { id: "ppal-read-samples", name: "Read Samples" },
-  // Row 10 (conditional)
+  // Row 9 (conditional)
   {
     id: "ppal-raw-live-api",
     name: "Raw Live API",
