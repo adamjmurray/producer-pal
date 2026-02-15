@@ -10,8 +10,8 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
   type CreateClipResult,
-  getToolWarnings,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
 } from "../../mcp-test-helpers.ts";
 import { type ExpectedClip } from "./arrangement-lengthening-expected.ts";
@@ -72,13 +72,12 @@ export function parseLengthenResult(result: unknown): {
   clips: Array<{ id: string }>;
   warnings: string[];
 } {
-  const warnings = getToolWarnings(result);
-
-  // Try parsing as array first
+  // Use parseToolResultWithWarnings since lengthening operations emit expected warnings
+  // (e.g. "no additional file content", "capped at file boundary")
   try {
-    const asArray = parseToolResult<CreateClipResult[]>(
-      result as Awaited<ReturnType<Client["callTool"]>>,
-    );
+    const { data: asArray, warnings } = parseToolResultWithWarnings<
+      CreateClipResult[]
+    >(result as Awaited<ReturnType<Client["callTool"]>>);
 
     if (Array.isArray(asArray)) {
       return { clips: asArray, warnings };
@@ -87,10 +86,10 @@ export function parseLengthenResult(result: unknown): {
     // Not an array, try single object
   }
 
-  // Parse as single object
-  const asObject = parseToolResult<CreateClipResult>(
-    result as Awaited<ReturnType<Client["callTool"]>>,
-  );
+  const { data: asObject, warnings } =
+    parseToolResultWithWarnings<CreateClipResult>(
+      result as Awaited<ReturnType<Client["callTool"]>>,
+    );
 
   return { clips: [asObject], warnings };
 }
