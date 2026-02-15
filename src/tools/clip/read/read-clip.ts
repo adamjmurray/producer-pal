@@ -140,12 +140,10 @@ export function readClip(
   // Calculate start and end based on looping state
   const { startBeats, endBeats } = getActiveClipBounds(
     isLooping,
-    isMidiClip,
     startMarkerBeats,
     loopStartBeats,
     endMarkerBeats,
     loopEndBeats,
-    lengthBeats,
   );
 
   // Convert to bar|beat notation
@@ -370,37 +368,21 @@ function addClipLocationProperties(
 /**
  * Get the active start and end beats based on looping state
  * @param isLooping - Whether the clip is looping
- * @param isMidiClip - Whether the clip is a MIDI clip (vs audio)
  * @param startMarkerBeats - Start marker position in beats
  * @param loopStartBeats - Loop start position in beats
  * @param endMarkerBeats - End marker position in beats
  * @param loopEndBeats - Loop end position in beats
- * @param lengthBeats - Clip length in beats
  * @returns Object with startBeats and endBeats
  */
 function getActiveClipBounds(
   isLooping: boolean,
-  isMidiClip: boolean,
   startMarkerBeats: number,
   loopStartBeats: number,
   endMarkerBeats: number,
   loopEndBeats: number,
-  lengthBeats: number,
 ): { startBeats: number; endBeats: number } {
   const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
   const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
-
-  // Sanity check for non-looping MIDI clips only
-  // (audio clips have length based on sample duration, not end_marker - start_marker)
-  if (!isLooping && isMidiClip) {
-    const derivedStart = endBeats - lengthBeats;
-
-    if (Math.abs(derivedStart - startBeats) > 0.001) {
-      console.warn(
-        `Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
-      );
-    }
-  }
 
   return { startBeats, endBeats };
 }
