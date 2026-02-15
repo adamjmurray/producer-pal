@@ -45,7 +45,10 @@ export function ToolToggles({
     );
   }
 
+  const isAlwaysEnabled = (toolId: string) => toolId === "ppal-session";
+
   const handleToggle = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return;
     setEnabledTools({
       ...enabledTools,
       [toolId]: !enabledTools[toolId],
@@ -66,7 +69,7 @@ export function ToolToggles({
     const allDisabled: Record<string, boolean> = {};
 
     for (const tool of tools) {
-      allDisabled[tool.id] = false;
+      allDisabled[tool.id] = isAlwaysEnabled(tool.id);
     }
 
     setEnabledTools(allDisabled);
@@ -100,7 +103,10 @@ export function ToolToggles({
             <input
               type="checkbox"
               id={`tool-${tool.id}`}
-              checked={enabledTools[tool.id] ?? true}
+              checked={
+                isAlwaysEnabled(tool.id) || (enabledTools[tool.id] ?? true)
+              }
+              disabled={isAlwaysEnabled(tool.id)}
               onChange={() => handleToggle(tool.id)}
             />
             <label htmlFor={`tool-${tool.id}`} className="text-sm">

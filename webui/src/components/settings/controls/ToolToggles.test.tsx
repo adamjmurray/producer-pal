@@ -91,7 +91,7 @@ describe("ToolToggles", () => {
       });
     });
 
-    it("calls setEnabledTools with all disabled when Disable all is clicked", () => {
+    it("calls setEnabledTools with all disabled except session when Disable all is clicked", () => {
       const setEnabledTools = vi.fn();
 
       render(
@@ -103,7 +103,7 @@ describe("ToolToggles", () => {
       fireEvent.click(button);
 
       expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
-        "ppal-session": false,
+        "ppal-session": true,
         "ppal-read-live-set": false,
         "ppal-create-track": false,
       });
@@ -124,13 +124,13 @@ describe("ToolToggles", () => {
     it("checkbox is unchecked when tool is disabled", () => {
       const enabledTools = {
         ...defaultProps.enabledTools,
-        "ppal-session": false,
+        "ppal-read-live-set": false,
       };
 
       render(<ToolToggles {...defaultProps} enabledTools={enabledTools} />);
 
       const checkbox = screen.getByLabelText(
-        "Session Management",
+        "Read Live Set",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(false);
@@ -141,7 +141,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} enabledTools={{}} />);
 
       const checkbox = screen.getByLabelText(
-        "Session Management",
+        "Read Live Set",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -154,15 +154,44 @@ describe("ToolToggles", () => {
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const checkbox = screen.getByLabelText("Session Management");
+      const checkbox = screen.getByLabelText("Read Live Set");
 
       fireEvent.click(checkbox);
 
       expect(setEnabledTools).toHaveBeenCalledOnce();
-      // Check that it was called with the tool toggled
       const call = setEnabledTools.mock.calls[0]?.[0];
 
-      expect(call?.["ppal-session"]).toBe(false); // Was true, now false
+      expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
+    });
+
+    it("session tool checkbox is always checked and disabled", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{ "ppal-session": false }}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText(
+        "Session Management",
+      ) as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+      expect(checkbox.disabled).toBe(true);
+    });
+
+    it("does not call setEnabledTools when session tool checkbox is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
+
+      const checkbox = screen.getByLabelText("Session Management");
+
+      fireEvent.click(checkbox);
+
+      expect(setEnabledTools).not.toHaveBeenCalled();
     });
   });
 });
