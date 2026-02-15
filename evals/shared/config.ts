@@ -20,6 +20,7 @@ export interface ConfigOptions {
   smallModelMode?: boolean;
   jsonOutput?: boolean;
   sampleFolder?: string;
+  excludedTools?: string[];
 }
 
 /**
@@ -50,5 +51,6 @@ export async function resetConfig(): Promise<void> {
     memoryWritable: false,
     jsonOutput: true,
     sampleFolder: "",
+    excludedTools: [],
   });
 }

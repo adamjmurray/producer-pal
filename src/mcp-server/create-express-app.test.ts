@@ -539,6 +539,7 @@ describe("MCP Express App", () => {
         smallModelMode: expect.any(Boolean),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
+        excludedTools: expect.any(Array),
       });
     });
 
@@ -664,6 +665,80 @@ describe("MCP Express App", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sampleFolder: "" }),
       });
+    });
+
+    it("should update excludedTools and strip ppal-session", async () => {
+      // Update excludedTools
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          excludedTools: ["ppal-session", "ppal-delete", "ppal-select"],
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      // ppal-session should be stripped (it's the required entry point)
+      expect(config.excludedTools).toStrictEqual([
+        "ppal-delete",
+        "ppal-select",
+      ]);
+
+      // Clear
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ excludedTools: [] }),
+      });
+    });
+  });
+
+  describe("Excluded Tools Filtering", () => {
+    let configUrl: string;
+
+    beforeAll(() => {
+      configUrl = serverUrl.replace("/mcp", "/config");
+    });
+
+    it("should exclude tools from listTools and restore when cleared", async () => {
+      const headers = { "Content-Type": "application/json" };
+      const postConfig = (body: object) =>
+        fetch(configUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+
+      // Set excludedTools and verify filtering
+      await postConfig({ excludedTools: ["ppal-delete", "ppal-select"] });
+
+      const client1 = new Client({ name: "test-client", version: "1.0.0" });
+      const transport1 = new StreamableHTTPClientTransport(new URL(serverUrl));
+
+      await client1.connect(transport1);
+      const filtered = await client1.listTools();
+      const filteredNames = filtered.tools.map((t) => t.name);
+
+      expect(filteredNames).not.toContain("ppal-delete");
+      expect(filteredNames).not.toContain("ppal-select");
+      expect(filteredNames).toContain("ppal-session");
+      await transport1.close();
+
+      // Clear excludedTools and verify restoration
+      await postConfig({ excludedTools: [] });
+
+      const client2 = new Client({ name: "test-client", version: "1.0.0" });
+      const transport2 = new StreamableHTTPClientTransport(new URL(serverUrl));
+
+      await client2.connect(transport2);
+      const restored = await client2.listTools();
+      const restoredNames = restored.tools.map((t) => t.name);
+
+      expect(restoredNames).toContain("ppal-delete");
+      expect(restoredNames).toContain("ppal-select");
+      await transport2.close();
     });
   });
 

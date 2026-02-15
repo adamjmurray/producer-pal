@@ -20,6 +20,7 @@ interface ProducerPalConfig {
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
+  excludedTools: string[];
 }
 
 const config: ProducerPalConfig = {
@@ -29,6 +30,7 @@ const config: ProducerPalConfig = {
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
+  excludedTools: [],
 };
 
 let chatUIEnabled = true; // default
@@ -133,6 +135,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
+        excludedTools: config.excludedTools,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
@@ -226,6 +229,22 @@ export function createExpressApp(): Express {
       config.sampleFolder = incoming.sampleFolder ?? "";
       outlets.push(() =>
         Max.outlet("config", "sampleFolder", config.sampleFolder),
+      );
+    }
+
+    if (incoming.excludedTools !== undefined) {
+      const list = Array.isArray(incoming.excludedTools)
+        ? incoming.excludedTools.map(String)
+        : [];
+
+      // ppal-session is the required entry point and must never be excluded
+      config.excludedTools = list.filter((name) => name !== "ppal-session");
+      outlets.push(() =>
+        Max.outlet(
+          "config",
+          "excludedTools",
+          JSON.stringify(config.excludedTools),
+        ),
       );
     }
 
