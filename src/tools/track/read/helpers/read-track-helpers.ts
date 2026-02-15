@@ -71,6 +71,7 @@ export function readSessionClips(
       readClip({
         trackIndex,
         sceneIndex,
+        suppressEmptyWarning: true,
         ...(include && { include }),
       }),
     )

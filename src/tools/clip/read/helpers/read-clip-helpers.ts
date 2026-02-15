@@ -69,10 +69,6 @@ export function resolveClip(
   );
 
   if (!clip.exists()) {
-    console.warn(
-      `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
-    );
-
     return {
       found: false,
       emptySlotResponse: {

@@ -113,6 +113,7 @@ export function readScene(
         readClip({
           trackIndex,
           sceneIndex: resolvedSceneIndex,
+          suppressEmptyWarning: true,
           include: args.include,
         }),
       )
@@ -125,6 +126,7 @@ export function readScene(
         readClip({
           trackIndex,
           sceneIndex: resolvedSceneIndex,
+          suppressEmptyWarning: true,
           include: [],
         }),
       )

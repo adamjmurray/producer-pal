@@ -25,6 +25,8 @@ interface ReadClipArgs {
   clipId?: string | null;
   include?: string[];
   includeClipNotes?: boolean;
+  /** @internal Suppress warning for empty clip slots (used by batch readers) */
+  suppressEmptyWarning?: boolean;
 }
 
 interface WarpMarker {
@@ -105,6 +107,12 @@ export function readClip(
   const resolved = resolveClip(clipId, trackIndex, sceneIndex);
 
   if (!resolved.found) {
+    if (!args.suppressEmptyWarning) {
+      console.warn(
+        `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
+      );
+    }
+
     return resolved.emptySlotResponse;
   }
 

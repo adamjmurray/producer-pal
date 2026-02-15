@@ -12,9 +12,9 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
-  getToolWarnings,
   isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -172,7 +172,8 @@ describe("ppal-read-clip", () => {
       name: "ppal-read-clip",
       arguments: { trackIndex: 8, sceneIndex: 0 },
     });
-    const emptyClip = parseToolResult<ReadClipResult>(emptyResult);
+    const { data: emptyClip, warnings } =
+      parseToolResultWithWarnings<ReadClipResult>(emptyResult);
 
     expect(emptyClip.id).toBeNull();
     expect(emptyClip.type).toBeNull();
@@ -180,8 +181,6 @@ describe("ppal-read-clip", () => {
     expect(emptyClip.sceneIndex).toBe(0);
 
     // Verify warning is emitted for empty slot
-    const warnings = getToolWarnings(emptyResult);
-
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toBe("WARNING: no clip at trackIndex 8, sceneIndex 0");
 
