@@ -11,7 +11,7 @@ import { toolDefPlayback } from "#src/tools/control/playback.def.ts";
 import { toolDefRawLiveApi } from "#src/tools/control/raw-live-api.def.ts";
 import { toolDefSelect } from "#src/tools/control/select.def.ts";
 import { toolDefCreateDevice } from "#src/tools/device/create/create-device.def.ts";
-import { toolDefReadDevice } from "#src/tools/device/read-device.def.ts";
+import { toolDefReadDevice } from "#src/tools/device/read/read-device.def.ts";
 import { toolDefUpdateDevice } from "#src/tools/device/update/update-device.def.ts";
 import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";

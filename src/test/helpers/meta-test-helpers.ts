@@ -86,6 +86,99 @@ export function assertFolderSizeLimit(
   }
 }
 
+interface TestHeavyFolder {
+  path: string;
+  testCount: number;
+  sourceCount: number;
+}
+
+/** Directories that are expected to contain mostly test files */
+const TEST_HEAVY_SKIP_DIRS: Set<string> = new Set([
+  "node_modules",
+  "tests",
+  "test",
+  "test-cases",
+  "test-utils",
+]);
+
+/**
+ * Recursively find folders where test files outnumber source files
+ * @param dirPath - Directory to scan
+ * @param minTestFiles - Minimum test files to trigger (default 3)
+ * @returns Folders where testFiles >= 2 * sourceFiles
+ */
+export function findTestHeavyFolders(
+  dirPath: string,
+  minTestFiles: number = 3,
+): TestHeavyFolder[] {
+  const results: TestHeavyFolder[] = [];
+
+  if (!fs.existsSync(dirPath)) return results;
+
+  const items = fs.readdirSync(dirPath);
+  let testCount = 0;
+  let sourceCount = 0;
+
+  for (const item of items) {
+    const fullPath = path.join(dirPath, item);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      if (!TEST_HEAVY_SKIP_DIRS.has(item)) {
+        results.push(...findTestHeavyFolders(fullPath, minTestFiles));
+      }
+    } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
+      if (isTestFile(item)) {
+        testCount++;
+      } else {
+        sourceCount++;
+      }
+    }
+  }
+
+  if (
+    testCount >= minTestFiles &&
+    sourceCount > 0 &&
+    testCount >= 2 * sourceCount
+  ) {
+    results.push({
+      path: path.relative(projectRoot, dirPath),
+      testCount,
+      sourceCount,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Assert that no folders have test files outnumbering source files
+ * @param dirPath - Directory to check
+ * @param expect - Vitest expect function
+ */
+export function assertTestFileRatio(
+  dirPath: string,
+  expect: ExpectStatic,
+): void {
+  if (!fs.existsSync(dirPath)) return;
+
+  const violations = findTestHeavyFolders(dirPath);
+
+  if (violations.length > 0) {
+    const details = violations
+      .map(
+        (f) =>
+          `  - ${f.path}: ${f.testCount} test files, ${f.sourceCount} source files`,
+      )
+      .join("\n");
+
+    expect.fail(
+      `Found ${violations.length} folder(s) where test files outnumber source files:\n${details}\n\n` +
+        `Move test files to a tests/ subdirectory.`,
+    );
+  }
+}
+
 interface PatternMatch {
   file: string;
   line: number;

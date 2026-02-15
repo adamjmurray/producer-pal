@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
-import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/arrangement-splitting-test-helpers.ts";
+import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function expectDuplicateCalled(trackMock: RegisteredMockObject): void {

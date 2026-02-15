@@ -23,7 +23,7 @@ import { playback } from "#src/tools/control/playback.ts";
 import { rawLiveApi } from "#src/tools/control/raw-live-api.ts";
 import { select } from "#src/tools/control/select.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
-import { readDevice } from "#src/tools/device/read-device.ts";
+import { readDevice } from "#src/tools/device/read/read-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
