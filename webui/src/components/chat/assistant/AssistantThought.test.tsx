@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -8,6 +9,9 @@
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { AssistantThought } from "./AssistantThought";
+
+const LONG_CONTENT = "A".repeat(81);
+const MULTI_LINE = "First line\nSecond line\nThird line";
 
 describe("AssistantThought", () => {
   describe("basic rendering", () => {
@@ -90,37 +94,36 @@ describe("AssistantThought", () => {
 
   describe("summary display", () => {
     it("shows 'Thinking...' when open", () => {
-      render(
-        <AssistantThought content="First line\nSecond line" isOpen={true} />,
-      );
+      render(<AssistantThought content={MULTI_LINE} isOpen={true} />);
       expect(screen.getByText("💭 Thinking...")).toBeDefined();
     });
 
-    it("shows first line when closed", () => {
-      render(
-        <AssistantThought content="First line\nSecond line" isOpen={false} />,
-      );
+    it("shows first line in summary when closed", () => {
+      render(<AssistantThought content={MULTI_LINE} isOpen={false} />);
       const summary = document.querySelector("summary");
 
       expect(summary!.innerHTML).toContain("First line");
     });
 
-    it("handles single-line content when closed", () => {
+    it("shows single-line content in summary", () => {
       render(<AssistantThought content="Single line" isOpen={false} />);
       const summary = document.querySelector("summary");
 
       expect(summary!.innerHTML).toContain("Single line");
     });
+
+    it("shows 'Thought about:' label when details is opened", () => {
+      render(<AssistantThought content={MULTI_LINE} isOpen={false} />);
+      const summary = document.querySelector("summary");
+      const openLabel = summary!.querySelector(".hidden.group-open\\:inline");
+
+      expect(openLabel!.textContent).toBe("💭 Thought about:");
+    });
   });
 
   describe("content display", () => {
     it("shows full content when open", () => {
-      render(
-        <AssistantThought
-          content="First line\nSecond line\nThird line"
-          isOpen={true}
-        />,
-      );
+      render(<AssistantThought content={MULTI_LINE} isOpen={true} />);
       const contentDiv = document.querySelector(".prose");
 
       expect(contentDiv!.innerHTML).toContain("First line");
@@ -128,44 +131,37 @@ describe("AssistantThought", () => {
       expect(contentDiv!.innerHTML).toContain("Third line");
     });
 
-    it("renders different content when closed vs open", () => {
-      // The closed state should render differently than open state
-      // We verify this by checking the DOM structure exists when closed
-      const { container: closedContainer } = render(
-        <AssistantThought
-          content="First line\nSecond line\nThird line"
-          isOpen={false}
-        />,
-      );
-      const { container: openContainer } = render(
-        <AssistantThought
-          content="First line\nSecond line\nThird line"
-          isOpen={true}
-        />,
-      );
+    it("body includes full content including first line", () => {
+      render(<AssistantThought content={MULTI_LINE} isOpen={false} />);
+      const contentDiv = document.querySelector(".prose");
 
-      // Both should have the prose div
-      expect(closedContainer.querySelector(".prose")).toBeDefined();
-      expect(openContainer.querySelector(".prose")).toBeDefined();
+      expect(contentDiv!.innerHTML).toContain("First line");
+      expect(contentDiv!.innerHTML).toContain("Second line");
+      expect(contentDiv!.innerHTML).toContain("Third line");
+    });
 
-      // The open version should definitely have all content
-      const openContent = openContainer.querySelector(".prose");
+    it("body includes full content for single-line", () => {
+      render(<AssistantThought content={LONG_CONTENT} isOpen={false} />);
+      const contentDiv = document.querySelector(".prose");
 
-      expect(openContent!.innerHTML).toContain("First line");
-      expect(openContent!.innerHTML).toContain("Second line");
+      expect(contentDiv!.innerHTML).toContain(LONG_CONTENT);
     });
   });
 
   describe("markdown rendering", () => {
     it("renders markdown in content", () => {
-      render(<AssistantThought content="**bold** text" isOpen={true} />);
+      render(
+        <AssistantThought content={`**bold** text\nmore`} isOpen={true} />,
+      );
       const contentDiv = document.querySelector(".prose");
 
       expect(contentDiv!.innerHTML).toContain("<strong>");
     });
 
-    it("renders inline markdown in summary when closed", () => {
-      render(<AssistantThought content="**bold** text" isOpen={false} />);
+    it("renders inline markdown in summary", () => {
+      render(
+        <AssistantThought content={`**bold** line\nSecond`} isOpen={false} />,
+      );
       const summary = document.querySelector("summary");
 
       expect(summary!.innerHTML).toContain("<strong>");
