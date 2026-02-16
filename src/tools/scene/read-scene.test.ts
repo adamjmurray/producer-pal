@@ -231,7 +231,7 @@ describe("readScene", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readScene({
       sceneIndex: 0,
-      include: ["clips", "clip-notes", "color", "timing", "warp"],
+      include: ["clips", "clip-notes", "sample", "color", "timing", "warp"],
     });
 
     // Results should be identical

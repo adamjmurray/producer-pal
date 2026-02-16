@@ -16,6 +16,7 @@ const ARRANGEMENT_CLIPS = "arrangement-clips";
 const REGULAR_TRACKS = "regular-tracks";
 const RETURN_TRACKS = "return-tracks";
 const MASTER_TRACK = "master-track";
+const SAMPLE = "sample";
 const TIMING = "timing";
 const WARP = "warp";
 const AVAILABLE_ROUTINGS = "available-routings";
@@ -47,6 +48,7 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     "all-tracks",
     "all-devices",
     "all-clips",
+    SAMPLE,
     COLOR,
     TIMING,
     WARP,
@@ -69,13 +71,14 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     "all-devices",
     "all-routings",
     "all-clips",
+    SAMPLE,
     COLOR,
     TIMING,
     WARP,
     MIXER,
   ],
-  scene: [CLIPS, CLIP_NOTES, COLOR, TIMING, WARP],
-  clip: [CLIP_NOTES, COLOR, TIMING, WARP],
+  scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
+  clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
 };
 
 /**
@@ -107,6 +110,7 @@ export interface IncludeFlags {
   includeReturnTracks: boolean;
   includeMasterTrack: boolean;
   includeColor: boolean;
+  includeSample: boolean;
   includeTiming: boolean;
   includeWarp: boolean;
   includeMixer: boolean;
@@ -143,6 +147,7 @@ export function parseIncludeArray(
       includeRegularTracks: Boolean(defaults.includeRegularTracks),
       includeReturnTracks: Boolean(defaults.includeReturnTracks),
       includeMasterTrack: Boolean(defaults.includeMasterTrack),
+      includeSample: Boolean(defaults.includeSample),
       includeColor: Boolean(defaults.includeColor),
       includeTiming: Boolean(defaults.includeTiming),
       includeWarp: Boolean(defaults.includeWarp),
@@ -177,6 +182,7 @@ export function parseIncludeArray(
       includeRegularTracks: false,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeSample: false,
       includeColor: false,
       includeTiming: false,
       includeWarp: false,
@@ -203,6 +209,7 @@ export function parseIncludeArray(
     includeRegularTracks: includeSet.has(REGULAR_TRACKS),
     includeReturnTracks: includeSet.has(RETURN_TRACKS),
     includeMasterTrack: includeSet.has(MASTER_TRACK),
+    includeSample: includeSet.has(SAMPLE),
     includeColor: includeSet.has(COLOR),
     includeTiming: includeSet.has(TIMING),
     includeWarp: includeSet.has(WARP),
@@ -232,6 +239,7 @@ const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeRegularTracks", REGULAR_TRACKS],
   ["includeReturnTracks", RETURN_TRACKS],
   ["includeMasterTrack", MASTER_TRACK],
+  ["includeSample", SAMPLE],
   ["includeColor", COLOR],
   ["includeTiming", TIMING],
   ["includeWarp", WARP],
@@ -273,6 +281,7 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
   includeRegularTracks: true,
   includeReturnTracks: false,
   includeMasterTrack: false,
+  includeSample: false,
   includeColor: false,
   includeTiming: false,
   includeWarp: false,
@@ -296,6 +305,7 @@ export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
   includeAvailableRoutings: false,
   includeSessionClips: true,
   includeArrangementClips: true,
+  includeSample: false,
   includeColor: false,
   includeTiming: false,
   includeWarp: false,
@@ -308,6 +318,7 @@ export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
 export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
   includeClips: false,
   includeClipNotes: false,
+  includeSample: false,
   includeColor: false,
   includeTiming: false,
   includeWarp: false,
@@ -318,6 +329,7 @@ export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
  */
 export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
   includeClipNotes: false,
+  includeSample: false,
   includeColor: false,
   includeTiming: false,
   includeWarp: false,

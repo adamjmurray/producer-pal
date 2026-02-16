@@ -7,7 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
-  description: "Read clip settings, MIDI notes, and audio properties",
+  description:
+    "Read clip settings, MIDI notes, and audio properties.\nReturns overview by default. Use include to add detail.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -30,8 +31,8 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .optional()
       .describe("0-based index for session clips"),
     include: z
-      .array(z.enum(["clip-notes", "color", "timing", "warp", "*"]))
+      .array(z.enum(["sample", "clip-notes", "color", "timing", "warp", "*"]))
       .default([])
-      .describe('data: timing, clip-notes, color, warp, "*" for all'),
+      .describe('data: sample, timing, clip-notes, color, warp, "*" for all'),
   },
 });

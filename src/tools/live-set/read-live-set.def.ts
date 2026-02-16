@@ -36,6 +36,7 @@ Re-read after moves/deletes for updated state.`,
           "arrangement-clips",
           "all-clips",
           "clip-notes",
+          "sample",
           "color",
           "timing",
           "warp",
@@ -46,14 +47,14 @@ Re-read after moves/deletes for updated state.`,
       )
       .default(["regular-tracks"])
       .describe(
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, timing, warp, locators, "*" for all (avoid in big sets).',
+        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, sample, color, timing, warp, locators, "*" for all (avoid in big sets).',
       ),
   },
 
   smallModelModeConfig: {
     descriptionOverrides: {
       include:
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, timing, warp, "*" for all (avoid in big sets).',
+        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, sample, color, timing, warp, "*" for all (avoid in big sets).',
     },
   },
 });

@@ -122,6 +122,7 @@ describe("readTrack", () => {
           "arrangement-clips",
           "all-devices",
           "all-routings",
+          "sample",
           "color",
           "timing",
           "warp",

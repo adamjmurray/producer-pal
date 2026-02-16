@@ -34,6 +34,7 @@ describe("parseIncludeArray", () => {
       includeRegularTracks: true,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeSample: false,
       includeColor: false,
       includeTiming: false,
       includeWarp: false,
@@ -63,6 +64,7 @@ describe("parseIncludeArray", () => {
       includeRegularTracks: false,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeSample: false,
       includeColor: false,
       includeTiming: false,
       includeWarp: false,
@@ -150,6 +152,7 @@ describe("parseIncludeArray", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         includeClipNotes: false,
+        includeSample: false,
         includeTiming: false,
         includeWarp: false,
       }),
@@ -160,6 +163,7 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(["*"], READ_CLIP_DEFAULTS);
 
     expect(result.includeClipNotes).toBe(true);
+    expect(result.includeSample).toBe(true);
     expect(result.includeColor).toBe(true);
     expect(result.includeTiming).toBe(true);
     expect(result.includeWarp).toBe(true);

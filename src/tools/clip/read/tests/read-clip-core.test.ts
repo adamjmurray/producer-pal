@@ -245,7 +245,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["timing", "warp"],
+      include: ["sample", "timing", "warp"],
     });
 
     expect(result).toStrictEqual({
@@ -284,7 +284,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["sample"],
+    });
 
     expect(result.sampleFile).toBe("/Users/username/Music/Samples/kick.wav");
     expect(result.type).toBe("audio");
@@ -302,7 +306,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["sample"],
+    });
 
     expect(result.sampleFile).toBeUndefined();
     expect(result.type).toBe("midi");
@@ -321,7 +329,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["sample"],
+    });
 
     expect(result.sampleFile).toBeUndefined();
     expect(result.type).toBe("audio");

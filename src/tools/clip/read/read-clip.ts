@@ -91,8 +91,13 @@ export function readClip(
 ): ReadClipResult {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes, includeColor, includeTiming, includeWarp } =
-    parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
+  const {
+    includeSample,
+    includeClipNotes,
+    includeColor,
+    includeTiming,
+    includeWarp,
+  } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
@@ -145,8 +150,8 @@ export function readClip(
   }
 
   // Process audio clip properties
-  if (result.type === "audio") {
-    processAudioClip(result, clip, includeWarp);
+  if (result.type === "audio" && (includeSample || includeWarp)) {
+    processAudioClip(result, clip, includeSample, includeWarp);
   }
 
   return result;
@@ -268,26 +273,30 @@ function processMidiClip(
  * Process audio clip specific properties
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
+ * @param includeSample - Whether to include base audio properties
  * @param includeWarp - Whether to include warp properties
  */
 function processAudioClip(
   result: ReadClipResult,
   clip: LiveAPI,
+  includeSample: boolean,
   includeWarp: boolean,
 ): void {
-  // Base audio properties (always included)
-  result.gainDb = liveGainToDb(clip.getProperty("gain") as number);
+  // Base audio properties (gated behind includeSample)
+  if (includeSample) {
+    result.gainDb = liveGainToDb(clip.getProperty("gain") as number);
 
-  const filePath = clip.getProperty("file_path") as string | null;
+    const filePath = clip.getProperty("file_path") as string | null;
 
-  if (filePath) {
-    result.sampleFile = filePath;
+    if (filePath) {
+      result.sampleFile = filePath;
+    }
+
+    const pitchCoarse = clip.getProperty("pitch_coarse") as number;
+    const pitchFine = clip.getProperty("pitch_fine") as number;
+
+    result.pitchShift = pitchCoarse + pitchFine / 100;
   }
-
-  const pitchCoarse = clip.getProperty("pitch_coarse") as number;
-  const pitchFine = clip.getProperty("pitch_fine") as number;
-
-  result.pitchShift = pitchCoarse + pitchFine / 100;
 
   // Warp properties (gated behind includeWarp)
   if (includeWarp) {

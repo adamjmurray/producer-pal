@@ -66,7 +66,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - Copies frozen note parameters, not current v/t/p state
 
 ## Audio Clips
-\`ppal-read-clip\` base includes: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). Use \`warp\` include for \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
+\`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
 Audio params ignored when updating MIDI clips.
 
 ## Examples
