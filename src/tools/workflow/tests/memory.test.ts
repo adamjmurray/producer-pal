@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { memory } from "./memory.ts";
+import { memory } from "../memory.ts";
 
 describe("memory", () => {
   let context: Partial<ToolContext>;

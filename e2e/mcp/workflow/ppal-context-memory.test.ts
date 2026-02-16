@@ -124,9 +124,7 @@ describe("ppal-context (memory actions)", () => {
   });
 });
 
-/**
- * Type for ppal-memory result (matches memory.ts MemoryResult)
- */
+/** Matches MemoryResult from context-helpers.ts */
 interface MemoryResult {
   enabled: boolean;
   writable?: boolean;

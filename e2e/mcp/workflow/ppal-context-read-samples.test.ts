@@ -6,7 +6,7 @@
  * E2E tests for ppal-context tool (search action)
  * Uses once mode to reuse MCP connection across tests (faster).
  *
- * Run with: npm run e2e:mcp -- e2e/mcp/samples/ppal-read-samples.test.ts
+ * Run with: npm run e2e:mcp -- e2e/mcp/workflow/ppal-context-read-samples.test.ts
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,9 +86,7 @@ describe("ppal-context (search action)", () => {
   });
 });
 
-/**
- * Type for ppal-read-samples result (matches read-samples.ts)
- */
+/** Matches ReadSamplesResult from read-samples.ts */
 interface ReadSamplesResult {
   sampleFolder: string;
   samples: string[];

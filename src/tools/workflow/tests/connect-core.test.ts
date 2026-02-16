@@ -11,7 +11,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { connect } from "./connect.ts";
+import { connect } from "../connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(

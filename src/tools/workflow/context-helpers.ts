@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readSamples } from "#src/tools/samples/read-samples.ts";
+import { readSamples } from "./read-samples.ts";
 
 export interface MemoryResult {
   enabled: boolean;

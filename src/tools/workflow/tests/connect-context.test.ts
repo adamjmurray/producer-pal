@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { setupConnectMocks } from "./connect-test-helpers.ts";
-import { connect } from "./connect.ts";
+import { connect } from "../connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(

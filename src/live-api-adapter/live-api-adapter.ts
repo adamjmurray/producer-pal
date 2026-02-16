@@ -29,7 +29,6 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { readSamples } from "#src/tools/samples/read-samples.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
 import { updateScene } from "#src/tools/scene/update-scene.ts";
@@ -38,7 +37,6 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { context as contextTool } from "#src/tools/workflow/context.ts";
-import { memory } from "#src/tools/workflow/memory.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
@@ -103,8 +101,6 @@ const tools: Record<string, (args: unknown) => unknown> = {
     return duplicate(args as any, context);
   },
   "ppal-context": (args) => contextTool(args as any, context),
-  "ppal-memory": (args) => memory(args as any, context),
-  "ppal-read-samples": (args) => readSamples(args as any, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
