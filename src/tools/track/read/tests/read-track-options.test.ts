@@ -109,24 +109,17 @@ describe("readTrack", () => {
       const resultExplicit = readTrack({
         trackIndex: 0,
         include: [
-          "drum-pads",
-          "drum-maps",
-          "clip-notes",
-          "chains",
-          "midi-effects",
-          "instruments",
-          "audio-effects",
-          "routings",
-          "available-routings",
           "session-clips",
           "arrangement-clips",
-          "all-devices",
-          "all-routings",
-          "sample",
-          "color",
+          "clip-notes",
           "timing",
-          "warp",
+          "sample",
+          "devices",
+          "drum-maps",
+          "routings",
+          "available-routings",
           "mixer",
+          "color",
         ],
       });
 
@@ -136,9 +129,7 @@ describe("readTrack", () => {
       // Verify key properties are included
       expect(resultWildcard).toStrictEqual(
         expect.objectContaining({
-          instrument: expect.any(Object),
-          audioEffects: expect.any(Array),
-          midiEffects: expect.any(Array),
+          devices: expect.any(Array),
           sessionClips: expect.any(Array),
           arrangementClips: expect.any(Array),
           availableInputRoutingChannels: expect.any(Array),
@@ -216,10 +207,8 @@ describe("readTrack", () => {
           id: "return_track_1",
           type: "audio",
           name: "Return B",
+          category: "return",
           returnTrackIndex: 1,
-          sessionClips: [], // Return tracks have no session clips
-          arrangementClips: [], // Return tracks have no arrangement clips
-          instrument: null,
         });
       });
 
@@ -305,9 +294,7 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          sessionClips: [], // Master track has no session clips
-          arrangementClips: [], // Master track has no arrangement clips
-          instrument: null,
+          category: "master",
         });
 
         // trackIndex should be ignored for master track
@@ -362,10 +349,10 @@ describe("readTrack", () => {
         const result = readTrack({
           trackIndex: 0,
           category: "master",
-          include: ["audio-effects"],
+          include: ["devices"],
         });
 
-        expect(result.audioEffects).toStrictEqual([
+        expect(result.devices).toStrictEqual([
           {
             id: "compressor1",
             path: "mt/d0",
@@ -422,9 +409,7 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          sessionClips: [],
-          arrangementClips: [],
-          instrument: null,
+          category: "master",
         });
       });
     });

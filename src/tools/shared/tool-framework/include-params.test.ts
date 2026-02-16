@@ -23,6 +23,7 @@ describe("parseIncludeArray", () => {
       includeMidiEffects: false,
       includeInstruments: true,
       includeAudioEffects: false,
+      includeDevices: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
       includeSessionClips: false,
@@ -50,6 +51,7 @@ describe("parseIncludeArray", () => {
       includeMidiEffects: false,
       includeInstruments: false,
       includeAudioEffects: false,
+      includeDevices: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
       includeSessionClips: false,
@@ -118,12 +120,35 @@ describe("parseIncludeArray", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         includeClipNotes: false,
-        includeDrumMaps: true,
-        includeInstruments: true,
-        includeSessionClips: true,
-        includeArrangementClips: true,
+        includeDrumMaps: false,
+        includeDevices: false,
+        includeInstruments: false,
+        includeSessionClips: false,
+        includeArrangementClips: false,
       }),
     );
+  });
+
+  it("recognizes devices include for track", () => {
+    const result = parseIncludeArray(["devices"], READ_TRACK_DEFAULTS);
+
+    expect(result.includeDevices).toBe(true);
+    expect(result.includeMidiEffects).toBe(false);
+    expect(result.includeInstruments).toBe(false);
+    expect(result.includeAudioEffects).toBe(false);
+  });
+
+  it("expands wildcard for track tool type", () => {
+    const result = parseIncludeArray(["*"], READ_TRACK_DEFAULTS);
+
+    expect(result.includeDevices).toBe(true);
+    expect(result.includeSessionClips).toBe(true);
+    expect(result.includeArrangementClips).toBe(true);
+    expect(result.includeDrumMaps).toBe(true);
+    // Legacy device categories not in track options list
+    expect(result.includeMidiEffects).toBe(false);
+    expect(result.includeInstruments).toBe(false);
+    expect(result.includeAudioEffects).toBe(false);
   });
 
   it("handles scene defaults correctly", () => {

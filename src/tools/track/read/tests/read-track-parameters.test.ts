@@ -46,10 +46,8 @@ describe("readTrack", () => {
         type: "midi",
         name: "Track by ID",
         trackIndex: 2,
+        category: "regular",
         isArmed: true,
-        sessionClips: [],
-        arrangementClips: [],
-        instrument: null,
       });
     });
 
@@ -72,9 +70,7 @@ describe("readTrack", () => {
         type: "audio",
         name: "Return by ID",
         returnTrackIndex: 1,
-        sessionClips: [],
-        arrangementClips: [],
-        instrument: null,
+        category: "return",
       });
     });
 
@@ -96,9 +92,7 @@ describe("readTrack", () => {
         id: "789",
         type: "audio",
         name: "Master by ID",
-        sessionClips: [],
-        arrangementClips: [],
-        instrument: null,
+        category: "master",
       });
     });
 
@@ -140,7 +134,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "drum-maps"],
+        include: ["devices", "drum-maps"],
       });
 
       // Should have drumMap
@@ -148,23 +142,19 @@ describe("readTrack", () => {
         C3: "Test Kick",
       });
 
-      // Should have instrument but NO chains
-      expect(result.instrument).toStrictEqual({
-        id: "drumrack1",
-        path: "t0/d0",
-        name: "Test Drum Rack",
-        type: "drum-rack",
-        // drumPads: [ // Only included when drum-pads is requested
-        //   {
-        //     name: "Test Kick",
-        //     note: 60,
-        //   },
-        // ],
-      });
+      // Should have devices but NO chains
+      expect(result.devices).toStrictEqual([
+        {
+          id: "drumrack1",
+          path: "t0/d0",
+          name: "Test Drum Rack",
+          type: "drum-rack",
+        },
+      ]);
 
       // Critical: chains should be stripped
       expect(
-        (result.instrument as Record<string, unknown>).chains,
+        (result.devices as Record<string, unknown>[])[0]!.chains,
       ).toBeUndefined();
     });
 
@@ -173,7 +163,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "drum-maps", "chains"],
+        include: ["devices", "drum-maps"],
       });
 
       // Should have drumMap
@@ -181,23 +171,19 @@ describe("readTrack", () => {
         C3: "Test Kick",
       });
 
-      // Should have instrument WITHOUT chains (drum racks don't expose main chains)
-      expect(result.instrument).toStrictEqual({
-        id: "drumrack1",
-        path: "t0/d0",
-        name: "Test Drum Rack",
-        type: "drum-rack",
-        // drumPads: [ // Only included when drum-pads is requested
-        //   {
-        //     name: "Test Kick",
-        //     note: 60,
-        //   },
-        // ],
-      });
+      // Should have devices WITHOUT chains (drum racks don't expose main chains)
+      expect(result.devices).toStrictEqual([
+        {
+          id: "drumrack1",
+          path: "t0/d0",
+          name: "Test Drum Rack",
+          type: "drum-rack",
+        },
+      ]);
 
       // Critical: chains should NOT be present on drum racks
       expect(
-        (result.instrument as Record<string, unknown>).chains,
+        (result.devices as Record<string, unknown>[])[0]!.chains,
       ).toBeUndefined();
     });
 
@@ -275,39 +261,36 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["midi-effects", "instruments", "audio-effects", "drum-maps"],
+        include: ["devices", "drum-maps"],
       });
 
       // All devices should have chains stripped
-      const midiEffects = result.midiEffects as Record<string, unknown>[];
+      const devices = result.devices as Record<string, unknown>[];
 
-      expect(midiEffects[0]).toStrictEqual({
+      expect(devices).toHaveLength(3);
+      expect(devices[0]).toStrictEqual({
         id: "midi_effect_rack",
         path: "t0/d0",
         type: "midi-effect-rack",
       });
-      expect(midiEffects[0]!.chains).toBeUndefined();
+      expect(devices[0]!.chains).toBeUndefined();
 
-      expect(result.instrument).toStrictEqual({
+      expect(devices[1]).toStrictEqual({
         id: "instrument_rack",
         path: "t0/d1",
         type: "instrument-rack",
       });
-      expect(
-        (result.instrument as Record<string, unknown>).chains,
-      ).toBeUndefined();
+      expect(devices[1]!.chains).toBeUndefined();
 
-      const audioEffects = result.audioEffects as Record<string, unknown>[];
-
-      expect(audioEffects[0]).toStrictEqual({
+      expect(devices[2]).toStrictEqual({
         id: "audio_effect_rack",
         path: "t0/d2",
         type: "audio-effect-rack",
       });
-      expect(audioEffects[0]!.chains).toBeUndefined();
+      expect(devices[2]!.chains).toBeUndefined();
     });
 
-    it("uses drum-maps by default (not chains)", () => {
+    it("strips chains from devices when using drum-maps without chains", () => {
       setupTrackMock({
         trackId: "track1",
         properties: mockTrackProperties({
@@ -335,18 +318,20 @@ describe("readTrack", () => {
         }),
       });
 
-      // Call with NO include param - should use defaults
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["devices", "drum-maps"],
+      });
 
-      // Should have instrument but NO chains (proving drum-maps is default, not chains)
-      expect(result.instrument).toStrictEqual({
+      // Should have devices but NO chains (drum-maps strips chains)
+      const devices = result.devices as Record<string, unknown>[];
+
+      expect(devices[0]).toStrictEqual({
         id: "instrument_rack",
         path: "t0/d0",
         type: "instrument-rack",
       });
-      expect(
-        (result.instrument as Record<string, unknown>).chains,
-      ).toBeUndefined();
+      expect(devices[0]!.chains).toBeUndefined();
     });
 
     it("handles drum-maps with no drum racks gracefully", () => {
@@ -369,18 +354,20 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "drum-maps"],
+        include: ["devices", "drum-maps"],
       });
 
-      // Should have instrument but no drumMap
-      expect(result.instrument).toStrictEqual({
-        id: "wavetable",
-        path: "t0/d0",
-        type: "instrument: Wavetable",
-      });
+      // Should have devices but no drumMap
+      expect(result.devices).toStrictEqual([
+        {
+          id: "wavetable",
+          path: "t0/d0",
+          type: "instrument: Wavetable",
+        },
+      ]);
       expect(result.drumMap).toBeUndefined();
       expect(
-        (result.instrument as Record<string, unknown>).chains,
+        (result.devices as Record<string, unknown>[])[0]!.chains,
       ).toBeUndefined();
     });
   });

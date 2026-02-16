@@ -48,7 +48,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["all-routings"],
+        include: ["routings", "available-routings"],
       });
 
       expect(result.availableInputRoutingChannels).toStrictEqual([
@@ -97,7 +97,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["all-routings"],
+        include: ["routings", "available-routings"],
       });
 
       expect(result.availableInputRoutingChannels).toStrictEqual([]);
@@ -135,7 +135,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["all-routings"],
+        include: ["routings", "available-routings"],
       });
 
       // Group tracks should omit input routing properties entirely
@@ -171,7 +171,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["all-routings"],
+        include: ["routings", "available-routings"],
       });
 
       // Should return "unknown" for unsupported monitoring state values
@@ -197,8 +197,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "chains",
-          "instruments",
+          "devices",
           "session-clips",
           "arrangement-clips",
           "routings",

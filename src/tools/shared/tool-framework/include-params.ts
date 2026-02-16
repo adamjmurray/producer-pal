@@ -16,6 +16,7 @@ const MASTER_TRACK = "master-track";
 const SAMPLE = "sample";
 const TIMING = "timing";
 const WARP = "warp";
+const DEVICES = "devices";
 const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
@@ -50,23 +51,17 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     LOCATORS,
   ],
   track: [
-    DRUM_MAPS,
-    CLIP_NOTES,
-    MIDI_EFFECTS,
-    INSTRUMENTS,
-    AUDIO_EFFECTS,
-    "routings",
-    AVAILABLE_ROUTINGS,
     SESSION_CLIPS,
     ARRANGEMENT_CLIPS,
-    "all-devices",
-    "all-routings",
-    "all-clips",
-    SAMPLE,
-    COLOR,
+    CLIP_NOTES,
     TIMING,
-    WARP,
+    SAMPLE,
+    DEVICES,
+    DRUM_MAPS,
+    "routings",
+    AVAILABLE_ROUTINGS,
     MIXER,
+    COLOR,
   ],
   scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING],
   clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
@@ -97,6 +92,7 @@ export interface IncludeFlags {
   includeRegularTracks: boolean;
   includeReturnTracks: boolean;
   includeMasterTrack: boolean;
+  includeDevices: boolean;
   includeColor: boolean;
   includeSample: boolean;
   includeTiming: boolean;
@@ -124,6 +120,7 @@ export function parseIncludeArray(
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstruments: Boolean(defaults.includeInstruments),
       includeAudioEffects: Boolean(defaults.includeAudioEffects),
+      includeDevices: Boolean(defaults.includeDevices),
       includeRoutings: Boolean(defaults.includeRoutings),
       includeAvailableRoutings: Boolean(defaults.includeAvailableRoutings),
       includeSessionClips: Boolean(defaults.includeSessionClips),
@@ -156,6 +153,7 @@ export function parseIncludeArray(
       includeMidiEffects: false,
       includeInstruments: false,
       includeAudioEffects: false,
+      includeDevices: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
       includeSessionClips: false,
@@ -180,6 +178,7 @@ export function parseIncludeArray(
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
     includeInstruments: includeSet.has(INSTRUMENTS),
     includeAudioEffects: includeSet.has(AUDIO_EFFECTS),
+    includeDevices: includeSet.has(DEVICES),
     includeRoutings: includeSet.has("routings"),
     includeAvailableRoutings: includeSet.has(AVAILABLE_ROUTINGS),
     includeSessionClips: includeSet.has(SESSION_CLIPS),
@@ -207,6 +206,7 @@ const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeMidiEffects", MIDI_EFFECTS],
   ["includeInstruments", INSTRUMENTS],
   ["includeAudioEffects", AUDIO_EFFECTS],
+  ["includeDevices", DEVICES],
   ["includeRoutings", "routings"],
   ["includeAvailableRoutings", AVAILABLE_ROUTINGS],
   ["includeSessionClips", SESSION_CLIPS],
@@ -266,15 +266,16 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
  * Default include parameters for read-track tool
  */
 export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
-  includeDrumMaps: true,
+  includeDrumMaps: false,
   includeClipNotes: false,
+  includeDevices: false,
   includeMidiEffects: false,
-  includeInstruments: true,
+  includeInstruments: false,
   includeAudioEffects: false,
   includeRoutings: false,
   includeAvailableRoutings: false,
-  includeSessionClips: true,
-  includeArrangementClips: true,
+  includeSessionClips: false,
+  includeArrangementClips: false,
   includeSample: false,
   includeColor: false,
   includeTiming: false,

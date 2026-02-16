@@ -74,6 +74,7 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "track1",
             name: "Regular Track",
+            category: "regular",
             trackIndex: 0,
           }),
         ],
@@ -81,23 +82,20 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "return1",
             name: "Return A",
+            category: "return",
             returnTrackIndex: 0,
-            sessionClipCount: 0, // Return tracks don't have session clips
-            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
+            category: "return",
             returnTrackIndex: 1,
-            sessionClipCount: 0, // Return tracks don't have session clips
-            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
         ],
         masterTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
-          sessionClipCount: 0, // Master track doesn't have session clips
-          arrangementClipCount: 0, // Master track doesn't have arrangement clips
+          category: "master",
         }),
       }),
     );

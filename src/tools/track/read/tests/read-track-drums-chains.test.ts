@@ -60,7 +60,7 @@ describe("readTrack", () => {
           }),
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -77,7 +77,7 @@ describe("readTrack", () => {
           effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -95,7 +95,7 @@ describe("readTrack", () => {
           },
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -124,7 +124,7 @@ describe("readTrack", () => {
           },
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toStrictEqual({});
     });
@@ -173,7 +173,7 @@ describe("readTrack", () => {
           hihat_device: createSimpleInstrumentMock(),
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toStrictEqual({
         C3: "Kick",
@@ -265,7 +265,7 @@ describe("readTrack", () => {
           },
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toStrictEqual({
         C3: "First Drum Rack Kick",
@@ -329,7 +329,7 @@ describe("readTrack", () => {
           snaredevice: createSimpleInstrumentMock(),
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toStrictEqual({
         C1: "Kick Dub",
@@ -352,7 +352,7 @@ describe("readTrack", () => {
           },
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });

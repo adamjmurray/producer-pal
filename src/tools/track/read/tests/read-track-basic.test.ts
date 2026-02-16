@@ -94,13 +94,11 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
+      category: "regular",
       state: "soloed",
       isArmed: true,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      arrangementClips: [],
-      sessionClips: [],
-      instrument: null,
     });
   });
 
@@ -131,10 +129,8 @@ describe("readTrack", () => {
       type: "audio",
       name: "Audio Track",
       trackIndex: 1,
+      category: "regular",
       state: "muted",
-      arrangementClips: [],
-      sessionClips: [],
-      instrument: null,
     });
   });
 
@@ -158,15 +154,13 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
+      category: "regular",
       state: "soloed",
       isGroup: true,
       isGroupMember: true,
       groupId: "456",
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      arrangementClips: [],
-      sessionClips: [],
-      instrument: null,
     });
   });
 
@@ -212,13 +206,16 @@ describe("readTrack", () => {
     });
 
     // Producer Pal host track with null instrument - should omit the property
-    const hostResult = readTrack({ trackIndex: 1 });
+    const hostResult = readTrack({ trackIndex: 1, include: ["instruments"] });
 
     expect(hostResult.hasProducerPalDevice).toBe(true);
     expect(hostResult).not.toHaveProperty("instrument");
 
     // Regular track with null instrument - should include the property
-    const regularResult = readTrack({ trackIndex: 0 });
+    const regularResult = readTrack({
+      trackIndex: 0,
+      include: ["instruments"],
+    });
 
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
     expect(regularResult).toHaveProperty("instrument");
@@ -229,15 +226,15 @@ describe("readTrack", () => {
     registerTrackWithSessionSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
-    const result = readTrack({ trackIndex: 2 });
+    const result = readTrack({ trackIndex: 2, include: ["session-clips"] });
 
     expect(result).toStrictEqual({
       id: "track3",
       type: "midi",
       name: "Track with Clips",
       trackIndex: 2,
+      category: "regular",
       playingSlotIndex: 0,
-      arrangementClips: [],
       sessionClips: [
         {
           ...expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
@@ -248,7 +245,6 @@ describe("readTrack", () => {
           color: undefined,
         },
       ].map(({ color: _color, ...clip }) => clip),
-      instrument: null,
     });
   });
 
@@ -280,7 +276,10 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 2 });
+    const result = readTrack({
+      trackIndex: 2,
+      include: ["arrangement-clips"],
+    });
 
     const arrangementClips = result.arrangementClips as Array<{ id: string }>;
 
@@ -289,20 +288,20 @@ describe("readTrack", () => {
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
   });
 
-  it("returns session clip count when includeSessionClips is false", () => {
+  it("omits session clip data when session-clips is not included", () => {
     registerTrackWithSessionSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "chains", "instruments"],
+      include: ["clip-notes"],
     });
 
-    // Since clips exist at slots 0 and 2, we should get a count of 2
-    expect(result.sessionClipCount).toBe(2);
+    expect(result.sessionClips).toBeUndefined();
+    expect(result.sessionClipCount).toBeUndefined();
   });
 
-  it("returns arrangement clip count when includeArrangementClips is false", () => {
+  it("omits arrangement clip data when arrangement-clips is not included", () => {
     registerMockObject("track3", {
       path: livePath.track(2),
       type: "Track",
@@ -318,13 +317,14 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "chains", "instruments"],
+      include: ["clip-notes"],
     });
 
-    expect(result.arrangementClipCount).toBe(2);
+    expect(result.arrangementClips).toBeUndefined();
+    expect(result.arrangementClipCount).toBeUndefined();
   });
 
-  it("returns arrangement clip count when includeArrangementClips is false (additional test)", () => {
+  it("omits arrangement clip data when arrangement-clips is not included (additional test)", () => {
     registerMockObject("track2", {
       path: livePath.track(1),
       type: "Track",
@@ -338,14 +338,13 @@ describe("readTrack", () => {
       },
     });
 
-    // Call with includeArrangementClips explicitly false to get count
     const result = readTrack({
       trackIndex: 1,
-      include: ["clip-notes", "chains", "instruments"], // excludes "arrangement-clips"
+      include: ["clip-notes"],
     });
 
-    // Verify that we get a count instead of clip details
-    expect(result.arrangementClipCount).toBe(3);
+    expect(result.arrangementClips).toBeUndefined();
+    expect(result.arrangementClipCount).toBeUndefined();
 
     // Verify consistency with track ID format
     expect(result.id).toBe("track2");

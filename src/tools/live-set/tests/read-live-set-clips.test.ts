@@ -80,14 +80,13 @@ describe("readLiveSet - clips", () => {
       include: ["regular-tracks", "instruments", "chains"],
     });
 
-    // When session-clips and arrangement-clips are not in include, we get counts instead of arrays
-    const tracks = result.tracks as {
-      sessionClipCount: number;
-      arrangementClipCount: number;
-    }[];
+    // When session-clips and arrangement-clips are not in include, no clip data is returned
+    const tracks = result.tracks as Record<string, unknown>[];
 
-    expect(tracks[0]!.sessionClipCount).toBe(1);
-    expect(tracks[0]!.arrangementClipCount).toBe(1);
+    expect(tracks[0]!.sessionClipCount).toBeUndefined();
+    expect(tracks[0]!.arrangementClipCount).toBeUndefined();
+    expect(tracks[0]!.sessionClips).toBeUndefined();
+    expect(tracks[0]!.arrangementClips).toBeUndefined();
   });
 
   it("uses default parameter values when no arguments provided", () => {
@@ -96,16 +95,15 @@ describe("readLiveSet - clips", () => {
     // Call readLiveSet with no arguments to test defaults
     const result = readLiveSet();
 
-    // Verify default behavior: clip counts only (defaults have session-clips and arrangement-clips false)
-    const tracks = result.tracks as {
-      sessionClipCount: number;
-      arrangementClipCount: number;
-    }[];
+    // Verify default behavior: no clip data (defaults have session-clips and arrangement-clips false)
+    const tracks = result.tracks as Record<string, unknown>[];
 
-    expect(tracks[0]!.sessionClipCount).toBe(1);
-    expect(tracks[0]!.arrangementClipCount).toBe(1);
+    expect(tracks[0]!.sessionClipCount).toBeUndefined();
+    expect(tracks[0]!.arrangementClipCount).toBeUndefined();
+    expect(tracks[0]!.sessionClips).toBeUndefined();
+    expect(tracks[0]!.arrangementClips).toBeUndefined();
 
-    // Default behavior: no expensive note reads (counts only, not full clip data)
+    // Default behavior: no expensive note reads
     const clipMock = lookupMockObject("clip1");
 
     expect(clipMock?.call).not.toHaveBeenCalledWith(

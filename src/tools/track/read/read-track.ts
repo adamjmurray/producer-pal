@@ -13,6 +13,7 @@ import {
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   categorizeDevices,
+  readDevicesFlat,
   stripChains,
   type CategorizedDevices,
 } from "./helpers/read-track-device-helpers.ts";
@@ -24,8 +25,6 @@ import {
   addSlotIndices,
   addStateIfNotDefault,
   cleanupDeviceChains,
-  countArrangementClips,
-  countSessionClips,
   handleNonExistentTrack,
   readArrangementClips,
   readMixerProperties,
@@ -58,12 +57,10 @@ interface ReadTrackGenericArgs {
 
 interface SessionClipsResult {
   sessionClips?: ReadClipResult[];
-  sessionClipCount?: number;
 }
 
 interface ArrangementClipsResult {
   arrangementClips?: ReadClipResult[];
-  arrangementClipCount?: number;
 }
 
 /**
@@ -131,15 +128,15 @@ function processSessionClips(
   includeSessionClips: boolean,
   include: string[] | undefined,
 ): SessionClipsResult {
+  if (!includeSessionClips) {
+    return {};
+  }
+
   if (category !== "regular") {
-    return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
+    return { sessionClips: [] };
   }
 
-  if (includeSessionClips) {
-    return { sessionClips: readSessionClips(track, trackIndex, include) };
-  }
-
-  return { sessionClipCount: countSessionClips(track, trackIndex) };
+  return { sessionClips: readSessionClips(track, trackIndex, include) };
 }
 
 /**
@@ -158,17 +155,15 @@ function processArrangementClips(
   includeArrangementClips: boolean,
   include: string[] | undefined,
 ): ArrangementClipsResult {
+  if (!includeArrangementClips) {
+    return {};
+  }
+
   if (isGroup || category === "return" || category === "master") {
-    return includeArrangementClips
-      ? { arrangementClips: [] }
-      : { arrangementClipCount: 0 };
+    return { arrangementClips: [] };
   }
 
-  if (includeArrangementClips) {
-    return { arrangementClips: readArrangementClips(track, include) };
-  }
-
-  return { arrangementClipCount: countArrangementClips(track) };
+  return { arrangementClips: readArrangementClips(track, include) };
 }
 
 /**
@@ -210,19 +205,31 @@ function processDevices(
   }
 
   if (includeDrumMaps) {
-    const allDevices = [
-      ...categorizedDevices.midiEffects,
-      ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
-      ...categorizedDevices.audioEffects,
-    ];
-    const drumMap = getDrumMap(allDevices);
-
-    if (drumMap != null) {
-      result.drumMap = drumMap;
-    }
+    addDrumMapFromDevices(result, categorizedDevices);
   }
 
   return result;
+}
+
+/**
+ * Add drum map to result from categorized device structure
+ * @param result - Result object to add drum map to
+ * @param categorizedDevices - Categorized device structure with chains for drum detection
+ */
+function addDrumMapFromDevices(
+  result: Record<string, unknown>,
+  categorizedDevices: CategorizedDevices,
+): void {
+  const allDevices = [
+    ...categorizedDevices.midiEffects,
+    ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
+    ...categorizedDevices.audioEffects,
+  ];
+  const drumMap = getDrumMap(allDevices);
+
+  if (drumMap != null) {
+    result.drumMap = drumMap;
+  }
 }
 
 /**
@@ -245,6 +252,7 @@ export function readTrackGeneric({
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
     includeDrumMaps,
+    includeDevices,
     includeMidiEffects,
     includeInstruments,
     includeAudioEffects,
@@ -315,25 +323,46 @@ export function readTrackGeneric({
     ),
   );
 
-  // Process devices (chains only fetched internally for drum map building)
-  const categorizedDevices = categorizeDevices(
-    trackDevices,
-    false, // includeDrumPads — use ppal-read-device for drum pad detail
-    includeDrumMaps, // fetch chains only when needed for drum maps
-    false, // includeReturnChains — use ppal-read-device for return chains
-  );
+  // Device processing: flat list (read-track) vs categorized (read-live-set legacy)
+  const useLegacyDeviceFlags =
+    includeMidiEffects || includeInstruments || includeAudioEffects;
 
-  const deviceResults = processDevices(categorizedDevices, {
-    includeMidiEffects,
-    includeInstruments,
-    includeAudioEffects,
-    includeDrumMaps,
-    isProducerPalHost,
-  });
+  if (includeDevices) {
+    // New flat device list preserving original track device order
+    const flatDevices = readDevicesFlat(trackDevices, isProducerPalHost);
 
-  Object.assign(result, deviceResults);
+    if (flatDevices != null) {
+      result.devices = flatDevices;
+    }
 
-  cleanupDeviceChains(result);
+    if (includeDrumMaps) {
+      // Need categorized with chains to detect drum racks for drum map
+      const categorized = categorizeDevices(trackDevices, false, true, false);
+
+      addDrumMapFromDevices(result, categorized);
+    }
+  } else if (useLegacyDeviceFlags || includeDrumMaps) {
+    // Legacy categorized path (used by read-live-set)
+    const categorizedDevices = categorizeDevices(
+      trackDevices,
+      false,
+      includeDrumMaps,
+      false,
+    );
+
+    Object.assign(
+      result,
+      processDevices(categorizedDevices, {
+        includeMidiEffects,
+        includeInstruments,
+        includeAudioEffects,
+        includeDrumMaps,
+        isProducerPalHost,
+      }),
+    );
+    cleanupDeviceChains(result);
+  }
+
   addSlotIndices(result, track, category);
   addStateIfNotDefault(result, track, category);
 

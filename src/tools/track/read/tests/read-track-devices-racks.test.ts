@@ -55,16 +55,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments"],
+        include: ["devices"],
       });
 
       // Chains are always stripped in read-track (use read-device for chain details)
-      expect(result.instrument).toStrictEqual({
-        id: "rack1",
-        path: "t0/d0",
-        name: "My Empty Rack",
-        type: "instrument-rack",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "rack1",
+          path: "t0/d0",
+          name: "My Empty Rack",
+          type: "instrument-rack",
+        },
+      ]);
     });
     it("strips drum rack chains/drumPads in read-track output", () => {
       setupTrackMock({
@@ -123,16 +125,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "drum-maps"],
+        include: ["devices", "drum-maps"],
       });
 
       // Chains/drumPads are always stripped in read-track (use read-device for details)
-      expect(result.instrument).toStrictEqual({
-        id: "drum_rack",
-        path: "t0/d0",
-        type: "drum-rack",
-        name: "My Drums",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "drum_rack",
+          path: "t0/d0",
+          type: "drum-rack",
+          name: "My Drums",
+        },
+      ]);
       // drumMap should still be generated
       expect(result.drumMap).toStrictEqual({
         C1: "Kick",
@@ -172,7 +176,7 @@ describe("readTrack", () => {
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
-      expect(result.audioEffects).toStrictEqual([
+      expect(result.devices).toStrictEqual([
         {
           id: "device1",
           path: "t0/d0",

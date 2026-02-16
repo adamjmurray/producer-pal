@@ -23,7 +23,7 @@ import { readTrack } from "../read-track.ts";
 
 describe("readTrack", () => {
   describe("devices", () => {
-    it("returns null instrument when track has no devices", () => {
+    it("returns empty devices array when track has no devices", () => {
       setupTrackMock({
         trackId: "track1",
         properties: {
@@ -31,9 +31,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["devices"] });
 
-      expect(result.instrument).toBeNull();
+      expect(result.devices).toStrictEqual([]);
+      expect(result.instrument).toBeUndefined();
       expect(result.midiEffects).toBeUndefined();
       expect(result.audioEffects).toBeUndefined();
     });
@@ -79,33 +80,22 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: [
-          "clip-notes",
-          "instruments",
-          "session-clips",
-          "arrangement-clips",
-          "midi-effects",
-          "audio-effects",
-        ],
+        include: ["devices", "session-clips", "arrangement-clips"],
       });
 
-      expect(result.instrument).toStrictEqual({
-        id: "device1",
-        path: "t0/d0",
-        type: "instrument: Analog",
-        name: "Custom Analog",
-      });
-
-      expect(result.audioEffects).toStrictEqual([
+      expect(result.devices).toStrictEqual([
+        {
+          id: "device1",
+          path: "t0/d0",
+          type: "instrument: Analog",
+          name: "Custom Analog",
+        },
         {
           id: "device2",
           path: "t0/d1",
           type: "audio-effect: Reverb",
           name: "Custom Reverb",
         },
-      ]);
-
-      expect(result.midiEffects).toStrictEqual([
         {
           id: "device3",
           path: "t0/d2",
@@ -138,15 +128,16 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["devices"] });
 
-      expect(result.instrument).toStrictEqual({
-        id: "device1",
-        path: "t0/d0",
-        name: "My Drums",
-        type: "drum-rack",
-        // drumPads: [], // Only included when drum-pads is requested
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "device1",
+          path: "t0/d0",
+          name: "My Drums",
+          type: "drum-rack",
+        },
+      ]);
     });
 
     it("includes all device categories when explicitly requested", () => {
@@ -183,24 +174,19 @@ describe("readTrack", () => {
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
 
-      expect(result.instrument).toStrictEqual({
-        id: "device1",
-        path: "t0/d0",
-        type: "drum-rack",
-        name: "My Drums",
-        // drumPads: [], // Only included when drum-pads is requested
-      });
-
-      const audioEffects = result.audioEffects as Array<
-        Record<string, unknown>
-      >;
-
-      expect(audioEffects).toHaveLength(1);
-      expect(audioEffects[0]).toStrictEqual({
-        id: "device2",
-        path: "t0/d1",
-        type: "audio-effect: Reverb",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "device1",
+          path: "t0/d0",
+          type: "drum-rack",
+          name: "My Drums",
+        },
+        {
+          id: "device2",
+          path: "t0/d1",
+          type: "audio-effect: Reverb",
+        },
+      ]);
     });
 
     it("strips chains from instrument rack in read-track output", () => {
@@ -227,16 +213,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments"],
+        include: ["devices"],
       });
 
       // Chains are always stripped in read-track (use read-device for chain details)
-      expect(result.instrument).toStrictEqual({
-        id: "rack1",
-        path: "t0/d0",
-        type: "instrument-rack",
-        name: "My Custom Rack",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "rack1",
+          path: "t0/d0",
+          type: "instrument-rack",
+          name: "My Custom Rack",
+        },
+      ]);
     });
 
     it("strips chains from audio effect rack in read-track output", () => {
@@ -279,21 +267,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ALL_DEVICE_INCLUDE_OPTIONS,
+        include: ["devices"],
       });
-
-      const audioEffects2 = result.audioEffects as Array<
-        Record<string, unknown>
-      >;
 
       // Chains are always stripped in read-track (use read-device for chain details)
-      expect(audioEffects2).toHaveLength(1);
-      expect(audioEffects2[0]).toStrictEqual({
-        id: "fx_rack1",
-        path: "t0/d0",
-        type: "audio-effect-rack",
-        name: "Master FX",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "fx_rack1",
+          path: "t0/d0",
+          type: "audio-effect-rack",
+          name: "Master FX",
+        },
+      ]);
     });
 
     it("strips chains from deeply nested racks in read-track output", () => {
@@ -326,16 +311,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments"],
+        include: ["devices"],
       });
 
       // Chains are always stripped in read-track (use read-device for chain details)
-      expect(result.instrument).toStrictEqual({
-        id: "outer_rack",
-        path: "t0/d0",
-        type: "instrument-rack",
-        name: "Master FX",
-      });
+      expect(result.devices).toStrictEqual([
+        {
+          id: "outer_rack",
+          path: "t0/d0",
+          type: "instrument-rack",
+          name: "Master FX",
+        },
+      ]);
     });
   });
 });

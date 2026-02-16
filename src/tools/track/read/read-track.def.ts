@@ -7,7 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
-  description: `Read track settings, clips, devices.`,
+  description: `Read track settings, clips, devices.
+Returns overview by default. Use include to add detail.`,
 
   annotations: {
     readOnlyHint: true,
@@ -36,27 +37,21 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         z.enum([
           "session-clips",
           "arrangement-clips",
-          "all-clips",
           "clip-notes",
-          "midi-effects",
-          "instruments",
-          "audio-effects",
-          "all-devices",
+          "timing",
+          "sample",
+          "devices",
           "drum-maps",
           "routings",
           "available-routings",
-          "all-routings",
-          "sample",
-          "color",
-          "timing",
-          "warp",
           "mixer",
+          "color",
           "*",
         ]),
       )
-      .default(["instruments", "drum-maps", "all-clips"])
+      .default([])
       .describe(
-        'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), drum-maps, routings (current/available/all), mixer, sample, color, timing, warp, "*" for all',
+        'data: clips (session/arrangement), clip-notes, timing, sample, devices, drum-maps, routings, available-routings, mixer, color, "*" for all',
       ),
   },
 });

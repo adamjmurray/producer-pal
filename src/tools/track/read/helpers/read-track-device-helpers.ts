@@ -77,6 +77,30 @@ export function categorizeDevices(
 }
 
 /**
+ * Read all devices as a flat ordered list (preserving original track device order).
+ * Returns undefined for Producer Pal host tracks with no devices.
+ * @param devices - Array of Live API device objects
+ * @param isProducerPalHost - Whether this is the Producer Pal host track
+ * @returns Flat array of device objects, or undefined
+ */
+export function readDevicesFlat(
+  devices: LiveAPI[],
+  isProducerPalHost: boolean,
+): Record<string, unknown>[] | undefined {
+  if (isProducerPalHost && devices.length === 0) {
+    return undefined;
+  }
+
+  return devices.map((device) =>
+    readDevice(device, {
+      includeChains: false,
+      includeReturnChains: false,
+      includeDrumPads: false,
+    }),
+  );
+}
+
+/**
  * Removes chains property from a device object
  * @param device - Device object to strip chains from
  * @returns Device object without chains property

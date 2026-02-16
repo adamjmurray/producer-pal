@@ -127,7 +127,7 @@ describe("readTrack", () => {
           devices: [],
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -149,7 +149,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -231,7 +231,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
       });
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       expect(result.drumMap).toStrictEqual({ C3: "Direct Kick" });
     });
@@ -244,7 +244,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "instruments",
+          "devices",
           "session-clips",
           "arrangement-clips",
         ],
@@ -252,7 +252,7 @@ describe("readTrack", () => {
 
       // Verify the track was read successfully
       expect(result.id).toBe("track1");
-      expect(result.instrument).toBeDefined();
+      expect(result.devices).toBeDefined();
 
       // drumPads/chains moved to read-device
       // expect(result.instrument.drumPads).toStrictEqual([
@@ -281,7 +281,7 @@ describe("readTrack", () => {
       setupTrackWithDrumRack(["kick_chain", "empty_chain", "snare_chain"]);
       registerKickAndEmptyChains(true);
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
 
       // drumMap should only include pads with instruments (kick and snare), not empty pad
       expect(result.drumMap).toStrictEqual({
@@ -348,7 +348,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "instruments",
+          "devices",
           "session-clips",
           "arrangement-clips",
           "drum-maps",
