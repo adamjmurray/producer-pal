@@ -11,6 +11,7 @@ import {
   loadAllProviderSettings,
   loadCurrentProvider,
   loadEnabledTools,
+  loadProviderSettings,
   type ProviderSettings,
   saveCurrentSettings,
 } from "./settings-helpers";
@@ -52,25 +53,25 @@ export function useSettings(): UseSettingsReturn {
   );
   const [enabledTools, setEnabledToolsState] =
     useState<Record<string, boolean>>(loadEnabledTools);
-  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.gemini,
+  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("gemini"),
   );
-  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.openai,
+  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("openai"),
   );
-  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.mistral,
+  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("mistral"),
   );
   const [openrouterSettings, setOpenrouterSettings] =
-    useState<ProviderSettings>(DEFAULT_SETTINGS.openrouter);
+    useState<ProviderSettings>(() => loadProviderSettings("openrouter"));
   const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.lmstudio,
+    () => loadProviderSettings("lmstudio"),
   );
-  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.ollama,
+  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("ollama"),
   );
-  const [customSettings, setCustomSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.custom,
+  const [customSettings, setCustomSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("custom"),
   );
 
   // Mapping of providers to their state setters
