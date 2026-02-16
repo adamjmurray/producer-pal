@@ -4,27 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readSamples } from "#src/tools/samples/read-samples.ts";
-import { connect } from "./connect.ts";
-
-interface LiveSetInfo {
-  name?: unknown;
-  trackCount: number;
-  sceneCount: number;
-  tempo: unknown;
-  timeSignature: string | null;
-  scale?: string;
-}
-
-export interface ConnectResult {
-  connected: boolean;
-  producerPalVersion: string;
-  abletonLiveVersion: string;
-  liveSet: LiveSetInfo;
-  $skills?: string;
-  $instructions?: string;
-  messagesForUser?: string;
-  memoryContent?: string;
-}
 
 export interface MemoryResult {
   enabled: boolean;
@@ -38,18 +17,7 @@ export interface SamplesResult {
 }
 
 /**
- * Handle connect action by delegating to existing connect() function
- * @param context - The context object
- * @returns Connection result with Live Set info
- */
-export function handleConnect(
-  context: Partial<ToolContext> = {},
-): ConnectResult {
-  return connect({}, context);
-}
-
-/**
- * Handle read-memory action
+ * Handle read action
  * @param context - The context object
  * @returns Memory result with enabled status and content
  */
@@ -70,7 +38,7 @@ export function handleReadMemory(
 }
 
 /**
- * Handle write-memory action
+ * Handle write action
  * @param content - Memory content to write
  * @param context - The context object
  * @returns Memory result with updated content
@@ -108,7 +76,7 @@ export function handleWriteMemory(
 }
 
 /**
- * Handle search-samples action by delegating to existing readSamples() function
+ * Handle search action by delegating to existing readSamples() function
  * @param search - Optional search filter
  * @param context - The context object
  * @returns Samples result with sample folder and file list

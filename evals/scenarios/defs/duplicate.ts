@@ -17,7 +17,7 @@ export const duplicate: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-session", turn: 0 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Track duplication
     { type: "tool_called", tool: "ppal-duplicate", turn: 1 },

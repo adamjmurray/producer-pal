@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { session } from "../session.ts";
+import { context } from "../context.ts";
 
-describe("session - memory actions", () => {
-  let context: Partial<ToolContext>;
+describe("context - memory actions", () => {
+  let toolContext: Partial<ToolContext>;
 
   beforeEach(() => {
-    context = {
+    toolContext = {
       memory: {
         enabled: false,
         writable: false,
@@ -19,28 +19,28 @@ describe("session - memory actions", () => {
     };
   });
 
-  describe("read-memory action", () => {
+  describe("read action", () => {
     it("returns enabled: false when project context is disabled", () => {
-      context.memory!.enabled = false;
-      const result = session({ action: "read-memory" }, context);
+      toolContext.memory!.enabled = false;
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("returns enabled: false when memory is missing", () => {
-      const result = session({ action: "read-memory" }, {});
+      const result = context({ action: "read" }, {});
 
       expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("returns full context when project context is enabled", () => {
-      context.memory!.enabled = true;
-      context.memory!.writable = true;
-      context.memory!.content = "test content";
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = true;
+      toolContext.memory!.content = "test content";
 
-      const result = session({ action: "read-memory" }, context);
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({
         enabled: true,
@@ -51,11 +51,11 @@ describe("session - memory actions", () => {
     });
 
     it("returns full context with writable false when not writable", () => {
-      context.memory!.enabled = true;
-      context.memory!.writable = false;
-      context.memory!.content = "test content";
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = false;
+      toolContext.memory!.content = "test content";
 
-      const result = session({ action: "read-memory" }, context);
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({
         enabled: true,
@@ -66,27 +66,27 @@ describe("session - memory actions", () => {
     });
   });
 
-  describe("write-memory action", () => {
+  describe("write action", () => {
     it("throws error when project context is disabled", () => {
-      context.memory!.enabled = false;
+      toolContext.memory!.enabled = false;
       expect(() =>
-        session({ action: "write-memory", content: "test" }, context),
+        context({ action: "write", content: "test" }, toolContext),
       ).toThrow("Project context is disabled");
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("throws error when memory is missing", () => {
-      expect(() =>
-        session({ action: "write-memory", content: "test" }, {}),
-      ).toThrow("Project context is disabled");
+      expect(() => context({ action: "write", content: "test" }, {})).toThrow(
+        "Project context is disabled",
+      );
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("throws error when project context is not writable", () => {
-      context.memory!.enabled = true;
-      context.memory!.writable = false;
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = false;
       expect(() =>
-        session({ action: "write-memory", content: "test" }, context),
+        context({ action: "write", content: "test" }, toolContext),
       ).toThrow(
         "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
       );
@@ -94,19 +94,19 @@ describe("session - memory actions", () => {
     });
 
     it("throws error when content is missing", () => {
-      context.memory!.enabled = true;
-      context.memory!.writable = true;
-      expect(() => session({ action: "write-memory" }, context)).toThrow(
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = true;
+      expect(() => context({ action: "write" }, toolContext)).toThrow(
         "Content required for write action",
       );
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("throws error when content is empty string", () => {
-      context.memory!.enabled = true;
-      context.memory!.writable = true;
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = true;
       expect(() =>
-        session({ action: "write-memory", content: "" }, context),
+        context({ action: "write", content: "" }, toolContext),
       ).toThrow("Content required for write action");
       expect(outlet).not.toHaveBeenCalled();
     });
@@ -115,16 +115,16 @@ describe("session - memory actions", () => {
       ["updates content when all conditions are met", ""],
       ["overwrites existing content", "old content"],
     ])("%s", (_, initialContent) => {
-      context.memory!.enabled = true;
-      context.memory!.writable = true;
-      if (initialContent) context.memory!.content = initialContent;
+      toolContext.memory!.enabled = true;
+      toolContext.memory!.writable = true;
+      if (initialContent) toolContext.memory!.content = initialContent;
 
-      const result = session(
-        { action: "write-memory", content: "new content" },
-        context,
+      const result = context(
+        { action: "write", content: "new content" },
+        toolContext,
       );
 
-      expect(context.memory!.content).toBe("new content");
+      expect(toolContext.memory!.content).toBe("new content");
       expect(result).toStrictEqual({
         enabled: true,
         writable: true,
@@ -132,5 +132,11 @@ describe("session - memory actions", () => {
       });
       expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
     });
+  });
+
+  it("throws error for unknown action", () => {
+    expect(() => context({ action: "unknown-action" })).toThrow(
+      "Unknown action: unknown-action",
+    );
   });
 });

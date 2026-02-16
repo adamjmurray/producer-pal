@@ -137,7 +137,7 @@ _See below for tips on using a subset of tools._
 - To help the model make good tool choices and get more out of the limited
   context length, disable some of the Producer Pal tools. To focus on MIDI clip
   generation, a good minimal toolset for experimentation is:
-  - `ppal-session`
+  - `ppal-connect`
   - `ppal-read-live-set`
   - `ppal-read-track`
   - `ppal-create-clip`

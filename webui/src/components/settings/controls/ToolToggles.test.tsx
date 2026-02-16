@@ -12,7 +12,7 @@ import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { ToolToggles } from "./ToolToggles";
 
 const TEST_TOOLS: McpTool[] = [
-  { id: "ppal-session", name: "Session Management" },
+  { id: "ppal-connect", name: "Connect to Ableton" },
   { id: "ppal-read-live-set", name: "Read Live Set" },
   { id: "ppal-create-track", name: "Create Track" },
 ];
@@ -22,7 +22,7 @@ describe("ToolToggles", () => {
     tools: TEST_TOOLS,
     mcpStatus: "connected" as const,
     enabledTools: {
-      "ppal-session": true,
+      "ppal-connect": true,
       "ppal-read-live-set": true,
       "ppal-create-track": true,
     },
@@ -48,7 +48,7 @@ describe("ToolToggles", () => {
     it("renders all tools", () => {
       render(<ToolToggles {...defaultProps} />);
 
-      expect(screen.getByLabelText("Session Management")).toBeDefined();
+      expect(screen.getByLabelText("Connect to Ableton")).toBeDefined();
       expect(screen.getByLabelText("Read Live Set")).toBeDefined();
       expect(screen.getByLabelText("Create Track")).toBeDefined();
     });
@@ -85,7 +85,7 @@ describe("ToolToggles", () => {
       fireEvent.click(button);
 
       expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
-        "ppal-session": true,
+        "ppal-connect": true,
         "ppal-read-live-set": true,
         "ppal-create-track": true,
       });
@@ -103,7 +103,7 @@ describe("ToolToggles", () => {
       fireEvent.click(button);
 
       expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
-        "ppal-session": true,
+        "ppal-connect": true,
         "ppal-read-live-set": false,
         "ppal-create-track": false,
       });
@@ -115,7 +115,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} />);
 
       const checkbox = screen.getByLabelText(
-        "Session Management",
+        "Connect to Ableton",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -164,30 +164,30 @@ describe("ToolToggles", () => {
       expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
     });
 
-    it("session tool checkbox is always checked and disabled", () => {
+    it("connect tool checkbox is always checked and disabled", () => {
       render(
         <ToolToggles
           {...defaultProps}
-          enabledTools={{ "ppal-session": false }}
+          enabledTools={{ "ppal-connect": false }}
         />,
       );
 
       const checkbox = screen.getByLabelText(
-        "Session Management",
+        "Connect to Ableton",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
       expect(checkbox.disabled).toBe(true);
     });
 
-    it("does not call setEnabledTools when session tool checkbox is clicked", () => {
+    it("does not call setEnabledTools when connect tool checkbox is clicked", () => {
       const setEnabledTools = vi.fn();
 
       render(
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const checkbox = screen.getByLabelText("Session Management");
+      const checkbox = screen.getByLabelText("Connect to Ableton");
 
       fireEvent.click(checkbox);
 

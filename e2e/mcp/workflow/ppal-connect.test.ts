@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-session tool (connect action)
+ * E2E tests for ppal-connect tool
  * Uses once mode to reuse MCP connection across tests (faster).
  *
  * Run with: npm run e2e:mcp
@@ -17,17 +17,17 @@ import {
 
 const ctx = setupMcpTestContext({ once: true });
 
-/** Helper to call ppal-session with connect action and parse the result */
+/** Helper to call ppal-connect and parse the result */
 async function callConnect(): Promise<ConnectResult> {
   const result = await ctx.client!.callTool({
-    name: "ppal-session",
-    arguments: { action: "connect" },
+    name: "ppal-connect",
+    arguments: {},
   });
 
   return parseToolResult<ConnectResult>(result);
 }
 
-describe("ppal-session (connect action)", () => {
+describe("ppal-connect", () => {
   it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
     // Ensure standard mode is active
     await setConfig({ smallModelMode: false });

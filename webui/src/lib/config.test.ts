@@ -83,7 +83,8 @@ describe("config", () => {
 
     it("contains expected tool mappings", () => {
       expect(toolNames).toMatchObject({
-        "ppal-session": "Session Management",
+        "ppal-connect": "Connect to Ableton",
+        "ppal-context": "Project Context",
         "ppal-read-live-set": "Read Live Set",
         "ppal-update-live-set": "Update Live Set",
         "ppal-create-track": "Create Track",
@@ -105,8 +106,8 @@ describe("config", () => {
       });
     });
 
-    it("has 19 tool mappings", () => {
-      expect(Object.keys(toolNames)).toHaveLength(19);
+    it("has 20 tool mappings", () => {
+      expect(Object.keys(toolNames)).toHaveLength(20);
     });
   });
 });

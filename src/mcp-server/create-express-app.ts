@@ -291,10 +291,10 @@ function validateTools(
     };
   }
 
-  if (!list.includes("ppal-session")) {
+  if (!list.includes("ppal-connect")) {
     return {
       error:
-        "ppal-session must be included in tools (it is the required entry point)",
+        "ppal-connect must be included in tools (it is the required entry point)",
       validToolNames: [...TOOL_NAMES],
     };
   }

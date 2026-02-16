@@ -38,7 +38,7 @@ describe("useMcpConnection", () => {
     mockClose.mockResolvedValue(undefined);
     mockListTools.mockResolvedValue({
       tools: [
-        { name: "ppal-session", title: "Session Management" },
+        { name: "ppal-connect", title: "Connect to Ableton" },
         { name: "ppal-read-live-set", title: "Read Live Set" },
       ],
     });
@@ -68,7 +68,7 @@ describe("useMcpConnection", () => {
 
     await waitFor(() => {
       expect(result.current.mcpTools).toStrictEqual([
-        { id: "ppal-session", name: "Session Management" },
+        { id: "ppal-connect", name: "Connect to Ableton" },
         { id: "ppal-read-live-set", name: "Read Live Set" },
       ]);
     });

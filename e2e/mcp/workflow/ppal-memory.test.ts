@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-session tool (memory actions)
+ * E2E tests for ppal-context tool (memory actions)
  * Tests project notes read/write functionality via MCP protocol.
  *
  * Run with: npm run e2e:mcp
@@ -18,9 +18,9 @@ import {
 
 const ctx = setupMcpTestContext({ once: true });
 
-/** Helper to call ppal-session with memory actions and return raw result */
+/** Helper to call ppal-context with memory actions and return raw result */
 async function callMemoryTool(
-  action: "read-memory" | "write-memory",
+  action: "read" | "write",
   content?: string,
 ): Promise<unknown> {
   const args: { action: string; content?: string } = { action };
@@ -29,14 +29,14 @@ async function callMemoryTool(
     args.content = content;
   }
 
-  return ctx.client!.callTool({ name: "ppal-session", arguments: args });
+  return ctx.client!.callTool({ name: "ppal-context", arguments: args });
 }
 
-describe("ppal-session (memory actions)", () => {
+describe("ppal-context (memory actions)", () => {
   describe("disabled state", () => {
     it("returns enabled: false when project notes are disabled", async () => {
       await setConfig({ memoryEnabled: false, memoryContent: "" });
-      const result = await callMemoryTool("read-memory");
+      const result = await callMemoryTool("read");
       const parsed = parseToolResult<MemoryResult>(result);
 
       expect(parsed).toStrictEqual({ enabled: false });
@@ -55,7 +55,7 @@ describe("ppal-session (memory actions)", () => {
 
       // Read should work
       const readResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read-memory"),
+        await callMemoryTool("read"),
       );
 
       expect(readResult.enabled).toBe(true);
@@ -64,7 +64,7 @@ describe("ppal-session (memory actions)", () => {
 
       // Write should fail with descriptive error
       const writeResponse = extractToolResultText(
-        await callMemoryTool("write-memory", "New content"),
+        await callMemoryTool("write", "New content"),
       );
 
       expect(writeResponse).toContain("AI updates are disabled");
@@ -85,7 +85,7 @@ describe("ppal-session (memory actions)", () => {
 
       // Read initial content
       const readResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read-memory"),
+        await callMemoryTool("read"),
       );
 
       expect(readResult.enabled).toBe(true);
@@ -94,7 +94,7 @@ describe("ppal-session (memory actions)", () => {
 
       // Write new content
       const writeResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("write-memory", UPDATED_CONTENT),
+        await callMemoryTool("write", UPDATED_CONTENT),
       );
 
       expect(writeResult.enabled).toBe(true);
@@ -103,7 +103,7 @@ describe("ppal-session (memory actions)", () => {
 
       // Verify read returns updated content
       const verifyResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read-memory"),
+        await callMemoryTool("read"),
       );
 
       expect(verifyResult.content).toBe(UPDATED_CONTENT);
@@ -117,9 +117,7 @@ describe("ppal-session (memory actions)", () => {
       });
 
       // Write without content should fail
-      const response = extractToolResultText(
-        await callMemoryTool("write-memory"),
-      );
+      const response = extractToolResultText(await callMemoryTool("write"));
 
       expect(response).toContain("Content required for write action");
     });

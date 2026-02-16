@@ -5,28 +5,28 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import { type SamplesResult } from "../session-helpers.ts";
-import { session } from "../session.ts";
+import { type SamplesResult } from "../context-helpers.ts";
+import { context } from "../context.ts";
 
-describe("session - search-samples action", () => {
-  let context: { sampleFolder: string | null };
+describe("context - search action", () => {
+  let toolContext: { sampleFolder: string | null };
 
   beforeEach(() => {
-    context = {
+    toolContext = {
       sampleFolder: null,
     };
   });
 
   describe("error handling", () => {
     it("throws error when sampleFolder is not configured", () => {
-      expect(() => session({ action: "search-samples" }, context)).toThrow(
+      expect(() => context({ action: "search" }, toolContext)).toThrow(
         "A sample folder must first be selected in the Setup tab of the Producer Pal Max for Live device",
       );
     });
 
     it("throws error when sampleFolder is empty string", () => {
-      context.sampleFolder = "";
-      expect(() => session({ action: "search-samples" }, context)).toThrow(
+      toolContext.sampleFolder = "";
+      expect(() => context({ action: "search" }, toolContext)).toThrow(
         "A sample folder must first be selected",
       );
     });
@@ -34,12 +34,12 @@ describe("session - search-samples action", () => {
 
   describe("basic functionality", () => {
     it("returns empty samples array for empty folder", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [],
       });
 
-      const result = session({ action: "search-samples" }, context);
+      const result = context({ action: "search" }, toolContext);
 
       expect(result).toStrictEqual({
         sampleFolder: "/samples/",
@@ -48,7 +48,7 @@ describe("session - search-samples action", () => {
     });
 
     it("returns audio files with relative paths", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -56,9 +56,9 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples" },
-        context,
+      const result = context(
+        { action: "search" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.sampleFolder).toBe("/samples/");
@@ -66,7 +66,7 @@ describe("session - search-samples action", () => {
     });
 
     it("filters non-audio files", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -75,9 +75,9 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples" },
-        context,
+      const result = context(
+        { action: "search" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.samples).toStrictEqual(["kick.wav", "snare.aiff"]);
@@ -86,7 +86,7 @@ describe("session - search-samples action", () => {
 
   describe("search filtering", () => {
     it("returns all samples when search is not provided", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -94,16 +94,16 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples" },
-        context,
+      const result = context(
+        { action: "search" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.samples).toStrictEqual(["kick.wav", "snare.wav"]);
     });
 
     it("filters samples by case-insensitive substring match", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -112,16 +112,16 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples", search: "kick" },
-        context,
+      const result = context(
+        { action: "search", search: "kick" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.samples).toStrictEqual(["kick.wav", "Kick_808.wav"]);
     });
 
     it("filters by folder path when searching", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -133,9 +133,9 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples", search: "drums" },
-        context,
+      const result = context(
+        { action: "search", search: "drums" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.samples).toStrictEqual([
@@ -145,7 +145,7 @@ describe("session - search-samples action", () => {
     });
 
     it("returns empty array when no matches found", () => {
-      context.sampleFolder = "/samples/";
+      toolContext.sampleFolder = "/samples/";
       mockFolderStructure({
         "/samples/": [
           { name: "kick.wav", type: "file", extension: ".wav" },
@@ -153,9 +153,9 @@ describe("session - search-samples action", () => {
         ],
       });
 
-      const result = session(
-        { action: "search-samples", search: "cymbal" },
-        context,
+      const result = context(
+        { action: "search", search: "cymbal" },
+        toolContext,
       ) as SamplesResult;
 
       expect(result.samples).toStrictEqual([]);

@@ -44,7 +44,8 @@ export const getThinkingBudget = (level: string): number => {
 };
 
 export const toolNames: Record<string, string> = {
-  "ppal-session": "Session Management",
+  "ppal-connect": "Connect to Ableton",
+  "ppal-context": "Project Context",
   "ppal-read-live-set": "Read Live Set",
   "ppal-update-live-set": "Update Live Set",
   "ppal-create-track": "Create Track",

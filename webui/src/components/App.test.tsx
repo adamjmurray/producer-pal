@@ -81,7 +81,7 @@ describe("App", () => {
       mcpStatus: "connected",
       mcpError: null,
       mcpTools: [
-        { id: "ppal-session", name: "Session Management" },
+        { id: "ppal-connect", name: "Connect to Ableton" },
         { id: "ppal-read-live-set", name: "Read Live Set" },
       ],
       checkMcpConnection: vi.fn(),

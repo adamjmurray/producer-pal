@@ -6,12 +6,15 @@ create.
 
 ## Connection & Setup
 
-### Session Management (`ppal-session`)
+### Connect to Ableton (`ppal-connect`)
 
 - Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
 - Provides the AI with a Producer Pal skill set that adapts to different AI
   model capabilities
+
+### Project Context (`ppal-context`)
+
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
 - Search configured sample folder for audio files by filename or path

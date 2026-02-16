@@ -45,7 +45,7 @@ export function ToolToggles({
     );
   }
 
-  const isAlwaysEnabled = (toolId: string) => toolId === "ppal-session";
+  const isAlwaysEnabled = (toolId: string) => toolId === "ppal-connect";
 
   const handleToggle = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return;

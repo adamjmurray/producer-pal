@@ -22,7 +22,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-session", turn: 0 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Track creation
     { type: "tool_called", tool: "ppal-create-track", turn: 1 },

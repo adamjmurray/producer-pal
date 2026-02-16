@@ -24,7 +24,8 @@ import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-to
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { toolDefSession } from "#src/tools/workflow/session.def.ts";
+import { toolDefConnect } from "#src/tools/workflow/connect.def.ts";
+import { toolDefContext } from "#src/tools/workflow/context.def.ts";
 
 export type CallLiveApiFunction = (
   tool: string,
@@ -32,7 +33,8 @@ export type CallLiveApiFunction = (
 ) => Promise<object>;
 
 const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
-  toolDefSession,
+  toolDefConnect,
+  toolDefContext,
   toolDefReadLiveSet,
   toolDefUpdateLiveSet,
   toolDefCreateTrack,

@@ -157,12 +157,12 @@ async function waitForMcpServer(): Promise<void> {
 
       await client.connect(transport);
 
-      // List tools and verify ppal-session is present
+      // List tools and verify ppal-connect is present
       const { tools } = await client.listTools();
       const toolNames = tools.map((t) => t.name);
 
-      if (!toolNames.includes("ppal-session")) {
-        throw new Error("ppal-session tool not found");
+      if (!toolNames.includes("ppal-connect")) {
+        throw new Error("ppal-connect tool not found");
       }
 
       if (toolNames.length < 2) {

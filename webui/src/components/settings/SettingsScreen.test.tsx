@@ -167,7 +167,7 @@ describe("SettingsScreen", () => {
     enabledTools: {},
     setEnabledTools: vi.fn(),
     mcpTools: [
-      { id: "ppal-session", name: "Session Management" },
+      { id: "ppal-connect", name: "Connect to Ableton" },
       { id: "ppal-read-live-set", name: "Read Live Set" },
     ],
     mcpStatus: "connected" as const,

@@ -124,7 +124,8 @@ describe("MCP Express App", () => {
       const toolNames = result.tools.map((tool) => tool.name);
 
       expect(toolNames).toStrictEqual([
-        "ppal-session",
+        "ppal-connect",
+        "ppal-context",
         "ppal-read-live-set",
         "ppal-update-live-set",
         "ppal-create-track",
@@ -669,7 +670,7 @@ describe("MCP Express App", () => {
     });
 
     it("should update tools whitelist", async () => {
-      const subset = ["ppal-session", "ppal-read-live-set", "ppal-playback"];
+      const subset = ["ppal-connect", "ppal-read-live-set", "ppal-playback"];
 
       const response = await fetch(configUrl, {
         method: "POST",
@@ -695,7 +696,7 @@ describe("MCP Express App", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tools: ["ppal-session", "ppal-nonexistent"],
+          tools: ["ppal-connect", "ppal-nonexistent"],
         }),
       });
 
@@ -706,7 +707,7 @@ describe("MCP Express App", () => {
       expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
     });
 
-    it("should return 400 when ppal-session is omitted", async () => {
+    it("should return 400 when ppal-connect is omitted", async () => {
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -718,7 +719,7 @@ describe("MCP Express App", () => {
       expect(response.status).toBe(400);
       const body = await response.json();
 
-      expect(body.error).toContain("ppal-session");
+      expect(body.error).toContain("ppal-connect");
       expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
     });
   });
@@ -755,7 +756,7 @@ describe("MCP Express App", () => {
 
       expect(filteredNames).not.toContain("ppal-delete");
       expect(filteredNames).not.toContain("ppal-select");
-      expect(filteredNames).toContain("ppal-session");
+      expect(filteredNames).toContain("ppal-connect");
       await transport1.close();
 
       // Restore all tools and verify

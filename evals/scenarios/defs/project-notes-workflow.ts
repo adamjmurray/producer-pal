@@ -8,7 +8,8 @@
 
 import { type EvalScenario } from "../types.ts";
 
-const TOOL_SESSION = "ppal-session";
+const TOOL_CONNECT = "ppal-connect";
+const TOOL_CONTEXT = "ppal-context";
 
 export const projectNotesWorkflow: EvalScenario = {
   id: "project-notes-workflow",
@@ -30,13 +31,13 @@ export const projectNotesWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: TOOL_SESSION, turn: 0 },
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
     // Turn 1: Write notes
-    { type: "tool_called", tool: TOOL_SESSION, turn: 1 },
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1 },
 
     // Turn 2: Read notes
-    { type: "tool_called", tool: TOOL_SESSION, turn: 2 },
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2 },
 
     // Response should contain the saved content
     { type: "response_contains", pattern: /c minor/i, turn: 2 },
