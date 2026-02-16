@@ -47,13 +47,47 @@ export interface OpenAIClientConfig {
   chatHistory?: OpenAIMessage[];
   baseUrl?: string;
   enabledTools?: Record<string, boolean>;
+  provider?: string;
+  ollamaThink?: boolean | string; // false = disable, "low"/"medium"/"high" = level, undefined = default
 }
 
 /**
- * Client for OpenAI-compatible APIs with MCP tool support.
- * Returns chat history in OpenAI's raw format with reasoning_details for thinking content.
- * For UI-friendly format, use formatOpenAIMessages() from openai-formatter.js
+ * Builds provider-specific thinking/reasoning params for the API request.
+ * @param {OpenAIClientConfig} config - Client configuration
+ * @param {object} settings - Effective settings
+ * @param {ReasoningEffort} [settings.reasoningEffort] - Reasoning effort level
+ * @param {boolean} [settings.excludeReasoning] - Whether to exclude reasoning
+ * @param {boolean | string} [settings.ollamaThink] - Ollama think parameter
+ * @returns {Record<string, unknown>} - Provider-specific params to spread into request
  */
+export function buildThinkingParams(
+  config: OpenAIClientConfig,
+  settings: {
+    reasoningEffort: ReasoningEffort | undefined;
+    excludeReasoning: boolean | undefined;
+    ollamaThink: boolean | string | undefined;
+  },
+): Record<string, unknown> {
+  if (config.provider === "ollama") {
+    return settings.ollamaThink != null ? { think: settings.ollamaThink } : {};
+  }
+
+  if (!settings.reasoningEffort) return {};
+
+  if (isOpenRouterProvider(config.baseUrl)) {
+    return {
+      reasoning: {
+        effort: settings.reasoningEffort,
+        ...((settings.reasoningEffort === "none" ||
+          settings.excludeReasoning) && { exclude: true }),
+      },
+    };
+  }
+
+  return { reasoning_effort: settings.reasoningEffort };
+}
+
+/** Client for OpenAI-compatible APIs with MCP tool support. */
 export class OpenAIClient {
   ai: OpenAI;
   mcpUrl: string;
@@ -207,21 +241,13 @@ export class OpenAIClient {
     }));
   }
 
-  /**
-   * Processes the OpenAI stream and updates chat history with each chunk.
-   * @param {OpenAI.Chat.ChatCompletionTool[]} tools - Array of available tools
-   * @param {object} settings - Effective temperature and reasoning settings
-   * @param {number} [settings.temperature] - Temperature value
-   * @param {ReasoningEffort} [settings.reasoningEffort] - Reasoning effort level
-   * @param {boolean} [settings.excludeReasoning] - Whether to exclude reasoning
-   * @returns {AsyncGenerator} - Generator yielding chat history updates
-   */
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
     settings: {
       temperature: number | undefined;
       reasoningEffort: ReasoningEffort | undefined;
       excludeReasoning: boolean | undefined;
+      ollamaThink: boolean | string | undefined;
     },
   ): AsyncGenerator<OpenAIMessage[]> {
     const stream = await this.ai.chat.completions.create({
@@ -229,20 +255,7 @@ export class OpenAIClient {
       messages: this.chatHistory,
       tools: tools.length > 0 ? tools : undefined,
       temperature: settings.temperature,
-      ...(settings.reasoningEffort
-        ? isOpenRouterProvider(this.config.baseUrl)
-          ? {
-              reasoning: {
-                effort: settings.reasoningEffort,
-                // Exclude reasoning when effort is "none" or checkbox is unchecked
-                ...((settings.reasoningEffort === "none" ||
-                  settings.excludeReasoning) && {
-                  exclude: true,
-                }),
-              },
-            }
-          : { reasoning_effort: settings.reasoningEffort }
-        : {}),
+      ...buildThinkingParams(this.config, settings),
       stream: true,
     });
 
@@ -263,8 +276,7 @@ export class OpenAIClient {
 
       const delta = choice.delta;
 
-      // Process delta chunks
-      this.processContentDelta(delta, currentMessage);
+      if (delta.content) currentMessage.content += delta.content;
       processReasoningDelta(delta, reasoningDetailsMap);
       this.processToolCallDeltas(delta, toolCallsMap);
 
@@ -283,18 +295,6 @@ export class OpenAIClient {
 
       yield this.chatHistory;
     }
-  }
-
-  /**
-   * Processes content delta from a stream chunk.
-   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
-   * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
-   */
-  private processContentDelta(
-    delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
-    currentMessage: OpenAIAssistantMessageWithReasoning,
-  ): void {
-    if (delta.content) currentMessage.content += delta.content;
   }
 
   /**

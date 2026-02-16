@@ -32,11 +32,12 @@ export function ThinkingSettings({
   showThoughts,
   setShowThoughts,
 }: ThinkingSettingsProps) {
-  // Only show thinking settings for Gemini, OpenAI, and OpenRouter
+  // Only show thinking settings for providers that support it
   if (
     provider !== "gemini" &&
     provider !== "openai" &&
-    provider !== "openrouter"
+    provider !== "openrouter" &&
+    provider !== "ollama"
   ) {
     return null;
   }

@@ -106,6 +106,26 @@ describe("ThinkingSettings", () => {
     });
   });
 
+  describe("Ollama provider", () => {
+    it("renders all thinking options", () => {
+      renderThinkingSettings({
+        provider: "ollama",
+        model: "qwen3",
+        thinking: "Off",
+      });
+      expectAllThinkingOptions();
+    });
+
+    it("does not show checkbox for Ollama provider", () => {
+      renderThinkingSettings({
+        provider: "ollama",
+        model: "qwen3",
+        thinking: "Low",
+      });
+      expectCheckboxHidden();
+    });
+  });
+
   describe("non-supported providers", () => {
     it("renders nothing for mistral provider", () => {
       const { container } = renderThinkingSettings({

@@ -200,6 +200,37 @@ export function mapThinkingToReasoningEffort(
 }
 
 /**
+ * Maps a thinking UI value to Ollama's think parameter.
+ * GPT-OSS models expect "low"/"medium"/"high" level strings for trace length.
+ * Other models accept boolean true/false.
+ * @param {string} thinking - Thinking mode setting from UI
+ * @param {string} model - Model name for GPT-OSS detection
+ * @returns {boolean | string | undefined} - false = disable, true/level = enable, undefined = default
+ */
+function mapThinkingToOllamaThink(
+  thinking: string,
+  model: string,
+): boolean | string | undefined {
+  if (thinking === "Off") return false;
+  if (thinking === "Default") return undefined;
+
+  const gptOss = model.includes("gpt-oss");
+
+  switch (thinking) {
+    case "Minimal":
+    case "Low":
+      return gptOss ? "low" : true;
+    case "Medium":
+      return gptOss ? "medium" : true;
+    case "High":
+    case "Ultra":
+      return gptOss ? "high" : true;
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Builds OpenAI client configuration from settings
  * @param {string} model - Model identifier
  * @param {number} temperature - Temperature value (0-2)
@@ -208,6 +239,7 @@ export function mapThinkingToReasoningEffort(
  * @param {boolean} showThoughts - Whether to include reasoning in response
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {OpenAIMessage[]} [chatHistory] - Optional chat history
+ * @param {string} [provider] - Provider identifier for provider-specific behavior
  * @returns {any} - Hook return value
  */
 export function buildOpenAIConfig(
@@ -218,6 +250,7 @@ export function buildOpenAIConfig(
   showThoughts: boolean,
   enabledTools: Record<string, boolean>,
   chatHistory?: OpenAIMessage[],
+  provider?: string,
 ): OpenAIClientConfig {
   const config: OpenAIClientConfig = {
     model,
@@ -225,14 +258,20 @@ export function buildOpenAIConfig(
     systemInstruction: SYSTEM_INSTRUCTION,
     baseUrl,
     enabledTools,
+    provider,
   };
 
   if (chatHistory) {
     config.chatHistory = chatHistory;
   }
 
-  // Only include reasoning when using OpenAI API or OpenRouter (not Groq/Mistral/etc)
-  if (isOpenRouterProvider(baseUrl)) {
+  if (provider === "ollama") {
+    const ollamaThink = mapThinkingToOllamaThink(thinking, model);
+
+    if (ollamaThink !== undefined) {
+      config.ollamaThink = ollamaThink;
+    }
+  } else if (isOpenRouterProvider(baseUrl)) {
     // OpenRouter: simple direct mapping, client formats as { reasoning: { effort } }
     const effort = mapThinkingToOpenRouterEffort(thinking);
 

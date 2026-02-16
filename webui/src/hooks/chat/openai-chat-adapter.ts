@@ -35,6 +35,7 @@ export const openaiChatAdapter: ChatAdapter<
   ): OpenAIClientConfig {
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const showThoughts = Boolean(extraParams?.showThoughts);
+    const provider = extraParams?.provider as string | undefined;
 
     return buildOpenAIConfig(
       model,
@@ -44,6 +45,7 @@ export const openaiChatAdapter: ChatAdapter<
       showThoughts,
       enabledTools,
       chatHistory,
+      provider,
     );
   },
 

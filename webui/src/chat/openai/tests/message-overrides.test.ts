@@ -151,4 +151,93 @@ describe("calculateEffectiveSettings", () => {
       expect(result.excludeReasoning).toBe(false);
     });
   });
+
+  describe("thinking overrides for Ollama", () => {
+    const ollamaConfig = {
+      model: "qwen3",
+      temperature: 0.7,
+      provider: "ollama",
+      ollamaThink: true as boolean | string | undefined,
+    };
+
+    it("returns config ollamaThink when no overrides", () => {
+      const result = calculateEffectiveSettings(undefined, ollamaConfig);
+
+      expect(result.ollamaThink).toBe(true);
+    });
+
+    it("maps Off to ollamaThink false", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "Off" },
+        ollamaConfig,
+      );
+
+      expect(result.ollamaThink).toBe(false);
+    });
+
+    it("maps Default to ollamaThink undefined", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "Default" },
+        ollamaConfig,
+      );
+
+      expect(result.ollamaThink).toBeUndefined();
+    });
+
+    it("maps Low to true for non-GPT-OSS", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "Low" },
+        ollamaConfig,
+      );
+
+      expect(result.ollamaThink).toBe(true);
+    });
+
+    it("maps Medium to true for non-GPT-OSS", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "Medium" },
+        ollamaConfig,
+      );
+
+      expect(result.ollamaThink).toBe(true);
+    });
+
+    it("maps High to true for non-GPT-OSS", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "High" },
+        ollamaConfig,
+      );
+
+      expect(result.ollamaThink).toBe(true);
+    });
+
+    it("maps Low to 'low' for GPT-OSS", () => {
+      const gptOssConfig = { ...ollamaConfig, model: "gpt-oss" };
+      const result = calculateEffectiveSettings(
+        { thinking: "Low" },
+        gptOssConfig,
+      );
+
+      expect(result.ollamaThink).toBe("low");
+    });
+
+    it("maps High to 'high' for GPT-OSS", () => {
+      const gptOssConfig = { ...ollamaConfig, model: "gpt-oss" };
+      const result = calculateEffectiveSettings(
+        { thinking: "High" },
+        gptOssConfig,
+      );
+
+      expect(result.ollamaThink).toBe("high");
+    });
+
+    it("does not set reasoningEffort for Ollama", () => {
+      const result = calculateEffectiveSettings(
+        { thinking: "High" },
+        ollamaConfig,
+      );
+
+      expect(result.reasoningEffort).toBeUndefined();
+    });
+  });
 });

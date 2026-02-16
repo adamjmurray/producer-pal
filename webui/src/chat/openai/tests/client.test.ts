@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   OpenAIClient,
+  buildThinkingParams,
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
 } from "#webui/chat/openai/client";
@@ -491,5 +492,102 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(result.reasoning_details?.[0]?.text).toBe("First");
     expect(result.reasoning_details?.[1]?.text).toBe("Second");
     expect(result.reasoning_details?.[2]?.text).toBe("Third");
+  });
+});
+
+describe("buildThinkingParams", () => {
+  const noThinking = {
+    reasoningEffort: undefined,
+    excludeReasoning: undefined,
+    ollamaThink: undefined,
+  };
+
+  it("returns think param for Ollama when ollamaThink is set", () => {
+    const result = buildThinkingParams(
+      { model: "qwen3", provider: "ollama" },
+      {
+        ...noThinking,
+        ollamaThink: true,
+      },
+    );
+
+    expect(result).toStrictEqual({ think: true });
+  });
+
+  it("returns empty object for Ollama when ollamaThink is undefined", () => {
+    const result = buildThinkingParams(
+      { model: "qwen3", provider: "ollama" },
+      noThinking,
+    );
+
+    expect(result).toStrictEqual({});
+  });
+
+  it("returns think: false for Ollama when disabled", () => {
+    const result = buildThinkingParams(
+      { model: "qwen3", provider: "ollama" },
+      {
+        ...noThinking,
+        ollamaThink: false,
+      },
+    );
+
+    expect(result).toStrictEqual({ think: false });
+  });
+
+  it("returns think with level string for GPT-OSS", () => {
+    const result = buildThinkingParams(
+      { model: "gpt-oss", provider: "ollama" },
+      {
+        ...noThinking,
+        ollamaThink: "medium",
+      },
+    );
+
+    expect(result).toStrictEqual({ think: "medium" });
+  });
+
+  it("returns reasoning_effort for standard providers", () => {
+    const result = buildThinkingParams(
+      { model: "gpt-5.2" },
+      {
+        ...noThinking,
+        reasoningEffort: "high",
+      },
+    );
+
+    expect(result).toStrictEqual({ reasoning_effort: "high" });
+  });
+
+  it("returns empty object when no reasoning effort", () => {
+    const result = buildThinkingParams({ model: "gpt-5.2" }, noThinking);
+
+    expect(result).toStrictEqual({});
+  });
+
+  it("returns reasoning object for OpenRouter", () => {
+    const result = buildThinkingParams(
+      {
+        model: "anthropic/claude-sonnet",
+        baseUrl: "https://openrouter.ai/api/v1",
+      },
+      { ...noThinking, reasoningEffort: "high", excludeReasoning: false },
+    );
+
+    expect(result).toStrictEqual({ reasoning: { effort: "high" } });
+  });
+
+  it("includes exclude for OpenRouter when reasoning is none", () => {
+    const result = buildThinkingParams(
+      {
+        model: "anthropic/claude-sonnet",
+        baseUrl: "https://openrouter.ai/api/v1",
+      },
+      { ...noThinking, reasoningEffort: "none", excludeReasoning: false },
+    );
+
+    expect(result).toStrictEqual({
+      reasoning: { effort: "none", exclude: true },
+    });
   });
 });

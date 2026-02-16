@@ -104,7 +104,11 @@ export function App() {
     mcpError,
     checkMcpConnection,
     adapter: openaiChatAdapter,
-    extraParams: { baseUrl, showThoughts: settings.showThoughts },
+    extraParams: {
+      baseUrl,
+      showThoughts: settings.showThoughts,
+      provider: settings.provider,
+    },
   });
 
   // Use OpenAI Responses API for official OpenAI provider (supports Codex models)
