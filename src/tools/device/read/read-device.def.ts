@@ -27,21 +27,21 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     include: z
       .array(
         z.enum([
-          "*",
           "chains",
           "return-chains",
           "drum-pads",
           "params",
           "param-values",
+          "*",
         ]),
       )
       .default(["chains"])
       .describe(
         "Array of data to include. Options: " +
-          "'*' (all), 'chains', 'return-chains' (rack send/return chains), 'drum-pads', " +
+          "'chains', 'return-chains' (rack send/return chains), 'drum-pads', " +
           "'params' (parameter names only: id, name), " +
-          "'param-values' (full parameter details with values/metadata). " +
-          "Default: ['chains'].",
+          "'param-values' (full parameter details with values/metadata), " +
+          "'*' (all). Default: ['chains'].",
       ),
     paramSearch: z
       .string()

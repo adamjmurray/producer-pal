@@ -153,11 +153,7 @@ describe("parseIncludeArray", () => {
   });
 
   it("expands wildcard for clip tool type", () => {
-    // Test that wildcard expansion works when tool type is detected as "clip"
-    // This happens when defaults has only includeClipNotes
-    const result = parseIncludeArray(["*"], {
-      includeClipNotes: false,
-    });
+    const result = parseIncludeArray(["*"], READ_CLIP_DEFAULTS);
 
     expect(result.includeClipNotes).toBe(true);
     expect(result.includeColor).toBe(true);

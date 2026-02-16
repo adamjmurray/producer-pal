@@ -340,17 +340,14 @@ function expandWildcardIncludes(
   // Determine tool type from defaults structure to get appropriate options
   let toolType: string;
 
-  if (
-    Object.keys(defaults).length === 1 &&
-    defaults.includeClipNotes !== undefined
-  ) {
-    toolType = "clip";
-  } else if (defaults.includeClips !== undefined) {
-    toolType = "scene";
-  } else if (defaults.includeRegularTracks !== undefined) {
+  if (defaults.includeRegularTracks !== undefined) {
     toolType = "song";
   } else if (defaults.includeSessionClips !== undefined) {
     toolType = "track";
+  } else if (defaults.includeClips !== undefined) {
+    toolType = "scene";
+  } else if (defaults.includeClipNotes !== undefined) {
+    toolType = "clip";
   } else {
     toolType = "song"; // fallback
   }
