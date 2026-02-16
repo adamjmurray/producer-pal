@@ -7,7 +7,7 @@
  * Uses the newer responses.create() API that supports Codex models.
  */
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import {
   type ResponseCreateParamsBase,
   type ResponseInput,
@@ -24,6 +24,7 @@ import {
   type ResponsesTool,
 } from "#webui/types/responses-api";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { createOpenAIClient } from "./openai-client-helpers";
 import { createStreamState, processStreamEvent } from "./responses-streaming";
 
 export { extractReasoningText } from "./responses-streaming";
@@ -40,6 +41,7 @@ export interface ResponsesClientConfig {
   reasoningSummary?: ReasoningSummary;
   conversation?: ResponsesConversationItem[];
   enabledTools?: Record<string, boolean>;
+  baseUrl?: string;
 }
 
 export interface ResponsesMessageOverrides {
@@ -70,10 +72,7 @@ export class ResponsesClient {
   }
 
   constructor(apiKey: string, config: ResponsesClientConfig) {
-    this.ai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true,
-    });
+    this.ai = createOpenAIClient(apiKey, config.baseUrl);
     this.mcpUrl = config.mcpUrl ?? getMcpUrl();
     this.config = config;
     this.mcpClient = null;

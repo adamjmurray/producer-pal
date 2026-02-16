@@ -34,14 +34,17 @@ export const responsesAdapter: ChatAdapter<
     thinking: string,
     enabledTools: Record<string, boolean>,
     conversation: ResponsesConversationItem[] | undefined,
-    _extraParams?: Record<string, unknown>,
+    extraParams?: Record<string, unknown>,
   ): ResponsesClientConfig {
+    const baseUrl = extraParams?.baseUrl as string | undefined;
+
     return buildResponsesConfig(
       model,
       temperature,
       thinking,
       enabledTools,
       conversation,
+      baseUrl,
     );
   },
 

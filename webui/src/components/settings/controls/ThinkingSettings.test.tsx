@@ -126,6 +126,26 @@ describe("ThinkingSettings", () => {
     });
   });
 
+  describe("LM Studio provider", () => {
+    it("renders all thinking options", () => {
+      renderThinkingSettings({
+        provider: "lmstudio",
+        model: "gpt-oss",
+        thinking: "Off",
+      });
+      expectAllThinkingOptions();
+    });
+
+    it("does not show checkbox for LM Studio provider", () => {
+      renderThinkingSettings({
+        provider: "lmstudio",
+        model: "gpt-oss",
+        thinking: "Low",
+      });
+      expectCheckboxHidden();
+    });
+  });
+
   describe("non-supported providers", () => {
     it("renders nothing for mistral provider", () => {
       const { container } = renderThinkingSettings({

@@ -111,10 +111,13 @@ export function App() {
     },
   });
 
-  // Use OpenAI Responses API for official OpenAI provider (supports Codex models)
+  // Use OpenAI Responses API for OpenAI and LM Studio providers
   const responsesChat = useChat({
     provider: settings.provider,
-    apiKey: settings.apiKey,
+    apiKey:
+      settings.provider === "lmstudio"
+        ? settings.apiKey || "not-needed"
+        : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
@@ -123,7 +126,10 @@ export function App() {
     mcpError,
     checkMcpConnection,
     adapter: responsesAdapter,
-    extraParams: { showThoughts: settings.showThoughts },
+    extraParams: {
+      showThoughts: settings.showThoughts,
+      baseUrl: settings.provider === "lmstudio" ? baseUrl : undefined,
+    },
   });
 
   // Lock conversation to the provider used when chat started

@@ -103,6 +103,12 @@ describe("useConversationLock", () => {
     expect(result.current.chat.name).toBe("openai");
   });
 
+  it("routes lmstudio provider to responses chat", () => {
+    const { result } = renderConversationLock("lmstudio");
+
+    expect(result.current.chat.name).toBe("responses");
+  });
+
   it("does not re-lock provider on subsequent messages", async () => {
     const { result, rerender, geminiChat } = renderConversationLock("gemini");
 

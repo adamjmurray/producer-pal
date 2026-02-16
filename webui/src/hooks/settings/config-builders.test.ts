@@ -682,5 +682,24 @@ describe("config-builders", () => {
 
       expect(config.systemInstruction).toBeDefined();
     });
+
+    it("should include baseUrl when provided", () => {
+      const config = buildResponsesConfig(
+        "gpt-5.2",
+        1.0,
+        "Off",
+        {},
+        undefined,
+        "http://localhost:1234/v1",
+      );
+
+      expect(config.baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("should have undefined baseUrl when not provided", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
+
+      expect(config.baseUrl).toBeUndefined();
+    });
   });
 });

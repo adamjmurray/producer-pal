@@ -37,7 +37,8 @@ export function ThinkingSettings({
     provider !== "gemini" &&
     provider !== "openai" &&
     provider !== "openrouter" &&
-    provider !== "ollama"
+    provider !== "ollama" &&
+    provider !== "lmstudio"
   ) {
     return null;
   }

@@ -30,7 +30,7 @@ interface UseConversationLockReturn<T extends ChatHookResult> {
 /**
  * Select the appropriate chat hook based on provider.
  * - gemini: Uses Gemini API
- * - openai: Uses OpenAI Responses API (supports Codex models)
+ * - openai, lmstudio: Uses OpenAI Responses API
  * - others: Uses OpenAI Chat Completions API (OpenRouter, Mistral, etc.)
  * @param provider - Current provider
  * @param geminiChat - Gemini chat hook
@@ -45,7 +45,7 @@ function selectChat<T>(
   responsesChat: T,
 ): T {
   if (provider === "gemini") return geminiChat;
-  if (provider === "openai") return responsesChat;
+  if (provider === "openai" || provider === "lmstudio") return responsesChat;
 
   return openaiChat;
 }

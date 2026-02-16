@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -16,6 +16,7 @@ import {
   calculateEffectiveSettings,
   type OpenAIMessageOverrides,
 } from "./message-overrides";
+import { createOpenAIClient } from "./openai-client-helpers";
 import {
   processReasoningDelta,
   type OpenAIAssistantMessageWithReasoning,
@@ -100,28 +101,7 @@ export class OpenAIClient {
    * @param {OpenAIClientConfig} config - Configuration options
    */
   constructor(apiKey: string, config: OpenAIClientConfig) {
-    // Suppress x-stainless headers for non-OpenAI providers (e.g., Mistral)
-    // These headers cause CORS issues with some OpenAI-compatible APIs
-    const isNonOpenAI =
-      config.baseUrl && config.baseUrl !== "https://api.openai.com/v1";
-
-    this.ai = new OpenAI({
-      apiKey,
-      baseURL: config.baseUrl ?? "https://api.openai.com/v1",
-      dangerouslyAllowBrowser: true,
-      ...(isNonOpenAI && {
-        defaultHeaders: {
-          "X-Stainless-Lang": null,
-          "X-Stainless-Package-Version": null,
-          "X-Stainless-OS": null,
-          "X-Stainless-Arch": null,
-          "X-Stainless-Runtime": null,
-          "X-Stainless-Runtime-Version": null,
-          "X-Stainless-Retry-Count": null,
-          "X-Stainless-Timeout": null,
-        },
-      }),
-    });
+    this.ai = createOpenAIClient(apiKey, config.baseUrl);
     this.mcpUrl = config.mcpUrl ?? getMcpUrl();
     this.config = config;
     this.mcpClient = null;

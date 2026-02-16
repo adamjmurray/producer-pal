@@ -326,6 +326,7 @@ function mapThinkingToResponsesEffort(
  * @param thinking - Thinking mode setting
  * @param enabledTools - Tool enabled states
  * @param conversation - Optional existing conversation
+ * @param baseUrl - Optional base URL for non-OpenAI providers (e.g., LM Studio)
  * @returns Responses client configuration
  */
 export function buildResponsesConfig(
@@ -334,12 +335,14 @@ export function buildResponsesConfig(
   thinking: string,
   enabledTools: Record<string, boolean>,
   conversation?: ResponsesConversationItem[],
+  baseUrl?: string,
 ): ResponsesClientConfig {
   const config: ResponsesClientConfig = {
     model,
     temperature,
     systemInstruction: SYSTEM_INSTRUCTION,
     enabledTools,
+    baseUrl,
   };
 
   if (conversation) {
