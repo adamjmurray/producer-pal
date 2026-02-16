@@ -8,6 +8,7 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 export interface BuildChainInfoOptions {
   path?: string | null;
   devices?: Record<string, unknown>[];
+  deviceCount?: number;
 }
 
 export interface DeviceInfo {
@@ -25,7 +26,7 @@ export function buildChainInfo(
   chain: LiveAPI,
   options: BuildChainInfoOptions = {},
 ): Record<string, unknown> {
-  const { path, devices } = options;
+  const { path, devices, deviceCount } = options;
 
   const chainInfo: Record<string, unknown> = {
     id: chain.id,
@@ -73,6 +74,8 @@ export function buildChainInfo(
 
   if (devices !== undefined) {
     chainInfo.devices = devices;
+  } else if (deviceCount !== undefined) {
+    chainInfo.deviceCount = deviceCount;
   }
 
   return chainInfo;

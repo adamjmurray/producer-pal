@@ -16,7 +16,6 @@ import {
   createChainMockProperties,
   createDeviceMockProperties,
   createRackDeviceMockProperties,
-  createSinglePianoChainRackExpectation,
   setupInstrumentRackOnTrack0,
 } from "../helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
@@ -82,7 +81,6 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -205,7 +203,7 @@ describe("readTrack", () => {
       });
     });
 
-    it("includes nested devices from instrument rack chains", () => {
+    it("strips chains from instrument rack in read-track output", () => {
       setupInstrumentRackOnTrack0(["chain1"]);
       registerMockObject("chain1", {
         path: livePath.track(0).device(0).chain(0),
@@ -229,15 +227,19 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "chains"],
+        include: ["instruments"],
       });
 
-      expect(result.instrument).toStrictEqual(
-        createSinglePianoChainRackExpectation("nested_device1"),
-      );
+      // Chains are always stripped in read-track (use read-device for chain details)
+      expect(result.instrument).toStrictEqual({
+        id: "rack1",
+        path: "t0/d0",
+        type: "instrument-rack",
+        name: "My Custom Rack",
+      });
     });
 
-    it("includes nested devices from audio effect rack chains", () => {
+    it("strips chains from audio effect rack in read-track output", () => {
       setupTrackMock({
         trackId: "track1",
         properties: {
@@ -284,33 +286,17 @@ describe("readTrack", () => {
         Record<string, unknown>
       >;
 
+      // Chains are always stripped in read-track (use read-device for chain details)
       expect(audioEffects2).toHaveLength(1);
       expect(audioEffects2[0]).toStrictEqual({
         id: "fx_rack1",
         path: "t0/d0",
         type: "audio-effect-rack",
         name: "Master FX",
-        chains: [
-          {
-            id: "chain1",
-            path: "t0/d0/c0",
-            type: "Chain",
-            name: "Filter Chain",
-            color: "#0000FF",
-            devices: [
-              {
-                id: "nested_effect1",
-                path: "t0/d0/c0/d0",
-                type: "audio-effect: Auto Filter",
-                name: "Sweep Filter",
-              },
-            ],
-          },
-        ],
       });
     });
 
-    it("handles deeply nested racks", () => {
+    it("strips chains from deeply nested racks in read-track output", () => {
       setupTrackMock({
         trackId: "track1",
         properties: {
@@ -337,84 +323,18 @@ describe("readTrack", () => {
           deviceIds: ["inner_rack"],
         }),
       });
-      registerMockObject("inner_rack", {
-        path: livePath.track(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: createRackDeviceMockProperties({
-          name: "Reverb Chain",
-          className: "AudioEffectGroupDevice",
-          classDisplayName: "Audio Effect Rack",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          chainIds: ["inner_chain"],
-        }),
-      });
-      registerMockObject("inner_chain", {
-        path: livePath.track(0).device(0).chain(0).device(0).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Hall",
-          color: 65280, // Green
-          solo: 1,
-          deviceIds: ["deep_device"],
-        }),
-      });
-      registerMockObject("deep_device", {
-        path: livePath.track(0).device(0).chain(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "Big Hall",
-          className: "Reverb",
-          classDisplayName: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "chains"],
+        include: ["instruments"],
       });
 
+      // Chains are always stripped in read-track (use read-device for chain details)
       expect(result.instrument).toStrictEqual({
         id: "outer_rack",
         path: "t0/d0",
         type: "instrument-rack",
         name: "Master FX",
-        chains: [
-          {
-            id: "outer_chain",
-            path: "t0/d0/c0",
-            type: "Chain",
-            name: "Wet",
-            color: "#0000FF",
-            devices: [
-              {
-                id: "inner_rack",
-                path: "t0/d0/c0/d0",
-                type: "audio-effect-rack",
-                name: "Reverb Chain",
-                chains: [
-                  {
-                    id: "inner_chain",
-                    path: "t0/d0/c0/d0/c0",
-                    type: "Chain",
-                    name: "Hall",
-                    color: "#00FF00",
-                    state: "soloed",
-                    devices: [
-                      {
-                        id: "deep_device",
-                        path: "t0/d0/c0/d0/c0/d0",
-                        type: "audio-effect: Reverb",
-                        name: "Big Hall",
-                      },
-                    ],
-                  },
-                ],
-                hasSoloedChain: true,
-              },
-            ],
-          },
-        ],
       });
     });
   });

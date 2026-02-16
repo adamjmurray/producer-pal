@@ -17,7 +17,6 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;
   let device456: RegisteredMockObject;
-  let view123: RegisteredMockObject;
 
   beforeEach(() => {
     device123 = registerMockObject("123", {
@@ -28,14 +27,6 @@ describe("updateDevice", () => {
     device456 = registerMockObject("456", {
       path: livePath.track(0).device(1),
       type: "Device",
-    });
-
-    // Views for collapsed state
-    view123 = registerMockObject("view-123", {
-      path: `${livePath.track(0).device(0)} view`,
-    });
-    registerMockObject("view-456", {
-      path: `${livePath.track(0).device(1)} view`,
     });
 
     // Default param objects
@@ -59,37 +50,7 @@ describe("updateDevice", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should update collapsed state to true", () => {
-    const result = updateDevice({
-      ids: "123",
-      collapsed: true,
-    });
-
-    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 1);
-    expect(result).toStrictEqual({ id: "123" });
-  });
-
-  it("should update collapsed state to false", () => {
-    const result = updateDevice({
-      ids: "123",
-      collapsed: false,
-    });
-
-    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 0);
-    expect(result).toStrictEqual({ id: "123" });
-  });
-
-  it("should update both name and collapsed", () => {
-    const result = updateDevice({
-      ids: "123",
-      name: "Collapsed Device",
-      collapsed: true,
-    });
-
-    expect(device123.set).toHaveBeenCalledWith("name", "Collapsed Device");
-    expect(view123.set).toHaveBeenCalledWith("is_collapsed", 1);
-    expect(result).toStrictEqual({ id: "123" });
-  });
+  // collapsed — kept for potential future use (tests removed)
 
   it("should update multiple devices", () => {
     const result = updateDevice({

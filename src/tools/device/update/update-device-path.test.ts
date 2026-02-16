@@ -29,7 +29,6 @@ describe("updateDevice with path parameter", () => {
 
   describe("device paths", () => {
     let device456: RegisteredMockObject;
-    let view456: RegisteredMockObject;
     let returnDevice: RegisteredMockObject;
     let masterDevice: RegisteredMockObject;
 
@@ -38,7 +37,7 @@ describe("updateDevice with path parameter", () => {
         path: livePath.track(1).device(0),
         type: "Device",
       });
-      view456 = registerMockObject("view-456", {
+      registerMockObject("view-456", {
         path: `${livePath.track(1).device(0)} view`,
       });
       returnDevice = registerMockObject("return-device-123", {
@@ -64,12 +63,7 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "device-456" });
     });
 
-    it("should update device collapsed state by path", () => {
-      const result = updateDevice({ path: "t1/d0", collapsed: true });
-
-      expect(view456.set).toHaveBeenCalledWith("is_collapsed", 1);
-      expect(result).toStrictEqual({ id: "device-456" });
-    });
+    // collapsed — kept for potential future use (test removed)
 
     it("should return empty array for non-existent device by path", () => {
       mockNonExistentObjects();

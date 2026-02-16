@@ -45,7 +45,6 @@ interface DeviceProcessingConfig {
   includeInstruments: boolean;
   includeAudioEffects: boolean;
   includeDrumMaps: boolean;
-  includeRackChains: boolean;
   isProducerPalHost: boolean;
 }
 
@@ -187,33 +186,27 @@ function processDevices(
     includeInstruments,
     includeAudioEffects,
     includeDrumMaps,
-    includeRackChains,
     isProducerPalHost,
   } = config;
 
   const result: Record<string, unknown> = {};
-  const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
 
+  // Chains are always stripped — use ppal-read-device for chain detail
   if (includeMidiEffects) {
-    result.midiEffects = shouldFetchChainsForDrumMaps
-      ? categorizedDevices.midiEffects.map(stripChains)
-      : categorizedDevices.midiEffects;
+    result.midiEffects = categorizedDevices.midiEffects.map(stripChains);
   }
 
   if (
     includeInstruments &&
     !(isProducerPalHost && categorizedDevices.instrument === null)
   ) {
-    result.instrument =
-      shouldFetchChainsForDrumMaps && categorizedDevices.instrument
-        ? stripChains(categorizedDevices.instrument)
-        : categorizedDevices.instrument;
+    result.instrument = categorizedDevices.instrument
+      ? stripChains(categorizedDevices.instrument)
+      : categorizedDevices.instrument;
   }
 
   if (includeAudioEffects) {
-    result.audioEffects = shouldFetchChainsForDrumMaps
-      ? categorizedDevices.audioEffects.map(stripChains)
-      : categorizedDevices.audioEffects;
+    result.audioEffects = categorizedDevices.audioEffects.map(stripChains);
   }
 
   if (includeDrumMaps) {
@@ -251,10 +244,7 @@ export function readTrackGeneric({
   returnTrackNames,
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
-    includeDrumPads,
     includeDrumMaps,
-    includeRackChains,
-    includeReturnChains,
     includeMidiEffects,
     includeInstruments,
     includeAudioEffects,
@@ -325,13 +315,12 @@ export function readTrackGeneric({
     ),
   );
 
-  // Process devices
-  const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
+  // Process devices (chains only fetched internally for drum map building)
   const categorizedDevices = categorizeDevices(
     trackDevices,
-    includeDrumPads,
-    shouldFetchChainsForDrumMaps ? true : includeRackChains,
-    includeReturnChains,
+    false, // includeDrumPads — use ppal-read-device for drum pad detail
+    includeDrumMaps, // fetch chains only when needed for drum maps
+    false, // includeReturnChains — use ppal-read-device for return chains
   );
 
   const deviceResults = processDevices(categorizedDevices, {
@@ -339,7 +328,6 @@ export function readTrackGeneric({
     includeInstruments,
     includeAudioEffects,
     includeDrumMaps,
-    includeRackChains,
     isProducerPalHost,
   });
 

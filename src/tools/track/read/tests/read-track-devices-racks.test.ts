@@ -15,8 +15,6 @@ import {
   createChainMockProperties,
   createDeviceMockProperties,
   createRackDeviceMockProperties,
-  createSinglePianoChainRackExpectation,
-  setupInstrumentRackOnTrack0,
 } from "../helpers/read-track-device-test-helpers.ts";
 import {
   createDrumChainMock,
@@ -27,7 +25,7 @@ import { readTrack } from "../read-track.ts";
 
 describe("readTrack", () => {
   describe("devices - rack edge cases", () => {
-    it("handles empty chains in racks", () => {
+    it("strips chains from rack devices in read-track output", () => {
       setupTrackMock({
         trackId: "track1",
         properties: {
@@ -57,100 +55,18 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "chains"],
+        include: ["instruments"],
       });
 
+      // Chains are always stripped in read-track (use read-device for chain details)
       expect(result.instrument).toStrictEqual({
         id: "rack1",
         path: "t0/d0",
         name: "My Empty Rack",
         type: "instrument-rack",
-        chains: [
-          {
-            id: "empty_chain",
-            path: "t0/d0/c0",
-            type: "Chain",
-            name: "Empty Chain",
-            color: "#000000",
-            devices: [],
-          },
-        ],
       });
     });
-    it("handles multiple chains in a rack", () => {
-      setupInstrumentRackOnTrack0(["chain1", "chain2"]);
-      registerMockObject("chain1", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Piano",
-          color: 16711680,
-          deviceIds: ["device1"],
-        }),
-      });
-      registerMockObject("chain2", {
-        path: livePath.track(0).device(0).chain(1),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Bass",
-          color: 65280,
-          mute: 1,
-          deviceIds: ["device2"],
-        }),
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "Lead Synth",
-          className: "Operator",
-          classDisplayName: "Operator",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(0).chain(1).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "Bass Synth",
-          className: "Wavetable",
-          classDisplayName: "Wavetable",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        }),
-      });
-
-      const result = readTrack({
-        trackIndex: 0,
-        include: ["instruments", "chains"],
-      });
-
-      const singleChainRack = createSinglePianoChainRackExpectation("device1");
-
-      expect(result.instrument).toStrictEqual({
-        ...singleChainRack,
-        chains: [
-          ...(singleChainRack.chains as Array<Record<string, unknown>>),
-          {
-            id: "chain2",
-            path: "t0/d0/c1",
-            type: "Chain",
-            name: "Bass",
-            color: "#00FF00",
-            state: "muted",
-            devices: [
-              {
-                id: "device2",
-                path: "t0/d0/c1/d0",
-                type: "instrument: Wavetable",
-                name: "Bass Synth",
-              },
-            ],
-          },
-        ],
-      });
-    });
-    // Tests drum pad solo/mute states with chains using in_note property
-    it("handles drum rack drum chains with hasSoloedChain property", () => {
+    it("strips drum rack chains/drumPads in read-track output", () => {
       setupTrackMock({
         trackId: "track1",
         properties: {
@@ -207,67 +123,20 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: [
-          "clip-notes",
-          "chains",
-          "instruments",
-          "session-clips",
-          "arrangement-clips",
-          "drum-pads",
-        ],
+        include: ["instruments", "drum-maps"],
       });
 
+      // Chains/drumPads are always stripped in read-track (use read-device for details)
       expect(result.instrument).toStrictEqual({
         id: "drum_rack",
         path: "t0/d0",
         type: "drum-rack",
         name: "My Drums",
-        drumPads: [
-          {
-            name: "Kick",
-            note: 36,
-            pitch: "C1",
-            state: "muted-via-solo",
-            chains: [
-              {
-                id: "kick_chain",
-                path: "t0/d0/pC1/c0",
-                type: "Chain",
-                name: "Kick",
-                color: "#FF0000",
-                state: "muted-via-solo",
-                devices: [
-                  expect.objectContaining({
-                    path: "t0/d0/pC1/c0/d0",
-                    type: "instrument: Simpler",
-                  }),
-                ],
-              },
-            ],
-          },
-          {
-            name: "Snare",
-            note: 38,
-            pitch: "D1",
-            state: "soloed",
-            chains: [
-              {
-                id: "snare_chain",
-                path: "t0/d0/pD1/c0",
-                type: "Chain",
-                name: "Snare",
-                color: "#00FF00",
-                state: "soloed",
-                devices: [
-                  expect.objectContaining({
-                    path: "t0/d0/pD1/c0/d0",
-                    type: "instrument: Simpler",
-                  }),
-                ],
-              },
-            ],
-          },
-        ],
+      });
+      // drumMap should still be generated
+      expect(result.drumMap).toStrictEqual({
+        C1: "Kick",
+        D1: "Snare",
       });
     });
     it("combines device name and preset name", () => {

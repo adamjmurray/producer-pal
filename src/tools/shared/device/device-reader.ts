@@ -10,6 +10,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
+import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   isRedundantDeviceClassName,
@@ -27,6 +28,7 @@ export interface ReadDeviceOptions {
   includeDrumPads?: boolean;
   includeParams?: boolean;
   includeParamValues?: boolean;
+  includeSample?: boolean;
   paramSearch?: string;
   depth?: number;
   maxDepth?: number;
@@ -196,6 +198,7 @@ export function readDevice(
     includeDrumPads = false,
     includeParams = false,
     includeParamValues = false,
+    includeSample = false,
     paramSearch,
     depth = 0,
     maxDepth = 4,
@@ -231,21 +234,26 @@ export function readDevice(
     deviceInfo.deactivated = true;
   }
 
-  const deviceView = LiveAPI.from(`${device.path} view`);
+  // collapsed — kept for potential future use
+  // const deviceView = LiveAPI.from(`${device.path} view`);
+  // if (
+  //   deviceView.exists() &&
+  //   (deviceView.getProperty("is_collapsed") as number) > 0
+  // ) {
+  //   deviceInfo.collapsed = true;
+  // }
 
-  if (
-    deviceView.exists() &&
-    (deviceView.getProperty("is_collapsed") as number) > 0
-  ) {
-    deviceInfo.collapsed = true;
+  if (includeParams) {
+    // Add variation/macro info for rack devices (spreads empty object if not applicable)
+    Object.assign(deviceInfo, readMacroVariations(device));
+    // Add A/B Compare state (spreads empty object if device doesn't support it)
+    Object.assign(deviceInfo, readABCompare(device));
   }
 
-  // Add variation/macro info for rack devices (spreads empty object if not applicable)
-  Object.assign(deviceInfo, readMacroVariations(device));
-  // Add A/B Compare state (spreads empty object if device doesn't support it)
-  Object.assign(deviceInfo, readABCompare(device));
-  // Add Simpler sample path (spreads empty object if not Simpler or no sample)
-  Object.assign(deviceInfo, readSimplerSample(device, className));
+  if (includeSample) {
+    // Add Simpler sample path (spreads empty object if not Simpler or no sample)
+    Object.assign(deviceInfo, readSimplerSample(device, className));
+  }
 
   // Process chains for rack devices
   processDeviceChains(device, deviceInfo, deviceType, {
@@ -296,5 +304,17 @@ function readSimplerSample(
   const firstSample = assertDefined(samples[0], "first sample");
   const samplePath = firstSample.getProperty("file_path");
 
-  return samplePath ? { sample: samplePath } : {};
+  if (!samplePath) {
+    return {};
+  }
+
+  const result: Record<string, unknown> = { sample: samplePath };
+
+  const gain = firstSample.getProperty("gain") as number | undefined;
+
+  if (gain != null) {
+    result.gainDb = liveGainToDb(gain);
+  }
+
+  return result;
 }

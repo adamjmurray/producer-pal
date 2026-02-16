@@ -229,18 +229,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
   });
 
   describe("device-only properties on non-devices", () => {
-    it("should warn when collapsed is used on a Chain", () => {
-      const result = updateDevice({
-        ids: "456",
-        collapsed: true,
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'collapsed' not applicable to Chain",
-      );
-      expect(result).toStrictEqual({ id: "456" });
-    });
+    // collapsed — kept for potential future use (test removed)
 
     it("should warn when params is used on a DrumPad", () => {
       const result = updateDevice({

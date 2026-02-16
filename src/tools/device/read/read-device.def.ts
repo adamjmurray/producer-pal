@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:
-    "Read information about a device, chain, or drum pad by ID or path.",
+    "Read information about a device, chain, or drum pad by ID or path.\nReturns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,
@@ -28,20 +28,26 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
       .array(
         z.enum([
           "chains",
-          "return-chains",
+          "drum-map",
           "drum-pads",
           "params",
           "param-values",
+          "return-chains",
+          "sample",
           "*",
         ]),
       )
-      .default(["chains"])
+      .default([])
       .describe(
-        "Array of data to include. Options: " +
-          "'chains', 'return-chains' (rack send/return chains), 'drum-pads', " +
-          "'params' (parameter names only: id, name), " +
-          "'param-values' (full parameter details with values/metadata), " +
-          "'*' (all). Default: ['chains'].",
+        'data: chains, drum-map, drum-pads, params, param-values, return-chains, sample, "*" for all',
+      ),
+    maxDepth: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        "Device tree depth for chains/drum-pads. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
       ),
     paramSearch: z
       .string()

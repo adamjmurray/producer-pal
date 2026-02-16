@@ -17,11 +17,8 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(undefined, READ_SONG_DEFAULTS);
 
     expect(result).toStrictEqual({
-      includeDrumPads: false,
       includeDrumMaps: true,
       includeClipNotes: false,
-      includeRackChains: false,
-      includeReturnChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: true,
@@ -47,11 +44,8 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray([], READ_SONG_DEFAULTS);
 
     expect(result).toStrictEqual({
-      includeDrumPads: false,
       includeDrumMaps: false,
       includeClipNotes: false,
-      includeRackChains: false,
-      includeReturnChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: false,
@@ -105,9 +99,7 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(["*"], READ_SONG_DEFAULTS);
 
     // All song-related options should be true
-    expect(result.includeDrumPads).toBe(true);
     expect(result.includeClipNotes).toBe(true);
-    expect(result.includeRackChains).toBe(true);
     expect(result.includeScenes).toBe(true);
     expect(result.includeMidiEffects).toBe(true);
     expect(result.includeInstruments).toBe(true);
@@ -127,7 +119,6 @@ describe("parseIncludeArray", () => {
       expect.objectContaining({
         includeClipNotes: false,
         includeDrumMaps: true,
-        includeRackChains: false,
         includeInstruments: true,
         includeSessionClips: true,
         includeArrangementClips: true,
@@ -173,9 +164,7 @@ describe("parseIncludeArray", () => {
 describe("includeArrayFromFlags", () => {
   it("converts flags back to array format", () => {
     const flags = {
-      includeDrumPads: false,
       includeClipNotes: true,
-      includeRackChains: true,
       includeScenes: true,
       includeMidiEffects: false,
       includeInstruments: true,
@@ -194,7 +183,6 @@ describe("includeArrayFromFlags", () => {
 
     expect(result).toStrictEqual([
       "clip-notes",
-      "chains",
       "scenes",
       "instruments",
       "regular-tracks",
@@ -203,9 +191,7 @@ describe("includeArrayFromFlags", () => {
 
   it("returns empty array when all flags are false", () => {
     const flags = {
-      includeDrumPads: false,
       includeClipNotes: false,
-      includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: false,
@@ -250,7 +236,6 @@ describe("includeArrayFromFlags", () => {
       const result = parseIncludeArray(["drum-maps"], READ_SONG_DEFAULTS);
 
       expect(result.includeDrumMaps).toBe(true);
-      expect(result.includeRackChains).toBe(false);
     });
 
     it("parseIncludeArray handles drum-maps with other options", () => {
@@ -262,13 +247,11 @@ describe("includeArrayFromFlags", () => {
       expect(result.includeDrumMaps).toBe(true);
       expect(result.includeInstruments).toBe(true);
       expect(result.includeClipNotes).toBe(true);
-      expect(result.includeRackChains).toBe(false);
     });
 
     it("includeArrayFromFlags includes drum-maps when flag is true", () => {
       const flags = {
         includeDrumMaps: true,
-        includeRackChains: false,
         includeInstruments: true,
       };
 
@@ -276,20 +259,17 @@ describe("includeArrayFromFlags", () => {
 
       expect(result).toContain("drum-maps");
       expect(result).toContain("instruments");
-      expect(result).not.toContain("chains");
     });
 
     it("includeArrayFromFlags excludes drum-maps when flag is false", () => {
       const flags = {
         includeDrumMaps: false,
-        includeRackChains: true,
         includeInstruments: true,
       };
 
       const result = includeArrayFromFlags(flags);
 
       expect(result).not.toContain("drum-maps");
-      expect(result).toContain("chains");
       expect(result).toContain("instruments");
     });
   });

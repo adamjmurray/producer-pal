@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
+  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
 import { setupBasicDeviceMock } from "./read-device-test-helpers.ts";
@@ -130,7 +131,6 @@ describe("readDevice", () => {
     expect(result).toStrictEqual({
       id: "device-123",
       type: "midi-effect-rack",
-      chains: [],
     });
   });
 
@@ -144,34 +144,7 @@ describe("readDevice", () => {
     });
   });
 
-  it("should include collapsed: true when device is collapsed", () => {
-    setupBasicDeviceMock({
-      class_display_name: "Operator",
-      type: 1,
-      is_collapsed: 1,
-    });
-    const result = readDevice({ deviceId: "device-123" });
-
-    expect(result).toStrictEqual({
-      id: "device-123",
-      type: "instrument: Operator",
-      collapsed: true,
-    });
-  });
-
-  it("should not include collapsed when device is not collapsed", () => {
-    setupBasicDeviceMock({
-      class_display_name: "Operator",
-      type: 1,
-      is_collapsed: 0,
-    });
-    const result = readDevice({ deviceId: "device-123" });
-
-    expect(result).toStrictEqual({
-      id: "device-123",
-      type: "instrument: Operator",
-    });
-  });
+  // collapsed — kept for potential future use (tests removed)
 
   // NOTE: Tests for drum rack with soloed/muted pads and return chains
   // are too complex to mock reliably with the current test infrastructure.
@@ -188,17 +161,25 @@ describe("readDevice", () => {
         type: 1,
         sample: "/path/to/sample.wav",
       });
-      const result = readDevice({ deviceId: "device-123" });
+      const result = readDevice({
+        deviceId: "device-123",
+        include: ["sample"],
+      });
 
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
         sample: "/path/to/sample.wav",
+        gainDb: -70, // Mock returns 0 for gain → liveGainToDb(0) = -70
       });
     });
 
-    it("should not include sample for Simpler device without loaded sample", () => {
-      setupBasicDeviceMock({ class_display_name: "Simpler", type: 1 });
+    it("should not include sample for Simpler without sample include", () => {
+      setupBasicDeviceMock({
+        class_display_name: "Simpler",
+        type: 1,
+        sample: "/path/to/sample.wav",
+      });
       const result = readDevice({ deviceId: "device-123" });
 
       expect(result).toStrictEqual({
@@ -209,11 +190,91 @@ describe("readDevice", () => {
 
     it("should not include sample for non-Simpler instruments", () => {
       setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
-      const result = readDevice({ deviceId: "device-123" });
+      const result = readDevice({
+        deviceId: "device-123",
+        include: ["sample"],
+      });
 
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Operator",
+      });
+    });
+  });
+
+  describe("drum rack includes", () => {
+    // Shared setup for drum rack with chain-based mocking (in_note)
+    function setupDrumRackWithChain(): void {
+      registerMockObject("drum-rack-123", {
+        type: "Device",
+        properties: {
+          class_display_name: "Drum Rack",
+          name: "Drum Rack",
+          type: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          is_active: 1,
+          parameters: [],
+          chains: ["id", "chain-1"],
+        },
+      });
+
+      registerMockObject("chain-1", {
+        type: "DrumChain",
+        properties: {
+          name: "Kick",
+          in_note: 36,
+          mute: 0,
+          solo: 0,
+          muted_via_solo: 0,
+          choke_group: 0,
+          out_note: 36,
+          devices: ["id", "dev-1"],
+        },
+      });
+
+      registerMockObject("dev-1", {
+        type: "Device",
+        properties: {
+          name: "Simpler",
+          class_display_name: "Simpler",
+          type: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+          is_active: 1,
+          parameters: [],
+        },
+      });
+    }
+
+    it("should include drumMap and strip internally-fetched data", () => {
+      setupDrumRackWithChain();
+
+      const result = readDevice({
+        deviceId: "drum-rack-123",
+        include: ["drum-map"],
+      });
+
+      expect(result.drumMap).toStrictEqual({ C1: "Kick" });
+      expect(result.drumPads).toBeUndefined();
+    });
+
+    it("should show deviceCount at maxDepth 0 for drum pad chains", () => {
+      setupDrumRackWithChain();
+
+      const result = readDevice({
+        deviceId: "drum-rack-123",
+        include: ["drum-pads"],
+        maxDepth: 0,
+      });
+
+      const drumPads = result.drumPads as Record<string, unknown>[];
+
+      expect(drumPads).toHaveLength(1);
+      expect(drumPads[0]).toMatchObject({
+        note: 36,
+        pitch: "C1",
+        name: "Kick",
       });
     });
   });

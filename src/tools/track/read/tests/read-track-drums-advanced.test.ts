@@ -244,11 +244,9 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-pads",
         ],
       });
 
@@ -256,7 +254,7 @@ describe("readTrack", () => {
       expect(result.id).toBe("track1");
       expect(result.instrument).toBeDefined();
 
-      // drumPads only included when drum-pads is requested
+      // drumPads/chains moved to read-device
       // expect(result.instrument.drumPads).toStrictEqual([
       //   expect.objectContaining({
       //     name: "Kick",
@@ -350,16 +348,14 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-pads",
-          "drum-maps", // Need to explicitly request drum-maps now
+          "drum-maps",
         ],
       });
 
-      // drumPads only included when drum-pads is requested
+      // drumPads/chains moved to read-device
       // Should detect the nested instrument and not add hasInstrument property
       // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
 

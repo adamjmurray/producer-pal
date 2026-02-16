@@ -19,7 +19,7 @@ import {
   moveDrumChainToPath,
   setParamValues,
   updateABCompare,
-  updateCollapsedState,
+  // updateCollapsedState, // Kept for potential future use
   updateMacroCount,
   updateMacroVariation,
 } from "./update-device-helpers.ts";
@@ -35,7 +35,7 @@ import { wrapDevicesInRack } from "./update-device-wrap-helpers.ts";
 interface UpdateProperties {
   toPath?: string;
   name?: string;
-  collapsed?: boolean;
+  // collapsed?: boolean; // Kept for potential future use
   params?: string;
   macroVariation?: string;
   macroVariationIndex?: number;
@@ -70,7 +70,6 @@ interface ResolvedTarget {
  * @param args.path - Device/chain/drum-pad path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
- * @param args.collapsed - Collapse/expand device view (devices only)
  * @param args.params - JSON: {"paramId": value} (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)
@@ -91,7 +90,6 @@ export function updateDevice(
     path,
     toPath,
     name,
-    collapsed,
     params,
     macroVariation,
     macroVariationIndex,
@@ -118,7 +116,6 @@ export function updateDevice(
   const updateOptions: UpdateOptions = {
     toPath,
     name,
-    collapsed,
     params,
     macroVariation,
     macroVariationIndex,
@@ -335,7 +332,6 @@ function updateDeviceProperties(
   options: UpdateOptions,
 ): void {
   const {
-    collapsed,
     params,
     macroVariation,
     macroVariationIndex,
@@ -348,10 +344,10 @@ function updateDeviceProperties(
     mappedPitch,
   } = options;
 
-  // All *Device types support these
-  if (collapsed != null) {
-    updateCollapsedState(target, collapsed);
-  }
+  // collapsed — kept for potential future use
+  // if (options.collapsed != null) {
+  //   updateCollapsedState(target, options.collapsed);
+  // }
 
   if (params != null) {
     setParamValues(target, params);
@@ -396,7 +392,6 @@ function updateNonDeviceProperties(
   options: UpdateOptions,
 ): void {
   const {
-    collapsed,
     params,
     macroVariation,
     macroVariationIndex,
@@ -410,7 +405,6 @@ function updateNonDeviceProperties(
   } = options;
 
   // Warn for device-only properties
-  warnIfSet("collapsed", collapsed, type);
   warnIfSet("params", params, type);
   warnIfSet("macroVariation", macroVariation, type);
   warnIfSet("macroVariationIndex", macroVariationIndex, type);

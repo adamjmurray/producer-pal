@@ -3,11 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // String constants for include options
-const DRUM_PADS = "drum-pads";
 const DRUM_MAPS = "drum-maps";
 const CLIP_NOTES = "clip-notes";
-const CHAINS = "chains";
-const RETURN_CHAINS = "return-chains";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";
@@ -30,11 +27,8 @@ const LOCATORS = "locators";
  */
 const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
   song: [
-    DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    CHAINS,
-    RETURN_CHAINS,
     "scenes",
     MIDI_EFFECTS,
     INSTRUMENTS,
@@ -56,11 +50,8 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     LOCATORS,
   ],
   track: [
-    DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    CHAINS,
-    RETURN_CHAINS,
     MIDI_EFFECTS,
     INSTRUMENTS,
     AUDIO_EFFECTS,
@@ -92,11 +83,8 @@ const SHORTCUT_MAPPINGS: Record<string, string[]> = {
 };
 
 export interface IncludeFlags {
-  includeDrumPads: boolean;
   includeDrumMaps: boolean;
   includeClipNotes: boolean;
-  includeRackChains: boolean;
-  includeReturnChains: boolean;
   includeScenes: boolean;
   includeMidiEffects: boolean;
   includeInstruments: boolean;
@@ -130,11 +118,8 @@ export function parseIncludeArray(
   // If no include array is provided (undefined), use defaults
   if (includeArray === undefined) {
     return {
-      includeDrumPads: Boolean(defaults.includeDrumPads),
       includeDrumMaps: Boolean(defaults.includeDrumMaps),
       includeClipNotes: Boolean(defaults.includeClipNotes),
-      includeRackChains: Boolean(defaults.includeRackChains),
-      includeReturnChains: Boolean(defaults.includeReturnChains),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstruments: Boolean(defaults.includeInstruments),
@@ -165,11 +150,8 @@ export function parseIncludeArray(
   // If an empty array was explicitly provided, return all false
   if (includeArray.length === 0) {
     return {
-      includeDrumPads: false,
       includeDrumMaps: false,
       includeClipNotes: false,
-      includeRackChains: false,
-      includeReturnChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: false,
@@ -192,11 +174,8 @@ export function parseIncludeArray(
   }
 
   return {
-    includeDrumPads: includeSet.has(DRUM_PADS),
     includeDrumMaps: includeSet.has(DRUM_MAPS),
     includeClipNotes: includeSet.has(CLIP_NOTES),
-    includeRackChains: includeSet.has(CHAINS),
-    includeReturnChains: includeSet.has(RETURN_CHAINS),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
     includeInstruments: includeSet.has(INSTRUMENTS),
@@ -222,11 +201,8 @@ export function parseIncludeArray(
  * Mapping of flag properties to their include option strings
  */
 const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
-  ["includeDrumPads", DRUM_PADS],
   ["includeDrumMaps", DRUM_MAPS],
   ["includeClipNotes", CLIP_NOTES],
-  ["includeRackChains", CHAINS],
-  ["includeReturnChains", RETURN_CHAINS],
   ["includeScenes", "scenes"],
   ["includeMidiEffects", MIDI_EFFECTS],
   ["includeInstruments", INSTRUMENTS],
@@ -266,11 +242,8 @@ export function includeArrayFromFlags(
  * Default include parameters for read-live-set tool
  */
 export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
-  includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: false,
-  includeRackChains: false,
-  includeReturnChains: false,
   includeScenes: false,
   includeMidiEffects: false,
   includeInstruments: true,
@@ -293,11 +266,8 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
  * Default include parameters for read-track tool
  */
 export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
-  includeDrumPads: false,
   includeDrumMaps: true,
   includeClipNotes: false,
-  includeRackChains: false,
-  includeReturnChains: false,
   includeMidiEffects: false,
   includeInstruments: true,
   includeAudioEffects: false,

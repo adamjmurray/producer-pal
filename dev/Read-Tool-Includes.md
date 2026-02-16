@@ -9,8 +9,9 @@ tokens) and lets callers request only the data they need.
 
 ### Default behavior
 
-- `include` always defaults to `[]` (empty array). This returns only the
-  overview/base fields.
+- `include` defaults to `[]` for `ppal-read-clip`, `ppal-read-scene`, and
+  `ppal-read-device`. `ppal-read-track` and `ppal-read-live-set` have non-empty
+  defaults that include commonly-needed data (see their sections below).
 
 ### Tool description
 
@@ -66,11 +67,38 @@ destructures the flags it needs from `parseIncludeArray()`.
 
 ## ppal-read-live-set
 
-TODO
+Default include: `["regular-tracks"]`
+
+Returns the Live Set overview with regular track names and basic info. Key
+includes:
+
+- `regular-tracks`, `return-tracks`, `master-track`, `all-tracks` — which tracks
+  to include
+- `instruments`, `midi-effects`, `audio-effects`, `all-devices` — device info on
+  tracks
+- `drum-maps` — pitch-to-name mappings for drum racks
+- `session-clips`, `arrangement-clips`, `all-clips` — clip info on tracks
+- `clip-notes`, `sample`, `timing`, `warp`, `color` — propagated to clip reading
+- `routings`, `scenes`, `mixer`, `locators` — additional set-level data
+
+Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
+available at this level. Use `ppal-read-device` for chain/drum-pad detail.
 
 ## ppal-read-track
 
-TODO
+Default include: `["instruments", "drum-maps", "all-clips"]`
+
+Returns track info with instruments, drum maps, and all clips by default. Key
+includes:
+
+- `session-clips`, `arrangement-clips`, `all-clips` — which clips to include
+- `instruments`, `midi-effects`, `audio-effects`, `all-devices` — device info
+- `drum-maps` — pitch-to-name mappings for drum racks
+- `routings`, `available-routings`, `all-routings` — routing info
+- `clip-notes`, `sample`, `timing`, `warp`, `color`, `mixer` — detail data
+
+Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
+available at this level. Use `ppal-read-device` for chain/drum-pad detail.
 
 ## ppal-read-scene
 
@@ -295,4 +323,89 @@ Audio clip result:
 
 ## ppal-read-device
 
-TODO
+Default include: `[]`
+
+Uses inline include parsing (not the shared `parseIncludeArray` framework)
+because its includes are unique (`params`, `param-values`, `drum-map`,
+`sample`).
+
+### Default response (no includes)
+
+| Field         | Type     | Description                                   |
+| ------------- | -------- | --------------------------------------------- |
+| `id`          | `string` | Device ID                                     |
+| `path`        | `string` | Short path (e.g., `t0/d0`)                    |
+| `type`        | `string` | Device type, with class name if not redundant |
+| `name`        | `string` | Display name (omitted if same as class name)  |
+| `deactivated` | `true`   | Only present when device is inactive          |
+
+### Include: `"chains"`
+
+Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.
+
+At `maxDepth: 0` (default), each chain shows `deviceCount` instead of expanded
+devices. At `maxDepth: 1+`, devices are expanded recursively.
+
+| Field    | Type      | Description                               |
+| -------- | --------- | ----------------------------------------- |
+| `chains` | `Chain[]` | Chain objects with devices or deviceCount |
+
+### Include: `"return-chains"`
+
+Same as `chains` but for rack return chains. Same depth behavior.
+
+| Field          | Type      | Description          |
+| -------------- | --------- | -------------------- |
+| `returnChains` | `Chain[]` | Return chain objects |
+
+### Include: `"drum-pads"`
+
+Adds drum pad list for drum rack devices. Same depth behavior as `chains`.
+
+| Field      | Type        | Description                              |
+| ---------- | ----------- | ---------------------------------------- |
+| `drumPads` | `DrumPad[]` | Drum pads with note, pitch, name, chains |
+
+### Include: `"drum-map"`
+
+Adds flat pitch-to-name mapping for drum rack devices. Internally forces chain
+processing at `maxDepth >= 1` to detect instruments, then strips the chain data
+from the output.
+
+| Field     | Type                    | Description                         |
+| --------- | ----------------------- | ----------------------------------- |
+| `drumMap` | `Record<string,string>` | Pitch name to drum pad name mapping |
+
+### Include: `"params"`
+
+Adds parameter names, macro variation info, and A/B Compare state.
+
+| Field        | Type       | Description                                |
+| ------------ | ---------- | ------------------------------------------ |
+| `parameters` | `Param[]`  | Parameter names and IDs                    |
+| `variations` | `object`   | Rack only: `{ count, selected }`           |
+| `macros`     | `object`   | Rack only: `{ count, hasMappings }`        |
+| `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
+
+### Include: `"param-values"`
+
+Superset of `params` — includes full parameter details (value, min, max, state,
+display value, value items for quantized params).
+
+### Include: `"sample"`
+
+Adds Simpler sample info. No effect on non-Simpler devices.
+
+| Field         | Type     | Description                              |
+| ------------- | -------- | ---------------------------------------- |
+| `sample`      | `string` | File path (omitted if no sample loaded)  |
+| `multisample` | `true`   | Only present for multisample instruments |
+| `gainDb`      | `number` | Gain in dB                               |
+
+### `maxDepth` arg
+
+Controls device tree expansion for `chains`, `return-chains`, and `drum-pads`:
+
+- `0` (default): Chains show `deviceCount` only (no device expansion)
+- `1`: Direct devices expanded, nested rack chains show `deviceCount`
+- `2+`: Deeper recursive expansion

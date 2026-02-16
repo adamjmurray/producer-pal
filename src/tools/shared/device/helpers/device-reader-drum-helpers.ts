@@ -97,6 +97,21 @@ function processDrumRackChain(
     : null;
 
   const chainDevices = chain.getChildren("devices");
+
+  // At depth limit, show deviceCount instead of expanding devices
+  if (depth >= maxDepth) {
+    const chainInfo = buildChainInfo(chain, {
+      path: chainPath,
+      deviceCount: chainDevices.length,
+    });
+
+    // Add in_note for internal tracking
+    chainInfo._inNote = inNote;
+    chainInfo._hasInstrument = false; // Can't determine without expanding
+
+    return chainInfo;
+  }
+
   const processedDevices = chainDevices.map((chainDevice, deviceIndex) => {
     const devicePath = chainPath ? `${chainPath}/d${deviceIndex}` : null;
 

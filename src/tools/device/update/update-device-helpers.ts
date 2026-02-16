@@ -95,24 +95,18 @@ export function moveDrumChainToPath(
 }
 
 // ============================================================================
-// Collapsed state
+// Collapsed state — kept for potential future use
 // ============================================================================
 
-/**
- * Update the collapsed state of a device view
- * @param device - Live API device object
- * @param collapsed - Whether to collapse the device view
- */
-export function updateCollapsedState(
-  device: LiveAPI,
-  collapsed: boolean,
-): void {
-  const deviceView = LiveAPI.from(`${device.path} view`);
-
-  if (deviceView.exists()) {
-    deviceView.set("is_collapsed", collapsed ? 1 : 0);
-  }
-}
+// export function updateCollapsedState(
+//   device: LiveAPI,
+//   collapsed: boolean,
+// ): void {
+//   const deviceView = LiveAPI.from(`${device.path} view`);
+//   if (deviceView.exists()) {
+//     deviceView.set("is_collapsed", collapsed ? 1 : 0);
+//   }
+// }
 
 // ============================================================================
 // Parameter values

@@ -6,7 +6,9 @@ import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
+  getDrumMap,
   readDevice as readDeviceShared,
+  type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -21,6 +23,7 @@ interface ReadDeviceArgs {
   deviceId?: string;
   path?: string;
   include?: string[];
+  maxDepth?: number;
   paramSearch?: string;
 }
 
@@ -28,8 +31,11 @@ interface ReadOptions {
   includeChains: boolean;
   includeReturnChains: boolean;
   includeDrumPads: boolean;
+  includeDrumMap: boolean;
   includeParams: boolean;
   includeParamValues: boolean;
+  includeSample: boolean;
+  maxDepth: number;
   paramSearch?: string;
 }
 
@@ -39,65 +45,122 @@ interface ReadOptions {
  * @param args.deviceId - Device ID to read
  * @param args.path - Device/chain/drum-pad path
  * @param args.include - Array of data to include in the response
+ * @param args.maxDepth - Device tree depth for chains/drum-pads
  * @param args.paramSearch - Filter parameters by substring match on name
  * @param _context - Internal context object (unused)
  * @returns Device, chain, or drum pad information
  */
 export function readDevice(
-  { deviceId, path, include = ["chains"], paramSearch }: ReadDeviceArgs,
+  { deviceId, path, include = [], maxDepth = 0, paramSearch }: ReadDeviceArgs,
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   validateExclusiveParams(deviceId, path, "deviceId", "path");
 
-  const includeChains = include.includes("*") || include.includes("chains");
-  const includeReturnChains =
-    include.includes("*") || include.includes("return-chains");
-  const includeDrumPads =
-    include.includes("*") || include.includes("drum-pads");
-  const includeParamValues =
-    include.includes("*") || include.includes("param-values");
+  const includeAll = include.includes("*");
+  const includeChains = includeAll || include.includes("chains");
+  const includeReturnChains = includeAll || include.includes("return-chains");
+  const includeDrumPads = includeAll || include.includes("drum-pads");
+  const includeDrumMap = includeAll || include.includes("drum-map");
+  const includeParamValues = includeAll || include.includes("param-values");
   const includeParams = includeParamValues || include.includes("params");
+  const includeSample = includeAll || include.includes("sample");
+
+  // Force chain processing internally when drum-map is requested (needed for getDrumMap)
+  const chainsForDrumMap = includeDrumMap && !includeChains;
 
   const readOptions: ReadOptions = {
-    includeChains,
+    includeChains: includeChains || includeDrumMap,
     includeReturnChains,
     includeDrumPads,
+    includeDrumMap,
     includeParams,
     includeParamValues,
+    includeSample,
+    // drum-map needs depth >= 1 to detect instruments in drum pad chains
+    maxDepth: includeDrumMap ? Math.max(1, maxDepth) : maxDepth,
     paramSearch,
   };
 
-  // If deviceId provided, use existing logic
+  const result = readDeviceTarget(deviceId, path, readOptions);
+  const processed = postProcessDrumMap(
+    result,
+    includeDrumMap,
+    chainsForDrumMap,
+  );
+
+  // Cleanup after drum-map processing (getDrumMap needs _processedDrumPads)
+  return cleanupInternalDrumPads(processed) as Record<string, unknown>;
+}
+
+/**
+ * Route to the appropriate reader based on deviceId or path
+ * @param deviceId - Device ID to read
+ * @param path - Device/chain/drum-pad path
+ * @param options - Read options
+ * @returns Device, chain, or drum pad information
+ */
+function readDeviceTarget(
+  deviceId: string | undefined,
+  path: string | undefined,
+  options: ReadOptions,
+): Record<string, unknown> {
   if (deviceId) {
-    return readDeviceById(deviceId, readOptions);
+    return readDeviceById(deviceId, options);
   }
 
-  // Path is required if deviceId is not provided (validated by validateExclusiveParams)
   if (!path) {
     throw new Error("Either deviceId or path must be provided");
   }
 
-  // Resolve path to Live API path and target type
   const resolved = resolvePathToLiveApi(path);
 
   switch (resolved.targetType) {
     case "device":
-      return readDeviceByLiveApiPath(resolved.liveApiPath, readOptions);
+      return readDeviceByLiveApiPath(resolved.liveApiPath, options);
 
     case "chain":
     case "return-chain":
-      return readChain(resolved.liveApiPath, path, readOptions);
+      return readChain(resolved.liveApiPath, path, options);
 
     case "drum-pad":
-      // drumPadNote is guaranteed for drum-pad targetType
       return readDrumPadByPath(
         resolved.liveApiPath,
         resolved.drumPadNote as string,
         resolved.remainingSegments,
         path,
-        readOptions,
+        options,
       );
   }
+}
+
+/**
+ * Add drum map to result and strip internally-fetched chain data
+ * @param result - Device result to post-process
+ * @param includeDrumMap - Whether drum-map was requested
+ * @param chainsForDrumMap - Whether chains were fetched only for drum map building
+ * @returns Post-processed result
+ */
+function postProcessDrumMap(
+  result: Record<string, unknown>,
+  includeDrumMap: boolean,
+  chainsForDrumMap: boolean,
+): Record<string, unknown> {
+  if (includeDrumMap) {
+    const drumMap = getDrumMap([result as unknown as DeviceWithDrumPads]);
+
+    if (drumMap != null) {
+      result.drumMap = drumMap;
+    }
+  }
+
+  // Strip chains that were only fetched internally for drum map building
+  if (chainsForDrumMap) {
+    delete result.chains;
+    delete result.drumPads;
+    delete result.hasSoloedChain;
+  }
+
+  return result;
 }
 
 /**
@@ -116,9 +179,7 @@ function readDeviceById(
     throw new Error(`Device with ID ${deviceId} not found`);
   }
 
-  const deviceInfo = readDeviceShared(device, options);
-
-  return cleanupInternalDrumPads(deviceInfo) as Record<string, unknown>;
+  return readDeviceShared(device, options);
 }
 
 /**
@@ -137,9 +198,7 @@ function readDeviceByLiveApiPath(
     throw new Error(`Device not found at path: ${liveApiPath}`);
   }
 
-  const deviceInfo = readDeviceShared(device, options);
-
-  return cleanupInternalDrumPads(deviceInfo) as Record<string, unknown>;
+  return readDeviceShared(device, options);
 }
 
 /**
@@ -160,11 +219,9 @@ function readChain(
     throw new Error(`Chain not found at path: ${path}`);
   }
 
-  const devices = chain.getChildren("devices").map((device) => {
-    const deviceInfo = readDeviceShared(device, options);
-
-    return cleanupInternalDrumPads(deviceInfo);
-  }) as Record<string, unknown>[];
+  const devices = chain
+    .getChildren("devices")
+    .map((device) => readDeviceShared(device, options));
 
   return buildChainInfo(chain, { path, devices });
 }
@@ -269,12 +326,11 @@ function readDrumPadNestedTarget(
     devices[deviceIndex],
     `device at index ${deviceIndex}`,
   );
-  const deviceInfo = readDeviceShared(device, {
+
+  return readDeviceShared(device, {
     ...options,
     parentPath: fullPath,
   });
-
-  return cleanupInternalDrumPads(deviceInfo) as Record<string, unknown>;
 }
 
 /**
@@ -293,13 +349,12 @@ function readDrumPadChain(
     .getChildren("devices")
     .map((device: LiveAPI, index: number) => {
       const devicePath = `${path}/d${index}`;
-      const deviceInfo = readDeviceShared(device, {
+
+      return readDeviceShared(device, {
         ...options,
         parentPath: devicePath,
       });
-
-      return cleanupInternalDrumPads(deviceInfo);
-    }) as Record<string, unknown>[];
+    });
 
   return buildChainInfo(chain, { path, devices });
 }
@@ -350,13 +405,12 @@ function buildDrumPadInfo(
         .getChildren("devices")
         .map((device: LiveAPI, deviceIndex: number) => {
           const devicePath = `${chainPath}/d${deviceIndex}`;
-          const deviceInfo = readDeviceShared(device, {
+
+          return readDeviceShared(device, {
             ...options,
             parentPath: devicePath,
           });
-
-          return cleanupInternalDrumPads(deviceInfo);
-        }) as Record<string, unknown>[];
+        });
 
       return buildChainInfo(chain, {
         path: chainPath,
