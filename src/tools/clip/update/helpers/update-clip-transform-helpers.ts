@@ -84,13 +84,13 @@ export function applyTransformsToExistingNotes(
 }
 
 /**
- * Build clip context for transform variables (clip.*, bar.*)
+ * Build clip context for transform variables (clip.*)
  * @param clip - The clip LiveAPI object
  * @param clipIndex - 0-based index in multi-clip operation
  * @param clipCount - Total number of clips in the operation
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns ClipContext with clip-level and bar-level metadata
+ * @returns ClipContext with clip-level metadata
  */
 export function buildClipContext(
   clip: LiveAPI,

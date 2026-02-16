@@ -158,13 +158,13 @@ function buildNoteContext(
 }
 
 /**
- * Build note properties object including note, clip, and bar context
+ * Build note properties object including note and clip context
  * @param note - Note event
  * @param noteIndex - 0-based note order in clip
  * @param noteCount - Total number of notes in the clip
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context
- * @returns Properties for variable access (note.*, clip.*, bar.*)
+ * @returns Properties for variable access (note.*, clip.*)
  */
 function buildNoteProperties(
   note: NoteEvent,
@@ -193,7 +193,7 @@ function buildNoteProperties(
       props["clip:position"] = clipContext.arrangementStart;
     }
 
-    props["bar:duration"] = clipContext.barDuration;
+    props["clip:barDuration"] = clipContext.barDuration;
 
     if (clipContext.scalePitchClassMask != null) {
       props["scale:mask"] = clipContext.scalePitchClassMask;

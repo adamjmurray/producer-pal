@@ -128,9 +128,6 @@ variable
   = "audio." name:audioPropertyName {
     return { type: "variable", namespace: "audio", name };
   }
-  / "bar." name:barPropertyName {
-    return { type: "variable", namespace: "bar", name };
-  }
   / "clip." name:clipPropertyName {
     return { type: "variable", namespace: "clip", name };
   }
@@ -153,13 +150,11 @@ audioPropertyName
   / "pitchShift" { return "pitchShift"; }
 
 clipPropertyName
-  = "position" { return "position"; }
+  = "barDuration" { return "barDuration"; }
+  / "position" { return "position"; }
   / "duration" { return "duration"; }
   / "index" { return "index"; }
   / "count" { return "count"; }
-
-barPropertyName
-  = "duration" { return "duration"; }
 
 functionCall
   = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {

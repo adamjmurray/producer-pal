@@ -571,14 +571,14 @@ describe("Transform Parser", () => {
       }
     });
 
-    it("parses bar.duration with namespace", () => {
-      const result = parser.parse("velocity = bar.duration");
+    it("parses clip.barDuration", () => {
+      const result = parser.parse("velocity = clip.barDuration");
       const variable = result[0]!.expression as VariableNode;
 
       expect(variable).toStrictEqual({
         type: "variable",
-        namespace: "bar",
-        name: "duration",
+        namespace: "clip",
+        name: "barDuration",
       });
     });
 

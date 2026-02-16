@@ -370,8 +370,8 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
     });
 
-    it("resolves bar.duration with clipContext", () => {
-      const result = applyAudioTransform(0, 0, "gain = bar.duration", {
+    it("resolves clip.barDuration with clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.barDuration", {
         clipDuration: 24,
         clipIndex: 0,
         clipCount: 1,
@@ -387,8 +387,8 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
     });
 
-    it("errors when bar variable used without clipContext", () => {
-      const result = applyAudioTransform(0, 0, "gain = bar.duration");
+    it("errors when clip.barDuration used without clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.barDuration");
 
       expect(result.gain).toBeNull();
     });

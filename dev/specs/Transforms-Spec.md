@@ -229,8 +229,8 @@ Access clip and bar context in expressions:
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
   only; session clips skip the assignment with a warning)
-- `bar.duration` - Beats per bar from time signature (e.g., 4 in 4/4, 3 in 3/4,
-  6 in 6/8)
+- `clip.barDuration` - Beats per bar from clip time signature (e.g., 4 in 4/4, 3
+  in 3/4, 6 in 6/8)
 
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
@@ -483,7 +483,7 @@ pitch += clip.index * 7;
 gain = ramp(-24, 0) * (clip.position / 32);
 
 // Use bar duration for rhythmic patterns
-velocity += (20 * (note.start % bar.duration)) / bar.duration;
+velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
 ```
 
 ### Audio Clip Transforms

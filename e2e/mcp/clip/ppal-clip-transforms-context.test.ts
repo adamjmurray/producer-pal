@@ -84,11 +84,11 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(notes).toContain("v80"); // 8 beats * 10 = 80
   });
 
-  it("bar.duration reflects time signature", async () => {
-    // Default 4/4, bar.duration = 4
+  it("clip.barDuration reflects time signature", async () => {
+    // Default 4/4, clip.barDuration = 4
     const clipId = await createMidiClip(29, "v100 C3 1|1");
 
-    await applyTransform(clipId, "velocity = bar.duration * 20");
+    await applyTransform(clipId, "velocity = clip.barDuration * 20");
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("v80"); // 4 * 20 = 80

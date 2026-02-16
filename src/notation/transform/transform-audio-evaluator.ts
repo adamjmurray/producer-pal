@@ -215,10 +215,10 @@ function evaluateAudioExpression(
 /**
  * Resolve a variable reference in audio context
  * @param node - Variable node with namespace and name
- * @param node.namespace - Variable namespace (note, audio, clip, bar)
+ * @param node.namespace - Variable namespace (note, audio, clip)
  * @param node.name - Variable name within namespace
  * @param audioProperties - Audio properties for audio.* variables
- * @param clipContext - Optional clip context for clip/bar variables
+ * @param clipContext - Optional clip context for clip.* variables
  * @returns Resolved variable value
  */
 function resolveAudioVariable(
@@ -244,6 +244,7 @@ function resolveAudioVariable(
     }
 
     const clipProps: Record<string, number | undefined> = {
+      barDuration: clipContext.barDuration,
       duration: clipContext.clipDuration,
       index: clipContext.clipIndex,
       count: clipContext.clipCount,
@@ -257,16 +258,6 @@ function resolveAudioVariable(
     const value = clipProps[node.name];
 
     if (value != null) return value;
-  }
-
-  if (node.namespace === "bar") {
-    if (clipContext == null) {
-      throw new Error(
-        `Variable "bar.${node.name}" is not available in this context`,
-      );
-    }
-
-    if (node.name === "duration") return clipContext.barDuration;
   }
 
   throw new Error(

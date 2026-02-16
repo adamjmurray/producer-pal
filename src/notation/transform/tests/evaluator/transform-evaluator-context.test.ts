@@ -253,21 +253,21 @@ describe("Context Variables", () => {
     });
   });
 
-  describe("bar.duration", () => {
-    it("resolves bar.duration from noteProperties", () => {
+  describe("clip.barDuration", () => {
+    it("resolves clip.barDuration from noteProperties", () => {
       const result = evaluateTransform(
-        "velocity = bar.duration",
+        "velocity = clip.barDuration",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },
         },
-        { "bar:duration": 4 },
+        { "clip:barDuration": 4 },
       );
 
       expect(result.velocity).toStrictEqual({ operator: "set", value: 4 });
     });
 
-    it("bar.duration is 4 in 4/4 via clipContext", () => {
+    it("clip.barDuration is 4 in 4/4 via clipContext", () => {
       const notes = createTestNotes([{ start_time: 0, velocity: 100 }]);
       const clipContext: ClipContext = {
         clipDuration: 16,
@@ -276,12 +276,18 @@ describe("Context Variables", () => {
         barDuration: 4,
       };
 
-      applyTransforms(notes, "velocity = bar.duration * 10", 4, 4, clipContext);
+      applyTransforms(
+        notes,
+        "velocity = clip.barDuration * 10",
+        4,
+        4,
+        clipContext,
+      );
 
       expect(notes[0]!.velocity).toBe(40);
     });
 
-    it("bar.duration is 3 in 3/4 via clipContext", () => {
+    it("clip.barDuration is 3 in 3/4 via clipContext", () => {
       const notes = createTestNotes([{ start_time: 0, velocity: 100 }]);
       const clipContext: ClipContext = {
         clipDuration: 12,
@@ -290,12 +296,18 @@ describe("Context Variables", () => {
         barDuration: 3,
       };
 
-      applyTransforms(notes, "velocity = bar.duration * 10", 3, 4, clipContext);
+      applyTransforms(
+        notes,
+        "velocity = clip.barDuration * 10",
+        3,
+        4,
+        clipContext,
+      );
 
       expect(notes[0]!.velocity).toBe(30);
     });
 
-    it("bar.duration is 6 in 6/8 via clipContext", () => {
+    it("clip.barDuration is 6 in 6/8 via clipContext", () => {
       const notes = createTestNotes([{ start_time: 0, velocity: 100 }]);
       const clipContext: ClipContext = {
         clipDuration: 24,
@@ -304,7 +316,13 @@ describe("Context Variables", () => {
         barDuration: 6,
       };
 
-      applyTransforms(notes, "velocity = bar.duration * 10", 6, 8, clipContext);
+      applyTransforms(
+        notes,
+        "velocity = clip.barDuration * 10",
+        6,
+        8,
+        clipContext,
+      );
 
       expect(notes[0]!.velocity).toBe(60);
     });
@@ -438,9 +456,9 @@ describe("Context Variables", () => {
       expect(result).toStrictEqual({});
     });
 
-    it("errors when bar variable is not available", () => {
+    it("errors when clip.barDuration is not available", () => {
       const result = evaluateTransform(
-        "velocity = bar.duration",
+        "velocity = clip.barDuration",
         {
           position: 0,
           timeSig: { numerator: 4, denominator: 4 },

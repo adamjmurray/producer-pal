@@ -323,7 +323,7 @@ export function evaluateExpression(
       );
     }
 
-    // Determine lookup key: note.* uses bare name, clip.*/bar.* use prefixed keys
+    // Determine lookup key: note.* uses bare name, clip.* uses prefixed keys
     const lookupKey =
       node.namespace === "note" ? node.name : `${node.namespace}:${node.name}`;
 
