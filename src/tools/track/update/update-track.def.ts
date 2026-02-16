@@ -71,10 +71,10 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .enum(Object.values(MONITORING_STATE) as [string, ...string[]])
       .optional()
       .describe("input monitoring"),
-    arrangementFollower: z
-      .boolean()
-      .optional()
-      .describe("track follows the arrangement?"),
+    // arrangementFollower: z
+    //   .boolean()
+    //   .optional()
+    //   .describe("track follows the arrangement?"),
     sendGainDb: z.coerce
       .number()
       .min(-70)
@@ -99,7 +99,6 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       "outputRoutingTypeId",
       "outputRoutingChannelId",
       "monitoringState",
-      "arrangementFollower",
       "sendGainDb",
       "sendReturn",
     ],

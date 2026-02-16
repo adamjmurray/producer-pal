@@ -149,7 +149,6 @@ describe("readLiveSet - clips", () => {
       type: string;
       trackIndex: number;
       name?: string;
-      arrangementFollower?: boolean;
       sessionClips?: { id: string }[];
       arrangementClipCount?: number;
       arrangementClips?: unknown[];
@@ -167,7 +166,6 @@ describe("readLiveSet - clips", () => {
 
     // Should NOT include full track properties
     expect(track.name).toBeUndefined();
-    expect(track.arrangementFollower).toBeUndefined();
 
     // Should include session clips array when session-clips requested
     expect(track.sessionClips).toBeDefined();
@@ -321,7 +319,6 @@ describe("readLiveSet - clips", () => {
       type: string;
       trackIndex: number;
       name: string;
-      arrangementFollower: boolean;
     }[];
     const track = tracks[0]!;
 
@@ -330,7 +327,6 @@ describe("readLiveSet - clips", () => {
     expect(track.type).toBe("midi");
     expect(track.trackIndex).toBe(0);
     expect(track.name).toBe("Test Track");
-    expect(track.arrangementFollower).toBe(true);
   });
 
   it("throws for non-existent track in minimal mode", () => {

@@ -285,7 +285,7 @@ export function readTrackGeneric({
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),
-    arrangementFollower: track.getProperty("back_to_arranger") === 0,
+    // arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
 
   addOptionalBooleanProperties(result, track, canBeArmed);

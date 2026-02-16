@@ -215,7 +215,6 @@ describe("readTrack", () => {
           type: "audio",
           name: "Return B",
           returnTrackIndex: 1,
-          arrangementFollower: true,
           sessionClips: [], // Return tracks have no session clips
           arrangementClips: [], // Return tracks have no arrangement clips
           instrument: null,
@@ -304,7 +303,6 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          arrangementFollower: true,
           sessionClips: [], // Master track has no session clips
           arrangementClips: [], // Master track has no arrangement clips
           instrument: null,
@@ -422,7 +420,6 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          arrangementFollower: true,
           sessionClips: [],
           arrangementClips: [],
           instrument: null,

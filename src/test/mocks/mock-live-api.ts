@@ -212,7 +212,6 @@ export const expectedTrack = (
   trackIndex: 0,
   color: "#FF0000",
   isArmed: true,
-  arrangementFollower: true,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   arrangementClips: [],
