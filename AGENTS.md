@@ -324,4 +324,6 @@ Rules:
 - `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
+- `dev/Read-Tool-Includes.md` - Read tool include parameter system and
+  conventions
 - `DEVELOPERS.md` - Development setup and testing
