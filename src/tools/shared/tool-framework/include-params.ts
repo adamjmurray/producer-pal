@@ -68,7 +68,7 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     WARP,
     MIXER,
   ],
-  scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
+  scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING],
   clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
 };
 
@@ -291,7 +291,6 @@ export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
   includeSample: false,
   includeColor: false,
   includeTiming: false,
-  includeWarp: false,
 };
 
 /**

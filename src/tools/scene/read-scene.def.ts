@@ -7,7 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
-  description: "Read scene settings, clips",
+  description:
+    "Read scene settings, clips.\nReturns overview by default. Use include to add detail.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -24,20 +25,8 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
       .optional()
       .describe("0-based index"),
     include: z
-      .array(
-        z.enum([
-          "clips",
-          "clip-notes",
-          "sample",
-          "color",
-          "timing",
-          "warp",
-          "*",
-        ]),
-      )
+      .array(z.enum(["clips", "clip-notes", "sample", "color", "timing", "*"]))
       .default([])
-      .describe(
-        'data: clips, clip-notes, sample, color, timing, warp, "*" for all',
-      ),
+      .describe('data: clips, clip-notes, sample, color, timing, "*" for all'),
   },
 });
