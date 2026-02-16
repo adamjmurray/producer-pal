@@ -277,7 +277,7 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
 export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
   includeDrumPads: false,
   includeDrumMaps: true,
-  includeClipNotes: true,
+  includeClipNotes: false,
   includeRackChains: false,
   includeReturnChains: false,
   includeMidiEffects: false,

@@ -72,7 +72,7 @@ describe("ppal-read-track", () => {
     expect(master.id).toBeDefined();
     expect(master.id).toBeDefined();
 
-    // Test 5: Default include - session clips, arrangement clips, instruments, drum-maps
+    // Test 5: Default include - instruments, drum-maps, all-clips
     expect(
       Array.isArray(byId.sessionClips) || byId.sessionClipCount !== undefined,
     ).toBe(true);

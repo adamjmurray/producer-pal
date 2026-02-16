@@ -55,13 +55,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "*",
         ]),
       )
-      .default([
-        "session-clips",
-        "arrangement-clips",
-        "clip-notes",
-        "instruments",
-        "drum-maps",
-      ])
+      .default(["instruments", "drum-maps", "all-clips"])
       .describe(
         'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, routings (current/available/all), mixer, color, warp-markers, "*" for all',
       ),

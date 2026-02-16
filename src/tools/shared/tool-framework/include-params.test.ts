@@ -121,7 +121,7 @@ describe("parseIncludeArray", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        includeClipNotes: true,
+        includeClipNotes: false,
         includeDrumMaps: true,
         includeRackChains: false,
         includeInstruments: true,
