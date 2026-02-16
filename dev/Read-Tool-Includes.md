@@ -9,9 +9,9 @@ tokens) and lets callers request only the data they need.
 
 ### Default behavior
 
-- `include` defaults to `[]` for `ppal-read-clip`, `ppal-read-scene`, and
-  `ppal-read-device`. `ppal-read-track` and `ppal-read-live-set` have non-empty
-  defaults that include commonly-needed data (see their sections below).
+- `include` defaults to `[]` for `ppal-read-track`, `ppal-read-clip`,
+  `ppal-read-scene`, and `ppal-read-device`. `ppal-read-live-set` has a
+  non-empty default that includes commonly-needed data (see its section below).
 
 ### Tool description
 
@@ -86,23 +86,51 @@ available at this level. Use `ppal-read-device` for chain/drum-pad detail.
 
 ## ppal-read-track
 
-Default include: `["instruments", "drum-maps", "all-clips"]`
+Default include: `[]`
 
-Returns track info with instruments, drum maps, and all clips by default. Key
-includes:
+Returns minimal track overview by default (`id`, `name`, `type`, `trackIndex`,
+`category`). Use `include` to add detail. Key includes:
 
-- `session-clips`, `arrangement-clips`, `all-clips` — which clips to include
-- `instruments`, `midi-effects`, `audio-effects`, `all-devices` — device info
+- `session-clips`, `arrangement-clips` — which clips to include
+- `devices` — flat device list in track signal-chain order
 - `drum-maps` — pitch-to-name mappings for drum racks
-- `routings`, `available-routings`, `all-routings` — routing info
-- `clip-notes`, `sample`, `timing`, `warp`, `color`, `mixer` — detail data
+- `routings`, `available-routings` — routing info
+- `clip-notes`, `sample`, `timing`, `color`, `mixer` — detail data
 
 Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
 available at this level. Use `ppal-read-device` for chain/drum-pad detail.
 
 ## ppal-read-scene
 
-TODO
+Default include: `[]`
+
+Returns scene overview by default. Use `include` to add detail.
+
+### Default response (no includes)
+
+| Field           | Type     | Description                                          |
+| --------------- | -------- | ---------------------------------------------------- |
+| `id`            | `string` | Scene ID                                             |
+| `name`          | `string` | Scene name with 1-based number (e.g., `"Intro (1)"`) |
+| `sceneIndex`    | `number` | 0-based scene index                                  |
+| `clipCount`     | `number` | Number of non-empty clips in the scene               |
+| `tempo`         | `number` | Only present when scene tempo is enabled             |
+| `timeSignature` | `string` | Only present when scene time sig is enabled          |
+| `triggered`     | `true`   | Only present when scene is triggered                 |
+
+### Include: `"clips"`
+
+Replaces `clipCount` with full clip details for all non-empty clips in the
+scene. Each clip is read via `readClip()`.
+
+| Field   | Type     | Description                               |
+| ------- | -------- | ----------------------------------------- |
+| `clips` | `Clip[]` | Non-empty clips across all regular tracks |
+
+### Include: `"clip-notes"`, `"sample"`, `"timing"`, `"color"`
+
+Propagated to `readClip()` for each clip in the scene. See ppal-read-clip
+section for details on these includes.
 
 ## ppal-read-clip
 
