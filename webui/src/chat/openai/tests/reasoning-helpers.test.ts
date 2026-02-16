@@ -30,7 +30,17 @@ describe("extractReasoningFromDelta", () => {
     expect(result).toBe("");
   });
 
-  it("should extract reasoning from reasoning_content (OpenAI format)", () => {
+  it("should extract reasoning from reasoning field (Ollama format)", () => {
+    const delta = {
+      reasoning: "Let me think step by step...",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe("Let me think step by step...");
+  });
+
+  it("should extract reasoning from reasoning_content (DeepSeek format)", () => {
     const delta = {
       reasoning_content: "Thinking about the problem...",
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
@@ -38,6 +48,17 @@ describe("extractReasoningFromDelta", () => {
     const result = extractReasoningFromDelta(delta);
 
     expect(result).toBe("Thinking about the problem...");
+  });
+
+  it("should prioritize reasoning over reasoning_content", () => {
+    const delta = {
+      reasoning: "From reasoning",
+      reasoning_content: "From reasoning_content",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    const result = extractReasoningFromDelta(delta);
+
+    expect(result).toBe("From reasoning");
   });
 
   it("should extract reasoning from reasoning_details (OpenRouter format)", () => {
@@ -364,5 +385,66 @@ describe("processReasoningDelta", () => {
     processReasoningDelta(delta, map);
 
     expect(map.get("reasoning.text-0")?.text).toBe("new text");
+  });
+
+  it("should handle Ollama reasoning string field", () => {
+    const delta = {
+      reasoning: "Thinking about this...",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+    const map = new Map<string, ReasoningDetail>();
+
+    processReasoningDelta(delta, map);
+
+    expect(map.size).toBe(1);
+    expect(map.get("reasoning.text-0")).toStrictEqual({
+      type: "reasoning.text",
+      text: "Thinking about this...",
+      index: 0,
+    });
+  });
+
+  it("should handle reasoning_content string field", () => {
+    const delta = {
+      reasoning_content: "DeepSeek thinking...",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+    const map = new Map<string, ReasoningDetail>();
+
+    processReasoningDelta(delta, map);
+
+    expect(map.size).toBe(1);
+    expect(map.get("reasoning.text-0")).toStrictEqual({
+      type: "reasoning.text",
+      text: "DeepSeek thinking...",
+      index: 0,
+    });
+  });
+
+  it("should accumulate Ollama reasoning across multiple chunks", () => {
+    const map = new Map<string, ReasoningDetail>();
+
+    const delta1 = {
+      reasoning: "First part ",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+    const delta2 = {
+      reasoning: "second part",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    processReasoningDelta(delta1, map);
+    processReasoningDelta(delta2, map);
+
+    expect(map.size).toBe(1);
+    expect(map.get("reasoning.text-0")?.text).toBe("First part second part");
+  });
+
+  it("should prefer reasoning over reasoning_content for string fields", () => {
+    const delta = {
+      reasoning: "From reasoning",
+      reasoning_content: "From reasoning_content",
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+    const map = new Map<string, ReasoningDetail>();
+
+    processReasoningDelta(delta, map);
+
+    expect(map.get("reasoning.text-0")?.text).toBe("From reasoning");
   });
 });
