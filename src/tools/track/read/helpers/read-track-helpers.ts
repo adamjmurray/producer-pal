@@ -4,7 +4,6 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { VERSION } from "#src/shared/version.ts";
 import {
   readClip,
   type ReadClipResult,
@@ -367,7 +366,6 @@ export function addProducerPalHostInfo(
 ): void {
   if (isProducerPalHost) {
     result.hasProducerPalDevice = true;
-    result.producerPalVersion = VERSION;
   }
 }
 

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { VERSION } from "#src/shared/version.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -188,12 +187,10 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 1 });
 
     expect(result.hasProducerPalDevice).toBe(true);
-    expect(result.producerPalVersion).toBe(VERSION);
 
     const result2 = readTrack({ trackIndex: 0 });
 
     expect(result2.hasProducerPalDevice).toBeUndefined();
-    expect(result2.producerPalVersion).toBeUndefined();
   });
 
   it("should omit instrument property when null for Producer Pal host track", () => {
