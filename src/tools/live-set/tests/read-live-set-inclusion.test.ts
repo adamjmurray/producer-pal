@@ -156,8 +156,10 @@ describe("readLiveSet - inclusion", () => {
       },
     });
 
-    // Call with NO arguments - should use defaults (including drum-maps)
-    const result = readLiveSet();
+    // Call with instruments and drum-maps to verify drum-maps strips chains
+    const result = readLiveSet({
+      include: ["regular-tracks", "instruments", "drum-maps"],
+    });
 
     // Should have drumMap on the track
     const tracks = result.tracks as {
@@ -169,21 +171,14 @@ describe("readLiveSet - inclusion", () => {
       C3: "Test Kick",
     });
 
-    // Should have instrument but NO chains (proving drum-maps is default, not chains)
+    // Should have instrument but NO chains (drum-maps strips chains)
     expect(tracks[0]!.instrument).toStrictEqual({
       id: "drumrack1",
       path: "t0/d0",
       name: "Test Drum Rack",
       type: "drum-rack",
-      // drumPads: [ // Only included when drum-pads is requested
-      //   {
-      //     name: "Test Kick",
-      //     note: 60,
-      //   },
-      // ],
     });
 
-    // Critical: chains should be stripped due to drum-maps default
     expect(tracks[0]!.instrument.chains).toBeUndefined();
   });
 

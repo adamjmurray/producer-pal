@@ -42,7 +42,7 @@ Re-read after moves/deletes for updated state.`,
           "*",
         ]),
       )
-      .default(["regular-tracks", "instruments", "drum-maps"])
+      .default(["regular-tracks"])
       .describe(
         'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, locators, "*" for all (avoid in big sets).',
       ),

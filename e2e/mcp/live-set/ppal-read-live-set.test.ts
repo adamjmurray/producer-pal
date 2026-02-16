@@ -42,8 +42,8 @@ describe("ppal-read-live-set", () => {
     expect(["midi", "audio"]).toContain(firstTrack?.type);
     expect(typeof firstTrack?.trackIndex).toBe("number");
 
-    // Instruments included by default (can be null for audio tracks)
-    expect("instrument" in (firstTrack ?? {})).toBe(true);
+    // Instruments NOT included by default (only regular-tracks)
+    expect("instrument" in (firstTrack ?? {})).toBe(false);
   });
 
   it("reads live set with scenes include", async () => {
