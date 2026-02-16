@@ -24,6 +24,7 @@ describe("createStreamState", () => {
     expect(state.toolResults.size).toBe(0);
     expect(state.hasToolCalls).toBe(false);
     expect(state.outputItems).toStrictEqual([]);
+    expect(state.streamingReasoningIndex).toBeNull();
     expect(state.streamingItemIndex).toBeNull();
   });
 });
@@ -71,6 +72,21 @@ describe("extractReasoningText", () => {
     expect(extractReasoningText(item)).toBe("Fallback text");
   });
 
+  it("extracts from content array (LM Studio format)", () => {
+    const item = {
+      type: "reasoning",
+      summary: [],
+      content: [
+        { type: "reasoning_text", text: "Step 1 reasoning" },
+        { type: "reasoning_text", text: "Step 2 reasoning" },
+      ],
+    } as unknown as ResponsesOutputItem;
+
+    expect(extractReasoningText(item)).toBe(
+      "Step 1 reasoning\nStep 2 reasoning",
+    );
+  });
+
   it("returns empty string when no text found", () => {
     const item = { type: "reasoning" } as unknown as ResponsesOutputItem;
 
@@ -83,7 +99,7 @@ describe("processStreamEvent", () => {
     callTool: vi.fn().mockResolvedValue({ content: { result: "ok" } }),
   });
 
-  it("handles reasoning delta and updates conversation", async () => {
+  it("handles reasoning delta as reasoning-type item", async () => {
     const state = createStreamState();
     const conversation: ResponsesConversationItem[] = [];
     const event: ResponsesStreamEvent = {
@@ -96,11 +112,10 @@ describe("processStreamEvent", () => {
     expect(state.currentReasoning).toBe("thinking...");
     expect(conversation).toHaveLength(1);
     expect(conversation[0]).toMatchObject({
-      type: "message",
-      role: "assistant",
-      content: "thinking...",
+      type: "reasoning",
+      text: "thinking...",
     });
-    expect(state.streamingItemIndex).toBe(0);
+    expect(state.streamingReasoningIndex).toBe(0);
   });
 
   it("handles reasoning delta with string delta", async () => {
@@ -114,7 +129,59 @@ describe("processStreamEvent", () => {
     await processStreamEvent(event, state, createMockMcpClient(), conversation);
 
     expect(state.currentReasoning).toBe("direct string");
-    expect(conversation[0]).toMatchObject({ content: "direct string" });
+    expect(conversation[0]).toMatchObject({
+      type: "reasoning",
+      text: "direct string",
+    });
+  });
+
+  it("handles LM Studio reasoning_text.delta event", async () => {
+    const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
+    const event: ResponsesStreamEvent = {
+      type: "response.reasoning_text.delta",
+      delta: "The user",
+    };
+
+    await processStreamEvent(event, state, createMockMcpClient(), conversation);
+
+    expect(state.currentReasoning).toBe("The user");
+    expect(conversation[0]).toMatchObject({
+      type: "reasoning",
+      text: "The user",
+    });
+  });
+
+  it("handles reasoning done event with complete text", async () => {
+    const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
+    const mcpClient = createMockMcpClient();
+
+    // First some deltas
+    await processStreamEvent(
+      { type: "response.reasoning_text.delta", delta: "partial..." },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    // Then the done event with full text
+    await processStreamEvent(
+      {
+        type: "response.reasoning_text.done",
+        text: "The complete reasoning text",
+      } as ResponsesStreamEvent,
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    expect(state.currentReasoning).toBe("The complete reasoning text");
+    expect(conversation).toHaveLength(1);
+    expect(conversation[0]).toMatchObject({
+      type: "reasoning",
+      text: "The complete reasoning text",
+    });
   });
 
   it("handles output text delta and updates conversation", async () => {
@@ -324,6 +391,88 @@ describe("processStreamEvent", () => {
     expect(conversation).toHaveLength(1);
     expect(conversation[0]).toMatchObject({ type: "message", id: "msg_1" });
     expect(state.streamingItemIndex).toBeNull();
+  });
+
+  it("removes both reasoning and text streaming placeholders on completion", async () => {
+    const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
+    const mcpClient = createMockMcpClient();
+
+    // Simulate reasoning then text streaming
+    await processStreamEvent(
+      { type: "response.reasoning.delta", delta: "Thinking..." },
+      state,
+      mcpClient,
+      conversation,
+    );
+    await processStreamEvent(
+      { type: "response.output_text.delta", delta: { text: "Answer" } },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    expect(conversation).toHaveLength(2); // reasoning + message placeholders
+
+    // Complete with output that includes reasoning
+    await processStreamEvent(
+      {
+        type: "response.completed",
+        response: {
+          output: [
+            { type: "reasoning", id: "rs_1", summary: "Thinking..." },
+            { type: "message", id: "msg_1", role: "assistant", content: [] },
+          ],
+        },
+      },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    // Both placeholders removed, final output added
+    expect(conversation).toHaveLength(2);
+    expect(conversation[0]).toMatchObject({ type: "reasoning", id: "rs_1" });
+    expect(conversation[1]).toMatchObject({ type: "message", id: "msg_1" });
+    expect(state.streamingReasoningIndex).toBeNull();
+    expect(state.streamingItemIndex).toBeNull();
+  });
+
+  it("injects synthetic reasoning when output lacks reasoning item", async () => {
+    const state = createStreamState();
+    const conversation: ResponsesConversationItem[] = [];
+    const mcpClient = createMockMcpClient();
+
+    // Simulate reasoning streaming
+    await processStreamEvent(
+      { type: "response.reasoning_text.delta", delta: "My reasoning" },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    // Complete without reasoning in output (LM Studio behavior)
+    await processStreamEvent(
+      {
+        type: "response.completed",
+        response: {
+          output: [
+            { type: "message", id: "msg_1", role: "assistant", content: [] },
+          ],
+        },
+      },
+      state,
+      mcpClient,
+      conversation,
+    );
+
+    // Synthetic reasoning item injected before message output
+    expect(conversation).toHaveLength(2);
+    expect(conversation[0]).toMatchObject({
+      type: "reasoning",
+      text: "My reasoning",
+    });
+    expect(conversation[1]).toMatchObject({ type: "message", id: "msg_1" });
   });
 
   it("ignores unknown event types", async () => {
