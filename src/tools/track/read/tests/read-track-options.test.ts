@@ -123,7 +123,8 @@ describe("readTrack", () => {
           "all-devices",
           "all-routings",
           "color",
-          "warp-markers",
+          "timing",
+          "warp",
           "mixer",
         ],
       });

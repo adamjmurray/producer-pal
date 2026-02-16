@@ -24,7 +24,6 @@ interface ReadClipArgs {
   sceneIndex?: number | null;
   clipId?: string | null;
   include?: string[];
-  includeClipNotes?: boolean;
   /** @internal Suppress warning for empty clip slots (used by batch readers) */
   suppressEmptyWarning?: boolean;
 }
@@ -63,7 +62,6 @@ export interface ReadClipResult {
   arrangementLength?: string;
 
   // MIDI clip properties
-  noteCount?: number;
   notes?: string;
 
   // Audio clip properties
@@ -84,7 +82,6 @@ export interface ReadClipResult {
  * @param args.sceneIndex - Clip slot index (0-based)
  * @param args.clipId - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
- * @param args.includeClipNotes - Whether to include notes data (legacy parameter)
  * @param _context - Context object (unused)
  * @returns Result object with clip information
  */
@@ -94,7 +91,7 @@ export function readClip(
 ): ReadClipResult {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes, includeColor, includeWarpMarkers } =
+  const { includeClipNotes, includeColor, includeTiming, includeWarp } =
     parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
@@ -120,58 +117,8 @@ export function readClip(
 
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
-  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
-  const timeSigDenominator = clip.getProperty(
-    "signature_denominator",
-  ) as number;
-
-  const isLooping = (clip.getProperty("looping") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
-  const lengthBeats = clip.getProperty("length") as number; // Live API already gives us the effective length!
-
   const clipName = clip.getProperty("name") as string;
-
-  // Read boundary properties from Live
-  const startMarkerBeats = clip.getProperty("start_marker") as number;
-  const loopStartBeats = clip.getProperty("loop_start") as number;
-  const loopEndBeats = clip.getProperty("loop_end") as number;
-  const endMarkerBeats = clip.getProperty("end_marker") as number;
-
-  // Calculate start and end based on looping state
-  const { startBeats, endBeats } = getActiveClipBounds(
-    isLooping,
-    startMarkerBeats,
-    loopStartBeats,
-    endMarkerBeats,
-    loopEndBeats,
-  );
-
-  // Convert to bar|beat notation
-  const start = abletonBeatsToBarBeat(
-    startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const end = abletonBeatsToBarBeat(
-    endBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const length = abletonBeatsToBarBeatDuration(
-    endBeats - startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  // Check if firstStart differs from start
-  const firstStart =
-    Math.abs(startMarkerBeats - startBeats) > 0.001
-      ? abletonBeatsToBarBeat(
-          startMarkerBeats,
-          timeSigNumerator,
-          timeSigDenominator,
-        )
-      : null;
 
   const result: ReadClipResult = {
     id: clip.id,
@@ -179,35 +126,27 @@ export function readClip(
     ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
-    timeSignature: clip.timeSignature,
-    looping: isLooping,
-    start: start,
-    end: end,
-    length: length,
-    ...(firstStart != null && { firstStart }),
   };
 
   // Add boolean state properties
   addBooleanStateProperties(result, clip);
 
-  // Add location properties
-  addClipLocationProperties(result, clip, isArrangementClip);
+  // Add location properties (arrangementLength gated behind timing)
+  addClipLocationProperties(result, clip, isArrangementClip, includeTiming);
+
+  // Add timing properties when requested
+  if (includeTiming) {
+    addTimingProperties(result, clip);
+  }
 
   // Process MIDI clip properties
   if (result.type === "midi") {
-    processMidiClip(
-      result,
-      clip,
-      includeClipNotes,
-      lengthBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
+    processMidiClip(result, clip, includeClipNotes);
   }
 
   // Process audio clip properties
   if (result.type === "audio") {
-    processAudioClip(result, clip, includeWarpMarkers);
+    processAudioClip(result, clip, includeWarp);
   }
 
   return result;
@@ -245,22 +184,71 @@ function addBooleanStateProperties(
 }
 
 /**
+ * Add timing properties (timeSignature, looping, start, end, length, firstStart)
+ * @param result - Result object to add properties to
+ * @param clip - LiveAPI clip object
+ */
+function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
+  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
+  const timeSigDenominator = clip.getProperty(
+    "signature_denominator",
+  ) as number;
+  const isLooping = (clip.getProperty("looping") as number) > 0;
+
+  const startMarkerBeats = clip.getProperty("start_marker") as number;
+  const loopStartBeats = clip.getProperty("loop_start") as number;
+  const loopEndBeats = clip.getProperty("loop_end") as number;
+  const endMarkerBeats = clip.getProperty("end_marker") as number;
+
+  const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
+  const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
+
+  result.timeSignature = clip.timeSignature;
+  result.looping = isLooping;
+  result.start = abletonBeatsToBarBeat(
+    startBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  result.end = abletonBeatsToBarBeat(
+    endBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  result.length = abletonBeatsToBarBeatDuration(
+    endBeats - startBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  if (Math.abs(startMarkerBeats - startBeats) > 0.001) {
+    result.firstStart = abletonBeatsToBarBeat(
+      startMarkerBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+  }
+}
+
+/**
  * Process MIDI clip specific properties
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
- * @param lengthBeats - Clip length in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  */
 function processMidiClip(
   result: ReadClipResult,
   clip: LiveAPI,
   includeClipNotes: boolean,
-  lengthBeats: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): void {
+  if (!includeClipNotes) return;
+
+  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
+  const timeSigDenominator = clip.getProperty(
+    "signature_denominator",
+  ) as number;
+  const lengthBeats = clip.getProperty("length") as number;
+
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
@@ -270,30 +258,25 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
-  result.noteCount = notes.length;
-
-  if (includeClipNotes) {
-    result.notes = formatNotation(notes, {
-      timeSigNumerator,
-      timeSigDenominator,
-    });
-  }
+  result.notes = formatNotation(notes, {
+    timeSigNumerator,
+    timeSigDenominator,
+  });
 }
 
 /**
  * Process audio clip specific properties
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
- * @param includeWarpMarkers - Whether to include warp markers
+ * @param includeWarp - Whether to include warp properties
  */
 function processAudioClip(
   result: ReadClipResult,
   clip: LiveAPI,
-  includeWarpMarkers: boolean,
+  includeWarp: boolean,
 ): void {
-  const liveGain = clip.getProperty("gain") as number;
-
-  result.gainDb = liveGainToDb(liveGain);
+  // Base audio properties (always included)
+  result.gainDb = liveGainToDb(clip.getProperty("gain") as number);
 
   const filePath = clip.getProperty("file_path") as string | null;
 
@@ -306,17 +289,16 @@ function processAudioClip(
 
   result.pitchShift = pitchCoarse + pitchFine / 100;
 
-  result.sampleLength = clip.getProperty("sample_length") as number;
-  result.sampleRate = clip.getProperty("sample_rate") as number;
+  // Warp properties (gated behind includeWarp)
+  if (includeWarp) {
+    result.sampleLength = clip.getProperty("sample_length") as number;
+    result.sampleRate = clip.getProperty("sample_rate") as number;
+    result.warping = (clip.getProperty("warping") as number) > 0;
 
-  // Warping state
-  result.warping = (clip.getProperty("warping") as number) > 0;
-  const warpModeValue = clip.getProperty("warp_mode") as number;
+    const warpModeValue = clip.getProperty("warp_mode") as number;
 
-  result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
+    result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
-  // Add warp markers array when requested
-  if (includeWarpMarkers) {
     const warpMarkers = processWarpMarkers(clip);
 
     if (warpMarkers !== undefined) {
@@ -330,13 +312,18 @@ function processAudioClip(
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view
+ * @param includeTiming - Whether to include arrangementLength
  */
 function addClipLocationProperties(
   result: ReadClipResult,
   clip: LiveAPI,
   isArrangementClip: boolean,
+  includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
+    result.trackIndex = clip.trackIndex;
+    const startTimeBeats = clip.getProperty("start_time") as number;
+
     const liveSet = LiveAPI.from("live_set");
     const songTimeSigNumerator = liveSet.getProperty(
       "signature_numerator",
@@ -345,44 +332,23 @@ function addClipLocationProperties(
       "signature_denominator",
     ) as number;
 
-    result.trackIndex = clip.trackIndex;
-    const startTimeBeats = clip.getProperty("start_time") as number;
-    const endTimeBeats = clip.getProperty("end_time") as number;
-
     result.arrangementStart = abletonBeatsToBarBeat(
       startTimeBeats,
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
-    result.arrangementLength = abletonBeatsToBarBeatDuration(
-      endTimeBeats - startTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+
+    if (includeTiming) {
+      const endTimeBeats = clip.getProperty("end_time") as number;
+
+      result.arrangementLength = abletonBeatsToBarBeatDuration(
+        endTimeBeats - startTimeBeats,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+    }
   } else {
     result.trackIndex = clip.trackIndex;
     result.sceneIndex = clip.sceneIndex;
   }
-}
-
-/**
- * Get the active start and end beats based on looping state
- * @param isLooping - Whether the clip is looping
- * @param startMarkerBeats - Start marker position in beats
- * @param loopStartBeats - Loop start position in beats
- * @param endMarkerBeats - End marker position in beats
- * @param loopEndBeats - Loop end position in beats
- * @returns Object with startBeats and endBeats
- */
-function getActiveClipBounds(
-  isLooping: boolean,
-  startMarkerBeats: number,
-  loopStartBeats: number,
-  endMarkerBeats: number,
-  loopEndBeats: number,
-): { startBeats: number; endBeats: number } {
-  const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
-  const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
-
-  return { startBeats, endBeats };
 }

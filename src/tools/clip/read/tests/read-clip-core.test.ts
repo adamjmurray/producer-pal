@@ -36,7 +36,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
+    const result = readClip({
+      trackIndex: 1,
+      sceneIndex: 1,
+      include: ["timing", "clip-notes"],
+    });
 
     expectGetNotesExtendedCall(clip);
 
@@ -53,7 +57,6 @@ describe("readClip", () => {
       end: "2|2", // end_marker (5 beats = 2|2)
       length: "1:0", // 1 bar duration
       notes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
-      noteCount: 3,
     });
   });
 
@@ -70,7 +73,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
+    const result = readClip({
+      trackIndex: 1,
+      sceneIndex: 1,
+      include: ["timing", "clip-notes"],
+    });
 
     expectGetNotesExtendedCall(clip);
 
@@ -87,7 +94,6 @@ describe("readClip", () => {
       end: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
       notes: "C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8
-      noteCount: 3,
     });
   });
 
@@ -108,7 +114,11 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 4 }), // bar 2, beat 2
     ]);
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing", "clip-notes"],
+    });
 
     expectGetNotesExtendedCall(clip);
 
@@ -140,7 +150,11 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 3.5 }), // bar 2, beat 2
     ]);
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing", "clip-notes"],
+    });
 
     expectGetNotesExtendedCall(clip, 3);
 
@@ -228,7 +242,11 @@ describe("readClip", () => {
         loop_end: 5,
       },
     });
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing", "warp"],
+    });
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -309,7 +327,7 @@ describe("readClip", () => {
     expect(result.type).toBe("audio");
   });
 
-  it("reads warp mode and warping state when warp-markers included", () => {
+  it("reads warp mode and warping state when warp included", () => {
     setupAudioClipMock({
       trackIndex: 0,
       sceneIndex: 0,
@@ -326,7 +344,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMode).toBe("complex");
@@ -349,7 +367,10 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ clipId: "id session_clip_id" });
+    const result = readClip({
+      clipId: "id session_clip_id",
+      include: ["timing"],
+    });
 
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
@@ -384,7 +405,10 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ clipId: "id arrangement_clip_id" });
+    const result = readClip({
+      clipId: "id arrangement_clip_id",
+      include: ["timing"],
+    });
 
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");

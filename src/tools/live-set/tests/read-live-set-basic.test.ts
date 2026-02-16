@@ -181,11 +181,21 @@ describe("readLiveSet - basic reading", () => {
           arrangementClips: [],
           sessionClips: [
             {
-              ...expectedClip({ id: "clip1", trackIndex: 0, sceneIndex: 0 }),
+              ...expectedClip({
+                id: "clip1",
+                trackIndex: 0,
+                sceneIndex: 0,
+                notes: "",
+              }),
               color: undefined,
             },
             {
-              ...expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
+              ...expectedClip({
+                id: "clip2",
+                trackIndex: 0,
+                sceneIndex: 2,
+                notes: "",
+              }),
               color: undefined,
             },
           ].map(({ color: _color, ...clip }) => clip),
@@ -204,7 +214,12 @@ describe("readLiveSet - basic reading", () => {
           arrangementClips: [],
           sessionClips: [
             {
-              ...expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
+              ...expectedClip({
+                id: "clip3",
+                trackIndex: 1,
+                sceneIndex: 0,
+                notes: "",
+              }),
               color: undefined,
             },
           ].map(({ color: _color, ...clip }) => clip),

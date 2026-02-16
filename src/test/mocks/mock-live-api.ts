@@ -257,11 +257,15 @@ interface ClipOverrides {
   start?: string;
   end?: string;
   length?: string;
-  noteCount?: number;
   notes?: string;
   [key: string]: unknown;
 }
 
+/**
+ * Base clip fields (no includes). Add timing/notes overrides when testing those includes.
+ * @param overrides - Properties to override
+ * @returns Expected clip object
+ */
 export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",
@@ -270,13 +274,6 @@ export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   sceneIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
-  timeSignature: "4/4",
-  looping: false,
-  start: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
-  end: "2|2", // end_marker (5 beats = 2|2)
-  length: "1:0", // 1 bar duration
   // playing, triggered, recording, overdubbing, muted omitted when false
-  noteCount: 0,
-  notes: "",
   ...overrides,
 });

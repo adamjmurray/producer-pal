@@ -35,7 +35,8 @@ describe("parseIncludeArray", () => {
       includeReturnTracks: false,
       includeMasterTrack: false,
       includeColor: false,
-      includeWarpMarkers: false,
+      includeTiming: false,
+      includeWarp: false,
       includeMixer: false,
       includeLocators: false,
     });
@@ -63,7 +64,8 @@ describe("parseIncludeArray", () => {
       includeReturnTracks: false,
       includeMasterTrack: false,
       includeColor: false,
-      includeWarpMarkers: false,
+      includeTiming: false,
+      includeWarp: false,
       includeMixer: false,
       includeLocators: false,
     });
@@ -147,7 +149,9 @@ describe("parseIncludeArray", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        includeClipNotes: true,
+        includeClipNotes: false,
+        includeTiming: false,
+        includeWarp: false,
       }),
     );
   });
@@ -157,7 +161,8 @@ describe("parseIncludeArray", () => {
 
     expect(result.includeClipNotes).toBe(true);
     expect(result.includeColor).toBe(true);
-    expect(result.includeWarpMarkers).toBe(true);
+    expect(result.includeTiming).toBe(true);
+    expect(result.includeWarp).toBe(true);
   });
 });
 

@@ -77,7 +77,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing", "clip-notes"],
+    });
 
     expectGetNotesExtendedCall(clip);
 
@@ -94,7 +98,6 @@ describe("readClip", () => {
       end: "2|2", // end_marker (5 beats = 2|2)
       length: "1:0",
       triggered: true,
-      noteCount: 4,
       notes: "t0.25 C1 1|1 v90 D1 1|2 v100 C1 1|3 v90 D1 1|4",
     });
   });
@@ -127,12 +130,6 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      timeSignature: "4/4",
-      looping: false,
-      start: "1|2",
-      end: "2|3",
-      length: "1:1",
-      noteCount: 0,
     });
   });
 
@@ -153,7 +150,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing"],
+    });
 
     expect(result.start).toBe("2|1");
     expect(result.firstStart).toBeUndefined(); // Omitted when it equals start
@@ -176,7 +177,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing"],
+    });
 
     expect(result.start).toBe("1|1"); // loop_start
     expect(result.firstStart).toBe("3|1"); // Included because it differs from start
@@ -274,11 +279,11 @@ describe("readClip", () => {
       include: ["*"],
     });
 
-    // Test explicit list with color - should produce identical result
+    // Test explicit list - should produce identical result
     const resultExplicit = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["clip-notes", "color", "warp-markers"],
+      include: ["clip-notes", "color", "timing", "warp"],
     });
 
     // Results should be identical
@@ -291,7 +296,6 @@ describe("readClip", () => {
         type: "midi",
         name: "Wildcard Test Clip",
         notes: expect.any(String),
-        noteCount: 2,
       }),
     );
 
@@ -325,7 +329,11 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["timing", "clip-notes"],
+    });
 
     // Verify get_notes_extended is called with upper bound of 128 (exclusive), not 127
     expectGetNotesExtendedCall(clip);
@@ -343,7 +351,6 @@ describe("readClip", () => {
       end: "2|1", // end_marker (4 = 2|1)
       length: "1:0",
       notes: "G8 1|1",
-      noteCount: 1,
     });
   });
 });

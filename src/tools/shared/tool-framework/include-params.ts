@@ -16,7 +16,8 @@ const ARRANGEMENT_CLIPS = "arrangement-clips";
 const REGULAR_TRACKS = "regular-tracks";
 const RETURN_TRACKS = "return-tracks";
 const MASTER_TRACK = "master-track";
-const WARP_MARKERS = "warp-markers";
+const TIMING = "timing";
+const WARP = "warp";
 const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
@@ -47,7 +48,8 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     "all-devices",
     "all-clips",
     COLOR,
-    WARP_MARKERS,
+    TIMING,
+    WARP,
     MIXER,
     LOCATORS,
   ],
@@ -68,11 +70,12 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     "all-routings",
     "all-clips",
     COLOR,
-    WARP_MARKERS,
+    TIMING,
+    WARP,
     MIXER,
   ],
-  scene: [CLIPS, CLIP_NOTES, COLOR, WARP_MARKERS],
-  clip: [CLIP_NOTES, COLOR, WARP_MARKERS],
+  scene: [CLIPS, CLIP_NOTES, COLOR, TIMING, WARP],
+  clip: [CLIP_NOTES, COLOR, TIMING, WARP],
 };
 
 /**
@@ -104,7 +107,8 @@ export interface IncludeFlags {
   includeReturnTracks: boolean;
   includeMasterTrack: boolean;
   includeColor: boolean;
-  includeWarpMarkers: boolean;
+  includeTiming: boolean;
+  includeWarp: boolean;
   includeMixer: boolean;
   includeLocators: boolean;
 }
@@ -140,7 +144,8 @@ export function parseIncludeArray(
       includeReturnTracks: Boolean(defaults.includeReturnTracks),
       includeMasterTrack: Boolean(defaults.includeMasterTrack),
       includeColor: Boolean(defaults.includeColor),
-      includeWarpMarkers: Boolean(defaults.includeWarpMarkers),
+      includeTiming: Boolean(defaults.includeTiming),
+      includeWarp: Boolean(defaults.includeWarp),
       includeMixer: Boolean(defaults.includeMixer),
       includeLocators: Boolean(defaults.includeLocators),
     };
@@ -173,7 +178,8 @@ export function parseIncludeArray(
       includeReturnTracks: false,
       includeMasterTrack: false,
       includeColor: false,
-      includeWarpMarkers: false,
+      includeTiming: false,
+      includeWarp: false,
       includeMixer: false,
       includeLocators: false,
     };
@@ -198,7 +204,8 @@ export function parseIncludeArray(
     includeReturnTracks: includeSet.has(RETURN_TRACKS),
     includeMasterTrack: includeSet.has(MASTER_TRACK),
     includeColor: includeSet.has(COLOR),
-    includeWarpMarkers: includeSet.has(WARP_MARKERS),
+    includeTiming: includeSet.has(TIMING),
+    includeWarp: includeSet.has(WARP),
     includeMixer: includeSet.has(MIXER),
     includeLocators: includeSet.has(LOCATORS),
   };
@@ -226,7 +233,8 @@ const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeReturnTracks", RETURN_TRACKS],
   ["includeMasterTrack", MASTER_TRACK],
   ["includeColor", COLOR],
-  ["includeWarpMarkers", WARP_MARKERS],
+  ["includeTiming", TIMING],
+  ["includeWarp", WARP],
   ["includeMixer", MIXER],
   ["includeLocators", LOCATORS],
 ];
@@ -266,7 +274,8 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
   includeReturnTracks: false,
   includeMasterTrack: false,
   includeColor: false,
-  includeWarpMarkers: false,
+  includeTiming: false,
+  includeWarp: false,
   includeMixer: false,
   includeLocators: false,
 };
@@ -288,7 +297,8 @@ export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
   includeSessionClips: true,
   includeArrangementClips: true,
   includeColor: false,
-  includeWarpMarkers: false,
+  includeTiming: false,
+  includeWarp: false,
   includeMixer: false,
 };
 
@@ -299,16 +309,18 @@ export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
   includeClips: false,
   includeClipNotes: false,
   includeColor: false,
-  includeWarpMarkers: false,
+  includeTiming: false,
+  includeWarp: false,
 };
 
 /**
  * Default include parameters for read-clip tool
  */
 export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
-  includeClipNotes: true,
+  includeClipNotes: false,
   includeColor: false,
-  includeWarpMarkers: false,
+  includeTiming: false,
+  includeWarp: false,
 };
 
 /**

@@ -41,7 +41,7 @@ describe("readClip - warp markers", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMarkers).toStrictEqual([
@@ -63,7 +63,7 @@ describe("readClip - warp markers", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMarkers).toStrictEqual([
@@ -77,7 +77,7 @@ describe("readClip - warp markers", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMarkers).toBeUndefined();
@@ -88,7 +88,7 @@ describe("readClip - warp markers", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMarkers).toBeUndefined();
@@ -118,7 +118,7 @@ describe("readClip - warp markers", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["warp-markers"],
+      include: ["warp"],
     });
 
     expect(result.warpMarkers).toBeUndefined();
