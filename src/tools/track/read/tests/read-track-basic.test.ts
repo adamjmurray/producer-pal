@@ -199,14 +199,14 @@ describe("readTrack", () => {
     expect(result2.hasProducerPalDevice).toBeUndefined();
   });
 
-  it("should omit instrument property when null for Producer Pal host track", () => {
+  it("should omit instrument property when no instrument on track", () => {
     mockThisDeviceOnTrack1();
 
     registerMockObject("track1", {
       path: livePath.track(1),
       type: "Track",
       properties: mockTrackProperties({
-        devices: [], // No devices means instrument will be null
+        devices: [], // No devices means instrument omitted
       }),
     });
     registerMockObject("track0", {
@@ -217,21 +217,16 @@ describe("readTrack", () => {
       }),
     });
 
-    // Producer Pal host track with null instrument - should omit the property
-    const hostResult = readTrack({ trackIndex: 1, include: ["instruments"] });
+    // Instrument is always omitted when no instrument exists
+    const hostResult = readTrack({ trackIndex: 1 });
 
     expect(hostResult.hasProducerPalDevice).toBe(true);
     expect(hostResult).not.toHaveProperty("instrument");
 
-    // Regular track with null instrument - should include the property
-    const regularResult = readTrack({
-      trackIndex: 0,
-      include: ["instruments"],
-    });
+    const regularResult = readTrack({ trackIndex: 0 });
 
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
-    expect(regularResult).toHaveProperty("instrument");
-    expect(regularResult.instrument).toBe(null);
+    expect(regularResult).not.toHaveProperty("instrument");
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {

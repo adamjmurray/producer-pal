@@ -1,14 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  expectedClip,
-  expectedTrack,
-} from "#src/test/mocks/mock-live-api.ts";
-import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import { children, expectedTrack } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -27,16 +23,6 @@ const SYNTH_DEVICE = {
   can_have_drum_pads: 0,
 };
 
-const EQ_DEVICE = {
-  name: "EQ Eight",
-  class_name: "Eq8",
-  class_display_name: "EQ Eight",
-  type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-  is_active: 1,
-  can_have_chains: 0,
-  can_have_drum_pads: 0,
-};
-
 const REVERB_DEVICE = {
   name: "Reverb",
   class_name: "Reverb",
@@ -47,18 +33,8 @@ const REVERB_DEVICE = {
   can_have_drum_pads: 0,
 };
 
-const SIMPLER_DEVICE = {
-  name: "Simpler",
-  class_name: "Simpler",
-  class_display_name: "Simpler",
-  type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-  is_active: 1,
-  can_have_chains: 0,
-  can_have_drum_pads: 0,
-};
-
 describe("readLiveSet - basic reading", () => {
-  it("returns live set information including tracks and scenes", () => {
+  it("returns live set information with tracks and scenes", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
@@ -89,7 +65,7 @@ describe("readLiveSet - basic reading", () => {
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "MIDI Track 1",
-          color: 16711680, // Red
+          color: 16711680,
           mute: 0,
           solo: 1,
           arm: 1,
@@ -98,11 +74,12 @@ describe("readLiveSet - basic reading", () => {
           is_grouped: 0,
           group_track: ["id", 0],
           clip_slots: children("slot1", "slot2", "slot3"),
+          devices: [],
         },
         [String(livePath.track(1))]: {
           has_midi_input: 0,
           name: "Audio Track 2",
-          color: 65280, // Green
+          color: 65280,
           mute: 1,
           solo: 0,
           arm: 0,
@@ -114,7 +91,7 @@ describe("readLiveSet - basic reading", () => {
         },
         [livePath.scene(0)]: {
           name: "Scene 1",
-          color: 16711680, // Red
+          color: 16711680,
           is_empty: 0,
           is_triggered: 0,
           tempo: 120,
@@ -125,7 +102,7 @@ describe("readLiveSet - basic reading", () => {
         },
         [livePath.scene(1)]: {
           name: "Scene 2",
-          color: 65280, // Green
+          color: 65280,
           is_empty: 1,
           is_triggered: 1,
           tempo: -1,
@@ -136,7 +113,7 @@ describe("readLiveSet - basic reading", () => {
         },
         [livePath.scene(2)]: {
           name: "Scene 3",
-          color: 255, // Blue
+          color: 255,
           is_empty: 0,
           is_triggered: 0,
           tempo: 120,
@@ -149,25 +126,17 @@ describe("readLiveSet - basic reading", () => {
     });
 
     const result = readLiveSet({
-      include: [
-        "regular-tracks",
-        "instruments",
-        "chains",
-        "scenes",
-        "session-clips",
-        "arrangement-clips",
-        "clip-notes",
-      ],
+      include: ["regular-tracks", "scenes"],
     });
 
     expect(result).toStrictEqual({
-      id: "live_set_id",
       name: "Test Live Set",
       isPlaying: true,
       tempo: 120,
       timeSignature: "4/4",
       scale: "C Major",
       scalePitches: "C,D,E,F,G,A,B",
+      returnTrackCount: 0,
       tracks: [
         {
           id: "track1",
@@ -179,28 +148,8 @@ describe("readLiveSet - basic reading", () => {
           isGroup: true,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          arrangementClips: [],
-          sessionClips: [
-            {
-              ...expectedClip({
-                id: "clip1",
-                trackIndex: 0,
-                sceneIndex: 0,
-                notes: "",
-              }),
-              color: undefined,
-            },
-            {
-              ...expectedClip({
-                id: "clip2",
-                trackIndex: 0,
-                sceneIndex: 2,
-                notes: "",
-              }),
-              color: undefined,
-            },
-          ].map(({ color: _color, ...clip }) => clip),
-          instrument: null,
+          sessionClipCount: 2,
+          arrangementClipCount: 0,
         },
         {
           id: "track2",
@@ -213,19 +162,8 @@ describe("readLiveSet - basic reading", () => {
           groupId: "track1",
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          arrangementClips: [],
-          sessionClips: [
-            {
-              ...expectedClip({
-                id: "clip3",
-                trackIndex: 1,
-                sceneIndex: 0,
-                notes: "",
-              }),
-              color: undefined,
-            },
-          ].map(({ color: _color, ...clip }) => clip),
-          instrument: null,
+          sessionClipCount: 1,
+          arrangementClipCount: 0,
         },
         (() => {
           const { color: _color, ...track } = expectedTrack({
@@ -263,33 +201,6 @@ describe("readLiveSet - basic reading", () => {
         },
       ],
     });
-
-    // Verify expensive note reads WERE made due to includeNotes: true
-    const clip1 = lookupMockObject("clip1");
-    const clip2 = lookupMockObject("clip2");
-    const clip3 = lookupMockObject("clip3");
-
-    expect(clip1?.call).toHaveBeenCalledWith(
-      "get_notes_extended",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(clip2?.call).toHaveBeenCalledWith(
-      "get_notes_extended",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(clip3?.call).toHaveBeenCalledWith(
-      "get_notes_extended",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("handles when no tracks or scenes exist", () => {
@@ -314,27 +225,20 @@ describe("readLiveSet - basic reading", () => {
     });
 
     const result = readLiveSet({
-      include: [
-        "regular-tracks",
-        "instruments",
-        "chains",
-        "session-clips",
-        "arrangement-clips",
-        "clip-notes",
-      ],
+      include: ["regular-tracks"],
     });
 
     expect(result).toStrictEqual({
-      id: "live_set",
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
       tracks: [],
       sceneCount: 0,
+      returnTrackCount: 0,
     });
   });
 
-  it("includes device information across multiple tracks with includeDrumPads", () => {
+  it("includes instrument name on tracks with instruments", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
@@ -350,140 +254,39 @@ describe("readLiveSet - basic reading", () => {
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Synth Track",
-          devices: children("synth1", "eq1"),
+          devices: children("synth1", "reverb1"),
         },
         [String(livePath.track(1))]: {
           has_midi_input: 0,
           name: "Audio Track",
-          devices: children("reverb1"),
+          devices: children("reverb2"),
         },
         synth1: SYNTH_DEVICE,
-        eq1: EQ_DEVICE,
         reverb1: REVERB_DEVICE,
+        reverb2: REVERB_DEVICE,
       },
     });
 
     const result = readLiveSet({
-      include: [
-        "regular-tracks",
-        "instruments",
-        "chains",
-        "drum-pads",
-        "audio-effects",
-      ],
+      include: ["regular-tracks"],
     });
 
-    // Check that tracks have the expected device configurations
-    expect(result.tracks).toStrictEqual([
+    const tracks = result.tracks as Record<string, unknown>[];
+
+    // Track with instrument shows instrument name as string
+    expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
         name: "Synth Track",
-        instrument: expect.objectContaining({
-          type: "instrument: Analog",
-        }),
-        audioEffects: [
-          expect.objectContaining({
-            type: "audio-effect: EQ Eight",
-          }),
-        ],
-      }),
-      expect.objectContaining({
-        name: "Audio Track",
-        instrument: null,
-        audioEffects: [
-          expect.objectContaining({
-            type: "audio-effect: Reverb",
-          }),
-        ],
-      }),
-    ]);
-  });
-
-  it("excludes drum rack devices by default", () => {
-    setupLiveSetPathMappedMocks({
-      liveSetId: "live_set_id",
-      pathIdMap: {
-        [String(livePath.track(0))]: "track1",
-      },
-      objects: {
-        LiveSet: {
-          name: "Drum Rack Test Set",
-          tracks: children("track1"),
-          scenes: [],
-        },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
-          name: "Drum Track",
-          devices: children("drum_rack1", "reverb1"),
-        },
-        drum_rack1: {
-          name: "My Drums",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          drum_pads: children("kick_pad"),
-          return_chains: [],
-        },
-        kick_pad: {
-          name: "Kick",
-          note: 36, // C1
-          mute: 0,
-          solo: 0,
-          chains: children("kick_chain"),
-        },
-        kick_chain: {
-          name: "Kick",
-          color: 16711680, // Red
-          mute: 0,
-          solo: 0,
-          devices: children("kick_device"),
-        },
-        kick_device: SIMPLER_DEVICE,
-        reverb1: REVERB_DEVICE,
-      },
-    });
-
-    const result = readLiveSet({
-      include: [
-        "regular-tracks",
-        "instruments",
-        "chains",
-        "audio-effects",
-        "session-clips",
-        "arrangement-clips",
-        "clip-notes",
-      ],
-    });
-
-    // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
-    const tracks = result.tracks as {
-      instrument: unknown;
-      audioEffects: unknown[];
-    }[];
-
-    expect(tracks[0]!.instrument).toStrictEqual(
-      expect.objectContaining({
-        name: "My Drums",
-        type: "drum-rack",
-        // drumPads: expect.any(Array), // Only included when drum-pads is requested
+        instrument: "Analog",
       }),
     );
-    expect(tracks[0]!.audioEffects).toStrictEqual([
-      expect.objectContaining({
-        type: "audio-effect: Reverb",
-      }),
-    ]);
-    // Drum rack device should be present (drumPads hidden)
-    const drumRack = tracks[0]!.instrument;
 
-    expect(drumRack).toBeDefined();
-    // drumPads hidden - drumMap provides the critical pitch-name mapping
-    // expect(drumRack.drumPads).toBeDefined();
-    // // If drumPads exist, they should not have chain property when includeDrumPads=false
-    // if (drumRack.drumPads && drumRack.drumPads.length > 0) {
-    //   expect(drumRack.drumPads[0].chain).toBeUndefined();
-    // }
+    // Track without instrument omits instrument field
+    expect(tracks[1]).toStrictEqual(
+      expect.objectContaining({
+        name: "Audio Track",
+      }),
+    );
+    expect(tracks[1]).not.toHaveProperty("instrument");
   });
 });

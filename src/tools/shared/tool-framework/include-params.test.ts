@@ -17,11 +17,11 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(undefined, READ_SONG_DEFAULTS);
 
     expect(result).toStrictEqual({
-      includeDrumMaps: true,
+      includeDrumMaps: false,
       includeClipNotes: false,
       includeScenes: false,
       includeMidiEffects: false,
-      includeInstruments: true,
+      includeInstruments: false,
       includeAudioEffects: false,
       includeDevices: false,
       includeRoutings: false,
@@ -29,7 +29,7 @@ describe("parseIncludeArray", () => {
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: true,
+      includeRegularTracks: false,
       includeReturnTracks: false,
       includeMasterTrack: false,
       includeSample: false,
@@ -71,12 +71,12 @@ describe("parseIncludeArray", () => {
 
   it("handles specific include options", () => {
     const result = parseIncludeArray(
-      ["regular-tracks", "instruments"],
+      ["regular-tracks", "scenes"],
       READ_SONG_DEFAULTS,
     );
 
     expect(result.includeRegularTracks).toBe(true);
-    expect(result.includeInstruments).toBe(true);
+    expect(result.includeScenes).toBe(true);
     expect(result.includeReturnTracks).toBe(false);
     expect(result.includeMasterTrack).toBe(false);
   });
@@ -101,17 +101,19 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(["*"], READ_SONG_DEFAULTS);
 
     // All song-related options should be true
-    expect(result.includeClipNotes).toBe(true);
     expect(result.includeScenes).toBe(true);
-    expect(result.includeMidiEffects).toBe(true);
-    expect(result.includeInstruments).toBe(true);
-    expect(result.includeAudioEffects).toBe(true);
     expect(result.includeRoutings).toBe(true);
-    expect(result.includeSessionClips).toBe(true);
-    expect(result.includeArrangementClips).toBe(true);
     expect(result.includeRegularTracks).toBe(true);
     expect(result.includeReturnTracks).toBe(true);
     expect(result.includeMasterTrack).toBe(true);
+    expect(result.includeColor).toBe(true);
+    expect(result.includeMixer).toBe(true);
+    expect(result.includeLocators).toBe(true);
+
+    // Clip/device options no longer in song scope
+    expect(result.includeClipNotes).toBe(false);
+    expect(result.includeMidiEffects).toBe(false);
+    expect(result.includeSessionClips).toBe(false);
   });
 
   it("handles track defaults correctly", () => {
@@ -258,19 +260,19 @@ describe("includeArrayFromFlags", () => {
 
   describe("drum-maps option", () => {
     it("parseIncludeArray recognizes drum-maps", () => {
-      const result = parseIncludeArray(["drum-maps"], READ_SONG_DEFAULTS);
+      const result = parseIncludeArray(["drum-maps"], READ_TRACK_DEFAULTS);
 
       expect(result.includeDrumMaps).toBe(true);
     });
 
     it("parseIncludeArray handles drum-maps with other options", () => {
       const result = parseIncludeArray(
-        ["instruments", "drum-maps", "clip-notes"],
-        READ_SONG_DEFAULTS,
+        ["devices", "drum-maps", "clip-notes"],
+        READ_TRACK_DEFAULTS,
       );
 
       expect(result.includeDrumMaps).toBe(true);
-      expect(result.includeInstruments).toBe(true);
+      expect(result.includeDevices).toBe(true);
       expect(result.includeClipNotes).toBe(true);
     });
 

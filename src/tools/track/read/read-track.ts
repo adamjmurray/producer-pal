@@ -14,7 +14,6 @@ import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
-  stripChains,
   type CategorizedDevices,
 } from "./helpers/read-track-device-helpers.ts";
 import {
@@ -24,7 +23,6 @@ import {
   addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  cleanupDeviceChains,
   countArrangementClips,
   countSessionClips,
   getInstrumentName,
@@ -40,14 +38,6 @@ interface ReadTrackArgs {
   category?: string;
   returnTrackNames?: string[];
   include?: string[];
-}
-
-interface DeviceProcessingConfig {
-  includeMidiEffects: boolean;
-  includeInstruments: boolean;
-  includeAudioEffects: boolean;
-  includeDrumMaps: boolean;
-  isProducerPalHost: boolean;
 }
 
 interface ReadTrackGenericArgs {
@@ -170,51 +160,6 @@ function processArrangementClips(
 }
 
 /**
- * Process and categorize track devices
- * @param categorizedDevices - Object containing categorized device arrays
- * @param config - Configuration object with device processing flags
- * @returns Object with processed device arrays and optional drum map
- */
-function processDevices(
-  categorizedDevices: CategorizedDevices,
-  config: DeviceProcessingConfig,
-): Record<string, unknown> {
-  const {
-    includeMidiEffects,
-    includeInstruments,
-    includeAudioEffects,
-    includeDrumMaps,
-    isProducerPalHost,
-  } = config;
-
-  const result: Record<string, unknown> = {};
-
-  // Chains are always stripped — use ppal-read-device for chain detail
-  if (includeMidiEffects) {
-    result.midiEffects = categorizedDevices.midiEffects.map(stripChains);
-  }
-
-  if (
-    includeInstruments &&
-    !(isProducerPalHost && categorizedDevices.instrument === null)
-  ) {
-    result.instrument = categorizedDevices.instrument
-      ? stripChains(categorizedDevices.instrument)
-      : categorizedDevices.instrument;
-  }
-
-  if (includeAudioEffects) {
-    result.audioEffects = categorizedDevices.audioEffects.map(stripChains);
-  }
-
-  if (includeDrumMaps) {
-    addDrumMapFromDevices(result, categorizedDevices);
-  }
-
-  return result;
-}
-
-/**
  * Add drum map to result from categorized device structure
  * @param result - Result object to add drum map to
  * @param categorizedDevices - Categorized device structure with chains for drum detection
@@ -256,9 +201,6 @@ export function readTrackGeneric({
   const {
     includeDrumMaps,
     includeDevices,
-    includeMidiEffects,
-    includeInstruments,
-    includeAudioEffects,
     includeRoutings,
     includeAvailableRoutings,
     includeSessionClips,
@@ -333,12 +275,9 @@ export function readTrackGeneric({
     ),
   );
 
-  // Device processing: flat list (read-track) vs categorized (read-live-set legacy)
-  const useLegacyDeviceFlags =
-    includeMidiEffects || includeInstruments || includeAudioEffects;
-
+  // Device processing
   if (includeDevices) {
-    // New flat device list preserving original track device order
+    // Flat device list preserving original track device order
     const flatDevices = readDevicesFlat(trackDevices, isProducerPalHost);
 
     if (flatDevices != null) {
@@ -346,31 +285,14 @@ export function readTrackGeneric({
     }
 
     if (includeDrumMaps) {
-      // Need categorized with chains to detect drum racks for drum map
       const categorized = categorizeDevices(trackDevices, false, true, false);
 
       addDrumMapFromDevices(result, categorized);
     }
-  } else if (useLegacyDeviceFlags || includeDrumMaps) {
-    // Legacy categorized path (used by read-live-set)
-    const categorizedDevices = categorizeDevices(
-      trackDevices,
-      false,
-      includeDrumMaps,
-      false,
-    );
+  } else if (includeDrumMaps) {
+    const categorized = categorizeDevices(trackDevices, false, true, false);
 
-    Object.assign(
-      result,
-      processDevices(categorizedDevices, {
-        includeMidiEffects,
-        includeInstruments,
-        includeAudioEffects,
-        includeDrumMaps,
-        isProducerPalHost,
-      }),
-    );
-    cleanupDeviceChains(result);
+    addDrumMapFromDevices(result, categorized);
   }
 
   addSlotIndices(result, track, category);

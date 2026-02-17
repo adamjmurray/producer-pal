@@ -99,16 +99,3 @@ export function readDevicesFlat(
     }),
   );
 }
-
-/**
- * Removes chains property from a device object
- * @param device - Device object to strip chains from
- * @returns Device object without chains property
- */
-export function stripChains<T extends { chains?: unknown }>(
-  device: T,
-): Omit<T, "chains"> {
-  const { chains: _chains, ...rest } = device;
-
-  return rest;
-}

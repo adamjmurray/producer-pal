@@ -197,9 +197,8 @@ interface TrackOverrides {
   arrangementFollower?: boolean;
   playingSlotIndex?: number;
   firedSlotIndex?: number;
-  arrangementClips?: unknown[];
-  sessionClips?: unknown[];
-  instrument?: unknown;
+  arrangementClipCount?: number;
+  sessionClipCount?: number;
   [key: string]: unknown;
 }
 
@@ -214,9 +213,8 @@ export const expectedTrack = (
   isArmed: true,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
-  arrangementClips: [],
-  sessionClips: [],
-  instrument: null,
+  arrangementClipCount: 0,
+  sessionClipCount: 0,
   ...overrides,
 });
 

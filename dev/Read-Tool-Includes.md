@@ -9,9 +9,7 @@ tokens) and lets callers request only the data they need.
 
 ### Default behavior
 
-- `include` defaults to `[]` for `ppal-read-track`, `ppal-read-clip`,
-  `ppal-read-scene`, and `ppal-read-device`. `ppal-read-live-set` has a
-  non-empty default that includes commonly-needed data (see its section below).
+- `include` defaults to `[]` for all read tools.
 
 ### Tool description
 
@@ -43,10 +41,10 @@ debugging, but should be avoided in production for large Live Sets.
 
 ### Include propagation
 
-"Parent" tools (`ppal-read-live-set`, `ppal-read-track`, `ppal-read-scene`) pass
-their full `include` array through to `readClip()`. Only clip-recognized
-includes affect clip output — parent-level includes like `"instruments"` are
-ignored by `readClip()`.
+`ppal-read-track` and `ppal-read-scene` pass their full `include` array through
+to `readClip()`. Only clip-recognized includes affect clip output.
+`ppal-read-live-set` propagates only track-level includes (`routings`, `mixer`,
+`color`) to its nested track/scene reads.
 
 ### Implementation
 
@@ -67,22 +65,40 @@ destructures the flags it needs from `parseIncludeArray()`.
 
 ## ppal-read-live-set
 
-Default include: `["regular-tracks"]`
+Default include: `[]`
 
-Returns the Live Set overview with regular track names and basic info. Key
-includes:
+Returns the Live Set overview. Use includes to expand track/scene detail.
 
-- `regular-tracks`, `return-tracks`, `master-track`, `all-tracks` — which tracks
-  to include
-- `instruments`, `midi-effects`, `audio-effects`, `all-devices` — device info on
-  tracks
-- `drum-maps` — pitch-to-name mappings for drum racks
-- `session-clips`, `arrangement-clips`, `all-clips` — clip info on tracks
-- `clip-notes`, `sample`, `timing`, `warp`, `color` — propagated to clip reading
-- `routings`, `scenes`, `mixer`, `locators` — additional set-level data
+### Default response (no includes)
 
-Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
-available at this level. Use `ppal-read-device` for chain/drum-pad detail.
+| Field               | Type     | Description                                          |
+| ------------------- | -------- | ---------------------------------------------------- |
+| `name`              | `string` | Live Set name (omitted if empty)                     |
+| `tempo`             | `number` | Tempo in BPM                                         |
+| `timeSignature`     | `string` | e.g., `"4/4"`                                        |
+| `sceneCount`        | `number` | Number of scenes (replaced by array when included)   |
+| `regularTrackCount` | `number` | Number of regular tracks (replaced when included)    |
+| `returnTrackCount`  | `number` | Number of return tracks (replaced when included)     |
+| `scale`             | `string` | e.g., `"A Minor"` (only when scale is enabled)       |
+| `scalePitches`      | `string` | e.g., `"A,B,C,D,E,F,G"` (only when scale is enabled) |
+| `isPlaying`         | `true`   | Only present when playing                            |
+
+### Includes
+
+- `regular-tracks` — replaces `regularTrackCount` with track list (read-track
+  default format: id, name, type, instrument name, clip counts)
+- `return-tracks` — replaces `returnTrackCount` with return track list
+- `master-track` — adds master track info
+- `all-tracks` — shortcut for regular + return + master
+- `scenes` — replaces `sceneCount` with scene list (read-scene default format)
+- `routings` — propagated: adds routing info to tracks
+- `mixer` — propagated: adds gain, pan, sends to tracks
+- `color` — propagated: adds hex color to tracks and scenes
+- `locators` — adds arrangement cue points with names and bar|beat positions
+
+For device details, use `ppal-read-track` with `devices` include. For clip
+details, use `ppal-read-track` with `session-clips` or `arrangement-clips`. For
+clip notes and audio properties, use `ppal-read-clip`.
 
 ## ppal-read-track
 

@@ -186,7 +186,7 @@ describe("MCP Express App", () => {
       const readLiveSetDesc = toolsByName["ppal-read-live-set"]!.description;
 
       expect(readLiveSetDesc).toContain("global settings");
-      expect(readLiveSetDesc).toContain("tracks, scenes, devices");
+      expect(readLiveSetDesc).toContain("track/scene overview");
     });
 
     it("should have valid input schemas for all tools", async () => {

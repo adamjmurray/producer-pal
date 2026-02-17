@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
-  description: `Read Live Set global settings, tracks, scenes, devices, clips.
-Re-read after moves/deletes for updated state.`,
+  description: `Read Live Set global settings, track/scene overview.
+Returns overview by default. Use include to add detail.`,
 
   annotations: {
     readOnlyHint: true,
@@ -22,36 +22,24 @@ Re-read after moves/deletes for updated state.`,
           "return-tracks",
           "master-track",
           "all-tracks",
-          "routings",
           "scenes",
-          "midi-effects",
-          "instruments",
-          "audio-effects",
-          "all-devices",
-          "drum-maps",
-          "session-clips",
-          "arrangement-clips",
-          "all-clips",
-          "clip-notes",
-          "sample",
-          "color",
-          "timing",
-          "warp",
+          "routings",
           "mixer",
+          "color",
           "locators",
           "*",
         ]),
       )
-      .default(["regular-tracks"])
+      .default([])
       .describe(
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), drum-maps, clips (session/arrangement/all), clip-notes, mixer, sample, color, timing, warp, locators, "*" for all (avoid in big sets).',
+        'data: tracks (regular/return/master/all), scenes, routings, mixer, color, locators, "*" for all',
       ),
   },
 
   smallModelModeConfig: {
     descriptionOverrides: {
       include:
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), drum-maps, clips (session/arrangement/all), clip-notes, mixer, sample, color, timing, warp, "*" for all (avoid in big sets).',
+        'data: tracks (regular/return/master/all), scenes, routings, mixer, color, locators, "*" for all',
     },
   },
 });

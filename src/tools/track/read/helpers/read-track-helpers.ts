@@ -9,37 +9,12 @@ import {
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
-import {
-  cleanupInternalDrumPads,
-  getDeviceType,
-} from "#src/tools/shared/device/device-reader.ts";
+import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.ts";
-
-interface MinimalTrackIncludeFlags {
-  includeSessionClips: boolean;
-  includeArrangementClips: boolean;
-  includeAllClips?: boolean;
-}
-
-interface MinimalTrackResult {
-  id: string | null;
-  type: string | null;
-  trackIndex: number;
-  sessionClips?: ReadClipResult[];
-  sessionClipCount?: number;
-  arrangementClips?: ReadClipResult[];
-  arrangementClipCount?: number;
-}
-
-interface DeviceResult {
-  midiEffects?: object[];
-  instrument?: object | null;
-  audioEffects?: object[];
-}
 
 interface SendInfo {
   gainDb: unknown;
@@ -157,63 +132,6 @@ export function getInstrumentName(devices: LiveAPI[]): string | null {
 }
 
 /**
- * Read minimal track information for auto-inclusion when clips are requested.
- * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
- * @param args - The parameters
- * @param args.trackIndex - Track index
- * @param args.includeFlags - Parsed include flags
- * @returns Minimal track information
- */
-export function readTrackMinimal({
-  trackIndex,
-  includeFlags,
-}: {
-  trackIndex: number;
-  includeFlags: MinimalTrackIncludeFlags;
-}): MinimalTrackResult {
-  const track = LiveAPI.from(livePath.track(trackIndex));
-
-  if (!track.exists()) {
-    throw new Error(`readTrack: trackIndex ${trackIndex} does not exist`);
-  }
-
-  const isMidiTrack = (track.getProperty("has_midi_input") as number) > 0;
-
-  const result: MinimalTrackResult = {
-    id: track.id,
-    type: isMidiTrack ? "midi" : "audio",
-    trackIndex,
-  };
-
-  // Session clips - only for regular tracks
-  if (includeFlags.includeSessionClips || includeFlags.includeAllClips) {
-    result.sessionClips = readSessionClips(track, trackIndex);
-  } else {
-    result.sessionClipCount = countSessionClips(track, trackIndex);
-  }
-
-  // Arrangement clips - exclude group tracks which have no arrangement clips
-  const isGroup = (track.getProperty("is_foldable") as number) > 0;
-
-  if (isGroup) {
-    if (includeFlags.includeArrangementClips || includeFlags.includeAllClips) {
-      result.arrangementClips = [];
-    } else {
-      result.arrangementClipCount = 0;
-    }
-  } else if (
-    includeFlags.includeArrangementClips ||
-    includeFlags.includeAllClips
-  ) {
-    result.arrangementClips = readArrangementClips(track);
-  } else {
-    result.arrangementClipCount = countArrangementClips(track);
-  }
-
-  return result;
-}
-
-/**
  * Handle track that doesn't exist by throwing an error
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
@@ -275,32 +193,6 @@ export function addCategoryIndex(
     result.trackIndex = trackIndex;
   } else if (category === "return") {
     result.returnTrackIndex = trackIndex;
-  }
-}
-
-/**
- * Clean up device chains from result
- * @param result - Result object containing device chains
- */
-export function cleanupDeviceChains(
-  result: Record<string, unknown> & DeviceResult,
-): void {
-  if (result.midiEffects) {
-    result.midiEffects = cleanupInternalDrumPads(
-      result.midiEffects,
-    ) as object[];
-  }
-
-  if (result.instrument) {
-    result.instrument = cleanupInternalDrumPads(result.instrument) as
-      | object
-      | null;
-  }
-
-  if (result.audioEffects) {
-    result.audioEffects = cleanupInternalDrumPads(
-      result.audioEffects,
-    ) as object[];
   }
 }
 
