@@ -34,10 +34,10 @@ describe("ppal-read-live-set", () => {
     expect(defaultParsed.regularTrackCount).toBe(12);
     expect(defaultParsed.tracks).toBeUndefined();
 
-    // Test 2: With include: ["regular-tracks"] - returns full track array
+    // Test 2: With include: ["tracks"] - returns full track array
     const tracksResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: { include: ["regular-tracks"] },
+      arguments: { include: ["tracks"] },
     });
     const tracksParsed = parseToolResult<ReadLiveSetResult>(tracksResult);
 
@@ -75,10 +75,10 @@ describe("ppal-read-live-set", () => {
   });
 
   it("reads return tracks and locators", async () => {
-    // Test 1: With return-tracks include
+    // Test 1: With tracks include - verify return tracks
     const returnResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: { include: ["return-tracks"] },
+      arguments: { include: ["tracks"] },
     });
     const returnParsed = parseToolResult<ReadLiveSetResult>(returnResult);
 

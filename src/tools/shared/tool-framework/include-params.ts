@@ -10,9 +10,7 @@ const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";
 const SESSION_CLIPS = "session-clips";
 const ARRANGEMENT_CLIPS = "arrangement-clips";
-const REGULAR_TRACKS = "regular-tracks";
-const RETURN_TRACKS = "return-tracks";
-const MASTER_TRACK = "master-track";
+const TRACKS = "tracks";
 const SAMPLE = "sample";
 const TIMING = "timing";
 const WARP = "warp";
@@ -27,17 +25,7 @@ const LOCATORS = "locators";
  * All available include options mapped by tool type
  */
 const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
-  song: [
-    "scenes",
-    "routings",
-    REGULAR_TRACKS,
-    RETURN_TRACKS,
-    MASTER_TRACK,
-    "all-tracks",
-    COLOR,
-    MIXER,
-    LOCATORS,
-  ],
+  song: ["scenes", "routings", TRACKS, COLOR, MIXER, LOCATORS],
   track: [
     SESSION_CLIPS,
     ARRANGEMENT_CLIPS,
@@ -59,7 +47,6 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
  * Shortcut mappings for include options
  */
 const SHORTCUT_MAPPINGS: Record<string, string[]> = {
-  "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
   "all-devices": ["midi-effects", "instruments", "audio-effects"],
   "all-routings": ["routings", "available-routings"],
   "all-clips": ["session-clips", "arrangement-clips"],
@@ -77,9 +64,7 @@ export interface IncludeFlags {
   includeSessionClips: boolean;
   includeArrangementClips: boolean;
   includeClips: boolean;
-  includeRegularTracks: boolean;
-  includeReturnTracks: boolean;
-  includeMasterTrack: boolean;
+  includeTracks: boolean;
   includeDevices: boolean;
   includeColor: boolean;
   includeSample: boolean;
@@ -114,9 +99,7 @@ export function parseIncludeArray(
       includeSessionClips: Boolean(defaults.includeSessionClips),
       includeArrangementClips: Boolean(defaults.includeArrangementClips),
       includeClips: Boolean(defaults.includeClips),
-      includeRegularTracks: Boolean(defaults.includeRegularTracks),
-      includeReturnTracks: Boolean(defaults.includeReturnTracks),
-      includeMasterTrack: Boolean(defaults.includeMasterTrack),
+      includeTracks: Boolean(defaults.includeTracks),
       includeSample: Boolean(defaults.includeSample),
       includeColor: Boolean(defaults.includeColor),
       includeTiming: Boolean(defaults.includeTiming),
@@ -147,9 +130,7 @@ export function parseIncludeArray(
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: false,
-      includeReturnTracks: false,
-      includeMasterTrack: false,
+      includeTracks: false,
       includeSample: false,
       includeColor: false,
       includeTiming: false,
@@ -172,9 +153,7 @@ export function parseIncludeArray(
     includeSessionClips: includeSet.has(SESSION_CLIPS),
     includeArrangementClips: includeSet.has(ARRANGEMENT_CLIPS),
     includeClips: includeSet.has(CLIPS),
-    includeRegularTracks: includeSet.has(REGULAR_TRACKS),
-    includeReturnTracks: includeSet.has(RETURN_TRACKS),
-    includeMasterTrack: includeSet.has(MASTER_TRACK),
+    includeTracks: includeSet.has(TRACKS),
     includeSample: includeSet.has(SAMPLE),
     includeColor: includeSet.has(COLOR),
     includeTiming: includeSet.has(TIMING),
@@ -200,9 +179,7 @@ const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeSessionClips", SESSION_CLIPS],
   ["includeArrangementClips", ARRANGEMENT_CLIPS],
   ["includeClips", CLIPS],
-  ["includeRegularTracks", REGULAR_TRACKS],
-  ["includeReturnTracks", RETURN_TRACKS],
-  ["includeMasterTrack", MASTER_TRACK],
+  ["includeTracks", TRACKS],
   ["includeSample", SAMPLE],
   ["includeColor", COLOR],
   ["includeTiming", TIMING],
@@ -232,9 +209,7 @@ export function includeArrayFromFlags(
 export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
   includeScenes: false,
   includeRoutings: false,
-  includeRegularTracks: false,
-  includeReturnTracks: false,
-  includeMasterTrack: false,
+  includeTracks: false,
   includeColor: false,
   includeMixer: false,
   includeLocators: false,
@@ -312,7 +287,7 @@ function expandWildcardIncludes(
   // Determine tool type from defaults structure to get appropriate options
   let toolType: string;
 
-  if (defaults.includeRegularTracks !== undefined) {
+  if (defaults.includeTracks !== undefined) {
     toolType = "song";
   } else if (defaults.includeSessionClips !== undefined) {
     toolType = "track";

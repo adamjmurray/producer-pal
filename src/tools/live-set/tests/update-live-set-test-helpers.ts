@@ -152,17 +152,24 @@ export function setupRoutingTestMocks(
     liveSetId: "live_set_id",
     pathIdMap: {
       [String(livePath.track(0))]: "track1",
+      [String(livePath.masterTrack())]: "master",
     },
     objects: {
       LiveSet: {
         name: "Routing Test Set",
         tracks: children("track1"),
+        return_tracks: children(),
         scenes: [],
       },
       [String(livePath.track(0))]: {
         has_midi_input: 1,
         name: "Test Track",
         ...trackProps,
+      },
+      [String(livePath.masterTrack())]: {
+        has_midi_input: 0,
+        name: "Master",
+        devices: [],
       },
     },
   });

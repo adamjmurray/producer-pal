@@ -47,6 +47,7 @@ describe("readLiveSet - basic reading", () => {
         [livePath.track(0).clipSlot(0).clip()]: "clip1",
         [livePath.track(0).clipSlot(2).clip()]: "clip2",
         [livePath.track(1).clipSlot(0).clip()]: "clip3",
+        [String(livePath.masterTrack())]: "master1",
       },
       objects: {
         LiveSet: {
@@ -60,6 +61,7 @@ describe("readLiveSet - basic reading", () => {
           signature_denominator: 4,
           tempo: 120,
           tracks: children("track1", "track2", "track3"),
+          return_tracks: children(),
           scenes: children("scene1", "scene2", "scene3"),
         },
         [String(livePath.track(0))]: {
@@ -122,11 +124,18 @@ describe("readLiveSet - basic reading", () => {
           time_signature_denominator: 4,
           time_signature_enabled: 1,
         },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
       },
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "scenes"],
+      include: ["tracks", "scenes"],
     });
 
     expect(result).toStrictEqual({
@@ -136,7 +145,13 @@ describe("readLiveSet - basic reading", () => {
       timeSignature: "4/4",
       scale: "C Major",
       scalePitches: "C,D,E,F,G,A,B",
-      returnTrackCount: 0,
+      returnTracks: [],
+      masterTrack: expect.objectContaining({
+        id: "master1",
+        type: "master",
+        name: "Master",
+        deviceCount: 0,
+      }),
       tracks: [
         {
           id: "track1",
@@ -205,6 +220,9 @@ describe("readLiveSet - basic reading", () => {
   it("handles when no tracks or scenes exist", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",
+      pathIdMap: {
+        [String(livePath.masterTrack())]: "master1",
+      },
       objects: {
         LiveSet: {
           name: "Empty Live Set",
@@ -218,13 +236,21 @@ describe("readLiveSet - basic reading", () => {
           signature_denominator: 4,
           tempo: 100,
           tracks: [],
+          return_tracks: children(),
           scenes: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
         },
       },
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks"],
+      include: ["tracks"],
     });
 
     expect(result).toStrictEqual({
@@ -232,8 +258,14 @@ describe("readLiveSet - basic reading", () => {
       tempo: 100,
       timeSignature: "3/4",
       tracks: [],
+      returnTracks: [],
+      masterTrack: expect.objectContaining({
+        id: "master1",
+        type: "master",
+        name: "Master",
+        deviceCount: 0,
+      }),
       sceneCount: 0,
-      returnTrackCount: 0,
     });
   });
 
@@ -243,12 +275,19 @@ describe("readLiveSet - basic reading", () => {
       pathIdMap: {
         [String(livePath.track(0))]: "track1",
         [String(livePath.track(1))]: "track2",
+        [String(livePath.masterTrack())]: "master1",
       },
       objects: {
         LiveSet: {
           name: "Device Test Set",
           tracks: children("track1", "track2"),
+          return_tracks: children(),
           scenes: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          devices: [],
         },
         [String(livePath.track(0))]: {
           has_midi_input: 1,
@@ -267,7 +306,7 @@ describe("readLiveSet - basic reading", () => {
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks"],
+      include: ["tracks"],
     });
 
     const tracks = result.tracks as Record<string, unknown>[];

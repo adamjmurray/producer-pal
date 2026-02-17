@@ -59,9 +59,9 @@ describe("readLiveSet - track types", () => {
       },
     });
 
-    // Test with all track types included
+    // Test with tracks included
     const resultAll = readLiveSet({
-      include: ["regular-tracks", "return-tracks", "master-track"],
+      include: ["tracks"],
     });
 
     expect(resultAll).toStrictEqual(
@@ -97,14 +97,13 @@ describe("readLiveSet - track types", () => {
     );
   });
 
-  it("returns counts when track types not included", () => {
+  it("returns counts when tracks not included", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set_id",
       pathIdMap: {
         [String(livePath.track(0))]: "track1",
         [String(livePath.returnTrack(0))]: "return1",
         [String(livePath.returnTrack(1))]: "return2",
-        [String(livePath.masterTrack())]: "master1",
       },
       objects: {
         LiveSet: {
@@ -112,13 +111,6 @@ describe("readLiveSet - track types", () => {
           tracks: children("track1"),
           return_tracks: children("return1", "return2"),
           scenes: [],
-        },
-        [String(livePath.track(0))]: {
-          has_midi_input: 1,
-          name: "Regular Track",
-          clip_slots: children(),
-          arrangement_clips: children(),
-          devices: [],
         },
         [String(livePath.returnTrack(0))]: {
           has_midi_input: 0,
@@ -130,16 +122,6 @@ describe("readLiveSet - track types", () => {
         },
       },
     });
-
-    // Only return tracks: regularTrackCount shown instead of tracks array
-    const resultReturnOnly = readLiveSet({
-      include: ["return-tracks"],
-    });
-
-    expect(resultReturnOnly.tracks).toBeUndefined();
-    expect(resultReturnOnly.regularTrackCount).toBe(1);
-    expect(resultReturnOnly.returnTracks).toHaveLength(2);
-    expect(resultReturnOnly.masterTrack).toBeUndefined();
 
     // Default: all counts, no arrays
     const resultDefault = readLiveSet();
@@ -216,16 +198,7 @@ describe("readLiveSet - track types", () => {
 
     // Test explicit list - should produce identical result
     const resultExplicit = readLiveSet({
-      include: [
-        "scenes",
-        "routings",
-        "regular-tracks",
-        "return-tracks",
-        "master-track",
-        "color",
-        "locators",
-        "mixer",
-      ],
+      include: ["scenes", "routings", "tracks", "color", "locators", "mixer"],
     });
 
     // Results should be identical

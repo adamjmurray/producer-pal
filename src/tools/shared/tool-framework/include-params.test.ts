@@ -29,9 +29,7 @@ describe("parseIncludeArray", () => {
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: false,
-      includeReturnTracks: false,
-      includeMasterTrack: false,
+      includeTracks: false,
       includeSample: false,
       includeColor: false,
       includeTiming: false,
@@ -57,9 +55,7 @@ describe("parseIncludeArray", () => {
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: false,
-      includeReturnTracks: false,
-      includeMasterTrack: false,
+      includeTracks: false,
       includeSample: false,
       includeColor: false,
       includeTiming: false,
@@ -70,23 +66,10 @@ describe("parseIncludeArray", () => {
   });
 
   it("handles specific include options", () => {
-    const result = parseIncludeArray(
-      ["regular-tracks", "scenes"],
-      READ_SONG_DEFAULTS,
-    );
+    const result = parseIncludeArray(["tracks", "scenes"], READ_SONG_DEFAULTS);
 
-    expect(result.includeRegularTracks).toBe(true);
+    expect(result.includeTracks).toBe(true);
     expect(result.includeScenes).toBe(true);
-    expect(result.includeReturnTracks).toBe(false);
-    expect(result.includeMasterTrack).toBe(false);
-  });
-
-  it("expands shortcut mappings", () => {
-    const result = parseIncludeArray(["all-tracks"], READ_SONG_DEFAULTS);
-
-    expect(result.includeRegularTracks).toBe(true);
-    expect(result.includeReturnTracks).toBe(true);
-    expect(result.includeMasterTrack).toBe(true);
   });
 
   it("expands all-devices shortcut", () => {
@@ -103,9 +86,7 @@ describe("parseIncludeArray", () => {
     // All song-related options should be true
     expect(result.includeScenes).toBe(true);
     expect(result.includeRoutings).toBe(true);
-    expect(result.includeRegularTracks).toBe(true);
-    expect(result.includeReturnTracks).toBe(true);
-    expect(result.includeMasterTrack).toBe(true);
+    expect(result.includeTracks).toBe(true);
     expect(result.includeColor).toBe(true);
     expect(result.includeMixer).toBe(true);
     expect(result.includeLocators).toBe(true);
@@ -201,9 +182,7 @@ describe("includeArrayFromFlags", () => {
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: true,
-      includeReturnTracks: false,
-      includeMasterTrack: false,
+      includeTracks: true,
     };
 
     const result = includeArrayFromFlags(flags);
@@ -212,7 +191,7 @@ describe("includeArrayFromFlags", () => {
       "clip-notes",
       "scenes",
       "instruments",
-      "regular-tracks",
+      "tracks",
     ]);
   });
 
@@ -228,9 +207,7 @@ describe("includeArrayFromFlags", () => {
       includeSessionClips: false,
       includeArrangementClips: false,
       includeClips: false,
-      includeRegularTracks: false,
-      includeReturnTracks: false,
-      includeMasterTrack: false,
+      includeTracks: false,
     };
 
     const result = includeArrayFromFlags(flags);

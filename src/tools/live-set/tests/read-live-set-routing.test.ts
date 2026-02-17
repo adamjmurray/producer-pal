@@ -12,7 +12,7 @@ describe("readLiveSet - routing", () => {
     setupRoutingTestMocks({ trackProps: createSimpleRoutingMock() });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "routings"],
+      include: ["tracks", "routings"],
     });
 
     const tracks = result.tracks as Record<string, unknown>[];
@@ -39,7 +39,7 @@ describe("readLiveSet - routing", () => {
     setupRoutingTestMocks();
 
     const result = readLiveSet({
-      include: ["regular-tracks"],
+      include: ["tracks"],
     });
 
     const tracks = result.tracks as Record<string, unknown>[];

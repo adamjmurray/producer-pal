@@ -24,7 +24,7 @@ describe("ppal-read-track", () => {
     // Get a track ID from read-live-set first
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: { include: ["regular-tracks"] },
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const firstTrack = liveSet.tracks![0]!;

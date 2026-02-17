@@ -77,7 +77,7 @@ describe("readLiveSet - inclusion", () => {
     expect(result).not.toHaveProperty("scenes");
   });
 
-  it("returns regularTrackCount when regular-tracks not included", () => {
+  it("returns regularTrackCount when tracks not included", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",
       pathIdMap: {
@@ -100,7 +100,7 @@ describe("readLiveSet - inclusion", () => {
     expect(result.tracks).toBeUndefined();
   });
 
-  it("returns returnTrackCount when return-tracks not included", () => {
+  it("returns returnTrackCount when tracks not included", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",
       pathIdMap: {

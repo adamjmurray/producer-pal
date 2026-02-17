@@ -58,7 +58,7 @@ export const historyWithToolError = [
       {
         functionCall: {
           name: PPAL_READ_LIVE_SET,
-          args: { include: ["regular-tracks", "scenes"] },
+          args: { include: ["tracks", "scenes"] },
         },
         thoughtSignature:
           "CikB0e2Kb2wBjhZPMNf6Ph4fTMc/Yr7jn23D3SkvQtPH8XyN6tP5F6rZXgpfAdHtim+Ce0qCfHG7naE8CyxiDrrzkW4C20WY039pH7EQm/J80RAqvaFe7ZL/FqLSPUjrS1qEiUL8i3XzdhwKOgnxUCEqTOnRr1Mc0JMUKrt/sY/X1LiERxBMdfRBeRkK3gEB0e2Kb0pYZqfXr8N/MI3fbxJdvBYd7xQ4i1blfemIcFMNruP2HswQvXJVlKBpdoT4kxSC4flY1QsE2xwmS3fHVIXhdH6/18XW3JSLZPvAkZfEyzZzJKp/6rodMxytQgVCKuoYJ1k097iFNoMo/Ohb8ycU/vq2p7SQO6VtyaQRNjxYLLvrzdFeMJDSg/UFcrwe5sVTG6lXzRGDHJuW+kG9zLxycGEVO0IM2CFbvFScv8YzsdkRQF6uWqV799IofjiGrWuHRGuy/UZ8WO/LYE4uwObVk3mJaDSu76Fq9ZcKzAEB0e2Kb3MZuZbM/1N1oL4l59zjUewMla0kiIPr+3zqdT9o4dHCpX8IeNxMPeItIp2ldzNT/IVkvrlj/x0o6+HbOon40zULQjWnGFAezEvLcLL1Q0sbgN7psSKOVEnWZkvzutmAw+KhAgaJPC2z26YL7U5+V8MEiXvBBX6mh3bD34N6TB3YHAlN/83S8eLw/s/0IC6IB1U9yWV+S5b4bCkYAq4kMMoKrlYSKwh6+jNTmFH4odspsK/5z+aJE5hQEVBpqkc5/2Czqg4b6HkKRQHR7Ypvxk1bGP9NviRhpHH7Ujn/KDhlNBrMAD20c4luiJ/5hvMD2OjVgIWofa7ZrUQ0sruq8ZSVUiSsBBciliZ2zh/RRw==",
@@ -264,7 +264,7 @@ export const expectedWithToolError = [
       {
         type: "tool",
         name: PPAL_READ_LIVE_SET,
-        args: { include: ["regular-tracks", "scenes"] },
+        args: { include: ["tracks", "scenes"] },
         result:
           '{id:"1",tempo:110,timeSignature:"4/4",scenes:[{id:"7",name:"1",sceneIndex:0,clipCount:1},{id:"8",name:"2",sceneIndex:1,clipCount:0},{id:"9",name:"3",sceneIndex:2,clipCount:0},{id:"10",name:"4",sceneIndex:3,clipCount:0},{id:"11",name:"5",sceneIndex:4,clipCount:0},{id:"12",name:"6",sceneIndex:5,clipCount:0},{id:"13",name:"7",sceneIndex:6,clipCount:0},{id:"14",name:"8",sceneIndex:7,clipCount:0}],tracks:[{id:"2",type:"midi",name:"Drums",arrangementFollower:false,trackIndex:0,sessionClipCount:1,arrangementClipCount:0,playingSlotIndex:0},{id:"3",type:"midi",name:"Bass",arrangementFollower:false,trackIndex:1,sessionClipCount:0,arrangementClipCount:0},{id:"4",type:"midi",name:"Chords",arrangementFollower:false,trackIndex:2,sessionClipCount:0,arrangementClipCount:0},{id:"5",type:"midi",name:"Lead",arrangementFollower:false,trackIndex:3,sessionClipCount:0,arrangementClipCount:0},{id:"6",type:"midi",name:"5-MIDI",arrangementFollower:false,trackIndex:4,sessionClipCount:0,arrangementClipCount:0,hasProducerPalDevice:true,producerPalVersion:"1.0.2"}],scale:"A Minor",scalePitches:"A,B,C,D,E,F,G"}',
       },

@@ -73,8 +73,8 @@ export function readLiveSet(
     result.isPlaying = isPlaying;
   }
 
-  // Regular tracks: full list or count
-  if (includeFlags.includeRegularTracks) {
+  // Tracks: full details or counts
+  if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
       readTrack({
         trackIndex,
@@ -82,12 +82,6 @@ export function readLiveSet(
         returnTrackNames,
       }),
     );
-  } else {
-    result.regularTrackCount = trackIds.length;
-  }
-
-  // Return tracks: full list or count
-  if (includeFlags.includeReturnTracks) {
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
         const returnTrack = LiveAPI.from(
@@ -103,11 +97,6 @@ export function readLiveSet(
         });
       },
     );
-  } else {
-    result.returnTrackCount = returnTrackIds.length;
-  }
-
-  if (includeFlags.includeMasterTrack) {
     const masterTrack = LiveAPI.from(livePath.masterTrack());
 
     result.masterTrack = readTrackGeneric({
@@ -117,6 +106,9 @@ export function readLiveSet(
       include: trackInclude,
       returnTrackNames,
     });
+  } else {
+    result.regularTrackCount = trackIds.length;
+    result.returnTrackCount = returnTrackIds.length;
   }
 
   // Only include scale properties when scale is enabled

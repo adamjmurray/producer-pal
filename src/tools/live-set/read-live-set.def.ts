@@ -18,10 +18,7 @@ Returns overview by default. Use include to add detail.`,
     include: z
       .array(
         z.enum([
-          "regular-tracks",
-          "return-tracks",
-          "master-track",
-          "all-tracks",
+          "tracks",
           "scenes",
           "routings",
           "mixer",
@@ -32,14 +29,14 @@ Returns overview by default. Use include to add detail.`,
       )
       .default([])
       .describe(
-        'data: tracks (regular/return/master/all), scenes, routings, mixer, color, locators, "*" for all',
+        'data: tracks, scenes, routings, mixer, color, locators, "*" for all',
       ),
   },
 
   smallModelModeConfig: {
     descriptionOverrides: {
       include:
-        'data: tracks (regular/return/master/all), scenes, routings, mixer, color, locators, "*" for all',
+        'data: tracks, scenes, routings, mixer, color, locators, "*" for all',
     },
   },
 });
