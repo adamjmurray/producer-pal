@@ -133,7 +133,13 @@ velocity += 20 * square(2t, 0, 0.75, sync)
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
   - `-=` Subtract from the value (shorthand for `+= -(expression)`)
+  - `*=` Multiply the current value (e.g. `velocity *= 0.5` halves velocity)
+  - `/=` Divide the current value (e.g. `duration /= 2` halves duration)
   - `=` Set/replace the value (absolute modulation)
+  - Note: `*=` and `/=` desugar to `= currentValue * expr` /
+    `= currentValue / expr`. For `timing *=`, the current value is the absolute
+    note position (`note.start`), so `timing *= 0.5` compresses all notes toward
+    bar 1.
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3 velocity += 10`
   - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5

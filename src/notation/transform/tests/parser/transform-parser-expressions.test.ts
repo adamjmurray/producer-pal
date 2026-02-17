@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
+import {
+  type BinaryOpNode,
+  type FunctionNode,
+} from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
 describe("Transform Parser - Expressions", () => {
@@ -678,6 +681,76 @@ describe("Transform Parser - Expressions", () => {
           right: 3,
         },
       });
+    });
+  });
+
+  describe("*= and /= operator desugar", () => {
+    it("parses *= as set multiply on current note value", () => {
+      const result = parser.parse("velocity *= 2");
+
+      expect(result[0]!.operator).toBe("set");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("multiply");
+      expect(expr.left).toStrictEqual({
+        type: "variable",
+        namespace: "note",
+        name: "velocity",
+      });
+      expect(expr.right).toBe(2);
+    });
+
+    it("parses /= as set divide on current note value", () => {
+      const result = parser.parse("duration /= 2");
+
+      expect(result[0]!.operator).toBe("set");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("divide");
+      expect(expr.left).toStrictEqual({
+        type: "variable",
+        namespace: "note",
+        name: "duration",
+      });
+    });
+
+    it("parses *= for gain using audio namespace, timing using note.start", () => {
+      const gainExpr = (
+        parser.parse("gain *= 0.5")[0]!.expression as BinaryOpNode
+      ).left;
+      const timingExpr = (
+        parser.parse("timing *= 0.5")[0]!.expression as BinaryOpNode
+      ).left;
+
+      expect(gainExpr).toStrictEqual({
+        type: "variable",
+        namespace: "audio",
+        name: "gain",
+      });
+      expect(timingExpr).toStrictEqual({
+        type: "variable",
+        namespace: "note",
+        name: "start",
+      });
+    });
+
+    it("parses *= with pitch range selector", () => {
+      const result = parser.parse("F#1: velocity *= 0.5");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.operator).toBe("set");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      expect(expr.type).toBe("multiply");
+      expect(expr.left).toStrictEqual({
+        type: "variable",
+        namespace: "note",
+        name: "velocity",
+      });
+      expect(expr.right).toBe(0.5);
     });
   });
 });

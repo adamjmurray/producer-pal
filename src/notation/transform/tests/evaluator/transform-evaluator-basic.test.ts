@@ -650,17 +650,13 @@ probability += 0.2 * cos(0:2t)`;
   });
 
   describe("error handling", () => {
-    it("returns empty object on parse error", () => {
-      const result = evaluateTransform("invalid syntax!!!", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("Transform parse error"),
-      );
+    it("throws on parse error", () => {
+      expect(() =>
+        evaluateTransform("invalid syntax!!!", {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        }),
+      ).toThrow(/transform syntax error/);
     });
 
     it("skips parameter with evaluation error but continues with others", () => {

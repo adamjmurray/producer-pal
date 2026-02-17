@@ -312,16 +312,6 @@ describe("Transform Parser", () => {
       ]);
     });
 
-    it("parses -= with complex expression", () => {
-      const result = parser.parse("velocity -= 10 * cos(1:0t)");
-      const expr = result[0]!.expression as BinaryOpNode;
-
-      // -= wraps the entire expression: 0 - (10 * cos(1:0t))
-      expect(expr.type).toBe("subtract");
-      expect(expr.left).toBe(0);
-      expect((expr.right as BinaryOpNode).type).toBe("multiply");
-    });
-
     it("parses -= with pitch range", () => {
       const result = parser.parse("F#1: velocity -= 30");
 

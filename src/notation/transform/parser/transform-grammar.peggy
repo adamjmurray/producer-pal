@@ -15,6 +15,19 @@
     "A#": 10, "Bb": 10,
     "B": 11,
   };
+
+  // Maps transform parameters to their note/audio variable for *= and /= desugaring.
+  // timing uses note.start (absolute position) since there is no note.timing offset variable.
+  const PARAM_TO_VARIABLE = {
+    "velocity":    { namespace: "note",  name: "velocity"    },
+    "timing":      { namespace: "note",  name: "start"       },
+    "duration":    { namespace: "note",  name: "duration"    },
+    "probability": { namespace: "note",  name: "probability" },
+    "deviation":   { namespace: "note",  name: "deviation"   },
+    "pitch":       { namespace: "note",  name: "pitch"       },
+    "gain":        { namespace: "audio", name: "gain"        },
+    "pitchShift":  { namespace: "audio", name: "pitchShift"  },
+  };
 }}
 
 start
@@ -33,6 +46,11 @@ assignment "parameter assignment"
     const timeRange = ranges?.[0]?.timeRange ?? null;
     if (operator === "subtract") {
       return { pitchRange, timeRange, parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+    }
+    if (operator === "multiply" || operator === "divide") {
+      const varInfo = PARAM_TO_VARIABLE[parameter];
+      const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
+      return { pitchRange, timeRange, parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
     }
     return { pitchRange, timeRange, parameter, operator, expression };
   }
@@ -83,7 +101,9 @@ timeRange "time range"
   }
 
 operator
-  = "-=" { return "subtract"; }
+  = "*=" { return "multiply"; }
+  / "/=" { return "divide"; }
+  / "-=" { return "subtract"; }
   / "+=" { return "add"; }
   / "=" { return "set"; }
 

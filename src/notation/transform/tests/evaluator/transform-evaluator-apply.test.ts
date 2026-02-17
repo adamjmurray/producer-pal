@@ -400,6 +400,56 @@ probability += -0.2`;
     });
   });
 
+  describe("*= and /= operators", () => {
+    it("scales velocity with *=", () => {
+      const notes = createTestNote({ velocity: 100 });
+
+      applyTransforms(notes, "velocity *= 0.5", 4, 4);
+      expect(notes[0]!.velocity).toBe(50);
+    });
+
+    it("halves duration with /=", () => {
+      const notes = createTestNote({ duration: 2 });
+
+      applyTransforms(notes, "duration /= 2", 4, 4);
+      expect(notes[0]!.duration).toBe(1);
+    });
+
+    it("scales probability with *=", () => {
+      const notes = createTestNote({ probability: 0.8 });
+
+      applyTransforms(notes, "probability *= 0.5", 4, 4);
+      expect(notes[0]!.probability).toBeCloseTo(0.4);
+    });
+
+    it("clamps scaled velocity to minimum 1 with *=", () => {
+      const notes = createTestNote({ velocity: 5 });
+
+      applyTransforms(notes, "velocity *= 0", 4, 4);
+      expect(notes[0]!.velocity).toBe(1);
+    });
+
+    it("clamps scaled velocity to maximum 127 with *=", () => {
+      const notes = createTestNote({ velocity: 100 });
+
+      applyTransforms(notes, "velocity *= 2", 4, 4);
+      expect(notes[0]!.velocity).toBe(127);
+    });
+
+    it("applies *= to multiple notes independently", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, velocity: 40 },
+        { pitch: 64, start_time: 1, velocity: 80 },
+        { pitch: 67, start_time: 2, velocity: 120 },
+      ]);
+
+      applyTransforms(notes, "velocity *= 0.5", 4, 4);
+      expect(notes[0]!.velocity).toBe(20);
+      expect(notes[1]!.velocity).toBe(40);
+      expect(notes[2]!.velocity).toBe(60);
+    });
+  });
+
   describe("undefined property handling", () => {
     it("handles probability transform when probability is undefined", () => {
       const notes: NoteEvent[] = createTestNote();

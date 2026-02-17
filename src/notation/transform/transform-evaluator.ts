@@ -5,7 +5,6 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent } from "../types.ts";
 import * as parser from "./parser/transform-parser.ts";
@@ -40,8 +39,6 @@ export function applyTransforms(
   }
 
   const ast = tryParseTransform(transformString);
-
-  if (!ast) return;
 
   // Check for audio parameters and warn
   const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
@@ -363,34 +360,27 @@ export function evaluateTransform(
 
   const ast = tryParseTransform(transformString);
 
-  if (!ast) return {};
-
   return evaluateTransformAST(ast, noteContext, noteProperties);
 }
 
 /**
- * Parse a transform string, returning the AST or null on failure.
- * Logs a warning on parse errors.
+ * Parse a transform string, returning the AST. Throws on parse errors.
  * @param transformString - Transform expression string
- * @returns Parsed AST or null if parsing failed
+ * @returns Parsed AST
+ * @throws Error with formatted message if parsing fails
  */
 function tryParseTransform(
   transformString: string,
-): ReturnType<typeof parser.parse> | null {
+): ReturnType<typeof parser.parse> {
   try {
     return parser.parse(transformString);
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
-      const formatted = formatParserError(
-        error as PeggySyntaxError,
-        "transform",
+      throw new Error(
+        formatParserError(error as PeggySyntaxError, "transform"),
       );
-
-      console.warn(`Transform parse error: ${formatted}`);
-    } else {
-      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
     }
 
-    return null;
+    throw error;
   }
 }
