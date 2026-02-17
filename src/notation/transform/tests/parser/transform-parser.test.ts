@@ -298,6 +298,45 @@ describe("Transform Parser", () => {
       expect(result[0]!.operator).toBe("add");
     });
 
+    it("parses -= operator as add with negated expression", () => {
+      const result = parser.parse("velocity -= 30");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 30 },
+        },
+      ]);
+    });
+
+    it("parses -= with complex expression", () => {
+      const result = parser.parse("velocity -= 10 * cos(1:0t)");
+      const expr = result[0]!.expression as BinaryOpNode;
+
+      // -= wraps the entire expression: 0 - (10 * cos(1:0t))
+      expect(expr.type).toBe("subtract");
+      expect(expr.left).toBe(0);
+      expect((expr.right as BinaryOpNode).type).toBe("multiply");
+    });
+
+    it("parses -= with pitch range", () => {
+      const result = parser.parse("F#1: velocity -= 30");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.operator).toBe("add");
+      expect(result[0]!.expression).toStrictEqual({
+        type: "subtract",
+        left: 0,
+        right: 30,
+      });
+    });
+
     it("rejects old : operator", () => {
       expect(() => parser.parse("velocity: 10")).toThrow();
     });

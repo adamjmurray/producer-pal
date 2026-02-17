@@ -31,6 +31,9 @@ assignment "parameter assignment"
   = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
+    if (operator === "subtract") {
+      return { pitchRange, timeRange, parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+    }
     return { pitchRange, timeRange, parameter, operator, expression };
   }
 
@@ -80,8 +83,9 @@ timeRange "time range"
   }
 
 operator
-  = "=" { return "set"; }
+  = "-=" { return "subtract"; }
   / "+=" { return "add"; }
+  / "=" { return "set"; }
 
 parameter "parameter name"
   = "pitchShift" { return "pitchShift"; }

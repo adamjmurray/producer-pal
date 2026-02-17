@@ -132,6 +132,7 @@ velocity += 20 * square(2t, 0, 0.75, sync)
   - Audio clips: gain, pitchShift
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
+  - `-=` Subtract from the value (shorthand for `+= -(expression)`)
   - `=` Set/replace the value (absolute modulation)
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3 velocity += 10`

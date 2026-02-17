@@ -143,7 +143,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
 - **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
-- **Operators:** \`+=\` (add to value), \`=\` (set value)
+- **Operators:** \`+=\` (add to value), \`-=\` (subtract from value), \`=\` (set value)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale)
 
