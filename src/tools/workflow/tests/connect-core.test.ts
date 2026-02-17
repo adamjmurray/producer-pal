@@ -51,6 +51,7 @@ function createLiveSetConfig(
       signature_denominator: overrides.signature_denominator ?? 4,
       is_playing: overrides.is_playing ?? 0,
       tracks: overrides.tracks ?? [],
+      return_tracks: [],
       scenes: overrides.scenes ?? [],
       ...overrides.liveSetExtra,
     },
@@ -262,10 +263,12 @@ describe("connect", () => {
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
-        trackCount: 3,
-        sceneCount: 2,
         tempo: 120,
         timeSignature: "4/4",
+        sceneCount: 2,
+        regularTrackCount: 3,
+        returnTrackCount: 0,
+        isPlaying: true,
       },
       messagesForUser: expect.stringContaining(
         `Producer Pal ${VERSION} connected to Ableton Live 12.3`,
@@ -282,7 +285,7 @@ describe("connect", () => {
     );
 
     expect(result.$instructions).toContain(
-      "Call ppal-read-live-set _with no arguments_",
+      "Call ppal-read-live-set with includes for track/scene detail",
     );
     expect(result.$instructions).toContain("Summarize the Live Set");
     expect(result.$instructions).toContain("Say the messagesForUser");
@@ -306,9 +309,12 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result).toStrictEqual(
+    expect(result.liveSet).toStrictEqual(
       expect.objectContaining({
-        liveSet: expect.objectContaining({ tempo: 140, timeSignature: "3/4" }),
+        tempo: 140,
+        timeSignature: "3/4",
+        regularTrackCount: 1,
+        returnTrackCount: 0,
       }),
     );
   });
@@ -378,7 +384,11 @@ describe("connect", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
-        liveSet: expect.objectContaining({ trackCount: 1, sceneCount: 1 }),
+        liveSet: expect.objectContaining({
+          regularTrackCount: 1,
+          returnTrackCount: 0,
+          sceneCount: 1,
+        }),
       }),
     );
   });
@@ -395,7 +405,11 @@ describe("connect", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         connected: true,
-        liveSet: expect.objectContaining({ trackCount: 0, sceneCount: 0 }),
+        liveSet: expect.objectContaining({
+          regularTrackCount: 0,
+          returnTrackCount: 0,
+          sceneCount: 0,
+        }),
         messagesForUser: expect.stringContaining("* No instruments found"),
       }),
     );
@@ -405,12 +419,20 @@ describe("connect", () => {
     setupConnectScenario(
       createLiveSetConfig({
         name: "Scale Test Project",
-        liveSetExtra: { scale_mode: 1, scale_name: "Minor", root_note: 3 },
+        liveSetExtra: {
+          scale_mode: 1,
+          scale_name: "Minor",
+          root_note: 3,
+          scale_intervals: [0, 2, 3, 5, 7, 8, 10],
+        },
       }),
     );
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    expect(connect().liveSet.scale).toBe("Eb Minor");
+    const { liveSet: ls } = connect();
+
+    expect(ls.scale).toBe("Eb Minor");
+    expect(ls.scalePitches).toBe("Eb,F,Gb,Ab,Bb,B,Db");
   });
 
   it("excludes scale property when scale is disabled", () => {

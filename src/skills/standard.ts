@@ -232,7 +232,7 @@ export function buildInstructions(context?: Partial<ToolContext>): string {
   return (
     "Do this now to complete Producer Pal initialization:\n" +
     [
-      "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
+      '* Call ppal-read-live-set with includes for track/scene detail (e.g., include: ["regular-tracks", "scenes"])',
       "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
       ...(memory?.content
         ? [

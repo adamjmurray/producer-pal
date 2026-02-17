@@ -2,7 +2,10 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import {
+  intervalsToPitchClasses,
+  PITCH_CLASS_NAMES,
+} from "#src/shared/pitch.ts";
 import { VERSION } from "#src/shared/version.ts";
 import {
   skills as basicSkills,
@@ -13,11 +16,14 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 
 interface LiveSetInfo {
   name?: unknown;
-  trackCount: number;
-  sceneCount: number;
   tempo: unknown;
   timeSignature: string | null;
+  sceneCount: number;
+  regularTrackCount: number;
+  returnTrackCount: number;
+  isPlaying?: boolean;
   scale?: string;
+  scalePitches?: string;
 }
 
 interface ConnectResult {
@@ -46,27 +52,28 @@ export function connect(
 
   // Get basic info - minimal data for safety
   const trackIds = liveSet.getChildIds("tracks");
+  const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
   const abletonLiveVersion = liveApp.call("get_version_string") as string;
 
-  // Basic Live info
+  // Build liveSet overview matching readLiveSet default response
   const liveSetName = liveSet.getProperty("name");
 
   const liveSetInfo: LiveSetInfo = {
     ...(liveSetName ? { name: liveSetName } : {}),
-    trackCount: trackIds.length,
-    sceneCount: sceneIds.length,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
+    sceneCount: sceneIds.length,
+    regularTrackCount: trackIds.length,
+    returnTrackCount: returnTrackIds.length,
   };
 
-  const result: ConnectResult = {
-    connected: true,
-    producerPalVersion: VERSION,
-    abletonLiveVersion,
-    liveSet: liveSetInfo,
-  };
+  const isPlaying = (liveSet.getProperty("is_playing") as number) > 0;
+
+  if (isPlaying) {
+    liveSetInfo.isPlaying = true;
+  }
 
   const scaleMode = liveSet.getProperty("scale_mode") as number;
   const scaleEnabled = scaleMode > 0;
@@ -76,8 +83,22 @@ export function connect(
     const rootNote = liveSet.getProperty("root_note") as number;
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
 
-    result.liveSet.scale = `${scaleRoot} ${scaleName}`;
+    liveSetInfo.scale = `${scaleRoot} ${scaleName}`;
+
+    const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
+
+    liveSetInfo.scalePitches = intervalsToPitchClasses(
+      scaleIntervals,
+      rootNote,
+    ).join(",");
   }
+
+  const result: ConnectResult = {
+    connected: true,
+    producerPalVersion: VERSION,
+    abletonLiveVersion,
+    liveSet: liveSetInfo,
+  };
 
   const messages = [
     `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
@@ -86,29 +107,7 @@ export function connect(
     // additional tips set based on the state of the Live Set
   ];
 
-  let foundAnyInstrument = false;
-
-  for (const trackId of trackIds) {
-    const track = LiveAPI.from(trackId);
-
-    if ((track.getProperty("has_midi_input") as number) > 0) {
-      for (const device of track.getChildren("devices")) {
-        const deviceType = device.getProperty("type");
-
-        if (deviceType === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-          // it's an instrument, instrument rack, or drum rack
-          foundAnyInstrument = true;
-          break;
-        }
-      }
-
-      if (foundAnyInstrument) {
-        break;
-      }
-    }
-  }
-
-  if (!foundAnyInstrument) {
+  if (!hasAnyInstrument(trackIds)) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, etc).
 Ask me to add an instrument, or add one yourself and I can compose MIDI patterns.`);
@@ -131,4 +130,25 @@ Ask me to add an instrument, or add one yourself and I can compose MIDI patterns
   }
 
   return result;
+}
+
+/**
+ * Check if any track has an instrument device
+ * @param trackIds - Array of track IDs to check
+ * @returns true if any MIDI track has an instrument
+ */
+function hasAnyInstrument(trackIds: string[]): boolean {
+  for (const trackId of trackIds) {
+    const track = LiveAPI.from(trackId);
+
+    if ((track.getProperty("has_midi_input") as number) > 0) {
+      for (const device of track.getChildren("devices")) {
+        if (device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }

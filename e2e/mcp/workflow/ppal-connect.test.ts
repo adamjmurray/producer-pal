@@ -41,7 +41,8 @@ describe("ppal-connect", () => {
 
     // Live Set info
     expect(parsed.liveSet).toBeDefined();
-    expect(typeof parsed.liveSet.trackCount).toBe("number");
+    expect(typeof parsed.liveSet.regularTrackCount).toBe("number");
+    expect(typeof parsed.liveSet.returnTrackCount).toBe("number");
     expect(typeof parsed.liveSet.sceneCount).toBe("number");
     expect(parsed.liveSet.tempo).toBeDefined();
     expect(
@@ -60,9 +61,9 @@ describe("ppal-connect", () => {
     expect(parsed.$skills).toMatch(/p0\./); // Probability with decimal
     expect(parsed.$skills).toContain("/d0"); // Device paths
 
-    // Instructions - standard mode mentions ppal-read-live-set
+    // Instructions - standard mode mentions ppal-read-live-set with includes
     expect(parsed.$instructions).toBeDefined();
-    expect(parsed.$instructions).toContain("ppal-read-live-set");
+    expect(parsed.$instructions).toContain("ppal-read-live-set with includes");
 
     // User messages
     expect(parsed.messagesForUser).toBeDefined();
@@ -163,11 +164,14 @@ interface ConnectResult {
   abletonLiveVersion: string;
   liveSet: {
     name?: string;
-    trackCount: number;
-    sceneCount: number;
     tempo: number;
     timeSignature: string | null;
+    sceneCount: number;
+    regularTrackCount: number;
+    returnTrackCount: number;
+    isPlaying?: boolean;
     scale?: string;
+    scalePitches?: string;
   };
   $skills?: string;
   $instructions?: string;

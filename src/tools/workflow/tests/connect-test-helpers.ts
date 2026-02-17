@@ -42,6 +42,7 @@ export function setupConnectMocks(opts: SetupConnectMocksOptions = {}): void {
       signature_denominator: 4,
       is_playing: 0,
       tracks: [],
+      return_tracks: [],
       scenes: [],
       ...liveSetOverrides,
     },

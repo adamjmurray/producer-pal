@@ -97,7 +97,7 @@ describe("connect", () => {
     expect(result.$skills).toContain("Producer Pal Skills");
     expect(result.$skills).toContain("## Techniques");
     expect(result.$instructions).toContain(
-      "Call ppal-read-live-set _with no arguments_",
+      "Call ppal-read-live-set with includes for track/scene detail",
     );
   });
 
@@ -148,9 +148,9 @@ describe("connect", () => {
     const standardResult = connect({}, {});
     const basicResult = connect({}, { smallModelMode: true });
 
-    // Standard includes explicit call to ppal-read-live-set
+    // Standard includes explicit call to ppal-read-live-set with includes
     expect(standardResult.$instructions).toContain(
-      "Call ppal-read-live-set _with no arguments_",
+      "Call ppal-read-live-set with includes for track/scene detail",
     );
     expect(standardResult.$instructions).toContain(
       "if ppal-read-live-set fails",
