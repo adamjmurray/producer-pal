@@ -9,7 +9,6 @@ import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import { VERSION } from "#src/shared/version.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { connect } from "../connect.ts";
 
@@ -270,16 +269,8 @@ describe("connect", () => {
         returnTrackCount: 0,
         isPlaying: true,
       },
-      messagesForUser: expect.stringContaining(
-        `Producer Pal ${VERSION} connected to Ableton Live 12.3`,
-      ),
       $skills: expect.stringContaining("Producer Pal Skills"),
     });
-
-    expect(result.messagesForUser).toContain("Save often!");
-    expect(result.messagesForUser).toContain(
-      "Tell me if you rearrange things so I stay in sync.",
-    );
   });
 
   it("handles arrangement view correctly", () => {
@@ -307,52 +298,6 @@ describe("connect", () => {
         regularTrackCount: 1,
         returnTrackCount: 0,
       }),
-    );
-  });
-
-  it("detects instruments on non-host tracks and provides appropriate suggestion", () => {
-    setupConnectScenario(
-      createLiveSetConfig({
-        name: "Synth Project",
-        tracks: children("track0", "track1"),
-        scenes: children("scene0"),
-        extra: {
-          track0: { has_midi_input: 1, devices: children("synth_device") },
-          track1: { has_midi_input: 1, devices: [] },
-          synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-        },
-      }),
-      "12.3",
-    );
-    vi.mocked(getHostTrackIndex).mockReturnValue(1);
-
-    const result = connect();
-
-    expect(result.messagesForUser).toStrictEqual(
-      expect.stringContaining("* Save often!"),
-    );
-    expect(result.messagesForUser).not.toContain("No instruments found.");
-  });
-
-  it("provides no-instruments suggestion when no instruments are found", () => {
-    setupConnectScenario(
-      createLiveSetConfig({
-        name: "Empty Project",
-        tracks: children("track0", "track1"),
-        scenes: children("scene0"),
-        extra: {
-          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
-          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
-        },
-      }),
-      "12.3",
-    );
-    vi.mocked(getHostTrackIndex).mockReturnValue(1);
-
-    const result = connect();
-
-    expect(result.messagesForUser).toStrictEqual(
-      expect.stringContaining("* No instruments found."),
     );
   });
 
@@ -401,7 +346,6 @@ describe("connect", () => {
           returnTrackCount: 0,
           sceneCount: 0,
         }),
-        messagesForUser: expect.stringContaining("* No instruments found"),
       }),
     );
   });
@@ -446,55 +390,5 @@ describe("connect", () => {
 
     expect(result.liveSet.name).toBeUndefined();
     expect(result.liveSet).not.toHaveProperty("name");
-  });
-
-  it("skips non-instrument devices when searching for instruments", () => {
-    // Test that the inner loop continues when a device is not an instrument (effect device)
-    setupConnectScenario(
-      createLiveSetConfig({
-        name: "Mixed Devices Project",
-        tracks: children("track0"),
-        scenes: children("scene0"),
-        extra: {
-          track0: {
-            has_midi_input: 1,
-            devices: children("effect_device", "synth_device"),
-          },
-          effect_device: { type: 0 }, // Audio effect type
-          synth_device: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-        },
-      }),
-      "12.3",
-    );
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect();
-
-    // Should find the instrument after skipping the effect
-    expect(result.messagesForUser).not.toContain("No instruments found.");
-  });
-
-  it("breaks outer loop after finding first instrument", () => {
-    // Test the outer break when foundAnyInstrument is true
-    setupConnectScenario(
-      createLiveSetConfig({
-        name: "Multi-Instrument Project",
-        tracks: children("track0", "track1"),
-        scenes: children("scene0"),
-        extra: {
-          track0: { has_midi_input: 1, devices: children("synth_device0") },
-          track1: { has_midi_input: 1, devices: children("synth_device1") },
-          synth_device0: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-          synth_device1: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-        },
-      }),
-      "12.3",
-    );
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect();
-
-    // Should have found instrument and broken out of loop early
-    expect(result.messagesForUser).not.toContain("No instruments found.");
   });
 });

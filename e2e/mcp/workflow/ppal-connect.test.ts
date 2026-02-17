@@ -60,11 +60,6 @@ describe("ppal-connect", () => {
     expect(parsed.$skills).toMatch(/v0[^-]/); // v0 deletion (not v0-127 range)
     expect(parsed.$skills).toMatch(/p0\./); // Probability with decimal
     expect(parsed.$skills).toContain("/d0"); // Device paths
-
-    // User messages
-    expect(parsed.messagesForUser).toBeDefined();
-    expect(parsed.messagesForUser).toContain("connected to Ableton Live");
-    expect(parsed.messagesForUser).toContain("Save often");
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -90,10 +85,6 @@ describe("ppal-connect", () => {
     // Basic features are still present
     expect(parsed.$skills).toContain("bar|beat");
     expect(parsed.$skills).toContain("Melodies");
-
-    // User messages still work
-    expect(parsed.messagesForUser).toBeDefined();
-    expect(parsed.messagesForUser).toContain("connected to Ableton Live");
   });
 
   describe("memory contents", () => {
@@ -149,6 +140,5 @@ interface ConnectResult {
     scalePitches?: string;
   };
   $skills?: string;
-  messagesForUser?: string;
   memoryContent?: string;
 }

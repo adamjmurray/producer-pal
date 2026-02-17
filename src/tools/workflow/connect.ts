@@ -9,7 +9,6 @@ import {
 import { VERSION } from "#src/shared/version.ts";
 import { skills as basicSkills } from "#src/skills/basic.ts";
 import { skills } from "#src/skills/standard.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 
 interface LiveSetInfo {
   name?: unknown;
@@ -29,7 +28,6 @@ interface ConnectResult {
   abletonLiveVersion: string;
   liveSet: LiveSetInfo;
   $skills?: string;
-  messagesForUser?: string;
   memoryContent?: string;
 }
 
@@ -46,7 +44,6 @@ export function connect(
   const liveSet = LiveAPI.from("live_set");
   const liveApp = LiveAPI.from("live_app");
 
-  // Get basic info - minimal data for safety
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
@@ -96,23 +93,7 @@ export function connect(
     liveSet: liveSetInfo,
   };
 
-  const messages = [
-    `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
-    "Tell me if you rearrange things so I stay in sync.",
-    "Save often! I make mistakes.",
-    // additional tips set based on the state of the Live Set
-  ];
-
-  if (!hasAnyInstrument(trackIds)) {
-    messages.push(`No instruments found.
-To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, etc).
-Ask me to add an instrument, or add one yourself and I can compose MIDI patterns.`);
-  }
-
   result.$skills = context.smallModelMode ? basicSkills : skills;
-
-  // Format as markdown bullet list
-  result.messagesForUser = messages.map((msg) => `* ${msg}`).join("\n");
 
   // Include project notes if enabled
   if (context.memory?.enabled && context.memory.content) {
@@ -120,25 +101,4 @@ Ask me to add an instrument, or add one yourself and I can compose MIDI patterns
   }
 
   return result;
-}
-
-/**
- * Check if any track has an instrument device
- * @param trackIds - Array of track IDs to check
- * @returns true if any MIDI track has an instrument
- */
-function hasAnyInstrument(trackIds: string[]): boolean {
-  for (const trackId of trackIds) {
-    const track = LiveAPI.from(trackId);
-
-    if ((track.getProperty("has_midi_input") as number) > 0) {
-      for (const device of track.getChildren("devices")) {
-        if (device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
 }
