@@ -6,7 +6,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDelete = defineTool("ppal-delete", {
-  title: "Delete Track/Scene/Clip/Device/Drum Pad",
+  title: "Delete",
   description: "Deletes objects",
   annotations: {
     readOnlyHint: false,
