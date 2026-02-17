@@ -194,8 +194,6 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 
 **Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
 
-**Staying in Sync:** Set clip lengths explicitly. After user rearranges in Live, call ppal-read-live-set.
-
 ### Device Paths
 
 Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad
@@ -210,13 +208,4 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 ### Arrangement Clips
 
 \`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
-
-#### Lengthening Clips
-
-Clips are duplicated/tiled to fill requested length (multiple clips, same playback result).
-
-#### Moving Multiple Clips
-
-Process in reverse \`arrangementStart\` order to prevent overwrites:
-- bar 5 → 6, bar 4 → 5, bar 3 → 4
 `;
