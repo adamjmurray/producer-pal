@@ -23,8 +23,7 @@ describe("ppal-read-live-set", () => {
     });
     const defaultParsed = parseToolResult<ReadLiveSetResult>(defaultResult);
 
-    // Basic live set info
-    expect(defaultParsed.id).toBeDefined();
+    // Basic live set info (id is not included by default)
     expect(defaultParsed.tempo).toBeGreaterThan(0);
     expect(defaultParsed.timeSignature).toMatch(/^\d+\/\d+$/);
     expect(typeof defaultParsed.sceneCount).toBe("number");
@@ -53,8 +52,8 @@ describe("ppal-read-live-set", () => {
     expect(["midi", "audio"]).toContain(firstTrack?.type);
     expect(typeof firstTrack?.trackIndex).toBe("number");
 
-    // Instruments NOT included by default (only regular-tracks)
-    expect("instrument" in (firstTrack ?? {})).toBe(false);
+    // Instrument is always included when the track has one
+    expect(firstTrack?.instrument).toBeDefined();
   });
 
   it("reads live set with scenes include", async () => {
@@ -108,7 +107,7 @@ describe("ppal-read-live-set", () => {
  * Type for ppal-read-live-set result
  */
 interface ReadLiveSetResult {
-  id: string;
+  id?: string;
   name?: string;
   tempo: number;
   timeSignature: string;
