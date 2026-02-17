@@ -142,7 +142,6 @@ describe("readLiveSet - basic reading", () => {
           id: "track1",
           type: "midi",
           name: "MIDI Track 1",
-          category: "regular",
           trackIndex: 0,
           state: "soloed",
           isGroup: true,
@@ -156,7 +155,6 @@ describe("readLiveSet - basic reading", () => {
           id: "track2",
           type: "audio",
           name: "Audio Track 2",
-          category: "regular",
           trackIndex: 1,
           state: "muted",
           isGroupMember: true,
@@ -171,7 +169,6 @@ describe("readLiveSet - basic reading", () => {
           const { color: _color, ...track } = expectedTrack({
             id: "track3",
             trackIndex: 2,
-            category: "regular",
           });
 
           return track;

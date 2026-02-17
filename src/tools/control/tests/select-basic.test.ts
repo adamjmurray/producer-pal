@@ -398,7 +398,7 @@ describe("view", () => {
         expectViewState({
           selectedTrack: {
             trackId: "track_123",
-            category: "regular",
+            type: "midi",
             trackIndex: 1,
           },
         }),

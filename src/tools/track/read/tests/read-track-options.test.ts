@@ -205,9 +205,8 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "return_track_1",
-          type: "audio",
+          type: "return",
           name: "Return B",
-          category: "return",
           returnTrackIndex: 1,
           sessionClipCount: 0,
           arrangementClipCount: 0,
@@ -295,9 +294,8 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "master_track",
-          type: "audio",
+          type: "master",
           name: "Master",
-          category: "master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
           deviceCount: 1,
@@ -413,9 +411,8 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "master_track",
-          type: "audio",
+          type: "master",
           name: "Master",
-          category: "master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
           deviceCount: 0,

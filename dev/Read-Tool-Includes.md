@@ -112,9 +112,8 @@ Returns track overview by default. Use `include` to add detail.
 | ---------------------- | -------- | ------------------------------------------------------------- |
 | `id`                   | `string` | Track ID                                                      |
 | `name`                 | `string` | Track name                                                    |
-| `type`                 | `string` | `"midi"` or `"audio"`                                         |
+| `type`                 | `string` | `"midi"`, `"audio"`, `"return"`, or `"master"`                |
 | `trackIndex`           | `number` | 0-based track index (regular tracks)                          |
-| `category`             | `string` | `"regular"`, `"return"`, or `"master"`                        |
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
 | `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
 | `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |

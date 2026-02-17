@@ -395,7 +395,7 @@ describe("view", () => {
         showBrowser: false,
         selectedTrack: {
           trackId: "789",
-          category: "regular",
+          type: "midi",
           trackIndex: 0,
         },
         selectedClipId: "123",
@@ -470,7 +470,7 @@ describe("view", () => {
 
       expect(result.selectedTrack).toStrictEqual({
         trackId: "return_456",
-        category: "return",
+        type: "return",
         returnTrackIndex: 2,
       });
     });

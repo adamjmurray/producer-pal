@@ -15,7 +15,7 @@ interface ViewState {
   showBrowser: boolean;
   selectedTrack: {
     trackId: string | null;
-    category: string | null;
+    type: string | null;
     trackIndex?: number | null;
     returnTrackIndex?: number | null;
   };
@@ -108,6 +108,7 @@ export function setupSongViewMock(): RegisteredMockObject {
  * @param options.returnTrackIndex - Track index for return tracks
  * @param options.id - Track ID
  * @param options.path - Track path
+ * @param options.hasMidiInput - Whether track has MIDI input (default true)
  * @returns Registered mock
  */
 export function setupSelectedTrackMock(options?: {
@@ -117,12 +118,14 @@ export function setupSelectedTrackMock(options?: {
   returnTrackIndex?: number | null;
   id?: string;
   path?: string;
+  hasMidiInput?: boolean;
 }): RegisteredMockObject {
   const {
     exists = false,
     category = "regular",
     trackIndex = null,
     returnTrackIndex = null,
+    hasMidiInput = true,
     id = exists ? "selected-track" : "0",
     path = exists
       ? category === "master"
@@ -142,6 +145,7 @@ export function setupSelectedTrackMock(options?: {
       category: exists ? category : null,
       trackIndex: exists ? trackIndex : null,
       returnTrackIndex: exists ? returnTrackIndex : null,
+      has_midi_input: hasMidiInput ? 1 : 0,
     },
   });
 }
@@ -319,7 +323,7 @@ export function getDefaultViewState(): ViewState {
     showBrowser: false,
     selectedTrack: {
       trackId: null,
-      category: null,
+      type: null,
     },
     selectedClipId: null,
     selectedDeviceId: null,

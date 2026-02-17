@@ -108,6 +108,19 @@ export function readTrack(
 }
 
 /**
+ * Compute merged track type from MIDI flag and category
+ * @param isMidiTrack - Whether the track has MIDI input
+ * @param category - Internal category: "regular", "return", or "master"
+ * @returns Merged type: "midi", "audio", "return", or "master"
+ */
+function computeTrackType(isMidiTrack: boolean, category: string): string {
+  if (category === "return") return "return";
+  if (category === "master") return "master";
+
+  return isMidiTrack ? "midi" : "audio";
+}
+
+/**
  * Process session clips for a track
  * @param track - Track object
  * @param category - Track category (regular, return, or master)
@@ -225,7 +238,7 @@ export function readTrackGeneric({
 
   const result: Record<string, unknown> = {
     id: track.id,
-    type: isMidiTrack ? "midi" : "audio",
+    type: computeTrackType(isMidiTrack, category),
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),
     // arrangementFollower: track.getProperty("back_to_arranger") === 0,

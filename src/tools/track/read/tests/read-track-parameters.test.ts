@@ -46,7 +46,6 @@ describe("readTrack", () => {
         type: "midi",
         name: "Track by ID",
         trackIndex: 2,
-        category: "regular",
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -70,10 +69,9 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "456",
-        type: "audio",
+        type: "return",
         name: "Return by ID",
         returnTrackIndex: 1,
-        category: "return",
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -96,9 +94,8 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "789",
-        type: "audio",
+        type: "master",
         name: "Master by ID",
-        category: "master",
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,

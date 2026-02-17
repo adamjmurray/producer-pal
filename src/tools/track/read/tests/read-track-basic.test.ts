@@ -100,7 +100,7 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
-      category: "regular",
+
       sessionClipCount: 0,
       arrangementClipCount: 0,
       deviceCount: 0,
@@ -138,7 +138,7 @@ describe("readTrack", () => {
       type: "audio",
       name: "Audio Track",
       trackIndex: 1,
-      category: "regular",
+
       sessionClipCount: 0,
       arrangementClipCount: 0,
       deviceCount: 0,
@@ -166,7 +166,7 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
-      category: "regular",
+
       sessionClipCount: 0,
       arrangementClipCount: 0,
       deviceCount: 0,
@@ -243,7 +243,7 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track with Clips",
       trackIndex: 2,
-      category: "regular",
+
       sessionClips: [
         {
           ...expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),

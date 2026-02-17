@@ -33,7 +33,7 @@ interface SelectArgs {
 
 interface SelectedTrackObject {
   trackId: string | null;
-  category: TrackCategory | null;
+  type: string | null;
   trackIndex?: number | null;
   returnTrackIndex?: number | null;
 }
@@ -284,9 +284,11 @@ function readViewState(): ViewState {
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
+  const trackType = computeSelectedTrackType(selectedTrack, category);
+
   const selectedTrackObject: SelectedTrackObject = {
     trackId: selectedTrackId,
-    category: category,
+    type: trackType,
   };
 
   if (category === "regular" && selectedTrack.exists()) {
@@ -311,4 +313,25 @@ function readViewState(): ViewState {
     },
     selectedClipSlot: highlightedSlot,
   };
+}
+
+/**
+ * Compute merged track type from category and has_midi_input
+ * @param track - Selected track LiveAPI object
+ * @param category - Internal category: "regular", "return", or "master"
+ * @returns Merged type: "midi", "audio", "return", "master", or null
+ */
+function computeSelectedTrackType(
+  track: LiveAPI,
+  category: TrackCategory | null,
+): string | null {
+  if (category == null) return null;
+  if (category === "return") return "return";
+  if (category === "master") return "master";
+
+  const isMidi = track.exists()
+    ? (track.getProperty("has_midi_input") as number) > 0
+    : false;
+
+  return isMidi ? "midi" : "audio";
 }

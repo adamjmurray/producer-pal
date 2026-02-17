@@ -70,7 +70,7 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "track1",
             name: "Regular Track",
-            category: "regular",
+            type: "midi",
             trackIndex: 0,
           }),
         ],
@@ -78,20 +78,20 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "return1",
             name: "Return A",
-            category: "return",
+            type: "return",
             returnTrackIndex: 0,
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
-            category: "return",
+            type: "return",
             returnTrackIndex: 1,
           }),
         ],
         masterTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
-          category: "master",
+          type: "master",
         }),
       }),
     );

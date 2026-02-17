@@ -187,8 +187,6 @@ export function addCategoryIndex(
   category: string,
   trackIndex: number | null,
 ): void {
-  result.category = category;
-
   if (category === "regular") {
     result.trackIndex = trackIndex;
   } else if (category === "return") {
