@@ -47,6 +47,8 @@ describe("readTrack", () => {
         name: "Track by ID",
         trackIndex: 2,
         category: "regular",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
         isArmed: true,
       });
     });
@@ -71,6 +73,8 @@ describe("readTrack", () => {
         name: "Return by ID",
         returnTrackIndex: 1,
         category: "return",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
       });
     });
 
@@ -93,6 +97,8 @@ describe("readTrack", () => {
         type: "audio",
         name: "Master by ID",
         category: "master",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
       });
     });
 

@@ -80,11 +80,11 @@ describe("readLiveSet - clips", () => {
       include: ["regular-tracks", "instruments", "chains"],
     });
 
-    // When session-clips and arrangement-clips are not in include, no clip data is returned
+    // When session-clips and arrangement-clips are not in include, counts are returned instead
     const tracks = result.tracks as Record<string, unknown>[];
 
-    expect(tracks[0]!.sessionClipCount).toBeUndefined();
-    expect(tracks[0]!.arrangementClipCount).toBeUndefined();
+    expect(tracks[0]!.sessionClipCount).toBe(1);
+    expect(tracks[0]!.arrangementClipCount).toBe(1);
     expect(tracks[0]!.sessionClips).toBeUndefined();
     expect(tracks[0]!.arrangementClips).toBeUndefined();
   });
@@ -95,11 +95,11 @@ describe("readLiveSet - clips", () => {
     // Call readLiveSet with no arguments to test defaults
     const result = readLiveSet();
 
-    // Verify default behavior: no clip data (defaults have session-clips and arrangement-clips false)
+    // Default behavior: counts returned (session-clips and arrangement-clips not included)
     const tracks = result.tracks as Record<string, unknown>[];
 
-    expect(tracks[0]!.sessionClipCount).toBeUndefined();
-    expect(tracks[0]!.arrangementClipCount).toBeUndefined();
+    expect(tracks[0]!.sessionClipCount).toBe(1);
+    expect(tracks[0]!.arrangementClipCount).toBe(1);
     expect(tracks[0]!.sessionClips).toBeUndefined();
     expect(tracks[0]!.arrangementClips).toBeUndefined();
 

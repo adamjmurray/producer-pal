@@ -209,6 +209,8 @@ describe("readTrack", () => {
           name: "Return B",
           category: "return",
           returnTrackIndex: 1,
+          sessionClipCount: 0,
+          arrangementClipCount: 0,
         });
       });
 
@@ -295,6 +297,8 @@ describe("readTrack", () => {
           type: "audio",
           name: "Master",
           category: "master",
+          sessionClipCount: 0,
+          arrangementClipCount: 0,
         });
 
         // trackIndex should be ignored for master track
@@ -410,6 +414,8 @@ describe("readTrack", () => {
           type: "audio",
           name: "Master",
           category: "master",
+          sessionClipCount: 0,
+          arrangementClipCount: 0,
         });
       });
     });

@@ -88,10 +88,28 @@ available at this level. Use `ppal-read-device` for chain/drum-pad detail.
 
 Default include: `[]`
 
-Returns minimal track overview by default (`id`, `name`, `type`, `trackIndex`,
-`category`). Use `include` to add detail. Key includes:
+Returns track overview by default. Use `include` to add detail.
 
-- `session-clips`, `arrangement-clips` — which clips to include
+### Default response (no includes)
+
+| Field                  | Type     | Description                                                   |
+| ---------------------- | -------- | ------------------------------------------------------------- |
+| `id`                   | `string` | Track ID                                                      |
+| `name`                 | `string` | Track name                                                    |
+| `type`                 | `string` | `"midi"` or `"audio"`                                         |
+| `trackIndex`           | `number` | 0-based track index (regular tracks)                          |
+| `category`             | `string` | `"regular"`, `"return"`, or `"master"`                        |
+| `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
+| `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
+| `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |
+
+### Include: `"session-clips"`, `"arrangement-clips"`
+
+Replaces `sessionClipCount` / `arrangementClipCount` with full clip arrays. Each
+clip is read via `readClip()`.
+
+### Other includes
+
 - `devices` — flat device list in track signal-chain order
 - `drum-maps` — pitch-to-name mappings for drum racks
 - `routings`, `available-routings` — routing info

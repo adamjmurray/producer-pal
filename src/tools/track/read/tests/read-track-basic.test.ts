@@ -6,8 +6,14 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "#src/tools/constants.ts";
+import { createDeviceMockProperties } from "../helpers/read-track-device-test-helpers.ts";
 import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
 import { setupTrackPathMappedMocks } from "../helpers/read-track-path-mapped-test-helpers.ts";
+import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function createSoloedMidiTrackProperties(
@@ -95,6 +101,8 @@ describe("readTrack", () => {
       name: "Track 1",
       trackIndex: 0,
       category: "regular",
+      sessionClipCount: 0,
+      arrangementClipCount: 0,
       state: "soloed",
       isArmed: true,
       playingSlotIndex: 2,
@@ -130,6 +138,8 @@ describe("readTrack", () => {
       name: "Audio Track",
       trackIndex: 1,
       category: "regular",
+      sessionClipCount: 0,
+      arrangementClipCount: 0,
       state: "muted",
     });
   });
@@ -155,6 +165,8 @@ describe("readTrack", () => {
       name: "Track 1",
       trackIndex: 0,
       category: "regular",
+      sessionClipCount: 0,
+      arrangementClipCount: 0,
       state: "soloed",
       isGroup: true,
       isGroupMember: true,
@@ -234,7 +246,6 @@ describe("readTrack", () => {
       name: "Track with Clips",
       trackIndex: 2,
       category: "regular",
-      playingSlotIndex: 0,
       sessionClips: [
         {
           ...expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
@@ -245,6 +256,8 @@ describe("readTrack", () => {
           color: undefined,
         },
       ].map(({ color: _color, ...clip }) => clip),
+      arrangementClipCount: 0,
+      playingSlotIndex: 0,
     });
   });
 
@@ -288,7 +301,7 @@ describe("readTrack", () => {
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
   });
 
-  it("omits session clip data when session-clips is not included", () => {
+  it("returns sessionClipCount when session-clips is not included", () => {
     registerTrackWithSessionSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
@@ -298,10 +311,10 @@ describe("readTrack", () => {
     });
 
     expect(result.sessionClips).toBeUndefined();
-    expect(result.sessionClipCount).toBeUndefined();
+    expect(result.sessionClipCount).toBe(2);
   });
 
-  it("omits arrangement clip data when arrangement-clips is not included", () => {
+  it("returns arrangementClipCount when arrangement-clips is not included", () => {
     registerMockObject("track3", {
       path: livePath.track(2),
       type: "Track",
@@ -321,10 +334,10 @@ describe("readTrack", () => {
     });
 
     expect(result.arrangementClips).toBeUndefined();
-    expect(result.arrangementClipCount).toBeUndefined();
+    expect(result.arrangementClipCount).toBe(2);
   });
 
-  it("omits arrangement clip data when arrangement-clips is not included (additional test)", () => {
+  it("returns arrangementClipCount for tracks with arrangement clips (additional test)", () => {
     registerMockObject("track2", {
       path: livePath.track(1),
       type: "Track",
@@ -344,9 +357,94 @@ describe("readTrack", () => {
     });
 
     expect(result.arrangementClips).toBeUndefined();
-    expect(result.arrangementClipCount).toBeUndefined();
+    expect(result.arrangementClipCount).toBe(3);
 
     // Verify consistency with track ID format
     expect(result.id).toBe("track2");
+  });
+
+  it("returns instrument name for track with instrument device", () => {
+    setupTrackMock({
+      trackId: "track1",
+      properties: {
+        devices: children("synth1"),
+      },
+    });
+    registerMockObject("synth1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: createDeviceMockProperties({
+        name: "My Analog",
+        className: "UltraAnalog",
+        classDisplayName: "Analog",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      }),
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result.instrument).toBe("Analog");
+  });
+
+  it("returns instrument name for Drum Rack", () => {
+    setupTrackMock({
+      trackId: "track1",
+      properties: {
+        devices: children("drumrack1"),
+      },
+    });
+    registerMockObject("drumrack1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: createDeviceMockProperties({
+        name: "My Drums",
+        className: "DrumGroupDevice",
+        classDisplayName: "Drum Rack",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        canHaveDrumPads: 1,
+        canHaveChains: 1,
+      }),
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result.instrument).toBe("Drum Rack");
+  });
+
+  it("omits instrument for audio track with only audio effects", () => {
+    setupTrackMock({
+      trackId: "track1",
+      properties: {
+        has_midi_input: 0,
+        devices: children("reverb1"),
+      },
+    });
+    registerMockObject("reverb1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: createDeviceMockProperties({
+        name: "Reverb",
+        className: "Reverb",
+        classDisplayName: "Reverb",
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+      }),
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result.instrument).toBeUndefined();
+  });
+
+  it("omits instrument for track with no devices", () => {
+    setupTrackMock({
+      trackId: "track1",
+      properties: {
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result.instrument).toBeUndefined();
   });
 });

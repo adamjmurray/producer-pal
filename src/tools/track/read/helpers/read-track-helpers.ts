@@ -8,8 +8,11 @@ import {
   readClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
-import { STATE } from "#src/tools/constants.ts";
-import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.ts";
+import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import {
+  cleanupInternalDrumPads,
+  getDeviceType,
+} from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   processAvailableRouting,
@@ -130,6 +133,27 @@ export function readArrangementClips(
  */
 export function countArrangementClips(track: LiveAPI): number {
   return track.getChildIds("arrangement_clips").length;
+}
+
+/**
+ * Find the first instrument device on a track and return its class_display_name
+ * @param devices - Array of LiveAPI device objects from track
+ * @returns The instrument's class_display_name, or null if no instrument found
+ */
+export function getInstrumentName(devices: LiveAPI[]): string | null {
+  for (const device of devices) {
+    const deviceType = getDeviceType(device);
+
+    if (
+      deviceType === DEVICE_TYPE.INSTRUMENT ||
+      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
+      deviceType === DEVICE_TYPE.DRUM_RACK
+    ) {
+      return device.getProperty("class_display_name") as string;
+    }
+  }
+
+  return null;
 }
 
 /**

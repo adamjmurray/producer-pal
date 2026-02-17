@@ -25,6 +25,9 @@ import {
   addSlotIndices,
   addStateIfNotDefault,
   cleanupDeviceChains,
+  countArrangementClips,
+  countSessionClips,
+  getInstrumentName,
   handleNonExistentTrack,
   readArrangementClips,
   readMixerProperties,
@@ -57,10 +60,12 @@ interface ReadTrackGenericArgs {
 
 interface SessionClipsResult {
   sessionClips?: ReadClipResult[];
+  sessionClipCount?: number;
 }
 
 interface ArrangementClipsResult {
   arrangementClips?: ReadClipResult[];
+  arrangementClipCount?: number;
 }
 
 /**
@@ -128,15 +133,13 @@ function processSessionClips(
   includeSessionClips: boolean,
   include: string[] | undefined,
 ): SessionClipsResult {
-  if (!includeSessionClips) {
-    return {};
-  }
-
   if (category !== "regular") {
-    return { sessionClips: [] };
+    return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
   }
 
-  return { sessionClips: readSessionClips(track, trackIndex, include) };
+  return includeSessionClips
+    ? { sessionClips: readSessionClips(track, trackIndex, include) }
+    : { sessionClipCount: countSessionClips(track, trackIndex) };
 }
 
 /**
@@ -155,15 +158,15 @@ function processArrangementClips(
   includeArrangementClips: boolean,
   include: string[] | undefined,
 ): ArrangementClipsResult {
-  if (!includeArrangementClips) {
-    return {};
-  }
-
   if (isGroup || category === "return" || category === "master") {
-    return { arrangementClips: [] };
+    return includeArrangementClips
+      ? { arrangementClips: [] }
+      : { arrangementClipCount: 0 };
   }
 
-  return { arrangementClips: readArrangementClips(track, include) };
+  return includeArrangementClips
+    ? { arrangementClips: readArrangementClips(track, include) }
+    : { arrangementClipCount: countArrangementClips(track) };
 }
 
 /**
@@ -287,6 +290,13 @@ export function readTrackGeneric({
   };
 
   addOptionalBooleanProperties(result, track, canBeArmed);
+
+  // Instrument name (always included if present)
+  const instrumentName = getInstrumentName(trackDevices);
+
+  if (instrumentName != null) {
+    result.instrument = instrumentName;
+  }
 
   // Add mixer properties if requested
   if (includeMixer) {
