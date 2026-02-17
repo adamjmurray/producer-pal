@@ -263,10 +263,12 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
-  result.notes = formatNotation(notes, {
+  const formatted = formatNotation(notes, {
     timeSigNumerator,
     timeSigDenominator,
   });
+
+  if (formatted) result.notes = formatted;
 }
 
 /**
