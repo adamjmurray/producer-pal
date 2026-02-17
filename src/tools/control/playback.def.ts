@@ -65,11 +65,6 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("locator name for loop end"),
-    autoFollow: z
-      .boolean()
-      .optional()
-      .default(true)
-      .describe("tracks auto-follow arrangement?"),
     clipIds: z.coerce
       .string()
       .optional()
@@ -95,7 +90,6 @@ stop: session and arrangement`,
       "loopStartLocatorName",
       "loopEndLocatorId",
       "loopEndLocatorName",
-      "autoFollow",
     ],
   },
 });

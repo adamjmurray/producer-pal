@@ -151,7 +151,7 @@ describe("ppal-playback", () => {
 
     expect(playingScene.playing).toBe(true);
 
-    // Test 11: Final stop to clean up and verify arrangementFollowerTrackIds
+    // Test 11: Final stop to clean up
     const finalResult = await ctx.client!.callTool({
       name: "ppal-playback",
       arguments: { action: "stop" },
@@ -159,7 +159,6 @@ describe("ppal-playback", () => {
     const final = parseToolResult<PlaybackResult>(finalResult);
 
     expect(final.playing).toBe(false);
-    expect(final.arrangementFollowerTrackIds).toBeDefined();
   });
 });
 
@@ -167,5 +166,4 @@ interface PlaybackResult {
   playing: boolean;
   currentTime: string;
   arrangementLoop?: { start: string; end: string };
-  arrangementFollowerTrackIds?: string;
 }

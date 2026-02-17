@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -14,7 +14,6 @@ import {
 import { playback } from "#src/tools/control/playback.ts";
 import {
   expectLiveSetProperty,
-  setupFollowerTrack,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
@@ -39,11 +38,7 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action", () => {
-    liveSet = setupPlaybackLiveSet({
-      tracks: children("track1", "track2"),
-    });
-    setupFollowerTrack({ id: "track1", index: 0, following: true });
-    setupFollowerTrack({ id: "track2", index: 1, following: false });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({
       action: "play-arrangement",
@@ -55,7 +50,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "5|1",
-      arrangementFollowerTrackIds: "track1",
     });
   });
 
@@ -63,11 +57,7 @@ describe("transport", () => {
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
       current_song_time: 10,
-      tracks: children("track1", "track2", "track3"),
     });
-    setupFollowerTrack({ id: "track1", index: 0, following: true });
-    setupFollowerTrack({ id: "track2", index: 1, following: false });
-    setupFollowerTrack({ id: "track3", index: 2, following: true });
 
     const result = playback({
       action: "update-arrangement",
@@ -89,7 +79,6 @@ describe("transport", () => {
         start: "3|1",
         end: "7|1",
       },
-      arrangementFollowerTrackIds: "track1,track3",
     });
   });
 
@@ -135,7 +124,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -217,17 +205,11 @@ describe("transport", () => {
   });
 
   it("should handle play-scene action", () => {
-    liveSet = setupPlaybackLiveSet({
-      current_song_time: 5,
-      tracks: children("track1", "track2"),
-    });
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
 
     const scene0 = registerMockObject(livePath.scene(0), {
       path: livePath.scene(0),
     });
-
-    setupFollowerTrack({ id: "track1", index: 0, following: true });
-    setupFollowerTrack({ id: "track2", index: 1, following: true });
 
     const result = playback({
       action: "play-scene",
@@ -238,7 +220,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -279,7 +260,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -387,7 +367,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -401,7 +380,6 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: false,
       currentTime: "1|1",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 

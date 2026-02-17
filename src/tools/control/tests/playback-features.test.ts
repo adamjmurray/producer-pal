@@ -5,14 +5,12 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import {
-  setupFollowerTrack,
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
@@ -24,92 +22,15 @@ describe("transport", () => {
     liveSet = setupDefaultTimeSignature();
   });
 
-  describe("autoFollow behavior for play-arrangement", () => {
-    it("should set all tracks to follow arrangement when autoFollow is true (default)", () => {
-      liveSet = setupPlaybackLiveSet({
-        tracks: children("track1", "track2", "track3"),
-      });
-      setupFollowerTrack({ id: "track1", index: 0, following: true });
-      setupFollowerTrack({ id: "track2", index: 1, following: false });
-      setupFollowerTrack({ id: "track3", index: 2, following: true });
+  it("should always set tracks to follow arrangement on play-arrangement", () => {
+    liveSet = setupPlaybackLiveSet();
 
-      const result = playback({
-        action: "play-arrangement",
-        startTime: "1|1",
-      });
-
-      // Should call back_to_arranger on the song level (affects all tracks)
-      expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
-
-      expect(result).toStrictEqual({
-        playing: true,
-        currentTime: "1|1",
-        arrangementFollowerTrackIds: "track1,track3", // tracks currently following
-      });
+    playback({
+      action: "play-arrangement",
+      startTime: "1|1",
     });
 
-    it("should set all tracks to follow arrangement when autoFollow is explicitly true", () => {
-      liveSet = setupPlaybackLiveSet({
-        tracks: children("track1", "track2"),
-      });
-      setupFollowerTrack({ id: "track1", index: 0, following: false });
-      setupFollowerTrack({ id: "track2", index: 1, following: false });
-
-      const result = playback({
-        action: "play-arrangement",
-        autoFollow: true,
-      });
-
-      expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
-
-      expect(result).toStrictEqual({
-        playing: true,
-        currentTime: "1|1",
-        arrangementFollowerTrackIds: "", // empty since tracks were not following before the call
-      });
-    });
-
-    it("should NOT set tracks to follow when autoFollow is false", () => {
-      liveSet = setupPlaybackLiveSet({
-        tracks: children("track1", "track2"),
-      });
-      setupFollowerTrack({ id: "track1", index: 0, following: false });
-      setupFollowerTrack({ id: "track2", index: 1, following: true });
-
-      const result = playback({
-        action: "play-arrangement",
-        autoFollow: false,
-      });
-
-      // Should NOT call back_to_arranger when autoFollow is false
-      expect(liveSet.set).not.toHaveBeenCalledWith("back_to_arranger", 0);
-
-      expect(result).toStrictEqual({
-        playing: true,
-        currentTime: "1|1",
-        arrangementFollowerTrackIds: "track2", // only track2 was following
-      });
-    });
-
-    it("should include arrangementFollowerTrackIds for all transport actions", () => {
-      liveSet = setupPlaybackLiveSet({
-        loop_length: 0,
-        tracks: children("track1", "track2", "track3"),
-      });
-      setupFollowerTrack({ id: "track1", index: 0, following: true });
-      setupFollowerTrack({ id: "track2", index: 1, following: false });
-      setupFollowerTrack({ id: "track3", index: 2, following: true });
-
-      const result = playback({
-        action: "stop",
-      });
-
-      expect(result).toStrictEqual({
-        playing: false,
-        currentTime: "1|1",
-        arrangementFollowerTrackIds: "track1,track3",
-      });
-    });
+    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
   });
 
   describe("switchView functionality", () => {
@@ -136,14 +57,10 @@ describe("transport", () => {
     });
 
     it("should switch to session view for play-scene action when switchView is true", () => {
-      liveSet = setupPlaybackLiveSet({
-        tracks: children("track1", "track2"),
-      });
+      liveSet = setupPlaybackLiveSet();
       registerMockObject(livePath.scene(0), {
         path: livePath.scene(0),
       });
-      setupFollowerTrack({ id: "track1", index: 0, following: true });
-      setupFollowerTrack({ id: "track2", index: 1, following: true });
 
       playback({
         action: "play-scene",

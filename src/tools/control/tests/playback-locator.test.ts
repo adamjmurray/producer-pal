@@ -35,7 +35,6 @@ describe("playback - locator support", () => {
       expect(result).toStrictEqual({
         playing: true,
         currentTime: "5|1",
-        arrangementFollowerTrackIds: "",
       });
     });
 
@@ -260,7 +259,6 @@ describe("playback - locator support", () => {
           start: "5|1",
           end: "9|1",
         },
-        arrangementFollowerTrackIds: "",
       });
     });
   });

@@ -63,32 +63,6 @@ export function setupPlaybackLiveSet(
   });
 }
 
-interface FollowerTrackOptions {
-  id: string;
-  index: number;
-  following: boolean;
-}
-
-/**
- * Register a track mock with arrangement follower state.
- * @param options - Track configuration
- * @param options.id - The track ID to register
- * @param options.index - The track index for path construction
- * @param options.following - Whether the track is following the arrangement (back_to_arranger=0)
- * @returns RegisteredMockObject for the track
- */
-export function setupFollowerTrack({
-  id,
-  index,
-  following,
-}: FollowerTrackOptions): RegisteredMockObject {
-  return registerMockObject(id, {
-    path: livePath.track(index),
-    type: "Track",
-    properties: { back_to_arranger: following ? 0 : 1 },
-  });
-}
-
 /**
  * Setup default time signature mock (4/4) for playback tests.
  * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.

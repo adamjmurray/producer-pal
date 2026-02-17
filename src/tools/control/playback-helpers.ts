@@ -251,24 +251,6 @@ export function resolveLoopEnd(
   }
 }
 
-/**
- * Get track IDs that are currently following the arrangement
- * @param liveSet - The live_set LiveAPI object
- * @returns Comma-separated list of track IDs following arrangement
- */
-export function getArrangementFollowerTrackIds(liveSet: LiveAPI): string {
-  const trackIds = liveSet.getChildIds("tracks");
-
-  return trackIds
-    .filter((trackId) => {
-      const track = LiveAPI.from(trackId);
-
-      return track.exists() && track.getProperty("back_to_arranger") === 0;
-    })
-    .map((trackId) => trackId.replace("id ", ""))
-    .join(",");
-}
-
 export interface PlaybackState {
   isPlaying: boolean;
   currentTimeBeats: number;
@@ -280,7 +262,6 @@ export interface PlaybackState {
  * @param startTime - Start time in bar|beat format
  * @param startTimeBeats - Start time in beats (from time or locator)
  * @param useLocatorStart - Whether start position came from a locator
- * @param autoFollow - Whether tracks should follow arrangement
  * @param _state - Current playback state (unused)
  * @returns Updated playback state
  */
@@ -289,7 +270,6 @@ export function handlePlayArrangement(
   startTime: string | undefined,
   startTimeBeats: number | undefined,
   useLocatorStart: boolean,
-  autoFollow: boolean,
   _state: PlaybackState,
 ): PlaybackState {
   let resolvedStartTimeBeats = startTimeBeats;
@@ -299,10 +279,7 @@ export function handlePlayArrangement(
     resolvedStartTimeBeats = 0;
   }
 
-  if (autoFollow) {
-    liveSet.set("back_to_arranger", 0);
-  }
-
+  liveSet.set("back_to_arranger", 0);
   liveSet.call("start_playing");
 
   return {
