@@ -3,30 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
-import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import {
+  setupArrangementClipPath,
+  setupMockProperties,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-function setupArrangementClipMock(
-  clip: RegisteredMockObject,
-  props: Record<string, unknown>,
-): void {
-  const fallbackGet = clip.get.getMockImplementation();
-
-  clip.get.mockImplementation((prop: string) => {
-    const value = props[prop];
-
-    if (value !== undefined) {
-      return [value];
-    }
-
-    if (fallbackGet != null) {
-      return fallbackGet.call(clip, prop);
-    }
-
-    return [0];
-  });
-}
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", async () => {
@@ -45,7 +26,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupArrangementClipMock(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       is_audio_clip: 0,

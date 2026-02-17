@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -226,11 +228,17 @@ export function setupMidiClipMock(
     signature_denominator: 4,
     ...opts,
   };
+  const callCounts: Record<string, number> = {};
 
   clip.get.mockImplementation((prop: string) => {
     const value = properties[prop];
 
     if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] || 0;
+        callCounts[prop] = index + 1;
+        return [value[index]];
+      }
       return [value];
     }
 
@@ -256,14 +264,113 @@ export function setupAudioClipMock(
     signature_denominator: 4,
     ...opts,
   };
+  const callCounts: Record<string, number> = {};
 
   clip.get.mockImplementation((prop: string) => {
     const value = properties[prop];
 
     if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] || 0;
+        callCounts[prop] = index + 1;
+        return [value[index]];
+      }
       return [value];
     }
 
     return [0];
   });
+}
+
+/**
+ * Override a clip's get mock for an arrangement audio clip.
+ * @param clip - Registered mock clip
+ * @param opts - Additional clip properties
+ */
+export function setupArrangementAudioClipMock(
+  clip: RegisteredMockObject,
+  opts: Record<string, unknown> = {},
+): void {
+  setupAudioClipMock(clip, {
+    is_arrangement_clip: 1,
+    ...opts,
+  });
+}
+
+/**
+ * Override a clip's get mock for an arrangement MIDI clip.
+ * @param clip - Registered mock clip
+ * @param opts - Additional clip properties
+ */
+export function setupArrangementMidiClipMock(
+  clip: RegisteredMockObject,
+  opts: MidiClipMockOptions = {},
+): void {
+  setupMidiClipMock(clip, {
+    is_arrangement_clip: 1,
+    ...opts,
+  });
+}
+
+/**
+ * Set up properties on a mock object, preserving existing property logic for
+ * properties not specified in `props`. Supports MockSequence.
+ * @param mock - Registered mock object
+ * @param props - Properties to set on the mock
+ */
+export function setupMockProperties(
+  mock: RegisteredMockObject,
+  props: Record<string, unknown>,
+): void {
+  const fallbackGet = mock.get.getMockImplementation();
+  const callCounts: Record<string, number> = {};
+
+  mock.get.mockImplementation((prop: string) => {
+    const value = props[prop];
+
+    if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] || 0;
+        callCounts[prop] = index + 1;
+
+        return [value[index]];
+      }
+
+      return [value];
+    }
+
+    if (fallbackGet) {
+      return fallbackGet(prop);
+    }
+
+    return [0];
+  });
+}
+
+/**
+ * Set up mocks for session-based file content boundary detection.
+ * @param fileContentBoundary - File's actual content length (returned by getProperty("end_marker"))
+ * @returns Mock objects for assertions
+ */
+export function setupSessionTilingMock(fileContentBoundary = 8.0) {
+  const sessionClip = {
+    id: "session-temp",
+    set: vi.fn(),
+    getProperty: vi.fn().mockImplementation((prop: string) => {
+      if (prop === "end_marker") return fileContentBoundary;
+
+      return null;
+    }),
+  };
+  const sessionSlot = {
+    call: vi.fn(),
+  };
+  const mockCreate = vi
+    .spyOn(tilingHelpers, "createAudioClipInSession")
+    .mockReturnValue({
+      clip: sessionClip as unknown as LiveAPI,
+      slot: sessionSlot as unknown as LiveAPI,
+    });
+
+  return { mockCreate, sessionClip, sessionSlot };
 }

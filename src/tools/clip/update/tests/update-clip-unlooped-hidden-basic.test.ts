@@ -4,32 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   assertSourceClipEndMarker,
   mockContext,
   setupArrangementClipPath,
+  setupArrangementMidiClipMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 // Unlooped MIDI clip lengthening uses loop_end to extend arrangement length
 // directly. end_marker is extended so notes are visible in the extended region.
 // No tiling, no holding area — returns a single clip.
-
-function setupArrangementClipMock(
-  clip: RegisteredMockObject,
-  props: Record<string, unknown>,
-): void {
-  clip.get.mockImplementation((prop: string) => {
-    const value = props[prop];
-
-    if (value !== undefined) {
-      return [value];
-    }
-
-    return [0];
-  });
-}
 
 describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () => {
   it("should extend via loop_end and end_marker", async () => {
@@ -40,10 +25,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
+    setupArrangementMidiClipMock(clip!, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -79,10 +61,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
+    setupArrangementMidiClipMock(clip!, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -118,10 +97,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
+    setupArrangementMidiClipMock(clip!, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,

@@ -3,63 +3,20 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
-import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { describe, expect, it } from "vitest";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   assertSourceClipEndMarker,
   mockContext,
+  setupArrangementAudioClipMock,
   setupArrangementClipPath,
+  setupSessionTilingMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Warped unlooped audio clip lengthening uses loop_end to extend in place.
 // File content boundary is detected via a session clip (read end_marker).
 // If the file has no content beyond what's shown, lengthening is skipped.
 // If the file has some content but not enough for the target, it's capped.
-
-/**
- * Set up mocks for session-based file content boundary detection.
- * @param fileContentBoundary - File's actual content length (returned by getProperty("end_marker"))
- * @returns Mock objects for assertions
- */
-function setupSessionTilingMock(fileContentBoundary = 8.0) {
-  const sessionClip = {
-    id: "session-temp",
-    set: vi.fn(),
-    getProperty: vi.fn().mockImplementation((prop: string) => {
-      if (prop === "end_marker") return fileContentBoundary;
-
-      return null;
-    }),
-  };
-  const sessionSlot = {
-    call: vi.fn(),
-  };
-  const mockCreate = vi
-    .spyOn(tilingHelpers, "createAudioClipInSession")
-    .mockReturnValue({
-      clip: sessionClip as unknown as LiveAPI,
-      slot: sessionSlot as unknown as LiveAPI,
-    });
-
-  return { mockCreate, sessionClip, sessionSlot };
-}
-
-function setupArrangementClipMock(
-  clip: RegisteredMockObject,
-  props: Record<string, unknown>,
-): void {
-  clip.get.mockImplementation((prop: string) => {
-    const value = props[prop];
-
-    if (value !== undefined) {
-      return [value];
-    }
-
-    return [0];
-  });
-}
 
 describe("Unlooped warped audio clips - skip when no additional content", () => {
   // These clips show all file content (end_marker = file boundary = 8)
@@ -80,10 +37,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
 
       expect(clip).toBeDefined();
 
-      setupArrangementClipMock(clip!, {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
+      setupArrangementAudioClipMock(clip!, {
         looping: 0,
         warping: 1,
         start_time: 0.0,
@@ -147,10 +101,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
 
       expect(clip).toBeDefined();
 
-      setupArrangementClipMock(clip!, {
-        is_arrangement_clip: 1,
-        is_midi_clip: 0,
-        is_audio_clip: 1,
+      setupArrangementAudioClipMock(clip!, {
         looping: 0,
         warping: 1,
         start_time: 0.0,
@@ -205,10 +156,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
+    setupArrangementAudioClipMock(clip!, {
       looping: 0,
       warping: 1,
       start_time: 0.0,
@@ -263,10 +211,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
+    setupArrangementAudioClipMock(clip!, {
       looping: 0,
       warping: 1,
       start_time: 0.0,
@@ -309,10 +254,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
 
     expect(clip).toBeDefined();
 
-    setupArrangementClipMock(clip!, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
+    setupArrangementAudioClipMock(clip!, {
       looping: 0,
       warping: 1,
       start_time: 0.0,

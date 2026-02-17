@@ -12,9 +12,9 @@ import {
   createTrackResult,
   createTrackResultArray,
   expectDeleteDeviceCalls,
-  type RegisteredMockObject,
   registerMockObject,
-  setupRouteToSourceMock,
+  setupProducerPalDeviceMocks,
+  setupRoutingMocks,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - track duplication", () => {
@@ -182,33 +182,6 @@ describe("duplicate - track duplication", () => {
     },
   );
 
-  /**
-   * Sets up mocks for Producer Pal device tests with 3 devices on track 1
-   * @returns Handles for liveSet and newTrack mocks
-   */
-  function setupProducerPalDeviceMocks(): {
-    liveSet: RegisteredMockObject;
-    newTrack: RegisteredMockObject;
-  } {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("this_device", {
-      path: livePath.track(0).device(1),
-    });
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-    });
-    const newTrack = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: {
-        devices: children("device0", "device1", "device2"),
-        clip_slots: [],
-        arrangement_clips: [],
-      },
-    });
-
-    return { liveSet, newTrack };
-  }
-
   it("should remove Producer Pal device when duplicating host track", () => {
     const { liveSet, newTrack } = setupProducerPalDeviceMocks();
 
@@ -255,39 +228,6 @@ describe("duplicate - track duplication", () => {
         "duplicate failed: routeToSource is only supported for type 'track'",
       );
     });
-
-    /**
-     * Setup common mocks for routeToSource track tests
-     * @param opts - Options for setupRouteToSourceMock
-     * @returns Handles for sourceTrack and newTrack mocks
-     */
-    function setupRoutingMocks(
-      opts: Parameters<typeof setupRouteToSourceMock>[0] = {},
-    ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
-      registerMockObject("track1", { path: livePath.track(0) });
-      registerMockObject("live_set", { path: livePath.liveSet });
-
-      const mockData = setupRouteToSourceMock(opts);
-
-      const sourceTrack = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        properties: mockData[String(livePath.track(0))] as Record<
-          string,
-          unknown
-        >,
-      });
-      const newTrack = registerMockObject("live_set/tracks/1", {
-        path: livePath.track(1),
-        properties: {
-          ...(mockData[String(livePath.track(1))] as Record<string, unknown>),
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-        },
-      });
-
-      return { sourceTrack, newTrack };
-    }
 
     it("should configure routing when routeToSource is true", () => {
       setupRoutingMocks({

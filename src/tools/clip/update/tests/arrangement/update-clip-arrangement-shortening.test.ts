@@ -18,30 +18,10 @@ import {
   setupMidiClipMock,
   type UpdateClipMocks,
   setupArrangementClipPath,
+  setupMockProperties,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-function setupClipProperties(
-  clip: RegisteredMockObject,
-  props: Record<string, unknown>,
-): void {
-  const fallbackGet = clip.get.getMockImplementation();
-
-  clip.get.mockImplementation((prop: string) => {
-    const value = props[prop];
-
-    if (value !== undefined) {
-      return [value];
-    }
-
-    if (fallbackGet != null) {
-      return fallbackGet.call(clip, prop);
-    }
-
-    return [0];
-  });
-}
 
 describe("updateClip - arrangementLength (shortening only)", () => {
   let defaultMocks: UpdateClipMocks;
@@ -63,7 +43,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupClipProperties(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0, // 4 bars starting at beat 0
@@ -104,7 +84,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupClipProperties(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0,
@@ -158,7 +138,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should handle zero length with clear error", async () => {
-    setupClipProperties(defaultMocks.clip789, {
+    setupMockProperties(defaultMocks.clip789, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0,
@@ -187,7 +167,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupClipProperties(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0,
@@ -231,7 +211,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       throw new Error("Expected source and moved clip mocks");
     }
 
-    setupClipProperties(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 0.0,
@@ -240,7 +220,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(movedClip, {
+    setupMockProperties(movedClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       start_time: 32.0, // Moved to bar 9
@@ -319,7 +299,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       },
     });
 
-    setupClipProperties(sourceClip, {
+    setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 0, // Audio clip
       is_audio_clip: 1,
@@ -329,7 +309,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       signature_denominator: 4,
       trackIndex,
     });
-    setupClipProperties(tempArrangementClip, {
+    setupMockProperties(tempArrangementClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 0,
       is_audio_clip: 1,
