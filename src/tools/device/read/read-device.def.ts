@@ -20,10 +20,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     path: z
       .string()
       .optional()
-      .describe(
-        "Device/chain/drum-pad path: t=track, rt=return, mt=master, d=device, c=chain, rc=return chain, p=drum pad. " +
-          "E.g., 't1/d0' (device), 't1/d0/c0' (chain), 't1/d0/pC1' (drum pad), 't1/d0/rc0' (return chain)",
-      ),
+      .describe("path (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')"),
     include: z
       .array(
         z.enum([

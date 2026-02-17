@@ -21,8 +21,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe(
-        "insertion path (required when deviceName provided): t=track, rt=return, mt=master, d=device position, c=chain, rc=return chain, p=drum pad. " +
-          "E.g., 't0' append to track, 't0/d1' insert at position 1, 't0/d0/c0' append to chain",
+        "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       ),
   },
 });

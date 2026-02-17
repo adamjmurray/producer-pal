@@ -83,9 +83,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: z
       .string()
       .optional()
-      .describe(
-        "device destination: t=track, rt=return, mt=master, d=device index, c=chain (e.g., 't1/d0')",
-      ),
+      .describe("device destination path (e.g., 't1/d0')"),
   },
   smallModelModeConfig: {
     excludeParams: [
