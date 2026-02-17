@@ -178,3 +178,34 @@ export function setupAudioArrangementClipMocks(
 
   return { liveSet, track, clip };
 }
+
+/**
+ * Setup mocks for session clip tests.
+ * @param opts - Options for mock properties
+ * @param opts.liveSet - Properties for the live set
+ * @param opts.clipSlot - Properties for the clip slot
+ * @param opts.clip - Properties for the clip
+ * @returns Handles for clip slot and clip mocks
+ */
+export function setupSessionMocks(
+  opts: {
+    liveSet?: Record<string, unknown>;
+    clipSlot?: Record<string, unknown>;
+    clip?: Record<string, unknown>;
+  } = {},
+): { clipSlot: RegisteredMockObject; clip: RegisteredMockObject } {
+  registerMockObject("live-set", {
+    path: "live_set",
+    properties: opts.liveSet,
+  });
+  const clipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 0, ...opts.clipSlot },
+  });
+  const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: opts.clip,
+  });
+
+  return { clipSlot, clip };
+}

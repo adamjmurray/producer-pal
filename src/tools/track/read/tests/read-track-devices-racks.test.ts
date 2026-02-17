@@ -3,55 +3,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import {
-  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-  LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "#src/tools/constants.ts";
 import {
   ALL_DEVICE_INCLUDE_OPTIONS,
-  createChainMockProperties,
   createDeviceMockProperties,
-  createRackDeviceMockProperties,
+  setupDrumRackMocks,
+  setupEmptyRackMocks,
 } from "../helpers/read-track-device-test-helpers.ts";
-import {
-  createDrumChainMock,
-  createSimpleInstrumentMock,
-} from "../helpers/read-track-test-helpers.ts";
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
 import { readTrack } from "../read-track.ts";
 
 describe("readTrack", () => {
   describe("devices - rack edge cases", () => {
     it("strips chains from rack devices in read-track output", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("rack1"),
-        },
-      });
-      registerMockObject("rack1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createRackDeviceMockProperties({
-          name: "My Empty Rack",
-          className: "InstrumentGroupDevice",
-          classDisplayName: "Instrument Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          chainIds: ["empty_chain"],
-        }),
-      });
-      registerMockObject("empty_chain", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Empty Chain",
-          color: 0,
-          deviceIds: [],
-        }),
-      });
+      setupEmptyRackMocks();
 
       const result = readTrack({
         trackIndex: 0,
@@ -69,59 +37,7 @@ describe("readTrack", () => {
       ]);
     });
     it("strips drum rack chains/drumPads in read-track output", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("drum_rack"),
-        },
-      });
-      registerMockObject("drum_rack", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: {
-          name: "My Drums",
-          class_name: "DrumGroupDevice",
-          class_display_name: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 1,
-          can_have_drum_pads: 1,
-          chains: children("kick_chain", "snare_chain"),
-          return_chains: [],
-        },
-      });
-      registerMockObject("kick_chain", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
-        properties: createDrumChainMock({
-          inNote: 36,
-          name: "Kick",
-          color: 16711680,
-          mutedViaSolo: true,
-          deviceId: "kick_device",
-        }),
-      });
-      registerMockObject("snare_chain", {
-        path: livePath.track(0).device(0).chain(1),
-        type: "Chain",
-        properties: createDrumChainMock({
-          inNote: 38,
-          name: "Snare",
-          color: 65280,
-          solo: true,
-          deviceId: "snare_device",
-        }),
-      });
-      registerMockObject("kick_device", {
-        path: livePath.track(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: createSimpleInstrumentMock(),
-      });
-      registerMockObject("snare_device", {
-        path: livePath.track(0).device(0).chain(1).device(0),
-        type: "Device",
-        properties: createSimpleInstrumentMock(),
-      });
+      setupDrumRackMocks();
 
       const result = readTrack({
         trackIndex: 0,

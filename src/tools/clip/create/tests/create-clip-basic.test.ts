@@ -4,40 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  type RegisteredMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
   note,
+  setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
-
-function setupSessionMocks(
-  opts: {
-    liveSet?: Record<string, unknown>;
-    clipSlot?: Record<string, unknown>;
-    clip?: Record<string, unknown>;
-  } = {},
-): { clipSlot: RegisteredMockObject; clip: RegisteredMockObject } {
-  registerMockObject("live-set", {
-    path: "live_set",
-    properties: opts.liveSet,
-  });
-  const clipSlot = registerMockObject("clip-slot-0-0", {
-    path: livePath.track(0).clipSlot(0),
-    properties: { has_clip: 0, ...opts.clipSlot },
-  });
-  const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
-    path: livePath.track(0).clipSlot(0).clip(),
-    properties: opts.clip,
-  });
-
-  return { clipSlot, clip };
-}
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when required parameters are missing", async () => {
