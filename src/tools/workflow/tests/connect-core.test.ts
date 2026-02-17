@@ -274,21 +274,12 @@ describe("connect", () => {
         `Producer Pal ${VERSION} connected to Ableton Live 12.3`,
       ),
       $skills: expect.stringContaining("Producer Pal Skills"),
-      $instructions: expect.stringContaining(
-        "complete Producer Pal initialization",
-      ),
     });
 
     expect(result.messagesForUser).toContain("Save often!");
     expect(result.messagesForUser).toContain(
       "Tell me if you rearrange things so I stay in sync.",
     );
-
-    expect(result.$instructions).toContain(
-      "Call ppal-read-live-set with includes for track/scene detail",
-    );
-    expect(result.$instructions).toContain("Summarize the Live Set");
-    expect(result.$instructions).toContain("Say the messagesForUser");
   });
 
   it("handles arrangement view correctly", () => {

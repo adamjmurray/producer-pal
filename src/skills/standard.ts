@@ -220,28 +220,3 @@ Clips are duplicated/tiled to fill requested length (multiple clips, same playba
 Process in reverse \`arrangementStart\` order to prevent overwrites:
 - bar 5 → 6, bar 4 → 5, bar 3 → 4
 `;
-
-/**
- * Generate initialization instructions based on context
- * @param context - The userContext from main.js
- * @returns Instructions for completing Producer Pal initialization
- */
-export function buildInstructions(context?: Partial<ToolContext>): string {
-  const memory = context?.memory;
-
-  return (
-    "Do this now to complete Producer Pal initialization:\n" +
-    [
-      '* Call ppal-read-live-set with includes for track/scene detail (e.g., include: ["regular-tracks", "scenes"])',
-      "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(memory?.content
-        ? [
-            `* Summarize the project memory, ${
-              memory.writable ? "mention you can update the memory, " : ""
-            }and verify you will follow instructions in memory (if any).`,
-          ]
-        : []),
-      "* Say the messagesForUser, ask what's next, wait for input",
-    ].join("\n")
-  );
-}

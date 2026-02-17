@@ -28,7 +28,7 @@ async function callConnect(): Promise<ConnectResult> {
 }
 
 describe("ppal-connect", () => {
-  it("returns standard mode skills and instructions (smallModelMode=false)", async () => {
+  it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active
     await setConfig({ smallModelMode: false });
     const parsed = await callConnect();
@@ -61,17 +61,13 @@ describe("ppal-connect", () => {
     expect(parsed.$skills).toMatch(/p0\./); // Probability with decimal
     expect(parsed.$skills).toContain("/d0"); // Device paths
 
-    // Instructions - standard mode mentions ppal-read-live-set with includes
-    expect(parsed.$instructions).toBeDefined();
-    expect(parsed.$instructions).toContain("ppal-read-live-set with includes");
-
     // User messages
     expect(parsed.messagesForUser).toBeDefined();
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
     expect(parsed.messagesForUser).toContain("Save often");
   });
 
-  it("returns simplified skills and instructions (smallModelMode=true)", async () => {
+  it("returns simplified skills (smallModelMode=true)", async () => {
     // Enable small model mode
     await setConfig({ smallModelMode: true });
     const parsed = await callConnect();
@@ -95,10 +91,6 @@ describe("ppal-connect", () => {
     expect(parsed.$skills).toContain("bar|beat");
     expect(parsed.$skills).toContain("Melodies");
 
-    // Instructions - small model mode does NOT mention ppal-read-live-set
-    expect(parsed.$instructions).toBeDefined();
-    expect(parsed.$instructions).not.toContain("ppal-read-live-set");
-
     // User messages still work
     expect(parsed.messagesForUser).toBeDefined();
     expect(parsed.messagesForUser).toContain("connected to Ableton Live");
@@ -112,10 +104,9 @@ describe("ppal-connect", () => {
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBeUndefined();
-      expect(parsed.$instructions).not.toContain("project notes");
     });
 
-    it("includes projectNotes when enabled with content (read-only)", async () => {
+    it("includes projectNotes when enabled with content", async () => {
       await setConfig({
         memoryEnabled: true,
         memoryContent: TEST_NOTES,
@@ -124,21 +115,6 @@ describe("ppal-connect", () => {
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project memory");
-      expect(parsed.$instructions).not.toContain("update the memory");
-    });
-
-    it("includes writable instruction when memoryWritable is true", async () => {
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: TEST_NOTES,
-        memoryWritable: true,
-      });
-      const parsed = await callConnect();
-
-      expect(parsed.memoryContent).toBe(TEST_NOTES);
-      expect(parsed.$instructions).toContain("Summarize the project memory");
-      expect(parsed.$instructions).toContain("update the memory");
     });
 
     it("excludes projectNotes when enabled but content is empty", async () => {
@@ -150,7 +126,6 @@ describe("ppal-connect", () => {
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBeUndefined();
-      expect(parsed.$instructions).not.toContain("project notes");
     });
   });
 });
@@ -174,7 +149,6 @@ interface ConnectResult {
     scalePitches?: string;
   };
   $skills?: string;
-  $instructions?: string;
   messagesForUser?: string;
   memoryContent?: string;
 }

@@ -7,11 +7,8 @@ import {
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
 import { VERSION } from "#src/shared/version.ts";
-import {
-  skills as basicSkills,
-  buildInstructions as buildBasicInstruction,
-} from "#src/skills/basic.ts";
-import { buildInstructions, skills } from "#src/skills/standard.ts";
+import { skills as basicSkills } from "#src/skills/basic.ts";
+import { skills } from "#src/skills/standard.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 
 interface LiveSetInfo {
@@ -32,7 +29,6 @@ interface ConnectResult {
   abletonLiveVersion: string;
   liveSet: LiveSetInfo;
   $skills?: string;
-  $instructions?: string;
   messagesForUser?: string;
   memoryContent?: string;
 }
@@ -113,13 +109,7 @@ To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum
 Ask me to add an instrument, or add one yourself and I can compose MIDI patterns.`);
   }
 
-  if (context.smallModelMode) {
-    result.$skills = basicSkills;
-    result.$instructions = buildBasicInstruction(context);
-  } else {
-    result.$skills = skills;
-    result.$instructions = buildInstructions(context);
-  }
+  result.$skills = context.smallModelMode ? basicSkills : skills;
 
   // Format as markdown bullet list
   result.messagesForUser = messages.map((msg) => `* ${msg}`).join("\n");
