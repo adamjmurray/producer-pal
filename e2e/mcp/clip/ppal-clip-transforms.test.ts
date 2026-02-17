@@ -63,7 +63,7 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
 async function readClipGain(clipId: string): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["warp-markers"] },
+    arguments: { clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 
@@ -74,7 +74,7 @@ async function readClipGain(clipId: string): Promise<number> {
 async function readClipPitchShift(clipId: string): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["warp-markers"] },
+    arguments: { clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 

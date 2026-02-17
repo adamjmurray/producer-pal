@@ -150,7 +150,7 @@ describe("ppal-read-clip", () => {
     // Test warp markers: t4/s0 has custom warp markers
     const warpResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 4, sceneIndex: 0, include: ["warp-markers"] },
+      arguments: { trackIndex: 4, sceneIndex: 0, include: ["warp"] },
     });
     const warpClip = parseToolResult<ReadClipResult>(warpResult);
 

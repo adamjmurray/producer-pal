@@ -327,7 +327,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyGain = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp-markers"] },
+      arguments: { clipId: audioClip.id, include: ["sample"] },
     });
     const gainClip = parseToolResult<ReadClipResult>(verifyGain);
 
@@ -343,7 +343,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyPitch = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp-markers"] },
+      arguments: { clipId: audioClip.id, include: ["sample"] },
     });
     const pitchClip = parseToolResult<ReadClipResult>(verifyPitch);
 
@@ -358,7 +358,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyWarpMode = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp-markers"] },
+      arguments: { clipId: audioClip.id, include: ["warp"] },
     });
     const warpModeClip = parseToolResult<ReadClipResult>(verifyWarpMode);
 
@@ -373,7 +373,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyWarpOff = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp-markers"] },
+      arguments: { clipId: audioClip.id, include: ["warp"] },
     });
     const warpOffClip = parseToolResult<ReadClipResult>(verifyWarpOff);
 
@@ -388,7 +388,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyWarpOn = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp-markers"] },
+      arguments: { clipId: audioClip.id, include: ["warp"] },
     });
     const warpOnClip = parseToolResult<ReadClipResult>(verifyWarpOn);
 
