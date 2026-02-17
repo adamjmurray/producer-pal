@@ -39,25 +39,9 @@ export function applyTransforms(
     return;
   }
 
-  // Parse the transform string once before processing notes
-  let ast;
+  const ast = tryParseTransform(transformString);
 
-  try {
-    ast = parser.parse(transformString);
-  } catch (error) {
-    if (error instanceof Error && error.name === "SyntaxError") {
-      const formatted = formatParserError(
-        error as PeggySyntaxError,
-        "transform",
-      );
-
-      console.warn(`Transform parse error: ${formatted}`);
-    } else {
-      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
-    }
-
-    return; // Early return - no point processing notes if parsing failed
-  }
+  if (!ast) return;
 
   // Check for audio parameters and warn
   const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
@@ -377,10 +361,24 @@ export function evaluateTransform(
     return {};
   }
 
-  let ast;
+  const ast = tryParseTransform(transformString);
 
+  if (!ast) return {};
+
+  return evaluateTransformAST(ast, noteContext, noteProperties);
+}
+
+/**
+ * Parse a transform string, returning the AST or null on failure.
+ * Logs a warning on parse errors.
+ * @param transformString - Transform expression string
+ * @returns Parsed AST or null if parsing failed
+ */
+function tryParseTransform(
+  transformString: string,
+): ReturnType<typeof parser.parse> | null {
   try {
-    ast = parser.parse(transformString);
+    return parser.parse(transformString);
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       const formatted = formatParserError(
@@ -393,8 +391,6 @@ export function evaluateTransform(
       console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
     }
 
-    return {};
+    return null;
   }
-
-  return evaluateTransformAST(ast, noteContext, noteProperties);
 }

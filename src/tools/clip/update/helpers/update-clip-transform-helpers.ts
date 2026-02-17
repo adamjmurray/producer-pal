@@ -11,6 +11,7 @@ import {
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 
 /**
  * Convert a raw note from the Live API to a NoteEvent for add_new_notes.
@@ -75,12 +76,7 @@ export function applyTransformsToExistingNotes(
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   clip.call("add_new_notes", { notes });
 
-  const lengthBeats = clip.getProperty("length") as number;
-  const actualNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  );
-
-  return actualNotesResult?.notes?.length ?? 0;
+  return getPlayableNoteCount(clip);
 }
 
 /**

@@ -8,6 +8,7 @@ import { type ClipContext } from "#src/notation/transform/transform-evaluator-he
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
@@ -243,16 +244,25 @@ function handleNoteUpdates(
     clip.call("add_new_notes", { notes });
   }
 
-  // Query actual note count within playback region
-  const lengthBeats = clip.getProperty("length") as number;
-  const actualNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  );
-
-  return actualNotesResult?.notes?.length ?? 0;
+  return getPlayableNoteCount(clip);
 }
 
-export interface ProcessSingleClipUpdateParams {
+export interface ClipAudioWarpQuantizeParams {
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
+  warping?: boolean;
+  warpOp?: string;
+  warpBeatTime?: number;
+  warpSampleTime?: number;
+  warpDistance?: number;
+  quantize?: number;
+  quantizeGrid?: string;
+  quantizeSwing?: number;
+  quantizePitch?: string;
+}
+
+export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizeParams {
   clip: LiveAPI;
   clipIndex: number;
   clipCount: number;
@@ -266,18 +276,6 @@ export interface ProcessSingleClipUpdateParams {
   length?: string;
   firstStart?: string;
   looping?: boolean;
-  gainDb?: number;
-  pitchShift?: number;
-  warpMode?: string;
-  warping?: boolean;
-  warpOp?: string;
-  warpBeatTime?: number;
-  warpSampleTime?: number;
-  warpDistance?: number;
-  quantize?: number;
-  quantizeGrid?: string;
-  quantizeSwing?: number;
-  quantizePitch?: string;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   context: Partial<ToolContext>;
