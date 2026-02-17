@@ -23,9 +23,12 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { processSingleClipUpdate } from "./helpers/update-clip-helpers.ts";
+import {
+  type ClipAudioWarpQuantizeParams,
+  processSingleClipUpdate,
+} from "./helpers/update-clip-helpers.ts";
 
-interface UpdateClipArgs {
+interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
   notes?: string;
   transforms?: string;
@@ -40,18 +43,6 @@ interface UpdateClipArgs {
   arrangementStart?: string;
   arrangementLength?: string;
   split?: string;
-  gainDb?: number;
-  pitchShift?: number;
-  warpMode?: string;
-  warping?: boolean;
-  warpOp?: string;
-  warpBeatTime?: number;
-  warpSampleTime?: number;
-  warpDistance?: number;
-  quantize?: number;
-  quantizeGrid?: string;
-  quantizeSwing?: number;
-  quantizePitch?: string;
   code?: string;
 }
 

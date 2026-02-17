@@ -207,7 +207,7 @@ export function mapThinkingToReasoningEffort(
  * @param {string} model - Model name for GPT-OSS detection
  * @returns {boolean | string | undefined} - false = disable, true/level = enable, undefined = default
  */
-function mapThinkingToOllamaThink(
+export function mapThinkingToOllamaThink(
   thinking: string,
   model: string,
 ): boolean | string | undefined {
