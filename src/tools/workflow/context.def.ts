@@ -7,7 +7,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefContext = defineTool("ppal-context", {
-  title: "Project Context",
+  title: "Context",
   description:
     "Read/write project memory or search configured sample folder for audio files",
 
