@@ -5,12 +5,12 @@
 
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -235,10 +235,13 @@ export function setupMidiClipMock(
 
     if (value !== undefined) {
       if (value instanceof MockSequence) {
-        const index = callCounts[prop] || 0;
+        const index = callCounts[prop] ?? 0;
+
         callCounts[prop] = index + 1;
+
         return [value[index]];
       }
+
       return [value];
     }
 
@@ -271,10 +274,13 @@ export function setupAudioClipMock(
 
     if (value !== undefined) {
       if (value instanceof MockSequence) {
-        const index = callCounts[prop] || 0;
+        const index = callCounts[prop] ?? 0;
+
         callCounts[prop] = index + 1;
+
         return [value[index]];
       }
+
       return [value];
     }
 
@@ -330,7 +336,8 @@ export function setupMockProperties(
 
     if (value !== undefined) {
       if (value instanceof MockSequence) {
-        const index = callCounts[prop] || 0;
+        const index = callCounts[prop] ?? 0;
+
         callCounts[prop] = index + 1;
 
         return [value[index]];

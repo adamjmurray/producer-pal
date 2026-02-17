@@ -225,10 +225,7 @@ export function setupRoutingMocks(
 
   const sourceTrack = registerMockObject("live_set/tracks/0", {
     path: livePath.track(0),
-    properties: mockData[String(livePath.track(0))] as Record<
-      string,
-      unknown
-    >,
+    properties: mockData[String(livePath.track(0))] as Record<string, unknown>,
   });
   const newTrack = registerMockObject("live_set/tracks/1", {
     path: livePath.track(1),
