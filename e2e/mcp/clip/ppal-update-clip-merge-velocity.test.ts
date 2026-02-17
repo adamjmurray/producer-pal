@@ -78,12 +78,13 @@ describe("ppal-update-clip velocity merge", () => {
     // Verify notes were actually merged and transformed
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { clipId: clip.id, include: ["clip-notes"] },
     });
     const finalClip = parseToolResult<ReadClipResult>(readResult);
 
-    // Original 8 Gb1 notes + new C1 note = 9 notes
-    expect(finalClip.noteCount).toBeGreaterThan(8);
+    // Original 8 Gb1 notes + new C1 note - should contain both pitches
+    expect(finalClip.notes).toContain("Gb1");
+    expect(finalClip.notes).toContain("C1");
   });
 
   it("handles velocity at exact MIDI upper bound (127)", async () => {

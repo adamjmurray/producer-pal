@@ -72,11 +72,11 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyNotes = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: notes.id },
+      arguments: { clipId: notes.id, include: ["clip-notes"] },
     });
     const notesClip = parseToolResult<ReadClipResult>(verifyNotes);
 
-    expect(notesClip.noteCount).toBe(3);
+    expect(notesClip.notes).toContain("C3");
 
     // Test 3: Create clip with name
     const namedResult = await ctx.client!.callTool({
@@ -136,7 +136,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyLength = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: lengthClip.id },
+      arguments: { clipId: lengthClip.id, include: ["timing"] },
     });
     const readLengthClip = parseToolResult<ReadClipResult>(verifyLength);
 
@@ -157,7 +157,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyLooping = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: loopingClip.id },
+      arguments: { clipId: loopingClip.id, include: ["timing"] },
     });
     const readLoopingClip = parseToolResult<ReadClipResult>(verifyLooping);
 
@@ -178,7 +178,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyTimeSig = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: timeSigClip.id },
+      arguments: { clipId: timeSigClip.id, include: ["timing"] },
     });
     const readTimeSigClip = parseToolResult<ReadClipResult>(verifyTimeSig);
 

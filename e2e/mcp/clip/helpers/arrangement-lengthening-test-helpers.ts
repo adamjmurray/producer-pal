@@ -34,7 +34,7 @@ export async function readClipsOnTrack(
     name: "ppal-read-track",
     arguments: {
       trackIndex,
-      include: ["arrangement-clips"],
+      include: ["arrangement-clips", "timing"],
     },
   });
 

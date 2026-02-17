@@ -179,16 +179,17 @@ describe("Behavioral splitting tests", () => {
 
     expect(splitClips.length).toBe(4);
 
-    let totalNotes = 0;
+    let clipsWithNotes = 0;
 
     for (const s of splitClips) {
       await sleep(50);
       const clip = await readClip(ctx.client!, s.id, ["clip-notes"]);
 
-      totalNotes += clip.noteCount ?? 0;
+      if (clip.notes) clipsWithNotes++;
     }
 
-    expect(totalNotes).toBeGreaterThanOrEqual(4);
+    // Each split segment should have at least 1 note (4 notes across 4 segments)
+    expect(clipsWithNotes).toBeGreaterThanOrEqual(4);
   });
 
   it("applies other updates along with splitting", async () => {

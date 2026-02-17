@@ -55,7 +55,6 @@ describe("ppal-code-exec", () => {
     });
     const readClip = parseToolResult<ReadClipResult>(readResult);
 
-    expect(readClip.noteCount).toBe(3);
     expect(readClip.notes).toBeDefined();
     expect(readClip.notes).toContain("C3");
     expect(readClip.notes).toContain("E3");
@@ -81,11 +80,11 @@ describe("ppal-code-exec", () => {
     // Verify initial state
     const initialRead = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { clipId: clip.id, include: ["clip-notes"] },
     });
     const initialClip = parseToolResult<ReadClipResult>(initialRead);
 
-    expect(initialClip.noteCount).toBe(3);
+    expect(initialClip.notes).toContain("C3");
 
     // Filter: remove notes with pitch < 62 (keeps D3=62 and E3=64, removes C3=60)
     const filterResult = await ctx.client!.callTool({
@@ -106,7 +105,6 @@ describe("ppal-code-exec", () => {
     });
     const filteredClip = parseToolResult<ReadClipResult>(afterFilter);
 
-    expect(filteredClip.noteCount).toBe(2);
     expect(filteredClip.notes).toContain("D3");
     expect(filteredClip.notes).toContain("E3");
     expect(filteredClip.notes).not.toContain("C3");
@@ -128,7 +126,6 @@ describe("ppal-code-exec", () => {
     });
     const transformedClip = parseToolResult<ReadClipResult>(afterTransform);
 
-    expect(transformedClip.noteCount).toBe(2);
     expect(transformedClip.notes).toContain("v127");
 
     // Clear: return empty array to delete all notes
@@ -144,11 +141,12 @@ describe("ppal-code-exec", () => {
 
     const afterClear = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { clipId: clip.id, include: ["clip-notes"] },
     });
     const clearedClip = parseToolResult<ReadClipResult>(afterClear);
 
-    expect(clearedClip.noteCount).toBe(0);
+    // After clearing, notes should be empty (no notes to format)
+    expect(clearedClip.notes).toBeUndefined();
   });
 
   it("handles code errors gracefully: syntax, exceptions, and bad return types", async () => {
@@ -199,11 +197,11 @@ describe("ppal-code-exec", () => {
       // Clip should have 0 notes (code failed, no notes applied)
       const readResult = await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: clip.id },
+        arguments: { clipId: clip.id, include: ["clip-notes"] },
       });
       const readClip = parseToolResult<ReadClipResult>(readResult);
 
-      expect(readClip.noteCount, `${label}: should have 0 notes`).toBe(0);
+      expect(readClip.notes, `${label}: should have no notes`).toBeUndefined();
     }
   });
 
@@ -274,7 +272,6 @@ describe("ppal-code-exec", () => {
     const mixed = parseToolResult<ReadClipResult>(readMixed);
 
     // Only the 2 valid notes should survive (pitch 60 and pitch 72)
-    expect(mixed.noteCount).toBe(2);
     expect(mixed.notes).toContain("C3");
     expect(mixed.notes).toContain("C4");
 
@@ -305,7 +302,6 @@ describe("ppal-code-exec", () => {
     });
     const clamped = parseToolResult<ReadClipResult>(readClamped);
 
-    expect(clamped.noteCount).toBe(4);
     // Pitch -10 → 0 = C-2, Pitch 200 → 127 = G8
     expect(clamped.notes).toContain("C-2");
     expect(clamped.notes).toContain("G8");

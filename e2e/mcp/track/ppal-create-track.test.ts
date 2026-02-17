@@ -145,7 +145,7 @@ describe("ppal-create-track", () => {
     // Get initial track count
     const initialResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const initial = parseToolResult<LiveSetResult>(initialResult);
     const initialTrackCount = initial.tracks?.length ?? 0;
@@ -190,7 +190,7 @@ describe("ppal-create-track", () => {
     // Verify track count increased
     const finalResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalTrackCount = final.tracks?.length ?? 0;

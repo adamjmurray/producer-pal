@@ -24,7 +24,7 @@ describe("ppal-duplicate", () => {
   it("duplicates a single track", async () => {
     const readTracksResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const liveSet = parseToolResult<ReadLiveSetResult>(readTracksResult);
     const initialTrackCount = liveSet.tracks.length;
@@ -47,7 +47,7 @@ describe("ppal-duplicate", () => {
     // Verify track count increased
     const afterDupResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const afterDup = parseToolResult<ReadLiveSetResult>(afterDupResult);
 
@@ -58,7 +58,7 @@ describe("ppal-duplicate", () => {
     // Setup: Get current tracks
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const liveSet = parseToolResult<ReadLiveSetResult>(readResult);
     const firstTrackId = liveSet.tracks[0]!.id;
@@ -84,7 +84,7 @@ describe("ppal-duplicate", () => {
     // Test 2: Track duplication with name and withoutClips
     const readAgainResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["regular-tracks"] },
     });
     const readAgain = parseToolResult<ReadLiveSetResult>(readAgainResult);
 

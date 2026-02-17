@@ -27,7 +27,11 @@ describe("ppal-read-clip", () => {
     // Test 1: Read MIDI clip by position (t0/s0 "Beat" - looping drum pattern)
     const midiResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 0, sceneIndex: 0 },
+      arguments: {
+        trackIndex: 0,
+        sceneIndex: 0,
+        include: ["timing", "clip-notes"],
+      },
     });
     const midiClip = parseToolResult<ReadClipResult>(midiResult);
 
@@ -39,7 +43,7 @@ describe("ppal-read-clip", () => {
     expect(midiClip.length).toBe("1:0");
     expect(midiClip.trackIndex).toBe(0);
     expect(midiClip.sceneIndex).toBe(0);
-    expect(midiClip.noteCount).toBeGreaterThan(0);
+    expect(midiClip.notes).toBeDefined();
 
     // Test 2: Read clip by clipId
     const byIdResult = await ctx.client!.callTool({
@@ -54,7 +58,7 @@ describe("ppal-read-clip", () => {
     // Test 3: Read non-looping MIDI clip (t2/s0 "Chords")
     const nonLoopingResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 2, sceneIndex: 0 },
+      arguments: { trackIndex: 2, sceneIndex: 0, include: ["timing"] },
     });
     const nonLoopingClip = parseToolResult<ReadClipResult>(nonLoopingResult);
 
@@ -86,7 +90,11 @@ describe("ppal-read-clip", () => {
     // Test 1: Read warped audio clip (t4/s0 "sample" - warped, looping)
     const warpedResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 4, sceneIndex: 0 },
+      arguments: {
+        trackIndex: 4,
+        sceneIndex: 0,
+        include: ["timing", "warp"],
+      },
     });
     const warpedClip = parseToolResult<ReadClipResult>(warpedResult);
 
@@ -99,7 +107,11 @@ describe("ppal-read-clip", () => {
     // Test 2: Read unwarped, pitch-shifted audio clip (t5/s0 "sample copy")
     const unwarpedResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 5, sceneIndex: 0 },
+      arguments: {
+        trackIndex: 5,
+        sceneIndex: 0,
+        include: ["timing", "sample", "warp"],
+      },
     });
     const unwarpedClip = parseToolResult<ReadClipResult>(unwarpedResult);
 
@@ -126,7 +138,7 @@ describe("ppal-read-clip", () => {
     const arrClipId = track.arrangementClips![0]!.id;
     const arrResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: arrClipId },
+      arguments: { clipId: arrClipId, include: ["timing"] },
     });
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
@@ -139,7 +151,7 @@ describe("ppal-read-clip", () => {
     // Test offset loop: t3/s1 has start=2|1, loopStart=1|1
     const offsetResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 3, sceneIndex: 1 },
+      arguments: { trackIndex: 3, sceneIndex: 1, include: ["timing"] },
     });
     const offsetClip = parseToolResult<ReadClipResult>(offsetResult);
 
@@ -150,7 +162,11 @@ describe("ppal-read-clip", () => {
     // Test warp markers: t4/s0 has custom warp markers
     const warpResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 4, sceneIndex: 0, include: ["warp"] },
+      arguments: {
+        trackIndex: 4,
+        sceneIndex: 0,
+        include: ["warp", "timing"],
+      },
     });
     const warpClip = parseToolResult<ReadClipResult>(warpResult);
 

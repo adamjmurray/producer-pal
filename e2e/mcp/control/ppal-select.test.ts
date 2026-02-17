@@ -56,7 +56,7 @@ describe("ppal-select", () => {
     });
     const regularTrack = parseToolResult<ViewState>(regularTrackResult);
 
-    expect(regularTrack.selectedTrack.category).toBe("regular");
+    expect(regularTrack.selectedTrack.type).toBe("midi");
     expect(regularTrack.selectedTrack.trackIndex).toBe(0);
     expect(regularTrack.selectedTrack.trackId).toBeDefined();
 
@@ -67,7 +67,7 @@ describe("ppal-select", () => {
     });
     const returnTrack = parseToolResult<ViewState>(returnTrackResult);
 
-    expect(returnTrack.selectedTrack.category).toBe("return");
+    expect(returnTrack.selectedTrack.type).toBe("return");
     expect(returnTrack.selectedTrack.returnTrackIndex).toBe(0);
 
     // Test 6: Select master track
@@ -77,7 +77,7 @@ describe("ppal-select", () => {
     });
     const master = parseToolResult<ViewState>(masterResult);
 
-    expect(master.selectedTrack.category).toBe("master");
+    expect(master.selectedTrack.type).toBe("master");
 
     // Test 7: Select scene by index
     const sceneResult = await ctx.client!.callTool({
@@ -188,7 +188,7 @@ interface ViewState {
   showBrowser: boolean;
   selectedTrack: {
     trackId: string | null;
-    category: "regular" | "return" | "master" | null;
+    type: "midi" | "audio" | "return" | "master" | null;
     trackIndex?: number | null;
     returnTrackIndex?: number | null;
   };
