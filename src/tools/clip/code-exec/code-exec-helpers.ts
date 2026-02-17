@@ -121,20 +121,8 @@ export function codeNoteToNoteEvent(note: CodeNote): NoteEvent {
   };
 }
 
-/**
- * Get the note count within the playable region of a clip.
- *
- * @param clip - LiveAPI clip object
- * @returns Number of notes in the playable region
- */
-export function getClipNoteCount(clip: LiveAPI): number {
-  const lengthBeats = clip.getProperty("length") as number;
-  const notesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  );
-
-  return notesResult?.notes?.length ?? 0;
-}
+/** @see getPlayableNoteCount - re-exported for code-exec API compatibility */
+export { getPlayableNoteCount as getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 
 /**
  * Validate a raw sandbox result as a notes array.

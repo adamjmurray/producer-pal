@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   type ReasoningEffort,
@@ -26,37 +27,6 @@ export interface EffectiveSettings {
   reasoningEffort: ReasoningEffort | undefined;
   excludeReasoning: boolean | undefined;
   ollamaThink: boolean | string | undefined;
-}
-
-/**
- * Maps a thinking UI value to Ollama's think parameter.
- * GPT-OSS models expect "low"/"medium"/"high" level strings for trace length.
- * Other models accept boolean true/false.
- * @param {string} thinking - Thinking mode setting from UI
- * @param {string} model - Model name for GPT-OSS detection
- * @returns {boolean | string | undefined} - false = disable, true/level = enable, undefined = default
- */
-function mapThinkingToOllamaThink(
-  thinking: string,
-  model: string,
-): boolean | string | undefined {
-  if (thinking === "Off") return false;
-  if (thinking === "Default") return undefined;
-
-  const gptOss = model.includes("gpt-oss");
-
-  switch (thinking) {
-    case "Minimal":
-    case "Low":
-      return gptOss ? "low" : true;
-    case "Medium":
-      return gptOss ? "medium" : true;
-    case "High":
-    case "Ultra":
-      return gptOss ? "high" : true;
-    default:
-      return undefined;
-  }
 }
 
 /**
