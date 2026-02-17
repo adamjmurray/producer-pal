@@ -150,6 +150,7 @@ describe("readLiveSet - basic reading", () => {
           firedSlotIndex: 3,
           sessionClipCount: 2,
           arrangementClipCount: 0,
+          deviceCount: 0,
         },
         {
           id: "track2",
@@ -164,6 +165,7 @@ describe("readLiveSet - basic reading", () => {
           firedSlotIndex: 3,
           sessionClipCount: 1,
           arrangementClipCount: 0,
+          deviceCount: 0,
         },
         (() => {
           const { color: _color, ...track } = expectedTrack({

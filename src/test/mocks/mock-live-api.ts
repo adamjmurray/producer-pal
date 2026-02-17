@@ -199,6 +199,7 @@ interface TrackOverrides {
   firedSlotIndex?: number;
   arrangementClipCount?: number;
   sessionClipCount?: number;
+  deviceCount?: number;
   [key: string]: unknown;
 }
 
@@ -215,6 +216,7 @@ export const expectedTrack = (
   firedSlotIndex: 3,
   arrangementClipCount: 0,
   sessionClipCount: 0,
+  deviceCount: 0,
   ...overrides,
 });
 

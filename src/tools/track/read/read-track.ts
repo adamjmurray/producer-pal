@@ -289,10 +289,14 @@ export function readTrackGeneric({
 
       addDrumMapFromDevices(result, categorized);
     }
-  } else if (includeDrumMaps) {
-    const categorized = categorizeDevices(trackDevices, false, true, false);
+  } else {
+    result.deviceCount = trackDevices.length;
 
-    addDrumMapFromDevices(result, categorized);
+    if (includeDrumMaps) {
+      const categorized = categorizeDevices(trackDevices, false, true, false);
+
+      addDrumMapFromDevices(result, categorized);
+    }
   }
 
   addSlotIndices(result, track, category);

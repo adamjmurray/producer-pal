@@ -49,6 +49,7 @@ describe("readTrack", () => {
         category: "regular",
         sessionClipCount: 0,
         arrangementClipCount: 0,
+        deviceCount: 0,
         isArmed: true,
       });
     });
@@ -75,6 +76,7 @@ describe("readTrack", () => {
         category: "return",
         sessionClipCount: 0,
         arrangementClipCount: 0,
+        deviceCount: 0,
       });
     });
 
@@ -99,6 +101,7 @@ describe("readTrack", () => {
         category: "master",
         sessionClipCount: 0,
         arrangementClipCount: 0,
+        deviceCount: 0,
       });
     });
 

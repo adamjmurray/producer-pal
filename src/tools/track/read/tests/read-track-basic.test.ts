@@ -103,6 +103,7 @@ describe("readTrack", () => {
       category: "regular",
       sessionClipCount: 0,
       arrangementClipCount: 0,
+      deviceCount: 0,
       state: "soloed",
       isArmed: true,
       playingSlotIndex: 2,
@@ -140,6 +141,7 @@ describe("readTrack", () => {
       category: "regular",
       sessionClipCount: 0,
       arrangementClipCount: 0,
+      deviceCount: 0,
       state: "muted",
     });
   });
@@ -167,6 +169,7 @@ describe("readTrack", () => {
       category: "regular",
       sessionClipCount: 0,
       arrangementClipCount: 0,
+      deviceCount: 0,
       state: "soloed",
       isGroup: true,
       isGroupMember: true,
@@ -252,6 +255,7 @@ describe("readTrack", () => {
         },
       ].map(({ color: _color, ...clip }) => clip),
       arrangementClipCount: 0,
+      deviceCount: 0,
       playingSlotIndex: 0,
     });
   });

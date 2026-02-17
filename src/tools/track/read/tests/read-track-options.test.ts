@@ -211,6 +211,7 @@ describe("readTrack", () => {
           returnTrackIndex: 1,
           sessionClipCount: 0,
           arrangementClipCount: 0,
+          deviceCount: 0,
         });
       });
 
@@ -299,6 +300,7 @@ describe("readTrack", () => {
           category: "master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
+          deviceCount: 1,
         });
 
         // trackIndex should be ignored for master track
@@ -416,6 +418,7 @@ describe("readTrack", () => {
           category: "master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
+          deviceCount: 0,
         });
       });
     });

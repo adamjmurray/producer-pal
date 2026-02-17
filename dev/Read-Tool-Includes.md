@@ -86,7 +86,7 @@ Returns the Live Set overview. Use includes to expand track/scene detail.
 ### Includes
 
 - `regular-tracks` — replaces `regularTrackCount` with track list (read-track
-  default format: id, name, type, instrument name, clip counts)
+  default format: id, name, type, instrument name, clip/device counts)
 - `return-tracks` — replaces `returnTrackCount` with return track list
 - `master-track` — adds master track info
 - `all-tracks` — shortcut for regular + return + master
@@ -118,6 +118,7 @@ Returns track overview by default. Use `include` to add detail.
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
 | `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
 | `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |
+| `deviceCount`          | `number` | Number of devices (replaced by array when included)           |
 
 ### Include: `"session-clips"`, `"arrangement-clips"`
 
