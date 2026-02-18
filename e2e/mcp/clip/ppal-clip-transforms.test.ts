@@ -67,7 +67,7 @@ async function readClipGain(clipId: string): Promise<number> {
   });
   const clip = parseToolResult<ReadClipResult>(result);
 
-  return clip.gainDb!;
+  return clip.gainDb ?? 0;
 }
 
 /** Reads clip and returns pitchShift value. */
