@@ -84,7 +84,7 @@ describe("ppal-connect", () => {
 
     // Basic features are still present
     expect(parsed.skills).toContain("bar|beat");
-    expect(parsed.skills).toContain("Melodies");
+    expect(parsed.skills).toContain("Melody");
   });
 
   describe("memory contents", () => {
