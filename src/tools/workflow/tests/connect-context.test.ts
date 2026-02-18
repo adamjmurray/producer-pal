@@ -67,8 +67,8 @@ describe("connect", () => {
 
     const result = connect();
 
-    expect(result.$skills).toContain("Producer Pal Skills");
-    expect(result.$skills).toContain("## Techniques");
+    expect(result.skills).toContain("Producer Pal Skills");
+    expect(result.skills).toContain("## Techniques");
   });
 
   it("returns basic skills when smallModelMode is enabled", () => {
@@ -77,8 +77,8 @@ describe("connect", () => {
 
     const result = connect({}, { smallModelMode: true });
 
-    expect(result.$skills).toContain("Producer Pal Skills");
-    expect(result.$skills).not.toContain("## Techniques");
+    expect(result.skills).toContain("Producer Pal Skills");
+    expect(result.skills).not.toContain("## Techniques");
   });
 
   it("standard skills include advanced features that basic skills omit", () => {
@@ -89,19 +89,19 @@ describe("connect", () => {
     const basicResult = connect({}, { smallModelMode: true });
 
     // Standard includes advanced features
-    expect(standardResult.$skills).toContain("@N="); // bar copying
-    expect(standardResult.$skills).toContain("v0 C3 1|1"); // v0 deletion
-    expect(standardResult.$skills).toContain("## Techniques");
-    expect(standardResult.$skills).toContain("**Creating Music:**");
-    expect(standardResult.$skills).toContain("velocity dynamics");
-    expect(standardResult.$skills).toContain("routeToSource");
+    expect(standardResult.skills).toContain("@N="); // bar copying
+    expect(standardResult.skills).toContain("v0 C3 1|1"); // v0 deletion
+    expect(standardResult.skills).toContain("## Techniques");
+    expect(standardResult.skills).toContain("**Creating Music:**");
+    expect(standardResult.skills).toContain("velocity dynamics");
+    expect(standardResult.skills).toContain("routeToSource");
 
     // Basic omits advanced features
-    expect(basicResult.$skills).not.toContain("@N=");
-    expect(basicResult.$skills).not.toContain("v0 C3 1|1");
-    expect(basicResult.$skills).not.toContain("## Techniques");
-    expect(basicResult.$skills).not.toContain("**Creating Music:**");
-    expect(basicResult.$skills).not.toContain("velocity dynamics");
-    expect(basicResult.$skills).not.toContain("routeToSource");
+    expect(basicResult.skills).not.toContain("@N=");
+    expect(basicResult.skills).not.toContain("v0 C3 1|1");
+    expect(basicResult.skills).not.toContain("## Techniques");
+    expect(basicResult.skills).not.toContain("**Creating Music:**");
+    expect(basicResult.skills).not.toContain("velocity dynamics");
+    expect(basicResult.skills).not.toContain("routeToSource");
   });
 });

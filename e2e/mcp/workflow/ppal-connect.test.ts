@@ -51,15 +51,15 @@ describe("ppal-connect", () => {
     ).toBe(true);
 
     // Skills documentation - standard mode has full skills (~7.6K chars)
-    expect(parsed.$skills).toBeDefined();
-    expect(parsed.$skills).toContain("Producer Pal Skills");
-    expect(parsed.$skills!.length).toBeGreaterThan(5000);
+    expect(parsed.skills).toBeDefined();
+    expect(parsed.skills).toContain("Producer Pal Skills");
+    expect(parsed.skills!.length).toBeGreaterThan(5000);
 
     // Standard mode includes advanced features
-    expect(parsed.$skills).toContain("x{times}"); // Repeat patterns
-    expect(parsed.$skills).toMatch(/v0[^-]/); // v0 deletion (not v0-127 range)
-    expect(parsed.$skills).toMatch(/p0\./); // Probability with decimal
-    expect(parsed.$skills).toContain("/d0"); // Device paths
+    expect(parsed.skills).toContain("x{times}"); // Repeat patterns
+    expect(parsed.skills).toMatch(/v0[^-]/); // v0 deletion (not v0-127 range)
+    expect(parsed.skills).toMatch(/p0\./); // Probability with decimal
+    expect(parsed.skills).toContain("/d0"); // Device paths
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -72,19 +72,19 @@ describe("ppal-connect", () => {
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
 
     // Skills documentation - small model mode has simplified skills (~1.6K chars)
-    expect(parsed.$skills).toBeDefined();
-    expect(parsed.$skills).toContain("Producer Pal Skills");
-    expect(parsed.$skills!.length).toBeLessThan(2000);
+    expect(parsed.skills).toBeDefined();
+    expect(parsed.skills).toContain("Producer Pal Skills");
+    expect(parsed.skills!.length).toBeLessThan(2000);
 
     // Small model mode excludes advanced features
-    expect(parsed.$skills).not.toContain("x{times}"); // No repeat patterns
-    expect(parsed.$skills).not.toMatch(/v0[^-]/); // No v0 deletion
-    expect(parsed.$skills).not.toMatch(/p0\./); // No probability
-    expect(parsed.$skills).not.toContain("/d0"); // No device paths
+    expect(parsed.skills).not.toContain("x{times}"); // No repeat patterns
+    expect(parsed.skills).not.toMatch(/v0[^-]/); // No v0 deletion
+    expect(parsed.skills).not.toMatch(/p0\./); // No probability
+    expect(parsed.skills).not.toContain("/d0"); // No device paths
 
     // Basic features are still present
-    expect(parsed.$skills).toContain("bar|beat");
-    expect(parsed.$skills).toContain("Melodies");
+    expect(parsed.skills).toContain("bar|beat");
+    expect(parsed.skills).toContain("Melodies");
   });
 
   describe("memory contents", () => {
@@ -139,6 +139,6 @@ interface ConnectResult {
     scale?: string;
     scalePitches?: string;
   };
-  $skills?: string;
+  skills?: string;
   memoryContent?: string;
 }

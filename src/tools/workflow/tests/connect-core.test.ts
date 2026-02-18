@@ -269,7 +269,7 @@ describe("connect", () => {
         returnTrackCount: 0,
         isPlaying: true,
       },
-      $skills: expect.stringContaining("Producer Pal Skills"),
+      skills: expect.stringContaining("Producer Pal Skills"),
     });
   });
 

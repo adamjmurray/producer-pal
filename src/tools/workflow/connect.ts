@@ -27,7 +27,7 @@ interface ConnectResult {
   producerPalVersion: string;
   abletonLiveVersion: string;
   liveSet: LiveSetInfo;
-  $skills?: string;
+  skills?: string;
   memoryContent?: string;
 }
 
@@ -91,11 +91,10 @@ export function connect(
     producerPalVersion: VERSION,
     abletonLiveVersion,
     liveSet: liveSetInfo,
+    skills: context.smallModelMode ? basicSkills : skills,
   };
 
-  result.$skills = context.smallModelMode ? basicSkills : skills;
-
-  // Include project notes if enabled
+  // Include memory content if enabled
   if (context.memory?.enabled && context.memory.content) {
     result.memoryContent = context.memory.content;
   }
