@@ -58,12 +58,13 @@ Create MIDI clips using the bar|beat notation syntax:
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
-- Notes: C0-B8 with # or b (C3 = middle C)
+- Notes: C0-G8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies frozen note parameters, not current v/t/p state
+- **update-clip** \`noteUpdateMode\`: "merge" (default, overlay + v0 deletes) or "replace" (clear all existing notes first)
 
 ## Audio Clips
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
@@ -74,30 +75,26 @@ Audio params ignored when updating MIDI clips.
 \`\`\`
 C3 E3 G3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
-C1 1|1x4@1 // kick on every beat (explicit step)
-v100 C3 1|1 D3 1|2.5 // C at beat 1, D at beat 2.5 (pitch persistence)
+C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
 t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
-t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern
-v60-80 Gb1 1|1.5,2.5,3.5,4.5 // natural hi-hat feel
 p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
-p1.0 D1 1|2,4 // back to 100% - snare always plays
 \`\`\`
 
 ## Techniques
 
-Group by instrument per bar (pitch persistence). Complete bars before copying. Use beat lists for irregular patterns.
+Complete bars before copying. Use beat lists for irregular patterns.
 
 \`\`\`
 C1 1|1,3 D1 1|2,4 // bar 1
 @2-3=1            // bar 1 -> 2,3
 C1 4|1,3.5 D1 4|4 // bar 4
-@5-7=1           // bar 1 -> 5,6,7
-@8=4             // bar 4 -> 8
+@5-7=1            // bar 1 -> 5,6,7
+@8=4              // bar 4 -> 8
 \`\`\`
 
 ### Repeats with Variations
@@ -105,32 +102,12 @@ C1 4|1,3.5 D1 4|4 // bar 4
 Copy foundation to **all bars** (including variation bars), then modify:
 
 \`\`\`
-C1 1|1,3 D1 1|2,4              // bar 1 foundation
+C1 1|1,3 D1 1|2,4       // bar 1 foundation
 Gb1 1|1.5,2.5,3.5,4.5
-@2-16=1                        // copy to ALL bars, not just 2-8
-v0 Gb1 9|4.5 v100              // remove hat from bar 9
-C1 9|3.5                       // add extra kick to bar 9
-v0 C1 13|3 v100 D1 13|3        // replace kick with snare in bar 13
-\`\`\`
-
-### Multi-bar phrases
-
-Use cross-bar beat lists then tile the range:
-
-\`\`\`
-// 2-bar syncopated phrase
-C1 1|1,3.5,5,7.5,8 // kick pattern across bars 1-2
-D1 1|4,6           // snare accents across bars 1-2
-@3-8=1-2           // tile 2-bar phrase across bars 3-8 (3 complete tiles)
-\`\`\`
-
-### v0 Deletion State Machine
-
-v0 enters deletion mode - removes notes at same pitch until non-zero velocity:
-
-\`\`\`
-v100 C3 1|1 C3 2|1 v0 C3 1|1 C3 2|1 // deletes BOTH (still in deletion mode)
-v80 C3 3|1                           // v80 exits deletion, this C3 kept
+@2-16=1                 // copy to ALL bars, not just 2-8
+v0 Gb1 9|4.5 v100       // remove hat from bar 9
+C1 9|3.5                // add extra kick to bar 9
+v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 \`\`\`
 
 ### Transforms
@@ -186,15 +163,13 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
   - Session clips override Arrangement; use "play-arrangement" for arrangement playback
 
 **Creating Music:**
-- Check for instruments before creating MIDI clips
-- Clip length sets playback region
+- For drum tracks, read the track with \`drum-maps\` include for correct pitches - don't assume General MIDI
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
-- Keep fills rhythmic with space - accent key hits, avoid machine-gun density
-- Keep scenes' harmonic rhythm in sync across tracks
-- Beats beyond time signature wrap to next bar (in 4/4: 1|5 = 2|1). Be explicit crossing bars: \`C1 1|1 2|1\` not \`C1 1|1,5\`
-- Bass needs monophonic lines, one note at a time
+- Keep harmonic rhythm in sync across tracks
 
 **Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
+
+**Locators:** Use ppal-update-live-set to create/rename/delete locators at bar|beat positions. Use locator names with ppal-playback to start or loop from named positions.
 
 ### Device Paths
 
@@ -210,4 +185,5 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 ### Arrangement Clips
 
 \`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
+\`split\` divides a clip at bar|beat positions (arrangement only).
 `;

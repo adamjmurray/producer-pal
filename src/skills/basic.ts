@@ -7,12 +7,11 @@ export const skills = `# Producer Pal Skills
 ## Time in Ableton Live
 
 - **Positions**: bar|beat (1-indexed). Examples: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5
-- **Durations**: beats (4, 2.5, 3/4) or bar:beat (4:0 = 4 bars)
+- **Durations**: beats (4, 2.5) or bar:beat (4:0 = 4 bars)
 
 ## MIDI Notation
 
-Pitches: C3, C#3, Db3, F#2, Bb4 (range: C0-B8, middle C = C3)
-Format: pitch(es) bar|beat
+Pitches: C0-G8 with # or b (C3 = middle C). Format: pitch(es) bar|beat
 
 ## Examples
 
@@ -24,9 +23,8 @@ E3 1|3
 F3 1|4
 \`\`\`
 
-### Sustained Chord Progressions (4/4 time)
-Set duration with t (t4 = 4 beats, t2.5 = 2.5 beats).
-Use t4 for full-bar chords in 4/4 (t3 in 3/4, t6 in 6/8):
+### Sustained Chord Progressions
+Set duration with t (t4 = 4 beats):
 \`\`\`
 t4
 C3 E3 G3 1|1
