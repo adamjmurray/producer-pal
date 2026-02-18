@@ -196,7 +196,7 @@ describe("readTrack", () => {
       const result = readTrack({
         trackIndex: 0,
         include: [
-          "clip-notes",
+          "notes",
           "devices",
           "session-clips",
           "arrangement-clips",

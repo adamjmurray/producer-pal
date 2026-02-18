@@ -4,7 +4,7 @@
 
 // String constants for include options
 const DRUM_MAPS = "drum-maps";
-const CLIP_NOTES = "clip-notes";
+const CLIP_NOTES = "notes";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";

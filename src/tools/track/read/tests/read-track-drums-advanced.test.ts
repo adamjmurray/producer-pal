@@ -242,12 +242,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: [
-          "clip-notes",
-          "devices",
-          "session-clips",
-          "arrangement-clips",
-        ],
+        include: ["notes", "devices", "session-clips", "arrangement-clips"],
       });
 
       // Verify the track was read successfully
@@ -347,7 +342,7 @@ describe("readTrack", () => {
       const result = readTrack({
         trackIndex: 0,
         include: [
-          "clip-notes",
+          "notes",
           "devices",
           "session-clips",
           "arrangement-clips",

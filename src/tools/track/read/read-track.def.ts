@@ -37,7 +37,7 @@ Returns overview by default. Use include to add detail.`,
         z.enum([
           "session-clips",
           "arrangement-clips",
-          "clip-notes",
+          "notes",
           "timing",
           "sample",
           "devices",
@@ -51,7 +51,7 @@ Returns overview by default. Use include to add detail.`,
       )
       .default([])
       .describe(
-        'data: clips (session/arrangement), clip-notes, timing, sample, devices, drum-maps, routings, available-routings, mixer, color, "*" for all',
+        'data: clips (session/arrangement), notes, timing, sample, devices, drum-maps, routings, available-routings, mixer, color, "*" for all',
       ),
   },
 });

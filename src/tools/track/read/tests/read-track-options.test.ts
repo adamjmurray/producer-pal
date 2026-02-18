@@ -111,7 +111,7 @@ describe("readTrack", () => {
         include: [
           "session-clips",
           "arrangement-clips",
-          "clip-notes",
+          "notes",
           "timing",
           "sample",
           "devices",

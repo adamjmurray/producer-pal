@@ -31,7 +31,7 @@ The `include` parameter's `.describe()` lists available options as a compact
 comma-separated list, ending with `"*" for all`. Example:
 
 ```
-'data: sample, timing, clip-notes, color, warp, "*" for all'
+'data: sample, timing, notes, color, warp, "*" for all'
 ```
 
 ### Wildcard `"*"`
@@ -150,7 +150,7 @@ clip is read via `readClip()`. Nested clips have `trackIndex`, `view`, and
 - `devices` — flat device list in track signal-chain order
 - `drum-maps` — pitch-to-name mappings for drum racks
 - `routings`, `available-routings` — routing info
-- `clip-notes`, `sample`, `timing`, `color` — propagated to nested clip reads
+- `notes`, `sample`, `timing`, `color` — propagated to nested clip reads
 
 ### Include: `"mixer"`
 
@@ -196,7 +196,7 @@ scene. Each clip is read via `readClip()`. Nested clips have `sceneIndex` and
 | ------- | -------- | ----------------------------------------- |
 | `clips` | `Clip[]` | Non-empty clips across all regular tracks |
 
-### Include: `"clip-notes"`, `"sample"`, `"timing"`, `"color"`
+### Include: `"notes"`, `"sample"`, `"timing"`, `"color"`
 
 Propagated to `readClip()` for each clip in the scene. See ppal-read-clip
 section for details on these includes.
@@ -244,7 +244,7 @@ When looping is enabled, `start`/`end` reflect loop bounds. When disabled, they
 reflect the start/end markers. `firstStart` appears only when the start marker
 differs from the active start (e.g., loop start has been moved).
 
-### Include: `"clip-notes"`
+### Include: `"notes"`
 
 Adds formatted MIDI notes for MIDI clips. No effect on audio clips.
 
@@ -308,7 +308,7 @@ Result:
 **Read MIDI clip with notes and timing:**
 
 ```json
-{ "trackIndex": 0, "sceneIndex": 0, "include": ["timing", "clip-notes"] }
+{ "trackIndex": 0, "sceneIndex": 0, "include": ["timing", "notes"] }
 ```
 
 Result:

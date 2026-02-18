@@ -175,7 +175,7 @@ describe("readScene", () => {
 
     const result = readScene({
       sceneIndex: 0,
-      include: ["clips", "clip-notes"],
+      include: ["clips", "notes"],
     });
 
     expect(result).toStrictEqual({
@@ -229,7 +229,7 @@ describe("readScene", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readScene({
       sceneIndex: 0,
-      include: ["clips", "clip-notes", "sample", "color", "timing", "warp"],
+      include: ["clips", "notes", "sample", "color", "timing", "warp"],
     });
 
     // Results should be identical
@@ -293,7 +293,7 @@ describe("readScene", () => {
 
       const result = readScene({
         sceneId: "456",
-        include: ["clips", "clip-notes"],
+        include: ["clips", "notes"],
       });
 
       expect(result).toStrictEqual({

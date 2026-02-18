@@ -39,7 +39,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 1,
       sceneIndex: 1,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     expectGetNotesExtendedCall(clip);
@@ -76,7 +76,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 1,
       sceneIndex: 1,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     expectGetNotesExtendedCall(clip);
@@ -117,7 +117,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     expectGetNotesExtendedCall(clip);
@@ -153,7 +153,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     expectGetNotesExtendedCall(clip, 3);

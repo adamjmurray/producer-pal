@@ -51,7 +51,7 @@ describe("ppal-code-exec", () => {
 
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const readClip = parseToolResult<ReadClipResult>(readResult);
 
@@ -80,7 +80,7 @@ describe("ppal-code-exec", () => {
     // Verify initial state
     const initialRead = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const initialClip = parseToolResult<ReadClipResult>(initialRead);
 
@@ -101,7 +101,7 @@ describe("ppal-code-exec", () => {
 
     const afterFilter = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const filteredClip = parseToolResult<ReadClipResult>(afterFilter);
 
@@ -122,7 +122,7 @@ describe("ppal-code-exec", () => {
 
     const afterTransform = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const transformedClip = parseToolResult<ReadClipResult>(afterTransform);
 
@@ -141,7 +141,7 @@ describe("ppal-code-exec", () => {
 
     const afterClear = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const clearedClip = parseToolResult<ReadClipResult>(afterClear);
 
@@ -197,7 +197,7 @@ describe("ppal-code-exec", () => {
       // Clip should have 0 notes (code failed, no notes applied)
       const readResult = await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["clip-notes"] },
+        arguments: { clipId: clip.id, include: ["notes"] },
       });
       const readClip = parseToolResult<ReadClipResult>(readResult);
 
@@ -267,7 +267,7 @@ describe("ppal-code-exec", () => {
 
     const readMixed = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: mixedClip.id, include: ["clip-notes"] },
+      arguments: { clipId: mixedClip.id, include: ["notes"] },
     });
     const mixed = parseToolResult<ReadClipResult>(readMixed);
 
@@ -298,7 +298,7 @@ describe("ppal-code-exec", () => {
 
     const readClamped = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clampClip.id, include: ["clip-notes"] },
+      arguments: { clipId: clampClip.id, include: ["notes"] },
     });
     const clamped = parseToolResult<ReadClipResult>(readClamped);
 

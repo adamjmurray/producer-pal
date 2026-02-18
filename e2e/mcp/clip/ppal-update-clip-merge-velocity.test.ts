@@ -78,7 +78,7 @@ describe("ppal-update-clip velocity merge", () => {
     // Verify notes were actually merged and transformed
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const finalClip = parseToolResult<ReadClipResult>(readResult);
 

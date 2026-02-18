@@ -63,7 +63,7 @@ export async function readClipNotes(
 
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["clip-notes"] },
+    arguments: { clipId, include: ["notes"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 

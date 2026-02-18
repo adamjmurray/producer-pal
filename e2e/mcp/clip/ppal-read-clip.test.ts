@@ -30,7 +30,7 @@ describe("ppal-read-clip", () => {
       arguments: {
         trackIndex: 0,
         sceneIndex: 0,
-        include: ["timing", "clip-notes"],
+        include: ["timing", "notes"],
       },
     });
     const midiClip = parseToolResult<ReadClipResult>(midiResult);
@@ -65,10 +65,10 @@ describe("ppal-read-clip", () => {
     expect(nonLoopingClip.name).toBe("Chords");
     expect(nonLoopingClip.looping).toBe(false);
 
-    // Test 4: Read with include: ["clip-notes"] - verify notes string present
+    // Test 4: Read with include: ["notes"] - verify notes string present
     const withNotesResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: 0, sceneIndex: 0, include: ["clip-notes"] },
+      arguments: { trackIndex: 0, sceneIndex: 0, include: ["notes"] },
     });
     const withNotesClip = parseToolResult<ReadClipResult>(withNotesResult);
 

@@ -80,7 +80,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     expectGetNotesExtendedCall(clip);
@@ -283,7 +283,7 @@ describe("readClip", () => {
     const resultExplicit = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["sample", "clip-notes", "color", "timing", "warp"],
+      include: ["sample", "notes", "color", "timing", "warp"],
     });
 
     // Results should be identical
@@ -332,7 +332,7 @@ describe("readClip", () => {
     const result = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["timing", "clip-notes"],
+      include: ["timing", "notes"],
     });
 
     // Verify get_notes_extended is called with upper bound of 128 (exclusive), not 127

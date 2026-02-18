@@ -179,12 +179,7 @@ describe("includeArrayFromFlags", () => {
 
     const result = includeArrayFromFlags(flags);
 
-    expect(result).toStrictEqual([
-      "clip-notes",
-      "scenes",
-      "instruments",
-      "tracks",
-    ]);
+    expect(result).toStrictEqual(["notes", "scenes", "instruments", "tracks"]);
   });
 
   it("returns empty array when all flags are false", () => {
@@ -236,7 +231,7 @@ describe("includeArrayFromFlags", () => {
 
     it("parseIncludeArray handles drum-maps with other options", () => {
       const result = parseIncludeArray(
-        ["devices", "drum-maps", "clip-notes"],
+        ["devices", "drum-maps", "notes"],
         READ_TRACK_DEFAULTS,
       );
 

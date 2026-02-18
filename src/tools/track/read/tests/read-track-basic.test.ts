@@ -308,7 +308,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes"],
+      include: ["notes"],
     });
 
     expect(result.sessionClips).toBeUndefined();
@@ -331,7 +331,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes"],
+      include: ["notes"],
     });
 
     expect(result.arrangementClips).toBeUndefined();
@@ -354,7 +354,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 1,
-      include: ["clip-notes"],
+      include: ["notes"],
     });
 
     expect(result.arrangementClips).toBeUndefined();

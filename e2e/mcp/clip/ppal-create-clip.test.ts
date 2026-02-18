@@ -72,7 +72,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyNotes = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: notes.id, include: ["clip-notes"] },
+      arguments: { clipId: notes.id, include: ["notes"] },
     });
     const notesClip = parseToolResult<ReadClipResult>(verifyNotes);
 

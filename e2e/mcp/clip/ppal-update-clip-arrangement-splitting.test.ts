@@ -188,7 +188,7 @@ describe("Behavioral splitting tests", () => {
 
     for (const s of splitClips) {
       await sleep(50);
-      const clip = await readClip(ctx.client!, s.id, ["clip-notes"]);
+      const clip = await readClip(ctx.client!, s.id, ["notes"]);
 
       if (clip.notes) clipsWithNotes++;
     }

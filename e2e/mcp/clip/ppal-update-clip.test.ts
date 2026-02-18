@@ -124,7 +124,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Add notes with merge mode (verify notes increase)
     const beforeMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const beforeMergeClip = parseToolResult<ReadClipResult>(beforeMerge);
 
@@ -138,7 +138,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const mergedClip = parseToolResult<ReadClipResult>(verifyMerge);
 
@@ -154,7 +154,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyReplace = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const replacedClip = parseToolResult<ReadClipResult>(verifyReplace);
 
@@ -181,7 +181,7 @@ describe("ppal-update-clip", () => {
     await sleep(100);
     const verifyQuantize = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["clip-notes"] },
+      arguments: { clipId: clip.id, include: ["notes"] },
     });
     const quantizedClip = parseToolResult<ReadClipResult>(verifyQuantize);
 

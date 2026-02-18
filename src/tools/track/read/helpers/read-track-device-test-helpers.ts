@@ -40,7 +40,7 @@ interface ChainMockPropertiesOptions {
 }
 
 export const ALL_DEVICE_INCLUDE_OPTIONS = [
-  "clip-notes",
+  "notes",
   "devices",
   "session-clips",
   "arrangement-clips",
