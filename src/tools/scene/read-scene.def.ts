@@ -25,10 +25,10 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
       .optional()
       .describe("0-based index"),
     include: z
-      .array(z.enum(["clips", "notes", "sample", "color", "timing", "*"]))
+      .array(z.enum(["clips", "notes", "sample", "timing", "color", "*"]))
       .default([])
       .describe(
-        'clips = non-empty clips. notes, sample, color, timing = clip detail (use with clips). "*" = all',
+        'clips = clip list. notes, sample, timing = clip detail (use with clips). color = scene + clip color. "*" = all',
       ),
   },
 });

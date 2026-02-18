@@ -51,7 +51,7 @@ Returns overview by default. Use include to add detail.`,
       )
       .default([])
       .describe(
-        'session-clips, arrangement-clips = clip lists. notes, timing, sample, color = clip detail (use with clips). devices, drum-maps, routings, available-routings, mixer = track data. "*" = all',
+        'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-maps, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
       ),
   },
 });
