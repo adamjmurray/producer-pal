@@ -41,7 +41,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
       // Chains/drumPads are always stripped in read-track (use read-device for details)

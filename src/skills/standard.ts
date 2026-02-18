@@ -163,7 +163,7 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
   - Session clips override Arrangement; use "play-arrangement" for arrangement playback
 
 **Creating Music:**
-- For drum tracks, read the track with \`drum-maps\` include for correct pitches - don't assume General MIDI
+- For drum tracks, read the track with \`drum-map\` include for correct pitches - don't assume General MIDI
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
 - Keep harmonic rhythm in sync across tracks
 

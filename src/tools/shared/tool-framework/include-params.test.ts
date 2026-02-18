@@ -17,7 +17,7 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(undefined, READ_SONG_DEFAULTS);
 
     expect(result).toStrictEqual({
-      includeDrumMaps: false,
+      includeDrumMap: false,
       includeClipNotes: false,
       includeScenes: false,
       includeMidiEffects: false,
@@ -43,7 +43,7 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray([], READ_SONG_DEFAULTS);
 
     expect(result).toStrictEqual({
-      includeDrumMaps: false,
+      includeDrumMap: false,
       includeClipNotes: false,
       includeScenes: false,
       includeMidiEffects: false,
@@ -95,7 +95,7 @@ describe("parseIncludeArray", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         includeClipNotes: false,
-        includeDrumMaps: false,
+        includeDrumMap: false,
         includeDevices: false,
         includeInstruments: false,
         includeSessionClips: false,
@@ -119,7 +119,7 @@ describe("parseIncludeArray", () => {
     expect(result.includeDevices).toBe(true);
     expect(result.includeSessionClips).toBe(true);
     expect(result.includeArrangementClips).toBe(true);
-    expect(result.includeDrumMaps).toBe(true);
+    expect(result.includeDrumMap).toBe(true);
     // Legacy device categories not in track options list
     expect(result.includeMidiEffects).toBe(false);
     expect(result.includeInstruments).toBe(false);
@@ -222,45 +222,45 @@ describe("includeArrayFromFlags", () => {
     expect(result).toContain("clips");
   });
 
-  describe("drum-maps option", () => {
-    it("parseIncludeArray recognizes drum-maps", () => {
-      const result = parseIncludeArray(["drum-maps"], READ_TRACK_DEFAULTS);
+  describe("drum-map option", () => {
+    it("parseIncludeArray recognizes drum-map", () => {
+      const result = parseIncludeArray(["drum-map"], READ_TRACK_DEFAULTS);
 
-      expect(result.includeDrumMaps).toBe(true);
+      expect(result.includeDrumMap).toBe(true);
     });
 
-    it("parseIncludeArray handles drum-maps with other options", () => {
+    it("parseIncludeArray handles drum-map with other options", () => {
       const result = parseIncludeArray(
-        ["devices", "drum-maps", "notes"],
+        ["devices", "drum-map", "notes"],
         READ_TRACK_DEFAULTS,
       );
 
-      expect(result.includeDrumMaps).toBe(true);
+      expect(result.includeDrumMap).toBe(true);
       expect(result.includeDevices).toBe(true);
       expect(result.includeClipNotes).toBe(true);
     });
 
-    it("includeArrayFromFlags includes drum-maps when flag is true", () => {
+    it("includeArrayFromFlags includes drum-map when flag is true", () => {
       const flags = {
-        includeDrumMaps: true,
+        includeDrumMap: true,
         includeInstruments: true,
       };
 
       const result = includeArrayFromFlags(flags);
 
-      expect(result).toContain("drum-maps");
+      expect(result).toContain("drum-map");
       expect(result).toContain("instruments");
     });
 
-    it("includeArrayFromFlags excludes drum-maps when flag is false", () => {
+    it("includeArrayFromFlags excludes drum-map when flag is false", () => {
       const flags = {
-        includeDrumMaps: false,
+        includeDrumMap: false,
         includeInstruments: true,
       };
 
       const result = includeArrayFromFlags(flags);
 
-      expect(result).not.toContain("drum-maps");
+      expect(result).not.toContain("drum-map");
       expect(result).toContain("instruments");
     });
   });

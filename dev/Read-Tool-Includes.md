@@ -148,7 +148,7 @@ clip is read via `readClip()`. Nested clips have `trackIndex`, `view`, and
 ### Other includes
 
 - `devices` — flat device list in track signal-chain order
-- `drum-maps` — pitch-to-name mappings for drum racks
+- `drum-map` — pitch-to-name mappings for drum racks
 - `routings`, `available-routings` — routing info
 - `notes`, `sample`, `timing`, `color` — propagated to nested clip reads
 

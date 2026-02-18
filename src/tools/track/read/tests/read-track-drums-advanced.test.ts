@@ -127,7 +127,7 @@ describe("readTrack", () => {
           devices: [],
         },
       });
-      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -149,7 +149,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
       });
-      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -231,7 +231,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
       });
-      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toStrictEqual({ C3: "Direct Kick" });
     });
@@ -276,7 +276,7 @@ describe("readTrack", () => {
       setupTrackWithDrumRack(["kick_chain", "empty_chain", "snare_chain"]);
       registerKickAndEmptyChains(true);
 
-      const result = readTrack({ trackIndex: 0, include: ["drum-maps"] });
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       // drumMap should only include pads with instruments (kick and snare), not empty pad
       expect(result.drumMap).toStrictEqual({
@@ -346,7 +346,7 @@ describe("readTrack", () => {
           "devices",
           "session-clips",
           "arrangement-clips",
-          "drum-maps",
+          "drum-map",
         ],
       });
 

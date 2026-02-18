@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // String constants for include options
-const DRUM_MAPS = "drum-maps";
+const DRUM_MAP = "drum-map";
 const CLIP_NOTES = "notes";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
@@ -33,7 +33,7 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     TIMING,
     SAMPLE,
     DEVICES,
-    DRUM_MAPS,
+    DRUM_MAP,
     "routings",
     AVAILABLE_ROUTINGS,
     MIXER,
@@ -44,7 +44,7 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
 };
 
 export interface IncludeFlags {
-  includeDrumMaps: boolean;
+  includeDrumMap: boolean;
   includeClipNotes: boolean;
   includeScenes: boolean;
   includeMidiEffects: boolean;
@@ -78,7 +78,7 @@ export function parseIncludeArray(
   // If no include array is provided (undefined), use defaults
   if (includeArray === undefined) {
     return {
-      includeDrumMaps: Boolean(defaults.includeDrumMaps),
+      includeDrumMap: Boolean(defaults.includeDrumMap),
       includeClipNotes: Boolean(defaults.includeClipNotes),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
@@ -109,7 +109,7 @@ export function parseIncludeArray(
   // If an empty array was explicitly provided, return all false
   if (includeArray.length === 0) {
     return {
-      includeDrumMaps: false,
+      includeDrumMap: false,
       includeClipNotes: false,
       includeScenes: false,
       includeMidiEffects: false,
@@ -132,7 +132,7 @@ export function parseIncludeArray(
   }
 
   return {
-    includeDrumMaps: includeSet.has(DRUM_MAPS),
+    includeDrumMap: includeSet.has(DRUM_MAP),
     includeClipNotes: includeSet.has(CLIP_NOTES),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
@@ -158,7 +158,7 @@ export function parseIncludeArray(
  * Mapping of flag properties to their include option strings
  */
 const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
-  ["includeDrumMaps", DRUM_MAPS],
+  ["includeDrumMap", DRUM_MAP],
   ["includeClipNotes", CLIP_NOTES],
   ["includeScenes", "scenes"],
   ["includeMidiEffects", MIDI_EFFECTS],
@@ -210,7 +210,7 @@ export const READ_SONG_DEFAULTS: Partial<IncludeFlags> = {
  * Default include parameters for read-track tool
  */
 export const READ_TRACK_DEFAULTS: Partial<IncludeFlags> = {
-  includeDrumMaps: false,
+  includeDrumMap: false,
   includeClipNotes: false,
   includeDevices: false,
   includeMidiEffects: false,

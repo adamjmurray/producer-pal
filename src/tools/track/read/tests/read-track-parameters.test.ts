@@ -134,13 +134,13 @@ describe("readTrack", () => {
     });
   });
 
-  describe("drum-maps include option", () => {
-    it("includes drumMap but strips chains when using drum-maps", () => {
+  describe("drum-map include option", () => {
+    it("includes drumMap but strips chains when using drum-map", () => {
       setupDrumRackMocks();
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
       // Should have drumMap
@@ -169,7 +169,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
       // Should have drumMap
@@ -193,7 +193,7 @@ describe("readTrack", () => {
       ).toBeUndefined();
     });
 
-    it("strips chains from all device types when using drum-maps", () => {
+    it("strips chains from all device types when using drum-map", () => {
       setupTrackMock({
         trackId: "track1",
         properties: mockTrackProperties({
@@ -267,7 +267,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
       // All devices should have chains stripped
@@ -296,7 +296,7 @@ describe("readTrack", () => {
       expect(devices[2]!.chains).toBeUndefined();
     });
 
-    it("strips chains from devices when using drum-maps without chains", () => {
+    it("strips chains from devices when using drum-map without chains", () => {
       setupTrackMock({
         trackId: "track1",
         properties: mockTrackProperties({
@@ -326,10 +326,10 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
-      // Should have devices but NO chains (drum-maps strips chains)
+      // Should have devices but NO chains (drum-map strips chains)
       const devices = result.devices as Record<string, unknown>[];
 
       expect(devices[0]).toStrictEqual({
@@ -340,7 +340,7 @@ describe("readTrack", () => {
       expect(devices[0]!.chains).toBeUndefined();
     });
 
-    it("handles drum-maps with no drum racks gracefully", () => {
+    it("handles drum-map with no drum racks gracefully", () => {
       setupTrackMock({
         trackId: "track1",
         properties: mockTrackProperties({
@@ -360,7 +360,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["devices", "drum-maps"],
+        include: ["devices", "drum-map"],
       });
 
       // Should have devices but no drumMap

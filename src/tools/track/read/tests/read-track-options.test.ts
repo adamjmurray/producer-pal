@@ -115,7 +115,7 @@ describe("readTrack", () => {
           "timing",
           "sample",
           "devices",
-          "drum-maps",
+          "drum-map",
           "routings",
           "available-routings",
           "mixer",

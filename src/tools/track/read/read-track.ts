@@ -212,7 +212,7 @@ export function readTrackGeneric({
   returnTrackNames,
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
-    includeDrumMaps,
+    includeDrumMap,
     includeDevices,
     includeRoutings,
     includeAvailableRoutings,
@@ -297,7 +297,7 @@ export function readTrackGeneric({
       result.devices = flatDevices;
     }
 
-    if (includeDrumMaps) {
+    if (includeDrumMap) {
       const categorized = categorizeDevices(trackDevices, false, true, false);
 
       addDrumMapFromDevices(result, categorized);
@@ -305,7 +305,7 @@ export function readTrackGeneric({
   } else {
     result.deviceCount = trackDevices.length;
 
-    if (includeDrumMaps) {
+    if (includeDrumMap) {
       const categorized = categorizeDevices(trackDevices, false, true, false);
 
       addDrumMapFromDevices(result, categorized);
