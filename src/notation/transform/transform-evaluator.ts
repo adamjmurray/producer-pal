@@ -87,6 +87,17 @@ export function applyTransforms(
     applyDeviationTransform(note, transforms);
     applyPitchTransform(note, transforms);
   }
+
+  // Delete notes where transforms reduced velocity below 1 or duration to 0 or below
+  // (consistent with v0 deletion in bar|beat notation)
+  const surviving = notes.filter(
+    (note) => note.velocity >= 1 && note.duration > 0,
+  );
+
+  if (surviving.length < notes.length) {
+    notes.length = 0;
+    notes.push(...surviving);
+  }
 }
 
 /**
@@ -197,15 +208,10 @@ function applyVelocityTransform(
     return;
   }
 
-  if (transforms.velocity.operator === "set") {
-    note.velocity = Math.max(1, Math.min(127, transforms.velocity.value));
-  } else {
-    // operator === "add"
-    note.velocity = Math.max(
-      1,
-      Math.min(127, note.velocity + transforms.velocity.value),
-    );
-  }
+  note.velocity =
+    transforms.velocity.operator === "set"
+      ? Math.min(127, transforms.velocity.value)
+      : Math.min(127, note.velocity + transforms.velocity.value);
 }
 
 /**
@@ -256,11 +262,10 @@ function applyDurationTransform(
   const musicalBeatsValue = transforms.duration.value;
   const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
 
-  // Clamp minimum duration in Ableton beats
   note.duration =
     transforms.duration.operator === "set"
-      ? Math.max(0.001, abletonBeatsValue)
-      : Math.max(0.001, note.duration + abletonBeatsValue);
+      ? abletonBeatsValue
+      : note.duration + abletonBeatsValue;
 }
 
 /**

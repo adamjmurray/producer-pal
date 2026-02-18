@@ -56,12 +56,12 @@ describe("applyTransforms", () => {
     });
   });
 
-  describe("range clamping", () => {
-    it("clamps velocity to minimum 1 with += operator", () => {
+  describe("range clamping and deletion", () => {
+    it("deletes note when velocity drops below 1 with += operator", () => {
       const notes = createTestNote({ velocity: 10 });
 
       applyTransforms(notes, "velocity += -100", 4, 4);
-      expect(notes[0]!.velocity).toBe(1);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps velocity to maximum 127 with += operator", () => {
@@ -71,11 +71,11 @@ describe("applyTransforms", () => {
       expect(notes[0]!.velocity).toBe(127);
     });
 
-    it("clamps velocity to minimum 1 with = operator", () => {
+    it("deletes note when velocity set to 0 with = operator", () => {
       const notes = createTestNote();
 
       applyTransforms(notes, "velocity = 0", 4, 4);
-      expect(notes[0]!.velocity).toBe(1);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps velocity to maximum 127 with = operator", () => {
@@ -85,18 +85,18 @@ describe("applyTransforms", () => {
       expect(notes[0]!.velocity).toBe(127);
     });
 
-    it("clamps duration to minimum 0.001 with += operator", () => {
+    it("deletes note when duration drops to 0 or below with += operator", () => {
       const notes = createTestNote({ duration: 0.1 });
 
       applyTransforms(notes, "duration += -1", 4, 4);
-      expect(notes[0]!.duration).toBe(0.001);
+      expect(notes).toHaveLength(0);
     });
 
-    it("clamps duration to minimum 0.001 with = operator", () => {
+    it("deletes note when duration set to negative with = operator", () => {
       const notes = createTestNote();
 
       applyTransforms(notes, "duration = -1", 4, 4);
-      expect(notes[0]!.duration).toBe(0.001);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps probability to minimum 0.0 with += operator", () => {
@@ -251,11 +251,11 @@ probability += -0.2`;
   });
 
   describe("edge cases", () => {
-    it("handles notes with velocity at lower boundary", () => {
+    it("deletes note when velocity at lower boundary is decreased", () => {
       const notes = createTestNote({ velocity: 1 });
 
       applyTransforms(notes, "velocity += -10", 4, 4);
-      expect(notes[0]!.velocity).toBe(1);
+      expect(notes).toHaveLength(0);
     });
 
     it("handles notes with velocity at upper boundary", () => {
@@ -265,11 +265,11 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(127);
     });
 
-    it("handles notes with very small duration", () => {
+    it("deletes note when very small duration is decreased", () => {
       const notes = createTestNote({ duration: 0.001 });
 
       applyTransforms(notes, "duration += -0.01", 4, 4);
-      expect(notes[0]!.duration).toBe(0.001);
+      expect(notes).toHaveLength(0);
     });
 
     it("handles notes with probability at boundaries", () => {
@@ -385,18 +385,17 @@ probability += -0.2`;
       applyTransforms(notes, "velocity = note.index * 10", 4, 4);
 
       // After sorting by start_time then pitch:
-      // index 0: pitch=60, start=0 → velocity=0 (clamped to 1)
+      // index 0: pitch=60, start=0 → velocity=0 → DELETED
       // index 1: pitch=72, start=0 → velocity=10
       // index 2: pitch=84, start=2 → velocity=20
       // index 3: pitch=48, start=4 → velocity=30
-      expect(notes[0]!.pitch).toBe(60);
-      expect(notes[0]!.velocity).toBe(1); // clamped from 0
-      expect(notes[1]!.pitch).toBe(72);
-      expect(notes[1]!.velocity).toBe(10);
-      expect(notes[2]!.pitch).toBe(84);
-      expect(notes[2]!.velocity).toBe(20);
-      expect(notes[3]!.pitch).toBe(48);
-      expect(notes[3]!.velocity).toBe(30);
+      expect(notes).toHaveLength(3);
+      expect(notes[0]!.pitch).toBe(72);
+      expect(notes[0]!.velocity).toBe(10);
+      expect(notes[1]!.pitch).toBe(84);
+      expect(notes[1]!.velocity).toBe(20);
+      expect(notes[2]!.pitch).toBe(48);
+      expect(notes[2]!.velocity).toBe(30);
     });
   });
 
@@ -422,11 +421,11 @@ probability += -0.2`;
       expect(notes[0]!.probability).toBeCloseTo(0.4);
     });
 
-    it("clamps scaled velocity to minimum 1 with *=", () => {
+    it("deletes note when velocity scaled to 0 with *=", () => {
       const notes = createTestNote({ velocity: 5 });
 
       applyTransforms(notes, "velocity *= 0", 4, 4);
-      expect(notes[0]!.velocity).toBe(1);
+      expect(notes).toHaveLength(0);
     });
 
     it("clamps scaled velocity to maximum 127 with *=", () => {
@@ -447,6 +446,47 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(20);
       expect(notes[1]!.velocity).toBe(40);
       expect(notes[2]!.velocity).toBe(60);
+    });
+  });
+
+  describe("note deletion via transforms", () => {
+    it("keeps note when velocity is exactly 1 after transform", () => {
+      const notes = createTestNote({ velocity: 11 });
+
+      applyTransforms(notes, "velocity += -10", 4, 4);
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.velocity).toBe(1);
+    });
+
+    it("keeps note when duration is positive after transform", () => {
+      const notes = createTestNote({ duration: 1 });
+
+      applyTransforms(notes, "duration += -0.5", 4, 4);
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.duration).toBe(0.5);
+    });
+
+    it("deletes only affected notes from multi-note array", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, velocity: 100 },
+        { pitch: 64, start_time: 1, velocity: 10 },
+        { pitch: 67, start_time: 2, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "velocity += -50", 4, 4);
+      expect(notes).toHaveLength(2);
+      expect(notes[0]!.velocity).toBe(50);
+      expect(notes[1]!.velocity).toBe(50);
+    });
+
+    it("deletes all notes when all velocities drop below 1", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, velocity: 5 },
+        { pitch: 64, start_time: 1, velocity: 3 },
+      ]);
+
+      applyTransforms(notes, "velocity = 0", 4, 4);
+      expect(notes).toHaveLength(0);
     });
   });
 

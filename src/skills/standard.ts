@@ -118,7 +118,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
-- **MIDI parameters:** velocity (1-127), pitch (0-127), timing (beats), duration (beats), probability (0-1), deviation (-127 to 127)
+- **MIDI parameters:** velocity (1-127; <1 deletes note), pitch (0-127), timing (beats), duration (beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values

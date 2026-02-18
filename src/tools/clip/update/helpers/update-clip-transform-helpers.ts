@@ -74,7 +74,10 @@ export function applyTransformsToExistingNotes(
   );
 
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
-  clip.call("add_new_notes", { notes });
+
+  if (notes.length > 0) {
+    clip.call("add_new_notes", { notes });
+  }
 
   return getPlayableNoteCount(clip);
 }

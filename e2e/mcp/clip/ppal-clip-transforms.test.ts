@@ -257,15 +257,15 @@ describe("ppal-clip-transforms (midi velocity)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v84");
 
-    // Clamp below minimum (0 → 1)
-    await applyTransform(clipId, "velocity = 0");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("v1");
-
     // Clamp above maximum (200 → 127)
     await applyTransform(clipId, "velocity = 200");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v127");
+
+    // Velocity below 1 deletes the note
+    await applyTransform(clipId, "velocity = 0");
+    notes = await readClipNotes(clipId);
+    expect(notes).toBe("");
   });
 });
 
@@ -289,15 +289,15 @@ describe("ppal-clip-transforms (midi timing and duration)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t2");
 
-    // Duration: very small clamps to minimum (0.001)
-    await applyTransform(clipId, "duration = -1");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("t0.001");
-
     // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t0.5");
+
+    // Duration below 0 deletes the note
+    await applyTransform(clipId, "duration = -1");
+    notes = await readClipNotes(clipId);
+    expect(notes).toBe("");
   });
 });
 
