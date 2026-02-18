@@ -36,7 +36,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
       )
       .default([])
       .describe(
-        'data: chains, drum-map, drum-pads, params, param-values, return-chains, sample, "*" for all',
+        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. "*" = all',
       ),
     maxDepth: z.coerce
       .number()

@@ -33,6 +33,8 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     include: z
       .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
       .default([])
-      .describe('data: sample, timing, notes, color, warp, "*" for all'),
+      .describe(
+        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp markers. color. "*" = all',
+      ),
   },
 });

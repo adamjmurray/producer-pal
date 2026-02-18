@@ -29,14 +29,14 @@ Returns overview by default. Use include to add detail.`,
       )
       .default([])
       .describe(
-        'data: tracks, scenes, routings, mixer, color, locators, "*" for all',
+        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
       ),
   },
 
   smallModelModeConfig: {
     descriptionOverrides: {
       include:
-        'data: tracks, scenes, routings, mixer, color, locators, "*" for all',
+        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
     },
   },
 });
