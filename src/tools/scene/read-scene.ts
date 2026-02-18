@@ -107,7 +107,7 @@ export function readScene(
   }
 
   if (includeClips) {
-    result.clips = liveSet
+    const clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
         readClip({
@@ -118,20 +118,40 @@ export function readScene(
         }),
       )
       .filter((clip: ClipResult) => clip.id != null);
+
+    // Strip fields redundant with parent scene context
+    for (const clip of clips) {
+      delete (clip as unknown as Record<string, unknown>).sceneIndex;
+      delete (clip as unknown as Record<string, unknown>).view;
+    }
+
+    result.clips = clips;
   } else {
-    // When not including full clip details, just return the count
-    result.clipCount = liveSet
-      .getChildIds("tracks")
-      .map((_trackId, trackIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex: resolvedSceneIndex,
-          suppressEmptyWarning: true,
-          include: [],
-        }),
-      )
-      .filter((clip: ClipResult) => clip.id != null).length;
+    // Lightweight clip counting — only check existence instead of reading full clip properties
+    result.clipCount = countSceneClips(liveSet, sceneNum);
   }
 
   return result;
+}
+
+/**
+ * Count non-empty clips in a scene using lightweight existence checks
+ * @param liveSet - LiveAPI reference to the live set
+ * @param sceneIndex - Scene index (0-based)
+ * @returns Number of non-empty clips
+ */
+function countSceneClips(liveSet: LiveAPI, sceneIndex: number): number {
+  let count = 0;
+
+  for (const [trackIndex] of liveSet.getChildIds("tracks").entries()) {
+    const clip = LiveAPI.from(
+      livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+    );
+
+    if (clip.exists()) {
+      count++;
+    }
+  }
+
+  return count;
 }

@@ -72,14 +72,6 @@ describe("parseIncludeArray", () => {
     expect(result.includeScenes).toBe(true);
   });
 
-  it("expands all-devices shortcut", () => {
-    const result = parseIncludeArray(["all-devices"], READ_TRACK_DEFAULTS);
-
-    expect(result.includeMidiEffects).toBe(true);
-    expect(result.includeInstruments).toBe(true);
-    expect(result.includeAudioEffects).toBe(true);
-  });
-
   it("expands wildcard to all available options", () => {
     const result = parseIncludeArray(["*"], READ_SONG_DEFAULTS);
 

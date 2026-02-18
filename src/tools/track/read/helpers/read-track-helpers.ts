@@ -314,7 +314,10 @@ export function readMixerProperties(
   const panningMode = mixer.getProperty("panning_mode");
   const isSplitMode = panningMode === 1;
 
-  result.panningMode = isSplitMode ? "split" : "stereo";
+  // Only include panningMode when non-default (split)
+  if (isSplitMode) {
+    result.panningMode = "split";
+  }
 
   // Read panning based on mode
   if (isSplitMode) {

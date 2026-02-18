@@ -253,7 +253,9 @@ describe("readTrack", () => {
           ...expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
           color: undefined,
         },
-      ].map(({ color: _color, ...clip }) => clip),
+      ].map(
+        ({ color: _c, trackIndex: _ti, view: _v, type: _t, ...clip }) => clip,
+      ),
       arrangementClipCount: 0,
       deviceCount: 0,
       playingSlotIndex: 0,

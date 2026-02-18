@@ -46,6 +46,19 @@ to `readClip()`. Only clip-recognized includes affect clip output.
 `ppal-read-live-set` propagates only track-level includes (`routings`, `mixer`,
 `color`) to its nested track/scene reads.
 
+### Redundant field stripping
+
+Nested clip results have context-redundant fields removed to save tokens:
+
+- **In `ppal-read-track`**: `trackIndex`, `view`, and `type` are stripped from
+  clips in `sessionClips`/`arrangementClips` arrays (redundant with the parent
+  track's properties and the array name)
+- **In `ppal-read-scene`**: `sceneIndex` and `view` are stripped from clips in
+  the `clips` array (redundant with the parent scene's index; scenes are always
+  session view)
+
+When reading clips directly via `ppal-read-clip`, all fields are present.
+
 ### Implementation
 
 All include parsing is centralized in
@@ -53,7 +66,7 @@ All include parsing is centralized in
 
 - `parseIncludeArray(include, defaults)` — returns an `IncludeFlags` object with
   boolean flags
-- `expandWildcardIncludes()` — expands `"*"` and shortcut options
+- `expandWildcardIncludes()` — expands `"*"` to all options for the tool type
 - `READ_CLIP_DEFAULTS`, `READ_TRACK_DEFAULTS`, etc. — default flag values per
   tool type
 - `IncludeFlags` interface — all possible boolean flags
@@ -111,23 +124,46 @@ Returns track overview by default. Use `include` to add detail.
 | `id`                   | `string` | Track ID                                                      |
 | `name`                 | `string` | Track name                                                    |
 | `type`                 | `string` | `"midi"`, `"audio"`, `"return"`, or `"master"`                |
-| `trackIndex`           | `number` | 0-based track index (regular tracks)                          |
+| `trackIndex`           | `number` | 0-based index (regular tracks only)                           |
+| `returnTrackIndex`     | `number` | 0-based index (return tracks only)                            |
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
+| `groupId`              | `string` | Parent group track ID (only when grouped)                     |
+| `isArmed`              | `true`   | Only present when armed                                       |
+| `isGroup`              | `true`   | Only present for group tracks                                 |
+| `isGroupMember`        | `true`   | Only present when inside a group                              |
+| `playingSlotIndex`     | `number` | 0-based playing clip slot (only when >= 0)                    |
+| `firedSlotIndex`       | `number` | 0-based triggered clip slot (only when >= 0)                  |
+| `state`                | `string` | Only present when not "ACTIVE" (e.g., muted, soloed)          |
 | `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
 | `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |
 | `deviceCount`          | `number` | Number of devices (replaced by array when included)           |
+| `hasProducerPalDevice` | `true`   | Only present on the Producer Pal host track                   |
 
 ### Include: `"session-clips"`, `"arrangement-clips"`
 
 Replaces `sessionClipCount` / `arrangementClipCount` with full clip arrays. Each
-clip is read via `readClip()`.
+clip is read via `readClip()`. Nested clips have `trackIndex`, `view`, and
+`type` stripped (see "Redundant field stripping").
 
 ### Other includes
 
 - `devices` — flat device list in track signal-chain order
 - `drum-maps` — pitch-to-name mappings for drum racks
 - `routings`, `available-routings` — routing info
-- `clip-notes`, `sample`, `timing`, `color`, `mixer` — detail data
+- `clip-notes`, `sample`, `timing`, `color` — propagated to nested clip reads
+
+### Include: `"mixer"`
+
+Adds track-level mixer properties. Fields are merged into the track object.
+
+| Field         | Type     | Description                                                    |
+| ------------- | -------- | -------------------------------------------------------------- |
+| `gainDb`      | `string` | Volume display value (e.g., `"0.00 dB"`)                       |
+| `panningMode` | `string` | Only present when `"split"` (stereo mode omitted)              |
+| `pan`         | `number` | Pan position -1 to 1 (stereo mode)                             |
+| `leftPan`     | `number` | Left split pan (split mode only)                               |
+| `rightPan`    | `number` | Right split pan (split mode only)                              |
+| `sends`       | `Send[]` | Send levels; each `{ gainDb, return }` (omitted when no sends) |
 
 Device-structural includes (`chains`, `return-chains`, `drum-pads`) are not
 available at this level. Use `ppal-read-device` for chain/drum-pad detail.
@@ -153,7 +189,8 @@ Returns scene overview by default. Use `include` to add detail.
 ### Include: `"clips"`
 
 Replaces `clipCount` with full clip details for all non-empty clips in the
-scene. Each clip is read via `readClip()`.
+scene. Each clip is read via `readClip()`. Nested clips have `sceneIndex` and
+`view` stripped (see "Redundant field stripping").
 
 | Field   | Type     | Description                               |
 | ------- | -------- | ----------------------------------------- |
@@ -222,11 +259,11 @@ The notes string uses compact bar|beat notation. This is an expensive operation
 
 Adds base audio properties for audio clips. No effect on MIDI clips.
 
-| Field        | Type     | Description                         |
-| ------------ | -------- | ----------------------------------- |
-| `gainDb`     | `number` | Gain in dB (0 = unity, -70 = min)   |
-| `pitchShift` | `number` | Pitch shift in semitones            |
-| `sampleFile` | `string` | Full file path (omitted if no file) |
+| Field        | Type     | Description                               |
+| ------------ | -------- | ----------------------------------------- |
+| `gainDb`     | `number` | Gain in dB (omitted when 0 / unity)       |
+| `pitchShift` | `number` | Pitch shift in semitones (omitted when 0) |
+| `sampleFile` | `string` | Full file path (omitted if no file)       |
 
 ### Include: `"warp"`
 
@@ -247,8 +284,6 @@ Adds warp/time-stretch properties for audio clips. No effect on MIDI clips.
 | `color` | `string` | CSS hex color (e.g., `"#3DC300"`) |
 
 ### Examples
-
-TODO: Double check the example results for accuracy
 
 **Minimal read (overview only):**
 
@@ -301,7 +336,7 @@ Result:
 { "trackIndex": 1, "sceneIndex": 0, "include": ["sample", "warp"] }
 ```
 
-Result:
+Result (gainDb/pitchShift omitted when 0):
 
 ```json
 {
@@ -311,9 +346,7 @@ Result:
   "view": "session",
   "trackIndex": 1,
   "sceneIndex": 0,
-  "gainDb": 0,
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",
-  "pitchShift": 0,
   "sampleLength": 441000,
   "sampleRate": 44100,
   "warping": true,
@@ -362,9 +395,7 @@ Audio clip result:
   "trackIndex": 1,
   "sceneIndex": 0,
   "color": "#FF6B00",
-  "gainDb": 0,
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",
-  "pitchShift": 0,
   "timeSignature": "4/4",
   "looping": true,
   "start": "1|1",

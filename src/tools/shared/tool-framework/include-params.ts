@@ -43,15 +43,6 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
   clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
 };
 
-/**
- * Shortcut mappings for include options
- */
-const SHORTCUT_MAPPINGS: Record<string, string[]> = {
-  "all-devices": ["midi-effects", "instruments", "audio-effects"],
-  "all-routings": ["routings", "available-routings"],
-  "all-clips": ["session-clips", "arrangement-clips"],
-};
-
 export interface IncludeFlags {
   includeDrumMaps: boolean;
   includeClipNotes: boolean;
@@ -259,29 +250,17 @@ export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
 };
 
 /**
- * Expand shortcuts and '*' in include array to concrete options
- * @param includeArray - Array of include options that may contain '*' or shortcuts
+ * Expand '*' wildcard in include array to all concrete options for the tool type
+ * @param includeArray - Array of include options that may contain '*'
  * @param defaults - Default values to determine tool type from structure
- * @returns Expanded array with shortcuts and '*' replaced by concrete options
+ * @returns Expanded array with '*' replaced by concrete options
  */
 function expandWildcardIncludes(
   includeArray: string[],
   defaults: Partial<IncludeFlags>,
 ): string[] {
-  // First expand shortcuts
-  const expandedArray: string[] = [];
-
-  for (const option of includeArray) {
-    if (SHORTCUT_MAPPINGS[option]) {
-      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
-    } else {
-      expandedArray.push(option);
-    }
-  }
-
-  // Then handle '*' expansion
-  if (!expandedArray.includes("*")) {
-    return expandedArray;
+  if (!includeArray.includes("*")) {
+    return includeArray;
   }
 
   // Determine tool type from defaults structure to get appropriate options
@@ -302,7 +281,7 @@ function expandWildcardIncludes(
   const allOptions = ALL_INCLUDE_OPTIONS[toolType] ?? [];
 
   // Create set with all non-'*' options plus all available options
-  const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
+  const expandedSet = new Set(includeArray.filter((option) => option !== "*"));
 
   for (const option of allOptions) expandedSet.add(option);
 

@@ -286,7 +286,11 @@ function processAudioClip(
 ): void {
   // Base audio properties (gated behind includeSample)
   if (includeSample) {
-    result.gainDb = liveGainToDb(clip.getProperty("gain") as number);
+    const gainDb = liveGainToDb(clip.getProperty("gain") as number);
+
+    if (gainDb !== 0) {
+      result.gainDb = gainDb;
+    }
 
     const filePath = clip.getProperty("file_path") as string | null;
 
@@ -296,8 +300,11 @@ function processAudioClip(
 
     const pitchCoarse = clip.getProperty("pitch_coarse") as number;
     const pitchFine = clip.getProperty("pitch_fine") as number;
+    const pitchShift = pitchCoarse + pitchFine / 100;
 
-    result.pitchShift = pitchCoarse + pitchFine / 100;
+    if (pitchShift !== 0) {
+      result.pitchShift = pitchShift;
+    }
   }
 
   // Warp properties (gated behind includeWarp)

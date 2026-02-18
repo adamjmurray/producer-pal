@@ -49,6 +49,7 @@ export async function testSplitClip(
   trackIndex: number,
   options: { sleepMs?: number; splitPoint?: string } = {},
 ): Promise<{
+  trackType: "midi" | "audio";
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];
   warnings: string[];
@@ -57,8 +58,8 @@ export async function testSplitClip(
   const splitPoint = options.splitPoint ?? SPLIT_POINT;
 
   // Read initial clip
-  const initialClips = await readClipsOnTrack(client, trackIndex);
-  const clipId = initialClips[0]?.id;
+  const initial = await readClipsOnTrack(client, trackIndex);
+  const clipId = initial.clips[0]?.id;
 
   if (!clipId) {
     throw new Error(`No clip found on track ${trackIndex}`);
@@ -71,9 +72,12 @@ export async function testSplitClip(
   await sleep(sleepMs);
 
   // Read result clips
-  const resultClips = await readClipsOnTrack(client, trackIndex);
+  const { type: trackType, clips: resultClips } = await readClipsOnTrack(
+    client,
+    trackIndex,
+  );
 
-  return { initialClips, resultClips, warnings };
+  return { trackType, initialClips: initial.clips, resultClips, warnings };
 }
 
 /** Sort clips by arrangement start position */

@@ -201,7 +201,7 @@ describe("readScene", () => {
           }),
           color: undefined,
         },
-      ].map(({ color: _color, ...clip }) => clip),
+      ].map(({ color: _color, sceneIndex: _si, view: _v, ...clip }) => clip),
     });
   });
 
@@ -319,7 +319,7 @@ describe("readScene", () => {
             }),
             color: undefined,
           },
-        ].map(({ color: _color, ...clip }) => clip),
+        ].map(({ color: _color, sceneIndex: _si, view: _v, ...clip }) => clip),
       });
     });
 

@@ -327,5 +327,27 @@ export function readTrackGeneric({
 
   addProducerPalHostInfo(result, isProducerPalHost);
 
+  // Strip fields from nested clips that are redundant with parent track context
+  stripRedundantClipFields(result.sessionClips as Record<string, unknown>[]);
+  stripRedundantClipFields(
+    result.arrangementClips as Record<string, unknown>[],
+  );
+
   return result;
+}
+
+/**
+ * Remove trackIndex, view, and type from nested clip results (redundant with parent track)
+ * @param clips - Array of clip result objects, or undefined
+ */
+function stripRedundantClipFields(
+  clips: Record<string, unknown>[] | undefined,
+): void {
+  if (!clips) return;
+
+  for (const clip of clips) {
+    delete clip.trackIndex;
+    delete clip.view;
+    delete clip.type;
+  }
 }

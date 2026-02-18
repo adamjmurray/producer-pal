@@ -231,7 +231,7 @@ export interface CreateTrackResult {
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
 export interface ReadClipResult {
   id: string | null;
-  type: "midi" | "audio" | null;
+  type?: "midi" | "audio" | null;
   name?: string | null;
   view?: "session" | "arrangement";
   color?: string | null;

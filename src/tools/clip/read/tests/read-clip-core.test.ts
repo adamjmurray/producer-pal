@@ -262,7 +262,6 @@ describe("readClip", () => {
       length: "1:0", // 1 bar
       playing: true,
       gainDb: -70, // gain=0 maps to -70 dB
-      pitchShift: 0,
       sampleLength: 0,
       sampleRate: 0,
       warpMode: "beats",

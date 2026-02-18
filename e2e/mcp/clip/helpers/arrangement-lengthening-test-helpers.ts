@@ -22,14 +22,19 @@ export const ARRANGEMENT_CLIP_TESTS_PATH =
 export const TARGET_LENGTH = "4:0"; // 4 bars
 export const EPSILON = 0.01; // For floating-point comparisons
 
+export interface TrackClipsResult {
+  type: "midi" | "audio";
+  clips: ReadClipResult[];
+}
+
 /**
  * Read all arrangement clips from a track.
- * Returns array since lengthening operations may create multiple clips (tiling).
+ * Returns clips and track type since type is stripped from nested clips.
  */
 export async function readClipsOnTrack(
   client: Client,
   trackIndex: number,
-): Promise<ReadClipResult[]> {
+): Promise<TrackClipsResult> {
   const result = await client.callTool({
     name: "ppal-read-track",
     arguments: {
@@ -39,12 +44,13 @@ export async function readClipsOnTrack(
   });
 
   interface TrackResult {
+    type: "midi" | "audio";
     arrangementClips?: ReadClipResult[];
   }
 
   const track = parseToolResult<TrackResult>(result);
 
-  return track.arrangementClips ?? [];
+  return { type: track.type, clips: track.arrangementClips ?? [] };
 }
 
 /**
@@ -173,6 +179,7 @@ export async function testLengthenClipTo4Bars(
     sleepMs?: number;
   } = {},
 ): Promise<{
+  trackType: "midi" | "audio";
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];
   warnings: string[];
@@ -180,8 +187,8 @@ export async function testLengthenClipTo4Bars(
   const sleepMs = options.sleepMs ?? 100;
 
   // Get initial clip
-  const initialClips = await readClipsOnTrack(client, trackIndex);
-  const clipId = initialClips[0]?.id;
+  const initial = await readClipsOnTrack(client, trackIndex);
+  const clipId = initial.clips[0]?.id;
 
   if (!clipId) {
     throw new Error(`No clip found on track ${trackIndex}`);
@@ -193,8 +200,11 @@ export async function testLengthenClipTo4Bars(
   await new Promise((resolve) => setTimeout(resolve, sleepMs));
 
   // Read back result
-  const resultClips = await readClipsOnTrack(client, trackIndex);
+  const { type: trackType, clips: resultClips } = await readClipsOnTrack(
+    client,
+    trackIndex,
+  );
   const { warnings } = parseLengthenResult(result);
 
-  return { initialClips, resultClips, warnings };
+  return { trackType, initialClips: initial.clips, resultClips, warnings };
 }

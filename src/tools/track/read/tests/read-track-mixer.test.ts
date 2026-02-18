@@ -46,7 +46,8 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
-    expect(result).toHaveProperty("panningMode", "stereo");
+    // panningMode "stereo" is the default, omitted to save tokens
+    expect(result).not.toHaveProperty("panningMode");
     expect(result).toHaveProperty("pan", 0);
     expect(result).not.toHaveProperty("leftPan");
     expect(result).not.toHaveProperty("rightPan");
@@ -65,7 +66,8 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -6.5);
-    expect(result).toHaveProperty("panningMode", "stereo");
+    // panningMode "stereo" is the default, omitted to save tokens
+    expect(result).not.toHaveProperty("panningMode");
     expect(result).toHaveProperty("pan", 0.5);
   });
 
