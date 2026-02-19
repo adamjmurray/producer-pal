@@ -45,12 +45,11 @@ Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
 ### 3. Install a Compatible Model
 
-Install a compatible model in LM Studio, such as:
+Install a compatible model in LM Studio, such as a recent version of:
 
-- Qwen 3+ (4b-2507, 4b-thinking-2507)
-- OpenAI GPT-OSS (20B)
-- Mistral AI Magistral (small-2509)
-- Granite 4+ (4.0-h-tiny)
+- Qwen
+- Mistral Magistral or Devstral
+- GLM Flash
 
 ### 4. Configure LM Studio
 

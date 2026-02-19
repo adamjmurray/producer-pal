@@ -21,7 +21,7 @@ Requires a capable GPU (8GB+ VRAM recommended).
 - Best for: simple clip creation, basic playback control, experimentation
 - Challenging for: multi-step arrangements, complex notation, nuanced musical
   decisions
-- Recommended models: Qwen 3, Devstral, GPT-OSS
+- Recommended models: Qwen 3, Devstral, GLM Flash
 
 ## Hardware Requirements
 
