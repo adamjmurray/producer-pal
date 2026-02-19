@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type FunctionResponse, type Part } from "@google/genai/web";
+import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
 import {
   type GeminiMessage,
   type UIMessage,
@@ -291,18 +293,6 @@ function canMergeWithLastPart(
     (lastPart.type === "text" && !isThought) ||
     (lastPart.type === "thought" && isThought)
   );
-}
-
-/**
- * Marks the last thought part as open for activity indicator
- * @param {UIMessage[]} messages - Array of UI messages
- */
-function markLastThoughtAsOpen(messages: UIMessage[]): void {
-  const lastPart = messages.at(-1)?.parts.at(-1);
-
-  if (lastPart?.type === "thought") {
-    lastPart.isOpen = true; // show the thought as currently active
-  }
 }
 
 /**

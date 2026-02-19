@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -10,6 +11,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   categorizeDevices,
@@ -296,20 +298,14 @@ export function readTrackGeneric({
     if (flatDevices != null) {
       result.devices = flatDevices;
     }
-
-    if (includeDrumMap) {
-      const categorized = categorizeDevices(trackDevices, false, true, false);
-
-      addDrumMapFromDevices(result, categorized);
-    }
   } else {
     result.deviceCount = trackDevices.length;
+  }
 
-    if (includeDrumMap) {
-      const categorized = categorizeDevices(trackDevices, false, true, false);
+  if (includeDrumMap) {
+    const categorized = categorizeDevices(trackDevices, false, true, false);
 
-      addDrumMapFromDevices(result, categorized);
-    }
+    addDrumMapFromDevices(result, categorized);
   }
 
   addSlotIndices(result, track, category);
@@ -328,26 +324,18 @@ export function readTrackGeneric({
   addProducerPalHostInfo(result, isProducerPalHost);
 
   // Strip fields from nested clips that are redundant with parent track context
-  stripRedundantClipFields(result.sessionClips as Record<string, unknown>[]);
-  stripRedundantClipFields(
+  stripFields(
+    result.sessionClips as Record<string, unknown>[],
+    "trackIndex",
+    "view",
+    "type",
+  );
+  stripFields(
     result.arrangementClips as Record<string, unknown>[],
+    "trackIndex",
+    "view",
+    "type",
   );
 
   return result;
-}
-
-/**
- * Remove trackIndex, view, and type from nested clip results (redundant with parent track)
- * @param clips - Array of clip result objects, or undefined
- */
-function stripRedundantClipFields(
-  clips: Record<string, unknown>[] | undefined,
-): void {
-  if (!clips) return;
-
-  for (const clip of clips) {
-    delete clip.trackIndex;
-    delete clip.view;
-    delete clip.type;
-  }
 }

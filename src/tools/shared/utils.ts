@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -205,4 +206,23 @@ export function toLiveApiId(id: string | number): string {
   const s = String(id);
 
   return s.startsWith("id ") ? s : `id ${s}`;
+}
+
+/**
+ * Removes specified fields from each object in an array.
+ * Used to strip redundant fields from nested results (e.g., clips nested in tracks or scenes).
+ * @param items - Array of objects to strip fields from, or undefined
+ * @param fields - Field names to delete
+ */
+export function stripFields(
+  items: Record<string, unknown>[] | undefined,
+  ...fields: string[]
+): void {
+  if (!items) return;
+
+  for (const item of items) {
+    for (const field of fields) {
+      delete item[field];
+    }
+  }
 }
